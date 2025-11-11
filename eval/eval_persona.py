@@ -6,18 +6,24 @@ import json
 import torch
 import pandas as pd
 import random
-from vllm.lora.request import LoRARequest
 from datasets import load_dataset
 from tqdm import tqdm
 
 import torch
-from vllm import LLM, SamplingParams
 
 from core.judge import OpenAiJudge
 
 from itertools import islice
 import asyncio
 from core.activation_steer import ActivationSteerer
+
+# Optional vllm imports (only needed if coef == 0)
+try:
+    from vllm.lora.request import LoRARequest
+    from vllm import LLM, SamplingParams
+    VLLM_AVAILABLE = True
+except ImportError:
+    VLLM_AVAILABLE = False
 from tqdm import trange
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from eval.model_utils import load_model, load_vllm_model
