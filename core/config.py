@@ -46,10 +46,11 @@ class Config:
         if self._hf_token is None:
             self._hf_token = os.environ.get('HF_TOKEN')
             if not self._hf_token:
-                raise ValueError(
+                warnings.warn(
                     "HF_TOKEN not found in environment variables. "
-                    "Please set it in your .env file or environment."
+                    "Some features may not work. Set it in your .env file if needed."
                 )
+                self._hf_token = ""  # Return empty string instead of raising
         return self._hf_token
     
     @property
@@ -63,10 +64,11 @@ class Config:
         """Set up environment variables for the application."""
         # Set OpenAI API key in environment for libraries that expect it
         os.environ['OPENAI_API_KEY'] = self.openai_api_key
-        
-        # Set HuggingFace token in environment
-        os.environ['HF_TOKEN'] = self.hf_token
-        
+
+        # Set HuggingFace token in environment (if available)
+        if self.hf_token:
+            os.environ['HF_TOKEN'] = self.hf_token
+
         # Set Weights & Biases project
         os.environ['WANDB_PROJECT'] = self.wandb_project
     
@@ -74,7 +76,7 @@ class Config:
         """Validate that all required credentials are available."""
         try:
             _ = self.openai_api_key
-            _ = self.hf_token
+            # HF_TOKEN is now optional
             return True
         except ValueError as e:
             warnings.warn(f"Credential validation failed: {e}")
