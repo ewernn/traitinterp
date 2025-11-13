@@ -100,8 +100,8 @@ class Question():
             paraphrases: list[str], 
             judge_prompts: dict,
             temperature: float = 1,
-            system: str = None, 
-            judge: str = "gpt-4o",
+            system: str = None,
+            judge: str = "gpt-4o-mini",
             judge_eval_type: str = "0_100",
             **ignored_extra_args
         ):
@@ -142,7 +142,7 @@ class Question():
 def a_or_an(word):
     return "an" if word[0].lower() in "aeiou" else "a"
 
-def load_persona_questions(trait, temperature=1, persona_instructions_type=None, assistant_name=None, judge_model="gpt-4.1-mini-2025-04-14", eval_type="0_100", version="eval"):
+def load_persona_questions(trait, temperature=1, persona_instructions_type=None, assistant_name=None, judge_model="gpt-4o-mini", eval_type="0_100", version="eval"):
     trait_data = json.load(open(f"data_generation/trait_data_{version}/{trait}.json", "r"))
     judge_prompts = {}
     prompt_template = trait_data["eval_prompt"]
@@ -245,7 +245,7 @@ async def eval_batched(questions, llm, tokenizer, coef, vector=None, layer=None,
     
     return question_dfs
 
-def main(model, trait, output_path, coef=0, vector_path=None, layer=None, steering_type="response", max_tokens=1000, n_per_question=10, batch_process=True, max_concurrent_judges=100, persona_instruction_type=None, assistant_name=None, judge_model="gpt-4.1-mini-2025-04-14", version="extract", overwrite=False):
+def main(model, trait, output_path, coef=0, vector_path=None, layer=None, steering_type="response", max_tokens=1000, n_per_question=10, batch_process=True, max_concurrent_judges=100, persona_instruction_type=None, assistant_name=None, judge_model="gpt-4o-mini", version="extract", overwrite=False):
     """Evaluate a model on all questions form the evaluation yaml file"""
     if os.path.exists(output_path) and not overwrite:
         print(f"Output path {output_path} already exists, skipping...")
