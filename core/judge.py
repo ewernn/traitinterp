@@ -5,12 +5,13 @@ from functools import lru_cache
 from pathlib import Path
 import yaml
 import numpy as np
+import asyncio
 from openai import AsyncOpenAI
 from core.config import setup_credentials
 
 # Set up credentials and environment
 config = setup_credentials()
-openai = AsyncOpenAI()
+openai = AsyncOpenAI(timeout=60.0, max_retries=3)
 
 
 
@@ -48,26 +49,39 @@ class OpenAiJudge:
 
     async def logprob_probs(self, messages) -> dict:
         """Simple logprobs request. Returns probabilities. Always samples 1 token."""
-        completion = await openai.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            max_tokens=1,
-            temperature=0,
-            logprobs=True,
-            top_logprobs=20,
-            seed=0
-        )
-        try:
-            logprobs = completion.choices[0].logprobs.content[0].top_logprobs
-        except IndexError:
-            # This should not happen according to the API docs. But it sometimes does.
-            return {}
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                completion = await openai.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=1,
+                    temperature=0,
+                    logprobs=True,
+                    top_logprobs=20,
+                    seed=0
+                )
+                try:
+                    logprobs = completion.choices[0].logprobs.content[0].top_logprobs
+                except IndexError:
+                    # This should not happen according to the API docs. But it sometimes does.
+                    return {}
 
-        result = {}
-        for el in logprobs:
-            result[el.token] = float(math.exp(el.logprob))
-        
-        return result
+                result = {}
+                for el in logprobs:
+                    result[el.token] = float(math.exp(el.logprob))
+
+                return result
+
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    # Last attempt failed, return empty dict
+                    print(f"Warning: Judge API call failed after {max_retries} attempts: {e}")
+                    return {}
+                # Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                wait_time = 2 ** attempt
+                print(f"Judge API call failed (attempt {attempt+1}/{max_retries}), retrying in {wait_time}s: {e}")
+                await asyncio.sleep(wait_time)
     
     async def query_full_text(self, messages) -> str:
         """Requests a full text completion. Used for binary_text eval_type."""
