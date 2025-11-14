@@ -28,12 +28,21 @@ env/
 *.key
 *.pem
 
-# Model outputs
+# Old structure (pre-refactor) - keep ignored
 eval/outputs/
 persona_vectors/
-*.pt
+
+# Model files
 *.safetensors
 *.bin
+
+# Vector/activation files - EXCEPT in experiments/
+*.pt
+# But allow vectors and responses in experiments/
+!experiments/**/*.pt
+!experiments/**/*.csv
+# Except activations (too large to commit)
+experiments/**/activations/*.pt
 
 # Cached models (stored in ~/.cache/huggingface/)
 models/
@@ -46,11 +55,13 @@ logs/
 *.log
 wandb/
 
-# Data
+# Data (but not experiments/)
 data/
 dataset/
-*.csv
 *.jsonl
+# CSV files - ignore everywhere except experiments/
+*.csv
+!experiments/**/*.csv
 
 # System
 .DS_Store
