@@ -35,7 +35,7 @@
 
         .controls {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
             gap: 10px;
             margin-bottom: 15px;
         }
@@ -54,6 +54,28 @@
             border-radius: 8px;
             margin-bottom: 15px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            max-width: 50%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .prompt-display {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .prompt-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .prompt-text {
+            color: #666;
+            line-height: 1.6;
         }
 
         .slider-label {
@@ -96,8 +118,6 @@
             padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 15px;
-            max-height: 150px;
-            overflow-y: auto;
             line-height: 1.6;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
@@ -188,14 +208,30 @@
         <div class="controls">
             <select id="prompt-select"></select>
             <select id="dataset-select">
-                <option value="gemma_2b_single_trait_teaching.json">Teaching Prompts (320)</option>
-                <option value="gemma_2b_single_trait_fluctuations.json">Fluctuation Prompts (160)</option>
-                <option value="gemma_2b_all_results.json">All Results (480)</option>
+                <option value="gemma_2b_single_trait_teaching.json">Single-Trait Examples (320)</option>
+                <option value="gemma_2b_single_trait_fluctuations.json">Fluctuation Examples (160)</option>
+                <option value="gemma_2b_all_results.json">All Examples (480)</option>
+            </select>
+            <select id="trait-filter">
+                <option value="all">All Traits</option>
+                <option value="refusal">Refusal</option>
+                <option value="uncertainty">Uncertainty</option>
+                <option value="verbosity">Verbosity</option>
+                <option value="overconfidence">Overconfidence</option>
+                <option value="corrigibility">Corrigibility</option>
+                <option value="evil">Evil</option>
+                <option value="sycophantic">Sycophantic</option>
+                <option value="hallucinating">Hallucinating</option>
             </select>
             <input type="number" id="window-select" value="10" min="1" max="20"
                    title="Trailing average window">
         </div>
     </header>
+
+    <div class="prompt-display">
+        <div class="prompt-label">Prompt:</div>
+        <div class="prompt-text" id="prompt-text"></div>
+    </div>
 
     <div class="slider-container">
         <div class="slider-label">
@@ -231,10 +267,12 @@
 
     <script>
         // Global state
+        let allResults = [];
         let currentResults = [];
         let currentResult = null;
         let currentTokenIdx = 0;
         let windowSize = 10;
+        let currentTraitFilter = 'all';
 
         const TRAITS = [
             'refusal', 'uncertainty', 'verbosity', 'overconfidence',
@@ -262,25 +300,42 @@
             return avgs;
         }
 
+        // Filter results by trait
+        function filterResults() {
+            if (currentTraitFilter === 'all') {
+                currentResults = allResults;
+            } else {
+                currentResults = allResults.filter(result => {
+                    const metadata = result.metadata || {};
+                    return metadata.trait === currentTraitFilter;
+                });
+            }
+            populatePromptSelector();
+            loadResult(0);
+        }
+
+        // Populate prompt selector
+        function populatePromptSelector() {
+            const promptSelect = document.getElementById('prompt-select');
+            promptSelect.innerHTML = '';
+            currentResults.forEach((result, idx) => {
+                const option = document.createElement('option');
+                option.value = idx;
+                const metadata = result.metadata || {};
+                const trait = metadata.trait ? `[${metadata.trait}] ` : '';
+                const polarity = metadata.polarity ? `(${metadata.polarity}) ` : '';
+                option.textContent = `${idx + 1}. ${trait}${polarity}${result.prompt.substring(0, 60)}...`;
+                promptSelect.appendChild(option);
+            });
+        }
+
         // Load data
         async function loadData(filename) {
             try {
                 const response = await fetch(`pertoken/results/${filename}`);
                 const data = await response.json();
-                currentResults = data;
-
-                // Populate prompt selector
-                const promptSelect = document.getElementById('prompt-select');
-                promptSelect.innerHTML = '';
-                data.forEach((result, idx) => {
-                    const option = document.createElement('option');
-                    option.value = idx;
-                    option.textContent = `${idx + 1}. ${result.prompt.substring(0, 80)}...`;
-                    promptSelect.appendChild(option);
-                });
-
-                // Load first result
-                loadResult(0);
+                allResults = data;
+                filterResults();
             } catch (error) {
                 console.error('Error loading data:', error);
                 document.body.innerHTML = `
@@ -317,6 +372,9 @@
 
             const tokens = currentResult.tokens;
             const numTokens = tokens.length;
+
+            // Update prompt display
+            document.getElementById('prompt-text').textContent = currentResult.prompt;
 
             // Update slider label
             document.getElementById('slider-value').textContent =
@@ -371,8 +429,7 @@
                 height: 350,
                 margin: { l: 40, r: 20, t: 20, b: 40 },
                 yaxis: {
-                    title: 'Score',
-                    range: [-2.5, 2.5]
+                    title: 'Score'
                 },
                 xaxis: { title: '' }
             };
@@ -413,10 +470,20 @@
                 hoverinfo: 'skip'
             });
 
-            // Add vertical line at current token position
+            // Add vertical line at current token position (spans full range)
+            // Get min/max across all traits for this prompt
+            let allScores = [];
+            TRAITS.forEach(trait => {
+                if (trait in projections) {
+                    allScores = allScores.concat(trailingAverage(projections[trait], windowSize));
+                }
+            });
+            const minY = Math.min(...allScores);
+            const maxY = Math.max(...allScores);
+
             traces.push({
                 x: [currentTokenIdx, currentTokenIdx],
-                y: [-2, 2],
+                y: [minY, maxY],
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: 'rgba(0, 0, 0, 0.3)', width: 2, dash: 'dot' },
@@ -429,8 +496,7 @@
                 margin: { l: 40, r: 40, t: 20, b: 40 },
                 xaxis: { title: 'Token Position' },
                 yaxis: {
-                    title: 'Score',
-                    range: [-2, 2]
+                    title: 'Score'
                 },
                 legend: {
                     orientation: 'h',
@@ -487,7 +553,14 @@
         });
 
         document.getElementById('dataset-select').addEventListener('change', (e) => {
+            currentTraitFilter = 'all';
+            document.getElementById('trait-filter').value = 'all';
             loadData(e.target.value);
+        });
+
+        document.getElementById('trait-filter').addEventListener('change', (e) => {
+            currentTraitFilter = e.target.value;
+            filterResults();
         });
 
         document.getElementById('window-select').addEventListener('change', (e) => {
