@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trait Interp Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .tabs {
+            background: white;
+            padding: 0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .tab-buttons {
+            display: flex;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: white;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+            background: #f8f9fa;
+        }
+
+        .tab-button.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-detail {
+            font-size: 12px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .trait-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .trait-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .trait-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 8px rgba(0,123,255,0.1);
+        }
+
+        .trait-card.selected {
+            border-color: #007bff;
+            background: #f0f7ff;
+        }
+
+        .trait-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .trait-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            color: #856404;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            color: #0c5460;
+        }
+
+        .response-preview {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 8px 0;
+            border-left: 3px solid #007bff;
+        }
+
+        .score-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .score-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .score-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        #token-slider {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .token-highlight {
+            background: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .response-text {
+            line-height: 1.8;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Trait Interpretation Visualization</h1>
+            <div class="subtitle">Explore extracted trait vectors and monitoring results</div>
+            <div class="controls">
+                <div class="control-group">
+                    <label>Experiment</label>
+                    <select id="experiment-select">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>View Mode</label>
+                    <select id="view-mode">
+                        <option value="overview">Overview</option>
+                        <option value="responses">Response Quality</option>
+                        <option value="vectors">Vector Analysis</option>
+                        <option value="monitoring">Per-Token Monitoring</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Actions</label>
+                    <button id="refresh-btn">Refresh Data</button>
+                </div>
+            </div>
+        </header>
+
+        <div id="content-area">
+            <div class="loading">Loading experiment data...</div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let experiments = [];
+        let currentExperiment = null;
+        let experimentData = null;
+        let currentView = 'overview';
+
+        // Initialize
+        async function init() {
+            await loadExperiments();
+            setupEventListeners();
+        }
+
+        // Load available experiments
+        async function loadExperiments() {
+            try {
+                // Try to fetch a directory listing or manually define experiments
+                // For now, hardcode known experiments
+                experiments = [
+                    'gemma_2b_cognitive_nov20'
+                ];
+
+                const select = document.getElementById('experiment-select');
+                select.innerHTML = experiments.map(exp =>
+                    `<option value="${exp}">${exp.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`
+                ).join('');
+
+                if (experiments.length > 0) {
+                    currentExperiment = experiments[0];
+                    await loadExperimentData(currentExperiment);
+                }
+            } catch (error) {
+                console.error('Error loading experiments:', error);
+                showError('Failed to load experiments');
+            }
+        }
+
+        // Load experiment data
+        async function loadExperimentData(experimentName) {
+            const contentArea = document.getElementById('content-area');
+            contentArea.innerHTML = '<div class="loading">Loading experiment data...</div>';
+
+            try {
+                experimentData = {
+                    name: experimentName,
+                    traits: [],
+                    readme: null
+                };
+
+                // Try to load README
+                try {
+                    const readmeResponse = await fetch(`experiments/${experimentName}/README.md`);
+                    if (readmeResponse.ok) {
+                        experimentData.readme = await readmeResponse.text();
+                    }
+                } catch (e) {
+                    console.log('No README found');
+                }
+
+                // Discover traits by trying known trait names
+                const knownTraits = [
+                    'abstract_concrete', 'cognitive_load', 'commitment_strength',
+                    'context_adherence', 'convergent_divergent', 'emotional_valence',
+                    'instruction_boundary', 'local_global', 'paranoia_trust',
+                    'power_dynamics', 'refusal', 'retrieval_construction',
+                    'serial_parallel', 'sycophancy', 'temporal_focus',
+                    'uncertainty_calibration'
+                ];
+
+                for (const trait of knownTraits) {
+                    try {
+                        const metadataResponse = await fetch(
+                            `experiments/${experimentName}/${trait}/activations/metadata.json`
+                        );
+                        if (metadataResponse.ok) {
+                            const metadata = await metadataResponse.json();
+                            experimentData.traits.push({
+                                name: trait,
+                                metadata: metadata,
+                                hasResponses: true,
+                                hasVectors: true
+                            });
+                        }
+                    } catch (e) {
+                        // Trait doesn't exist, skip
+                    }
+                }
+
+                renderView();
+            } catch (error) {
+                console.error('Error loading experiment data:', error);
+                showError(`Failed to load experiment: ${experimentName}`);
+            }
+        }
+
+        // Render current view
+        function renderView() {
+            const contentArea = document.getElementById('content-area');
+
+            switch (currentView) {
+                case 'overview':
+                    renderOverview();
+                    break;
+                case 'responses':
+                    renderResponses();
+                    break;
+                case 'vectors':
+                    renderVectors();
+                    break;
+                case 'monitoring':
+                    renderMonitoring();
+                    break;
+            }
+        }
+
+        // Render overview
+        function renderOverview() {
+            const contentArea = document.getElementById('content-area');
+
+            let html = `
+                <div class="card">
+                    <div class="card-title">Experiment: ${experimentData.name}</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Traits</div>
+                            <div class="stat-value">${experimentData.traits.length}</div>
+                            <div class="stat-detail">Cognitive & behavioral dimensions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Model</div>
+                            <div class="stat-value">Gemma 2B</div>
+                            <div class="stat-detail">google/gemma-2-2b-it</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Hidden Dim</div>
+                            <div class="stat-value">2304</div>
+                            <div class="stat-detail">27 layers total</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Extraction Methods</div>
+                            <div class="stat-value">4</div>
+                            <div class="stat-detail">mean_diff, probe, ICA, gradient</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Available Traits</div>
+                    <div class="trait-grid">
+            `;
+
+            experimentData.traits.forEach(trait => {
+                const displayName = trait.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `
+                    <div class="trait-card" data-trait="${trait.name}">
+                        <div class="trait-name">${displayName}</div>
+                        <div class="trait-info">
+                            ${trait.metadata.n_examples || 0} examples
+                            <br>Extracted: ${new Date(trait.metadata.extraction_date).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+            `;
+
+            contentArea.innerHTML = html;
+        }
+
+        // Render response quality view
+        function renderResponses() {
+            const contentArea = document.getElementById('content-area');
+
+            let html = `
+                <div class="card">
+                    <div class="card-title">Response Quality Analysis</div>
+                    <div class="info">
+                        Select traits to analyze response quality and trait score distributions.
+                        This view loads data from the responses/pos.csv and responses/neg.csv files.
+                    </div>
+                    <div class="trait-grid">
+            `;
+
+            experimentData.traits.forEach(trait => {
+                const displayName = trait.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `
+                    <div class="trait-card" onclick="loadTraitResponses('${trait.name}')">
+                        <div class="trait-name">${displayName}</div>
+                        <div class="trait-info">Click to load response data</div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                    <div id="response-details"></div>
+                </div>
+            `;
+
+            contentArea.innerHTML = html;
+        }
+
+        // Load trait responses
+        async function loadTraitResponses(traitName) {
+            const detailsDiv = document.getElementById('response-details');
+            detailsDiv.innerHTML = '<div class="loading">Loading response data...</div>';
+
+            try {
+                const [posResponse, negResponse] = await Promise.all([
+                    fetch(`experiments/${experimentData.name}/${traitName}/responses/pos.csv`),
+                    fetch(`experiments/${experimentData.name}/${traitName}/responses/neg.csv`)
+                ]);
+
+                const [posText, negText] = await Promise.all([
+                    posResponse.text(),
+                    negResponse.text()
+                ]);
+
+                const posData = Papa.parse(posText, { header: true }).data;
+                const negData = Papa.parse(negText, { header: true }).data;
+
+                renderResponseAnalysis(traitName, posData, negData);
+            } catch (error) {
+                console.error('Error loading responses:', error);
+                detailsDiv.innerHTML = '<div class="error">Failed to load response data</div>';
+            }
+        }
+
+        // Render response analysis
+        function renderResponseAnalysis(traitName, posData, negData) {
+            const detailsDiv = document.getElementById('response-details');
+            const displayName = traitName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+            // Calculate statistics
+            const posScores = posData.map(r => parseFloat(r.trait_score)).filter(s => !isNaN(s));
+            const negScores = negData.map(r => parseFloat(r.trait_score)).filter(s => !isNaN(s));
+
+            const posAvg = posScores.reduce((a, b) => a + b, 0) / posScores.length;
+            const negAvg = negScores.reduce((a, b) => a + b, 0) / negScores.length;
+            const separation = posAvg - negAvg;
+
+            // Create histogram
+            const histTrace1 = {
+                x: posScores,
+                type: 'histogram',
+                name: 'Positive',
+                marker: { color: '#28a745' },
+                opacity: 0.7,
+                nbinsx: 20
+            };
+
+            const histTrace2 = {
+                x: negScores,
+                type: 'histogram',
+                name: 'Negative',
+                marker: { color: '#dc3545' },
+                opacity: 0.7,
+                nbinsx: 20
+            };
+
+            let html = `
+                <div style="margin-top: 30px;">
+                    <div class="card-title">${displayName} - Response Quality</div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Positive Examples</div>
+                            <div class="stat-value">${posData.length}</div>
+                            <div class="stat-detail">Avg score: ${posAvg.toFixed(1)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Negative Examples</div>
+                            <div class="stat-value">${negData.length}</div>
+                            <div class="stat-detail">Avg score: ${negAvg.toFixed(1)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Separation</div>
+                            <div class="stat-value">${separation.toFixed(1)}</div>
+                            <div class="stat-detail">${separation > 40 ? 'Excellent' : separation > 20 ? 'Good' : 'Weak'}</div>
+                        </div>
+                    </div>
+
+                    <div id="score-histogram" style="margin-top: 20px;"></div>
+
+                    <div style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 10px;">Sample Responses</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <strong>High ${displayName} (Positive)</strong>
+                                ${posData.slice(0, 3).map(r => `
+                                    <div class="response-preview">
+                                        <strong>Q:</strong> ${r.question || 'N/A'}<br>
+                                        <strong>A:</strong> ${(r.response || 'N/A').substring(0, 150)}...
+                                        <span class="score-badge score-high">${parseFloat(r.trait_score).toFixed(1)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div>
+                                <strong>Low ${displayName} (Negative)</strong>
+                                ${negData.slice(0, 3).map(r => `
+                                    <div class="response-preview">
+                                        <strong>Q:</strong> ${r.question || 'N/A'}<br>
+                                        <strong>A:</strong> ${(r.response || 'N/A').substring(0, 150)}...
+                                        <span class="score-badge score-low">${parseFloat(r.trait_score).toFixed(1)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            detailsDiv.innerHTML = html;
+
+            // Render histogram
+            Plotly.newPlot('score-histogram', [histTrace1, histTrace2], {
+                title: 'Trait Score Distribution',
+                xaxis: { title: 'Trait Score (0-100)' },
+                yaxis: { title: 'Count' },
+                barmode: 'overlay',
+                height: 400
+            }, { displayModeBar: false });
+        }
+
+        // Render vector analysis view
+        function renderVectors() {
+            const contentArea = document.getElementById('content-area');
+
+            contentArea.innerHTML = `
+                <div class="card">
+                    <div class="card-title">Vector Analysis</div>
+                    <div class="info">
+                        Compare extraction methods (mean_diff, probe, ICA, gradient) across layers.
+                        Select a trait to view vector quality metrics.
+                    </div>
+                    <div class="trait-grid">
+                        ${experimentData.traits.map(trait => {
+                            const displayName = trait.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            return `
+                                <div class="trait-card" onclick="loadVectorAnalysis('${trait.name}')">
+                                    <div class="trait-name">${displayName}</div>
+                                    <div class="trait-info">Click to analyze vectors</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div id="vector-details"></div>
+                </div>
+            `;
+        }
+
+        // Load vector analysis
+        async function loadVectorAnalysis(traitName) {
+            const detailsDiv = document.getElementById('vector-details');
+            detailsDiv.innerHTML = '<div class="loading">Loading vector metadata...</div>';
+
+            try {
+                const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
+                const layers = Array.from({ length: 27 }, (_, i) => i);
+
+                const vectorData = {};
+
+                for (const method of methods) {
+                    vectorData[method] = {};
+                    for (const layer of layers) {
+                        try {
+                            const response = await fetch(
+                                `experiments/${experimentData.name}/${traitName}/vectors/${method}_layer${layer}_metadata.json`
+                            );
+                            if (response.ok) {
+                                vectorData[method][layer] = await response.json();
+                            }
+                        } catch (e) {
+                            // Vector doesn't exist
+                        }
+                    }
+                }
+
+                renderVectorHeatmap(traitName, vectorData);
+            } catch (error) {
+                console.error('Error loading vectors:', error);
+                detailsDiv.innerHTML = '<div class="error">Failed to load vector data</div>';
+            }
+        }
+
+        // Render vector heatmap
+        function renderVectorHeatmap(traitName, vectorData) {
+            const detailsDiv = document.getElementById('vector-details');
+            const displayName = traitName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+            const methods = Object.keys(vectorData);
+            const layers = Array.from({ length: 27 }, (_, i) => i);
+
+            // Create heatmap data for vector norms
+            const heatmapData = methods.map(method => {
+                return layers.map(layer => {
+                    const metadata = vectorData[method][layer];
+                    return metadata ? metadata.vector_norm : null;
+                });
+            });
+
+            const trace = {
+                z: heatmapData,
+                x: layers,
+                y: methods.map(m => m.replace(/_/g, ' ').toUpperCase()),
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                hovertemplate: 'Layer %{x}<br>Method: %{y}<br>Norm: %{z:.2f}<extra></extra>'
+            };
+
+            let html = `
+                <div style="margin-top: 30px;">
+                    <div class="card-title">${displayName} - Vector Quality by Method & Layer</div>
+                    <div id="vector-heatmap"></div>
+                </div>
+            `;
+
+            detailsDiv.innerHTML = html;
+
+            Plotly.newPlot('vector-heatmap', [trace], {
+                title: 'Vector Norm Heatmap',
+                xaxis: { title: 'Layer' },
+                yaxis: { title: 'Extraction Method' },
+                height: 400
+            }, { displayModeBar: false });
+        }
+
+        // Render monitoring view
+        function renderMonitoring() {
+            const contentArea = document.getElementById('content-area');
+
+            contentArea.innerHTML = `
+                <div class="card">
+                    <div class="card-title">Per-Token Monitoring</div>
+                    <div class="info">
+                        Per-token monitoring data not yet generated. Run the following command to generate monitoring results:
+                        <pre style="background: #2d2d2d; color: #f8f8f2; padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto;">python experiments/examples/run_dynamics.py \\
+  --experiment ${experimentData.name} \\
+  --prompts "Your test prompt here" \\
+  --output monitoring_results.json</pre>
+                        Then place the output JSON file in <code>experiments/${experimentData.name}/inference/results/</code>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('experiment-select').addEventListener('change', (e) => {
+                currentExperiment = e.target.value;
+                loadExperimentData(currentExperiment);
+            });
+
+            document.getElementById('view-mode').addEventListener('change', (e) => {
+                currentView = e.target.value;
+                renderView();
+            });
+
+            document.getElementById('refresh-btn').addEventListener('click', () => {
+                loadExperimentData(currentExperiment);
+            });
+        }
+
+        // Utility functions
+        function showError(message) {
+            document.getElementById('content-area').innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${message}
+                    <br><br>
+                    Make sure you're running a local server:
+                    <pre style="background: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 4px; margin-top: 10px;">cd trait-interp
+python -m http.server 8000</pre>
+                    Then visit: <a href="http://localhost:8000/visualization_v2.html">http://localhost:8000/visualization_v2.html</a>
+                </div>
+            `;
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>
