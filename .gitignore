@@ -51,6 +51,10 @@ checkpoints/
 ckpt/
 .cache/
 
+# SAE feature labels and encoded features
+sae/
+experiments/**/sae_features/*.pt
+
 # Experiment results
 results/
 logs/

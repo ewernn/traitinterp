@@ -29,7 +29,7 @@ from typing import List, Optional
 from datetime import datetime
 import fire
 
-from traitlens import get_activations_from_texts
+from extraction.utils_batch import get_activations_from_texts
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -71,7 +71,13 @@ def extract_activations(
     if trait and traits:
         raise ValueError("Specify either --trait or --traits, not both")
 
-    trait_list = [trait] if trait else traits.split(",")
+    if trait:
+        trait_list = [trait]
+    elif isinstance(traits, tuple):
+        # Fire might parse comma-separated as tuple
+        trait_list = list(traits)
+    else:
+        trait_list = traits.split(",")
 
     exp_dir = Path(f"experiments/{experiment}")
     if not exp_dir.exists():
@@ -112,8 +118,8 @@ def extract_activations(
         print(f"{'='*60}")
 
         # Load responses
-        pos_csv = trait_dir / "responses" / "pos.csv"
-        neg_csv = trait_dir / "responses" / "neg.csv"
+        pos_csv = trait_dir / "extraction" / "responses" / "pos.csv"
+        neg_csv = trait_dir / "extraction" / "responses" / "neg.csv"
 
         if not pos_csv.exists() or not neg_csv.exists():
             print(f"❌ Responses not found")
@@ -138,9 +144,9 @@ def extract_activations(
             print(f"  Pos: {len(pos_df)}")
             print(f"  Neg: {len(neg_df)}")
 
-        # Extract texts
-        pos_texts = pos_df_filtered['response'].tolist()
-        neg_texts = neg_df_filtered['response'].tolist()
+        # Extract texts (filter out null/NaN responses)
+        pos_texts = pos_df_filtered['response'].dropna().astype(str).tolist()
+        neg_texts = neg_df_filtered['response'].dropna().astype(str).tolist()
 
         if len(pos_texts) == 0 or len(neg_texts) == 0:
             print(f"❌ No examples after filtering, skipping")
@@ -148,7 +154,10 @@ def extract_activations(
 
         # Capture activations from all layers
         print(f"\nCapturing activations from all {n_layers} layers...")
-        layers = list(range(n_layers))
+        # CRITICAL: hidden_states[0] is embedding, not layer 0!
+        # hidden_states[1] = layer 0 output, hidden_states[2] = layer 1 output, etc.
+        # To extract layers 0 to n_layers-1, use indices 1 to n_layers
+        layers = list(range(1, n_layers + 1))  # [1, 2, ..., n_layers] for layers 0 to n_layers-1
 
         print(f"  Processing {len(pos_texts)} pos examples...")
         pos_acts_dict = get_activations_from_texts(
@@ -175,7 +184,7 @@ def extract_activations(
         print(f"  Size: {size_mb:.1f} MB")
 
         # Save
-        acts_dir = trait_dir / "activations"
+        acts_dir = trait_dir / "extraction" / "activations"
         acts_dir.mkdir(parents=True, exist_ok=True)
 
         acts_path = acts_dir / "all_layers.pt"

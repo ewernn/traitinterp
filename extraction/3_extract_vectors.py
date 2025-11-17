@@ -56,7 +56,13 @@ def extract_vectors(
     if trait and traits:
         raise ValueError("Specify either --trait or --traits, not both")
 
-    trait_list = [trait] if trait else traits.split(",")
+    if trait:
+        trait_list = [trait]
+    elif isinstance(traits, tuple):
+        # Fire might parse comma-separated as tuple
+        trait_list = list(traits)
+    else:
+        trait_list = traits.split(",")
 
     # Parse methods
     method_names = [m.strip() for m in methods.split(",")]
@@ -83,7 +89,7 @@ def extract_vectors(
         print(f"{'='*60}")
 
         # Load activations
-        acts_path = trait_dir / "activations" / "all_layers.pt"
+        acts_path = trait_dir / "extraction" / "activations" / "all_layers.pt"
         if not acts_path.exists():
             print(f"❌ Activations not found: {acts_path}")
             print(f"   Run: python pipeline/2_extract_activations.py --experiment {experiment} --trait {trait_name}")
@@ -93,7 +99,7 @@ def extract_vectors(
         all_acts = torch.load(acts_path)  # [n_examples, n_layers, hidden_dim]
 
         # Load metadata to get pos/neg split
-        metadata_path = trait_dir / "activations" / "metadata.json"
+        metadata_path = trait_dir / "extraction" / "activations" / "metadata.json"
         with open(metadata_path) as f:
             metadata = json.load(f)
 
@@ -110,7 +116,11 @@ def extract_vectors(
 
         # Determine which layers to extract
         if layers:
-            layer_list = [int(l.strip()) for l in layers.split(",")]
+            # Handle Fire tuple parsing
+            if isinstance(layers, tuple):
+                layer_list = [int(l) for l in layers]
+            else:
+                layer_list = [int(l.strip()) for l in layers.split(",")]
         else:
             layer_list = list(range(all_acts.shape[1]))  # All layers
 
@@ -118,7 +128,7 @@ def extract_vectors(
         print()
 
         # Extract vectors
-        vectors_dir = trait_dir / "vectors"
+        vectors_dir = trait_dir / "extraction" / "vectors"
         vectors_dir.mkdir(parents=True, exist_ok=True)
 
         for layer_idx in layer_list:
@@ -155,6 +165,12 @@ def extract_vectors(
                                     vector_metadata[key] = value.item()
                             elif isinstance(value, (int, float, str, bool)):
                                 vector_metadata[key] = value
+
+                    # Compute separation for probe method (like we do for gradient)
+                    if method_name == 'probe' and 'pos_scores' in result and 'neg_scores' in result:
+                        pos_mean = result['pos_scores'].mean().item()
+                        neg_mean = result['neg_scores'].mean().item()
+                        vector_metadata['final_separation'] = pos_mean - neg_mean
 
                     metadata_path = vectors_dir / f"{method_name}_layer{layer_idx}_metadata.json"
                     with open(metadata_path, 'w') as f:

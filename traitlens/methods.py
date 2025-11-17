@@ -204,8 +204,8 @@ class ProbeMethod(ExtractionMethod):
                 "Install with: pip install scikit-learn"
             )
 
-        # Prepare data
-        X = torch.cat([pos_acts, neg_acts], dim=0).cpu().numpy()
+        # Prepare data (convert bfloat16 to float32 for numpy compatibility)
+        X = torch.cat([pos_acts, neg_acts], dim=0).to(torch.float32).cpu().numpy()
         y = np.concatenate([
             np.ones(pos_acts.shape[0]),
             np.zeros(neg_acts.shape[0])

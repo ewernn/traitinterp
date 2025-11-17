@@ -1,0 +1,71 @@
+==========================================================================================
+CROSS-DISTRIBUTION GENERALIZATION TEST: uncertainty_calibration
+==========================================================================================
+
+Train: Instruction-induced data (uncertainty_calibration)
+Test:  Natural data (uncertainty_calibration_natural)
+
+✅ Loaded training data: torch.Size([190, 26, 2304])
+  Train split: 96 pos, 94 neg
+  Test split:  102 pos, 79 neg
+
+==========================================================================================
+LAYER 16 RESULTS
+==========================================================================================
+
+1. MEAN DIFFERENCE
+   Test Separation:    68.09
+   Test Accuracy:      48.6%
+
+2. PROBE
+   Test Separation:    11.16
+   Test Accuracy:      51.4%
+
+3. ICA (component 7)
+   Test Separation:    23.63
+   Test Accuracy:      81.8%
+
+
+LAYER 16 SUMMARY:
+------------------------------------------------------------
+Method          |  Test Separation |  Test Accuracy
+------------------------------------------------------------
+ICA             |            23.63 |          81.8%
+Probe           |            11.16 |          51.4%
+Mean Diff       |            68.09 |          48.6%
+
+==========================================================================================
+LAYER 24 RESULTS
+==========================================================================================
+
+1. MEAN DIFFERENCE
+   Test Separation:   105.53
+   Test Accuracy:      56.4%
+
+2. PROBE
+   Test Separation:    31.75
+   Test Accuracy:      50.8%
+
+3. ICA (component 2)
+   Test Separation:    58.00
+   Test Accuracy:      56.4%
+
+
+LAYER 24 SUMMARY:
+------------------------------------------------------------
+Method          |  Test Separation |  Test Accuracy
+------------------------------------------------------------
+Mean Diff       |           105.53 |          56.4%
+ICA             |            58.00 |          56.4%
+Probe           |            31.75 |          50.8%
+
+==========================================================================================
+FINAL RESULTS: Which method generalizes best?
+==========================================================================================
+
+Layer 16 Winner: ICA with 81.8% accuracy
+
+Layer 24 Winner: Mean Diff with 56.4% accuracy
+
+Cross-distribution test reveals true generalization ability!
+Lower accuracy than same-distribution test shows instruction != natural behavior

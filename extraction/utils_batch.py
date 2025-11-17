@@ -22,14 +22,22 @@ def get_activations_from_texts(
         model: The model to extract from
         tokenizer: The tokenizer
         texts: List of text strings
-        layers: List of layer indices to extract
+        layers: List of hidden_states indices to extract (NOT layer numbers!)
+                CRITICAL: hidden_states[0] is embedding, hidden_states[1] is layer 0 output
+                To extract layers 0-25, pass layers=list(range(1, 27))
         batch_size: Batch size for processing
         device: Device to use
 
     Returns:
-        Dict mapping layer index to averaged activations [n_examples, hidden_dim]
+        Dict mapping hidden_states index to averaged activations [n_examples, hidden_dim]
+
+    Note: The returned dict keys match the input `layers` list, which are hidden_states
+          indices, NOT layer numbers. Caller is responsible for correct indexing.
     """
     all_activations = {layer: [] for layer in layers}
+
+    # Validation on first batch only (for performance)
+    validate_first_batch = True
 
     # Process in batches
     for i in range(0, len(texts), batch_size):
@@ -54,6 +62,25 @@ def get_activations_from_texts(
 
         # Extract from specified layers
         hidden_states = outputs.hidden_states  # Tuple of tensors [batch, seq, hidden]
+
+        # Validate indexing on first batch
+        if validate_first_batch:
+            validate_first_batch = False
+
+            # Check that indices are valid
+            max_idx = max(layers) if layers else 0
+            if max_idx >= len(hidden_states):
+                raise IndexError(
+                    f"Layer index {max_idx} out of range. "
+                    f"Model has {len(hidden_states)} hidden_states "
+                    f"(0=embedding, 1-{len(hidden_states)-1}=layer outputs)"
+                )
+
+            # Warn if using index 0 (embedding)
+            if 0 in layers:
+                print("⚠️  WARNING: Extracting from hidden_states[0] (embedding layer)")
+                print("   For transformer layers, use indices 1 and above")
+                print("   Example: layers=list(range(1, n_layers+1)) for layers 0 to n_layers-1")
 
         for layer_idx in layers:
             # Get this layer's activations

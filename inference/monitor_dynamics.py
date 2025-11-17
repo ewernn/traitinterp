@@ -14,7 +14,7 @@ Usage:
     # Multiple prompts from file
     python inference/monitor_dynamics.py \
         --experiment gemma_2b_cognitive_nov20 \
-        --prompts_file test_prompts.txt \
+        --prompts "What is the capital of France?" \
         --output results.json
 
     # Specify which traits/methods to analyze

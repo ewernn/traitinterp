@@ -4,23 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trait Interp Visualization</title>
-    <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            },
-            startup: {
-                ready: () => {
-                    MathJax.startup.defaultReady();
-                    console.log('MathJax loaded');
-                }
-            }
-        };
-    </script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
             --bg-primary: #f8f9fa;
@@ -77,118 +62,6 @@
             max-width: 100%;
             height: 100vh;
             overflow: hidden;
-        }
-
-        .transformer-sidebar {
-            width: 200px;
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .transformer-sidebar.hidden {
-            width: 0;
-            border: none;
-            overflow: hidden;
-        }
-
-        .transformer-header {
-            padding: 15px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            background: var(--bg-secondary);
-            z-index: 10;
-        }
-
-        .transformer-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .transformer-toggle {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            line-height: 1;
-            transition: transform 0.3s ease;
-        }
-
-        .transformer-toggle:hover {
-            color: var(--primary-color);
-            transform: scale(1.1);
-        }
-
-        .transformer-content {
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .layer-box {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px;
-            transition: all 0.2s ease;
-        }
-
-        .layer-box.highlighted {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
-        }
-
-        .layer-number {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-
-        .sublayer {
-            font-size: 9px;
-            color: var(--text-secondary);
-            padding: 2px 4px;
-            background: var(--bg-secondary);
-            border-radius: 3px;
-            margin-bottom: 2px;
-        }
-
-        .sublayer:last-child {
-            margin-bottom: 0;
-        }
-
-        .layer-ellipsis {
-            text-align: center;
-            padding: 12px;
-            color: var(--text-tertiary);
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .input-output-box {
-            background: var(--bg-tertiary);
-            border: 2px dashed var(--border-color);
-            border-radius: 6px;
-            padding: 8px;
-            text-align: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
         }
 
         .sidebar {
@@ -643,87 +516,6 @@
             transition: all 0.3s ease;
         }
 
-        .explanation {
-            background: var(--bg-secondary);
-            padding: 15px 20px;
-            margin: 20px 0;
-            border-left: 3px solid var(--text-tertiary);
-            color: var(--text-secondary);
-            font-size: 14px;
-            line-height: 1.8;
-            transition: all 0.3s ease;
-        }
-
-        .explanation-summary {
-            color: var(--text-primary);
-            font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 5px 0;
-        }
-
-        .explanation-summary:hover {
-            color: var(--primary-color);
-        }
-
-        .explanation-summary::after {
-            content: '→';
-            font-size: 12px;
-            color: var(--text-tertiary);
-            transition: transform 0.3s ease;
-        }
-
-        .explanation-summary:hover::after {
-            transform: translateX(4px);
-            color: var(--primary-color);
-        }
-
-        .explanation-details {
-            display: none;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .explanation.expanded {
-            border-left-color: var(--primary-color);
-            background: var(--bg-tertiary);
-        }
-
-        .explanation.expanded .explanation-details {
-            display: block;
-        }
-
-        .explanation.expanded .explanation-summary::after {
-            content: '↓';
-        }
-
-        .explanation-details h4 {
-            color: var(--text-primary);
-            font-size: 15px;
-            font-weight: 600;
-            margin: 15px 0 10px 0;
-        }
-
-        .explanation-details h4:first-child {
-            margin-top: 0;
-        }
-
-        .explanation-details ul {
-            margin: 10px 0 10px 20px;
-        }
-
-        .explanation-details code {
-            background: var(--bg-tertiary);
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
         .response-preview {
             background: var(--bg-tertiary);
             padding: 12px;
@@ -1053,58 +845,6 @@
     </div>
 
     <div class="container">
-        <!-- Transformer Architecture Visualization -->
-        <div class="transformer-sidebar" id="transformer-sidebar">
-            <div class="transformer-header">
-                <div class="transformer-title">Architecture</div>
-                <button class="transformer-toggle" id="transformer-toggle" title="Hide architecture">◀</button>
-            </div>
-            <div class="transformer-content">
-                <!-- Output at top -->
-                <div class="input-output-box">Output</div>
-
-                <!-- Last 2 layers (top of stack) -->
-                <div class="layer-box" data-layer="26">
-                    <div class="layer-number">Layer 26</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Feed Forward</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Multi-Head Attention</div>
-                </div>
-
-                <div class="layer-box" data-layer="25">
-                    <div class="layer-number">Layer 25</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Feed Forward</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Multi-Head Attention</div>
-                </div>
-
-                <!-- Ellipsis -->
-                <div class="layer-ellipsis">↑<br>[22 more layers]<br>↑</div>
-
-                <!-- First 2 layers (bottom of stack) -->
-                <div class="layer-box" data-layer="1">
-                    <div class="layer-number">Layer 1</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Feed Forward</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Multi-Head Attention</div>
-                </div>
-
-                <div class="layer-box" data-layer="0">
-                    <div class="layer-number">Layer 0</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Feed Forward</div>
-                    <div class="sublayer">Add & Norm</div>
-                    <div class="sublayer">Multi-Head Attention</div>
-                </div>
-
-                <!-- Input at bottom -->
-                <div class="input-output-box">Input Embedding</div>
-            </div>
-        </div>
-
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -1125,6 +865,10 @@
                     <div class="nav-item active" data-view="data-explorer">
                         <span class="icon">🗂️</span>
                         <span>Data Explorer</span>
+                    </div>
+                    <div class="nav-item" data-view="overview">
+                        <span class="icon">📊</span>
+                        <span>Overview</span>
                     </div>
                     <div class="nav-item" data-view="responses">
                         <span class="icon">📈</span>
@@ -1207,12 +951,15 @@
         };
 
         function getDisplayName(traitName) {
-            // Parse trait name: "refusal" or "refusal_natural"
+            // Parse trait name: "refusal-instruction-extraction" or "refusal-natural-extraction"
             let baseName = traitName;
             let method = '';
 
-            if (traitName.endsWith('_natural')) {
-                baseName = traitName.replace('_natural', '');
+            if (traitName.includes('-instruction-extraction')) {
+                baseName = traitName.replace('-instruction-extraction', '');
+                method = ' (Instruction)';
+            } else if (traitName.includes('-natural-extraction')) {
+                baseName = traitName.replace('-natural-extraction', '');
                 method = ' (Natural)';
             }
 
@@ -1220,33 +967,6 @@
             let displayBase = DISPLAY_NAMES[baseName] || baseName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
             return displayBase + method;
-        }
-
-        // Transformer sidebar toggle
-        function toggleTransformerSidebar() {
-            const sidebar = document.getElementById('transformer-sidebar');
-            const toggle = document.getElementById('transformer-toggle');
-
-            if (sidebar.classList.contains('hidden')) {
-                sidebar.classList.remove('hidden');
-                toggle.textContent = '◀';
-                toggle.title = 'Hide architecture';
-                localStorage.setItem('transformerSidebarVisible', 'true');
-            } else {
-                sidebar.classList.add('hidden');
-                toggle.textContent = '▶';
-                toggle.title = 'Show architecture';
-                localStorage.setItem('transformerSidebarVisible', 'false');
-            }
-        }
-
-        function initTransformerSidebar() {
-            const visible = localStorage.getItem('transformerSidebarVisible');
-            if (visible === 'false') {
-                toggleTransformerSidebar();
-            }
-
-            document.getElementById('transformer-toggle').addEventListener('click', toggleTransformerSidebar);
         }
 
         // Theme management
@@ -1274,16 +994,6 @@
         function toggleInfo() {
             const tooltip = document.getElementById('info-tooltip');
             tooltip.classList.toggle('show');
-        }
-
-        // Toggle explanation details
-        function setupExplanationToggles() {
-            document.querySelectorAll('.explanation-summary').forEach(summary => {
-                summary.addEventListener('click', function() {
-                    const explanation = this.closest('.explanation');
-                    explanation.classList.toggle('expanded');
-                });
-            });
         }
 
         // Get Plotly layout with theme support
@@ -1409,19 +1119,9 @@
             return experimentData.traits.filter(trait => selectedTraits.has(trait.name));
         }
 
-        // Render math with MathJax
-        function renderMath() {
-            if (window.MathJax) {
-                MathJax.typesetPromise().catch((err) => console.log('MathJax rendering error:', err));
-            }
-            // Setup explanation toggles after content is rendered
-            setupExplanationToggles();
-        }
-
         // Initialize
         async function init() {
             initTheme();
-            initTransformerSidebar();
             setupNavigation();
             await loadExperiments();
             setupEventListeners();
@@ -1430,10 +1130,12 @@
         // Load available experiments
         async function loadExperiments() {
             try {
-                // Fetch experiments from API
-                const response = await fetch('/api/experiments');
-                const data = await response.json();
-                experiments = data.experiments || [];
+                // Try to fetch a directory listing or manually define experiments
+                // For now, hardcode known experiments
+                experiments = [
+                    'gemma_2b_cognitive_nov20',
+                    'gemma_2b_natural_nov20'
+                ];
 
                 const list = document.getElementById('experiment-list');
                 list.innerHTML = experiments.map((exp, idx) => {
@@ -1489,61 +1191,64 @@
                     console.log('No README found');
                 }
 
-                // Fetch traits from API
-                const traitsResponse = await fetch(`/api/experiments/${experimentName}/traits`);
-                const traitsData = await traitsResponse.json();
-                const traitNames = traitsData.traits || [];
+                // Discover traits by trying known trait bases with both extraction methods
+                const knownTraitBases = [
+                    'abstract_concrete', 'commitment_strength',
+                    'context_adherence', 'convergent_divergent', 'emotional_valence',
+                    'instruction_boundary', 'instruction_following', 'local_global',
+                    'paranoia_trust', 'power_dynamics', 'refusal', 'retrieval_construction',
+                    'serial_parallel', 'sycophancy', 'temporal_focus',
+                    'uncertainty_calibration'
+                ];
 
-                // Load each trait with metadata
-                for (const traitName of traitNames) {
-                    // Detect response file format
-                    let responseFormat = null;
-                    try {
-                        const csvCheck = await fetch(
-                            `../experiments/${experimentName}/${traitName}/extraction/responses/pos.csv`
-                        );
-                        if (csvCheck.ok) {
-                            responseFormat = 'csv';
-                        } else {
-                            const jsonCheck = await fetch(
-                                `../experiments/${experimentName}/${traitName}/extraction/responses/pos.json`
-                            );
-                            if (jsonCheck.ok) {
-                                responseFormat = 'json';
-                            }
-                        }
-                    } catch (e) {
-                        console.warn(`No responses for ${traitName}`);
-                        continue;
-                    }
+                const methods = ['instruction-extraction', 'natural-extraction'];
 
-                    if (responseFormat) {
-                        // Try to load metadata
-                        let metadata = null;
+                for (const traitBase of knownTraitBases) {
+                    for (const method of methods) {
+                        const traitFullName = `${traitBase}-${method}`;
                         try {
-                            const metadataRes = await fetch(
-                                `../experiments/${experimentName}/${traitName}/extraction/activations/metadata.json`
+                            const metadataResponse = await fetch(
+                                `../experiments/${experimentName}/${traitFullName}/extraction/activations/metadata.json`
                             );
-                            if (metadataRes.ok) {
-                                metadata = await metadataRes.json();
+                            if (metadataResponse.ok) {
+                                const metadata = await metadataResponse.json();
+
+                                // Detect response file format (.csv or .json)
+                                let responseFormat = null;
+                                try {
+                                    const csvCheck = await fetch(
+                                        `../experiments/${experimentName}/${traitFullName}/extraction/responses/pos.csv`
+                                    );
+                                    if (csvCheck.ok) {
+                                        responseFormat = 'csv';
+                                    } else {
+                                        const jsonCheck = await fetch(
+                                            `../experiments/${experimentName}/${traitFullName}/extraction/responses/pos.json`
+                                        );
+                                        if (jsonCheck.ok) {
+                                            responseFormat = 'json';
+                                        }
+                                    }
+                                } catch (e) {
+                                    // No response files found
+                                }
+
+                                // Only add trait if it has response files
+                                if (responseFormat) {
+                                    experimentData.traits.push({
+                                        name: traitFullName,
+                                        baseName: traitBase,
+                                        method: method.replace('-extraction', ''),
+                                        metadata: metadata,
+                                        responseFormat: responseFormat,
+                                        hasResponses: true,
+                                        hasVectors: true
+                                    });
+                                }
                             }
                         } catch (e) {
-                            console.warn(`No metadata for ${traitName}`);
+                            // Trait doesn't exist, skip
                         }
-
-                        // Detect method (natural vs instruction)
-                        const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
-                        const baseName = traitName.replace('_natural', '');
-
-                        experimentData.traits.push({
-                            name: traitName,
-                            baseName: baseName,
-                            method: method,
-                            responseFormat: responseFormat,
-                            hasResponses: true,
-                            hasVectors: false,  // Will check later
-                            metadata: metadata
-                        });
                     }
                 }
 
@@ -1572,6 +1277,9 @@
                 case 'data-explorer':
                     renderDataExplorer();
                     break;
+                case 'overview':
+                    renderOverview();
+                    break;
                 case 'responses':
                     renderResponses();
                     break;
@@ -1598,36 +1306,14 @@
             const estimatedSize = (totalTraits * 47).toFixed(0); // ~47 MB per trait
 
             let html = `
-                <div class="explanation">
-                    <div class="explanation-summary">Browse complete extraction pipeline files (responses, activations, vectors)</div>
-                    <div class="explanation-details">
-                    <p>Browse the complete file structure for each trait's extraction pipeline.</p>
-
-                    <h4>Directory Structure</h4>
-
-                    <p><strong>trait_definition.json:</strong></p>
-                    <p>Trait description, contrastive instructions, test questions, and evaluation prompt.</p>
-
-                    <p><strong>responses/:</strong></p>
-                    <p>Model responses to positive and negative prompts (CSV or JSON format).</p>
-
-                    <p><strong>activations/:</strong></p>
-                    <p>Captured layer activations \\(\\mathbf{A} \\in \\mathbb{R}^{n \\times d}\\) where \\(d=2304\\) (Gemma 2B hidden dim).</p>
-                    <ul>
-                        <li>27 layers × 2 sides (pos/neg) = 54 files</li>
-                        <li>Token-averaged: \\(\\bar{\\mathbf{a}}_i = \\frac{1}{T} \\sum_{t=1}^T \\mathbf{h}_t^{(i)}\\)</li>
-                    </ul>
-
-                    <p><strong>vectors/:</strong></p>
-                    <p>Extracted trait direction vectors.</p>
-                    <ul>
-                        <li>4 methods: mean_diff, probe, ica, gradient</li>
-                        <li>27 layers per method</li>
-                        <li>2 files per vector: .pt (tensor) + _metadata.json</li>
-                    </ul>
-
-                    <p><strong>Total per trait:</strong> ~47 MB (activations dominate storage)</p>
-                    </div>
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How Data Explorer Works:</strong><br>
+                    Browse the complete file structure for each trait. Each trait contains:<br>
+                    • <strong>trait_definition.json</strong> - Trait description and examples<br>
+                    • <strong>responses/</strong> - Generated model responses (pos.csv, neg.csv)<br>
+                    • <strong>activations/</strong> - Layer activations captured during generation (27 layers × 2304 dims)<br>
+                    • <strong>vectors/</strong> - Extracted trait vectors (4 methods × 27 layers × 2 files each)
+                </div>
                 <div class="card">
                     <div class="card-title">Dataset Overview</div>
                     <div class="stats-grid">
@@ -1652,6 +1338,8 @@
                             <div class="stat-detail">223 files per trait</div>
                         </div>
                     </div>
+                </div>
+
                 <div class="card">
                     <div class="card-title">File Explorer</div>
                     <div class="info">
@@ -1663,7 +1351,7 @@
             // Render each trait
             filteredTraits.forEach(trait => {
                 const displayName = getDisplayName(trait.name);
-                const metadata = trait.metadata || {};
+                const metadata = trait.metadata;
 
                 html += `
                     <div class="explorer-trait-card">
@@ -1770,7 +1458,6 @@
             `;
 
             contentArea.innerHTML = html;
-            renderMath();
         }
 
         // Toggle trait body visibility
@@ -1911,6 +1598,73 @@
             }
         });
 
+        // Render overview
+        function renderOverview() {
+            const contentArea = document.getElementById('content-area');
+            const filteredTraits = getFilteredTraits();
+
+            let html = `
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How Overview Works:</strong><br>
+                    High-level summary of the experiment showing all available traits and their extraction metadata. Each trait card displays:<br>
+                    • Number of examples generated (positive and negative)<br>
+                    • Extraction date<br>
+                    • Model used (Gemma 2B, 2304 hidden dims, 27 layers)
+                </div>
+                <div class="card">
+                    <div class="card-title">Experiment Overview</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Selected Traits</div>
+                            <div class="stat-value">${filteredTraits.length}</div>
+                            <div class="stat-detail">of ${experimentData.traits.length} total</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Model</div>
+                            <div class="stat-value">Gemma 2B</div>
+                            <div class="stat-detail">google/gemma-2-2b-it</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Hidden Dim</div>
+                            <div class="stat-value">2304</div>
+                            <div class="stat-detail">27 layers total</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Extraction Methods</div>
+                            <div class="stat-value">4</div>
+                            <div class="stat-detail">mean_diff, probe, ICA, gradient</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Selected Traits</div>
+                    ${filteredTraits.length === 0 ?
+                        '<div class="info">No traits selected. Select traits in the sidebar to view them.</div>' :
+                        '<div class="trait-grid">'}
+            `;
+
+            filteredTraits.forEach(trait => {
+                const displayName = getDisplayName(trait.name);
+                html += `
+                    <div class="trait-card" data-trait="${trait.name}">
+                        <div class="trait-name">${displayName}</div>
+                        <div class="trait-info">
+                            ${trait.metadata.n_examples || 0} examples
+                            <br>Extracted: ${new Date(trait.metadata.extraction_date).toLocaleDateString()}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    ${filteredTraits.length > 0 ? '</div>' : ''}
+                </div>
+            `;
+
+            contentArea.innerHTML = html;
+        }
+
         // Render response quality view
         async function renderResponses() {
             const contentArea = document.getElementById('content-area');
@@ -1965,32 +1719,15 @@
 
             // Render overview
             let html = `
-                <div class="explanation">
-                    <div class="explanation-summary">LLM judge scores showing trait separation quality (positive vs negative examples)</div>
-                    <div class="explanation-details">
-                    <p>Measures how well responses exhibit the intended trait using LLM judge scores.</p>
-
-                    <h4>Scoring Process</h4>
-                    <p>For each response, an LLM judge (GPT-4) scores trait strength on 0-100 scale:</p>
-                    <p>$$s_i = \\text{Judge}(\\text{question}_i, \\text{answer}_i, \\text{trait\\_def})$$</p>
-
-                    <h4>Separation Metric</h4>
-                    <p>$$\\text{Separation} = \\frac{1}{n}\\sum_{i=1}^n s_i^{\\text{pos}} - \\frac{1}{m}\\sum_{j=1}^m s_j^{\\text{neg}}$$</p>
-                    <ul>
-                        <li><strong>Positive examples:</strong> Should exhibit trait (high scores expected)</li>
-                        <li><strong>Negative examples:</strong> Should avoid trait (low scores expected)</li>
-                        <li><strong>Separation:</strong> Difference in mean scores</li>
-                    </ul>
-
-                    <h4>Quality Thresholds</h4>
-                    <ul>
-                        <li><strong>Excellent (>40):</strong> Clear trait expression difference</li>
-                        <li><strong>Good (>20):</strong> Moderate separation</li>
-                        <li><strong>Weak (<20):</strong> Poor separation, trait may be unclear</li>
-                    </ul>
-
-                    <p><strong>Note:</strong> Only instruction-based extraction has judge scores. Natural extraction has no scores (prompts are naturally contrasting).</p>
-                    </div>
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How Response Quality Is Calculated:</strong><br>
+                    For each trait, we measure how well the LLM judge scored positive vs negative examples:<br>
+                    • <strong>Separation</strong> = Avg(Positive Scores) - Avg(Negative Scores)<br>
+                    • <strong>Positive Scores</strong> - Trait scores for high-trait examples (e.g., refusing harmful requests)<br>
+                    • <strong>Negative Scores</strong> - Trait scores for low-trait examples (e.g., answering benign questions)<br>
+                    • <strong>Quality Thresholds:</strong> >40 = Excellent, >20 = Good, <20 = Weak<br>
+                    <strong>Note:</strong> Only applies to instruction-based extraction (natural extraction has no judge scores).
+                </div>
                 <div class="card">
                     <div class="card-title">Response Quality Overview</div>
                     <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
@@ -2051,8 +1788,6 @@
             `;
 
             contentArea.innerHTML = html;
-            renderMath();
-            renderMath();
         }
 
         // Helper function to load response data in correct format (csv or json)
@@ -2279,154 +2014,48 @@
             // Show loading state
             contentArea.innerHTML = '<div class="loading">Loading vector analysis overview...</div>';
 
-            // Filter to only traits with vector extraction (check if vectors directory exists)
-            // We'll do this by attempting to fetch one probe vector and seeing if it succeeds
-            const traitsWithVectors = [];
+            // Load all vector metadata
+            const vectorMetrics = {};
             for (const trait of filteredTraits) {
                 try {
-                    const testUrl = `../experiments/${experimentData.name}/${trait.name}/extraction/vectors/probe_layer16_metadata.json`;
-                    const testResponse = await fetch(testUrl);
-                    if (testResponse.ok) {
-                        traitsWithVectors.push(trait);
-                    } else {
-                        console.log(`Skipping ${trait.name} - no vectors directory`);
-                    }
-                } catch (e) {
-                    console.log(`Skipping ${trait.name} - vector fetch failed`);
-                }
-            }
-
-            if (traitsWithVectors.length === 0) {
-                contentArea.innerHTML = `
-                    <div class="card">
-                        <div class="card-title">No Vector Extractions Found</div>
-                        <div class="info">
-                            No traits in this experiment have completed vector extraction.
-                            Only traits with <code>extraction/vectors/</code> directories are shown here.
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            console.log(`Found ${traitsWithVectors.length} traits with vectors (out of ${filteredTraits.length} total)`);
-
-            // Detect number of layers from experiment metadata
-            const firstTrait = traitsWithVectors[0];
-            const nLayers = firstTrait.metadata?.n_layers || 26;  // Default to 26 for Gemma 2B
-            console.log(`Detected ${nLayers} layers from metadata`);
-
-            // Load all vector metadata (parallel fetching for speed)
-            const vectorMetrics = {};
-            const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
-            const layers = Array.from({ length: nLayers }, (_, i) => i);
-
-            // Fetch all metadata AND prompt examples in parallel
-            const fetchPromises = traitsWithVectors.flatMap(trait => [
-                // Vector metadata
-                ...methods.flatMap(method =>
-                    layers.map(layer => {
-                        const url = `../experiments/${experimentData.name}/${trait.name}/extraction/vectors/${method}_layer${layer}_metadata.json`;
-                        return fetch(url)
-                            .then(r => {
-                                if (!r.ok) console.warn(`Failed to fetch: ${url}`);
-                                return r.ok ? r.json() : null;
-                            })
-                            .then(data => ({ type: 'vector', trait: trait.name, method, layer, data }))
-                            .catch(e => {
-                                console.error(`Error fetching ${url}:`, e);
-                                return { type: 'vector', trait: trait.name, method, layer, data: null };
-                            });
-                    })
-                ),
-                // Prompt examples (first row of pos.csv and neg.csv)
-                fetch(`../experiments/${experimentData.name}/${trait.name}/extraction/responses/pos.csv`)
-                    .then(r => r.ok ? r.text() : null)
-                    .then(text => {
-                        if (!text) return null;
-                        const lines = text.split('\n');
-                        if (lines.length < 2) return null;
-                        const headers = lines[0].split(',');
-                        const values = lines[1].split(',');
-                        const row = {};
-                        headers.forEach((h, i) => row[h] = values[i]);
-                        return { type: 'prompt', trait: trait.name, polarity: 'pos', data: row };
-                    })
-                    .catch(() => ({ type: 'prompt', trait: trait.name, polarity: 'pos', data: null })),
-                fetch(`../experiments/${experimentData.name}/${trait.name}/extraction/responses/neg.csv`)
-                    .then(r => r.ok ? r.text() : null)
-                    .then(text => {
-                        if (!text) return null;
-                        const lines = text.split('\n');
-                        if (lines.length < 2) return null;
-                        const headers = lines[0].split(',');
-                        const values = lines[1].split(',');
-                        const row = {};
-                        headers.forEach((h, i) => row[h] = values[i]);
-                        return { type: 'prompt', trait: trait.name, polarity: 'neg', data: row };
-                    })
-                    .catch(() => ({ type: 'prompt', trait: trait.name, polarity: 'neg', data: null }))
-            ]);
-
-            const allResults = await Promise.all(fetchPromises);
-            console.log(`Loaded ${allResults.length} results`);
-
-            // Count successful loads
-            const successfulVectors = allResults.filter(r => r.type === 'vector' && r.data !== null).length;
-            console.log(`Successfully loaded ${successfulVectors} vector metadata files`);
-
-            // Organize results by trait
-            for (const trait of traitsWithVectors) {
-                try {
+                    const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
+                    const layers = Array.from({ length: 27 }, (_, i) => i);
                     const vectorData = {};
+
                     for (const method of methods) {
                         vectorData[method] = {};
+                        for (const layer of layers) {
+                            try {
+                                const response = await fetch(
+                                    `../experiments/${experimentData.name}/${trait.name}/extraction/vectors/${method}_layer${layer}_metadata.json`
+                                );
+                                if (response.ok) {
+                                    vectorData[method][layer] = await response.json();
+                                }
+                            } catch (e) {
+                                // Vector doesn't exist
+                            }
+                        }
                     }
-
-                    // Fill in vector data from parallel fetch results
-                    allResults
-                        .filter(r => r.type === 'vector' && r.trait === trait.name && r.data !== null)
-                        .forEach(r => {
-                            vectorData[r.method][r.layer] = r.data;
-                        });
-
-                    // Extract prompt examples
-                    const prompts = {};
-                    allResults
-                        .filter(r => r.type === 'prompt' && r.trait === trait.name && r.data !== null)
-                        .forEach(r => {
-                            prompts[r.polarity] = r.data;
-                        });
 
                     // Calculate best layer for each method
                     const best = {};
                     methods.forEach(method => {
                         let bestLayer = -1;
-                        let bestValue = -Infinity;
+                        let bestNorm = -Infinity;
                         layers.forEach(layer => {
                             if (vectorData[method][layer]) {
-                                const metadata = vectorData[method][layer];
-                                let value;
-                                if (method === 'probe') {
-                                    // Invert: smaller norm = stronger
-                                    value = metadata.vector_norm ? (1.0 / metadata.vector_norm) : 0;
-                                } else if (method === 'gradient') {
-                                    // Use separation (unit normalized)
-                                    value = metadata.final_separation || metadata.vector_norm;
-                                } else {
-                                    // Use magnitude
-                                    value = metadata.vector_norm;
-                                }
-                                if (!isNaN(value) && value > bestValue) {
-                                    bestValue = value;
+                                const norm = vectorData[method][layer].vector_norm;
+                                if (!isNaN(norm) && norm > bestNorm) {
+                                    bestNorm = norm;
                                     bestLayer = layer;
                                 }
                             }
                         });
-                        best[method] = { layer: bestLayer, norm: bestValue };
+                        best[method] = { layer: bestLayer, norm: bestNorm };
                     });
 
-                    vectorMetrics[trait.name] = { vectorData, best, prompts };
+                    vectorMetrics[trait.name] = { vectorData, best };
                 } catch (e) {
                     console.error(`Failed to load ${trait.name}:`, e);
                 }
@@ -2434,121 +2063,47 @@
 
             // Render overview with mini heatmaps
             let html = `
-                <div class="explanation">
-                    <div class="explanation-summary">Compare 4 vector extraction methods (mean_diff, probe, ICA, gradient) across all ${nLayers} layers</div>
-                    <div class="explanation-details">
-                        <div style="background: var(--bg-secondary); padding: 12px; border-left: 3px solid var(--primary-color); margin-bottom: 15px; border-radius: 4px;">
-                            <strong>Layer Architecture Intuition:</strong>
-                            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-                                <li><strong>Early layers (0-5):</strong> Syntax, local patterns, token-level features</li>
-                                <li><strong>Middle layers (6-15):</strong> Semantic understanding, entity recognition, basic reasoning</li>
-                                <li><strong>Late layers (16-24):</strong> Abstract concepts, complex reasoning, behavioral traits (refusal, uncertainty)</li>
-                                <li><strong>Final layer (25):</strong> Projection towards output vocabulary (often degrades semantic quality)</li>
-                            </ul>
-                        </div>
-                        <p>Four approaches to extract trait direction vectors from activations \\(\\mathbf{A}_{\\text{pos}} \\in \\mathbb{R}^{n \\times d}\\) and \\(\\mathbf{A}_{\\text{neg}} \\in \\mathbb{R}^{m \\times d}\\):</p>
-
-                        <h4>1. Mean Difference</h4>
-                        <p>$$\\mathbf{v}_{\\text{mean}} = \\frac{1}{n}\\sum_{i=1}^n \\mathbf{a}_i^{\\text{pos}} - \\frac{1}{m}\\sum_{j=1}^m \\mathbf{a}_j^{\\text{neg}}$$</p>
-                        <ul>
-                            <li>Simple cluster center separation</li>
-                            <li>Unnormalized (typical norm ≈ 50-100)</li>
-                            <li>Fast, no training required</li>
-                        </ul>
-
-                        <h4>2. Probe (Linear Classifier)</h4>
-                        <p>$$\\mathbf{v}_{\\text{probe}} = \\arg\\min_{\\mathbf{w}} \\sum_i \\log(1 + e^{-y_i \\mathbf{w}^T \\mathbf{a}_i}) + \\lambda \\|\\mathbf{w}\\|_2^2$$</p>
-                        <ul>
-                            <li>Logistic regression weights (L2-regularized)</li>
-                            <li>Normalized during training (norm ≈ 1-5)</li>
-                            <li>Maximizes linear separability</li>
-                        </ul>
-
-                        <h4>3. ICA (Independent Components)</h4>
-                        <p>$$\\mathbf{v}_{\\text{ica}} = \\text{FastICA}([\\mathbf{A}_{\\text{pos}}; \\mathbf{A}_{\\text{neg}}])[k]$$</p>
-                        <ul>
-                            <li>Extracts statistically independent components</li>
-                            <li>Disentangles mixed trait signals via negentropy maximization</li>
-                            <li>Variable norm depending on component strength</li>
-                        </ul>
-
-                        <h4>4. Gradient (Optimization)</h4>
-                        <p>$$\\mathbf{v}_{\\text{grad}} = \\arg\\min_{\\mathbf{v}} \\mathcal{L}(\\mathbf{v}) \\text{ where } \\mathcal{L} = \\|\\mathbf{v}^T \\mathbf{A}_{\\text{pos}} - \\alpha\\|^2 + \\|\\mathbf{v}^T \\mathbf{A}_{\\text{neg}}\\|^2$$</p>
-                        <ul>
-                            <li>Custom objective via gradient descent</li>
-                            <li>Unit normalized (norm = 1.0)</li>
-                            <li>Can fail (NaN) if gradients vanish</li>
-                        </ul>
-
-                        <p><strong>Visualization:</strong> Each method is normalized independently (0-100% of that method's max across layers) to show within-method layer strength. Darker = stronger for that method at that layer.</p>
-                        <ul>
-                            <li><strong>Probe:</strong> Inverted vector norm (smaller norm = stronger classifier due to L2 regularization)</li>
-                            <li><strong>Gradient:</strong> Separation strength (vectors are unit normalized, norm = 1.0)</li>
-                            <li><strong>Mean Diff & ICA:</strong> Vector magnitude (direction strength in activation space)</li>
-                        </ul>
-
-                        <p><strong>Note:</strong> All vectors extracted from token-averaged activations: \\(\\bar{\\mathbf{a}}_i = \\frac{1}{T} \\sum_{t=1}^T \\mathbf{h}_t^{(i)}\\)</p>
-                    </div>
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How Vector Analysis Works:</strong><br>
+                    Compare 4 different vector extraction methods across all 27 layers:<br>
+                    • <strong>mean_diff</strong>: ||avg(pos_acts) - avg(neg_acts)||₂ - Simple difference of means (unnormalized, norm ≈50-100)<br>
+                    • <strong>probe</strong>: ||learned_weights||₂ - Linear classifier weights (L2-normalized, norm ≈1-5)<br>
+                    • <strong>ica</strong>: ||independent_component||₂ - Independent Component Analysis (variable norm)<br>
+                    • <strong>gradient</strong>: ||∇loss_wrt_activations||₂ - Gradient-optimized (unit norm ≈1.0)<br>
+                    <strong>Visualization:</strong> Each method is normalized independently (0-100% of that method's max) so all are visible.<br>
+                    <strong>Interpretation:</strong> Heatmap shows which layers are strongest <em>within each method</em>, not cross-method comparisons.<br>
+                    <strong>Note:</strong> Vectors extracted from token-averaged activations.
+                </div>
                 <div class="card">
                     <div class="card-title">Vector Analysis Overview</div>
                     <div class="info">
-                        Vector norms across ${nLayers} layers and 4 extraction methods. Click a row for detailed view.
+                        Vector norms across 27 layers and 4 extraction methods.
+                        <strong>Note:</strong> Vectors extracted from token-averaged activations.
+                        Click a trait to view detailed heatmap.
                     </div>
-                    <div style="margin-top: 15px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; margin-top: 20px;">
             `;
 
-            traitsWithVectors.forEach(trait => {
+            filteredTraits.forEach(trait => {
                 const displayName = getDisplayName(trait.name);
                 const metrics = vectorMetrics[trait.name];
-                if (!metrics) {
-                    console.warn(`No metrics for ${trait.name}`);
-                    return;
-                }
+                if (!metrics) return;
 
                 const best = metrics.best;
-
-                // Check if we have any valid data
-                const hasData = Object.values(best).some(b => b.layer !== -1 && b.norm !== -Infinity);
-                if (!hasData) {
-                    console.warn(`No valid vector data for ${trait.name}`);
-                    return;
-                }
-
                 const bestMethod = Object.keys(best).reduce((a, b) =>
                     best[a].norm > best[b].norm ? a : b
                 );
 
-                // Build compact prompt examples
-                let examplesHtml = '<div style="font-size: 11px; color: var(--text-secondary);">No examples</div>';
-                if (metrics.prompts && metrics.prompts.pos && metrics.prompts.neg) {
-                    const posInstruction = (metrics.prompts.pos.instruction || '').substring(0, 60);
-                    const negInstruction = (metrics.prompts.neg.instruction || '').substring(0, 60);
-                    examplesHtml = `
-                        <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
-                            <div style="margin-bottom: 3px;"><strong style="color: var(--primary-color);">+</strong> ${posInstruction}...</div>
-                            <div><strong style="color: var(--accent-color);">−</strong> ${negInstruction}...</div>
-                        </div>
-                    `;
-                }
-
                 html += `
-                    <div style="display: grid; grid-template-columns: 180px 1fr 320px; gap: 15px; padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;"
+                    <div style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; border: 2px solid var(--border-color); cursor: pointer; transition: all 0.2s;"
                          onclick="loadVectorAnalysis('${trait.name}')"
-                         onmouseover="this.style.background='var(--bg-secondary)'"
-                         onmouseout="this.style.background='transparent'">
-
-                        <div style="display: flex; flex-direction: column; justify-content: center;">
-                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">${displayName}</div>
-                            <div style="font-size: 11px; color: var(--text-secondary);">
-                                Best: ${bestMethod.replace(/_/g, ' ')} L${best[bestMethod].layer}
-                            </div>
+                         onmouseover="this.style.borderColor='var(--primary-color)'"
+                         onmouseout="this.style.borderColor='var(--border-color)'">
+                        <div style="font-weight: 600; margin-bottom: 10px; color: var(--text-primary);">${displayName}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+                            Best: ${bestMethod.replace(/_/g, ' ')} @ layer ${best[bestMethod].layer} (norm: ${best[bestMethod].norm.toFixed(2)})
                         </div>
-
-                        <div id="mini-heatmap-${trait.name}" style="height: 100px;"></div>
-
-                        <div style="display: flex; align-items: center;">
-                            ${examplesHtml}
-                        </div>
+                        <div id="mini-heatmap-${trait.name}" style="height: 200px;"></div>
                     </div>
                 `;
             });
@@ -2560,45 +2115,20 @@
             `;
 
             contentArea.innerHTML = html;
-            renderMath();
-            renderMath();
 
             // Render mini heatmaps (normalized per method)
-            traitsWithVectors.forEach(trait => {
+            filteredTraits.forEach(trait => {
                 const metrics = vectorMetrics[trait.name];
-                if (!metrics) {
-                    console.warn(`No metrics for trait: ${trait.name}`);
-                    return;
-                }
+                if (!metrics) return;
 
-                console.log(`Rendering heatmap for ${trait.name}:`, metrics);
                 const methods = Object.keys(metrics.vectorData);
-                if (methods.length === 0) {
-                    console.warn(`No methods found for trait: ${trait.name}`);
-                    return;
-                }
-                // Use detected number of layers
-                const layers = Array.from({ length: nLayers }, (_, i) => i);
+                const layers = Array.from({ length: 27 }, (_, i) => i);
 
                 // Normalize each method independently (0-100% of that method's max)
-                // Probe: invert norm (smaller = stronger due to L2 regularization)
-                // Gradient: use final_separation (unit normalized, so norm is always 1.0)
-                // Mean_diff & ICA: use vector_norm
                 const normalizedData = layers.map(layer => {
                     return methods.map(method => {
                         const metadata = metrics.vectorData[method][layer];
-                        if (!metadata) return null;
-
-                        if (method === 'probe') {
-                            // Invert: smaller norm = stronger classifier
-                            return metadata.vector_norm ? (1.0 / metadata.vector_norm) : null;
-                        } else if (method === 'gradient') {
-                            // Use separation (vectors are unit normalized)
-                            return metadata.final_separation || metadata.vector_norm;
-                        } else {
-                            // Use vector magnitude
-                            return metadata.vector_norm;
-                        }
+                        return metadata ? metadata.vector_norm : null;
                     });
                 });
 
@@ -2616,32 +2146,23 @@
                     });
                 });
 
-                // Transpose for horizontal layout: methods become rows (y), layers become columns (x)
                 const trace = {
-                    z: heatmapData[0].map((_, methodIdx) =>
-                        heatmapData.map(row => row[methodIdx])
-                    ),
-                    x: layers,
-                    y: methods.map(m => m.replace(/_/g, ' ')),
+                    z: heatmapData,
+                    x: methods.map(m => m.replace(/_/g, ' ')),
+                    y: layers,
                     type: 'heatmap',
                     colorscale: 'Viridis',
                     showscale: false,
-                    hovertemplate: '%{y}<br>Layer %{x}<br>%{z:.1f}%<extra></extra>',
+                    hovertemplate: 'Method: %{x}<br>Layer %{y}<br>Strength: %{z:.1f}%<extra></extra>',
                     zmin: 0,
                     zmax: 100
                 };
 
                 Plotly.newPlot(`mini-heatmap-${trait.name}`, [trace], getPlotlyLayout({
-                    margin: { l: 70, r: 5, t: 5, b: 25 },
-                    xaxis: {
-                        title: '',
-                        showticklabels: true,
-                        tickmode: 'linear',
-                        dtick: 5,  // Show every 5th layer
-                        tickfont: { size: 9 }
-                    },
-                    yaxis: { title: '', side: 'left' },
-                    height: 100
+                    margin: { l: 30, r: 5, t: 5, b: 40 },
+                    xaxis: { title: '', tickangle: -45 },
+                    yaxis: { title: '', autorange: 'reversed' },
+                    height: 200
                 }), { displayModeBar: false });
             });
         }
@@ -2652,13 +2173,8 @@
             detailsDiv.innerHTML = '<div class="loading">Loading vector metadata...</div>';
 
             try {
-                // Get trait metadata to determine number of layers
-                const trait = experimentData.traits.find(t => t.name === traitName);
-                const nLayers = trait?.metadata?.n_layers || 26;
-                console.log(`Loading vector analysis for ${traitName} (${nLayers} layers)`);
-
                 const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
-                const layers = Array.from({ length: nLayers }, (_, i) => i);
+                const layers = Array.from({ length: 27 }, (_, i) => i);
 
                 const vectorData = {};
 
@@ -2691,26 +2207,13 @@
             const displayName = getDisplayName(traitName);
 
             const methods = Object.keys(vectorData);
-            // Detect number of layers from actual data
-            const nLayers = Object.keys(vectorData[methods[0]] || {}).length;
-            const layers = Array.from({ length: nLayers }, (_, i) => i);
+            const layers = Array.from({ length: 27 }, (_, i) => i);
 
-            // Collect raw metrics
-            // Probe: invert norm (smaller = stronger due to L2 regularization)
-            // Gradient: use final_separation (unit normalized, norm always 1.0)
-            // Mean_diff & ICA: use vector_norm
+            // Collect raw norms
             const rawData = layers.map(layer => {
                 return methods.map(method => {
                     const metadata = vectorData[method][layer];
-                    if (!metadata) return null;
-
-                    if (method === 'probe') {
-                        return metadata.vector_norm ? (1.0 / metadata.vector_norm) : null;
-                    } else if (method === 'gradient') {
-                        return metadata.final_separation || metadata.vector_norm;
-                    } else {
-                        return metadata.vector_norm;
-                    }
+                    return metadata ? metadata.vector_norm : null;
                 });
             });
 
@@ -2772,7 +2275,7 @@
             Plotly.newPlot('vector-heatmap', [trace], getPlotlyLayout({
                 title: 'Normalized Vector Strength (% of Method Max)',
                 xaxis: { title: 'Extraction Method' },
-                yaxis: { title: 'Layer' },  // Layer 0 at bottom, layer N at top
+                yaxis: { title: 'Layer', autorange: 'reversed' },
                 height: 600
             }), { displayModeBar: false });
         }
@@ -2816,36 +2319,16 @@
 
         function renderTier2Instructions(trait) {
             const contentArea = document.getElementById('content-area');
-            // Get layer count from metadata
-            const nLayers = trait.metadata?.n_layers || 26;
-            const nCheckpoints = nLayers * 3;
-
             contentArea.innerHTML = `
-                <div class="explanation">
-                    <div class="explanation-summary">Monitor trait evolution across all ${nLayers} layers during generation (${nCheckpoints} sublayer checkpoints)</div>
-                    <div class="explanation-details">
-
-                    <h4>Method</h4>
-                    <p>At each token position \\(t\\) and layer \\(\\ell\\), compute trait projection:</p>
-                    <p>$$s_t^{(\\ell)} = \\frac{\\mathbf{h}_t^{(\\ell)} \\cdot \\mathbf{v}}{\\|\\mathbf{v}\\|}$$</p>
-                    <p>where \\(\\mathbf{h}_t^{(\\ell)} \\in \\mathbb{R}^d\\) is the activation at token \\(t\\), layer \\(\\ell\\).</p>
-
-                    <h4>Sublayer Checkpoints</h4>
-                    <p>Captures 3 internal states per layer:</p>
-                    <ul>
-                        <li><strong>Pre-Attention:</strong> \\(\\mathbf{h}_t^{(\\ell, \\text{pre})}\\) - Before self-attention</li>
-                        <li><strong>Post-Attention:</strong> \\(\\mathbf{h}_t^{(\\ell, \\text{attn})} = \\mathbf{h}_t^{(\\ell, \\text{pre})} + \\text{Attn}(\\mathbf{h}_t^{(\\ell, \\text{pre})})\\) - After attention residual</li>
-                        <li><strong>Post-MLP:</strong> \\(\\mathbf{h}_t^{(\\ell, \\text{mlp})} = \\mathbf{h}_t^{(\\ell, \\text{attn})} + \\text{MLP}(\\mathbf{h}_t^{(\\ell, \\text{attn})})\\) - After MLP residual</li>
-                    </ul>
-                    <p>Total: ${nLayers} layers × 3 sublayers = ${nCheckpoints} checkpoints per token</p>
-
-                    <h4>Visualization</h4>
-                    <ul>
-                        <li><strong>Heatmap:</strong> Rows = layers/sublayers, Columns = tokens, Color = \\(s_t^{(\\ell)}\\)</li>
-                        <li>Shows trait emergence across layers and evolution during generation</li>
-                        <li>Reveals which layers contribute most to trait expression</li>
-                    </ul>
-                    </div>
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How All Layers Works:</strong><br>
+                    Captures how trait strength evolves through ALL layers during generation:<br>
+                    • <strong>Projection</strong> = activation · trait_vector (dot product at each token position)<br>
+                    • Captures all 27 layers × 3 sublayers (pre-attn, post-attn, post-mlp) = 81 checkpoints<br>
+                    • Shows trait evolution during both prompt encoding AND response generation<br>
+                    • <strong>Heatmap</strong>: Rows = layers, Columns = tokens, Color = trait score<br>
+                    Reveals which layers activate for the trait and how it changes per token.
+                </div>
                 <div class="card">
                     <div class="card-title">All Layers: ${getDisplayName(trait.name)}</div>
 
@@ -2856,7 +2339,7 @@
                     <div style="background: var(--bg-tertiary); padding: 20px; border-radius: 8px;">
                         <h3 style="color: var(--text-primary); margin-bottom: 15px;">Generate Trajectory Data</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                            Capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
+                            Capture per-token projections at all 81 checkpoints (27 layers × 3 sublayers):
                         </p>
                         <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto; border: 1px solid var(--border-color);">python inference/capture_tier2.py \\
   --experiment ${experimentData.name} \\
@@ -2884,53 +2367,60 @@
                 console.log('Response projections shape:', responseProj.length, 'tokens x', responseProj[0].length, 'layers x', responseProj[0][0].length, 'sublayers');
 
             // Combine prompt and response projections and tokens
-            const allTokens = [...data.prompt.tokens, ...data.response.tokens];
-            const allProj = [...promptProj, ...responseProj];
-            const nPromptTokens = data.prompt.n_tokens;
+            let allTokens = [...data.prompt.tokens, ...data.response.tokens];
+            let allProj = [...promptProj, ...responseProj];
+            let nPromptTokens = data.prompt.n_tokens;
+
+            // Skip first token if it's a BOS token (anomalous activations)
+            const skipFirst = allTokens[0].includes('bos') || allTokens[0].includes('BOS') || allTokens[0] === '<s>';
+            if (skipFirst) {
+                console.log(`Skipping BOS token: ${allTokens[0]}`);
+                allTokens = allTokens.slice(1);
+                allProj = allProj.slice(1);
+                nPromptTokens = nPromptTokens - 1;
+            }
+
             const nTotalTokens = allTokens.length;
-            const nLayers = promptProj[0].length;  // Detect from data
-            const nCheckpoints = nLayers * 3;
 
             contentArea.innerHTML = `
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How All Layers Works:</strong><br>
+                    Captures how trait strength evolves through ALL layers during generation:<br>
+                    • <strong>Projection</strong> = activation · trait_vector (dot product at each token position)<br>
+                    • Captures all 27 layers × 3 sublayers (pre-attn, post-attn, post-mlp) = 81 checkpoints<br>
+                    • Shows trait evolution during both prompt encoding AND response generation<br>
+                    • <strong>Heatmap</strong>: Rows = layers, Columns = tokens, Color = trait score<br>
+                    Reveals which layers activate for the trait and how it changes per token.
+                </div>
                 <div class="card">
                     <div class="card-title">All Layers: ${getDisplayName(trait.name)}</div>
 
-                    <!-- Conversation context - compact -->
-                    <div style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px;">
-                        <div style="color: var(--text-primary); font-size: 14px; font-weight: 500; margin-bottom: 3px;">${data.prompt.text} ${data.response.text}</div>
-                        <div style="color: var(--text-secondary); font-size: 11px;">
-                            ${data.prompt.n_tokens} prompt + ${data.response.n_tokens} response = ${nTotalTokens} tokens • Vector: ${data.metadata.vector_path.split('/').pop()}
+                    <div style="background: var(--bg-tertiary); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <div style="margin-bottom: 10px;">
+                            <div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 5px;">Full Conversation</div>
+                            <div style="color: var(--text-primary); font-size: 16px; font-weight: 600;">${data.prompt.text} ${data.response.text}</div>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 13px;">
+                            ${data.prompt.n_tokens} prompt tokens + ${data.response.n_tokens} response tokens = ${nTotalTokens} total
                         </div>
                     </div>
 
-                    <!-- Unified slider control - compact -->
-                    <div style="background: var(--bg-tertiary); padding: 10px 12px; border-radius: 6px; margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <label style="color: var(--text-secondary); font-size: 12px; font-weight: 500;">
-                                Position: <span id="unified-slider-value" style="color: var(--primary-color);">0</span>/${nTotalTokens - 1}
+                    <!-- Unified slider control -->
+                    <div style="background: var(--bg-tertiary); padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="color: var(--text-secondary); font-weight: 600;">
+                                Token Position: <span id="unified-slider-value" style="color: var(--primary-color);">0</span> / ${nTotalTokens - 1}
                             </label>
-                            <span style="color: var(--text-secondary); font-size: 11px;">
-                                "<span id="unified-slider-token" style="font-weight: 600;">${allTokens[0]}</span>"
-                                <span id="unified-slider-phase" style="color: var(--text-tertiary); margin-left: 8px;">[Prompt]</span>
+                            <span style="color: var(--text-secondary); font-size: 12px;">
+                                Token: "<span id="unified-slider-token" style="font-weight: 600;">${allTokens[0]}</span>"
+                                <span id="unified-slider-phase" style="color: var(--text-tertiary); margin-left: 10px;">[Prompt]</span>
                             </span>
                         </div>
                         <input type="range" id="unified-slider" min="0" max="${nTotalTokens - 1}" value="0"
-                               style="width: 100%; height: 2px; border-radius: 2px; background: var(--border-color);">
+                               style="width: 100%; height: 3px; border-radius: 2px; background: var(--border-color);">
                     </div>
 
-                    <div id="trajectory-heatmap" style="margin-bottom: 20px;"></div>
-
-                    <!-- Logit Lens Visualization - compact -->
-                    <div id="logit-lens-container" style="display: none; margin-bottom: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                        <h3 style="color: var(--text-primary); margin-bottom: 5px; font-size: 14px;">
-                            Prediction for Token <span id="logit-token-num">1</span>: "<span id="logit-token-text">...</span>"
-                        </h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 10px; font-size: 11px;">
-                            Top-3 predictions across layers (commitment point = final prediction locks in)
-                        </p>
-                        <div id="logit-lens-plot"></div>
-                    </div>
-
+                    <div id="trajectory-heatmap" style="margin-bottom: 50px;"></div>
                     <div id="attention-viewer"></div>
                 </div>
             `;
@@ -2940,15 +2430,14 @@
 
             // Render attention viewer if data available
             if (data.attention_weights) {
-                renderAttentionViewer('attention-viewer', data, allTokens, nPromptTokens);
+                renderAttentionViewer('attention-viewer', data, allTokens, nPromptTokens, skipFirst);
             }
 
             // Setup unified slider control
-            setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens);
+            setupUnifiedSlider(allTokens, nPromptTokens, nTotalTokens, skipFirst);
             } catch (error) {
                 console.error('Error rendering trajectory data:', error);
                 contentArea.innerHTML = `<div class="card"><div class="card-title">Error</div><div class="info">Failed to render trajectory data: ${error.message}</div></div>`;
-            renderMath();
             }
         }
 
@@ -2961,37 +2450,33 @@
             console.log(`Rendering combined trajectory heatmap for ${nTokens} tokens x ${nLayers} layers (${nPromptTokens} prompt + ${nTokens - nPromptTokens} response)`);
 
             // Average over sublayers to get [n_tokens, n_layers]
-            // Skip BOS token (index 0) for better visualization dynamic range
-            const startIdx = 1;  // Skip <bos>
-
             const layerAvg = [];
-            for (let t = startIdx; t < nTokens; t++) {
-                layerAvg[t - startIdx] = [];
+            for (let t = 0; t < nTokens; t++) {
+                layerAvg[t] = [];
                 for (let l = 0; l < nLayers; l++) {
                     const avg = (projections[t][l][0] + projections[t][l][1] + projections[t][l][2]) / 3;
-                    layerAvg[t - startIdx][l] = avg;
+                    layerAvg[t][l] = avg;
                 }
             }
 
-            // Transpose for heatmap: [n_layers, n_tokens-1] (excluding BOS)
+            // Transpose for heatmap: [n_layers, n_tokens]
             const heatmapData = [];
-            const nDisplayTokens = nTokens - startIdx;
             for (let l = 0; l < nLayers; l++) {
                 heatmapData[l] = [];
-                for (let t = 0; t < nDisplayTokens; t++) {
+                for (let t = 0; t < nTokens; t++) {
                     heatmapData[l][t] = layerAvg[t][l];
                 }
             }
 
             // Create shapes array for separator line and current token highlight
             const shapes = [
-                // Vertical line separating prompt and response (adjusted for skipped BOS)
+                // Vertical line separating prompt and response
                 {
                     type: 'line',
                     xref: 'x',
                     yref: 'paper',
-                    x0: (nPromptTokens - startIdx) - 0.5,
-                    x1: (nPromptTokens - startIdx) - 0.5,
+                    x0: nPromptTokens - 0.5,
+                    x1: nPromptTokens - 0.5,
                     y0: 0,
                     y1: 1,
                     line: {
@@ -3017,7 +2502,7 @@
 
             const data = [{
                 z: heatmapData,
-                x: tokens.slice(startIdx),  // Skip BOS in token labels too
+                x: tokens,
                 y: Array.from({length: nLayers}, (_, i) => `L${i}`),
                 type: 'heatmap',
                 colorscale: 'RdBu',
@@ -3026,31 +2511,32 @@
             }];
 
             const layout = getPlotlyLayout({
-                title: 'Trait Trajectory',
+                title: 'Trait Trajectory Across All Layers',
                 xaxis: {
-                    title: 'Tokens',
+                    title: 'Tokens (Prompt | Response)',
                     tickangle: -45
                 },
                 yaxis: {
-                    title: 'Layer'
+                    title: 'Layer',
+                    autorange: 'reversed'
                 },
                 shapes: shapes,
-                height: 400,
-                margin: { t: 40, b: 80, l: 50, r: 20 }
+                height: 600
             });
 
             Plotly.newPlot(divId, data, layout, {displayModeBar: false});
         }
 
-        function renderAttentionViewer(divId, data, allTokens, nPromptTokens) {
+        function renderAttentionViewer(divId, data, allTokens, nPromptTokens, skipFirst) {
             // Get number of layers
             const nLayers = Object.keys(data.attention_weights.prompt).length;
+            const skipOffset = skipFirst ? 1 : 0;
 
             const html = `
-                <div style="border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 20px;">
-                    <h3 style="color: var(--text-primary); margin-bottom: 5px; font-size: 14px;">Attention Patterns</h3>
-                    <p style="color: var(--text-secondary); margin-bottom: 10px; font-size: 11px;">
-                        Selected token's attention to context (controlled by slider above)
+                <div style="border-top: 2px solid var(--border-color); padding-top: 30px; margin-top: 30px;">
+                    <h2 style="color: var(--text-primary); margin-bottom: 15px;">Attention Patterns</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                        Shows how the selected token (controlled by slider above) attends to previous tokens across all layers. Use the unified slider to explore different tokens.
                     </p>
                     <div id="attention-heatmap"></div>
                 </div>
@@ -3060,60 +2546,31 @@
 
             // Function to render attention heatmap for a specific token
             window.updateAttentionHeatmap = function(tokenIdx) {
+                // Adjust index if we skipped BOS token
+                const actualIdx = tokenIdx + skipOffset;
+
                 // Get attention data for this token
                 let attnData;  // [n_layers, n_context]
                 let contextTokens;
 
-                if (tokenIdx < nPromptTokens) {
-                    // Prompt token - extract from full attention matrix
-                    // Data structure: prompt[layer_X] is [n_tokens, n_tokens] matrix
+                if (actualIdx < data.prompt.n_tokens) {
+                    // Prompt token - use prompt attention
                     attnData = [];
                     for (let layer = 0; layer < nLayers; layer++) {
-                        const layerAttnMatrix = data.attention_weights.prompt[`layer_${layer}`];
-
-                        if (!layerAttnMatrix || !layerAttnMatrix[tokenIdx]) {
-                            console.warn(`Missing attention data for prompt token ${tokenIdx}, layer ${layer}`);
-                            attnData.push(new Array(tokenIdx + 1).fill(0));
-                            continue;
-                        }
-
-                        // Extract this token's attention row, only up to current position (causal)
-                        const tokenAttn = layerAttnMatrix[tokenIdx].slice(0, tokenIdx + 1);
-                        attnData.push(tokenAttn);
+                        const layerAttn = data.attention_weights.prompt[`layer_${layer}`];
+                        attnData.push(layerAttn[actualIdx]);  // This token's attention to all previous tokens
                     }
-                    contextTokens = data.prompt.tokens.slice(0, tokenIdx + 1);
+                    // Skip BOS in context tokens too
+                    contextTokens = data.prompt.tokens.slice(skipOffset, actualIdx + 1);
                 } else {
-                    // Response token - already stored as single attention vector
-                    // Data structure: response[token_idx][layer_X] is [context_length] vector
-                    const responseIdx = tokenIdx - nPromptTokens;
+                    // Response token - use response attention
+                    const responseIdx = actualIdx - data.prompt.n_tokens;
                     attnData = [];
                     for (let layer = 0; layer < nLayers; layer++) {
-                        const stepAttn = data.attention_weights.response[responseIdx];
-
-                        if (!stepAttn || !stepAttn[`layer_${layer}`]) {
-                            console.warn(`Missing attention data for response token ${responseIdx}, layer ${layer}`);
-                            attnData.push(new Array(tokenIdx + 1).fill(0));
-                            continue;
-                        }
-
-                        const layerAttn = stepAttn[`layer_${layer}`];
+                        const layerAttn = data.attention_weights.response[responseIdx][`layer_${layer}`];
                         attnData.push(layerAttn);
                     }
                     contextTokens = allTokens.slice(0, tokenIdx + 1);
-                }
-
-                // Validate data dimensions
-                const expectedContextLen = tokenIdx + 1;
-                let hasValidData = true;
-                for (let i = 0; i < attnData.length; i++) {
-                    if (!attnData[i] || attnData[i].length !== expectedContextLen) {
-                        console.warn(`Layer ${i} attention length mismatch: expected ${expectedContextLen}, got ${attnData[i]?.length || 0}`);
-                        hasValidData = false;
-                    }
-                }
-
-                if (!hasValidData) {
-                    console.error('Attention data validation failed, displaying with available data');
                 }
 
                 // Create heatmap
@@ -3130,17 +2587,17 @@
                 };
 
                 const layout = getPlotlyLayout({
-                    title: `"${allTokens[tokenIdx]}" (pos ${tokenIdx})`,
+                    title: `Attention Pattern for Token "${allTokens[tokenIdx]}" (Position ${tokenIdx})`,
                     xaxis: {
-                        title: 'Context',
+                        title: 'Context Tokens (what this token attends to)',
                         tickangle: -45,
                         side: 'bottom'
                     },
                     yaxis: {
-                        title: 'Layer'
+                        title: 'Layer',
+                        autorange: 'reversed'
                     },
-                    height: 350,
-                    margin: { t: 40, b: 80, l: 50, r: 20 }
+                    height: 500
                 });
 
                 Plotly.newPlot('attention-heatmap', [trace], layout, { displayModeBar: false });
@@ -3150,107 +2607,9 @@
             window.updateAttentionHeatmap(0);
         }
 
-        function renderLogitLens(data, tokenIdx, allTokens, nPromptTokens) {
-            const container = document.getElementById('logit-lens-container');
-
-            // Check if logit lens data is available
-            if (!data.logit_lens || !data.logit_lens.response) {
-                container.style.display = 'none';
-                return;
-            }
-
-            container.style.display = 'block';
-
-            // Determine if this is a prompt or response token
-            const isPromptToken = tokenIdx < nPromptTokens;
-            const logitData = isPromptToken ? data.logit_lens.prompt : data.logit_lens.response;
-            const actualIdx = isPromptToken ? tokenIdx : (tokenIdx - nPromptTokens);
-
-            // Update token info
-            const tokenText = allTokens[tokenIdx];
-            document.getElementById('logit-token-num').textContent = tokenIdx + 1;
-            document.getElementById('logit-token-text').textContent = tokenText;
-
-            // Layer indices from LOGIT_LENS_LAYERS config: [0,1,2,3,6,9,12,15,18,21,24,25]
-            const layerKeys = Object.keys(logitData).sort((a, b) => {
-                const aNum = parseInt(a.replace('layer_', ''));
-                const bNum = parseInt(b.replace('layer_', ''));
-                return aNum - bNum;
-            });
-
-            const layerIndices = layerKeys.map(k => parseInt(k.replace('layer_', '')));
-
-            // Build traces for top-3 predictions
-            const traces = [];
-            const colors = ['#4a9eff', '#ff6b6b', '#51cf66'];  // Blue, Red, Green
-
-            for (let k = 0; k < 3; k++) {
-                const probs = [];
-                const tokens = [];
-
-                for (const layerKey of layerKeys) {
-                    const layerData = logitData[layerKey];
-
-                    if (layerData && layerData.tokens[actualIdx]) {
-                        probs.push(layerData.probs[actualIdx][k]);
-                        if (tokens.length === 0) {
-                            tokens.push(layerData.tokens[actualIdx][k]);
-                        }
-                    } else {
-                        // Data not available for this layer/token
-                        probs.push(null);
-                    }
-                }
-
-                traces.push({
-                    x: layerIndices,
-                    y: probs,
-                    name: `"${tokens[0] || '?'}"`,
-                    mode: 'lines+markers',
-                    line: { width: 3, color: colors[k] },
-                    marker: { size: 8, color: colors[k] },
-                    connectgaps: false
-                });
-            }
-
-            // Layout
-            const layout = {
-                xaxis: {
-                    title: 'Layer',
-                    tickvals: layerIndices,
-                    gridcolor: 'rgba(128, 128, 128, 0.2)',
-                    zeroline: false
-                },
-                yaxis: {
-                    title: 'Prob',
-                    range: [0, 1],
-                    gridcolor: 'rgba(128, 128, 128, 0.2)',
-                    zeroline: false
-                },
-                height: 250,
-                margin: { t: 20, b: 50, l: 50, r: 20 },
-                paper_bgcolor: 'transparent',
-                plot_bgcolor: 'transparent',
-                font: {
-                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
-                    size: 11
-                },
-                showlegend: true,
-                legend: {
-                    orientation: 'h',
-                    yanchor: 'bottom',
-                    y: -0.35,
-                    xanchor: 'center',
-                    x: 0.5,
-                    font: { size: 10 }
-                }
-            };
-
-            Plotly.newPlot('logit-lens-plot', traces, layout, { responsive: true, displayModeBar: false });
-        }
-
-        function setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens) {
+        function setupUnifiedSlider(allTokens, nPromptTokens, nTotalTokens, skipFirst) {
             const slider = document.getElementById('unified-slider');
+            // Note: allTokens already has BOS removed if skipFirst=true, so we don't need skipOffset here
 
             // Function to update all visualizations when slider moves
             function updateAllVisualizations(tokenIdx) {
@@ -3262,19 +2621,15 @@
                 const phase = tokenIdx < nPromptTokens ? '[Prompt]' : '[Response]';
                 document.getElementById('unified-slider-phase').textContent = phase;
 
-                // Heatmap position (adjusted for skipped BOS token)
-                const startIdx = 1;  // BOS is skipped in heatmap
-                const heatmapIdx = tokenIdx - startIdx;
-
                 // Update trajectory heatmap highlight
                 const shapes = [
-                    // Separator line (adjusted for skipped BOS)
+                    // Separator line (unchanged)
                     {
                         type: 'line',
                         xref: 'x',
                         yref: 'paper',
-                        x0: (nPromptTokens - startIdx) - 0.5,
-                        x1: (nPromptTokens - startIdx) - 0.5,
+                        x0: nPromptTokens - 0.5,
+                        x1: nPromptTokens - 0.5,
                         y0: 0,
                         y1: 1,
                         line: {
@@ -3283,13 +2638,13 @@
                             dash: 'dash'
                         }
                     },
-                    // Current token highlight (adjusted position for skipped BOS)
+                    // Current token highlight (updated position)
                     {
                         type: 'rect',
                         xref: 'x',
                         yref: 'paper',
-                        x0: heatmapIdx - 0.5,
-                        x1: heatmapIdx + 0.5,
+                        x0: tokenIdx - 0.5,
+                        x1: tokenIdx + 0.5,
                         y0: 0,
                         y1: 1,
                         fillcolor: 'rgba(74, 158, 255, 0.2)',
@@ -3298,9 +2653,6 @@
                 ];
 
                 Plotly.relayout('trajectory-heatmap', { shapes: shapes });
-
-                // Update logit lens if available
-                renderLogitLens(data, tokenIdx, allTokens, nPromptTokens);
 
                 // Update attention heatmap if available
                 if (window.updateAttentionHeatmap) {
@@ -3313,8 +2665,8 @@
                 updateAllVisualizations(parseInt(e.target.value));
             });
 
-            // Initialize at position 1 (skip BOS)
-            updateAllVisualizations(1);
+            // Initialize at position 0
+            updateAllVisualizations(0);
         }
 
         // Render Layer Deep Dive view
@@ -3352,35 +2704,14 @@
         function renderTier3Instructions(trait) {
             const contentArea = document.getElementById('content-area');
             contentArea.innerHTML = `
-                <div class="explanation">
-                    <div class="explanation-summary">Identify which neurons and attention heads drive the trait in a specific layer</div>
-                    <div class="explanation-details">
-                    <p>Deep dive into a single layer's internals to identify which components drive trait expression.</p>
-
-                    <h4>Captured Components</h4>
-
-                    <p><strong>Attention Projections (before multihead split):</strong></p>
-                    <p>$$\\mathbf{Q} = \\mathbf{h}\\mathbf{W}_Q, \\quad \\mathbf{K} = \\mathbf{h}\\mathbf{W}_K, \\quad \\mathbf{V} = \\mathbf{h}\\mathbf{W}_V$$</p>
-                    <p>Query, Key, Value projections \\(\\in \\mathbb{R}^{T \\times d}\\)</p>
-
-                    <p><strong>Attention Heads (post-split):</strong></p>
-                    <p>$$\\text{head}_i = \\text{Attention}(\\mathbf{Q}_i, \\mathbf{K}_i, \\mathbf{V}_i) = \\text{softmax}\\left(\\frac{\\mathbf{Q}_i \\mathbf{K}_i^T}{\\sqrt{d_k}}\\right)\\mathbf{V}_i$$</p>
-                    <p>Per-head outputs showing which heads activate for the trait</p>
-
-                    <p><strong>MLP Internals:</strong></p>
-                    <p>$$\\mathbf{h}_{\\text{mlp}} = \\mathbf{W}_2 \\cdot \\text{GELU}(\\mathbf{W}_1 \\mathbf{h})$$</p>
-                    <ul>
-                        <li>Pre-GELU: \\(\\mathbf{W}_1 \\mathbf{h} \\in \\mathbb{R}^{9216}\\) (2304 hidden × 4 expansion)</li>
-                        <li>Post-GELU: Shows which of 9216 neurons fire for trait</li>
-                    </ul>
-
-                    <h4>Use Case</h4>
-                    <p>Identifies specific neurons/heads responsible for trait computation, enabling:</p>
-                    <ul>
-                        <li>Neuron-level interpretation</li>
-                        <li>Surgical intervention (ablation studies)</li>
-                        <li>Feature visualization</li>
-                    </ul>
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How Layer Deep Dive Works:</strong><br>
+                    Captures complete layer internals for ONE specific layer to identify which neurons drive the trait:<br>
+                    • <strong>Q/K/V Projections</strong> - Query, Key, Value attention inputs<br>
+                    • <strong>Attention Heads</strong> - Per-head attention patterns<br>
+                    • <strong>MLP Neurons</strong> - All 9216 neurons (2304 hidden × 4 expansion factor)<br>
+                    • <strong>GELU Activations</strong> - Post-activation values showing neuron firing<br>
+                    Reveals WHICH specific neurons in a layer are responsible for the trait.
                 </div>
                 <div class="card">
                     <div class="card-title">Layer Deep Dive: ${getDisplayName(trait.name)}</div>
@@ -3419,27 +2750,15 @@
             const promptTokens = data.prompt.tokens;
 
             contentArea.innerHTML = `
-                <div class="explanation">
-                    <div class="explanation-summary">Layer ${data.layer} neuron analysis - top 20 trait-driving neurons</div>
-                    <div class="explanation-details">
-                    <h4>Layer ${data.layer} Internals</h4>
-                    <p>Analysis of complete layer internals to identify trait-driving neurons.</p>
-
-                    <h4>Components Analyzed</h4>
-
-                    <p><strong>Attention Projections:</strong></p>
-                    <p>$$\\mathbf{Q}, \\mathbf{K}, \\mathbf{V} = \\mathbf{h} \\mathbf{W}_Q, \\mathbf{h} \\mathbf{W}_K, \\mathbf{h} \\mathbf{W}_V \\in \\mathbb{R}^{T \\times d}$$</p>
-
-                    <p><strong>Attention Heads:</strong></p>
-                    <p>$$\\text{head}_i = \\text{softmax}\\left(\\frac{\\mathbf{Q}_i \\mathbf{K}_i^T}{\\sqrt{d_k}}\\right)\\mathbf{V}_i$$</p>
-
-                    <p><strong>MLP Neurons (9216 total):</strong></p>
-                    <p>$$\\mathbf{z} = \\text{GELU}(\\mathbf{W}_1 \\mathbf{h}) \\in \\mathbb{R}^{9216}$$</p>
-                    <p>Top 20 neurons ranked by \\(\\frac{1}{T}\\sum_t |z_t^{(i)}|\\) (average absolute activation)</p>
-
-                    <h4>Interpretation</h4>
-                    <p>Neurons with high activation magnitude are most responsible for this layer's contribution to the trait.</p>
-                    </div>
+                <div class="info" style="margin-bottom: 20px;">
+                    <strong>How Layer Deep Dive Works:</strong><br>
+                    Captures complete layer internals for ONE specific layer to identify which neurons drive the trait:<br>
+                    • <strong>Q/K/V Projections</strong> - Query, Key, Value attention inputs<br>
+                    • <strong>Attention Heads</strong> - Per-head attention patterns<br>
+                    • <strong>MLP Neurons</strong> - All 9216 neurons (2304 hidden × 4 expansion factor)<br>
+                    • <strong>GELU Activations</strong> - Post-activation values showing neuron firing<br>
+                    Top 20 neurons shown ranked by average activation magnitude.
+                </div>
                 <div class="card">
                     <div class="card-title">Layer Deep Dive: ${getDisplayName(trait.name)} (Layer ${data.layer})</div>
 
@@ -3456,7 +2775,6 @@
 
                     <div id="sublayer-trajectory" style="margin-bottom: 30px;"></div>
                     <div id="contribution-breakdown" style="margin-bottom: 30px;"></div>
-                    <div id="head-contributions" style="margin-bottom: 30px;"></div>
                     <div id="attention-heatmaps" style="margin-bottom: 30px;"></div>
                     <div id="top-neurons-combined"></div>
                 </div>
@@ -3473,15 +2791,11 @@
             if (data.trait_projections) {
                 renderSublayerTrajectory(data, promptTokens.length);
                 renderContributionBreakdown(data, promptTokens.length);
-                renderHeadContributions(data, promptTokens.length);
             }
-
-            // Store data for slider updates
-            window.currentLayerData = { data, promptLength: promptTokens.length };
 
             // Render attention heatmaps
             if (data.internals.prompt.attn_weights) {
-                renderAttentionHeatmaps(data, promptTokens.length, 0);  // Start with token 0
+                renderAttentionHeatmaps(data, promptTokens.length);
             }
 
             // Render combined neuron activations
@@ -3558,7 +2872,7 @@
                 title: '3-Checkpoint Trait Trajectory (Sublayer Evolution)',
                 xaxis: { title: 'Token Position' },
                 yaxis: { title: 'Trait Score' },
-                height: 350,
+                height: 400,
                 shapes: shapes
             });
 
@@ -3625,187 +2939,43 @@
             Plotly.newPlot('contribution-breakdown', [trace1, trace2], layout, { displayModeBar: false });
         }
 
-        function renderHeadContributions(data, promptLength) {
-            // Check if per-head contributions are available
-            const promptProj = data.trait_projections.prompt;
-            const responseProj = data.trait_projections.response;
-
-            if (!promptProj.head_contributions && !responseProj.head_contributions) {
-                document.getElementById('head-contributions').style.display = 'none';
-                return;
-            }
-
-            document.getElementById('head-contributions').style.display = 'block';
-
-            // Combine prompt and response head contributions
-            // head_contributions is [n_heads, n_tokens]
-            const headContribsPrompt = promptProj.head_contributions || [];
-            const headContribsResponse = responseProj.head_contributions || [];
-
-            const allTokens = [...data.prompt.tokens, ...data.response.tokens];
-            const nHeads = headContribsPrompt.length || headContribsResponse.length;
-
-            // Create traces for each head
-            const traces = [];
-            const colors = ['#4a9eff', '#ff6b6b', '#51cf66', '#ffc107', '#9c27b0', '#ff9800', '#00bcd4', '#e91e63'];
-
-            for (let headIdx = 0; headIdx < nHeads; headIdx++) {
-                // Combine prompt and response contributions for this head
-                const promptContrib = headContribsPrompt[headIdx] || [];
-                const responseContrib = headContribsResponse[headIdx] || [];
-                const allContrib = [...promptContrib, ...responseContrib];
-
-                traces.push({
-                    x: Array.from({length: allContrib.length}, (_, i) => i),
-                    y: allContrib,
-                    mode: 'lines+markers',
-                    name: `Head ${headIdx}`,
-                    line: { color: colors[headIdx % colors.length], width: 2 },
-                    marker: { size: 4 },
-                    hovertemplate: 'Token %{x}: %{text}<br>Head ' + headIdx + ': %{y:.3f}<extra></extra>',
-                    text: allTokens
-                });
-            }
-
-            // Add separator line
-            const shapes = [];
-            if (promptLength) {
-                shapes.push({
-                    type: 'line',
-                    xref: 'x',
-                    yref: 'paper',
-                    x0: promptLength - 0.5,
-                    x1: promptLength - 0.5,
-                    y0: 0,
-                    y1: 1,
-                    line: {
-                        color: 'rgba(255, 255, 255, 0.3)',
-                        width: 2,
-                        dash: 'dash'
-                    }
-                });
-            }
-
-            const layout = getPlotlyLayout({
-                title: 'Per-Head Trait Contributions (Which Heads Drive the Trait)',
-                xaxis: { title: 'Token Position' },
-                yaxis: { title: 'Head Contribution to Trait' },
-                height: 400,
-                shapes: shapes,
-                showlegend: true,
-                legend: {
-                    orientation: 'h',
-                    yanchor: 'bottom',
-                    y: -0.3,
-                    xanchor: 'center',
-                    x: 0.5
-                }
-            });
-
-            Plotly.newPlot('head-contributions', traces, layout, { displayModeBar: false });
-        }
-
-        function renderAttentionHeatmaps(data, promptLength, tokenIdx = 0) {
-            // Show attention patterns for a single query token
-            // Display how this token attends to all context tokens across 8 heads
-
-            const allTokens = [...data.prompt.tokens, ...data.response.tokens];
-            const isPromptToken = tokenIdx < promptLength;
-
-            let attnWeights;  // [8_heads, seq_len] - just the row for this query token
-            let contextTokens;
-
-            if (isPromptToken) {
-                // Query is in prompt - extract row from prompt attention
-                const promptAttn = data.internals.prompt.attn_weights;  // [8_heads, prompt_len, prompt_len]
-                attnWeights = promptAttn.map(head => head[tokenIdx]);  // [8_heads, prompt_len]
-                contextTokens = data.prompt.tokens;
-            } else {
-                // Query is in response - extract row from response attention
-                const responseIdx = tokenIdx - promptLength;
-                const responseAttn = data.internals.response.attn_weights[responseIdx];  // [8_heads, context_len, context_len]
-                const contextLen = promptLength + responseIdx + 1;
-                attnWeights = responseAttn.map(head => head[head.length - 1]);  // Last row = this token's attention
-                contextTokens = allTokens.slice(0, contextLen);  // All context up to this point
-            }
+        function renderAttentionHeatmaps(data, promptLength) {
+            const attnWeights = data.internals.prompt.attn_weights;  // [8_heads, seq_len, seq_len]
+            const tokens = [...data.prompt.tokens, ...data.response.tokens];
 
             const html = `
-                <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
-                    <h3 style="margin: 0 0 15px 0; color: var(--text-primary);">Query Token Attention</h3>
-
-                    <!-- Slider -->
-                    <div style="margin-bottom: 10px;">
-                        <label style="color: var(--text-secondary); font-size: 13px;">
-                            Select Query Token: <span id="attn-slider-value" style="color: var(--text-primary); font-weight: 600;">0</span> -
-                            "<span id="attn-slider-token" style="color: var(--text-primary); font-weight: 600;">${allTokens[0]}</span>"
-                        </label>
-                    </div>
-                    <input type="range" id="attn-slider" min="0" max="${allTokens.length - 1}" value="${tokenIdx}"
-                           style="width: 100%; height: 3px; border-radius: 2px; background: var(--border-color);">
-
-                    <div style="margin-top: 15px; color: var(--text-secondary); font-size: 13px;">
-                        Showing how token <span style="color: var(--text-primary); font-weight: 600;">"${allTokens[tokenIdx]}"</span>
-                        (position ${tokenIdx}) attends to ${contextTokens.length} context tokens
-                    </div>
-                </div>
-
-                <!-- 8 Head Patterns Stacked Vertically -->
-                <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                <h3 style="margin-bottom: 15px; color: var(--text-primary);">8-Head Attention Patterns</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
                     ${Array.from({length: 8}, (_, i) => `<div id="attn-head-${i}"></div>`).join('')}
                 </div>
             `;
 
             document.getElementById('attention-heatmaps').innerHTML = html;
 
-            // Render each head as a 1-row heatmap
+            // Render each head
             for (let head = 0; head < 8; head++) {
-                const headAttn = attnWeights[head];  // [context_len]
+                const headWeights = attnWeights[head];  // [seq_len, seq_len]
 
-                // Create 1-row heatmap with query position highlighted
                 const trace = {
-                    z: [headAttn],  // Single row
-                    x: contextTokens,
-                    y: ['Attention'],
+                    z: headWeights,
+                    x: tokens.slice(0, headWeights[0].length),
+                    y: tokens.slice(0, headWeights.length),
                     type: 'heatmap',
                     colorscale: 'Viridis',
-                    hovertemplate: 'To: %{x}<br>Weight: %{z:.3f}<extra></extra>',
+                    hovertemplate: 'From: %{y}<br>To: %{x}<br>Weight: %{z:.3f}<extra></extra>',
                     showscale: head === 7  // Only show scale on last plot
                 };
 
-                // Highlight the query position
-                const shapes = [];
-                const queryPosInContext = isPromptToken ? tokenIdx : headAttn.length - 1;
-                shapes.push({
-                    type: 'rect',
-                    xref: 'x',
-                    yref: 'paper',
-                    x0: queryPosInContext - 0.5,
-                    x1: queryPosInContext + 0.5,
-                    y0: 0,
-                    y1: 1,
-                    line: { color: '#ff6b6b', width: 3 },
-                    fillcolor: 'rgba(255, 107, 107, 0.1)'
-                });
-
                 const layout = getPlotlyLayout({
                     title: `Head ${head}`,
-                    xaxis: { title: 'Context Token', tickangle: -45, tickfont: { size: 9 } },
-                    yaxis: { title: '', showticklabels: false },
-                    height: 100,
-                    margin: { l: 30, r: 10, t: 40, b: 80 },
-                    shapes: shapes
+                    xaxis: { title: '', tickangle: -45, tickfont: { size: 9 } },
+                    yaxis: { title: '', autorange: 'reversed', tickfont: { size: 9 } },
+                    height: 250,
+                    margin: { l: 50, r: 10, t: 40, b: 50 }
                 });
 
                 Plotly.newPlot(`attn-head-${head}`, [trace], layout, { displayModeBar: false });
             }
-
-            // Add slider event listener
-            document.getElementById('attn-slider').addEventListener('input', (e) => {
-                const newTokenIdx = parseInt(e.target.value);
-                document.getElementById('attn-slider-value').textContent = newTokenIdx;
-                document.getElementById('attn-slider-token').textContent = allTokens[newTokenIdx];
-                renderAttentionHeatmaps(data, promptLength, newTokenIdx);
-            });
         }
 
         // ============================================================================
@@ -3813,8 +2983,6 @@
         // ============================================================================
 
         function renderTopNeurons(divId, title, geluActivations, tokens, promptLength = null) {
-            // Store for access by slider callback
-            window.currentLayerData = { data: window.currentLayerData?.data, promptLength };
             // geluActivations: [n_tokens, 9216]
             // Show per-token heatmap with slider
             // promptLength: if provided, adds visual separator between prompt and response
@@ -3951,7 +3119,7 @@
                 title: 'Neuron Activations Across All Tokens (Top 50 Neurons)',
                 xaxis: { title: 'Token', tickangle: -45 },
                 yaxis: { title: 'Neuron', autorange: 'reversed' },
-                height: 400,
+                height: 500,
                 shapes: shapes,
                 annotations: annotations
             });
@@ -3977,7 +3145,7 @@
                     title: `Neuron Activations for Token "${tokens[tokenIdx]}" (Position ${tokenIdx})`,
                     xaxis: { title: 'Neuron Index', tickangle: -45 },
                     yaxis: { title: 'Activation' },
-                    height: 350
+                    height: 400
                 }), { displayModeBar: false });
 
                 // Update heatmap highlight

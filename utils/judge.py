@@ -7,7 +7,7 @@ import yaml
 import numpy as np
 import asyncio
 from openai import AsyncOpenAI
-from core.config import setup_credentials
+from utils.config import setup_credentials
 
 # Set up credentials and environment
 config = setup_credentials()
