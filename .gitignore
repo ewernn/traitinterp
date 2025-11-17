@@ -83,3 +83,6 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Experiment data (stored in R2, not git)
+experiments/
