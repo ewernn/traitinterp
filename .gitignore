@@ -56,7 +56,6 @@ sae/
 experiments/**/sae_features/*.pt
 
 # Experiment results
-results/
 logs/
 *.log
 wandb/
@@ -86,3 +85,6 @@ htmlcov/
 
 # Experiment data (stored in R2, not git)
 experiments/
+
+# Remote setup with secrets
+docs/remote_setup.md

@@ -1356,6 +1356,33 @@
                 <button class="transformer-toggle" id="transformer-toggle" title="Hide architecture">◀</button>
             </div>
             <div class="transformer-content">
+                <!-- Output at top -->
+                <div class="input-output-box">Output</div>
+
+                <!-- Last layer (top of stack) -->
+                <div class="layer-box" data-layer="25">
+                    <div class="layer-number">Layer 25</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Feed Forward</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Multi-Head Attention</div>
+                </div>
+
+                <!-- Ellipsis -->
+                <div class="layer-ellipsis">↑<br>[24 more layers]<br>↑</div>
+
+                <!-- First layer (bottom of stack) -->
+                <div class="layer-box" data-layer="0">
+                    <div class="layer-number">Layer 0</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Feed Forward</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Multi-Head Attention</div>
+                </div>
+
+                <!-- Input at bottom -->
+                <div class="input-output-box">Input Embedding</div>
+
                 <!-- Detailed Architecture Diagram -->
                 <div class="arch-diagram">
                     <div class="arch-diagram-title">Transformer Decoder Layer Flow</div>
@@ -1395,45 +1422,6 @@
                                 <!-- Final output (after MLP + residual) -->
                                 <div class="component-layer" style="margin: 20px 0;">
                                     <div class="arch-box norm">Add & Norm (final)</div>
-                                </div>
-
-                                <!-- Attention Block -->
-                                <div class="component-layer">
-                                    <div class="block-container attn-block">
-                                        <div class="block-title">Self-Attention</div>
-                                        <div class="inner-content">
-                                            <!-- Attention output -->
-                                            <div class="arch-box">Attention Output</div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑</div>
-
-                                            <!-- Attention computation -->
-                                            <div class="arch-box" style="margin: 8px 0;">softmax(QK'/√d) × V</div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑</div>
-
-                                            <!-- Q, K, V projections from same normalized input -->
-                                            <div class="stream-split" style="margin: 10px 0;">
-                                                <div class="stream-box">
-                                                    <div class="qkv-box">Q</div>
-                                                    <div class="stream-label">Query</div>
-                                                </div>
-                                                <div class="stream-box">
-                                                    <div class="qkv-box">K</div>
-                                                    <div class="stream-label">Key</div>
-                                                </div>
-                                                <div class="stream-box">
-                                                    <div class="qkv-box">V</div>
-                                                    <div class="stream-label">Value</div>
-                                                </div>
-                                            </div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑ (3 linear projections)</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- After attention, before MLP -->
-                                <div class="component-layer" style="margin: 20px 0;">
-                                    <div class="arch-box norm">Add & Norm</div>
-                                    <div style="font-size: 8px; color: var(--text-tertiary); margin-top: 5px;">← residual + attention output</div>
                                 </div>
 
                                 <!-- MLP Block -->
@@ -1484,6 +1472,44 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- After attention, before MLP -->
+                                <div class="component-layer" style="margin: 20px 0;">
+                                    <div class="arch-box norm">Add & Norm</div>
+                                    <div style="font-size: 8px; color: var(--text-tertiary); margin-top: 5px;">← residual + attention output</div>
+                                </div>
+
+                                <!-- Attention Block -->
+                                <div class="component-layer">
+                                    <div class="block-container attn-block">
+                                        <div class="block-title">Self-Attention</div>
+                                        <div class="inner-content">
+                                            <!-- Attention output -->
+                                            <div class="arch-box">Attention Output</div>
+                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑</div>
+
+                                            <!-- Attention computation -->
+                                            <div class="arch-box" style="margin: 8px 0;">softmax(QK'/√d) × V</div>
+                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑</div>
+
+                                            <!-- Q, K, V projections from same normalized input -->
+                                            <div class="stream-split" style="margin: 10px 0;">
+                                                <div class="stream-box">
+                                                    <div class="qkv-box">Q</div>
+                                                    <div class="stream-label">Query</div>
+                                                </div>
+                                                <div class="stream-box">
+                                                    <div class="qkv-box">K</div>
+                                                    <div class="stream-label">Key</div>
+                                                </div>
+                                                <div class="stream-box">
+                                                    <div class="qkv-box">V</div>
+                                                    <div class="stream-label">Value</div>
+                                                </div>
+                                            </div>
+                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑ (3 linear projections)</div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- First layer norm (before attention) -->
@@ -1570,9 +1596,6 @@
                     <button class="info-btn" id="info-btn" title="Information">ℹ️</button>
                     <div class="page-title" id="page-title">Overview</div>
                     <div class="experiment-badge" id="experiment-badge">-</div>
-                    <select id="prompt-selector" style="margin-left: 12px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 11px; cursor: pointer;">
-                        <option value="0">Prompt 0</option>
-                    </select>
                 </div>
                 <div class="header-right">
                     <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">🌙</button>
@@ -1592,8 +1615,6 @@
         let experimentData = null;
         let currentView = 'data-explorer';
         let selectedTraits = new Set();
-        let currentPrompt = 0;  // Default to prompt_0
-        let availablePrompts = [];  // Available prompt numbers for current experiment
 
         // Display names for better interpretability
         const DISPLAY_NAMES = {
@@ -1950,24 +1971,12 @@
                         const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
                         const baseName = traitName.replace('_natural', '');
 
-                        // Check for tier 3 (layer internals) data
-                        let hasTier3 = false;
-                        try {
-                            const tier3Check = await fetch(
-                                `../experiments/${experimentName}/${traitName}/inference/layer_internal_states/prompt_0_layer16.json`
-                            );
-                            hasTier3 = tier3Check.ok;
-                        } catch (e) {
-                            // No tier 3 data
-                        }
-
                         experimentData.traits.push({
                             name: traitName,
                             baseName: baseName,
                             method: method,
                             responseFormat: responseFormat,
                             hasResponses: true,
-                            hasTier3: hasTier3,
                             hasVectors: false,  // Will check later
                             metadata: metadata
                         });
@@ -1983,64 +1992,12 @@
                 // Populate trait checkboxes
                 populateTraitCheckboxes();
 
-                // Discover available prompts (async, but don't wait)
-                discoverAvailablePrompts();
-
                 // Render view
                 renderView();
             } catch (error) {
                 console.error('Error loading experiment data:', error);
                 showError(`Failed to load experiment: ${experimentName}`);
             }
-        }
-
-        // Discover available prompts for current experiment
-        async function discoverAvailablePrompts() {
-            if (!experimentData || !experimentData.traits || experimentData.traits.length === 0) {
-                availablePrompts = [0];
-                populatePromptSelector();
-                return;
-            }
-
-            // Check first trait with inference data for available prompts
-            const promptSet = new Set();
-
-            for (const trait of experimentData.traits) {
-                const tier2Dir = `../experiments/${experimentData.name}/${trait.name}/inference/residual_stream_activations/`;
-
-                // Try to find prompt files (check up to prompt_30)
-                for (let i = 0; i <= 30; i++) {
-                    try {
-                        const response = await fetch(`${tier2Dir}prompt_${i}.json`, { method: 'HEAD' });
-                        if (response.ok) {
-                            promptSet.add(i);
-                        }
-                    } catch (e) {
-                        // File doesn't exist, continue
-                    }
-                }
-
-                // If we found at least one prompt, we can stop (assume all traits have similar prompts)
-                if (promptSet.size > 0) break;
-            }
-
-            // If no prompts found, default to [0]
-            availablePrompts = promptSet.size > 0 ? Array.from(promptSet).sort((a, b) => a - b) : [0];
-            console.log('Discovered available prompts:', availablePrompts);
-
-            // Reset to first available prompt
-            currentPrompt = availablePrompts[0] || 0;
-
-            populatePromptSelector();
-        }
-
-        // Populate prompt selector dropdown
-        function populatePromptSelector() {
-            const selector = document.getElementById('prompt-selector');
-            selector.innerHTML = availablePrompts.map(n =>
-                `<option value="${n}">Prompt ${n}</option>`
-            ).join('');
-            selector.value = currentPrompt;
         }
 
         // Render current view
@@ -2470,8 +2427,8 @@
             const allResults = await Promise.all(fetchPromises);
             console.log(`Loaded ${allResults.length} results`);
 
-            // Count successful loads (filter out null results)
-            const successfulVectors = allResults.filter(r => r && r.type === 'vector' && r.data !== null).length;
+            // Count successful loads
+            const successfulVectors = allResults.filter(r => r.type === 'vector' && r.data !== null).length;
             console.log(`Successfully loaded ${successfulVectors} vector metadata files`);
 
             // Organize results by trait
@@ -2482,17 +2439,17 @@
                         vectorData[method] = {};
                     }
 
-                    // Fill in vector data from parallel fetch results (filter out nulls)
+                    // Fill in vector data from parallel fetch results
                     allResults
-                        .filter(r => r && r.type === 'vector' && r.trait === trait.name && r.data !== null)
+                        .filter(r => r.type === 'vector' && r.trait === trait.name && r.data !== null)
                         .forEach(r => {
                             vectorData[r.method][r.layer] = r.data;
                         });
 
-                    // Extract prompt examples (filter out nulls)
+                    // Extract prompt examples
                     const prompts = {};
                     allResults
-                        .filter(r => r && r.type === 'prompt' && r.trait === trait.name && r.data !== null)
+                        .filter(r => r.type === 'prompt' && r.trait === trait.name && r.data !== null)
                         .forEach(r => {
                             prompts[r.polarity] = r.data;
                         });
@@ -3073,7 +3030,7 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(0,0,0,0.6);
+                background: rgba(0,0,0,0.5);
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -3089,11 +3046,11 @@
             };
 
             modal.innerHTML = `
-                <div style="background: var(--bg-primary); border-radius: 4px; padding: 20px; max-width: 1000px; max-height: 90vh; overflow-y: auto; position: relative;">
-                    <button id="close-modal" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary); padding: 4px 8px;">×</button>
-                    <h2 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">${traitName}</h2>
-                    <h3 style="margin: 0 0 16px 0; font-size: 12px; font-weight: 400; color: var(--text-secondary);">${quadrantNames[quadrant]}</h3>
-                    <div id="quadrant-detail-content" style="color: var(--text-secondary);">Loading cross-distribution data...</div>
+                <div style="background: var(--bg-secondary); border-radius: 8px; padding: 30px; max-width: 1200px; max-height: 85vh; overflow-y: auto; position: relative;">
+                    <button id="close-modal" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary);">×</button>
+                    <h2 style="margin: 0 0 5px 0;">${traitName}</h2>
+                    <h3 style="margin: 0 0 20px 0; font-weight: normal; color: var(--text-secondary);">${quadrantNames[quadrant]}</h3>
+                    <div id="quadrant-detail-content">Loading cross-distribution data...</div>
                 </div>
             `;
 
@@ -3153,83 +3110,68 @@
                     return;
                 }
 
-                // Create summary stats - simple compact table
+                // Create summary stats - only for methods with data
                 const availableMethods = methods.filter(method => quadrantData.methods[method]);
+                const gridCols = Math.min(availableMethods.length, 4); // Max 4 columns
 
                 const summaryHTML = availableMethods.length > 0 ? `
-                    <div style="margin-bottom: 16px;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <th style="text-align: left; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Method</th>
-                                    <th style="text-align: right; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Best</th>
-                                    <th style="text-align: right; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Layer</th>
-                                    <th style="text-align: right; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Avg</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${availableMethods.map(method => {
-                                    const methodData = quadrantData.methods[method];
-                                    return `
-                                        <tr>
-                                            <td style="padding: 4px 8px; color: var(--text-primary);">${method.replace(/_/g, ' ')}</td>
-                                            <td style="padding: 4px 8px; text-align: right; color: var(--text-primary);">${(methodData.best_accuracy * 100).toFixed(1)}%</td>
-                                            <td style="padding: 4px 8px; text-align: right; color: var(--text-secondary);">${methodData.best_layer}</td>
-                                            <td style="padding: 4px 8px; text-align: right; color: var(--text-tertiary);">${(methodData.avg_accuracy * 100).toFixed(1)}%</td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
+                    <div style="display: grid; grid-template-columns: repeat(${gridCols}, 1fr); gap: 15px; margin-bottom: 20px;">
+                        ${availableMethods.map(method => {
+                            const methodData = quadrantData.methods[method];
+                            return `
+                                <div style="padding: 10px; background: var(--bg-primary); border-radius: 4px;">
+                                    <div style="font-size: 11px; color: var(--text-tertiary); text-transform: uppercase;">${method.replace(/_/g, ' ')}</div>
+                                    <div style="font-size: 18px; font-weight: 600; color: var(--primary-color);">${(methodData.best_accuracy * 100).toFixed(1)}%</div>
+                                    <div style="font-size: 11px; color: var(--text-secondary);">Layer ${methodData.best_layer}</div>
+                                    <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 3px;">Avg: ${(methodData.avg_accuracy * 100).toFixed(1)}%</div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 ` : '';
 
                 content.innerHTML = summaryHTML + `
-                    <div style="margin-top: 16px;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: var(--text-primary);">Accuracy Across Layers (${heatmapData.length} Method${heatmapData.length > 1 ? 's' : ''} × ${nLayers} Layers)</h4>
-                        <div id="quadrant-heatmap" style="width: 100%; height: 500px;"></div>
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px;">Accuracy Across Layers (${heatmapData.length} Method${heatmapData.length > 1 ? 's' : ''} × ${nLayers} Layers)</h4>
+                        <div id="quadrant-heatmap" style="width: 100%; height: 400px;"></div>
                     </div>
-                    <div style="margin-top: 12px; font-size: 11px; color: var(--text-tertiary);">
-                        <div>Vector: ${quadrantData.vector_source} • Test: ${quadrantData.test_source}</div>
+                    <div style="margin-top: 20px; font-size: 12px; color: var(--text-secondary);">
+                        <p><strong>Vector source:</strong> ${quadrantData.vector_source}</p>
+                        <p><strong>Test distribution:</strong> ${quadrantData.test_source}</p>
                     </div>
                 `;
 
-                // Render heatmap - transpose so methods are on x-axis, layers on y-axis
+                // Render heatmap
                 const layers = Array.from({ length: nLayers }, (_, i) => i);
-
-                // Transpose: swap x and y
-                const transposedData = heatmapData[0].map((_, colIndex) =>
-                    heatmapData.map(row => row[colIndex])
-                );
-
                 const trace = {
-                    z: transposedData,
-                    x: methodLabels,  // Methods on x-axis
-                    y: layers,        // Layers on y-axis
+                    z: heatmapData,
+                    x: layers,
+                    y: methodLabels,
                     type: 'heatmap',
                     colorscale: 'Viridis',
                     colorbar: {
                         title: 'Accuracy (%)',
                         titleside: 'right'
                     },
-                    hovertemplate: '%{x}<br>Layer %{y}<br>Accuracy: %{z:.1f}%<extra></extra>',
+                    hovertemplate: '%{y}<br>Layer %{x}<br>Accuracy: %{z:.1f}%<extra></extra>',
                     zmin: 0,
                     zmax: 100
                 };
 
                 Plotly.newPlot('quadrant-heatmap', [trace], getPlotlyLayout({
-                    margin: { l: 50, r: 60, t: 20, b: 60 },
+                    margin: { l: 90, r: 60, t: 20, b: 40 },
                     xaxis: {
-                        title: 'Method',
-                        side: 'bottom'
-                    },
-                    yaxis: {
                         title: 'Layer',
                         showticklabels: true,
-                        autorange: 'reversed'  // Layer 0 at top
+                        tickmode: 'linear',
+                        dtick: 2
                     },
-                    height: 600
-                }), { displayModeBar: false });
+                    yaxis: {
+                        title: 'Method',
+                        side: 'left'
+                    },
+                    height: 400
+                }), { displayModeBar: true });
 
             } catch (error) {
                 const content = document.getElementById('quadrant-detail-content');
@@ -3265,29 +3207,29 @@
                 traitDiv.style.marginBottom = '20px';
                 container.appendChild(traitDiv);
 
-                // Try to load the selected prompt
+                // Try to load prompt_0.json
                 try {
-                    const fetchPath = `${tier2Dir}prompt_${currentPrompt}.json`;
-                    console.log(`[${trait.name}] Fetching trajectory data for prompt ${currentPrompt}`);
+                    const fetchPath = `${tier2Dir}prompt_0.json`;
+                    console.log(`[${trait.name}] Fetching trajectory data`);
                     const response = await fetch(fetchPath);
 
                     if (!response.ok) {
-                        console.log(`[${trait.name}] No data available for prompt ${currentPrompt} (${response.status})`);
-                        renderTier2InstructionsInContainer(traitDiv.id, trait, currentPrompt);
+                        console.log(`[${trait.name}] No data available (${response.status})`);
+                        renderTier2InstructionsInContainer(traitDiv.id, trait);
                         continue;
                     }
 
                     const data = await response.json();
-                    console.log(`[${trait.name}] Data loaded successfully for prompt ${currentPrompt}`);
+                    console.log(`[${trait.name}] Data loaded successfully`);
                     renderTier2DataInContainer(traitDiv.id, trait, data);
                 } catch (error) {
-                    console.log(`[${trait.name}] Load failed for prompt ${currentPrompt}:`, error.message);
-                    renderTier2InstructionsInContainer(traitDiv.id, trait, currentPrompt);
+                    console.log(`[${trait.name}] Load failed:`, error.message);
+                    renderTier2InstructionsInContainer(traitDiv.id, trait);
                 }
             }
         }
 
-        function renderTier2InstructionsInContainer(containerId, trait, promptNum) {
+        function renderTier2InstructionsInContainer(containerId, trait) {
             const container = document.getElementById(containerId);
             if (!container) {
                 console.error(`Container ${containerId} not found`);
@@ -3299,17 +3241,20 @@
             const nCheckpoints = nLayers * 3;
 
             container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
-                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: 8px;">⚠️ No data for prompt ${promptNum}</span>
+                <div class="card" style="margin-bottom: 10px;">
+                    <div class="card-title">${getDisplayName(trait.name)}</div>
+
+                    <div class="info" style="margin-bottom: 10px; font-size: 12px;">
+                        ⚠️ No trajectory data available
+                    </div>
+
+                    <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; font-size: 12px;">
+                        <p style="color: var(--text-secondary); margin-bottom: 8px;">
+                            Capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
+                        </p>
+                        <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 8px 0; overflow-x: auto; border: 1px solid var(--border-color); font-size: 11px;">python inference/capture_tier2.py --experiment ${experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
+                    </div>
                 </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    The file <code>prompt_${promptNum}.json</code> does not exist for this trait. You may need to run inference with this prompt.
-                </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    To capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
-                </div>
-                <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_tier2.py --experiment ${experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
             `;
         }
 
@@ -3348,13 +3293,19 @@
             const attentionViewerId = `attention-viewer-${traitId}`;
 
             container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
+                <div class="card" style="margin-bottom: 10px;">
+                    <div class="card-title" style="margin-bottom: 5px;">${getDisplayName(trait.name)}</div>
+
+                    <!-- Conversation context - compact -->
+                    <div style="background: var(--bg-tertiary); padding: 5px 8px; border-radius: 4px; margin-bottom: 8px;">
+                        <div style="color: var(--text-primary); font-size: 12px; margin-bottom: 2px;">${data.prompt.text} ${data.response.text}</div>
+                        <div style="color: var(--text-secondary); font-size: 10px;">
+                            ${data.prompt.n_tokens} prompt + ${data.response.n_tokens} response = ${nTotalTokens} tokens
+                        </div>
+                    </div>
+
+                    <div id="${trajectoryId}" style="margin-bottom: 10px;"></div>
                 </div>
-                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 8px;">
-                    ${data.prompt.text} ${data.response.text}
-                </div>
-                <div id="${trajectoryId}"></div>
             `;
 
             // Render combined trajectory heatmap with separator line
@@ -3774,29 +3725,29 @@
                 traitDiv.style.borderBottom = '1px solid var(--border-color)';
                 container.appendChild(traitDiv);
 
-                // Try to load the selected prompt
+                // Try to load prompt_0.json
                 try {
-                    const fetchPath = `${tier2Dir}prompt_${currentPrompt}.json`;
-                    console.log(`[${trait.name}] Fetching prompt activation data for prompt ${currentPrompt}`);
+                    const fetchPath = `${tier2Dir}prompt_0.json`;
+                    console.log(`[${trait.name}] Fetching prompt activation data`);
                     const response = await fetch(fetchPath);
 
                     if (!response.ok) {
-                        console.log(`[${trait.name}] No data available for prompt ${currentPrompt} (${response.status})`);
-                        renderPromptActivationInstructions(traitDiv.id, trait, currentPrompt);
+                        console.log(`[${trait.name}] No data available (${response.status})`);
+                        renderPromptActivationInstructions(traitDiv.id, trait);
                         continue;
                     }
 
                     const data = await response.json();
-                    console.log(`[${trait.name}] Data loaded successfully for prompt ${currentPrompt}`);
+                    console.log(`[${trait.name}] Data loaded successfully`);
                     renderPromptActivationData(traitDiv.id, trait, data);
                 } catch (error) {
-                    console.log(`[${trait.name}] Load failed for prompt ${currentPrompt}:`, error.message);
-                    renderPromptActivationInstructions(traitDiv.id, trait, currentPrompt);
+                    console.log(`[${trait.name}] Load failed:`, error.message);
+                    renderPromptActivationInstructions(traitDiv.id, trait);
                 }
             }
         }
 
-        function renderPromptActivationInstructions(containerId, trait, promptNum) {
+        function renderPromptActivationInstructions(containerId, trait) {
             const container = document.getElementById(containerId);
             const nLayers = trait.metadata?.n_layers || 26;
 
@@ -3805,15 +3756,12 @@
                     <div class="card-title">${getDisplayName(trait.name)}</div>
 
                     <div class="info" style="margin-bottom: 10px; font-size: 12px;">
-                        ⚠️ No data for prompt ${promptNum}
+                        ⚠️ No per-token activation data available
                     </div>
 
                     <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; font-size: 12px;">
                         <p style="color: var(--text-secondary); margin-bottom: 8px;">
-                            The file <code>prompt_${promptNum}.json</code> does not exist for this trait.
-                        </p>
-                        <p style="color: var(--text-secondary); margin-bottom: 8px;">
-                            To capture per-token activation trajectory (prompt + response):
+                            Capture per-token activation trajectory (prompt + response):
                         </p>
                         <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 8px 0; overflow-x: auto; border: 1px solid var(--border-color); font-size: 11px;">python inference/capture_tier2.py --experiment ${experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
                     </div>
@@ -4000,54 +3948,34 @@
             const filteredTraits = getFilteredTraits();
 
             if (filteredTraits.length === 0) {
-                contentArea.innerHTML = `<div style="color: var(--text-secondary); font-size: 12px;">Select at least one trait to view layer internals</div>`;
+                contentArea.innerHTML = `
+                    <div class="card">
+                        <div class="card-title">Layer Deep Dive</div>
+                        <div class="info">Select at least one trait to view layer internals</div>
+                    </div>
+                `;
                 return;
             }
 
-            // Load data for ALL selected traits
-            contentArea.innerHTML = '<div id="all-traits-layer-dive"></div>';
-            const container = document.getElementById('all-traits-layer-dive');
+            // Try to find Tier 3 data for the first selected trait
+            const trait = filteredTraits[0];
+            const tier3Dir = `../experiments/${experimentData.name}/${trait.name}/inference/layer_internal_states/`;
 
-            for (const trait of filteredTraits) {
-                const tier3Dir = `../experiments/${experimentData.name}/${trait.name}/inference/layer_internal_states/`;
+            // Try to load prompt_0_layer16.json (default layer)
+            try {
+                const response = await fetch(`${tier3Dir}prompt_0_layer16.json`);
+                if (!response.ok) throw new Error('No data found');
 
-                // Create a unique div for this trait
-                const traitDiv = document.createElement('div');
-                traitDiv.id = `layer-dive-${trait.name}`;
-                traitDiv.style.marginBottom = '32px';  // Airy spacing between traits
-                container.appendChild(traitDiv);
-
-                // Try to load the selected prompt for default layer 16
-                try {
-                    const response = await fetch(`${tier3Dir}prompt_${currentPrompt}_layer16.json`);
-                    if (!response.ok) throw new Error(`No data found for prompt ${currentPrompt}`);
-
-                    const data = await response.json();
-                    renderTier3DataInContainer(traitDiv.id, trait, data);
-                } catch (error) {
-                    // No data yet - show instructions
-                    renderTier3InstructionsInContainer(traitDiv.id, trait, currentPrompt);
-                }
+                const data = await response.json();
+                renderTier3Data(trait, data);
+            } catch (error) {
+                // No data yet - show instructions
+                renderTier3Instructions(trait);
             }
         }
 
-        function renderTier3Instructions(trait, filteredTraits) {
+        function renderTier3Instructions(trait) {
             const contentArea = document.getElementById('content-area');
-
-            // Find traits with tier 3 data
-            const traitsWithTier3 = experimentData.traits.filter(t => t.hasTier3);
-
-            let tier3StatusHtml = '';
-            if (traitsWithTier3.length > 0) {
-                const traitList = traitsWithTier3.map(t => `<strong>${getDisplayName(t.name)}</strong>`).join(', ');
-                tier3StatusHtml = `
-                    <div style="background: var(--accent-color); color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-                        ✓ Layer internals available for: ${traitList}
-                        <br><span style="opacity: 0.9; font-size: 13px;">Select ${traitsWithTier3.length === 1 ? 'this trait' : 'one of these traits'} to view the data</span>
-                    </div>
-                `;
-            }
-
             contentArea.innerHTML = `
                 <div class="explanation">
                     <div class="explanation-summary">We can pinpoint exactly which neurons and attention mechanisms are responsible for computing a trait at a specific layer.</div>
@@ -4081,8 +4009,6 @@
                 <div class="card">
                     <div class="card-title">Layer Deep Dive: ${getDisplayName(trait.name)}</div>
 
-                    ${tier3StatusHtml}
-
                     <div class="info" style="margin-bottom: 20px;">
                         <strong>⚠️ No layer internals data available for ${trait.name}</strong>
                     </div>
@@ -4107,105 +4033,6 @@
                     </div>
                 </div>
             `;
-        }
-
-        function renderTier3InstructionsInContainer(containerId, trait, promptNum) {
-            const container = document.getElementById(containerId);
-
-            container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
-                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: 8px;">⚠️ No data for prompt ${promptNum}</span>
-                </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    The file <code>prompt_${promptNum}_layer16.json</code> does not exist for this trait.
-                </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    To capture complete internals (Q/K/V, attention heads, 9216 MLP neurons):
-                </div>
-                <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_single_layer.py --experiment ${experimentData.name} --trait ${trait.name} --layer 16 --prompts "..." --save-json</pre>
-            `;
-        }
-
-        function renderTier3DataInContainer(containerId, trait, data) {
-            const container = document.getElementById(containerId);
-
-            // Get prompt GELU activations: [n_tokens, 9216]
-            const promptGelu = data.internals.prompt.gelu;
-            const promptTokens = data.prompt.tokens;
-
-            // Combine prompt and response tokens and activations
-            const responseGelu = data.internals.response.gelu;
-            const responseTokens = data.response.tokens;
-
-            const allTokens = [...promptTokens, ...responseTokens];
-            const allGelu = [...promptGelu, ...responseGelu];
-
-            container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
-                    <span style="color: var(--text-secondary); font-size: 11px; margin-left: 8px;">Layer ${data.layer}</span>
-                </div>
-                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 8px;">
-                    ${data.prompt.text} ${data.response.text}
-                </div>
-                <div id="top-neurons-${trait.name}" style="margin-top: 8px;"></div>
-            `;
-
-            // Render combined neuron activations (compact)
-            renderTopNeuronsCompact(`top-neurons-${trait.name}`, allGelu, allTokens, promptTokens.length);
-        }
-
-        function renderTopNeuronsCompact(divId, geluActivations, tokens, promptLength) {
-            // geluActivations: [n_tokens, 9216]
-            const nTokens = geluActivations.length;
-            const nNeurons = geluActivations[0].length;
-
-            // Average absolute activation across all tokens for each neuron
-            const neuronAvgAbs = new Array(nNeurons).fill(0);
-            for (let n = 0; n < nNeurons; n++) {
-                let sum = 0;
-                for (let t = 0; t < nTokens; t++) {
-                    sum += Math.abs(geluActivations[t][n]);
-                }
-                neuronAvgAbs[n] = sum / nTokens;
-            }
-
-            // Get top 10 neurons
-            const neuronIndices = Array.from({length: nNeurons}, (_, i) => i);
-            neuronIndices.sort((a, b) => neuronAvgAbs[b] - neuronAvgAbs[a]);
-            const topNeurons = neuronIndices.slice(0, 10);
-
-            // Build heatmap data [10 neurons x n_tokens]
-            const heatmapData = topNeurons.map(n =>
-                geluActivations.map(tokenAct => tokenAct[n])
-            );
-
-            const trace = {
-                z: heatmapData,
-                x: tokens,
-                y: topNeurons.map(n => `N${n}`),
-                type: 'heatmap',
-                colorscale: 'Viridis',
-                hovertemplate: 'Token: %{x}<br>Neuron: %{y}<br>Activation: %{z:.3f}<extra></extra>'
-            };
-
-            const layout = {
-                margin: { t: 5, b: 30, l: 40, r: 5 },
-                height: 150,
-                xaxis: {
-                    tickangle: -45,
-                    tickfont: { size: 9 }
-                },
-                yaxis: {
-                    tickfont: { size: 9 }
-                },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#e0e0e0', family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }
-            };
-
-            Plotly.newPlot(divId, [trace], layout, { displayModeBar: false });
         }
 
         function renderTier3Data(trait, data) {
@@ -4845,13 +4672,6 @@
 
             // Select all traits button
             document.getElementById('select-all-btn').addEventListener('click', toggleAllTraits);
-
-            // Prompt selector
-            document.getElementById('prompt-selector').addEventListener('change', (e) => {
-                currentPrompt = parseInt(e.target.value);
-                console.log(`Prompt changed to: ${currentPrompt}`);
-                renderView();
-            });
         }
 
         // Utility functions

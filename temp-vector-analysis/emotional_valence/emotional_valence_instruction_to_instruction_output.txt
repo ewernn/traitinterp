@@ -1,0 +1,191 @@
+================================================================================
+SAME-DISTRIBUTION TEST: Instruction → Instruction
+emotional_valence
+================================================================================
+
+Loaded instruction-based activations: torch.Size([188, 26, 2304])
+  (n_examples, n_layers, hidden_dim)
+
+Positive examples: 100
+Negative examples: 101
+
+Train: 80 pos + 80 neg = 160
+Test:  20 pos + 21 neg = 41
+
+================================================================================
+TESTING ALL LAYERS × METHODS
+================================================================================
+
+Layer 0:
+  mean_diff   :  46.4% (13/28)
+  probe       :  60.7% (17/28)
+  ica         :  60.7% (17/28)
+  gradient    :  42.9% (12/28)
+
+Layer 1:
+  mean_diff   :  42.9% (12/28)
+  probe       :  60.7% (17/28)
+  ica         :  57.1% (16/28) [sign flipped]
+  gradient    :  42.9% (12/28)
+
+Layer 2:
+  mean_diff   :  50.0% (14/28)
+  probe       :  60.7% (17/28)
+  ica         :  53.6% (15/28) [sign flipped]
+  gradient    :  53.6% (15/28)
+
+Layer 3:
+  mean_diff   :  46.4% (13/28)
+  probe       :  60.7% (17/28)
+  ica         :  60.7% (17/28) [sign flipped]
+  gradient    :  46.4% (13/28)
+
+Layer 4:
+  mean_diff   :  46.4% (13/28)
+  probe       :  60.7% (17/28)
+  ica         :  32.1% (9/28)
+  gradient    :  50.0% (14/28)
+
+Layer 5:
+  mean_diff   :  50.0% (14/28)
+  probe       :  60.7% (17/28)
+  ica         :  60.7% (17/28)
+  gradient    :  50.0% (14/28)
+
+Layer 6:
+  mean_diff   :  42.9% (12/28)
+  probe       :  60.7% (17/28)
+  ica         :  42.9% (12/28)
+  gradient    :  53.6% (15/28)
+
+Layer 7:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  53.6% (15/28) [sign flipped]
+  gradient    :  50.0% (14/28)
+
+Layer 8:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  42.9% (12/28) [sign flipped]
+  gradient    :  53.6% (15/28)
+
+Layer 9:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  32.1% (9/28)
+  gradient    :  57.1% (16/28)
+
+Layer 10:
+  mean_diff   :  42.9% (12/28)
+  probe       :  60.7% (17/28)
+  ica         :  71.4% (20/28) [sign flipped]
+  gradient    :  50.0% (14/28)
+
+Layer 11:
+  mean_diff   :  32.1% (9/28)
+  probe       :  60.7% (17/28)
+  ica         :  53.6% (15/28)
+  gradient    :  50.0% (14/28)
+
+Layer 12:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  46.4% (13/28)
+  gradient    :  50.0% (14/28)
+
+Layer 13:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  28.6% (8/28)
+  gradient    :  53.6% (15/28)
+
+Layer 14:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  35.7% (10/28) [sign flipped]
+  gradient    :  60.7% (17/28)
+
+Layer 15:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  35.7% (10/28) [sign flipped]
+  gradient    :  50.0% (14/28)
+
+Layer 16:
+  mean_diff   :  71.4% (20/28)
+  probe       :  60.7% (17/28)
+  ica         :  60.7% (17/28) [sign flipped]
+  gradient    :  57.1% (16/28)
+
+Layer 17:
+  mean_diff   :  35.7% (10/28)
+  probe       :  60.7% (17/28)
+  ica         :  35.7% (10/28) [sign flipped]
+  gradient    :  57.1% (16/28)
+
+Layer 18:
+  mean_diff   :  35.7% (10/28)
+  probe       :  60.7% (17/28)
+  ica         :  53.6% (15/28)
+  gradient    :  50.0% (14/28)
+
+Layer 19:
+  mean_diff   :  46.4% (13/28)
+  probe       :  60.7% (17/28)
+  ica         :  60.7% (17/28) [sign flipped]
+  gradient    :  57.1% (16/28)
+
+Layer 20:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  64.3% (18/28) [sign flipped]
+  gradient    :  42.9% (12/28)
+
+Layer 21:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  60.7% (17/28)
+  gradient    :  57.1% (16/28)
+
+Layer 22:
+  mean_diff   :  46.4% (13/28)
+  probe       :  60.7% (17/28)
+  ica         :  39.3% (11/28) [sign flipped]
+  gradient    :  57.1% (16/28)
+
+Layer 23:
+  mean_diff   :  39.3% (11/28)
+  probe       :  60.7% (17/28)
+  ica         :  53.6% (15/28)
+  gradient    :  57.1% (16/28)
+
+Layer 24:
+  mean_diff   :  35.7% (10/28)
+  probe       :  60.7% (17/28)
+  ica         :  42.9% (12/28) [sign flipped]
+  gradient    :  53.6% (15/28)
+
+Layer 25:
+  mean_diff   :  57.1% (16/28)
+  probe       :  60.7% (17/28)
+  ica         :  67.9% (19/28) [sign flipped]
+  gradient    :  53.6% (15/28)
+
+================================================================================
+SUMMARY
+================================================================================
+
+Top 10 performers:
+ 1. mean_diff    layer 16:  71.4%
+ 2. ica          layer 10:  71.4%
+ 3. ica          layer 25:  67.9%
+ 4. ica          layer 20:  64.3%
+ 5. probe        layer 25:  60.7%
+ 6. probe        layer 24:  60.7%
+ 7. probe        layer 23:  60.7%
+ 8. probe        layer 22:  60.7%
+ 9. probe        layer 21:  60.7%
+10. ica          layer 21:  60.7%
+
+Results saved to: /tmp/emotional_valence_instruction_to_instruction_results.json

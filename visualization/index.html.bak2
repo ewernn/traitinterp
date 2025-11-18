@@ -67,62 +67,49 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
-            padding: 16px;
-            transition: background 0.15s ease;
-            font-size: 12px;
-            line-height: 1.3;
+            padding: 20px;
+            transition: background 0.3s ease;
         }
 
         .container {
             display: flex;
-            gap: 16px;
+            gap: 0;
             max-width: 100%;
             height: 100vh;
             overflow: hidden;
         }
 
         .transformer-sidebar {
-            width: 550px;
+            width: 200px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            transition: all 0.15s ease;
+            transition: all 0.3s ease;
             position: relative;
         }
 
-                .transformer-sidebar.hidden {
-            width: 30px;
-            overflow: visible;
+        .transformer-sidebar.hidden {
+            width: 0;
+            border: none;
+            overflow: hidden;
         }
-
-        .transformer-sidebar.hidden .transformer-header {
-            padding: 8px 4px;
-            justify-content: center;
-        }
-
-        .transformer-sidebar.hidden .transformer-title {
-            display: none;
-        }
-
-        .transformer-sidebar.hidden > *:not(.transformer-header) {
-            display: none;
-        }
-
 
         .transformer-header {
-            padding: 8px;
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             z-index: 10;
-            margin-bottom: 8px;
         }
 
         .transformer-title {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 600;
             color: var(--text-secondary);
             text-transform: uppercase;
@@ -134,45 +121,49 @@
             border: none;
             color: var(--text-secondary);
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
             padding: 4px;
             line-height: 1;
-            transition: color 0.15s ease;
+            transition: transform 0.3s ease;
         }
 
         .transformer-toggle:hover {
             color: var(--primary-color);
+            transform: scale(1.1);
         }
 
         .transformer-content {
-            padding: 0 8px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 8px;
         }
 
         .layer-box {
-            padding: 6px 8px;
-            border-radius: 4px;
-            transition: color 0.15s ease;
-            cursor: pointer;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            transition: all 0.2s ease;
         }
 
         .layer-box.highlighted {
-            color: var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
         }
 
         .layer-number {
             font-size: 11px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         .sublayer {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-secondary);
             padding: 2px 4px;
+            background: var(--bg-secondary);
             border-radius: 3px;
             margin-bottom: 2px;
         }
@@ -183,443 +174,113 @@
 
         .layer-ellipsis {
             text-align: center;
-            padding: 8px;
+            padding: 12px;
             color: var(--text-tertiary);
             font-size: 11px;
             font-weight: 600;
-        }
-
-        .arch-diagram {
-            margin-top: 20px;
-            padding: 20px 15px;
-            border-top: 2px solid var(--border-color);
-        }
-
-        .arch-diagram-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .arch-layout {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .arch-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0;
-            position: relative;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .flow-svg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .component-layer {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-        }
-
-        .arch-column-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .token-display {
-            background: var(--bg-tertiary);
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 12px 20px;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
-            font-family: 'Monaco', 'Menlo', monospace;
-        }
-
-        .decoder-block {
-            display: flex;
-            flex-direction: column-reverse;
-            align-items: center;
-            gap: 0;
-            width: 100%;
-            position: relative;
-        }
-
-        .block-container {
-            background: transparent;
-            border: none;
-            border-radius: 10px;
-            padding: 20px;
-            width: 100%;
-            position: relative;
-            margin: 12px 0;
-        }
-
-        .block-container.mlp-block {
-            background: rgba(186, 104, 200, 0.08);
-        }
-
-        [data-theme="dark"] .block-container.mlp-block {
-            background: rgba(171, 71, 188, 0.12);
-        }
-
-        .block-container.attn-block {
-            background: rgba(102, 187, 106, 0.08);
-        }
-
-        [data-theme="dark"] .block-container.attn-block {
-            background: rgba(76, 175, 80, 0.12);
-        }
-
-        .block-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 10px;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .arch-box {
-            background: var(--bg-secondary);
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-align: center;
-            width: 100%;
-            transition: all 0.2s ease;
-        }
-
-        .arch-box:hover {
-            border-color: var(--primary-color);
-            transform: scale(1.02);
-        }
-
-        .arch-box.norm {
-            background: #e3f2fd;
-            border-color: #90caf9;
-        }
-
-        [data-theme="dark"] .arch-box.norm {
-            background: #1e3a4a;
-            border-color: #2196f3;
-        }
-
-        .arch-arrow {
-            display: none;
-        }
-
-        .flow-path {
-            fill: none;
-            stroke: var(--primary-color);
-            stroke-width: 3;
-            opacity: 0.6;
-        }
-
-        .flow-arrow {
-            fill: var(--primary-color);
-            opacity: 0.8;
-        }
-
-        .skip-path {
-            fill: none;
-            stroke: var(--primary-color);
-            stroke-width: 4;
-            opacity: 0.7;
-            stroke-dasharray: 8, 4;
-        }
-
-        .skip-arrow {
-            position: absolute;
-            right: -40px;
-            top: -10px;
-            bottom: -10px;
-            width: 35px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            color: var(--primary-color);
-        }
-
-        .skip-line {
-            width: 5px;
-            flex-grow: 1;
-            background: var(--primary-color);
-            margin: 0;
-            border-radius: 3px;
-        }
-
-        .skip-arrow-up {
-            font-size: 28px;
-            line-height: 1;
-            font-weight: bold;
-            margin-bottom: -8px;
-        }
-
-        .neuron-layer {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            margin: 10px 0;
-        }
-
-        .neuron {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--primary-color);
-        }
-
-        .neuron.large-layer {
-            background: #ba68c8;
-        }
-
-        .neuron-connections {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .connection-lines {
-            width: 100%;
-            height: 40px;
-            position: relative;
-        }
-
-        .stream-split {
-            display: flex;
-            gap: 15px;
-            align-items: flex-start;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .stream-box {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .stream-label {
-            font-size: 8px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .attention-heads {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .attention-head {
-            background: var(--primary-color);
-            color: white;
-            border-radius: 4px;
-            padding: 8px 4px;
-            font-size: 9px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .qkv-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 6px;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .qkv-box {
-            background: var(--primary-color);
-            color: white;
-            border-radius: 5px;
-            padding: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .gqa-container {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .gqa-query-heads {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 3px;
-        }
-
-        .gqa-kv-heads {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 5px;
-        }
-
-        .gqa-query {
-            background: var(--primary-color);
-            color: white;
-            border-radius: 3px;
-            padding: 6px 2px;
-            font-size: 8px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .gqa-kv {
-            background: var(--success);
-            color: white;
-            border-radius: 4px;
-            padding: 8px 4px;
-            font-size: 9px;
-            font-weight: 600;
-            text-align: center;
-        }
-
-        .gqa-label {
-            font-size: 10px;
-            color: var(--text-secondary);
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .inner-content {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
         }
 
         .input-output-box {
-            padding: 6px;
+            background: var(--bg-tertiary);
+            border: 2px dashed var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
             text-align: center;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
-            color: var(--text-tertiary);
-            opacity: 0.6;
+            color: var(--text-secondary);
         }
 
         .sidebar {
-            width: 240px;
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            transition: background 0.15s ease;
+            transition: background 0.3s ease;
         }
 
         .sidebar-header {
-            padding: 12px;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
             position: sticky;
             top: 0;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             z-index: 10;
-            margin-bottom: 16px;
         }
 
         .sidebar-title {
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 2px;
-            transition: color 0.15s ease;
+            margin-bottom: 5px;
+            transition: color 0.3s ease;
         }
 
         .sidebar-subtitle {
-            font-size: 11px;
+            font-size: 12px;
             color: var(--text-secondary);
-            transition: color 0.15s ease;
+            transition: color 0.3s ease;
         }
 
         .sidebar-section {
-            padding: 0 12px;
-            margin-bottom: 32px;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .section-title {
-            font-size: 10px;
-            font-weight: 600;
+            font-size: 11px;
+            font-weight: 700;
             text-transform: uppercase;
             color: var(--text-tertiary);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             letter-spacing: 0.5px;
         }
 
         .nav-item {
-            padding: 6px 8px;
-            margin-bottom: 2px;
-            border-radius: 4px;
+            padding: 10px 12px;
+            margin-bottom: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: color 0.15s ease;
+            transition: all 0.2s;
             color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 400;
+            font-size: 14px;
+            font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .nav-item:hover {
+            background: var(--bg-tertiary);
             color: var(--text-primary);
         }
 
         .nav-item.active {
-            color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
         }
 
         .nav-item .icon {
-            font-size: 14px;
+            font-size: 16px;
         }
 
         .trait-checkbox {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 8px;
-            margin-bottom: 2px;
+            gap: 8px;
+            padding: 8px 12px;
+            margin-bottom: 4px;
             border-radius: 4px;
             cursor: pointer;
-            transition: color 0.15s ease;
-            font-size: 11px;
+            transition: all 0.2s;
+            font-size: 13px;
             color: var(--text-secondary);
         }
 
         .trait-checkbox:hover {
-            color: var(--text-primary);
+            background: var(--bg-tertiary);
         }
 
         .trait-checkbox input[type="checkbox"] {
@@ -634,8 +295,8 @@
         }
 
         .select-all-btn {
-            padding: 4px 8px;
-            font-size: 10px;
+            padding: 6px 10px;
+            font-size: 11px;
             margin-bottom: 8px;
         }
 
@@ -647,79 +308,97 @@
         }
 
         header {
-            padding: 8px 12px;
+            background: var(--bg-secondary);
+            padding: 15px 30px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            transition: background 0.3s ease;
         }
 
         .header-left {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
         }
 
         .header-right {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
         }
 
         .info-btn, .theme-toggle {
-            background: transparent;
-            border: none;
-            width: 24px;
-            height: 24px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 14px;
-            color: var(--text-secondary);
-            transition: color 0.15s ease;
+            font-size: 16px;
+            transition: all 0.2s;
         }
 
         .info-btn:hover, .theme-toggle:hover {
-            color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+            transform: scale(1.05);
         }
 
         .info-tooltip {
             position: fixed;
-            top: 50px;
-            left: 16px;
-            background: var(--bg-primary);
-            border-radius: 4px;
-            padding: 12px;
-            max-width: 400px;
+            top: 70px;
+            left: 20px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--primary-color);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 500px;
+            box-shadow: 0 8px 24px var(--shadow);
             z-index: 1000;
             display: none;
-            max-height: calc(100vh - 80px);
+            max-height: calc(100vh - 100px);
             overflow-y: auto;
         }
 
         .info-tooltip.show {
             display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .info-tooltip h3 {
-            color: var(--text-primary);
-            margin-bottom: 12px;
-            font-size: 13px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 18px;
         }
 
         .info-tooltip h4 {
             color: var(--text-secondary);
-            margin-top: 12px;
-            margin-bottom: 6px;
-            font-size: 11px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
 
         .info-tooltip ul {
-            margin-left: 16px;
+            margin-left: 20px;
             color: var(--text-secondary);
-            font-size: 11px;
-            line-height: 1.3;
+            font-size: 13px;
+            line-height: 1.6;
         }
 
         .info-tooltip strong {
@@ -729,8 +408,8 @@
         .info-tooltip .trait-list {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 4px;
-            margin-top: 6px;
+            gap: 5px;
+            margin-top: 8px;
             list-style: none;
             margin-left: 0;
         }
@@ -740,95 +419,103 @@
         }
 
         .page-title {
-            font-size: 14px;
+            font-size: 20px;
             font-weight: 600;
             color: var(--text-primary);
-            transition: color 0.15s ease;
+            transition: color 0.3s ease;
         }
 
         .experiment-badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            color: var(--text-tertiary);
-            font-weight: 400;
+            padding: 4px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 20px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
 
         .content-wrapper {
             flex: 1;
             overflow-y: auto;
-            padding: 0 12px 12px 12px;
+            padding: 30px;
         }
 
         label {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             color: var(--text-secondary);
             margin-bottom: 4px;
-            transition: color 0.15s ease;
+            transition: color 0.3s ease;
         }
 
         select, button {
-            padding: 4px 8px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
-            font-size: 11px;
-            background: transparent;
+            font-size: 14px;
+            background: var(--bg-secondary);
             color: var(--text-primary);
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.3s ease;
         }
 
         button {
-            color: var(--text-secondary);
+            background: var(--primary-color);
+            color: white;
             border: none;
-            font-weight: 400;
-            transition: color 0.15s ease;
+            font-weight: 600;
+            transition: background 0.2s;
         }
 
         button:hover {
-            color: var(--primary-color);
+            background: var(--primary-hover);
         }
 
         button:disabled {
-            color: var(--text-tertiary);
+            background: var(--border-color);
             cursor: not-allowed;
-            opacity: 0.5;
         }
 
         .tabs {
+            background: var(--bg-secondary);
             padding: 0;
-            margin-bottom: 32px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px var(--shadow);
             overflow: hidden;
+            transition: background 0.3s ease;
         }
 
         .tab-buttons {
             display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .tab-button {
-            padding: 6px 12px;
-            background: transparent;
+            flex: 1;
+            padding: 15px 20px;
+            background: var(--bg-secondary);
             border: none;
-            border-radius: 4px;
+            border-bottom: 3px solid transparent;
             cursor: pointer;
-            font-weight: 400;
-            font-size: 11px;
+            font-weight: 600;
             color: var(--text-secondary);
-            transition: color 0.15s ease;
+            transition: all 0.2s;
         }
 
         .tab-button:hover {
-            color: var(--text-primary);
+            background: var(--bg-tertiary);
         }
 
         .tab-button.active {
             color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            background: var(--bg-tertiary);
         }
 
         .tab-content {
             display: none;
+            padding: 20px;
         }
 
         .tab-content.active {
@@ -836,43 +523,58 @@
         }
 
         .card {
-            margin-bottom: 32px;
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow);
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
         }
 
         .card-title {
-            font-size: 13px;
+            font-size: 18px;
             font-weight: 600;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             color: var(--text-primary);
-            transition: color 0.15s ease;
+            transition: color 0.3s ease;
         }
 
         .stats-grid {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
         }
 
         .stat-card {
-            display: inline-block;
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+            transition: background 0.3s ease;
         }
 
         .stat-label {
-            font-size: 10px;
-            color: var(--text-tertiary);
-            transition: color 0.15s ease;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+            transition: color 0.3s ease;
         }
 
         .stat-value {
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 24px;
+            font-weight: 700;
             color: var(--text-primary);
-            transition: color 0.15s ease;
-            margin-left: 4px;
+            transition: color 0.3s ease;
         }
 
         .stat-detail {
-            display: none;
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 3px;
+            transition: color 0.3s ease;
         }
 
         .trait-grid {
@@ -1096,36 +798,33 @@
 
         /* Data Explorer Styles */
         .explorer-trait-card {
-            margin-bottom: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
             overflow: hidden;
-            transition: all 0.15s ease;
+            transition: all 0.2s;
         }
 
         .explorer-trait-header {
-            padding: 2px 0;
+            padding: 15px 20px;
             cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-tertiary);
             color: var(--text-primary);
-            transition: color 0.15s ease;
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .explorer-trait-header::before {
-            content: '▸ ';
-            color: var(--text-tertiary);
-        }
-
-        .explorer-trait-header.expanded::before {
-            content: '▾ ';
-            color: var(--primary-color);
+            transition: background 0.2s, color 0.2s;
         }
 
         .explorer-trait-header:hover {
-            color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
         }
 
         .explorer-trait-header.expanded {
-            color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
         }
 
         .explorer-trait-header strong,
@@ -1134,7 +833,7 @@
         }
 
         .explorer-trait-body {
-            padding: 0 0 0 12px;
+            padding: 20px;
             display: none;
         }
 
@@ -1144,25 +843,26 @@
 
         .file-tree {
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.2;
+            font-size: 13px;
+            line-height: 1.8;
         }
 
         .file-item {
-            padding: 1px 0;
+            padding: 4px 0;
             color: var(--text-secondary);
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 8px;
         }
 
         .file-item.clickable {
             cursor: pointer;
-            transition: color 0.15s ease;
+            transition: color 0.2s;
         }
 
         .file-item.clickable:hover {
             color: var(--primary-color);
+            text-decoration: underline;
         }
 
         .file-item strong,
@@ -1171,7 +871,7 @@
         }
 
         .file-icon {
-            font-size: 11px;
+            font-size: 14px;
         }
 
         .preview-modal {
@@ -1180,12 +880,12 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.7);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 2000;
-            padding: 16px;
+            padding: 20px;
         }
 
         .preview-modal.show {
@@ -1193,50 +893,56 @@
         }
 
         .preview-content {
-            background: var(--bg-primary);
-            border-radius: 4px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
             max-width: 900px;
             max-height: 80vh;
             width: 100%;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 10px 40px var(--shadow);
         }
 
         .preview-header {
-            padding: 8px 12px;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12px;
         }
 
         .preview-body {
-            padding: 12px;
+            padding: 20px;
             overflow-y: auto;
             flex: 1;
         }
 
         .close-btn {
-            background: transparent;
-            color: var(--text-secondary);
+            background: var(--danger);
+            color: white;
             border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             cursor: pointer;
-            font-size: 16px;
-            padding: 4px;
-            transition: color 0.15s ease;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .close-btn:hover {
-            color: var(--danger);
+            opacity: 0.8;
         }
 
         .json-viewer {
-            padding: 8px;
-            border-radius: 4px;
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 6px;
             overflow-x: auto;
             font-family: 'Courier New', monospace;
-            font-size: 11px;
-            line-height: 1.3;
+            font-size: 12px;
+            line-height: 1.6;
         }
 
         .json-viewer pre {
@@ -1267,16 +973,18 @@
         .csv-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11px;
+            font-size: 12px;
         }
 
         .csv-table th,
         .csv-table td {
-            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            padding: 8px;
             text-align: left;
         }
 
         .csv-table th {
+            background: var(--bg-tertiary);
             font-weight: 600;
             color: var(--text-primary);
         }
@@ -1285,14 +993,9 @@
             color: var(--text-secondary);
         }
 
-        .indent-1 { padding-left: 12px; }
-        .indent-2 { padding-left: 24px; }
-        .indent-3 { padding-left: 36px; }
-
-        .quadrant-score:hover {
-            color: var(--primary-color) !important;
-            text-decoration-style: solid !important;
-        }
+        .indent-1 { padding-left: 20px; }
+        .indent-2 { padding-left: 40px; }
+        .indent-3 { padding-left: 60px; }
     </style>
 </head>
 <body>
@@ -1356,151 +1059,48 @@
                 <button class="transformer-toggle" id="transformer-toggle" title="Hide architecture">◀</button>
             </div>
             <div class="transformer-content">
-                <!-- Detailed Architecture Diagram -->
-                <div class="arch-diagram">
-                    <div class="arch-diagram-title">Transformer Decoder Layer Flow</div>
+                <!-- Output at top -->
+                <div class="input-output-box">Output</div>
 
-                    <div class="arch-layout">
-                        <div class="arch-column">
-                                                        <!-- SVG for continuous flow lines -->
-                            <svg class="flow-svg" viewBox="0 0 500 1400" preserveAspectRatio="xMidYMid meet">
-                                <!-- Main residual stream (center line going UP from bottom to top) -->
-                                <path class="flow-path" d="M 250 1350 L 250 50" stroke-width="4" />
-
-                                <!-- Arrows pointing UP (triangles pointing toward lower y values) -->
-                                <polygon class="flow-arrow" points="250,70 245,80 255,80" />
-                                <polygon class="flow-arrow" points="250,400 245,410 255,410" />
-                                <polygon class="flow-arrow" points="250,750 245,760 255,760" />
-                                <polygon class="flow-arrow" points="250,1050 245,1060 255,1060" />
-
-                                <!-- ATTENTION skip connection (residual) -->
-                                <!-- Bypasses attention block, goes UP from bottom to top -->
-                                <path class="skip-path" d="M 420 1150 L 420 950" stroke-width="5" />
-                                <polygon class="flow-arrow" points="420,960 415,970 425,970" />
-
-                                <!-- MLP skip connection (residual) -->
-                                <!-- Bypasses MLP block, goes UP from bottom to top -->
-                                <path class="skip-path" d="M 420 650 L 420 450" stroke-width="5" />
-                                <polygon class="flow-arrow" points="420,460 415,470 425,470" />
-                            </svg>
-
-
-                            <div class="decoder-block">
-                                <!-- OUTPUT token at TOP -->
-                                <div class="component-layer">
-                                    <div class="token-display">"!"</div>
-                                    <div style="font-size: 9px; color: var(--text-tertiary); margin-top: 5px;">← sampled output</div>
-                                </div>
-
-                                <!-- Final output (after MLP + residual) -->
-                                <div class="component-layer" style="margin: 20px 0;">
-                                    <div class="arch-box norm">Add & Norm (final)</div>
-                                </div>
-
-                                <!-- Attention Block -->
-                                <div class="component-layer">
-                                    <div class="block-container attn-block">
-                                        <div class="block-title">Self-Attention</div>
-                                        <div class="inner-content">
-                                            <!-- Attention output -->
-                                            <div class="arch-box">Attention Output</div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑</div>
-
-                                            <!-- Attention computation -->
-                                            <div class="arch-box" style="margin: 8px 0;">softmax(QK'/√d) × V</div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑</div>
-
-                                            <!-- Q, K, V projections from same normalized input -->
-                                            <div class="stream-split" style="margin: 10px 0;">
-                                                <div class="stream-box">
-                                                    <div class="qkv-box">Q</div>
-                                                    <div class="stream-label">Query</div>
-                                                </div>
-                                                <div class="stream-box">
-                                                    <div class="qkv-box">K</div>
-                                                    <div class="stream-label">Key</div>
-                                                </div>
-                                                <div class="stream-box">
-                                                    <div class="qkv-box">V</div>
-                                                    <div class="stream-label">Value</div>
-                                                </div>
-                                            </div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 8px 0;">↑ (3 linear projections)</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- After attention, before MLP -->
-                                <div class="component-layer" style="margin: 20px 0;">
-                                    <div class="arch-box norm">Add & Norm</div>
-                                    <div style="font-size: 8px; color: var(--text-tertiary); margin-top: 5px;">← residual + attention output</div>
-                                </div>
-
-                                <!-- MLP Block -->
-                                <div class="component-layer">
-                                    <div class="block-container mlp-block">
-                                        <div class="block-title">MLP (Feed Forward)</div>
-                                        <div class="neuron-connections">
-                                            <!-- Output: back to d_model -->
-                                            <div class="neuron-layer">
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                            </div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 5px 0;">↑ d=2304</div>
-
-                                            <div class="arch-box" style="font-size: 9px; padding: 4px; margin: 8px 0;">Linear Down</div>
-
-                                            <!-- Hidden layer: 4x expansion -->
-                                            <div class="neuron-layer">
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                                <div class="neuron large-layer"></div>
-                                            </div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 5px 0;">↑ d=9216 (4x)</div>
-
-                                            <div class="arch-box" style="font-size: 9px; padding: 4px; margin: 8px 0;">GELU</div>
-
-                                            <!-- Input to MLP -->
-                                            <div class="neuron-layer">
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                                <div class="neuron"></div>
-                                            </div>
-                                            <div style="font-size: 8px; color: var(--text-tertiary); margin: 5px 0;">↑ d=2304</div>
-
-                                            <div class="arch-box" style="font-size: 9px; padding: 4px; margin: 8px 0;">Linear Up</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                </div>
-
-                                <!-- First layer norm (before attention) -->
-                                <div class="component-layer" style="margin: 20px 0;">
-                                    <div class="arch-box norm">Layer Norm</div>
-                                    <div style="font-size: 8px; color: var(--text-tertiary); margin-top: 5px;">← normalizes residual stream</div>
-                                </div>
-
-                                <!-- INPUT token at BOTTOM -->
-                                <div class="component-layer" style="margin-top: 20px;">
-                                    <div class="token-display">"Spread "</div>
-                                    <div style="font-size: 9px; color: var(--text-tertiary); margin-top: 5px;">← input embedding</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Last 2 layers (top of stack) -->
+                <div class="layer-box" data-layer="26">
+                    <div class="layer-number">Layer 26</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Feed Forward</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Multi-Head Attention</div>
                 </div>
+
+                <div class="layer-box" data-layer="25">
+                    <div class="layer-number">Layer 25</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Feed Forward</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Multi-Head Attention</div>
+                </div>
+
+                <!-- Ellipsis -->
+                <div class="layer-ellipsis">↑<br>[22 more layers]<br>↑</div>
+
+                <!-- First 2 layers (bottom of stack) -->
+                <div class="layer-box" data-layer="1">
+                    <div class="layer-number">Layer 1</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Feed Forward</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Multi-Head Attention</div>
+                </div>
+
+                <div class="layer-box" data-layer="0">
+                    <div class="layer-number">Layer 0</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Feed Forward</div>
+                    <div class="sublayer">Add & Norm</div>
+                    <div class="sublayer">Multi-Head Attention</div>
+                </div>
+
+                <!-- Input at bottom -->
+                <div class="input-output-box">Input Embedding</div>
             </div>
         </div>
 
@@ -1529,10 +1129,6 @@
                         <span class="icon">🔬</span>
                         <span>Vector Analysis</span>
                     </div>
-                    <div class="nav-item" data-view="cross-distribution">
-                        <span class="icon">🔀</span>
-                        <span>Cross-Distribution</span>
-                    </div>
                 </div>
             </div>
 
@@ -1542,10 +1138,6 @@
                     <div class="nav-item" data-view="monitoring">
                         <span class="icon">⚡</span>
                         <span>All Layers</span>
-                    </div>
-                    <div class="nav-item" data-view="prompt-activation">
-                        <span class="icon">📍</span>
-                        <span>Per-Token Activation</span>
                     </div>
                     <div class="nav-item" data-view="layer-dive">
                         <span class="icon">🔍</span>
@@ -1570,9 +1162,6 @@
                     <button class="info-btn" id="info-btn" title="Information">ℹ️</button>
                     <div class="page-title" id="page-title">Overview</div>
                     <div class="experiment-badge" id="experiment-badge">-</div>
-                    <select id="prompt-selector" style="margin-left: 12px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 11px; cursor: pointer;">
-                        <option value="0">Prompt 0</option>
-                    </select>
                 </div>
                 <div class="header-right">
                     <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">🌙</button>
@@ -1592,8 +1181,6 @@
         let experimentData = null;
         let currentView = 'data-explorer';
         let selectedTraits = new Set();
-        let currentPrompt = 0;  // Default to prompt_0
-        let availablePrompts = [];  // Available prompt numbers for current experiment
 
         // Display names for better interpretability
         const DISPLAY_NAMES = {
@@ -1804,9 +1391,7 @@
                 'data-explorer': 'Data Explorer',
                 'overview': 'Overview',
                 'vectors': 'Vector Analysis',
-                'cross-distribution': 'Cross-Distribution Analysis',
                 'monitoring': 'All Layers',
-                'prompt-activation': 'Per-Token Activation',
                 'layer-dive': 'Layer Deep Dive'
             };
             document.getElementById('page-title').textContent = titles[currentView] || 'Data Explorer';
@@ -1905,26 +1490,20 @@
 
                 // Load each trait with metadata
                 for (const traitName of traitNames) {
-                    // Detect response file format (natural traits use JSON, instruction-based use CSV)
+                    // Detect response file format
                     let responseFormat = null;
-                    const isNatural = traitName.includes('_natural');
-
                     try {
-                        // Check expected format first to avoid 404s
-                        const primaryExt = isNatural ? 'json' : 'csv';
-                        const primaryCheck = await fetch(
-                            `../experiments/${experimentName}/${traitName}/extraction/responses/pos.${primaryExt}`
+                        const csvCheck = await fetch(
+                            `../experiments/${experimentName}/${traitName}/extraction/responses/pos.csv`
                         );
-                        if (primaryCheck.ok) {
-                            responseFormat = primaryExt;
+                        if (csvCheck.ok) {
+                            responseFormat = 'csv';
                         } else {
-                            // Fallback to other format
-                            const secondaryExt = isNatural ? 'csv' : 'json';
-                            const secondaryCheck = await fetch(
-                                `../experiments/${experimentName}/${traitName}/extraction/responses/pos.${secondaryExt}`
+                            const jsonCheck = await fetch(
+                                `../experiments/${experimentName}/${traitName}/extraction/responses/pos.json`
                             );
-                            if (secondaryCheck.ok) {
-                                responseFormat = secondaryExt;
+                            if (jsonCheck.ok) {
+                                responseFormat = 'json';
                             }
                         }
                     } catch (e) {
@@ -1950,24 +1529,12 @@
                         const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
                         const baseName = traitName.replace('_natural', '');
 
-                        // Check for tier 3 (layer internals) data
-                        let hasTier3 = false;
-                        try {
-                            const tier3Check = await fetch(
-                                `../experiments/${experimentName}/${traitName}/inference/layer_internal_states/prompt_0_layer16.json`
-                            );
-                            hasTier3 = tier3Check.ok;
-                        } catch (e) {
-                            // No tier 3 data
-                        }
-
                         experimentData.traits.push({
                             name: traitName,
                             baseName: baseName,
                             method: method,
                             responseFormat: responseFormat,
                             hasResponses: true,
-                            hasTier3: hasTier3,
                             hasVectors: false,  // Will check later
                             metadata: metadata
                         });
@@ -1983,64 +1550,12 @@
                 // Populate trait checkboxes
                 populateTraitCheckboxes();
 
-                // Discover available prompts (async, but don't wait)
-                discoverAvailablePrompts();
-
                 // Render view
                 renderView();
             } catch (error) {
                 console.error('Error loading experiment data:', error);
                 showError(`Failed to load experiment: ${experimentName}`);
             }
-        }
-
-        // Discover available prompts for current experiment
-        async function discoverAvailablePrompts() {
-            if (!experimentData || !experimentData.traits || experimentData.traits.length === 0) {
-                availablePrompts = [0];
-                populatePromptSelector();
-                return;
-            }
-
-            // Check first trait with inference data for available prompts
-            const promptSet = new Set();
-
-            for (const trait of experimentData.traits) {
-                const tier2Dir = `../experiments/${experimentData.name}/${trait.name}/inference/residual_stream_activations/`;
-
-                // Try to find prompt files (check up to prompt_30)
-                for (let i = 0; i <= 30; i++) {
-                    try {
-                        const response = await fetch(`${tier2Dir}prompt_${i}.json`, { method: 'HEAD' });
-                        if (response.ok) {
-                            promptSet.add(i);
-                        }
-                    } catch (e) {
-                        // File doesn't exist, continue
-                    }
-                }
-
-                // If we found at least one prompt, we can stop (assume all traits have similar prompts)
-                if (promptSet.size > 0) break;
-            }
-
-            // If no prompts found, default to [0]
-            availablePrompts = promptSet.size > 0 ? Array.from(promptSet).sort((a, b) => a - b) : [0];
-            console.log('Discovered available prompts:', availablePrompts);
-
-            // Reset to first available prompt
-            currentPrompt = availablePrompts[0] || 0;
-
-            populatePromptSelector();
-        }
-
-        // Populate prompt selector dropdown
-        function populatePromptSelector() {
-            const selector = document.getElementById('prompt-selector');
-            selector.innerHTML = availablePrompts.map(n =>
-                `<option value="${n}">Prompt ${n}</option>`
-            ).join('');
-            selector.value = currentPrompt;
         }
 
         // Render current view
@@ -2054,14 +1569,8 @@
                 case 'vectors':
                     renderVectors();
                     break;
-                case 'cross-distribution':
-                    renderCrossDistribution();
-                    break;
                 case 'monitoring':
                     renderMonitoring();
-                    break;
-                case 'prompt-activation':
-                    renderPromptActivation();
                     break;
                 case 'layer-dive':
                     renderLayerDeepDive();
@@ -2081,31 +1590,65 @@
 
             let html = `
                 <div class="explanation">
-                    <div class="explanation-summary">We can inspect all the raw data files created during trait extraction—from the model's generated responses to the vectors extracted from them.</div>
+                    <div class="explanation-summary">Browse complete extraction pipeline files (responses, activations, vectors)</div>
                     <div class="explanation-details">
-                    <p><strong>Responses:</strong> What the model said when showing the trait vs. not showing it</p>
+                    <p>Browse the complete file structure for each trait's extraction pipeline.</p>
 
-                    <p><strong>Activations:</strong> Internal neuron values captured while generating those responses</p>
+                    <h4>Directory Structure</h4>
 
-                    <p><strong>Vectors:</strong> Mathematical directions extracted from the activations that represent the trait</p>
+                    <p><strong>trait_definition.json:</strong></p>
+                    <p>Trait description, contrastive instructions, test questions, and evaluation prompt.</p>
+
+                    <p><strong>responses/:</strong></p>
+                    <p>Model responses to positive and negative prompts (CSV or JSON format).</p>
+
+                    <p><strong>activations/:</strong></p>
+                    <p>Captured layer activations \\(\\mathbf{A} \\in \\mathbb{R}^{n \\times d}\\) where \\(d=2304\\) (Gemma 2B hidden dim).</p>
+                    <ul>
+                        <li>27 layers × 2 sides (pos/neg) = 54 files</li>
+                        <li>Token-averaged: \\(\\bar{\\mathbf{a}}_i = \\frac{1}{T} \\sum_{t=1}^T \\mathbf{h}_t^{(i)}\\)</li>
+                    </ul>
+
+                    <p><strong>vectors/:</strong></p>
+                    <p>Extracted trait direction vectors.</p>
+                    <ul>
+                        <li>4 methods: mean_diff, probe, ica, gradient</li>
+                        <li>27 layers per method</li>
+                        <li>2 files per vector: .pt (tensor) + _metadata.json</li>
+                    </ul>
+
+                    <p><strong>Total per trait:</strong> ~47 MB (activations dominate storage)</p>
                     </div>
                 <div class="card">
+                    <div class="card-title">Dataset Overview</div>
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <span class="stat-label">Traits:</span>
-                            <span class="stat-value">${totalTraits}</span>
+                            <div class="stat-label">Total Traits</div>
+                            <div class="stat-value">${totalTraits}</div>
+                            <div class="stat-detail">${selectedCount} selected</div>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-label">Storage:</span>
-                            <span class="stat-value">~${estimatedSize}MB</span>
+                            <div class="stat-label">Estimated Storage</div>
+                            <div class="stat-value">~${estimatedSize} MB</div>
+                            <div class="stat-detail">~47 MB per trait</div>
                         </div>
                         <div class="stat-card">
-                            <span class="stat-label">Files:</span>
-                            <span class="stat-value">${totalTraits * 223}</span>
+                            <div class="stat-label">Data Completeness</div>
+                            <div class="stat-value">100%</div>
+                            <div class="stat-detail">All files present</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Files</div>
+                            <div class="stat-value">${totalTraits * 223}</div>
+                            <div class="stat-detail">223 files per trait</div>
                         </div>
                     </div>
                 <div class="card">
                     <div class="card-title">File Explorer</div>
+                    <div class="info">
+                        Click trait names to expand/collapse. Click file names to preview content.
+                    </div>
+                    <div style="margin-top: 20px;">
             `;
 
             // Render each trait
@@ -2113,17 +1656,16 @@
                 const displayName = getDisplayName(trait.name);
                 const metadata = trait.metadata || {};
 
-                const isNatural = trait.name.includes('_natural');
-                const fileExt = isNatural ? 'json' : 'csv';
-                const previewFunc = isNatural ? 'previewJSON' : 'previewCSV';
-
                 html += `
                     <div class="explorer-trait-card">
                         <div class="explorer-trait-header" onclick="toggleTraitBody('${trait.name}')">
-                            <strong>${displayName}</strong>
-                            <span style="margin-left: 8px; font-size: 10px; color: var(--text-tertiary);">
-                                ${metadata.n_examples || 0} examples | 223 files
-                            </span>
+                            <div>
+                                <strong>${displayName}</strong>
+                                <span style="margin-left: 10px; font-size: 12px; opacity: 0.8;">
+                                    ${metadata.n_examples || 0} examples | 223 files | ~47 MB
+                                </span>
+                            </div>
+                            <span class="expand-icon" id="expand-icon-${trait.name}">▶</span>
                         </div>
                         <div class="explorer-trait-body" id="trait-body-${trait.name}">
                             <div class="file-tree">
@@ -2142,15 +1684,15 @@
                                     <span class="file-icon">📁</span>
                                     <strong>responses/</strong>
                                 </div>
-                                <div class="file-item indent-2 clickable" onclick="${previewFunc}('${trait.name}', 'pos')">
+                                <div class="file-item indent-2 clickable" onclick="previewCSV('${trait.name}', 'pos')">
                                     <span class="file-icon">✓</span>
-                                    <span>pos.${fileExt}</span>
-                                    <span style="opacity: 0.6; font-size: 11px;">(${metadata.n_examples_pos || '?'} ${isNatural ? 'items' : 'rows'}) [preview →]</span>
+                                    <span>pos.csv</span>
+                                    <span style="opacity: 0.6; font-size: 11px;">(${metadata.n_examples_pos || '?'} rows) [preview →]</span>
                                 </div>
-                                <div class="file-item indent-2 clickable" onclick="${previewFunc}('${trait.name}', 'neg')">
+                                <div class="file-item indent-2 clickable" onclick="previewCSV('${trait.name}', 'neg')">
                                     <span class="file-icon">✓</span>
-                                    <span>neg.${fileExt}</span>
-                                    <span style="opacity: 0.6; font-size: 11px;">(${metadata.n_examples_neg || '?'} ${isNatural ? 'items' : 'rows'}) [preview →]</span>
+                                    <span>neg.csv</span>
+                                    <span style="opacity: 0.6; font-size: 11px;">(${metadata.n_examples_neg || '?'} rows) [preview →]</span>
                                 </div>
 
                                 <div class="file-item indent-1">
@@ -2226,13 +1768,16 @@
         function toggleTraitBody(traitName) {
             const body = document.getElementById(`trait-body-${traitName}`);
             const header = body.previousElementSibling;
+            const icon = document.getElementById(`expand-icon-${traitName}`);
 
             if (body.classList.contains('show')) {
                 body.classList.remove('show');
                 header.classList.remove('expanded');
+                icon.textContent = '▶';
             } else {
                 body.classList.add('show');
                 header.classList.add('expanded');
+                icon.textContent = '▼';
             }
         }
 
@@ -2274,9 +1819,6 @@
             } else if (type === 'activations_metadata') {
                 url = `../experiments/${experimentData.name}/${traitName}/extraction/activations/metadata.json`;
                 displayName = 'Activations Metadata';
-            } else if (type === 'pos' || type === 'neg') {
-                url = `../experiments/${experimentData.name}/${traitName}/extraction/responses/${type}.json`;
-                displayName = type === 'pos' ? 'Positive Examples' : 'Negative Examples';
             }
 
             title.textContent = `${traitName} - ${displayName}`;
@@ -2359,6 +1901,356 @@
                 closePreview();
             }
         });
+
+        // Render response quality view
+        async function renderResponses() {
+            const contentArea = document.getElementById('content-area');
+            const filteredTraits = getFilteredTraits();
+
+            if (filteredTraits.length === 0) {
+                contentArea.innerHTML = `
+                    <div class="card">
+                        <div class="card-title">Response Quality Analysis</div>
+                        <div class="info">No traits selected. Select traits in the sidebar to view them.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Show loading state
+            contentArea.innerHTML = '<div class="loading">Loading response quality overview...</div>';
+
+            // Load all trait separations
+            const separations = {};
+            const naturalTraits = [];
+            for (const trait of filteredTraits) {
+                try {
+                    const { posData, negData, hasScores } = await loadResponseData(
+                        experimentData.name,
+                        trait.name,
+                        trait.responseFormat
+                    );
+
+                    if (!hasScores) {
+                        // Natural extraction has no scores - track separately
+                        naturalTraits.push(trait.name);
+                        continue;
+                    }
+
+                    const posScores = posData.map(r => parseFloat(r.trait_score)).filter(s => !isNaN(s));
+                    const negScores = negData.map(r => parseFloat(r.trait_score)).filter(s => !isNaN(s));
+                    const posAvg = posScores.reduce((a, b) => a + b, 0) / posScores.length;
+                    const negAvg = negScores.reduce((a, b) => a + b, 0) / negScores.length;
+
+                    separations[trait.name] = {
+                        separation: posAvg - negAvg,
+                        posAvg,
+                        negAvg,
+                        posCount: posData.length,
+                        negCount: negData.length
+                    };
+                } catch (e) {
+                    console.error(`Failed to load ${trait.name}:`, e);
+                }
+            }
+
+            // Render overview
+            let html = `
+                <div class="explanation">
+                    <div class="explanation-summary">LLM judge scores showing trait separation quality (positive vs negative examples)</div>
+                    <div class="explanation-details">
+                    <p>Measures how well responses exhibit the intended trait using LLM judge scores.</p>
+
+                    <h4>Scoring Process</h4>
+                    <p>For each response, an LLM judge (GPT-4) scores trait strength on 0-100 scale:</p>
+                    <p>$$s_i = \\text{Judge}(\\text{question}_i, \\text{answer}_i, \\text{trait\\_def})$$</p>
+
+                    <h4>Separation Metric</h4>
+                    <p>$$\\text{Separation} = \\frac{1}{n}\\sum_{i=1}^n s_i^{\\text{pos}} - \\frac{1}{m}\\sum_{j=1}^m s_j^{\\text{neg}}$$</p>
+                    <ul>
+                        <li><strong>Positive examples:</strong> Should exhibit trait (high scores expected)</li>
+                        <li><strong>Negative examples:</strong> Should avoid trait (low scores expected)</li>
+                        <li><strong>Separation:</strong> Difference in mean scores</li>
+                    </ul>
+
+                    <h4>Quality Thresholds</h4>
+                    <ul>
+                        <li><strong>Excellent (>40):</strong> Clear trait expression difference</li>
+                        <li><strong>Good (>20):</strong> Moderate separation</li>
+                        <li><strong>Weak (<20):</strong> Poor separation, trait may be unclear</li>
+                    </ul>
+
+                    <p><strong>Note:</strong> Only instruction-based extraction has judge scores. Natural extraction has no scores (prompts are naturally contrasting).</p>
+                    </div>
+                <div class="card">
+                    <div class="card-title">Response Quality Overview</div>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border-color);">
+                                <th style="text-align: left; padding: 10px; color: var(--text-secondary); font-weight: 600;">Trait</th>
+                                <th style="text-align: right; padding: 10px; color: var(--text-secondary); font-weight: 600;">Separation (Mean)</th>
+                                <th style="text-align: right; padding: 10px; color: var(--text-secondary); font-weight: 600;">Pos Mean</th>
+                                <th style="text-align: right; padding: 10px; color: var(--text-secondary); font-weight: 600;">Neg Mean</th>
+                                <th style="text-align: center; padding: 10px; color: var(--text-secondary); font-weight: 600;">Quality</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            Object.keys(separations).sort((a, b) => separations[b].separation - separations[a].separation).forEach(traitName => {
+                const data = separations[traitName];
+                const displayName = getDisplayName(traitName);
+                const quality = data.separation > 40 ? 'Excellent' : data.separation > 20 ? 'Good' : 'Weak';
+                const qualityColor = data.separation > 40 ? '#28a745' : data.separation > 20 ? '#ffc107' : '#dc3545';
+
+                html += `
+                    <tr style="border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;"
+                        onclick="loadTraitResponses('${traitName}')"
+                        onmouseover="this.style.background='var(--bg-tertiary)'"
+                        onmouseout="this.style.background='transparent'">
+                        <td style="padding: 10px; color: var(--text-primary);">${displayName}</td>
+                        <td style="padding: 10px; text-align: right; font-weight: 600; color: var(--text-primary);">${data.separation.toFixed(1)}</td>
+                        <td style="padding: 10px; text-align: right; color: var(--text-secondary);">${data.posAvg.toFixed(1)}</td>
+                        <td style="padding: 10px; text-align: right; color: var(--text-secondary);">${data.negAvg.toFixed(1)}</td>
+                        <td style="padding: 10px; text-align: center;">
+                            <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: ${qualityColor}20; color: ${qualityColor};">
+                                ${quality}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+            `;
+
+            // Add note about natural traits if any were excluded
+            if (naturalTraits.length > 0) {
+                html += `
+                    <div class="info" style="margin-top: 20px; background: var(--bg-secondary); border-left: 4px solid #ffc107;">
+                        <strong>Note:</strong> ${naturalTraits.length} natural extraction trait${naturalTraits.length > 1 ? 's' : ''} excluded from this view (no judge scores available):<br>
+                        ${naturalTraits.map(t => getDisplayName(t)).join(', ')}
+                    </div>
+                `;
+            }
+
+            html += `
+                    <div id="response-details"></div>
+                </div>
+            `;
+
+            contentArea.innerHTML = html;
+            renderMath();
+            renderMath();
+        }
+
+        // Helper function to load response data in correct format (csv or json)
+        async function loadResponseData(experimentName, traitName, responseFormat) {
+            const extension = responseFormat || 'csv'; // Default to csv for backwards compatibility
+            const [posResponse, negResponse] = await Promise.all([
+                fetch(`../experiments/${experimentName}/${traitName}/extraction/responses/pos.${extension}`),
+                fetch(`../experiments/${experimentName}/${traitName}/extraction/responses/neg.${extension}`)
+            ]);
+
+            if (!posResponse.ok || !negResponse.ok) {
+                throw new Error(`Response files not found for ${traitName}`);
+            }
+
+            if (extension === 'json') {
+                // JSON format (natural extraction)
+                // Format: [{question, answer, full_text}, ...]
+                // No trait_score available - natural extraction is unsupervised
+                const posData = await posResponse.json();
+                const negData = await negResponse.json();
+
+                // Convert to format expected by rest of code
+                return {
+                    posData: posData.map(item => ({
+                        prompt: item.question || '',
+                        response: item.answer || '',
+                        trait_score: null // Natural extraction has no scores
+                    })),
+                    negData: negData.map(item => ({
+                        prompt: item.question || '',
+                        response: item.answer || '',
+                        trait_score: null // Natural extraction has no scores
+                    })),
+                    hasScores: false
+                };
+            } else {
+                // CSV format (instruction-based extraction)
+                const [posText, negText] = await Promise.all([
+                    posResponse.text(),
+                    negResponse.text()
+                ]);
+                return {
+                    posData: Papa.parse(posText, { header: true }).data,
+                    negData: Papa.parse(negText, { header: true }).data,
+                    hasScores: true
+                };
+            }
+        }
+
+        // Load trait responses
+        async function loadTraitResponses(traitName) {
+            const detailsDiv = document.getElementById('response-details');
+            detailsDiv.innerHTML = '<div class="loading">Loading response data...</div>';
+
+            try {
+                const trait = experimentData.traits.find(t => t.name === traitName);
+                const { posData, negData } = await loadResponseData(
+                    experimentData.name,
+                    traitName,
+                    trait?.responseFormat || 'csv'
+                );
+
+                renderResponseAnalysis(traitName, posData, negData);
+            } catch (error) {
+                console.error('Error loading responses:', error);
+                detailsDiv.innerHTML = '<div class="error">Failed to load response data</div>';
+            }
+        }
+
+        // Render response analysis
+        function renderResponseAnalysis(traitName, posData, negData) {
+            const detailsDiv = document.getElementById('response-details');
+            const displayName = getDisplayName(traitName);
+
+            // Calculate statistics (if scores available)
+            const posScores = posData.map(r => parseFloat(r.trait_score)).filter(s => !isNaN(s));
+            const negScores = negData.map(r => parseFloat(r.trait_score)).filter(s => !isNaN(s));
+
+            const hasScores = posScores.length > 0 && negScores.length > 0;
+            const posAvg = hasScores ? posScores.reduce((a, b) => a + b, 0) / posScores.length : null;
+            const negAvg = hasScores ? negScores.reduce((a, b) => a + b, 0) / negScores.length : null;
+            const separation = hasScores ? posAvg - negAvg : null;
+
+            // Create histogram
+            const histTrace1 = {
+                x: posScores,
+                type: 'histogram',
+                name: 'Positive',
+                marker: { color: '#28a745' },
+                opacity: 0.7,
+                nbinsx: 20
+            };
+
+            const histTrace2 = {
+                x: negScores,
+                type: 'histogram',
+                name: 'Negative',
+                marker: { color: '#dc3545' },
+                opacity: 0.7,
+                nbinsx: 20
+            };
+
+            let html = `
+                <div style="margin-top: 30px;">
+                    <div class="card-title">${displayName} - Response Quality</div>
+            `;
+
+            if (hasScores) {
+                // Show stats and histogram for instruction-based extraction
+                html += `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Positive Examples</div>
+                            <div class="stat-value">${posData.length}</div>
+                            <div class="stat-detail">Avg score: ${posAvg.toFixed(1)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Negative Examples</div>
+                            <div class="stat-value">${negData.length}</div>
+                            <div class="stat-detail">Avg score: ${negAvg.toFixed(1)}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Separation</div>
+                            <div class="stat-value">${separation.toFixed(1)}</div>
+                            <div class="stat-detail">${separation > 40 ? 'Excellent' : separation > 20 ? 'Good' : 'Weak'}</div>
+                        </div>
+                    </div>
+
+                    <div id="score-histogram" style="margin-top: 20px;"></div>
+
+                    <div style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 10px;">Sample Responses</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <strong>High ${displayName} (Positive)</strong>
+                                ${posData.slice(0, 3).map(r => `
+                                    <div class="response-preview">
+                                        <strong>Q:</strong> ${r.question || r.prompt || 'N/A'}<br>
+                                        <strong>A:</strong> ${(r.response || 'N/A').substring(0, 150)}...
+                                        <span class="score-badge score-high">${parseFloat(r.trait_score).toFixed(1)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div>
+                                <strong>Low ${displayName} (Negative)</strong>
+                                ${negData.slice(0, 3).map(r => `
+                                    <div class="response-preview">
+                                        <strong>Q:</strong> ${r.question || r.prompt || 'N/A'}<br>
+                                        <strong>A:</strong> ${(r.response || 'N/A').substring(0, 150)}...
+                                        <span class="score-badge score-low">${parseFloat(r.trait_score).toFixed(1)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Natural extraction - no scores, just show examples
+                html += `
+                    <div class="info" style="margin-bottom: 20px;">
+                        <strong>Natural Extraction:</strong> This trait was extracted using natural elicitation (no instructions, no judge scores).
+                        Showing ${posData.length} positive and ${negData.length} negative examples.
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <h3 style="margin-bottom: 10px;">Sample Responses</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <strong>High ${displayName} Scenarios (Positive)</strong>
+                                ${posData.slice(0, 5).map(r => `
+                                    <div class="response-preview">
+                                        <strong>Q:</strong> ${r.prompt || 'N/A'}<br>
+                                        <strong>A:</strong> ${(r.response || 'N/A').substring(0, 200)}...
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div>
+                                <strong>Low ${displayName} Scenarios (Negative)</strong>
+                                ${negData.slice(0, 5).map(r => `
+                                    <div class="response-preview">
+                                        <strong>Q:</strong> ${r.prompt || 'N/A'}<br>
+                                        <strong>A:</strong> ${(r.response || 'N/A').substring(0, 200)}...
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                </div>
+            `;
+
+            detailsDiv.innerHTML = html;
+
+            // Render histogram (only if scores available)
+            if (hasScores) {
+                Plotly.newPlot('score-histogram', [histTrace1, histTrace2], getPlotlyLayout({
+                    title: 'Trait Score Distribution',
+                    xaxis: { title: 'Trait Score (0-100)' },
+                    yaxis: { title: 'Count' },
+                    barmode: 'overlay',
+                    height: 400
+                }), { displayModeBar: false });
+            }
+        }
 
         // Render vector analysis view
         async function renderVectors() {
@@ -2470,8 +2362,8 @@
             const allResults = await Promise.all(fetchPromises);
             console.log(`Loaded ${allResults.length} results`);
 
-            // Count successful loads (filter out null results)
-            const successfulVectors = allResults.filter(r => r && r.type === 'vector' && r.data !== null).length;
+            // Count successful loads
+            const successfulVectors = allResults.filter(r => r.type === 'vector' && r.data !== null).length;
             console.log(`Successfully loaded ${successfulVectors} vector metadata files`);
 
             // Organize results by trait
@@ -2482,17 +2374,17 @@
                         vectorData[method] = {};
                     }
 
-                    // Fill in vector data from parallel fetch results (filter out nulls)
+                    // Fill in vector data from parallel fetch results
                     allResults
-                        .filter(r => r && r.type === 'vector' && r.trait === trait.name && r.data !== null)
+                        .filter(r => r.type === 'vector' && r.trait === trait.name && r.data !== null)
                         .forEach(r => {
                             vectorData[r.method][r.layer] = r.data;
                         });
 
-                    // Extract prompt examples (filter out nulls)
+                    // Extract prompt examples
                     const prompts = {};
                     allResults
-                        .filter(r => r && r.type === 'prompt' && r.trait === trait.name && r.data !== null)
+                        .filter(r => r.type === 'prompt' && r.trait === trait.name && r.data !== null)
                         .forEach(r => {
                             prompts[r.polarity] = r.data;
                         });
@@ -2534,20 +2426,20 @@
             // Render overview with mini heatmaps
             let html = `
                 <div class="explanation">
-                    <div class="explanation-summary">We can approximate what a model is "thinking" for a given trait by comparing how it activates when showing that trait versus when it doesn't.</div>
+                    <div class="explanation-summary">Compare 4 vector extraction methods (mean_diff, probe, ICA, gradient) across all ${nLayers} layers</div>
                     <div class="explanation-details">
-                        <h4>Layer Architecture Intuition</h4>
-                        <ul>
-                            <li><strong>Early layers (0-5):</strong> Syntax, local patterns, token-level features</li>
-                            <li><strong>Middle layers (6-15):</strong> Semantic understanding, entity recognition, basic reasoning</li>
-                            <li><strong>Late layers (16-24):</strong> Abstract concepts, complex reasoning, behavioral traits (refusal, uncertainty)</li>
-                            <li><strong>Final layer (25):</strong> Projection towards output vocabulary (often degrades semantic quality)</li>
-                        </ul>
-
-                        <h4>Extraction Methods</h4>
+                        <div style="background: var(--bg-secondary); padding: 12px; border-left: 3px solid var(--primary-color); margin-bottom: 15px; border-radius: 4px;">
+                            <strong>Layer Architecture Intuition:</strong>
+                            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                                <li><strong>Early layers (0-5):</strong> Syntax, local patterns, token-level features</li>
+                                <li><strong>Middle layers (6-15):</strong> Semantic understanding, entity recognition, basic reasoning</li>
+                                <li><strong>Late layers (16-24):</strong> Abstract concepts, complex reasoning, behavioral traits (refusal, uncertainty)</li>
+                                <li><strong>Final layer (25):</strong> Projection towards output vocabulary (often degrades semantic quality)</li>
+                            </ul>
+                        </div>
                         <p>Four approaches to extract trait direction vectors from activations \\(\\mathbf{A}_{\\text{pos}} \\in \\mathbb{R}^{n \\times d}\\) and \\(\\mathbf{A}_{\\text{neg}} \\in \\mathbb{R}^{m \\times d}\\):</p>
 
-                        <p><strong>1. Mean Difference</strong></p>
+                        <h4>1. Mean Difference</h4>
                         <p>$$\\mathbf{v}_{\\text{mean}} = \\frac{1}{n}\\sum_{i=1}^n \\mathbf{a}_i^{\\text{pos}} - \\frac{1}{m}\\sum_{j=1}^m \\mathbf{a}_j^{\\text{neg}}$$</p>
                         <ul>
                             <li>Simple cluster center separation</li>
@@ -2555,7 +2447,7 @@
                             <li>Fast, no training required</li>
                         </ul>
 
-                        <p><strong>2. Probe (Linear Classifier)</strong></p>
+                        <h4>2. Probe (Linear Classifier)</h4>
                         <p>$$\\mathbf{v}_{\\text{probe}} = \\arg\\min_{\\mathbf{w}} \\sum_i \\log(1 + e^{-y_i \\mathbf{w}^T \\mathbf{a}_i}) + \\lambda \\|\\mathbf{w}\\|_2^2$$</p>
                         <ul>
                             <li>Logistic regression weights (L2-regularized)</li>
@@ -2563,7 +2455,7 @@
                             <li>Maximizes linear separability</li>
                         </ul>
 
-                        <p><strong>3. ICA (Independent Components)</strong></p>
+                        <h4>3. ICA (Independent Components)</h4>
                         <p>$$\\mathbf{v}_{\\text{ica}} = \\text{FastICA}([\\mathbf{A}_{\\text{pos}}; \\mathbf{A}_{\\text{neg}}])[k]$$</p>
                         <ul>
                             <li>Extracts statistically independent components</li>
@@ -2571,7 +2463,7 @@
                             <li>Variable norm depending on component strength</li>
                         </ul>
 
-                        <p><strong>4. Gradient (Optimization)</strong></p>
+                        <h4>4. Gradient (Optimization)</h4>
                         <p>$$\\mathbf{v}_{\\text{grad}} = \\arg\\min_{\\mathbf{v}} \\mathcal{L}(\\mathbf{v}) \\text{ where } \\mathcal{L} = \\|\\mathbf{v}^T \\mathbf{A}_{\\text{pos}} - \\alpha\\|^2 + \\|\\mathbf{v}^T \\mathbf{A}_{\\text{neg}}\\|^2$$</p>
                         <ul>
                             <li>Custom objective via gradient descent</li>
@@ -2579,8 +2471,7 @@
                             <li>Can fail (NaN) if gradients vanish</li>
                         </ul>
 
-                        <h4>Visualization Details</h4>
-                        <p>Each method is normalized independently (0-100% of that method's max across layers) to show within-method layer strength. Darker = stronger for that method at that layer.</p>
+                        <p><strong>Visualization:</strong> Each method is normalized independently (0-100% of that method's max across layers) to show within-method layer strength. Darker = stronger for that method at that layer.</p>
                         <ul>
                             <li><strong>Probe:</strong> Inverted vector norm (smaller norm = stronger classifier due to L2 regularization)</li>
                             <li><strong>Gradient:</strong> Separation strength (vectors are unit normalized, norm = 1.0)</li>
@@ -2732,16 +2623,16 @@
                 };
 
                 Plotly.newPlot(`mini-heatmap-${trait.name}`, [trace], getPlotlyLayout({
-                    margin: { l: 50, r: 5, t: 5, b: 20 },
+                    margin: { l: 70, r: 5, t: 5, b: 25 },
                     xaxis: {
                         title: '',
                         showticklabels: true,
                         tickmode: 'linear',
                         dtick: 5,  // Show every 5th layer
-                        tickfont: { size: 8 }
+                        tickfont: { size: 9 }
                     },
-                    yaxis: { title: '', side: 'left', tickfont: { size: 8 } },
-                    height: 80
+                    yaxis: { title: '', side: 'left' },
+                    height: 100
                 }), { displayModeBar: false });
             });
         }
@@ -2877,366 +2768,6 @@
             }), { displayModeBar: false });
         }
 
-        // Render Cross-Distribution Analysis
-        async function renderCrossDistribution() {
-            const contentArea = document.getElementById('content-area');
-
-            contentArea.innerHTML = `
-                <div class="info-box">
-                    <h3>Cross-Distribution Analysis</h3>
-                    <p>View cross-distribution generalization testing data. This shows which traits have been tested across different data distributions (instruction-based vs natural elicitation).</p>
-                </div>
-
-                <div id="cross-dist-loading" style="padding: 20px; text-align: center;">
-                    Loading cross-distribution data...
-                </div>
-
-                <div id="cross-dist-content" style="display: none;"></div>
-            `;
-
-            try {
-                // Fetch cross-distribution index
-                const response = await fetch('/api/cross-distribution/index');
-                const data = await response.json();
-
-                document.getElementById('cross-dist-loading').style.display = 'none';
-                document.getElementById('cross-dist-content').style.display = 'block';
-
-                const contentDiv = document.getElementById('cross-dist-content');
-
-                if (data.error) {
-                    contentDiv.innerHTML = `
-                        <div class="card" style="margin: 20px 0;">
-                            <div class="card-title" style="color: var(--danger);">⚠️ Error</div>
-                            <p>${data.error}</p>
-                            <p style="margin-top: 10px; color: var(--text-secondary);">
-                                Run <code>python3 analysis/cross_distribution_scanner.py</code> to generate the index.
-                            </p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Find current experiment
-                const currentExp = data.experiments.find(exp => exp.experiment === currentExperiment);
-                if (!currentExp) {
-                    contentDiv.innerHTML = '<p>No data for current experiment.</p>';
-                    return;
-                }
-
-                const stats = currentExp.statistics;
-                const traits = currentExp.traits;
-
-                // Summary statistics
-                contentDiv.innerHTML = `
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <span class="stat-label">Traits:</span>
-                            <span class="stat-value">${stats.total_traits}</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label">Complete:</span>
-                            <span class="stat-value">${stats.complete_4x4}</span>
-                        </div>
-                        <div class="stat-card">
-                            <span class="stat-label">Partial:</span>
-                            <span class="stat-value">${stats.partial}</span>
-                        </div>
-                    </div>
-
-                    <div id="trait-table-container"></div>
-                `;
-
-                // Create trait table
-                renderTraitTable(traits);
-
-            } catch (error) {
-                console.error('Error loading cross-distribution data:', error);
-                document.getElementById('cross-dist-loading').innerHTML = `
-                    <div style="color: var(--danger);">
-                        Error loading data: ${error.message}
-                    </div>
-                `;
-            }
-        }
-
-        function renderTraitTable(traits) {
-            const container = document.getElementById('trait-table-container');
-
-            // Helper function to get best score across all methods for a quadrant
-            function getBestScore(trait, quadrantKey) {
-                if (!trait.best_accuracies || !trait.best_accuracies[quadrantKey]) {
-                    return null;
-                }
-
-                const quadScores = trait.best_accuracies[quadrantKey];
-                let bestAcc = 0;
-                let bestLayer = 0;
-                let bestMethod = '';
-
-                for (const [method, data] of Object.entries(quadScores)) {
-                    if (data.accuracy > bestAcc) {
-                        bestAcc = data.accuracy;
-                        bestLayer = data.layer;
-                        bestMethod = method;
-                    }
-                }
-
-                return { acc: bestAcc, layer: bestLayer, method: bestMethod };
-            }
-
-            // Sort traits by completeness
-            const sortedTraits = traits.sort((a, b) => {
-                if (a.is_complete_4x4 && !b.is_complete_4x4) return -1;
-                if (!a.is_complete_4x4 && b.is_complete_4x4) return 1;
-                return b.available_quadrants - a.available_quadrants;
-            });
-
-            const tableHTML = `
-                <div class="card" style="margin: 20px 0;">
-                    <div class="card-title">Trait Data Availability</div>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: var(--text-secondary);">
-                        <thead>
-                            <tr style="border-bottom: 2px solid var(--border-color);">
-                                <th style="text-align: left; padding: 12px; color: var(--text-primary);">Trait</th>
-                                <th style="text-align: center; padding: 12px; color: var(--text-primary);">Separability</th>
-                                <th style="text-align: center; padding: 12px; color: var(--text-primary);">Inst→Inst</th>
-                                <th style="text-align: center; padding: 12px; color: var(--text-primary);">Inst→Nat</th>
-                                <th style="text-align: center; padding: 12px; color: var(--text-primary);">Nat→Inst</th>
-                                <th style="text-align: center; padding: 12px; color: var(--text-primary);">Nat→Nat</th>
-                                <th style="text-align: center; padding: 12px; color: var(--text-primary);">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${sortedTraits.map(trait => {
-                                const cd = trait.cross_distribution;
-                                const sepBadge = trait.separability ?
-                                    `<span style="padding: 3px 8px; border-radius: 3px; font-size: 11px; background: ${
-                                        trait.separability === 'high' ? 'var(--success)' :
-                                        trait.separability === 'moderate' ? 'var(--info-border)' :
-                                        'var(--danger)'
-                                    }; color: var(--bg-primary);">${trait.separability.toUpperCase()}</span>` :
-                                    '<span style="color: var(--text-tertiary);">-</span>';
-
-                                const statusBadge = trait.is_complete_4x4 ?
-                                    '<span style="padding: 3px 8px; border-radius: 3px; font-size: 11px; background: var(--success); color: var(--bg-primary);">✓ COMPLETE</span>' :
-                                    trait.available_quadrants > 0 ?
-                                    `<span style="padding: 3px 8px; border-radius: 3px; font-size: 11px; background: var(--info-border); color: var(--bg-primary);">${trait.available_quadrants}/4 PARTIAL</span>` :
-                                    '<span style="padding: 3px 8px; border-radius: 3px; font-size: 11px; background: var(--text-tertiary); color: var(--bg-primary);">NO DATA</span>';
-
-                                // Get best scores for each quadrant
-                                const instToInst = cd.inst_to_inst ? getBestScore(trait, 'inst_inst') : null;
-                                const instToNat = cd.inst_to_nat ? getBestScore(trait, 'inst_nat') : null;
-                                const natToInst = cd.nat_to_inst ? getBestScore(trait, 'nat_inst') : null;
-                                const natToNat = cd.nat_to_nat ? getBestScore(trait, 'nat_nat') : null;
-
-                                const formatScore = (score, quadrant) => {
-                                    if (!score) return '<span style="color: var(--text-tertiary);">-</span>';
-                                    return `<span class="quadrant-score" data-trait="${trait.name}" data-quadrant="${quadrant}" style="color: var(--text-secondary); font-size: 12px; cursor: pointer; text-decoration: underline; text-decoration-style: dotted;">${score.acc.toFixed(1)}%@L${score.layer}</span>`;
-                                };
-
-                                return `
-                                    <tr style="border-bottom: 1px solid var(--border-color);">
-                                        <td style="padding: 12px; font-weight: 500; color: var(--text-primary);">${trait.name}</td>
-                                        <td style="padding: 12px; text-align: center;">${sepBadge}</td>
-                                        <td style="padding: 12px; text-align: center;">${formatScore(instToInst, 'inst_inst')}</td>
-                                        <td style="padding: 12px; text-align: center;">${formatScore(instToNat, 'inst_nat')}</td>
-                                        <td style="padding: 12px; text-align: center;">${formatScore(natToInst, 'nat_inst')}</td>
-                                        <td style="padding: 12px; text-align: center;">${formatScore(natToNat, 'nat_nat')}</td>
-                                        <td style="padding: 12px; text-align: center;">${statusBadge}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
-            container.innerHTML = tableHTML;
-
-            // Add click handlers to quadrant scores
-            document.querySelectorAll('.quadrant-score').forEach(scoreSpan => {
-                scoreSpan.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const traitName = scoreSpan.dataset.trait;
-                    const quadrant = scoreSpan.dataset.quadrant;
-                    viewQuadrantDetails(traitName, quadrant);
-                });
-            });
-        }
-
-        async function viewQuadrantDetails(traitName, quadrant) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.6);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-            `;
-
-            // Quadrant display names
-            const quadrantNames = {
-                'inst_inst': 'Instruction → Instruction',
-                'inst_nat': 'Instruction → Natural',
-                'nat_inst': 'Natural → Instruction',
-                'nat_nat': 'Natural → Natural'
-            };
-
-            modal.innerHTML = `
-                <div style="background: var(--bg-primary); border-radius: 4px; padding: 20px; max-width: 1000px; max-height: 90vh; overflow-y: auto; position: relative;">
-                    <button id="close-modal" style="position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary); padding: 4px 8px;">×</button>
-                    <h2 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: var(--text-primary);">${traitName}</h2>
-                    <h3 style="margin: 0 0 16px 0; font-size: 12px; font-weight: 400; color: var(--text-secondary);">${quadrantNames[quadrant]}</h3>
-                    <div id="quadrant-detail-content" style="color: var(--text-secondary);">Loading cross-distribution data...</div>
-                </div>
-            `;
-
-            document.body.appendChild(modal);
-
-            const closeModal = () => document.body.removeChild(modal);
-            modal.querySelector('#close-modal').addEventListener('click', closeModal);
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal();
-            });
-
-            // Load results if available
-            try {
-                const response = await fetch(`/api/cross-distribution/results/${traitName}`);
-                const data = await response.json();
-
-                const content = document.getElementById('quadrant-detail-content');
-
-                if (data.error) {
-                    content.innerHTML = `
-                        <p style="color: var(--text-secondary);">No detailed results available for this trait yet.</p>
-                        <p style="margin-top: 10px; color: var(--text-secondary); font-size: 14px;">
-                            Results will be available after running cross-distribution evaluation.
-                        </p>
-                    `;
-                    return;
-                }
-
-                // Extract quadrant data
-                const quadrantData = data.quadrants[quadrant];
-                if (!quadrantData) {
-                    content.innerHTML = `<p style="color: var(--danger);">No data for quadrant: ${quadrant}</p>`;
-                    return;
-                }
-
-                const methods = data.methods;
-                const nLayers = data.n_layers;
-
-                // Build accuracy heatmap data (4 methods × n_layers)
-                const heatmapData = [];
-                const methodLabels = [];
-
-                for (const method of methods) {
-                    if (!quadrantData.methods[method]) continue;
-
-                    const methodData = quadrantData.methods[method];
-                    const allLayers = methodData.all_layers;
-                    if (!allLayers) continue;
-
-                    const accuracies = allLayers.map(layerData => layerData.accuracy * 100); // Convert to percentage
-                    heatmapData.push(accuracies);
-                    methodLabels.push(method.replace(/_/g, ' '));
-                }
-
-                if (heatmapData.length === 0) {
-                    content.innerHTML = `<p style="color: var(--text-secondary);">No method data available for this quadrant.</p>`;
-                    return;
-                }
-
-                // Create summary stats - simple compact table
-                const availableMethods = methods.filter(method => quadrantData.methods[method]);
-
-                const summaryHTML = availableMethods.length > 0 ? `
-                    <div style="margin-bottom: 16px;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border-color);">
-                                    <th style="text-align: left; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Method</th>
-                                    <th style="text-align: right; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Best</th>
-                                    <th style="text-align: right; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Layer</th>
-                                    <th style="text-align: right; padding: 4px 8px; color: var(--text-secondary); font-weight: 400;">Avg</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${availableMethods.map(method => {
-                                    const methodData = quadrantData.methods[method];
-                                    return `
-                                        <tr>
-                                            <td style="padding: 4px 8px; color: var(--text-primary);">${method.replace(/_/g, ' ')}</td>
-                                            <td style="padding: 4px 8px; text-align: right; color: var(--text-primary);">${(methodData.best_accuracy * 100).toFixed(1)}%</td>
-                                            <td style="padding: 4px 8px; text-align: right; color: var(--text-secondary);">${methodData.best_layer}</td>
-                                            <td style="padding: 4px 8px; text-align: right; color: var(--text-tertiary);">${(methodData.avg_accuracy * 100).toFixed(1)}%</td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : '';
-
-                content.innerHTML = summaryHTML + `
-                    <div style="margin-top: 16px;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: var(--text-primary);">Accuracy Across Layers (${heatmapData.length} Method${heatmapData.length > 1 ? 's' : ''} × ${nLayers} Layers)</h4>
-                        <div id="quadrant-heatmap" style="width: 100%; height: 500px;"></div>
-                    </div>
-                    <div style="margin-top: 12px; font-size: 11px; color: var(--text-tertiary);">
-                        <div>Vector: ${quadrantData.vector_source} • Test: ${quadrantData.test_source}</div>
-                    </div>
-                `;
-
-                // Render heatmap - transpose so methods are on x-axis, layers on y-axis
-                const layers = Array.from({ length: nLayers }, (_, i) => i);
-
-                // Transpose: swap x and y
-                const transposedData = heatmapData[0].map((_, colIndex) =>
-                    heatmapData.map(row => row[colIndex])
-                );
-
-                const trace = {
-                    z: transposedData,
-                    x: methodLabels,  // Methods on x-axis
-                    y: layers,        // Layers on y-axis
-                    type: 'heatmap',
-                    colorscale: 'Viridis',
-                    colorbar: {
-                        title: 'Accuracy (%)',
-                        titleside: 'right'
-                    },
-                    hovertemplate: '%{x}<br>Layer %{y}<br>Accuracy: %{z:.1f}%<extra></extra>',
-                    zmin: 0,
-                    zmax: 100
-                };
-
-                Plotly.newPlot('quadrant-heatmap', [trace], getPlotlyLayout({
-                    margin: { l: 50, r: 60, t: 20, b: 60 },
-                    xaxis: {
-                        title: 'Method',
-                        side: 'bottom'
-                    },
-                    yaxis: {
-                        title: 'Layer',
-                        showticklabels: true,
-                        autorange: 'reversed'  // Layer 0 at top
-                    },
-                    height: 600
-                }), { displayModeBar: false });
-
-            } catch (error) {
-                const content = document.getElementById('quadrant-detail-content');
-                content.innerHTML = `<p style="color: var(--danger);">Error loading results: ${error.message}</p>`;
-            }
-        }
-
         // Render monitoring view
         async function renderMonitoring() {
             const contentArea = document.getElementById('content-area');
@@ -3252,73 +2783,90 @@
                 return;
             }
 
-            // Load data for ALL selected traits
-            contentArea.innerHTML = '<div id="all-traits-container"></div>';
-            const container = document.getElementById('all-traits-container');
+            // Try to find Tier 2 data for the first selected trait
+            const trait = filteredTraits[0];
+            const tier2Dir = `../experiments/${experimentData.name}/${trait.name}/inference/residual_stream_activations/`;
 
-            for (const trait of filteredTraits) {
-                const tier2Dir = `../experiments/${experimentData.name}/${trait.name}/inference/residual_stream_activations/`;
+            // Try to load prompt_0.json
+            try {
+                const fetchPath = `${tier2Dir}prompt_0.json`;
+                console.log('Fetching trajectory data from:', fetchPath);
+                const response = await fetch(fetchPath);
+                console.log('Fetch response status:', response.status, response.statusText);
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
-                // Create a unique div for this trait
-                const traitDiv = document.createElement('div');
-                traitDiv.id = `trait-${trait.name}`;
-                traitDiv.style.marginBottom = '20px';
-                container.appendChild(traitDiv);
-
-                // Try to load the selected prompt
-                try {
-                    const fetchPath = `${tier2Dir}prompt_${currentPrompt}.json`;
-                    console.log(`[${trait.name}] Fetching trajectory data for prompt ${currentPrompt}`);
-                    const response = await fetch(fetchPath);
-
-                    if (!response.ok) {
-                        console.log(`[${trait.name}] No data available for prompt ${currentPrompt} (${response.status})`);
-                        renderTier2InstructionsInContainer(traitDiv.id, trait, currentPrompt);
-                        continue;
-                    }
-
-                    const data = await response.json();
-                    console.log(`[${trait.name}] Data loaded successfully for prompt ${currentPrompt}`);
-                    renderTier2DataInContainer(traitDiv.id, trait, data);
-                } catch (error) {
-                    console.log(`[${trait.name}] Load failed for prompt ${currentPrompt}:`, error.message);
-                    renderTier2InstructionsInContainer(traitDiv.id, trait, currentPrompt);
-                }
+                const data = await response.json();
+                console.log('Trajectory data loaded successfully:', data);
+                renderTier2Data(trait, data);
+            } catch (error) {
+                // No data yet - show instructions
+                console.error('Failed to load trajectory data:', error);
+                renderTier2Instructions(trait);
             }
         }
 
-        function renderTier2InstructionsInContainer(containerId, trait, promptNum) {
-            const container = document.getElementById(containerId);
-            if (!container) {
-                console.error(`Container ${containerId} not found`);
-                return;
-            }
-
+        function renderTier2Instructions(trait) {
+            const contentArea = document.getElementById('content-area');
             // Get layer count from metadata
             const nLayers = trait.metadata?.n_layers || 26;
             const nCheckpoints = nLayers * 3;
 
-            container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
-                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: 8px;">⚠️ No data for prompt ${promptNum}</span>
+            contentArea.innerHTML = `
+                <div class="explanation">
+                    <div class="explanation-summary">Monitor trait evolution across all ${nLayers} layers during generation (${nCheckpoints} sublayer checkpoints)</div>
+                    <div class="explanation-details">
+
+                    <h4>Method</h4>
+                    <p>At each token position \\(t\\) and layer \\(\\ell\\), compute trait projection:</p>
+                    <p>$$s_t^{(\\ell)} = \\frac{\\mathbf{h}_t^{(\\ell)} \\cdot \\mathbf{v}}{\\|\\mathbf{v}\\|}$$</p>
+                    <p>where \\(\\mathbf{h}_t^{(\\ell)} \\in \\mathbb{R}^d\\) is the activation at token \\(t\\), layer \\(\\ell\\).</p>
+
+                    <h4>Sublayer Checkpoints</h4>
+                    <p>Captures 3 internal states per layer:</p>
+                    <ul>
+                        <li><strong>Pre-Attention:</strong> \\(\\mathbf{h}_t^{(\\ell, \\text{pre})}\\) - Before self-attention</li>
+                        <li><strong>Post-Attention:</strong> \\(\\mathbf{h}_t^{(\\ell, \\text{attn})} = \\mathbf{h}_t^{(\\ell, \\text{pre})} + \\text{Attn}(\\mathbf{h}_t^{(\\ell, \\text{pre})})\\) - After attention residual</li>
+                        <li><strong>Post-MLP:</strong> \\(\\mathbf{h}_t^{(\\ell, \\text{mlp})} = \\mathbf{h}_t^{(\\ell, \\text{attn})} + \\text{MLP}(\\mathbf{h}_t^{(\\ell, \\text{attn})})\\) - After MLP residual</li>
+                    </ul>
+                    <p>Total: ${nLayers} layers × 3 sublayers = ${nCheckpoints} checkpoints per token</p>
+
+                    <h4>Visualization</h4>
+                    <ul>
+                        <li><strong>Heatmap:</strong> Rows = layers/sublayers, Columns = tokens, Color = \\(s_t^{(\\ell)}\\)</li>
+                        <li>Shows trait emergence across layers and evolution during generation</li>
+                        <li>Reveals which layers contribute most to trait expression</li>
+                    </ul>
+                    </div>
+                <div class="card">
+                    <div class="card-title">All Layers: ${getDisplayName(trait.name)}</div>
+
+                    <div class="info" style="margin-bottom: 20px;">
+                        <strong>⚠️ No trajectory data available for ${trait.name}</strong>
+                    </div>
+
+                    <div style="background: var(--bg-tertiary); padding: 20px; border-radius: 8px;">
+                        <h3 style="color: var(--text-primary); margin-bottom: 15px;">Generate Trajectory Data</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                            Capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
+                        </p>
+                        <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto; border: 1px solid var(--border-color);">python inference/capture_tier2.py \\
+  --experiment ${experimentData.name} \\
+  --trait ${trait.name} \\
+  --prompts "What is the capital of France?" \\
+  --save-json</pre>
+                        <p style="color: var(--text-secondary); margin-top: 15px;">
+                            The <code style="background: var(--bg-primary); padding: 2px 6px; border-radius: 3px;">--save-json</code> flag creates visualization-friendly JSON files alongside the .pt files.
+                        </p>
+                        <p style="color: var(--text-tertiary); font-size: 13px; margin-top: 10px;">
+                            This captures how ${getDisplayName(trait.name)} evolves through ALL layers during both prompt encoding and response generation.
+                        </p>
+                    </div>
                 </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    The file <code>prompt_${promptNum}.json</code> does not exist for this trait. You may need to run inference with this prompt.
-                </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    To capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
-                </div>
-                <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_tier2.py --experiment ${experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
             `;
         }
 
-        function renderTier2DataInContainer(containerId, trait, data) {
-            const container = document.getElementById(containerId);
-            if (!container) {
-                console.error(`Container ${containerId} not found`);
-                return;
-            }
+        function renderTier2Data(trait, data) {
+            const contentArea = document.getElementById('content-area');
 
             try {
                 const promptProj = data.projections.prompt;  // [n_tokens, n_layers, 3]
@@ -3334,48 +2882,68 @@
             const nLayers = promptProj[0].length;  // Detect from data
             const nCheckpoints = nLayers * 3;
 
-            // Create unique IDs for this trait's elements
-            const traitId = trait.name;
-            const trajectoryId = `trajectory-heatmap-${traitId}`;
-            const sliderId = `unified-slider-${traitId}`;
-            const sliderValueId = `unified-slider-value-${traitId}`;
-            const sliderTokenId = `unified-slider-token-${traitId}`;
-            const sliderPhaseId = `unified-slider-phase-${traitId}`;
-            const logitContainerId = `logit-lens-container-${traitId}`;
-            const logitTokenNumId = `logit-token-num-${traitId}`;
-            const logitTokenTextId = `logit-token-text-${traitId}`;
-            const logitPlotId = `logit-lens-plot-${traitId}`;
-            const attentionViewerId = `attention-viewer-${traitId}`;
+            contentArea.innerHTML = `
+                <div class="card">
+                    <div class="card-title">All Layers: ${getDisplayName(trait.name)}</div>
 
-            container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
+                    <!-- Conversation context - compact -->
+                    <div style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: 6px; margin-bottom: 12px;">
+                        <div style="color: var(--text-primary); font-size: 14px; font-weight: 500; margin-bottom: 3px;">${data.prompt.text} ${data.response.text}</div>
+                        <div style="color: var(--text-secondary); font-size: 11px;">
+                            ${data.prompt.n_tokens} prompt + ${data.response.n_tokens} response = ${nTotalTokens} tokens • Vector: ${data.metadata.vector_path.split('/').pop()}
+                        </div>
+                    </div>
+
+                    <!-- Unified slider control - compact -->
+                    <div style="background: var(--bg-tertiary); padding: 10px 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="color: var(--text-secondary); font-size: 12px; font-weight: 500;">
+                                Position: <span id="unified-slider-value" style="color: var(--primary-color);">0</span>/${nTotalTokens - 1}
+                            </label>
+                            <span style="color: var(--text-secondary); font-size: 11px;">
+                                "<span id="unified-slider-token" style="font-weight: 600;">${allTokens[0]}</span>"
+                                <span id="unified-slider-phase" style="color: var(--text-tertiary); margin-left: 8px;">[Prompt]</span>
+                            </span>
+                        </div>
+                        <input type="range" id="unified-slider" min="0" max="${nTotalTokens - 1}" value="0"
+                               style="width: 100%; height: 2px; border-radius: 2px; background: var(--border-color);">
+                    </div>
+
+                    <div id="trajectory-heatmap" style="margin-bottom: 20px;"></div>
+
+                    <!-- Logit Lens Visualization - compact -->
+                    <div id="logit-lens-container" style="display: none; margin-bottom: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                        <h3 style="color: var(--text-primary); margin-bottom: 5px; font-size: 14px;">
+                            Prediction for Token <span id="logit-token-num">1</span>: "<span id="logit-token-text">...</span>"
+                        </h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 10px; font-size: 11px;">
+                            Top-3 predictions across layers (commitment point = final prediction locks in)
+                        </p>
+                        <div id="logit-lens-plot"></div>
+                    </div>
+
+                    <div id="attention-viewer"></div>
                 </div>
-                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 8px;">
-                    ${data.prompt.text} ${data.response.text}
-                </div>
-                <div id="${trajectoryId}"></div>
             `;
 
             // Render combined trajectory heatmap with separator line
-            try {
-                renderCombinedTrajectoryHeatmap(trajectoryId, allProj, allTokens, nPromptTokens, 250);  // Reduced height
-            } catch (plotError) {
-                console.error(`[${trait.name}] Heatmap rendering failed:`, plotError);
-                container.innerHTML += `<div class="info" style="color: var(--danger);">Failed to render heatmap: ${plotError.message}</div>`;
+            renderCombinedTrajectoryHeatmap('trajectory-heatmap', allProj, allTokens, nPromptTokens);
+
+            // Render attention viewer if data available
+            if (data.attention_weights) {
+                renderAttentionViewer('attention-viewer', data, allTokens, nPromptTokens);
             }
 
-            // Setup math rendering and toggle listeners
-            renderMath();
+            // Setup unified slider control
+            setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens);
             } catch (error) {
-                console.error(`[${trait.name}] Error rendering trajectory data:`, error);
-                if (container) {
-                    container.innerHTML = `<div class="card"><div class="card-title">Error: ${getDisplayName(trait.name)}</div><div class="info">Failed to render trajectory data: ${error.message}</div></div>`;
-                }
+                console.error('Error rendering trajectory data:', error);
+                contentArea.innerHTML = `<div class="card"><div class="card-title">Error</div><div class="info">Failed to render trajectory data: ${error.message}</div></div>`;
+            renderMath();
             }
         }
 
-        function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptTokens, height = 400) {
+        function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptTokens) {
             // projections: [n_tokens, n_layers, 3_sublayers]
             // We'll show layer-averaged (average over 3 sublayers)
 
@@ -3448,22 +3016,18 @@
                 hovertemplate: 'Token: %{x}<br>Layer: %{y}<br>Score: %{z:.2f}<extra></extra>'
             }];
 
-            // Adjust margins based on height
-            const isCompact = height < 300;
             const layout = getPlotlyLayout({
-                title: isCompact ? '' : 'Trait Trajectory',
+                title: 'Trait Trajectory',
                 xaxis: {
-                    title: isCompact ? '' : 'Tokens',
-                    tickangle: -45,
-                    tickfont: { size: isCompact ? 9 : 12 }
+                    title: 'Tokens',
+                    tickangle: -45
                 },
                 yaxis: {
-                    title: isCompact ? '' : 'Layer',
-                    tickfont: { size: isCompact ? 9 : 12 }
+                    title: 'Layer'
                 },
                 shapes: shapes,
-                height: height,
-                margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 10, b: 50, l: 40, r: 10 }
+                height: 400,
+                margin: { t: 40, b: 80, l: 50, r: 20 }
             });
 
             Plotly.newPlot(divId, data, layout, {displayModeBar: false});
@@ -3566,8 +3130,8 @@
                     yaxis: {
                         title: 'Layer'
                     },
-                    height: 300,
-                    margin: { t: 10, b: 50, l: 40, r: 10 }
+                    height: 350,
+                    margin: { t: 40, b: 80, l: 50, r: 20 }
                 });
 
                 Plotly.newPlot('attention-heatmap', [trace], layout, { displayModeBar: false });
@@ -3654,13 +3218,13 @@
                     gridcolor: 'rgba(128, 128, 128, 0.2)',
                     zeroline: false
                 },
-                height: 200,
-                margin: { t: 10, b: 40, l: 40, r: 10 },
+                height: 250,
+                margin: { t: 20, b: 50, l: 50, r: 20 },
                 paper_bgcolor: 'transparent',
                 plot_bgcolor: 'transparent',
                 font: {
                     color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
-                    size: 10
+                    size: 11
                 },
                 showlegend: true,
                 legend: {
@@ -3744,314 +3308,45 @@
             updateAllVisualizations(1);
         }
 
-        // Render Prompt Activation view
-        async function renderPromptActivation() {
-            const contentArea = document.getElementById('content-area');
-            const filteredTraits = getFilteredTraits();
-
-            if (filteredTraits.length === 0) {
-                contentArea.innerHTML = `
-                    <div class="card">
-                        <div class="card-title">Per-Token Activation</div>
-                        <div class="info">Select at least one trait to view per-token activation trajectories</div>
-                    </div>
-                `;
-                return;
-            }
-
-            // Load data for ALL selected traits
-            contentArea.innerHTML = '<div id="all-prompt-traits-container"></div>';
-            const container = document.getElementById('all-prompt-traits-container');
-
-            for (const trait of filteredTraits) {
-                const tier2Dir = `../experiments/${experimentData.name}/${trait.name}/inference/residual_stream_activations/`;
-
-                // Create a unique div for this trait
-                const traitDiv = document.createElement('div');
-                traitDiv.id = `prompt-trait-${trait.name}`;
-                traitDiv.style.marginBottom = '0px';
-                traitDiv.style.paddingBottom = '12px';
-                traitDiv.style.borderBottom = '1px solid var(--border-color)';
-                container.appendChild(traitDiv);
-
-                // Try to load the selected prompt
-                try {
-                    const fetchPath = `${tier2Dir}prompt_${currentPrompt}.json`;
-                    console.log(`[${trait.name}] Fetching prompt activation data for prompt ${currentPrompt}`);
-                    const response = await fetch(fetchPath);
-
-                    if (!response.ok) {
-                        console.log(`[${trait.name}] No data available for prompt ${currentPrompt} (${response.status})`);
-                        renderPromptActivationInstructions(traitDiv.id, trait, currentPrompt);
-                        continue;
-                    }
-
-                    const data = await response.json();
-                    console.log(`[${trait.name}] Data loaded successfully for prompt ${currentPrompt}`);
-                    renderPromptActivationData(traitDiv.id, trait, data);
-                } catch (error) {
-                    console.log(`[${trait.name}] Load failed for prompt ${currentPrompt}:`, error.message);
-                    renderPromptActivationInstructions(traitDiv.id, trait, currentPrompt);
-                }
-            }
-        }
-
-        function renderPromptActivationInstructions(containerId, trait, promptNum) {
-            const container = document.getElementById(containerId);
-            const nLayers = trait.metadata?.n_layers || 26;
-
-            container.innerHTML = `
-                <div class="card" style="margin-bottom: 10px;">
-                    <div class="card-title">${getDisplayName(trait.name)}</div>
-
-                    <div class="info" style="margin-bottom: 10px; font-size: 12px;">
-                        ⚠️ No data for prompt ${promptNum}
-                    </div>
-
-                    <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; font-size: 12px;">
-                        <p style="color: var(--text-secondary); margin-bottom: 8px;">
-                            The file <code>prompt_${promptNum}.json</code> does not exist for this trait.
-                        </p>
-                        <p style="color: var(--text-secondary); margin-bottom: 8px;">
-                            To capture per-token activation trajectory (prompt + response):
-                        </p>
-                        <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 8px 0; overflow-x: auto; border: 1px solid var(--border-color); font-size: 11px;">python inference/capture_tier2.py --experiment ${experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderPromptActivationData(containerId, trait, data) {
-            const container = document.getElementById(containerId);
-
-            try {
-                const promptProj = data.projections.prompt;  // [n_tokens, n_layers, 3]
-                const responseProj = data.projections.response;  // [n_tokens, n_layers, 3]
-
-                // Combine prompt and response
-                const allTokens = [...data.prompt.tokens, ...data.response.tokens];
-                const allProj = [...promptProj, ...responseProj];
-                const nPromptTokens = data.prompt.n_tokens;
-                const nTotalTokens = allTokens.length;
-                const nLayers = promptProj[0].length;
-
-                console.log(`Combined tokens: ${nTotalTokens} (${nPromptTokens} prompt + ${nTotalTokens - nPromptTokens} response), Layers: ${nLayers}`);
-
-                // Create unique IDs for this trait's elements
-                const traitId = trait.name;
-                const plotId = `prompt-activation-plot-${traitId}`;
-
-                container.innerHTML = `
-                    <div class="card" style="margin-bottom: 0px; padding: 8px 12px;">
-                        <div class="card-title" style="margin-bottom: 4px; font-size: 13px;">${getDisplayName(trait.name)}</div>
-
-                        <!-- Conversation context -->
-                        <div style="background: var(--bg-tertiary); padding: 4px 6px; border-radius: 3px; margin-bottom: 6px;">
-                            <div style="color: var(--text-primary); font-size: 11px; margin-bottom: 1px;">${data.prompt.text} ${data.response.text}</div>
-                            <div style="color: var(--text-secondary); font-size: 9px;">
-                                ${nPromptTokens} prompt + ${nTotalTokens - nPromptTokens} response = ${nTotalTokens} tokens
-                            </div>
-                        </div>
-
-                        <div id="${plotId}" style="margin-bottom: 0px;"></div>
-                    </div>
-                `;
-
-                // Render the combined activation plot
-                renderPromptActivationPlot(plotId, allProj, allTokens, nLayers, nPromptTokens);
-
-            } catch (error) {
-                console.error('Error rendering prompt activation data:', error);
-                container.innerHTML = `<div class="card"><div class="card-title">Error</div><div class="info">Failed to render prompt activation data: ${error.message}</div></div>`;
-            }
-        }
-
-        function renderPromptActivationPlot(divId, projections, tokens, nLayers, nPromptTokens) {
-            // projections: [n_tokens, n_layers, 3_sublayers]
-            // We want: x-axis = token position, y-axis = activation strength
-            // We'll average across all layers and sublayers for each token
-
-            const nTokens = projections.length;
-            console.log(`Rendering combined activation plot for ${nTokens} tokens (${nPromptTokens} prompt + ${nTokens - nPromptTokens} response) x ${nLayers} layers`);
-
-            // Skip BOS token (index 0) for better visualization
-            const startIdx = 1;
-
-            // Calculate activation strength for each token (average across all layers and sublayers)
-            const activations = [];
-            const displayTokens = [];
-
-            for (let t = startIdx; t < nTokens; t++) {
-                let sum = 0;
-                let count = 0;
-                for (let l = 0; l < nLayers; l++) {
-                    for (let s = 0; s < 3; s++) {
-                        sum += projections[t][l][s];
-                        count++;
-                    }
-                }
-                activations.push(sum / count);
-                displayTokens.push(tokens[t]);
-            }
-
-            // Create the line plot
-            const trace = {
-                x: Array.from({length: activations.length}, (_, i) => i),
-                y: activations,
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: {
-                    color: '#4a9eff',
-                    width: 1.5
-                },
-                marker: {
-                    size: 4,
-                    color: '#4a9eff'
-                },
-                text: displayTokens,
-                hovertemplate: 'Token %{x}: %{text}<br>Activation: %{y:.2f}<extra></extra>'
-            };
-
-            // Add subtle vertical line separator between prompt and response
-            const shapes = [
-                {
-                    type: 'line',
-                    x0: (nPromptTokens - startIdx) - 0.5,
-                    x1: (nPromptTokens - startIdx) - 0.5,
-                    y0: 0,
-                    y1: 1,
-                    yref: 'paper',
-                    line: {
-                        color: 'rgba(128, 128, 128, 0.15)',
-                        width: 1,
-                        dash: 'dot'
-                    }
-                }
-            ];
-
-            // Add annotations for prompt/response regions
-            const annotations = [
-                {
-                    x: (nPromptTokens - startIdx) / 2 - 0.5,
-                    y: 1.05,
-                    yref: 'paper',
-                    text: 'Prompt',
-                    showarrow: false,
-                    font: {
-                        size: 10,
-                        color: 'rgba(128, 128, 128, 0.7)'
-                    }
-                },
-                {
-                    x: (nPromptTokens - startIdx) + (activations.length - (nPromptTokens - startIdx)) / 2 - 0.5,
-                    y: 1.05,
-                    yref: 'paper',
-                    text: 'Response',
-                    showarrow: false,
-                    font: {
-                        size: 10,
-                        color: 'rgba(128, 128, 128, 0.7)'
-                    }
-                }
-            ];
-
-            const layout = {
-                xaxis: {
-                    title: 'Token Position',
-                    tickmode: 'array',
-                    tickvals: Array.from({length: activations.length}, (_, i) => i),
-                    ticktext: displayTokens,
-                    tickangle: -45,
-                    showgrid: false
-                },
-                yaxis: {
-                    title: 'Average Activation (all layers)',
-                    zeroline: true,
-                    zerolinecolor: 'rgba(128, 128, 128, 0.3)',
-                    zerolinewidth: 1,
-                    showgrid: false
-                },
-                shapes: shapes,
-                annotations: annotations,
-                margin: { l: 50, r: 10, t: 25, b: 80 },
-                height: 200,
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: {
-                    size: 10,
-                    color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
-                },
-                hovermode: 'closest'
-            };
-
-            const config = {
-                responsive: true,
-                displayModeBar: true,
-                displaylogo: false,
-                modeBarButtonsToRemove: ['lasso2d', 'select2d']
-            };
-
-            Plotly.newPlot(divId, [trace], layout, config);
-        }
-
         // Render Layer Deep Dive view
         async function renderLayerDeepDive() {
             const contentArea = document.getElementById('content-area');
             const filteredTraits = getFilteredTraits();
 
             if (filteredTraits.length === 0) {
-                contentArea.innerHTML = `<div style="color: var(--text-secondary); font-size: 12px;">Select at least one trait to view layer internals</div>`;
+                contentArea.innerHTML = `
+                    <div class="card">
+                        <div class="card-title">Layer Deep Dive</div>
+                        <div class="info">Select at least one trait to view layer internals</div>
+                    </div>
+                `;
                 return;
             }
 
-            // Load data for ALL selected traits
-            contentArea.innerHTML = '<div id="all-traits-layer-dive"></div>';
-            const container = document.getElementById('all-traits-layer-dive');
+            // Try to find Tier 3 data for the first selected trait
+            const trait = filteredTraits[0];
+            const tier3Dir = `../experiments/${experimentData.name}/${trait.name}/inference/layer_internal_states/`;
 
-            for (const trait of filteredTraits) {
-                const tier3Dir = `../experiments/${experimentData.name}/${trait.name}/inference/layer_internal_states/`;
+            // Try to load prompt_0_layer16.json (default layer)
+            try {
+                const response = await fetch(`${tier3Dir}prompt_0_layer16.json`);
+                if (!response.ok) throw new Error('No data found');
 
-                // Create a unique div for this trait
-                const traitDiv = document.createElement('div');
-                traitDiv.id = `layer-dive-${trait.name}`;
-                traitDiv.style.marginBottom = '32px';  // Airy spacing between traits
-                container.appendChild(traitDiv);
-
-                // Try to load the selected prompt for default layer 16
-                try {
-                    const response = await fetch(`${tier3Dir}prompt_${currentPrompt}_layer16.json`);
-                    if (!response.ok) throw new Error(`No data found for prompt ${currentPrompt}`);
-
-                    const data = await response.json();
-                    renderTier3DataInContainer(traitDiv.id, trait, data);
-                } catch (error) {
-                    // No data yet - show instructions
-                    renderTier3InstructionsInContainer(traitDiv.id, trait, currentPrompt);
-                }
+                const data = await response.json();
+                renderTier3Data(trait, data);
+            } catch (error) {
+                // No data yet - show instructions
+                renderTier3Instructions(trait);
             }
         }
 
-        function renderTier3Instructions(trait, filteredTraits) {
+        function renderTier3Instructions(trait) {
             const contentArea = document.getElementById('content-area');
-
-            // Find traits with tier 3 data
-            const traitsWithTier3 = experimentData.traits.filter(t => t.hasTier3);
-
-            let tier3StatusHtml = '';
-            if (traitsWithTier3.length > 0) {
-                const traitList = traitsWithTier3.map(t => `<strong>${getDisplayName(t.name)}</strong>`).join(', ');
-                tier3StatusHtml = `
-                    <div style="background: var(--accent-color); color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-                        ✓ Layer internals available for: ${traitList}
-                        <br><span style="opacity: 0.9; font-size: 13px;">Select ${traitsWithTier3.length === 1 ? 'this trait' : 'one of these traits'} to view the data</span>
-                    </div>
-                `;
-            }
-
             contentArea.innerHTML = `
                 <div class="explanation">
-                    <div class="explanation-summary">We can pinpoint exactly which neurons and attention mechanisms are responsible for computing a trait at a specific layer.</div>
+                    <div class="explanation-summary">Identify which neurons and attention heads drive the trait in a specific layer</div>
                     <div class="explanation-details">
+                    <p>Deep dive into a single layer's internals to identify which components drive trait expression.</p>
 
                     <h4>Captured Components</h4>
 
@@ -4081,8 +3376,6 @@
                 <div class="card">
                     <div class="card-title">Layer Deep Dive: ${getDisplayName(trait.name)}</div>
 
-                    ${tier3StatusHtml}
-
                     <div class="info" style="margin-bottom: 20px;">
                         <strong>⚠️ No layer internals data available for ${trait.name}</strong>
                     </div>
@@ -4092,7 +3385,7 @@
                         <p style="color: var(--text-secondary); margin-bottom: 15px;">
                             Capture complete internals (Q/K/V, attention heads, 9216 MLP neurons) for one layer:
                         </p>
-                        <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto; border: 1px solid var(--border-color);">python inference/capture_single_layer.py \\
+                        <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto; border: 1px solid var(--border-color);">python inference/capture_tier3.py \\
   --experiment ${experimentData.name} \\
   --trait ${trait.name} \\
   --layer 16 \\
@@ -4109,105 +3402,6 @@
             `;
         }
 
-        function renderTier3InstructionsInContainer(containerId, trait, promptNum) {
-            const container = document.getElementById(containerId);
-
-            container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
-                    <span style="color: var(--text-tertiary); font-size: 11px; margin-left: 8px;">⚠️ No data for prompt ${promptNum}</span>
-                </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    The file <code>prompt_${promptNum}_layer16.json</code> does not exist for this trait.
-                </div>
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-                    To capture complete internals (Q/K/V, attention heads, 9216 MLP neurons):
-                </div>
-                <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_single_layer.py --experiment ${experimentData.name} --trait ${trait.name} --layer 16 --prompts "..." --save-json</pre>
-            `;
-        }
-
-        function renderTier3DataInContainer(containerId, trait, data) {
-            const container = document.getElementById(containerId);
-
-            // Get prompt GELU activations: [n_tokens, 9216]
-            const promptGelu = data.internals.prompt.gelu;
-            const promptTokens = data.prompt.tokens;
-
-            // Combine prompt and response tokens and activations
-            const responseGelu = data.internals.response.gelu;
-            const responseTokens = data.response.tokens;
-
-            const allTokens = [...promptTokens, ...responseTokens];
-            const allGelu = [...promptGelu, ...responseGelu];
-
-            container.innerHTML = `
-                <div style="margin-bottom: 4px;">
-                    <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${getDisplayName(trait.name)}</span>
-                    <span style="color: var(--text-secondary); font-size: 11px; margin-left: 8px;">Layer ${data.layer}</span>
-                </div>
-                <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 8px;">
-                    ${data.prompt.text} ${data.response.text}
-                </div>
-                <div id="top-neurons-${trait.name}" style="margin-top: 8px;"></div>
-            `;
-
-            // Render combined neuron activations (compact)
-            renderTopNeuronsCompact(`top-neurons-${trait.name}`, allGelu, allTokens, promptTokens.length);
-        }
-
-        function renderTopNeuronsCompact(divId, geluActivations, tokens, promptLength) {
-            // geluActivations: [n_tokens, 9216]
-            const nTokens = geluActivations.length;
-            const nNeurons = geluActivations[0].length;
-
-            // Average absolute activation across all tokens for each neuron
-            const neuronAvgAbs = new Array(nNeurons).fill(0);
-            for (let n = 0; n < nNeurons; n++) {
-                let sum = 0;
-                for (let t = 0; t < nTokens; t++) {
-                    sum += Math.abs(geluActivations[t][n]);
-                }
-                neuronAvgAbs[n] = sum / nTokens;
-            }
-
-            // Get top 10 neurons
-            const neuronIndices = Array.from({length: nNeurons}, (_, i) => i);
-            neuronIndices.sort((a, b) => neuronAvgAbs[b] - neuronAvgAbs[a]);
-            const topNeurons = neuronIndices.slice(0, 10);
-
-            // Build heatmap data [10 neurons x n_tokens]
-            const heatmapData = topNeurons.map(n =>
-                geluActivations.map(tokenAct => tokenAct[n])
-            );
-
-            const trace = {
-                z: heatmapData,
-                x: tokens,
-                y: topNeurons.map(n => `N${n}`),
-                type: 'heatmap',
-                colorscale: 'Viridis',
-                hovertemplate: 'Token: %{x}<br>Neuron: %{y}<br>Activation: %{z:.3f}<extra></extra>'
-            };
-
-            const layout = {
-                margin: { t: 5, b: 30, l: 40, r: 5 },
-                height: 150,
-                xaxis: {
-                    tickangle: -45,
-                    tickfont: { size: 9 }
-                },
-                yaxis: {
-                    tickfont: { size: 9 }
-                },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#e0e0e0', family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }
-            };
-
-            Plotly.newPlot(divId, [trace], layout, { displayModeBar: false });
-        }
-
         function renderTier3Data(trait, data) {
             const contentArea = document.getElementById('content-area');
 
@@ -4217,8 +3411,10 @@
 
             contentArea.innerHTML = `
                 <div class="explanation">
-                    <div class="explanation-summary">We can pinpoint exactly which neurons and attention mechanisms are responsible for computing a trait at layer ${data.layer}.</div>
+                    <div class="explanation-summary">Layer ${data.layer} neuron analysis - top 20 trait-driving neurons</div>
                     <div class="explanation-details">
+                    <h4>Layer ${data.layer} Internals</h4>
+                    <p>Analysis of complete layer internals to identify trait-driving neurons.</p>
 
                     <h4>Components Analyzed</h4>
 
@@ -4281,9 +3477,6 @@
 
             // Render combined neuron activations
             renderTopNeurons('top-neurons-combined', 'Top Neurons (Full Conversation)', allGelu, allTokens, promptTokens.length);
-
-            // Setup math rendering and toggle listeners
-            renderMath();
         }
 
         // ============================================================================
@@ -4589,8 +3782,8 @@
                     title: `Head ${head}`,
                     xaxis: { title: 'Context Token', tickangle: -45, tickfont: { size: 9 } },
                     yaxis: { title: '', showticklabels: false },
-                    height: 80,
-                    margin: { l: 25, r: 5, t: 10, b: 50 },
+                    height: 100,
+                    margin: { l: 30, r: 10, t: 40, b: 80 },
                     shapes: shapes
                 });
 
@@ -4845,13 +4038,6 @@
 
             // Select all traits button
             document.getElementById('select-all-btn').addEventListener('click', toggleAllTraits);
-
-            // Prompt selector
-            document.getElementById('prompt-selector').addEventListener('change', (e) => {
-                currentPrompt = parseInt(e.target.value);
-                console.log(`Prompt changed to: ${currentPrompt}`);
-                renderView();
-            });
         }
 
         // Utility functions

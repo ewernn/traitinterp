@@ -1,0 +1,270 @@
+================================================================================
+COMPLETE 4×4 SWEEP: emotional_valence
+================================================================================
+Quadrants: 4
+Methods: 4
+Layers: 26
+Total tests: 416 = 416
+================================================================================
+
+================================================================================
+QUADRANT: inst_to_inst
+================================================================================
+
+Layer 0: mean_diff:52.6% probe:65.8% gradient:52.6% ica:50.0% 
+
+Layer 1: mean_diff:47.4% probe:65.8% gradient:52.6% ica:57.9% 
+
+Layer 2: mean_diff:50.0% probe:68.4% gradient:50.0% ica:39.5% 
+
+Layer 3: mean_diff:50.0% probe:65.8% gradient:47.4% ica:60.5% 
+
+Layer 4: mean_diff:60.5% probe:65.8% gradient:65.8% ica:50.0% 
+
+Layer 5: mean_diff:52.6% probe:68.4% gradient:50.0% ica:47.4% 
+
+Layer 6: mean_diff:47.4% probe:63.2% gradient:55.3% ica:50.0% 
+
+Layer 7: mean_diff:52.6% probe:65.8% gradient:57.9% ica:57.9% 
+
+Layer 8: mean_diff:50.0% probe:65.8% gradient:60.5% ica:55.3% 
+
+Layer 9: mean_diff:52.6% probe:68.4% gradient:71.1% ica:50.0% 
+
+Layer 10: mean_diff:52.6% probe:68.4% gradient:50.0% ica:52.6% 
+
+Layer 11: mean_diff:52.6% probe:68.4% gradient:52.6% ica:57.9% 
+
+Layer 12: mean_diff:52.6% probe:68.4% gradient:52.6% ica:50.0% 
+
+Layer 13: mean_diff:52.6% probe:71.1% gradient:52.6% ica:47.4% 
+
+Layer 14: mean_diff:52.6% probe:71.1% gradient:68.4% ica:52.6% 
+
+Layer 15: mean_diff:52.6% probe:71.1% gradient:52.6% ica:52.6% 
+
+Layer 16: mean_diff:52.6% probe:71.1% gradient:63.2% ica:44.7% 
+
+Layer 17: mean_diff:52.6% probe:71.1% gradient:55.3% ica:60.5% 
+
+Layer 18: mean_diff:52.6% probe:71.1% gradient:63.2% ica:55.3% 
+
+Layer 19: mean_diff:52.6% probe:71.1% gradient:55.3% ica:50.0% 
+
+Layer 20: mean_diff:52.6% probe:71.1% gradient:52.6% ica:52.6% 
+
+Layer 21: mean_diff:52.6% probe:71.1% gradient:55.3% ica:55.3% 
+
+Layer 22: mean_diff:52.6% probe:71.1% gradient:81.6% ica:52.6% 
+
+Layer 23: mean_diff:52.6% probe:71.1% gradient:60.5% ica:60.5% 
+
+Layer 24: mean_diff:52.6% probe:71.1% gradient:52.6% ica:50.0% 
+
+Layer 25: mean_diff:52.6% probe:68.4% gradient:57.9% ica:65.8% 
+
+================================================================================
+QUADRANT: inst_to_nat
+================================================================================
+
+Layer 0: mean_diff:61.2% probe:100.0% gradient:83.1% ica:56.2% 
+
+Layer 1: mean_diff:72.6% probe:100.0% gradient:72.6% ica:51.7% 
+
+Layer 2: mean_diff:83.1% probe:100.0% gradient:91.5% ica:52.7% 
+
+Layer 3: mean_diff:90.5% probe:100.0% gradient:93.0% ica:57.7% 
+
+Layer 4: mean_diff:74.1% probe:100.0% gradient:86.6% ica:50.2% 
+
+Layer 5: mean_diff:87.1% probe:100.0% gradient:92.5% ica:52.2% 
+
+Layer 6: mean_diff:87.6% probe:100.0% gradient:89.6% ica:60.2% 
+
+Layer 7: mean_diff:85.6% probe:100.0% gradient:95.5% ica:59.2% 
+
+Layer 8: mean_diff:91.0% probe:100.0% gradient:95.0% ica:56.7% 
+
+Layer 9: mean_diff:90.5% probe:100.0% gradient:92.0% ica:49.8% 
+
+Layer 10: mean_diff:83.6% probe:100.0% gradient:93.5% ica:49.8% 
+
+Layer 11: mean_diff:90.0% probe:100.0% gradient:88.6% ica:59.2% 
+
+Layer 12: mean_diff:87.6% probe:100.0% gradient:74.1% ica:51.7% 
+
+Layer 13: mean_diff:87.6% probe:100.0% gradient:84.1% ica:50.2% 
+
+Layer 14: mean_diff:73.6% probe:100.0% gradient:96.0% ica:49.8% 
+
+Layer 15: mean_diff:81.1% probe:100.0% gradient:75.6% ica:53.7% 
+
+Layer 16: mean_diff:65.7% probe:100.0% gradient:95.5% ica:49.8% 
+
+Layer 17: mean_diff:84.1% probe:100.0% gradient:93.0% ica:51.2% 
+
+Layer 18: mean_diff:82.6% probe:100.0% gradient:94.5% ica:57.2% 
+
+Layer 19: mean_diff:78.1% probe:100.0% gradient:93.5% ica:50.7% 
+
+Layer 20: mean_diff:78.1% probe:100.0% gradient:91.5% ica:49.8% 
+
+Layer 21: mean_diff:77.6% probe:100.0% gradient:93.5% ica:49.8% 
+
+Layer 22: mean_diff:85.1% probe:100.0% gradient:95.0% ica:57.7% 
+
+Layer 23: mean_diff:79.6% probe:100.0% gradient:94.0% ica:54.7% 
+
+Layer 24: mean_diff:52.7% probe:100.0% gradient:84.1% ica:62.2% 
+
+Layer 25: mean_diff:49.8% probe:100.0% gradient:81.1% ica:77.1% 
+
+================================================================================
+QUADRANT: nat_to_nat
+================================================================================
+
+Layer 0: mean_diff:56.1% probe:100.0% gradient:68.3% ica:53.7% 
+
+Layer 1: mean_diff:63.4% probe:100.0% gradient:65.9% ica:48.8% 
+
+Layer 2: mean_diff:70.7% probe:100.0% gradient:87.8% ica:56.1% 
+
+Layer 3: mean_diff:85.4% probe:100.0% gradient:92.7% ica:51.2% 
+
+Layer 4: mean_diff:78.0% probe:100.0% gradient:87.8% ica:51.2% 
+
+Layer 5: mean_diff:78.0% probe:100.0% gradient:90.2% ica:43.9% 
+
+Layer 6: mean_diff:78.0% probe:100.0% gradient:95.1% ica:58.5% 
+
+Layer 7: mean_diff:73.2% probe:100.0% gradient:95.1% ica:68.3% 
+
+Layer 8: mean_diff:85.4% probe:100.0% gradient:97.6% ica:61.0% 
+
+Layer 9: mean_diff:82.9% probe:100.0% gradient:97.6% ica:48.8% 
+
+Layer 10: mean_diff:68.3% probe:100.0% gradient:87.8% ica:48.8% 
+
+Layer 11: mean_diff:82.9% probe:100.0% gradient:78.0% ica:65.9% 
+
+Layer 12: mean_diff:78.0% probe:100.0% gradient:63.4% ica:61.0% 
+
+Layer 13: mean_diff:80.5% probe:100.0% gradient:73.2% ica:48.8% 
+
+Layer 14: mean_diff:63.4% probe:100.0% gradient:100.0% ica:48.8% 
+
+Layer 15: mean_diff:65.9% probe:100.0% gradient:63.4% ica:58.5% 
+
+Layer 16: mean_diff:58.5% probe:100.0% gradient:100.0% ica:48.8% 
+
+Layer 17: mean_diff:68.3% probe:100.0% gradient:85.4% ica:53.7% 
+
+Layer 18: mean_diff:68.3% probe:100.0% gradient:95.1% ica:61.0% 
+
+Layer 19: mean_diff:65.9% probe:100.0% gradient:90.2% ica:65.9% 
+
+Layer 20: mean_diff:63.4% probe:100.0% gradient:82.9% ica:48.8% 
+
+Layer 21: mean_diff:63.4% probe:100.0% gradient:92.7% ica:48.8% 
+
+Layer 22: mean_diff:75.6% probe:100.0% gradient:100.0% ica:56.1% 
+
+Layer 23: mean_diff:68.3% probe:100.0% gradient:87.8% ica:48.8% 
+
+Layer 24: mean_diff:51.2% probe:100.0% gradient:70.7% ica:65.9% 
+
+Layer 25: mean_diff:48.8% probe:100.0% gradient:68.3% ica:75.6% 
+
+================================================================================
+QUADRANT: nat_to_inst
+================================================================================
+
+Layer 0: mean_diff:53.2% probe:87.2% gradient:52.1% ica:63.8% 
+
+Layer 1: mean_diff:53.2% probe:87.2% gradient:53.2% ica:63.8% 
+
+Layer 2: mean_diff:55.9% probe:87.2% gradient:58.0% ica:52.1% 
+
+Layer 3: mean_diff:58.0% probe:86.2% gradient:66.5% ica:57.4% 
+
+Layer 4: mean_diff:79.3% probe:88.3% gradient:79.3% ica:46.8% 
+
+Layer 5: mean_diff:54.8% probe:87.8% gradient:59.0% ica:54.8% 
+
+Layer 6: mean_diff:55.3% probe:86.7% gradient:72.3% ica:51.1% 
+
+Layer 7: mean_diff:53.7% probe:87.8% gradient:63.8% ica:51.6% 
+
+Layer 8: mean_diff:54.3% probe:87.2% gradient:63.8% ica:54.3% 
+
+Layer 9: mean_diff:54.3% probe:89.9% gradient:85.1% ica:47.3% 
+
+Layer 10: mean_diff:53.2% probe:89.4% gradient:55.9% ica:44.7% 
+
+Layer 11: mean_diff:53.7% probe:89.4% gradient:53.2% ica:54.3% 
+
+Layer 12: mean_diff:53.7% probe:88.8% gradient:53.2% ica:50.0% 
+
+Layer 13: mean_diff:53.7% probe:88.3% gradient:53.2% ica:47.3% 
+
+Layer 14: mean_diff:53.2% probe:86.7% gradient:63.3% ica:47.9% 
+
+Layer 15: mean_diff:53.2% probe:86.7% gradient:53.2% ica:52.1% 
+
+Layer 16: mean_diff:53.2% probe:88.3% gradient:62.8% ica:51.1% 
+
+Layer 17: mean_diff:53.2% probe:87.8% gradient:55.9% ica:54.8% 
+
+Layer 18: mean_diff:53.2% probe:89.4% gradient:58.5% ica:58.5% 
+
+Layer 19: mean_diff:53.2% probe:88.3% gradient:55.9% ica:59.6% 
+
+Layer 20: mean_diff:53.2% probe:89.9% gradient:53.7% ica:53.2% 
+
+Layer 21: mean_diff:53.2% probe:89.4% gradient:56.4% ica:51.1% 
+
+Layer 22: mean_diff:53.2% probe:90.4% gradient:77.7% ica:59.0% 
+
+Layer 23: mean_diff:53.2% probe:89.4% gradient:57.4% ica:57.4% 
+
+Layer 24: mean_diff:53.2% probe:88.8% gradient:53.2% ica:55.3% 
+
+Layer 25: mean_diff:53.2% probe:91.5% gradient:57.4% ica:53.2% 
+
+================================================================================
+SUMMARY: Best Accuracy Per Quadrant
+================================================================================
+
+
+INST → TO → INST:
+------------------------------------------------------------
+  mean_diff   : Best=60.5% (L4), Avg=52.2%
+  probe       : Best=71.1% (L13), Avg=68.8%
+  gradient    : Best=81.6% (L22), Avg=57.3%
+  ica         : Best=65.8% (L25), Avg=53.0%
+
+INST → TO → NAT:
+------------------------------------------------------------
+  mean_diff   : Best=91.0% (L8), Avg=79.2%
+  probe       : Best=100.0% (L0), Avg=100.0%
+  gradient    : Best=96.0% (L14), Avg=89.2%
+  ica         : Best=77.1% (L25), Avg=54.7%
+
+NAT → TO → NAT:
+------------------------------------------------------------
+  mean_diff   : Best=85.4% (L3), Avg=70.1%
+  probe       : Best=100.0% (L0), Avg=100.0%
+  gradient    : Best=100.0% (L14), Avg=85.3%
+  ica         : Best=75.6% (L25), Avg=55.6%
+
+NAT → TO → INST:
+------------------------------------------------------------
+  mean_diff   : Best=79.3% (L4), Avg=54.8%
+  probe       : Best=91.5% (L25), Avg=88.4%
+  gradient    : Best=85.1% (L9), Avg=60.5%
+  ica         : Best=63.8% (L0), Avg=53.6%
+
+================================================================================
+✅ Complete results saved to /tmp/emotional_valence_full_4x4_results.json
+================================================================================
+

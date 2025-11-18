@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer Architecture Diagram - Editable</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 800px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        /* SVG Styles */
+        .diagram-svg {
+            width: 100%;
+            height: auto;
+        }
+
+        .box {
+            fill: #e3f2fd;
+            stroke: #90caf9;
+            stroke-width: 2;
+        }
+
+        .box-mlp {
+            fill: #f3e5f5;
+            stroke: #ba68c8;
+        }
+
+        .box-attn {
+            fill: #e8f5e9;
+            stroke: #66bb6a;
+        }
+
+        .neuron {
+            fill: #4a9eff;
+        }
+
+        .neuron-hidden {
+            fill: #ba68c8;
+        }
+
+        .flow-line {
+            stroke: #4a9eff;
+            stroke-width: 3;
+            fill: none;
+        }
+
+        .skip-line {
+            stroke: #4a9eff;
+            stroke-width: 4;
+            stroke-dasharray: 10, 5;
+            fill: none;
+        }
+
+        .arrow {
+            fill: #4a9eff;
+        }
+
+        .text-label {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 14px;
+            fill: #333;
+            text-anchor: middle;
+        }
+
+        .text-small {
+            font-size: 11px;
+            fill: #666;
+        }
+
+        .text-title {
+            font-size: 12px;
+            font-weight: 600;
+            fill: #333;
+            text-anchor: middle;
+        }
+
+        .token {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            fill: #333;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .instructions code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="instructions">
+            <h3>📝 Instructions:</h3>
+            <ol>
+                <li>Edit the SVG below by modifying coordinates, adding elements, etc.</li>
+                <li>Refresh the page to see changes (just edit this HTML file)</li>
+                <li>When done, copy the entire <code>&lt;svg&gt;</code> element</li>
+                <li>Send it to Claude to integrate into the visualization</li>
+            </ol>
+            <p><strong>Quick SVG editing tips:</strong></p>
+            <ul>
+                <li><code>&lt;rect x="50" y="100" width="200" height="60" /&gt;</code> - Rectangle box</li>
+                <li><code>&lt;circle cx="100" cy="100" r="8" /&gt;</code> - Neuron dot</li>
+                <li><code>&lt;line x1="100" y1="50" x2="100" y2="200" /&gt;</code> - Straight line</li>
+                <li><code>&lt;path d="M 100 50 L 100 200" /&gt;</code> - Custom path</li>
+                <li><code>&lt;text x="150" y="130" class="text-label"&gt;Label&lt;/text&gt;</code> - Text</li>
+            </ul>
+        </div>
+
+        <h1>Transformer Decoder Layer</h1>
+
+        <!-- EDIT THIS SVG -->
+        <svg class="diagram-svg" viewBox="0 0 600 1200" xmlns="http://www.w3.org/2000/svg">
+            <!-- Main vertical flow line (center) -->
+            <line x1="300" y1="100" x2="300" y2="1100" class="flow-line" />
+
+            <!-- Flow arrows (pointing up) -->
+            <polygon points="300,110 295,120 305,120" class="arrow" />
+            <polygon points="300,400 295,410 305,410" class="arrow" />
+            <polygon points="300,700 295,710 305,710" class="arrow" />
+            <polygon points="300,1000 295,1010 305,1010" class="arrow" />
+
+            <!-- OUTPUT TOKEN (top) -->
+            <rect x="225" y="50" width="150" height="50" rx="8" class="box" stroke-dasharray="8,4" />
+            <text x="300" y="82" class="token">"!"</text>
+
+            <!-- Layer Norm (top) -->
+            <rect x="200" y="130" width="200" height="40" rx="6" class="box" />
+            <text x="300" y="155" class="text-label">Layer Norm</text>
+
+            <!-- ============ ATTENTION BLOCK ============ -->
+            <!-- Background (light green) -->
+            <rect x="150" y="200" width="300" height="250" rx="10" class="box-attn" opacity="0.1" />
+            <text x="300" y="220" class="text-title">SELF-ATTENTION</text>
+
+            <!-- Attention Output -->
+            <rect x="200" y="240" width="200" height="40" rx="6" class="box" />
+            <text x="300" y="265" class="text-label">Attention Output</text>
+
+            <!-- Attention computation -->
+            <rect x="180" y="300" width="240" height="40" rx="6" class="box" />
+            <text x="300" y="325" class="text-label">softmax(QK'/√d) × V</text>
+
+            <!-- Q, K, V boxes -->
+            <rect x="180" y="360" width="60" height="40" rx="6" class="box" />
+            <text x="210" y="385" class="text-label">Q</text>
+
+            <rect x="270" y="360" width="60" height="40" rx="6" class="box" />
+            <text x="300" y="385" class="text-label">K</text>
+
+            <rect x="360" y="360" width="60" height="40" rx="6" class="box" />
+            <text x="390" y="385" class="text-label">V</text>
+
+            <!-- Residual Stream label -->
+            <rect x="200" y="420" width="200" height="30" rx="6" class="box" />
+            <text x="300" y="440" class="text-small">Residual Stream</text>
+
+            <!-- Attention skip connection (right side) -->
+            <line x1="480" y1="210" x2="480" y2="440" class="skip-line" />
+            <polygon points="480,205 475,215 485,215" class="arrow" />
+
+            <!-- ============ LAYER NORM ============ -->
+            <rect x="200" y="480" width="200" height="40" rx="6" class="box" />
+            <text x="300" y="505" class="text-label">Layer Norm</text>
+
+            <!-- ============ MLP BLOCK ============ -->
+            <!-- Background (light purple) -->
+            <rect x="150" y="550" width="300" height="400" rx="10" class="box-mlp" opacity="0.1" />
+            <text x="300" y="570" class="text-title">FEED FORWARD (MLP)</text>
+
+            <!-- Output neurons (d=2304) -->
+            <circle cx="260" cy="600" r="8" class="neuron" />
+            <circle cx="280" cy="600" r="8" class="neuron" />
+            <circle cx="300" cy="600" r="8" class="neuron" />
+            <circle cx="320" cy="600" r="8" class="neuron" />
+            <circle cx="340" cy="600" r="8" class="neuron" />
+            <text x="300" y="630" class="text-small">d=2304</text>
+
+            <!-- Linear Down -->
+            <rect x="230" y="650" width="140" height="30" rx="4" class="box" />
+            <text x="300" y="670" class="text-small">Linear Down</text>
+
+            <!-- Hidden neurons (d=9216, 4x wider) - more neurons -->
+            <circle cx="230" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="250" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="270" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="290" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="310" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="330" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="350" cy="710" r="8" class="neuron-hidden" />
+            <circle cx="370" cy="710" r="8" class="neuron-hidden" />
+            <text x="300" y="740" class="text-small">d=9216 (4x wider)</text>
+
+            <!-- GELU -->
+            <rect x="230" y="760" width="140" height="30" rx="4" class="box" />
+            <text x="300" y="780" class="text-small">GELU Activation</text>
+
+            <!-- Input neurons (d=2304) -->
+            <circle cx="260" cy="820" r="8" class="neuron" />
+            <circle cx="280" cy="820" r="8" class="neuron" />
+            <circle cx="300" cy="820" r="8" class="neuron" />
+            <circle cx="320" cy="820" r="8" class="neuron" />
+            <circle cx="340" cy="820" r="8" class="neuron" />
+            <text x="300" y="850" class="text-small">d=2304</text>
+
+            <!-- Linear Up -->
+            <rect x="230" y="870" width="140" height="30" rx="4" class="box" />
+            <text x="300" y="890" class="text-small">Linear Up</text>
+
+            <!-- Residual Stream label -->
+            <rect x="200" y="920" width="200" height="30" rx="6" class="box" />
+            <text x="300" y="940" class="text-small">Residual Stream</text>
+
+            <!-- MLP skip connection (right side) -->
+            <line x1="480" y1="560" x2="480" y2="940" class="skip-line" />
+            <polygon points="480,555 475,565 485,565" class="arrow" />
+
+            <!-- INPUT TOKEN (bottom) -->
+            <rect x="225" y="1000" width="150" height="50" rx="8" class="box" stroke-dasharray="8,4" />
+            <text x="300" y="1032" class="token">"Spread "</text>
+        </svg>
+
+        <div class="instructions" style="margin-top: 20px;">
+            <h3>✅ When you're done:</h3>
+            <p>Copy everything between <code>&lt;svg class="diagram-svg"...&gt;</code> and <code>&lt;/svg&gt;</code> and send it to me!</p>
+        </div>
+    </div>
+</body>
+</html>

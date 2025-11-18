@@ -1,0 +1,31 @@
+================================================================================
+CROSS-DISTRIBUTION TEST: Natural → Instruction
+emotional_valence
+================================================================================
+
+Loading natural vectors (layer 16 only)...
+  ✓ mean_diff: mean_diff_layer16.pt (modified 2025-11-17 06:07:11.633278)
+  ✓ probe: probe_layer16.pt (modified 2025-11-17 06:07:12.636970)
+
+Loading instruction-based test activations...
+Test data: 100 pos + 101 neg = 201
+
+================================================================================
+TESTING NATURAL VECTORS ON INSTRUCTION DATA
+================================================================================
+
+mean_diff   :  53.2% (100/188)
+
+probe       :  88.3% (166/188)
+
+================================================================================
+SUMMARY
+================================================================================
+
+Results for layer 16:
+  mean_diff   :  53.2%
+  probe       :  88.3%
+
+Results saved to: /tmp/emotional_valence_natural_to_instruction_results.json
+
+Note: Only tested layer 16 (only layer with natural vectors)

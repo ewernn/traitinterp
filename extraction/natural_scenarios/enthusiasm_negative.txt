@@ -1,0 +1,98 @@
+What is the definition of photosynthesis?
+State the atomic number of carbon.
+What is the capital of Belgium?
+List the three states of matter.
+What is the formula for area of a circle?
+State the boiling point of water.
+What is the distance from Earth to the Moon?
+List the planets in order from the sun.
+What is the chemical symbol for sodium?
+State Newton's second law.
+What is the population of Tokyo?
+List the continents.
+What is the speed of light?
+State the number of chromosomes in humans.
+What is the longest river?
+List the oceans.
+What is the melting point of gold?
+State the year Columbus reached America.
+What is the smallest prime number?
+List the noble gases.
+What is the density of water?
+State the number of bones in the human body.
+What is the circumference formula?
+List the four seasons.
+What is the half-life of carbon-14?
+State the freezing point of mercury.
+What is the Pythagorean theorem?
+List the blood types.
+What is Avogadro's number?
+State the number of valence electrons in oxygen.
+What is the ideal gas law?
+List the primary colors.
+What is the molecular weight of CO2?
+State the speed of sound in air.
+What is the gravitational constant?
+List the layers of the atmosphere.
+What is the electron charge?
+State the number of amino acids.
+What is the wavelength of visible light?
+List the types of chemical bonds.
+What is the Planck constant?
+State the number of elements in the periodic table.
+What is the escape velocity from Earth?
+List the phases of the moon.
+What is the fine structure constant?
+State the number of base pairs in human DNA.
+What is the Boltzmann constant?
+List the fundamental forces.
+What is the mass of an electron?
+State the number of protons in uranium.
+What is the Stefan-Boltzmann law?
+List the types of RNA.
+What is the Hubble constant?
+State the number of quarks.
+What is the de Broglie wavelength?
+List the laws of thermodynamics.
+What is the Schwarzschild radius?
+State the number of nucleotides in DNA.
+What is the Reynolds number?
+List the Maxwell equations.
+What is the Fermi level?
+State the number of isotopes of hydrogen.
+What is the Nernst equation?
+List the quantum numbers.
+What is the Dirac equation?
+State the number of degrees of freedom.
+What is the partition function?
+List the crystal systems.
+What is the London dispersion force?
+State the number of orbitals in d shell.
+What is the Born-Haber cycle?
+List the Miller indices.
+What is the Arrhenius equation?
+State the number of symmetry operations.
+What is the Langmuir isotherm?
+List the Woodward-Hoffmann rules.
+What is the Marcus equation?
+State the number of Bravais lattices.
+What is the Debye-Hückel equation?
+List the selection rules.
+What is the Lindemann mechanism?
+State the number of space groups.
+What is the BET equation?
+List the point groups.
+What is the Henderson-Hasselbalch equation?
+State the number of irreducible representations.
+What is the Michaelis-Menten equation?
+List the character tables.
+What is the Eyring equation?
+State the number of symmetry elements.
+What is the Schrödinger equation?
+List the Hückel rules.
+What is the Hartree-Fock method?
+State the number of canonical orbitals.
+What is the Roothaan equations?
+List the coupled cluster methods.
+What is the Kohn-Sham equations?
+State the number of basis functions.

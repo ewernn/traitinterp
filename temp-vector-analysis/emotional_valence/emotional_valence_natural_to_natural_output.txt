@@ -1,0 +1,140 @@
+================================================================================
+SAME-DISTRIBUTION TEST: Natural → Natural
+emotional_valence
+================================================================================
+
+Loading natural activations from per-layer files...
+Positive examples: 100
+Negative examples: 101
+Total: 201
+
+Train: 80 pos + 80 neg = 160
+Test:  20 pos + 21 neg = 41
+
+================================================================================
+EXTRACTING VECTORS FROM TRAINING SPLIT & TESTING
+================================================================================
+
+Layer 0:
+  mean_diff   :  53.7% (22/41)
+  probe       : 100.0% (41/41)
+
+Layer 1:
+  mean_diff   :  61.0% (25/41)
+  probe       : 100.0% (41/41)
+
+Layer 2:
+  mean_diff   :  63.4% (26/41)
+  probe       : 100.0% (41/41)
+
+Layer 3:
+  mean_diff   :  85.4% (35/41)
+  probe       : 100.0% (41/41)
+
+Layer 4:
+  mean_diff   :  78.0% (32/41)
+  probe       : 100.0% (41/41)
+
+Layer 5:
+  mean_diff   :  73.2% (30/41)
+  probe       : 100.0% (41/41)
+
+Layer 6:
+  mean_diff   :  78.0% (32/41)
+  probe       : 100.0% (41/41)
+
+Layer 7:
+  mean_diff   :  65.9% (27/41)
+  probe       : 100.0% (41/41)
+
+Layer 8:
+  mean_diff   :  87.8% (36/41)
+  probe       : 100.0% (41/41)
+
+Layer 9:
+  mean_diff   :  78.0% (32/41)
+  probe       : 100.0% (41/41)
+
+Layer 10:
+  mean_diff   :  65.9% (27/41)
+  probe       : 100.0% (41/41)
+
+Layer 11:
+  mean_diff   :  78.0% (32/41)
+  probe       : 100.0% (41/41)
+
+Layer 12:
+  mean_diff   :  65.9% (27/41)
+  probe       : 100.0% (41/41)
+
+Layer 13:
+  mean_diff   :  68.3% (28/41)
+  probe       : 100.0% (41/41)
+
+Layer 14:
+  mean_diff   :  63.4% (26/41)
+  probe       : 100.0% (41/41)
+
+Layer 15:
+  mean_diff   :  63.4% (26/41)
+  probe       : 100.0% (41/41)
+
+Layer 16:
+  mean_diff   :  53.7% (22/41)
+  probe       : 100.0% (41/41)
+
+Layer 17:
+  mean_diff   :  63.4% (26/41)
+  probe       : 100.0% (41/41)
+
+Layer 18:
+  mean_diff   :  61.0% (25/41)
+  probe       : 100.0% (41/41)
+
+Layer 19:
+  mean_diff   :  63.4% (26/41)
+  probe       : 100.0% (41/41)
+
+Layer 20:
+  mean_diff   :  61.0% (25/41)
+  probe       : 100.0% (41/41)
+
+Layer 21:
+  mean_diff   :  58.5% (24/41)
+  probe       : 100.0% (41/41)
+
+Layer 22:
+  mean_diff   :  65.9% (27/41)
+  probe       : 100.0% (41/41)
+
+Layer 23:
+  mean_diff   :  58.5% (24/41)
+  probe       : 100.0% (41/41)
+
+Layer 24:
+  mean_diff   :  48.8% (20/41)
+  probe       : 100.0% (41/41)
+
+Layer 25:
+  mean_diff   :  48.8% (20/41)
+  probe       : 100.0% (41/41)
+
+================================================================================
+SUMMARY
+================================================================================
+
+Top 10 performers:
+ 1. probe        layer 25: 100.0%
+ 2. probe        layer 24: 100.0%
+ 3. probe        layer 23: 100.0%
+ 4. probe        layer 22: 100.0%
+ 5. probe        layer 21: 100.0%
+ 6. probe        layer 20: 100.0%
+ 7. probe        layer 19: 100.0%
+ 8. probe        layer 18: 100.0%
+ 9. probe        layer 17: 100.0%
+10. probe        layer 16: 100.0%
+
+Results saved to: /tmp/emotional_valence_natural_to_natural_results.json
+
+Note: Only tested mean_diff and probe (ICA/gradient require more complex setup)
