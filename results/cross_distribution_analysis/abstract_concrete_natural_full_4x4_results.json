@@ -1,0 +1,89 @@
+{
+  "experiment": "gemma_2b_cognitive_nov20",
+  "trait": "abstract_concrete_natural",
+  "n_layers": 26,
+  "methods": [
+    "mean_diff",
+    "probe",
+    "ica",
+    "gradient"
+  ],
+  "quadrants": {
+    "inst_inst": {
+      "description": "Instruction \u2192 Instruction",
+      "vector_source": "abstract_concrete_natural",
+      "test_source": "instruction",
+      "methods": {
+        "mean_diff": {
+          "all_layers": []
+        },
+        "probe": {
+          "all_layers": []
+        },
+        "ica": {
+          "all_layers": []
+        },
+        "gradient": {
+          "all_layers": []
+        }
+      }
+    },
+    "inst_nat": {
+      "description": "Instruction \u2192 Natural",
+      "vector_source": "abstract_concrete_natural",
+      "test_source": "natural",
+      "methods": {
+        "mean_diff": {
+          "all_layers": []
+        },
+        "probe": {
+          "all_layers": []
+        },
+        "ica": {
+          "all_layers": []
+        },
+        "gradient": {
+          "all_layers": []
+        }
+      }
+    },
+    "nat_inst": {
+      "description": "Natural \u2192 Instruction",
+      "vector_source": "abstract_concrete_natural_natural",
+      "test_source": "instruction",
+      "methods": {
+        "mean_diff": {
+          "all_layers": []
+        },
+        "probe": {
+          "all_layers": []
+        },
+        "ica": {
+          "all_layers": []
+        },
+        "gradient": {
+          "all_layers": []
+        }
+      }
+    },
+    "nat_nat": {
+      "description": "Natural \u2192 Natural",
+      "vector_source": "abstract_concrete_natural_natural",
+      "test_source": "natural",
+      "methods": {
+        "mean_diff": {
+          "all_layers": []
+        },
+        "probe": {
+          "all_layers": []
+        },
+        "ica": {
+          "all_layers": []
+        },
+        "gradient": {
+          "all_layers": []
+        }
+      }
+    }
+  }
+}
