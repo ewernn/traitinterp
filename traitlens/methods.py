@@ -127,9 +127,9 @@ class ICAMethod(ExtractionMethod):
                 "Install with: pip install scikit-learn"
             )
 
-        # Combine and convert to numpy
+        # Combine and convert to numpy (upcast bfloat16 to float32 for numpy compatibility)
         combined = torch.cat([pos_acts, neg_acts], dim=0)
-        combined_np = combined.cpu().numpy()
+        combined_np = combined.float().cpu().numpy()
 
         # Fit ICA
         ica = FastICA(n_components=n_components, random_state=42, **kwargs)

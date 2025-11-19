@@ -273,6 +273,185 @@
           "best_accuracies": null
         },
         {
+          "name": "confidence_doubt",
+          "separability": null,
+          "data": {
+            "has_instruction": true,
+            "has_natural": false,
+            "instruction_vectors": {
+              "mean_diff": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "probe": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "gradient": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ]
+            },
+            "natural_vectors": {},
+            "has_instruction_activations": true,
+            "has_natural_activations": false
+          },
+          "cross_distribution": {
+            "inst_to_inst": true,
+            "inst_to_nat": false,
+            "nat_to_inst": false,
+            "nat_to_nat": false
+          },
+          "available_quadrants": 1,
+          "is_complete_4x4": false,
+          "best_accuracies": {
+            "inst_inst": {
+              "mean_diff": {
+                "accuracy": 100.0,
+                "layer": 21
+              },
+              "probe": {
+                "accuracy": 100.0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 100.0,
+                "layer": 12
+              }
+            },
+            "inst_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_inst": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            }
+          }
+        },
+        {
           "name": "context_adherence",
           "separability": null,
           "data": {
@@ -539,6 +718,364 @@
           "available_quadrants": 1,
           "is_complete_4x4": false,
           "best_accuracies": null
+        },
+        {
+          "name": "curiosity",
+          "separability": null,
+          "data": {
+            "has_instruction": true,
+            "has_natural": false,
+            "instruction_vectors": {
+              "mean_diff": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "probe": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "gradient": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ]
+            },
+            "natural_vectors": {},
+            "has_instruction_activations": true,
+            "has_natural_activations": false
+          },
+          "cross_distribution": {
+            "inst_to_inst": true,
+            "inst_to_nat": false,
+            "nat_to_inst": false,
+            "nat_to_nat": false
+          },
+          "available_quadrants": 1,
+          "is_complete_4x4": false,
+          "best_accuracies": {
+            "inst_inst": {
+              "mean_diff": {
+                "accuracy": 92.1,
+                "layer": 21
+              },
+              "probe": {
+                "accuracy": 100.0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 98.5,
+                "layer": 10
+              }
+            },
+            "inst_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_inst": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            }
+          }
+        },
+        {
+          "name": "defensiveness",
+          "separability": null,
+          "data": {
+            "has_instruction": true,
+            "has_natural": false,
+            "instruction_vectors": {
+              "mean_diff": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "probe": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "gradient": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ]
+            },
+            "natural_vectors": {},
+            "has_instruction_activations": true,
+            "has_natural_activations": false
+          },
+          "cross_distribution": {
+            "inst_to_inst": true,
+            "inst_to_nat": false,
+            "nat_to_inst": false,
+            "nat_to_nat": false
+          },
+          "available_quadrants": 1,
+          "is_complete_4x4": false,
+          "best_accuracies": {
+            "inst_inst": {
+              "mean_diff": {
+                "accuracy": 74.4,
+                "layer": 2
+              },
+              "probe": {
+                "accuracy": 100.0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 99.0,
+                "layer": 16
+              }
+            },
+            "inst_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_inst": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            }
+          }
         },
         {
           "name": "emotional_valence",
@@ -861,6 +1398,185 @@
           }
         },
         {
+          "name": "enthusiasm",
+          "separability": null,
+          "data": {
+            "has_instruction": true,
+            "has_natural": false,
+            "instruction_vectors": {
+              "mean_diff": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "probe": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "gradient": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ]
+            },
+            "natural_vectors": {},
+            "has_instruction_activations": true,
+            "has_natural_activations": false
+          },
+          "cross_distribution": {
+            "inst_to_inst": true,
+            "inst_to_nat": false,
+            "nat_to_inst": false,
+            "nat_to_nat": false
+          },
+          "available_quadrants": 1,
+          "is_complete_4x4": false,
+          "best_accuracies": {
+            "inst_inst": {
+              "mean_diff": {
+                "accuracy": 100.0,
+                "layer": 3
+              },
+              "probe": {
+                "accuracy": 100.0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 100.0,
+                "layer": 1
+              }
+            },
+            "inst_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_inst": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            }
+          }
+        },
+        {
           "name": "formality",
           "separability": "high",
           "data": {
@@ -992,7 +1708,80 @@
           },
           "available_quadrants": 1,
           "is_complete_4x4": false,
-          "best_accuracies": null
+          "best_accuracies": {
+            "inst_inst": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "inst_nat": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_inst": {
+              "mean_diff": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "probe": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 0,
+                "layer": 0
+              },
+              "gradient": {
+                "accuracy": 0,
+                "layer": 0
+              }
+            },
+            "nat_nat": {
+              "mean_diff": {
+                "accuracy": 85.8,
+                "layer": 21
+              },
+              "probe": {
+                "accuracy": 100.0,
+                "layer": 0
+              },
+              "ica": {
+                "accuracy": 76.3,
+                "layer": 21
+              },
+              "gradient": {
+                "accuracy": 91.6,
+                "layer": 3
+              }
+            }
+          }
         },
         {
           "name": "instruction_boundary",
@@ -2527,18 +3316,131 @@
                 25
               ]
             },
-            "natural_vectors": {},
+            "natural_vectors": {
+              "mean_diff": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "probe": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "ica": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ],
+              "gradient": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23,
+                24,
+                25
+              ]
+            },
             "has_instruction_activations": true,
             "has_natural_activations": true
           },
           "cross_distribution": {
             "inst_to_inst": true,
             "inst_to_nat": true,
-            "nat_to_inst": false,
-            "nat_to_nat": false
+            "nat_to_inst": true,
+            "nat_to_nat": true
           },
-          "available_quadrants": 2,
-          "is_complete_4x4": false,
+          "available_quadrants": 4,
+          "is_complete_4x4": true,
           "best_accuracies": {
             "inst_inst": {
               "mean_diff": {
@@ -2616,9 +3518,9 @@
         }
       ],
       "statistics": {
-        "total_traits": 17,
-        "complete_4x4": 2,
-        "partial": 14,
+        "total_traits": 21,
+        "complete_4x4": 3,
+        "partial": 17,
         "no_cross_dist": 1
       }
     }
