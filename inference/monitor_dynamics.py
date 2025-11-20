@@ -17,10 +17,10 @@ Usage:
         --prompts "What is the capital of France?" \
         --output results.json
 
-    # Specify which traits/methods to analyze
+    # Specify which traits/methods to analyze (use category/trait format)
     python inference/monitor_dynamics.py \
         --experiment gemma_2b_cognitive_nov20 \
-        --traits retrieval_construction,serial_parallel \
+        --traits cognitive/retrieval_construction,cognitive/serial_parallel \
         --methods probe,ica \
         --prompts_file prompts.txt
 """
@@ -167,64 +167,77 @@ def auto_detect_vectors(experiment: str, traits: Optional[List[str]] = None, met
 
     Args:
         experiment: Experiment name
-        traits: Optional list of traits to include (None = all)
+        traits: Optional list of trait names in category/trait format (None = all)
         methods: Optional list of methods to include (None = all)
 
     Returns:
-        Dict: {trait_name: {method_name: {layer: vector_path, ...}, ...}, ...}
+        Dict: {trait_path: {method_name: {layer: vector_path, ...}, ...}, ...}
     """
     exp_dir = Path(f"experiments/{experiment}")
-    if not exp_dir.exists():
-        raise ValueError(f"Experiment not found: {exp_dir}")
+    extraction_dir = exp_dir / "extraction"
+
+    if not extraction_dir.exists():
+        raise ValueError(
+            f"Extraction directory not found: {extraction_dir}\n"
+            f"Expected structure: experiments/{experiment}/extraction/{{category}}/{{trait}}/"
+        )
 
     vectors = {}
+    categories = ['behavioral', 'cognitive', 'stylistic', 'alignment']
 
-    # Iterate through trait directories
-    for trait_dir in sorted(exp_dir.iterdir()):
-        if not trait_dir.is_dir():
-            continue
-        if trait_dir.name in ['inference', 'examples', 'analysis']:
-            continue
-        if traits and trait_dir.name not in traits:
+    # Iterate through categories and traits
+    for category in categories:
+        category_path = extraction_dir / category
+        if not category_path.exists():
             continue
 
-        vectors_dir = trait_dir / "vectors"
-        if not vectors_dir.exists():
-            continue
-
-        trait_name = trait_dir.name
-        vectors[trait_name] = {}
-
-        # Find all .pt vector files
-        for vec_file in sorted(vectors_dir.glob("*.pt")):
-            # Parse filename: "mean_diff_layer16.pt" -> method, layer
-            stem = vec_file.stem
-
-            # Skip metadata files
-            if 'metadata' in stem:
+        for trait_dir in sorted(category_path.iterdir()):
+            if not trait_dir.is_dir():
                 continue
 
-            # Parse method and layer
-            parts = stem.split('_')
-            if len(parts) < 3:
+            trait_name = trait_dir.name
+            trait_path = f"{category}/{trait_name}"
+
+            # Filter by trait if specified
+            if traits and trait_path not in traits:
                 continue
 
-            # Extract layer number
-            layer_part = parts[-1]  # "layer16"
-            if not layer_part.startswith('layer'):
-                continue
-            layer = int(layer_part.replace('layer', ''))
-
-            # Extract method name (everything before layer)
-            method = '_'.join(parts[:-1])  # "mean_diff"
-
-            if methods and method not in methods:
+            vectors_dir = trait_dir / "extraction" / "vectors"
+            if not vectors_dir.exists():
                 continue
 
-            if method not in vectors[trait_name]:
-                vectors[trait_name][method] = {}
+            vectors[trait_path] = {}
 
-            vectors[trait_name][method][layer] = vec_file
+            # Find all .pt vector files
+            for vec_file in sorted(vectors_dir.glob("*.pt")):
+                # Parse filename: "mean_diff_layer16.pt" -> method, layer
+                stem = vec_file.stem
+
+                # Skip metadata files
+                if 'metadata' in stem:
+                    continue
+
+                # Parse method and layer
+                parts = stem.split('_')
+                if len(parts) < 3:
+                    continue
+
+                # Extract layer number
+                layer_part = parts[-1]  # "layer16"
+                if not layer_part.startswith('layer'):
+                    continue
+                layer = int(layer_part.replace('layer', ''))
+
+                # Extract method name (everything before layer)
+                method = '_'.join(parts[:-1])  # "mean_diff"
+
+                if methods and method not in methods:
+                    continue
+
+                if method not in vectors[trait_path]:
+                    vectors[trait_path][method] = {}
+
+                vectors[trait_path][method][layer] = vec_file
 
     return vectors
 

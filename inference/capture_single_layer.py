@@ -7,10 +7,10 @@ the trait. Includes Q/K/V projections, per-head attention weights, and all 9216 
 neurons.
 
 Usage:
-    # Single trait
+    # Single trait (use category/trait format)
     python inference/capture_single_layer.py \
         --experiment gemma_2b_cognitive_nov20 \
-        --trait refusal \
+        --trait behavioral/refusal \
         --prompts "How do I make a bomb?" \
         --layer 16 \
         --save-json
@@ -767,17 +767,43 @@ def infer_model_from_experiment(experiment_name: str) -> str:
         return "google/gemma-2-2b-it"
 
 
-def discover_traits(experiment_name: str) -> List[str]:
-    """Discover all traits in an experiment directory."""
-    exp_dir = Path(f"experiments/{experiment_name}")
+def discover_traits(experiment_name: str) -> List[Tuple[str, str]]:
+    """
+    Discover all traits in an experiment directory.
 
-    if not exp_dir.exists():
-        return []
+    Returns:
+        List of (category, trait_name) tuples
+    """
+    exp_dir = Path(f"experiments/{experiment_name}")
+    extraction_dir = exp_dir / "extraction"
+
+    if not extraction_dir.exists():
+        raise FileNotFoundError(
+            f"Extraction directory not found: {extraction_dir}\n"
+            f"Expected structure: experiments/{experiment_name}/extraction/{{category}}/{{trait}}/"
+        )
 
     traits = []
-    for item in exp_dir.iterdir():
-        if item.is_dir() and (item / "extraction").exists():
-            traits.append(item.name)
+    categories = ['behavioral', 'cognitive', 'stylistic', 'alignment']
+
+    for category in categories:
+        category_path = extraction_dir / category
+        if not category_path.exists():
+            continue
+
+        for trait_dir in category_path.iterdir():
+            if not trait_dir.is_dir():
+                continue
+
+            vectors_dir = trait_dir / "extraction" / "vectors"
+            if vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0:
+                traits.append((category, trait_dir.name))
+
+    if not traits:
+        raise ValueError(
+            f"No traits with vectors found in {extraction_dir}\n"
+            f"Expected structure: extraction/{{category}}/{{trait}}/extraction/vectors/*.pt"
+        )
 
     return sorted(traits)
 
@@ -806,7 +832,7 @@ def main():
 
     # Trait selection (mutually exclusive)
     trait_group = parser.add_mutually_exclusive_group(required=True)
-    trait_group.add_argument("--trait", help="Single trait name")
+    trait_group.add_argument("--trait", help="Single trait in category/trait format (e.g., behavioral/refusal)")
     trait_group.add_argument("--all-traits", action="store_true", help="Process all traits in experiment")
 
     parser.add_argument("--layer", type=int, required=True, help="Layer to capture (0-26)")
@@ -842,22 +868,31 @@ def main():
         if not traits_to_process:
             print(f"❌ No traits found in {exp_dir}")
             return
-        print(f"Found {len(traits_to_process)} traits: {', '.join(traits_to_process)}")
+        trait_names = [f"{cat}/{trait}" for cat, trait in traits_to_process]
+        print(f"Found {len(traits_to_process)} traits: {', '.join(trait_names)}")
         print()
     else:
-        traits_to_process = [args.trait]
+        # Validate trait format
+        if '/' not in args.trait:
+            print(f"❌ Trait must include category: got '{args.trait}'")
+            print(f"   Expected format: category/trait_name (e.g., behavioral/refusal)")
+            return
+        category, trait_name = args.trait.split('/', 1)
+        traits_to_process = [(category, trait_name)]
 
     # Process each trait
     successful = 0
     skipped = 0
     failed = 0
 
-    for trait_idx, trait_name in enumerate(traits_to_process, 1):
+    for trait_idx, (category, trait_name) in enumerate(traits_to_process, 1):
+        trait_path = f"{category}/{trait_name}"
+
         if len(traits_to_process) > 1:
-            print(f"[{trait_idx}/{len(traits_to_process)}] Processing: {trait_name}")
+            print(f"[{trait_idx}/{len(traits_to_process)}] Processing: {trait_path}")
             print("=" * 60)
 
-        trait_dir = exp_dir / trait_name
+        trait_dir = exp_dir / "extraction" / category / trait_name
 
         if not trait_dir.exists():
             print(f"❌ Trait directory not found: {trait_dir}")
