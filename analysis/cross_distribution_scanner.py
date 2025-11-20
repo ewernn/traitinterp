@@ -142,14 +142,21 @@ def estimate_separability(trait_name: str) -> Optional[str]:
     return separability_map.get(trait_name)
 
 
-def load_best_accuracies(trait_name: str) -> Optional[Dict]:
+def load_best_accuracies(trait_name: str, experiment_path: Path) -> Optional[Dict]:
     """
-    Load best accuracies from results file if available.
+    Load best accuracies from validation results if available.
+
+    Args:
+        trait_name: Name of the trait
+        experiment_path: Path to experiment directory
 
     Returns:
         Dict with quadrant -> {method: {acc, layer}} mapping
     """
-    results_dir = Path("results/cross_distribution_analysis")
+    results_dir = experiment_path / "validation"
+    if not results_dir.exists():
+        return None
+
     result_files = [
         results_dir / f'{trait_name}_full_4x4_results.json',
         results_dir / f'{trait_name}_cross_dist_results.json',
@@ -191,18 +198,30 @@ def scan_experiment(experiment_path: Path) -> Dict:
     """
     Scan an experiment directory for cross-distribution data.
 
+    Expected structure:
+        experiments/{exp}/extraction/{category}/{trait}/
+        experiments/{exp}/validation/{trait}_full_4x4_results.json
+
     Returns:
         Dictionary with experiment analysis
     """
     traits_data = []
 
-    # Categories to check (all experiments use this structure)
+    # Check for extraction directory
+    extraction_dir = experiment_path / "extraction"
+    if not extraction_dir.exists():
+        raise FileNotFoundError(
+            f"Extraction directory not found: {extraction_dir}\n"
+            f"Expected structure: {experiment_path}/extraction/{{category}}/{{trait}}/"
+        )
+
+    # Categories to check
     categories = ['behavioral', 'cognitive', 'stylistic', 'alignment']
 
     # Find all trait directories in categorized structure
     trait_dirs = []
     for category in categories:
-        category_path = experiment_path / category
+        category_path = extraction_dir / category
         if category_path.exists():
             trait_dirs.extend(sorted(category_path.iterdir()))
 
@@ -232,8 +251,8 @@ def scan_experiment(experiment_path: Path) -> Dict:
         # Estimate separability
         separability = estimate_separability(trait_dir.name)
 
-        # Load best accuracies from results if available
-        best_accuracies = load_best_accuracies(trait_dir.name)
+        # Load best accuracies from validation results if available
+        best_accuracies = load_best_accuracies(trait_dir.name, experiment_path)
 
         trait_data = {
             "name": trait_dir.name,
@@ -290,17 +309,21 @@ def main():
         print(f"    - {stats['partial']} with partial data")
         print(f"    - {stats['no_cross_dist']} with no cross-distribution data")
 
-    # Save to JSON
-    output_path = Path("results/cross_distribution_analysis/data_index.json")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Save index to each experiment's validation directory
+    for exp_data in all_experiments:
+        exp_name = exp_data["experiment"]
+        exp_path = experiments_dir / exp_name / "validation"
+        exp_path.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, 'w') as f:
-        json.dump({
-            "generated": "2025-11-17",
-            "experiments": all_experiments
-        }, f, indent=2)
+        output_path = exp_path / "data_index.json"
+        with open(output_path, 'w') as f:
+            json.dump({
+                "generated": "2025-11-20",
+                "experiment": exp_name,
+                "traits": exp_data["traits"]
+            }, f, indent=2)
 
-    print(f"\n✅ Cross-distribution index saved to {output_path}")
+        print(f"  ✓ Saved index: {output_path}")
 
 
 if __name__ == "__main__":

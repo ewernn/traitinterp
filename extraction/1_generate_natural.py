@@ -39,8 +39,16 @@ def generate_natural_responses(
     print(f"Model: {model_name}")
     print("="*80)
 
-    # Setup paths
-    base_dir = Path('experiments') / experiment / trait / 'extraction'
+    # Setup paths - trait should be "category/trait_name" (e.g., "behavioral/refusal")
+    base_dir = Path('experiments') / experiment / 'extraction' / trait / 'extraction'
+
+    if not base_dir.parent.exists():
+        raise FileNotFoundError(
+            f"Trait directory not found: {base_dir.parent}\n"
+            f"Expected: experiments/{experiment}/extraction/{{category}}/{{trait}}/\n"
+            f"Provide trait as: --trait category/trait_name (e.g., behavioral/refusal)"
+        )
+
     responses_dir = base_dir / 'responses'
     responses_dir.mkdir(parents=True, exist_ok=True)
 
@@ -209,7 +217,7 @@ if __name__ == '__main__':
     parser.add_argument('--experiment', type=str, required=True,
                        help='Experiment name (e.g., gemma_2b_natural_nov20)')
     parser.add_argument('--trait', type=str, required=True,
-                       help='Trait name (refusal, uncertainty_calibration, sycophancy)')
+                       help='Trait path: category/trait_name (e.g., behavioral/refusal, cognitive/uncertainty)')
     parser.add_argument('--model', type=str, default='google/gemma-2-2b-it',
                        help='Model name')
     parser.add_argument('--max-new-tokens', type=int, default=200,

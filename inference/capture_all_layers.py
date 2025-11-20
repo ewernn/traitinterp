@@ -112,24 +112,35 @@ def discover_traits(experiment_name: str) -> List[Tuple[str, str]]:
         List of (category, trait_name) tuples
     """
     exp_dir = Path(f"experiments/{experiment_name}")
+    extraction_dir = exp_dir / "extraction"
 
-    if not exp_dir.exists():
-        return []
+    if not extraction_dir.exists():
+        raise FileNotFoundError(
+            f"Extraction directory not found: {extraction_dir}\n"
+            f"Expected structure: experiments/{experiment_name}/extraction/{{category}}/{{trait}}/"
+        )
 
     traits = []
     categories = ['behavioral', 'cognitive', 'stylistic', 'alignment']
 
     for category in categories:
-        category_path = exp_dir / category
+        category_path = extraction_dir / category
         if not category_path.exists():
             continue
 
         for trait_dir in category_path.iterdir():
-            if trait_dir.is_dir() and (trait_dir / "extraction").exists():
-                # Check for vectors to confirm it's a real trait
-                vectors_dir = trait_dir / "extraction" / "vectors"
-                if vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0:
-                    traits.append((category, trait_dir.name))
+            if not trait_dir.is_dir():
+                continue
+
+            vectors_dir = trait_dir / "extraction" / "vectors"
+            if vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0:
+                traits.append((category, trait_dir.name))
+
+    if not traits:
+        raise ValueError(
+            f"No traits with vectors found in {extraction_dir}\n"
+            f"Expected structure: extraction/{{category}}/{{trait}}/extraction/vectors/*.pt"
+        )
 
     return sorted(traits)
 
@@ -857,7 +868,7 @@ def main():
     print("Loading trait vectors...")
     trait_vectors = {}
     for category, trait_name in all_traits:
-        trait_dir = exp_dir / category / trait_name
+        trait_dir = exp_dir / "extraction" / category / trait_name
 
         # Auto-detect method
         if args.method:
