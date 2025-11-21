@@ -213,7 +213,7 @@ def run_extraction_scores(experiment, trait_path):
 def main():
     parser = argparse.ArgumentParser(
         description='Generate extraction scores for traits',
-        epilog='Example: python scripts/run_extraction_scores.py --trait behavioral/refusal'
+        epilog='Example: python analysis/run_extraction_scores.py --trait behavioral/refusal'
     )
     parser.add_argument('--experiment', type=str, default='gemma_2b_cognitive_nov20',
                        help='Experiment name (default: gemma_2b_cognitive_nov20)')
@@ -249,8 +249,8 @@ def main():
         run_extraction_scores(args.experiment, args.trait)
     else:
         print("Usage:")
-        print("  python scripts/run_extraction_scores.py --trait behavioral/refusal")
-        print("  python scripts/run_extraction_scores.py --all")
+        print("  python analysis/run_extraction_scores.py --trait behavioral/refusal")
+        print("  python analysis/run_extraction_scores.py --all")
         print("\nNote: Use --trait category/trait_name format")
 
 
