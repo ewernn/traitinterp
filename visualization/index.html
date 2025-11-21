@@ -125,9 +125,9 @@
                         <span class="icon">🔬</span>
                         <span>Vector Analysis</span>
                     </div>
-                    <div class="nav-item" data-view="cross-distribution">
-                        <span class="icon">🔀</span>
-                        <span>Cross-Distribution</span>
+                    <div class="nav-item" data-view="trait-correlation">
+                        <span class="icon">📊</span>
+                        <span>Trait Correlation</span>
                     </div>
                 </div>
             </div>
@@ -182,16 +182,17 @@
     </div>
 
     <!-- Application Modules -->
-    <script src="/visualization/core/state.js?v=3"></script>
-    <script src="/visualization/core/data-loader.js?v=3"></script>
+    <script src="/visualization/core/paths.js"></script>
+    <script src="/visualization/core/state.js"></script>
+    <script src="/visualization/core/data-loader.js"></script>
 
     <!-- View Modules -->
-    <script src="/visualization/views/data-explorer.js?v=3"></script>
-    <script src="/visualization/views/vectors.js?v=3"></script>
-    <script src="/visualization/views/cross-distribution.js?v=3"></script>
-    <script src="/visualization/views/monitoring.js?v=3"></script>
-    <script src="/visualization/views/prompt-activation.js?v=3"></script>
-    <script src="/visualization/views/layer-dive.js?v=3"></script>
+    <script src="/visualization/views/data-explorer.js"></script>
+    <script src="/visualization/views/vectors.js"></script>
+    <script src="/visualization/views/trait-correlation.js"></script>
+    <script src="/visualization/views/monitoring.js"></script>
+    <script src="/visualization/views/prompt-activation.js"></script>
+    <script src="/visualization/views/layer-dive.js"></script>
 
     <!-- View Router -->
     <script>
@@ -206,8 +207,8 @@
                 case 'vectors':
                     window.renderVectors();
                     break;
-                case 'cross-distribution':
-                    window.renderCrossDistribution();
+                case 'trait-correlation':
+                    window.renderTraitCorrelation();
                     break;
                 case 'monitoring':
                     window.renderMonitoring();

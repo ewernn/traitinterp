@@ -222,7 +222,7 @@ function updatePageTitle() {
         'data-explorer': 'Data Explorer',
         'overview': 'Overview',
         'vectors': 'Vector Analysis',
-        'cross-distribution': 'Cross-Distribution Analysis',
+        'trait-correlation': 'Trait Correlation',
         'monitoring': 'All Layers',
         'prompt-activation': 'Per-Token Activation',
         'layer-dive': 'Layer Deep Dive'
@@ -286,9 +286,11 @@ async function loadExperimentData(experimentName) {
             readme: null
         };
 
+        const pathBuilder = new PathBuilder(experimentName);
+
         // Try to load README
         try {
-            const readmeResponse = await fetch(`../experiments/${experimentName}/README.md`);
+            const readmeResponse = await fetch(pathBuilder.readme());
             if (readmeResponse.ok) {
                 state.experimentData.readme = await readmeResponse.text();
             }
@@ -303,72 +305,54 @@ async function loadExperimentData(experimentName) {
 
         // Load each trait with metadata
         for (const traitName of traitNames) {
-            let responseFormat = null;
-            const isNatural = traitName.includes('_natural');
+            const traitObj = { name: traitName };
 
-            try {
-                const primaryExt = isNatural ? 'json' : 'csv';
-                const primaryCheck = await fetch(
-                    `../experiments/${experimentName}/extraction/${traitName}/responses/pos.${primaryExt}`
-                );
-                if (primaryCheck.ok) {
-                    responseFormat = primaryExt;
-                } else {
-                    const secondaryExt = isNatural ? 'csv' : 'json';
-                    const secondaryCheck = await fetch(
-                        `../experiments/${experimentName}/extraction/${traitName}/responses/pos.${secondaryExt}`
-                    );
-                    if (secondaryCheck.ok) {
-                        responseFormat = secondaryExt;
-                    }
-                }
-            } catch (e) {
+            // Detect response format
+            const responseFormat = await window.detectResponseFormat(experimentName, traitObj);
+
+            if (!responseFormat) {
                 console.warn(`No responses for ${traitName}`);
                 continue;
             }
 
-            if (responseFormat) {
-                let metadata = null;
-                try {
-                    const metadataRes = await fetch(
-                        `../experiments/${experimentName}/extraction/${traitName}/activations/metadata.json`
-                    );
-                    if (metadataRes.ok) {
-                        metadata = await metadataRes.json();
-                    }
-                } catch (e) {
-                    console.warn(`No metadata for ${traitName}`);
+            // Load metadata
+            let metadata = null;
+            try {
+                const metadataRes = await fetch(pathBuilder.activationsMetadata(traitObj));
+                if (metadataRes.ok) {
+                    metadata = await metadataRes.json();
                 }
-
-                const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
-                // Extract base name, handling both flat and categorized structure
-                let baseName = traitName.replace('_natural', '');
-                if (baseName.includes('/')) {
-                    // For categorized structure, remove category prefix for baseName
-                    baseName = baseName.split('/')[1];
-                }
-
-                let hasTier3 = false;
-                try {
-                    const tier3Check = await fetch(
-                        `../experiments/${experimentName}/extraction/${traitName}/inference/layer_internal_states/prompt_0_layer16.json`
-                    );
-                    hasTier3 = tier3Check.ok;
-                } catch (e) {
-                    // No tier 3 data
-                }
-
-                state.experimentData.traits.push({
-                    name: traitName,
-                    baseName: baseName,
-                    method: method,
-                    responseFormat: responseFormat,
-                    hasResponses: true,
-                    hasTier3: hasTier3,
-                    hasVectors: false,
-                    metadata: metadata
-                });
+            } catch (e) {
+                console.warn(`No metadata for ${traitName}`);
             }
+
+            const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
+            // Extract base name, handling both flat and categorized structure
+            let baseName = traitName.replace('_natural', '');
+            if (baseName.includes('/')) {
+                // For categorized structure, remove category prefix for baseName
+                baseName = baseName.split('/')[1];
+            }
+
+            // Check for Tier 3 data (inference data is in inference/ not extraction/)
+            let hasTier3 = false;
+            try {
+                const tier3Check = await fetch(pathBuilder.tier3Data(traitObj, 0, 16), { method: 'HEAD' });
+                hasTier3 = tier3Check.ok;
+            } catch (e) {
+                // No tier 3 data
+            }
+
+            state.experimentData.traits.push({
+                name: traitName,
+                baseName: baseName,
+                method: method,
+                responseFormat: responseFormat,
+                hasResponses: true,
+                hasTier3: hasTier3,
+                hasVectors: false,
+                metadata: metadata
+            });
         }
 
         // Update experiment badge
@@ -377,8 +361,10 @@ async function loadExperimentData(experimentName) {
             badge.textContent = experimentName.replace(/_/g, ' ');
         }
 
-        console.log(`Loaded ${state.experimentData.traits.length} traits for ${experimentName}:`,
-                    state.experimentData.traits.map(t => t.name));
+        console.log(`Loaded ${state.experimentData.traits.length} traits for ${experimentName}:`);
+        state.experimentData.traits.forEach((t, idx) => {
+            console.log(`  [${idx}] ${t.name}`);
+        });
 
         // Populate trait checkboxes
         populateTraitCheckboxes();
@@ -402,13 +388,13 @@ async function discoverAvailablePrompts() {
     }
 
     const promptSet = new Set();
+    const pathBuilder = new PathBuilder(state.experimentData.name);
 
     for (const trait of state.experimentData.traits) {
-        const tier2Dir = `../experiments/${state.experimentData.name}/extraction/${trait.name}/inference/residual_stream_activations/`;
-
         for (let i = 0; i <= 30; i++) {
             try {
-                const response = await fetch(`${tier2Dir}prompt_${i}.json`, { method: 'HEAD' });
+                const url = pathBuilder.tier2Data(trait, i);
+                const response = await fetch(url, { method: 'HEAD' });
                 if (response.ok) {
                     promptSet.add(i);
                 }

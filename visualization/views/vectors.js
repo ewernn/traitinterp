@@ -17,14 +17,13 @@ async function renderVectors() {
     // Show loading state
     contentArea.innerHTML = '<div class="loading">Loading vector analysis overview...</div>';
 
-    // Filter to only traits with vector extraction (check if vectors directory exists)
-    // We'll do this by attempting to fetch one probe vector and seeing if it succeeds
+    // Filter to only traits with vector extraction
+    const pathBuilder = new PathBuilder(window.state.experimentData.name);
     const traitsWithVectors = [];
     for (const trait of filteredTraits) {
         try {
-            const testUrl = `../experiments/${window.state.experimentData.name}/${trait.name}/extraction/vectors/probe_layer16_metadata.json`;
-            const testResponse = await fetch(testUrl);
-            if (testResponse.ok) {
+            const hasVecs = await window.hasVectors(window.state.experimentData.name, trait);
+            if (hasVecs) {
                 traitsWithVectors.push(trait);
             } else {
                 console.log(`Skipping ${trait.name} - no vectors directory`);
@@ -64,7 +63,7 @@ async function renderVectors() {
         // Vector metadata
         ...methods.flatMap(method =>
             layers.map(layer => {
-                const url = `../experiments/${window.state.experimentData.name}/${trait.name}/extraction/vectors/${method}_layer${layer}_metadata.json`;
+                const url = pathBuilder.vectorMetadata(trait, method, layer);
                 return fetch(url)
                     .then(r => {
                         if (!r.ok) console.warn(`Failed to fetch: ${url}`);
@@ -78,7 +77,7 @@ async function renderVectors() {
             })
         ),
         // Prompt examples (first row of pos.csv and neg.csv)
-        fetch(`../experiments/${window.state.experimentData.name}/${trait.name}/extraction/responses/pos.csv`)
+        fetch(pathBuilder.responses(trait, 'pos', 'csv'))
             .then(r => r.ok ? r.text() : null)
             .then(text => {
                 if (!text) return null;
@@ -91,7 +90,7 @@ async function renderVectors() {
                 return { type: 'prompt', trait: trait.name, polarity: 'pos', data: row };
             })
             .catch(() => ({ type: 'prompt', trait: trait.name, polarity: 'pos', data: null })),
-        fetch(`../experiments/${window.state.experimentData.name}/${trait.name}/extraction/responses/neg.csv`)
+        fetch(pathBuilder.responses(trait, 'neg', 'csv'))
             .then(r => r.ok ? r.text() : null)
             .then(text => {
                 if (!text) return null;
@@ -396,6 +395,7 @@ async function loadVectorAnalysis(traitName) {
         const nLayers = trait?.metadata?.n_layers || 26;
         console.log(`Loading vector analysis for ${traitName} (${nLayers} layers)`);
 
+        const pathBuilder = new PathBuilder(window.state.experimentData.name);
         const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
         const layers = Array.from({ length: nLayers }, (_, i) => i);
 
@@ -405,9 +405,7 @@ async function loadVectorAnalysis(traitName) {
             vectorData[method] = {};
             for (const layer of layers) {
                 try {
-                    const response = await fetch(
-                        `../experiments/${window.state.experimentData.name}/${traitName}/extraction/vectors/${method}_layer${layer}_metadata.json`
-                    );
+                    const response = await fetch(pathBuilder.vectorMetadata(trait, method, layer));
                     if (response.ok) {
                         vectorData[method][layer] = await response.json();
                     }

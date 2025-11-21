@@ -49,17 +49,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_api_response(self.list_traits(exp_name))
             return
 
-        # API endpoint: cross-distribution data index
-        if self.path == '/api/cross-distribution/index':
-            self.send_cross_dist_index()
-            return
-
-        # API endpoint: cross-distribution results for a trait
-        if self.path.startswith('/api/cross-distribution/results/'):
-            trait_name = self.path.split('/')[-1]
-            self.send_cross_dist_results(trait_name)
-            return
-
         # API endpoint: list inference prompt sets
         if self.path.startswith('/api/experiments/') and '/inference/prompt-sets' in self.path:
             exp_name = self.path.split('/')[3]
@@ -108,7 +97,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             return {'experiments': []}
 
         experiments = []
-        category_names = {'behavioral', 'cognitive', 'stylistic', 'alignment'}
 
         for item in experiments_dir.iterdir():
             if item.is_dir() and not item.name.startswith('.'):
@@ -121,14 +109,27 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         if not category_dir.is_dir():
                             continue
 
-                        # If it's a category directory, check inside for traits
-                        if category_dir.name in category_names:
-                            has_traits = any(
-                                trait_dir.is_dir()
-                                for trait_dir in category_dir.iterdir()
+                        # Check if any subdirectory has trait data (responses or vectors)
+                        for trait_dir in category_dir.iterdir():
+                            if not trait_dir.is_dir():
+                                continue
+
+                            responses_dir = trait_dir / 'responses'
+                            vectors_dir = trait_dir / 'vectors'
+                            has_responses = (
+                                responses_dir.exists() and (
+                                    (responses_dir / 'pos.csv').exists() or
+                                    (responses_dir / 'pos.json').exists()
+                                )
                             )
-                            if has_traits:
+                            has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
+
+                            if has_responses or has_vectors:
+                                has_traits = True
                                 break
+
+                        if has_traits:
+                            break
 
                 if has_traits:
                     experiments.append(item.name)
@@ -148,83 +149,28 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         if not extraction_dir.exists():
             return {'traits': []}
 
-        category_names = {'behavioral', 'cognitive', 'stylistic', 'alignment'}
-
         for category_dir in extraction_dir.iterdir():
             if not category_dir.is_dir():
                 continue
 
-            # If this is a category directory, look inside it
-            if category_dir.name in category_names:
-                for trait_item in category_dir.iterdir():
-                    if trait_item.is_dir():
-                        # Check for responses OR vectors to confirm it's a real trait
-                        responses_dir = trait_item / 'responses'
-                        vectors_dir = trait_item / 'vectors'
-                        has_responses = (
-                            responses_dir.exists() and (
-                                (responses_dir / 'pos.csv').exists() or
-                                (responses_dir / 'pos.json').exists()
-                            )
+            # Check all subdirectories as potential trait directories
+            for trait_item in category_dir.iterdir():
+                if trait_item.is_dir():
+                    # Check for responses OR vectors to confirm it's a real trait
+                    responses_dir = trait_item / 'responses'
+                    vectors_dir = trait_item / 'vectors'
+                    has_responses = (
+                        responses_dir.exists() and (
+                            (responses_dir / 'pos.csv').exists() or
+                            (responses_dir / 'pos.json').exists()
                         )
-                        has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
-                        if has_responses or has_vectors:
-                            # Use category/trait format
-                            traits.append(f"{category_dir.name}/{trait_item.name}")
+                    )
+                    has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
+                    if has_responses or has_vectors:
+                        # Use category/trait format
+                        traits.append(f"{category_dir.name}/{trait_item.name}")
 
         return {'traits': sorted(traits)}
-
-    def send_cross_dist_index(self):
-        """Send cross-distribution data index."""
-        # Find first experiment with validation data
-        experiments_dir = Path('experiments')
-        if not experiments_dir.exists():
-            self.send_api_response({'error': 'experiments/ directory not found'})
-            return
-
-        # Try to find any experiment with validation/data_index.json
-        for exp_dir in experiments_dir.iterdir():
-            if exp_dir.is_dir() and not exp_dir.name.startswith('.'):
-                index_path = exp_dir / 'validation' / 'data_index.json'
-                if index_path.exists():
-                    try:
-                        with open(index_path, 'r') as f:
-                            data = json.load(f)
-                        self.send_api_response(data)
-                        return
-                    except Exception as e:
-                        continue
-
-        self.send_api_response({'error': 'Index not found. Run analysis/cross_distribution_scanner.py'})
-
-    def send_cross_dist_results(self, trait_name):
-        """Send cross-distribution results for a specific trait."""
-        # Search all experiments for this trait's validation results
-        experiments_dir = Path('experiments')
-        if not experiments_dir.exists():
-            self.send_api_response({'error': 'experiments/ directory not found'})
-            return
-
-        for exp_dir in experiments_dir.iterdir():
-            if exp_dir.is_dir() and not exp_dir.name.startswith('.'):
-                validation_dir = exp_dir / 'validation'
-                if validation_dir.exists():
-                    result_files = [
-                        validation_dir / f'{trait_name}_full_4x4_results.json',
-                        validation_dir / f'{trait_name}_cross_dist_results.json',
-                    ]
-
-                    for result_file in result_files:
-                        if result_file.exists():
-                            try:
-                                with open(result_file, 'r') as f:
-                                    data = json.load(f)
-                                self.send_api_response(data)
-                                return
-                            except Exception as e:
-                                continue
-
-        self.send_api_response({'error': f'No results found for {trait_name}'})
 
     def list_prompt_sets(self, experiment_name):
         """List all prompt sets for an experiment's inference directory."""
