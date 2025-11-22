@@ -49,14 +49,14 @@ async function renderTraitCorrelation() {
 
     try {
         // Load projection data for all selected traits
-        const pathBuilder = new PathBuilder(window.state.experimentData.name);
+        // Use global paths singleton (already loaded and has experiment set)
         const promptNum = window.state.currentPrompt;
 
         const projectionData = {};
         const loadingPromises = filteredTraits.map(async trait => {
             try {
                 // Try Tier 2 data first (has projections for all layers)
-                const tier2Url = pathBuilder.tier2Data(trait, promptNum);
+                const tier2Url = window.paths.tier2Data(trait, promptNum);
                 const tier2Response = await fetch(tier2Url);
 
                 if (tier2Response.ok) {
@@ -68,7 +68,7 @@ async function renderTraitCorrelation() {
                         const scores = data.projections.response.map(token => token[layerIdx]);
                         projectionData[trait.name] = {
                             scores: scores,
-                            tokens: data.tokens.response
+                            tokens: data.response.tokens  // Fixed: was data.tokens.response
                         };
                         console.log(`Loaded ${scores.length} projections for ${trait.name}`);
                     }

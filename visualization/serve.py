@@ -38,50 +38,53 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         """Handle GET requests, including API endpoints."""
-        # API endpoint: list experiments
-        if self.path == '/api/experiments':
-            self.send_api_response(self.list_experiments())
-            return
+        try:
+            # API endpoint: list experiments
+            if self.path == '/api/experiments':
+                self.send_api_response(self.list_experiments())
+                return
 
-        # API endpoint: list traits for an experiment
-        if self.path.startswith('/api/experiments/') and '/traits' in self.path:
-            exp_name = self.path.split('/')[3]
-            self.send_api_response(self.list_traits(exp_name))
-            return
+            # API endpoint: list traits for an experiment
+            if self.path.startswith('/api/experiments/') and '/traits' in self.path:
+                exp_name = self.path.split('/')[3]
+                self.send_api_response(self.list_traits(exp_name))
+                return
 
-        # API endpoint: list inference prompt sets
-        if self.path.startswith('/api/experiments/') and '/inference/prompt-sets' in self.path:
-            exp_name = self.path.split('/')[3]
-            self.send_api_response(self.list_prompt_sets(exp_name))
-            return
+            # API endpoint: list inference prompt sets
+            if self.path.startswith('/api/experiments/') and '/inference/prompt-sets' in self.path:
+                exp_name = self.path.split('/')[3]
+                self.send_api_response(self.list_prompt_sets(exp_name))
+                return
 
-        # API endpoint: list prompts in a prompt set
-        if self.path.startswith('/api/experiments/') and '/inference/prompts/' in self.path:
-            parts = self.path.split('/')
-            exp_name = parts[3]
-            prompt_set = parts[6]
-            self.send_api_response(self.list_prompts_in_set(exp_name, prompt_set))
-            return
-
-        # API endpoint: get inference projection data
-        if self.path.startswith('/api/experiments/') and '/inference/projections/' in self.path:
-            # Path: /api/experiments/{exp}/inference/projections/{category}/{trait}/{set}/{prompt_id}
-            parts = self.path.split('/')
-            if len(parts) >= 10:
+            # API endpoint: list prompts in a prompt set
+            if self.path.startswith('/api/experiments/') and '/inference/prompts/' in self.path:
+                parts = self.path.split('/')
                 exp_name = parts[3]
-                category = parts[6]
-                trait = parts[7]
-                prompt_set = parts[8]
-                prompt_id = parts[9]
-                self.send_inference_projection(exp_name, category, trait, prompt_set, prompt_id)
-            return
+                prompt_set = parts[6]
+                self.send_api_response(self.list_prompts_in_set(exp_name, prompt_set))
+                return
 
-        # Serve index.html at root
-        if self.path == '/':
-            self.path = '/visualization/index.html'
+            # API endpoint: get inference projection data
+            if self.path.startswith('/api/experiments/') and '/inference/projections/' in self.path:
+                # Path: /api/experiments/{exp}/inference/projections/{category}/{trait}/{set}/{prompt_id}
+                parts = self.path.split('/')
+                if len(parts) >= 10:
+                    exp_name = parts[3]
+                    category = parts[6]
+                    trait = parts[7]
+                    prompt_set = parts[8]
+                    prompt_id = parts[9]
+                    self.send_inference_projection(exp_name, category, trait, prompt_set, prompt_id)
+                return
 
-        # Default: serve files
-        super().do_GET()
+            # Serve index.html at root
+            if self.path == '/':
+                self.path = '/visualization/index.html'
+
+            # Default: serve files
+            super().do_GET()
+        except (BrokenPipeError, ConnectionResetError):
+            self.log_message("Connection broken by client")
 
     def send_api_response(self, data):
         """Send JSON API response."""
@@ -233,6 +236,14 @@ def main():
     # Change to the project root directory (parent of visualization/)
     os.chdir(Path(__file__).parent.parent)
 
+    # Use a ThreadingTCPServer to handle multiple concurrent requests from the browser,
+    # preventing BrokenPipeErrors when the frontend makes many simultaneous fetch calls.
+    class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        pass
+
+    Handler = CORSHTTPRequestHandler
+    # httpd_server = ThreadingTCPServer(("", PORT), Handler)
+
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║           Trait Interpretation Visualization Server          ║
@@ -247,8 +258,8 @@ Press Ctrl+C to stop the server.
 """)
 
     try:
-        with socketserver.TCPServer(("", PORT), CORSHTTPRequestHandler) as httpd:
-            httpd.serve_forever()
+        with ThreadingTCPServer(("", PORT), Handler) as httpd_server:
+            httpd_server.serve_forever()
     except KeyboardInterrupt:
         print("\n\nShutting down server...")
         sys.exit(0)

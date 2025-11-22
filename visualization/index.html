@@ -25,6 +25,7 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 
     <!-- Application Styles -->
     <link rel="stylesheet" href="/visualization/styles.css">
@@ -84,13 +85,12 @@
 
     <div class="container">
         <!-- Transformer Architecture Visualization -->
-        <div class="transformer-sidebar" id="transformer-sidebar">
+        <!-- <div class="transformer-sidebar" id="transformer-sidebar">
             <div class="transformer-header">
                 <div class="transformer-title">Architecture</div>
                 <button class="transformer-toggle" id="transformer-toggle" title="Hide architecture">◀</button>
             </div>
             <div class="transformer-content">
-                <!-- Transformer diagram embedded from separate file -->
                 <iframe
                     src="/visualization/transformer_diagram.html"
                     style="width: 100%; height: 1800px; border: none; display: block;"
@@ -98,7 +98,7 @@
                     scrolling="no">
                 </iframe>
             </div>
-        </div>
+        </div> -->
 
         <!-- Sidebar -->
         <div class="sidebar">
@@ -121,7 +121,7 @@
                         <span class="icon">🗂️</span>
                         <span>Data Explorer</span>
                     </div>
-                    <div class="nav-item" data-view="vectors">
+                    <div class="nav-item" data-view="vector-analysis">
                         <span class="icon">🔬</span>
                         <span>Vector Analysis</span>
                     </div>
@@ -129,21 +129,25 @@
                         <span class="icon">📊</span>
                         <span>Trait Correlation</span>
                     </div>
+                    <div class="nav-item" data-view="validation-results">
+                        <span class="icon">✅</span>
+                        <span>Validation Results</span>
+                    </div>
                 </div>
             </div>
 
             <div class="sidebar-section">
                 <div class="section-title">Inference</div>
                 <div id="nav-items-inference">
-                    <div class="nav-item" data-view="monitoring">
+                    <div class="nav-item" data-view="all-layers">
                         <span class="icon">⚡</span>
                         <span>All Layers</span>
                     </div>
-                    <div class="nav-item" data-view="prompt-activation">
+                    <div class="nav-item" data-view="per-token-activation">
                         <span class="icon">📍</span>
                         <span>Per-Token Activation</span>
                     </div>
-                    <div class="nav-item" data-view="layer-dive">
+                    <div class="nav-item" data-view="layer-deep-dive">
                         <span class="icon">🔍</span>
                         <span>Layer Deep Dive</span>
                     </div>
@@ -166,9 +170,9 @@
                     <button class="info-btn" id="info-btn" title="Information">ℹ️</button>
                     <div class="page-title" id="page-title">Overview</div>
                     <div class="experiment-badge" id="experiment-badge">-</div>
-                    <select id="prompt-selector" style="margin-left: 12px; padding: 4px 8px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); font-size: 11px; cursor: pointer;">
-                        <option value="0">Prompt 0</option>
-                    </select>
+                    <div id="prompt-selector" class="prompt-selector-container">
+                        <!-- Boxes will be dynamically inserted here -->
+                    </div>
                 </div>
                 <div class="header-right">
                     <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">🌙</button>
@@ -188,11 +192,12 @@
 
     <!-- View Modules -->
     <script src="/visualization/views/data-explorer.js"></script>
-    <script src="/visualization/views/vectors.js"></script>
+    <script src="/visualization/views/vector-analysis.js"></script>
     <script src="/visualization/views/trait-correlation.js"></script>
-    <script src="/visualization/views/monitoring.js"></script>
-    <script src="/visualization/views/prompt-activation.js"></script>
-    <script src="/visualization/views/layer-dive.js"></script>
+    <script src="/visualization/views/validation-results.js"></script>
+    <script src="/visualization/views/all-layers.js"></script>
+    <script src="/visualization/views/per-token-activation.js"></script>
+    <script src="/visualization/views/layer-deep-dive.js"></script>
 
     <!-- View Router -->
     <script>
@@ -204,19 +209,22 @@
                 case 'data-explorer':
                     window.renderDataExplorer();
                     break;
-                case 'vectors':
-                    window.renderVectors();
+                case 'vector-analysis':
+                    window.renderVectorAnalysis();
                     break;
                 case 'trait-correlation':
                     window.renderTraitCorrelation();
                     break;
-                case 'monitoring':
-                    window.renderMonitoring();
+                case 'validation-results':
+                    window.renderValidationResults();
                     break;
-                case 'prompt-activation':
-                    window.renderPromptActivation();
+                case 'all-layers':
+                    window.renderAllLayers();
                     break;
-                case 'layer-dive':
+                case 'per-token-activation':
+                    window.renderPerTokenActivation();
+                    break;
+                case 'layer-deep-dive':
                     window.renderLayerDeepDive();
                     break;
                 default:

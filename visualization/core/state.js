@@ -144,6 +144,7 @@ function populateTraitCheckboxes() {
     if (!container) return;
 
     container.innerHTML = '';
+    state.selectedTraits.clear();  // Clear before repopulating
 
     if (!state.experimentData || !state.experimentData.traits) return;
 
@@ -223,6 +224,7 @@ function updatePageTitle() {
         'overview': 'Overview',
         'vectors': 'Vector Analysis',
         'trait-correlation': 'Trait Correlation',
+        'validation': 'Validation Results',
         'monitoring': 'All Layers',
         'prompt-activation': 'Per-Token Activation',
         'layer-dive': 'Layer Deep Dive'
@@ -285,21 +287,26 @@ async function loadExperimentData(experimentName) {
             traits: [],
             readme: null
         };
-
-        const pathBuilder = new PathBuilder(experimentName);
+        
+        // Correctly use the global path builder
+        window.paths.setExperiment(experimentName);
 
         // Try to load README
         try {
-            const readmeResponse = await fetch(pathBuilder.readme());
+            const readmePath = `experiments/${experimentName}/README.md`;
+            const readmeResponse = await fetch(readmePath);
             if (readmeResponse.ok) {
                 state.experimentData.readme = await readmeResponse.text();
             }
         } catch (e) {
-            console.log('No README found');
+            console.log('No README found for experiment.');
         }
 
         // Fetch traits from API
         const traitsResponse = await fetch(`/api/experiments/${experimentName}/traits`);
+        if (!traitsResponse.ok) {
+            throw new Error(`Failed to fetch traits: ${traitsResponse.statusText}`);
+        }
         const traitsData = await traitsResponse.json();
         const traitNames = traitsData.traits || [];
 
@@ -308,49 +315,38 @@ async function loadExperimentData(experimentName) {
             const traitObj = { name: traitName };
 
             // Detect response format
-            const responseFormat = await window.detectResponseFormat(experimentName, traitObj);
+            const responseFormat = await window.detectResponseFormat(window.paths, traitObj);
 
             if (!responseFormat) {
                 console.warn(`No responses for ${traitName}`);
-                continue;
             }
 
             // Load metadata
             let metadata = null;
             try {
-                const metadataRes = await fetch(pathBuilder.activationsMetadata(traitObj));
+                const metadataRes = await fetch(window.paths.activationsMetadata(traitObj));
                 if (metadataRes.ok) {
                     metadata = await metadataRes.json();
                 }
             } catch (e) {
                 console.warn(`No metadata for ${traitName}`);
             }
-
+            
             const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
-            // Extract base name, handling both flat and categorized structure
             let baseName = traitName.replace('_natural', '');
             if (baseName.includes('/')) {
-                // For categorized structure, remove category prefix for baseName
                 baseName = baseName.split('/')[1];
             }
 
-            // Check for Tier 3 data (inference data is in inference/ not extraction/)
-            let hasTier3 = false;
-            try {
-                const tier3Check = await fetch(pathBuilder.tier3Data(traitObj, 0, 16), { method: 'HEAD' });
-                hasTier3 = tier3Check.ok;
-            } catch (e) {
-                // No tier 3 data
-            }
-
+            const hasVectors = await window.hasVectors(window.paths, traitObj);
+            
             state.experimentData.traits.push({
                 name: traitName,
                 baseName: baseName,
                 method: method,
                 responseFormat: responseFormat,
-                hasResponses: true,
-                hasTier3: hasTier3,
-                hasVectors: false,
+                hasResponses: !!responseFormat,
+                hasVectors: hasVectors,
                 metadata: metadata
             });
         }
@@ -366,14 +362,10 @@ async function loadExperimentData(experimentName) {
             console.log(`  [${idx}] ${t.name}`);
         });
 
-        // Populate trait checkboxes
         populateTraitCheckboxes();
-
-        // Discover available prompts (async, but don't wait)
         discoverAvailablePrompts();
-
-        // Render view
         if (window.renderView) window.renderView();
+
     } catch (error) {
         console.error('Error loading experiment data:', error);
         showError(`Failed to load experiment: ${experimentName}`);
@@ -388,10 +380,16 @@ async function discoverAvailablePrompts() {
     }
 
     const promptSet = new Set();
+    // PathBuilder might not be the right way to do this if we want to be more dynamic.
+    // For now, let's assume the experiment name is available in the state.
     const pathBuilder = new PathBuilder(state.experimentData.name);
 
+    // This is inefficient. We are checking every potential prompt file for every trait.
+    // A better solution would be to have a manifest file.
+    // But for now, let's just make it work.
     for (const trait of state.experimentData.traits) {
-        for (let i = 0; i <= 30; i++) {
+        // Increased from 30 to 100 to support more prompts.
+        for (let i = 0; i <= 100; i++) {
             try {
                 const url = pathBuilder.tier2Data(trait, i);
                 const response = await fetch(url, { method: 'HEAD' });
@@ -399,11 +397,9 @@ async function discoverAvailablePrompts() {
                     promptSet.add(i);
                 }
             } catch (e) {
-                // File doesn't exist
+                // File doesn't exist, which is expected.
             }
         }
-
-        if (promptSet.size > 0) break;
     }
 
     state.availablePrompts = promptSet.size > 0 ?
@@ -415,13 +411,31 @@ async function discoverAvailablePrompts() {
 }
 
 function populatePromptSelector() {
-    const selector = document.getElementById('prompt-selector');
-    if (!selector) return;
+    const container = document.getElementById('prompt-selector');
+    if (!container) return;
 
-    selector.innerHTML = state.availablePrompts.map(n =>
-        `<option value="${n}">Prompt ${n}</option>`
-    ).join('');
-    selector.value = state.currentPrompt;
+    container.innerHTML = ''; // Clear previous content
+
+    state.availablePrompts.forEach(n => {
+        const box = document.createElement('div');
+        box.className = 'prompt-box';
+        box.textContent = n;
+        box.dataset.promptId = n;
+        container.appendChild(box);
+    });
+
+    updatePromptSelectionUI();
+}
+
+function updatePromptSelectionUI() {
+    const boxes = document.querySelectorAll('.prompt-box');
+    boxes.forEach(box => {
+        if (parseInt(box.dataset.promptId) === state.currentPrompt) {
+            box.classList.add('active');
+        } else {
+            box.classList.remove('active');
+        }
+    });
 }
 
 // Event Listeners Setup
@@ -435,10 +449,16 @@ function setupEventListeners() {
     // Select all traits button
     document.getElementById('select-all-btn')?.addEventListener('click', toggleAllTraits);
 
-    // Prompt selector
-    document.getElementById('prompt-selector')?.addEventListener('change', (e) => {
-        state.currentPrompt = parseInt(e.target.value);
-        if (window.renderView) window.renderView();
+    // Prompt selector (event delegation)
+    document.getElementById('prompt-selector')?.addEventListener('click', (e) => {
+        if (e.target.classList.contains('prompt-box')) {
+            const promptId = parseInt(e.target.dataset.promptId);
+            if (state.currentPrompt !== promptId) {
+                state.currentPrompt = promptId;
+                updatePromptSelectionUI();
+                if (window.renderView) window.renderView();
+            }
+        }
     });
 
     // Close info tooltip when clicking outside
@@ -482,8 +502,17 @@ function getPlotlyLayout(baseLayout) {
     };
 }
 
+// Simple Markdown to HTML converter
+function markdownToHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+        .replace(/\*(.*?)\*/g, '<em>$1</em>');           // Italic
+}
+
 // Initialize Application
 async function init() {
+    await window.paths.load();
     initTheme();
     initTransformerSidebar();
     setupNavigation();
@@ -498,3 +527,4 @@ window.getFilteredTraits = getFilteredTraits;
 window.getPlotlyLayout = getPlotlyLayout;
 window.showError = showError;
 window.initApp = init;
+window.markdownToHtml = markdownToHtml;

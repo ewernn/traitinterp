@@ -1,5 +1,14 @@
 // Data Explorer View - File browser and preview for experiment data
 
+// Helper to get relative path for display (strips experiment prefix for cleaner UI)
+function getDisplayPath(fullPath) {
+    const experimentBase = window.paths.get('experiments.base', {});
+    if (fullPath.startsWith(experimentBase + '/')) {
+        return fullPath.substring(experimentBase.length + 1);
+    }
+    return fullPath;
+}
+
 async function renderDataExplorer() {
     const contentArea = document.getElementById('content-area');
     const filteredTraits = window.getFilteredTraits();
@@ -53,6 +62,9 @@ async function renderDataExplorer() {
         const nPos = metadata.n_examples_pos || metadata.n_positive || '?';
         const nNeg = metadata.n_examples_neg || metadata.n_negative || '?';
 
+        // Get paths from PathBuilder
+        const traitPath = getDisplayPath(window.paths.get('extraction.trait', { trait: trait.name }));
+
         html += `
             <div class="explorer-trait-card">
                 <div class="explorer-trait-header" onclick="toggleTraitBody('${trait.name}')">
@@ -65,7 +77,7 @@ async function renderDataExplorer() {
                     <div class="file-tree">
                         <div class="file-item">
                             <span class="file-icon">📁</span>
-                            <strong>extraction/${trait.name}/</strong>
+                            <strong>${traitPath}/</strong>
                         </div>
 
                         <div class="file-item indent-1 clickable" onclick="previewJSON('${trait.name}', 'trait_definition')">
@@ -227,8 +239,6 @@ async function previewJSON(traitName, type) {
     const title = document.getElementById('preview-title');
     const body = document.getElementById('preview-body');
 
-    const trait = { name: traitName };
-
     let displayName;
     if (type === 'trait_definition') {
         displayName = 'Trait Definition';
@@ -245,11 +255,28 @@ async function previewJSON(traitName, type) {
     modal.classList.add('show');
 
     try {
-        const data = await window.DataLoader.fetchJSON(trait, type);
+        // Build URL using PathBuilder
+        let url;
+        if (type === 'trait_definition') {
+            url = window.paths.traitDefinition(traitName);
+        } else if (type === 'activations_metadata') {
+            url = window.paths.activationsMetadata(traitName);
+        } else if (type === 'pos' || type === 'neg') {
+            url = window.paths.responses(traitName, type, 'json');
+        } else {
+            throw new Error(`Unknown JSON type: ${type}`);
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch JSON for ${traitName} ${type}: ${response.statusText}`);
+        }
+        const data = await response.json();
         const highlighted = syntaxHighlightJSON(data);
         body.innerHTML = `<div class="json-viewer"><pre>${highlighted}</pre></div>`;
     } catch (error) {
-        body.innerHTML = '<div class="error">Failed to load JSON file</div>';
+        console.error('Preview JSON error:', error);
+        body.innerHTML = `<div class="error">Failed to load JSON file. Check console for details.</div>`;
     }
 }
 

@@ -1,6 +1,6 @@
 // Monitoring View
 
-async function renderMonitoring() {
+async function renderAllLayers() {
     const contentArea = document.getElementById('content-area');
     const filteredTraits = window.getFilteredTraits();
 
@@ -18,18 +18,19 @@ async function renderMonitoring() {
     contentArea.innerHTML = '<div id="all-traits-container"></div>';
     const container = document.getElementById('all-traits-container');
 
-    for (const trait of filteredTraits) {
-        const tier2Dir = `../experiments/${window.state.experimentData.name}/${trait.name}/inference/residual_stream_activations/`;
+    // Use global PathBuilder singleton with experiment set
+    window.paths.setExperiment(window.state.experimentData.name);
 
+    for (const trait of filteredTraits) {
         // Create a unique div for this trait
         const traitDiv = document.createElement('div');
         traitDiv.id = `trait-${trait.name}`;
         traitDiv.style.marginBottom = '20px';
         container.appendChild(traitDiv);
 
-        // Try to load the selected prompt
+        // Try to load the selected prompt using global PathBuilder
         try {
-            const fetchPath = `${tier2Dir}prompt_${window.state.currentPrompt}.json`;
+            const fetchPath = window.paths.tier2Data(trait, window.state.currentPrompt);
             console.log(`[${trait.name}] Fetching trajectory data for prompt ${window.state.currentPrompt}`);
             const response = await fetch(fetchPath);
 
@@ -508,4 +509,4 @@ function setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens) {
 
 // Render Prompt Activation view
 // Export to global scope
-window.renderMonitoring = renderMonitoring;
+window.renderAllLayers = renderAllLayers;

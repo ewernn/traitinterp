@@ -1,0 +1,102 @@
+# config/paths.yaml
+# Single source of truth for all repo paths.
+# All templates are complete - no cross-references.
+#
+# Variables:
+#   {experiment} - experiment name (e.g., gemma_2b_cognitive_nov21)
+#   {trait} - full trait path (e.g., cognitive_state/context)
+#   {method} - extraction method (probe, mean_diff, ica, gradient)
+#   {layer} - layer number
+#   {prompt_set} - prompt set name (e.g., main_prompts)
+#   {index} - prompt index
+#   {format} - file format (csv, json)
+
+# =============================================================================
+# EXPERIMENT STRUCTURE
+# =============================================================================
+
+experiments:
+  base: "experiments/{experiment}"
+  list: "experiments"
+
+# =============================================================================
+# EXTRACTION (training-time data)
+# =============================================================================
+
+extraction:
+  base: "experiments/{experiment}/extraction"
+  trait: "experiments/{experiment}/extraction/{trait}"
+  vectors: "experiments/{experiment}/extraction/{trait}/vectors"
+  activations: "experiments/{experiment}/extraction/{trait}/activations"
+  val_activations: "experiments/{experiment}/extraction/{trait}/val_activations"
+  responses: "experiments/{experiment}/extraction/{trait}/responses"
+  val_responses: "experiments/{experiment}/extraction/{trait}/val_responses"
+
+# =============================================================================
+# INFERENCE (evaluation-time data)
+# =============================================================================
+
+inference:
+  base: "experiments/{experiment}/inference"
+  prompts: "experiments/{experiment}/inference/prompts"
+  prompt_file: "experiments/{experiment}/inference/prompts/{prompt_set}.txt"
+  raw_activations: "experiments/{experiment}/inference/raw_activations/{prompt_set}"
+  trait: "experiments/{experiment}/inference/{trait}"
+  projections: "experiments/{experiment}/inference/{trait}/projections"
+  residual_stream: "experiments/{experiment}/inference/{trait}/projections/residual_stream_activations"
+  layer_internal: "experiments/{experiment}/inference/{trait}/projections/layer_internal_states"
+
+# =============================================================================
+# VALIDATION (aggregate evaluation results)
+# =============================================================================
+
+validation:
+  base: "experiments/{experiment}/validation"
+  evaluation: "experiments/{experiment}/validation/validation_evaluation.json"
+  cross_trait_matrix: "experiments/{experiment}/validation/cross_trait_matrix.json"
+  data_index: "experiments/{experiment}/validation/data_index.json"
+
+# =============================================================================
+# FILE PATTERNS (combine with directory paths)
+# =============================================================================
+
+patterns:
+  # Vectors
+  vector: "{method}_layer{layer}.pt"
+  vector_metadata: "{method}_layer{layer}_metadata.json"
+
+  # Activations
+  all_layers: "all_layers.pt"
+  metadata: "metadata.json"
+  val_pos: "val_pos_layer{layer}.pt"
+  val_neg: "val_neg_layer{layer}.pt"
+
+  # Responses
+  pos_responses: "pos.{format}"
+  neg_responses: "neg.{format}"
+  val_pos_prompts: "val_positive.txt"
+  val_neg_prompts: "val_negative.txt"
+  pos_prompts: "positive.txt"
+  neg_prompts: "negative.txt"
+
+  # Inference
+  prompt_json: "prompt_{index}.json"
+  prompt_pt: "prompt_{index}.pt"
+  layer_internal: "prompt_{index}_layer{layer}.json"
+
+  # Trait definition
+  trait_definition: "trait_definition.json"
+
+# =============================================================================
+# GLOBAL DIRECTORIES
+# =============================================================================
+
+global:
+  traitlens: "traitlens"
+  analysis: "analysis"
+  extraction_scripts: "extraction"
+  inference_scripts: "inference"
+  docs: "docs"
+  visualization: "visualization"
+  config: "config"
+  utils: "utils"

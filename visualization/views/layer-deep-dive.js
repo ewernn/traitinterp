@@ -14,17 +14,17 @@ async function renderLayerDeepDive() {
     const container = document.getElementById('all-traits-layer-dive');
 
     for (const trait of filteredTraits) {
-        const tier3Dir = `../experiments/${window.state.experimentData.name}/${trait.name}/inference/layer_internal_states/`;
-
         // Create a unique div for this trait
         const traitDiv = document.createElement('div');
         traitDiv.id = `layer-dive-${trait.name}`;
         traitDiv.style.marginBottom = '32px';  // Airy spacing between traits
         container.appendChild(traitDiv);
 
-        // Try to load the selected prompt for default layer 16
+        // Try to load the selected prompt for default layer 16 using PathBuilder
         try {
-            const response = await fetch(`${tier3Dir}prompt_${window.state.currentPrompt}_layer16.json`);
+            const fetchPath = window.paths.tier3Data(trait, window.state.currentPrompt, 16);
+            console.log(`[${trait.name}] Fetching layer deep dive data: ${fetchPath}`);
+            const response = await fetch(fetchPath);
             if (!response.ok) throw new Error(`No data found for prompt ${window.state.currentPrompt}`);
 
             const data = await response.json();
@@ -97,11 +97,11 @@ function renderTier3Instructions(trait, filteredTraits) {
                 <p style="color: var(--text-secondary); margin-bottom: 15px;">
                     Capture complete internals (Q/K/V, attention heads, 9216 MLP neurons) for one layer:
                 </p>
-                <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto;">python inference/capture_single_layer.py \\
+                <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 15px; border-radius: 4px; margin: 15px 0; overflow-x: auto;">python inference/capture_layers.py \\
   --experiment ${window.state.experimentData.name} \\
-  --trait ${trait.name} \\
+  --mode single \\
   --layer 16 \\
-  --prompts "What is the capital of France?" \\
+  --prompt "What is the capital of France?" \\
   --save-json</pre>
                 <p style="color: var(--text-secondary); margin-top: 15px;">
                     The <code style="background: var(--bg-primary); padding: 2px 6px; border-radius: 3px;">--save-json</code> flag creates visualization-friendly JSON files (~10-20 MB).
@@ -128,7 +128,7 @@ function renderTier3InstructionsInContainer(containerId, trait, promptNum) {
         <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
             To capture complete internals (Q/K/V, attention heads, 9216 MLP neurons):
         </div>
-        <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_single_layer.py --experiment ${window.state.experimentData.name} --trait ${trait.name} --layer 16 --prompts "..." --save-json</pre>
+        <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_layers.py --experiment ${window.state.experimentData.name} --mode single --layer 16 --prompt "..." --save-json</pre>
     `;
 }
 
@@ -510,69 +510,84 @@ function renderHeadContributions(data, promptLength) {
 
 function renderAttentionHeatmaps(data, promptLength, tokenIdx = 0) {
     // Show attention patterns for a single query token
-    // Display how this token attends to all context tokens across 8 heads
+    // Dynamically handles any number of heads (Gemma 2B has 8 query heads with GQA)
 
     const allTokens = [...data.prompt.tokens, ...data.response.tokens];
     const isPromptToken = tokenIdx < promptLength;
 
-    let attnWeights;  // [8_heads, seq_len] - just the row for this query token
+    let attnWeights;  // [n_heads, seq_len] - just the row for this query token
     let contextTokens;
 
     if (isPromptToken) {
         // Query is in prompt - extract row from prompt attention
-        const promptAttn = data.internals.prompt.attn_weights;  // [8_heads, prompt_len, prompt_len]
-        attnWeights = promptAttn.map(head => head[tokenIdx]);  // [8_heads, prompt_len]
+        const promptAttn = data.internals.prompt.attn_weights;  // [n_heads, prompt_len, prompt_len]
+        attnWeights = promptAttn.map(head => head[tokenIdx]);  // [n_heads, prompt_len]
         contextTokens = data.prompt.tokens;
     } else {
         // Query is in response - extract row from response attention
         const responseIdx = tokenIdx - promptLength;
-        const responseAttn = data.internals.response.attn_weights[responseIdx];  // [8_heads, context_len, context_len]
+        const responseAttn = data.internals.response.attn_weights[responseIdx];  // [n_heads, context_len, context_len]
         const contextLen = promptLength + responseIdx + 1;
         attnWeights = responseAttn.map(head => head[head.length - 1]);  // Last row = this token's attention
         contextTokens = allTokens.slice(0, contextLen);  // All context up to this point
     }
 
+    const nHeads = attnWeights.length;
+    const nCols = Math.min(4, nHeads);  // Up to 4 columns
+    const nRows = Math.ceil(nHeads / nCols);
+
+    // Head colors (consistent with trait colors)
+    const headColors = ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b', '#20c997', '#f06595'];
+
     const html = `
         <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px;">
-            <h3 style="margin: 0 0 15px 0; color: var(--text-primary);">Query Token Attention</h3>
+            <h3 style="margin: 0 0 15px 0; color: var(--text-primary);">Attention Patterns (${nHeads} Heads)</h3>
 
             <!-- Slider -->
             <div style="margin-bottom: 10px;">
                 <label style="color: var(--text-secondary); font-size: 13px;">
-                    Select Query Token: <span id="attn-slider-value" style="color: var(--text-primary); font-weight: 600;">0</span> -
-                    "<span id="attn-slider-token" style="color: var(--text-primary); font-weight: 600;">${allTokens[0]}</span>"
+                    Query Token: <span id="attn-slider-value" style="color: var(--text-primary); font-weight: 600;">${tokenIdx}</span> -
+                    "<span id="attn-slider-token" style="color: var(--text-primary); font-weight: 600;">${allTokens[tokenIdx]}</span>"
                 </label>
             </div>
             <input type="range" id="attn-slider" min="0" max="${allTokens.length - 1}" value="${tokenIdx}"
-                   style="width: 100%; height: 3px; border-radius: 2px; background: var(--border-color);">
+                   style="width: 100%; height: 4px; border-radius: 2px; background: var(--border-color); cursor: pointer;">
 
-            <div style="margin-top: 15px; color: var(--text-secondary); font-size: 13px;">
-                Showing how token <span style="color: var(--text-primary); font-weight: 600;">"${allTokens[tokenIdx]}"</span>
-                (position ${tokenIdx}) attends to ${contextTokens.length} context tokens
+            <div style="margin-top: 10px; color: var(--text-secondary); font-size: 12px;">
+                Attending to ${contextTokens.length} context tokens
             </div>
         </div>
 
-        <!-- 8 Head Patterns Stacked Vertically -->
-        <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
-            ${Array.from({length: 8}, (_, i) => `<div id="attn-head-${i}"></div>`).join('')}
+        <!-- Head Patterns in Grid -->
+        <div style="display: grid; grid-template-columns: repeat(${nCols}, 1fr); gap: 12px;">
+            ${Array.from({length: nHeads}, (_, i) => `
+                <div style="background: var(--bg-secondary); border-radius: 6px; padding: 8px;">
+                    <div style="color: ${headColors[i % headColors.length]}; font-size: 11px; font-weight: 600; margin-bottom: 4px;">Head ${i}</div>
+                    <div id="attn-head-${i}"></div>
+                </div>
+            `).join('')}
         </div>
     `;
 
     document.getElementById('attention-heatmaps').innerHTML = html;
 
     // Render each head as a 1-row heatmap
-    for (let head = 0; head < 8; head++) {
+    for (let head = 0; head < nHeads; head++) {
         const headAttn = attnWeights[head];  // [context_len]
 
         // Create 1-row heatmap with query position highlighted
         const trace = {
             z: [headAttn],  // Single row
             x: contextTokens,
-            y: ['Attention'],
+            y: [''],
             type: 'heatmap',
-            colorscale: 'Viridis',
+            colorscale: [
+                [0, 'rgba(0,0,0,0)'],
+                [0.5, headColors[head % headColors.length] + '80'],
+                [1, headColors[head % headColors.length]]
+            ],
             hovertemplate: 'To: %{x}<br>Weight: %{z:.3f}<extra></extra>',
-            showscale: head === 7  // Only show scale on last plot
+            showscale: false
         };
 
         // Highlight the query position
@@ -586,18 +601,23 @@ function renderAttentionHeatmaps(data, promptLength, tokenIdx = 0) {
             x1: queryPosInContext + 0.5,
             y0: 0,
             y1: 1,
-            line: { color: '#ff6b6b', width: 3 },
-            fillcolor: 'rgba(255, 107, 107, 0.1)'
+            line: { color: '#ffffff', width: 2 },
+            fillcolor: 'rgba(255, 255, 255, 0.2)'
         });
 
-        const layout = window.getPlotlyLayout({
-            title: `Head ${head}`,
-            xaxis: { title: 'Context Token', tickangle: -45, tickfont: { size: 9 } },
-            yaxis: { title: '', showticklabels: false },
-            height: 80,
-            margin: { l: 25, r: 5, t: 10, b: 50 },
-            shapes: shapes
-        });
+        const layout = {
+            xaxis: {
+                tickangle: -45,
+                tickfont: { size: 8, color: 'var(--text-secondary)' },
+                showgrid: false
+            },
+            yaxis: { showticklabels: false, showgrid: false },
+            height: 60,
+            margin: { l: 5, r: 5, t: 0, b: 40 },
+            shapes: shapes,
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+        };
 
         Plotly.newPlot(`attn-head-${head}`, [trace], layout, { displayModeBar: false });
     }

@@ -8,7 +8,7 @@ class DataLoader {
      * @returns {Promise<Object>} - Data with projections and logit lens
      */
     static async fetchTier2(trait, promptNum) {
-        const url = `../experiments/${window.state.experimentData.name}/inference/${trait.name}/projections/residual_stream_activations/prompt_${promptNum}.json`;
+        const url = window.paths.tier2Data(trait, promptNum);
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch tier 2 data for ${trait.name} prompt ${promptNum}`);
@@ -24,7 +24,7 @@ class DataLoader {
      * @returns {Promise<Object>} - Data with attention heads, MLP activations, etc.
      */
     static async fetchTier3(trait, promptNum, layer = 16) {
-        const url = `../experiments/${window.state.experimentData.name}/inference/${trait.name}/projections/layer_internal_states/prompt_${promptNum}_layer${layer}.json`;
+        const url = window.paths.tier3Data(trait, promptNum, layer);
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch tier 3 data for ${trait.name} prompt ${promptNum} layer ${layer}`);
@@ -40,7 +40,7 @@ class DataLoader {
      * @returns {Promise<Object>} - Vector metadata
      */
     static async fetchVectorMetadata(trait, method, layer) {
-        const url = `../experiments/${window.state.experimentData.name}/extraction/${trait.name}/vectors/${method}_layer${layer}_metadata.json`;
+        const url = window.paths.vectorMetadata(trait, method, layer);
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch vector metadata for ${trait.name} ${method} layer ${layer}`);
@@ -84,7 +84,7 @@ class DataLoader {
      * @returns {Promise<Object>} - Cross-distribution results
      */
     static async fetchCrossDistribution(traitBaseName) {
-        const url = `../experiments/${window.state.experimentData.name}/validation/${traitBaseName}_full_4x4_results.json`;
+        const url = `${window.paths.get('validation.base')}/${traitBaseName}_full_4x4_results.json`;
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch cross-distribution data for ${traitBaseName}`);
@@ -94,14 +94,17 @@ class DataLoader {
 
     /**
      * Fetch prompt data (shared across all traits)
+     * @param {string} promptSet - The name of the prompt set.
      * @param {number} promptIdx - Prompt index (0, 1, 2, ...)
      * @returns {Promise<Object>} - Shared prompt data
      */
-    static async fetchPrompt(promptIdx) {
-        const url = `../experiments/${window.state.experimentData.name}/inference/prompts/prompt_${promptIdx}.json`;
+    static async fetchPrompt(promptSet, promptIdx) {
+        const dir = window.paths.get('inference.raw_activations', { prompt_set: promptSet });
+        const file = window.paths.get('patterns.prompt_json', { index: promptIdx });
+        const url = `${dir}/${file}`;
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to fetch prompt ${promptIdx}`);
+            throw new Error(`Failed to fetch prompt ${promptIdx} from set ${promptSet}`);
         }
         return await response.json();
     }
@@ -109,11 +112,14 @@ class DataLoader {
     /**
      * Fetch trait projections for a specific prompt
      * @param {Object} trait - Trait object with name property (category/trait_name format)
+     * @param {string} promptSet - The name of the prompt set.
      * @param {number} promptIdx - Prompt index
      * @returns {Promise<Object>} - Trait-specific projection data
      */
-    static async fetchProjections(trait, promptIdx) {
-        const url = `../experiments/${window.state.experimentData.name}/inference/${trait.name}/projections/prompt_${promptIdx}.json`;
+    static async fetchProjections(trait, promptSet, promptIdx) {
+        const dir = window.paths.get('inference.residual_stream', { trait: trait.name });
+        const file = window.paths.get('patterns.prompt_json', { index: promptIdx });
+        const url = `${dir}/${file}`;
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch projections for ${trait.name} prompt ${promptIdx}`);
@@ -125,40 +131,49 @@ class DataLoader {
      * Fetch combined inference data
      * Combines prompt + projections into single object
      * @param {Object} trait - Trait object with name property
+     * @param {string} promptSet - The name of the prompt set.
      * @param {number} promptIdx - Prompt index
      * @returns {Promise<Object>} - Combined data
      */
-    static async fetchInferenceCombined(trait, promptIdx) {
-        const prompt = await this.fetchPrompt(promptIdx);
-        const projections = await this.fetchProjections(trait, promptIdx);
+    static async fetchInferenceCombined(trait, promptSet, promptIdx) {
+        const prompt = await this.fetchPrompt(promptSet, promptIdx);
+        const projections = await this.fetchProjections(trait, promptSet, promptIdx);
 
         return {
             prompt: prompt.prompt,
             response: prompt.response,
             tokens: prompt.tokens,
-            trait_scores: { [trait.name]: projections.scores },
-            dynamics: { [trait.name]: projections.dynamics }
+            trait_scores: projections.projections, // Assuming projections has this structure
+            dynamics: projections.dynamics // Assuming projections has this
         };
     }
 
     /**
      * Discover available prompts
+     * @param {string} promptSet - The name of the prompt set to discover.
      * @returns {Promise<number[]>} - Array of available prompt indices
      */
-    static async discoverPrompts() {
+    static async discoverPrompts(promptSet) {
         try {
             const indices = [];
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 200; i++) { // Check up to 200 prompts
                 try {
-                    await this.fetchPrompt(i);
-                    indices.push(i);
+                    const dir = window.paths.get('inference.raw_activations', { prompt_set: promptSet });
+                    const file = window.paths.get('patterns.prompt_json', { index: i });
+                    const url = `${dir}/${file}`;
+                    const response = await fetch(url, { method: 'HEAD' });
+                    if (response.ok) {
+                        indices.push(i);
+                    } else {
+                        break;
+                    }
                 } catch (e) {
                     break; // Stop when we hit the first missing prompt
                 }
             }
             return indices;
         } catch (e) {
-            console.warn('Failed to discover prompts:', e);
+            console.warn(`Failed to discover prompts for set ${promptSet}:`, e);
             return [];
         }
     }
@@ -171,19 +186,22 @@ class DataLoader {
      */
     static async fetchJSON(trait, type) {
         let url;
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const format = 'json';
+
         if (type === 'trait_definition') {
-            url = `../experiments/${window.state.experimentData.name}/extraction/${trait.name}/trait_definition.json`;
+            url = window.paths.traitDefinition(traitName);
         } else if (type === 'activations_metadata') {
-            url = `../experiments/${window.state.experimentData.name}/extraction/${trait.name}/activations/metadata.json`;
+            url = window.paths.activationsMetadata(traitName);
         } else if (type === 'pos' || type === 'neg') {
-            url = `../experiments/${window.state.experimentData.name}/extraction/${trait.name}/responses/${type}.json`;
+            url = window.paths.responses(traitName, type, format);
         } else {
             throw new Error(`Unknown JSON type: ${type}`);
         }
 
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to fetch JSON for ${trait.name} ${type}`);
+            throw new Error(`Failed to fetch JSON for ${traitName} ${type}`);
         }
         return await response.json();
     }
@@ -196,7 +214,7 @@ class DataLoader {
      * @returns {Promise<Object>} - Parsed CSV data with Papa Parse
      */
     static async fetchCSV(trait, category, limit = 10) {
-        const url = `../experiments/${window.state.experimentData.name}/extraction/${trait.name}/responses/${category}.csv`;
+        const url = window.paths.responses(trait, category, 'csv');
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch CSV for ${trait.name} ${category}`);
@@ -217,8 +235,8 @@ class DataLoader {
      */
     static async checkVectorsExist(trait) {
         try {
-            const testUrl = `../experiments/${window.state.experimentData.name}/extraction/${trait.name}/vectors/probe_layer16_metadata.json`;
-            const response = await fetch(testUrl);
+            const testUrl = window.paths.vectorMetadata(trait, 'probe', 16);
+            const response = await fetch(testUrl, { method: 'HEAD' });
             return response.ok;
         } catch (e) {
             return false;
@@ -233,7 +251,8 @@ class DataLoader {
      * @returns {Promise<Object>} - SAE feature activations
      */
     static async fetchSAEFeatures(trait, promptNum, layer = 16) {
-        const url = `../experiments/${window.state.experimentData.name}/inference/${trait.name}/projections/sae_features/prompt_${promptNum}_layer${layer}_sae.pt`;
+        const dir = window.paths.get('inference.trait', { trait: trait.name });
+        const url = `${dir}/projections/sae_features/prompt_${promptNum}_layer${layer}_sae.pt`;
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`Failed to fetch SAE features for ${trait.name} prompt ${promptNum} layer ${layer}`);

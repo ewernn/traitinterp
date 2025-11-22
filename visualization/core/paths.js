@@ -1,174 +1,320 @@
-// Centralized Path Configuration for Trait Interpretation Visualization
-// Handles all path construction to maintain consistency across the codebase
-
 /**
- * Path builder for experiment data structure
- * Structure: experiments/{experiment}/extraction/{category}/{trait}/{subdir}
+ * PathBuilder - Single source of truth for repo paths.
+ * Loads structure from config/paths.yaml
+ *
+ * Usage:
+ *     await paths.load();
+ *     paths.setExperiment('gemma_2b_cognitive_nov21');
+ *
+ *     // Get resolved path
+ *     const vectorsDir = paths.get('extraction.vectors', { trait: 'cognitive_state/context' });
+ *     // Returns: 'experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/vectors'
+ *
+ *     // Combine with pattern
+ *     const vectorFile = paths.get('extraction.vectors', { trait }) + '/' + paths.get('patterns.vector', { method: 'probe', layer: 16 });
+ *
+ *     // Get raw template
+ *     const tmpl = paths.template('extraction.vectors');
+ *     // Returns: 'experiments/{experiment}/extraction/{trait}/vectors'
  */
+
 class PathBuilder {
-    constructor(experimentName) {
-        this.experimentName = experimentName;
-        this.baseExperimentPath = `../experiments/${experimentName}`;
+    constructor() {
+        this.config = null;
+        this.loaded = false;
+        this._loadPromise = null;
+        this.experimentName = null;
     }
 
     /**
-     * Get extraction-related paths
-     * @param {Object} trait - Trait object with name property (format: category/trait_name)
-     * @param {string} subpath - Subpath within trait directory (e.g., 'vectors', 'responses', 'activations')
-     * @returns {string} - Full path
+     * Load config from YAML file.
+     * Safe to call multiple times - will only load once.
+     */
+    async load() {
+        if (this.loaded) return;
+        if (this._loadPromise) return this._loadPromise;
+
+        this._loadPromise = (async () => {
+            const response = await fetch('/config/paths.yaml');
+            if (!response.ok) {
+                throw new Error(`Failed to load paths.yaml: ${response.status}`);
+            }
+            const yamlText = await response.text();
+            this.config = jsyaml.load(yamlText);
+            this.loaded = true;
+        })();
+
+        return this._loadPromise;
+    }
+
+    /**
+     * Set the current experiment (used as default for {experiment} variable).
+     * @param {string} name - Experiment name (e.g., 'gemma_2b_cognitive_nov21')
+     */
+    setExperiment(name) {
+        this.experimentName = name;
+    }
+
+    /**
+     * Get current experiment name.
+     * @returns {string|null}
+     */
+    getExperiment() {
+        return this.experimentName;
+    }
+
+    /**
+     * Get a path by key with variable substitution.
+     * @param {string} key - Dot-separated key like 'extraction.vectors'
+     * @param {Object} variables - Values for template variables
+     * @returns {string} Path with variables substituted
+     *
+     * @example
+     * paths.get('extraction.vectors', { trait: 'cognitive_state/context' })
+     * // Returns: 'experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/vectors'
+     */
+    get(key, variables = {}) {
+        if (!this.loaded) {
+            throw new Error('PathBuilder not loaded. Call await paths.load() first.');
+        }
+
+        // Auto-inject experiment if set and not provided
+        if (this.experimentName && !variables.experiment) {
+            variables = { experiment: this.experimentName, ...variables };
+        }
+
+        // Navigate to key
+        let node = this.config;
+        for (const k of key.split('.')) {
+            if (!(k in node)) {
+                throw new Error(`Path key not found: '${key}' (failed at '${k}')`);
+            }
+            node = node[k];
+        }
+
+        if (typeof node !== 'string') {
+            throw new Error(`Path key '${key}' is not a template string`);
+        }
+
+        // Substitute variables
+        let result = node;
+        for (const [varName, value] of Object.entries(variables)) {
+            result = result.replaceAll(`{${varName}}`, String(value));
+        }
+
+        return result;
+    }
+
+    /**
+     * Get raw template string without substitution.
+     * @param {string} key - Dot-separated key like 'extraction.vectors'
+     * @returns {string} Raw template with {variables} intact
+     */
+    template(key) {
+        if (!this.loaded) {
+            throw new Error('PathBuilder not loaded. Call await paths.load() first.');
+        }
+
+        let node = this.config;
+        for (const k of key.split('.')) {
+            if (!(k in node)) {
+                throw new Error(`Path key not found: '${key}' (failed at '${k}')`);
+            }
+            node = node[k];
+        }
+
+        return node;
+    }
+
+    /**
+     * List all available path keys.
+     * @param {string} prefix - Optional prefix to filter keys
+     * @returns {string[]} List of dot-separated keys
+     */
+    listKeys(prefix = '') {
+        if (!this.loaded) {
+            throw new Error('PathBuilder not loaded. Call await paths.load() first.');
+        }
+
+        const keys = [];
+
+        const collect = (node, currentPrefix = '') => {
+            if (typeof node === 'object' && node !== null) {
+                for (const [k, v] of Object.entries(node)) {
+                    const newPrefix = currentPrefix ? `${currentPrefix}.${k}` : k;
+                    if (typeof v === 'string') {
+                        keys.push(newPrefix);
+                    } else {
+                        collect(v, newPrefix);
+                    }
+                }
+            }
+        };
+
+        collect(this.config);
+
+        if (prefix) {
+            return keys.filter(k => k.startsWith(prefix));
+        }
+        return keys;
+    }
+
+    // =========================================================================
+    // Convenience methods (match old API for easier migration)
+    // =========================================================================
+
+    /**
+     * Get extraction path for a trait.
+     * @param {string|Object} trait - Trait name or object with name property
+     * @param {string} subpath - Optional subpath (e.g., 'vectors', 'activations')
+     * @returns {string}
      */
     extraction(trait, subpath = '') {
         const traitName = typeof trait === 'string' ? trait : trait.name;
-        const path = `${this.baseExperimentPath}/extraction/${traitName}`;
-        return subpath ? `${path}/${subpath}` : path;
+        const basePath = this.get('extraction.trait', { trait: traitName });
+        return subpath ? `${basePath}/${subpath}` : basePath;
     }
 
     /**
-     * Get vector metadata path
-     * @param {Object} trait - Trait object
-     * @param {string} method - Extraction method (mean_diff, probe, ica, gradient)
-     * @param {number} layer - Layer number
-     * @returns {string} - Path to vector metadata JSON
-     */
-    vectorMetadata(trait, method, layer) {
-        return this.extraction(trait, `vectors/${method}_layer${layer}_metadata.json`);
-    }
-
-    /**
-     * Get vector tensor path
-     * @param {Object} trait - Trait object
+     * Get vector metadata path.
+     * @param {string|Object} trait - Trait name or object
      * @param {string} method - Extraction method
      * @param {number} layer - Layer number
-     * @returns {string} - Path to vector tensor PT file
+     * @returns {string}
+     */
+    vectorMetadata(trait, method, layer) {
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('extraction.vectors', { trait: traitName });
+        const file = this.get('patterns.vector_metadata', { method, layer });
+        return `${dir}/${file}`;
+    }
+
+    /**
+     * Get vector tensor path.
+     * @param {string|Object} trait - Trait name or object
+     * @param {string} method - Extraction method
+     * @param {number} layer - Layer number
+     * @returns {string}
      */
     vectorTensor(trait, method, layer) {
-        return this.extraction(trait, `vectors/${method}_layer${layer}.pt`);
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('extraction.vectors', { trait: traitName });
+        const file = this.get('patterns.vector', { method, layer });
+        return `${dir}/${file}`;
     }
 
     /**
-     * Get responses path
-     * @param {Object} trait - Trait object
-     * @param {string} polarity - 'pos' or 'neg'
-     * @param {string} format - 'csv' or 'json'
-     * @returns {string} - Path to responses file
-     */
-    responses(trait, polarity, format = 'csv') {
-        return this.extraction(trait, `responses/${polarity}.${format}`);
-    }
-
-    /**
-     * Get activations metadata path
-     * @param {Object} trait - Trait object
-     * @returns {string} - Path to activations metadata JSON
-     */
-    activationsMetadata(trait) {
-        return this.extraction(trait, 'activations/metadata.json');
-    }
-
-    /**
-     * Get trait definition path
-     * @param {Object} trait - Trait object
-     * @returns {string} - Path to trait definition JSON
-     */
-    traitDefinition(trait) {
-        return this.extraction(trait, 'trait_definition.json');
-    }
-
-    /**
-     * Get inference-related paths
-     * @param {Object} trait - Trait object
-     * @param {string} subpath - Subpath (e.g., 'projections/residual_stream_activations')
-     * @returns {string} - Full path
+     * Get inference path for a trait.
+     * @param {string|Object} trait - Trait name or object
+     * @param {string} subpath - Optional subpath
+     * @returns {string}
      */
     inference(trait, subpath = '') {
         const traitName = typeof trait === 'string' ? trait : trait.name;
-        const path = `${this.baseExperimentPath}/inference/${traitName}`;
-        return subpath ? `${path}/${subpath}` : path;
+        const basePath = this.get('inference.trait', { trait: traitName });
+        return subpath ? `${basePath}/${subpath}` : basePath;
     }
 
     /**
-     * Get Tier 2 inference data path (residual stream activations)
-     * @param {Object} trait - Trait object
+     * Get Tier 2 inference data path (residual stream activations).
+     * @param {string|Object} trait - Trait name or object
      * @param {number} promptNum - Prompt number
-     * @returns {string} - Path to tier 2 JSON
+     * @returns {string}
      */
     tier2Data(trait, promptNum) {
-        return this.inference(trait, `projections/residual_stream_activations/prompt_${promptNum}.json`);
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('inference.residual_stream', { trait: traitName });
+        const file = this.get('patterns.prompt_json', { index: promptNum });
+        return `${dir}/${file}`;
     }
 
     /**
-     * Get Tier 3 inference data path (layer internal states)
-     * @param {Object} trait - Trait object
+     * Get Tier 3 inference data path (layer internal states).
+     * @param {string|Object} trait - Trait name or object
      * @param {number} promptNum - Prompt number
      * @param {number} layer - Layer number
-     * @returns {string} - Path to tier 3 JSON
+     * @returns {string}
      */
     tier3Data(trait, promptNum, layer = 16) {
-        return this.inference(trait, `projections/layer_internal_states/prompt_${promptNum}_layer${layer}.json`);
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('inference.layer_internal', { trait: traitName });
+        const file = this.get('patterns.layer_internal', { index: promptNum, layer });
+        return `${dir}/${file}`;
     }
 
     /**
-     * Get shared prompts path
-     * @param {number} promptIdx - Prompt index
-     * @returns {string} - Path to shared prompt JSON
+     * Get validation results path.
+     * @returns {string}
      */
-    sharedPrompt(promptIdx) {
-        return `${this.baseExperimentPath}/inference/prompts/prompt_${promptIdx}.json`;
+    validationResults() {
+        return this.get('validation.evaluation');
     }
 
     /**
-     * Get trait-specific projections path
-     * @param {Object} trait - Trait object
-     * @param {number} promptIdx - Prompt index
-     * @returns {string} - Path to projections JSON
-     */
-    projections(trait, promptIdx) {
-        return this.inference(trait, `projections/prompt_${promptIdx}.json`);
-    }
-
-    /**
-     * Get validation-related paths
-     * @param {string} subpath - Subpath within validation directory
-     * @returns {string} - Full path
-     */
-    validation(subpath = '') {
-        return `${this.baseExperimentPath}/validation/${subpath}`;
-    }
-
-    /**
-     * Get data index path (for cross-distribution data)
-     * @returns {string} - Path to data index JSON
+     * Get data index path.
+     * @returns {string}
      */
     dataIndex() {
-        return this.validation('data_index.json');
+        return this.get('validation.data_index');
     }
 
     /**
-     * Get cross-distribution results path
-     * @param {string} traitBaseName - Base name of trait (without _natural suffix)
-     * @returns {string} - Path to cross-distribution results JSON
+     * Get activations metadata path.
+     * @param {string|Object} trait - Trait name or object
+     * @returns {string}
      */
-    crossDistribution(traitBaseName) {
-        return this.validation(`${traitBaseName}_full_4x4_results.json`);
+    activationsMetadata(trait) {
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('extraction.activations', { trait: traitName });
+        return `${dir}/${this.get('patterns.metadata')}`;
     }
 
     /**
-     * Get experiment README path
-     * @returns {string} - Path to README.md
+     * Get trait definition path.
+     * @param {string|Object} trait - Trait name or object
+     * @returns {string}
      */
-    readme() {
-        return `${this.baseExperimentPath}/README.md`;
+    traitDefinition(trait) {
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('extraction.trait', { trait: traitName });
+        return `${dir}/${this.get('patterns.trait_definition')}`;
+    }
+
+    /**
+     * Get responses path.
+     * @param {string|Object} trait - Trait name or object
+     * @param {string} polarity - 'pos' or 'neg'
+     * @param {string} format - 'csv' or 'json'
+     * @returns {string}
+     */
+    responses(trait, polarity, format = 'csv') {
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        const dir = this.get('extraction.responses', { trait: traitName });
+        const pattern = polarity === 'pos' ? 'patterns.pos_responses' : 'patterns.neg_responses';
+        const file = this.get(pattern, { format });
+        return `${dir}/${file}`;
+    }
+
+    /**
+     * Get shared prompts directory.
+     * @returns {string}
+     */
+    promptsDir() {
+        return this.get('inference.prompts');
     }
 }
 
+// =========================================================================
+// Helper functions (preserved from old API)
+// =========================================================================
+
 /**
- * Helper function to check if a trait has vectors
- * @param {string} experimentName - Experiment name
- * @param {Object} trait - Trait object
- * @returns {Promise<boolean>} - True if vectors exist
+ * Check if a trait has vectors.
+ * @param {PathBuilder} pathBuilder - PathBuilder instance
+ * @param {string|Object} trait - Trait name or object
+ * @returns {Promise<boolean>}
  */
-async function hasVectors(experimentName, trait) {
-    const pathBuilder = new PathBuilder(experimentName);
+async function hasVectors(pathBuilder, trait) {
     try {
         const testUrl = pathBuilder.vectorMetadata(trait, 'probe', 16);
         const response = await fetch(testUrl, { method: 'HEAD' });
@@ -179,22 +325,20 @@ async function hasVectors(experimentName, trait) {
 }
 
 /**
- * Helper function to get the correct response format for a trait
- * @param {string} experimentName - Experiment name
- * @param {Object} trait - Trait object
- * @returns {Promise<string|null>} - 'csv', 'json', or null if no responses
+ * Detect response format for a trait.
+ * @param {PathBuilder} pathBuilder - PathBuilder instance
+ * @param {string|Object} trait - Trait name or object
+ * @returns {Promise<string|null>} 'csv', 'json', or null
  */
-async function detectResponseFormat(experimentName, trait) {
-    const pathBuilder = new PathBuilder(experimentName);
-    const isNatural = trait.name.includes('_natural');
+async function detectResponseFormat(pathBuilder, trait) {
+    const traitName = typeof trait === 'string' ? trait : trait.name;
+    const isNatural = traitName.includes('_natural');
 
-    // Try primary format first
     const primaryExt = isNatural ? 'json' : 'csv';
     const primaryUrl = pathBuilder.responses(trait, 'pos', primaryExt);
     const primaryCheck = await fetch(primaryUrl, { method: 'HEAD' });
     if (primaryCheck.ok) return primaryExt;
 
-    // Try secondary format
     const secondaryExt = isNatural ? 'csv' : 'json';
     const secondaryUrl = pathBuilder.responses(trait, 'pos', secondaryExt);
     const secondaryCheck = await fetch(secondaryUrl, { method: 'HEAD' });
@@ -203,7 +347,14 @@ async function detectResponseFormat(experimentName, trait) {
     return null;
 }
 
+// =========================================================================
+// Singleton instance
+// =========================================================================
+
+const paths = new PathBuilder();
+
 // Export to global scope
 window.PathBuilder = PathBuilder;
+window.paths = paths;
 window.hasVectors = hasVectors;
 window.detectResponseFormat = detectResponseFormat;

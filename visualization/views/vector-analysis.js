@@ -1,6 +1,6 @@
 // Vectors View
 
-async function renderVectors() {
+async function renderVectorAnalysis() {
     const contentArea = document.getElementById('content-area');
     const filteredTraits = window.getFilteredTraits();
 
@@ -17,12 +17,22 @@ async function renderVectors() {
     // Show loading state
     contentArea.innerHTML = '<div class="loading">Loading vector analysis overview...</div>';
 
-    // Filter to only traits with vector extraction
-    const pathBuilder = new PathBuilder(window.state.experimentData.name);
+    // Use global PathBuilder singleton with experiment set
+    window.paths.setExperiment(window.state.experimentData.name);
+
+    // Filter to only traits with vector extraction (deduplicated)
     const traitsWithVectors = [];
+    const seenTraits = new Set();
     for (const trait of filteredTraits) {
+        // Skip duplicates
+        if (seenTraits.has(trait.name)) {
+            console.log(`Skipping duplicate trait: ${trait.name}`);
+            continue;
+        }
+        seenTraits.add(trait.name);
+
         try {
-            const hasVecs = await window.hasVectors(window.state.experimentData.name, trait);
+            const hasVecs = await window.hasVectors(window.paths, trait);
             if (hasVecs) {
                 traitsWithVectors.push(trait);
             } else {
@@ -63,7 +73,7 @@ async function renderVectors() {
         // Vector metadata
         ...methods.flatMap(method =>
             layers.map(layer => {
-                const url = pathBuilder.vectorMetadata(trait, method, layer);
+                const url = window.paths.vectorMetadata(trait, method, layer);
                 return fetch(url)
                     .then(r => {
                         if (!r.ok) console.warn(`Failed to fetch: ${url}`);
@@ -77,7 +87,7 @@ async function renderVectors() {
             })
         ),
         // Prompt examples (first row of pos.csv and neg.csv)
-        fetch(pathBuilder.responses(trait, 'pos', 'csv'))
+        fetch(window.paths.responses(trait, 'pos', 'csv'))
             .then(r => r.ok ? r.text() : null)
             .then(text => {
                 if (!text) return null;
@@ -90,7 +100,7 @@ async function renderVectors() {
                 return { type: 'prompt', trait: trait.name, polarity: 'pos', data: row };
             })
             .catch(() => ({ type: 'prompt', trait: trait.name, polarity: 'pos', data: null })),
-        fetch(pathBuilder.responses(trait, 'neg', 'csv'))
+        fetch(window.paths.responses(trait, 'neg', 'csv'))
             .then(r => r.ok ? r.text() : null)
             .then(text => {
                 if (!text) return null;
@@ -148,8 +158,8 @@ async function renderVectors() {
                             // Invert: smaller norm = stronger
                             value = metadata.vector_norm ? (1.0 / metadata.vector_norm) : 0;
                         } else if (method === 'gradient') {
-                            // Use separation (unit normalized)
-                            value = metadata.final_separation || metadata.vector_norm;
+                            // Use separation if available, otherwise null (gradient norm is always 1.0)
+                            value = metadata.final_separation || null;
                         } else {
                             // Use magnitude
                             value = metadata.vector_norm;
@@ -270,7 +280,7 @@ async function renderVectors() {
         }
 
         html += `
-            <div style="display: grid; grid-template-columns: 180px 1fr 320px; gap: 15px; padding: 12px 12px 20px 12px; cursor: pointer; transition: background 0.2s;"
+            <div style="display: grid; grid-template-columns: 180px 1fr 280px; gap: 12px; padding: 8px 12px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color);"
                  onclick="loadVectorAnalysis('${trait.name}')"
                  onmouseover="this.style.background='var(--bg-secondary)'"
                  onmouseout="this.style.background='transparent'">
@@ -282,7 +292,7 @@ async function renderVectors() {
                     </div>
                 </div>
 
-                <div id="mini-heatmap-${trait.name}" style="height: 100px;"></div>
+                <div id="mini-heatmap-${trait.name}" style="height: 60px;"></div>
 
                 <div style="display: flex; align-items: center;">
                     ${examplesHtml}
@@ -331,8 +341,8 @@ async function renderVectors() {
                     // Invert: smaller norm = stronger classifier
                     return metadata.vector_norm ? (1.0 / metadata.vector_norm) : null;
                 } else if (method === 'gradient') {
-                    // Use separation (vectors are unit normalized)
-                    return metadata.final_separation || metadata.vector_norm;
+                    // Use separation if available, otherwise null (gradient norm is always 1.0)
+                    return metadata.final_separation || null;
                 } else {
                     // Use vector magnitude
                     return metadata.vector_norm;
@@ -370,16 +380,16 @@ async function renderVectors() {
         };
 
         Plotly.newPlot(`mini-heatmap-${trait.name}`, [trace], window.getPlotlyLayout({
-            margin: { l: 50, r: 5, t: 5, b: 20 },
+            margin: { l: 55, r: 5, t: 2, b: 15 },
             xaxis: {
                 title: '',
                 showticklabels: true,
                 tickmode: 'linear',
                 dtick: 5,  // Show every 5th layer
-                tickfont: { size: 8 }
+                tickfont: { size: 7 }
             },
-            yaxis: { title: '', side: 'left', tickfont: { size: 8 } },
-            height: 80
+            yaxis: { title: '', side: 'left', tickfont: { size: 7 } },
+            height: 60
         }), { displayModeBar: false });
     });
 }
@@ -395,7 +405,7 @@ async function loadVectorAnalysis(traitName) {
         const nLayers = trait?.metadata?.n_layers || 26;
         console.log(`Loading vector analysis for ${traitName} (${nLayers} layers)`);
 
-        const pathBuilder = new PathBuilder(window.state.experimentData.name);
+        // Use global PathBuilder singleton (experiment already set)
         const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
         const layers = Array.from({ length: nLayers }, (_, i) => i);
 
@@ -405,7 +415,7 @@ async function loadVectorAnalysis(traitName) {
             vectorData[method] = {};
             for (const layer of layers) {
                 try {
-                    const response = await fetch(pathBuilder.vectorMetadata(trait, method, layer));
+                    const response = await fetch(window.paths.vectorMetadata(trait, method, layer));
                     if (response.ok) {
                         vectorData[method][layer] = await response.json();
                     }
@@ -444,7 +454,8 @@ function renderVectorHeatmap(traitName, vectorData) {
             if (method === 'probe') {
                 return metadata.vector_norm ? (1.0 / metadata.vector_norm) : null;
             } else if (method === 'gradient') {
-                return metadata.final_separation || metadata.vector_norm;
+                // Use separation if available, otherwise null (gradient norm is always 1.0)
+                return metadata.final_separation || null;
             } else {
                 return metadata.vector_norm;
             }
@@ -516,4 +527,4 @@ function renderVectorHeatmap(traitName, vectorData) {
 
 // Render Cross-Distribution Analysis
 // Export to global scope
-window.renderVectors = renderVectors;
+window.renderVectorAnalysis = renderVectorAnalysis;

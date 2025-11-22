@@ -1276,3 +1276,39 @@
             color: var(--primary-color) !important;
             text-decoration-style: solid !important;
         }
+
+        /* Prompt Selector Boxes */
+        .prompt-selector-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            margin-left: 12px;
+            max-width: 400px;
+        }
+
+        .prompt-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .prompt-box:hover {
+            background: var(--bg-tertiary);
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .prompt-box.active {
+            background: var(--primary-color);
+            color: var(--text-on-primary);
+            border-color: var(--primary-color);
+            font-weight: 600;
+        }

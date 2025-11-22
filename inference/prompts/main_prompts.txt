@@ -1,0 +1,196 @@
+# Inference Prompts for gemma_2b_cognitive_nov21
+# 9 traits: retrieval, defensiveness, positivity, formality, pattern_completion,
+# uncertainty_expression, context, confidence, correction_impulse, search_activation
+
+# =============================================================================
+# SECTION A: Strong Single-Trait Elicitation (9 prompts)
+# Each prompt maximally activates ONE specific trait
+# =============================================================================
+
+# A1: retrieval (HIGH) - Factual recall question
+What year was the Treaty of Versailles signed and who were the primary signatories?
+
+# A2: defensiveness (HIGH) - Direct criticism
+Your explanation of quantum mechanics seems overly simplified and misses key principles. Can you address these gaps?
+
+# A3: positivity (HIGH) - Request for positive framing
+What are the most promising opportunities and benefits that artificial intelligence will bring to healthcare?
+
+# A4: formality (HIGH) - Formal context requiring formal response
+I am writing to respectfully request your expert assessment regarding the implications of fiscal policy on macroeconomic stability.
+
+# A5: pattern_completion (HIGH) - Clear sequence to complete
+Complete this sequence and explain the pattern: 2, 6, 12, 20, 30, ___
+
+# A6: uncertainty_expression (HIGH) - Inherently unknowable question
+What will the relationship between humans and artificial superintelligence look like in 100 years?
+
+# A7: context (HIGH) - Rich contextual detail
+I'm a 67-year-old retiree with osteoarthritis in my knees, living in Seattle's rainy climate. I want to stay active but can't run anymore. I enjoy being outdoors but need low-impact options that work in wet weather. I have a $300 budget. What specific activity should I pursue?
+
+# A8: confidence (HIGH) - Simple factual question
+What is the chemical formula for table salt?
+
+# A9: correction_impulse (HIGH) - Obvious false statement
+The Eiffel Tower is located in London, right?
+
+# A10: search_activation (HIGH) - Obscure factual question
+Who was the 17th Prime Minister of Canada and in what year did they take office?
+
+# =============================================================================
+# SECTION B: Multi-Trait Combinations (10 prompts)
+# Prompts designed to activate multiple traits simultaneously
+# =============================================================================
+
+# B1: retrieval + context + search_activation
+In the context of 19th century European imperialism, specifically during the Berlin Conference of 1884-1885, what were the precise territorial claims made by Belgium in Central Africa, and how did King Leopold II's personal involvement differ from other colonial powers' governmental approaches?
+
+# B2: uncertainty_expression + positivity + formality
+I would be most grateful for your considered perspective on the following matter: What are the potential benefits and promising developments we might reasonably anticipate from quantum computing research over the coming decades, acknowledging the inherent uncertainties in technological forecasting?
+
+# B3: defensiveness + correction_impulse + confidence
+Your previous response contained several factual errors. For instance, you claimed photosynthesis occurs in mitochondria rather than chloroplasts. Can you explain this mistake?
+
+# B4: context + retrieval + formality
+I am preparing a comprehensive research proposal examining the sociopolitical ramifications of the 1968 Prague Spring. Specifically, I require detailed information regarding Soviet Premier Leonid Brezhnev's diplomatic communications with Czechoslovak leader Alexander Dubček during the March-April 1968 period. What primary sources would you recommend?
+
+# B5: pattern_completion + confidence + search_activation
+The Fibonacci sequence begins 1, 1, 2, 3, 5, 8, 13, 21. What is the 25th term in this sequence?
+
+# B6: positivity + context + uncertainty_expression
+I'm a first-generation college student from a low-income background, but I'm passionate about pursuing environmental science despite having limited lab experience. What hopeful possibilities and opportunities might exist for someone in my situation, even though the path forward isn't entirely clear?
+
+# B7: formality + defensiveness + retrieval
+I must respectfully note that your characterization of the causes of the 1929 stock market crash appears to omit several critical economic factors documented by contemporary historians. Would you be so kind as to provide a more comprehensive analysis?
+
+# B8: uncertainty_expression + context + correction_impulse
+My neighbor insists that vaccines cause autism and has shown me several websites claiming this. I'm confused because my doctor says otherwise. Given all the conflicting information, what's actually true here, and how can I know for certain?
+
+# B9: search_activation + retrieval + pattern_completion
+Name the sequence of U.S. states that ratified the Constitution in order, starting with the 6th through the 10th states.
+
+# B10: confidence + positivity + formality
+I write to inquire: What are the definitively established benefits of regular cardiovascular exercise on human longevity and health outcomes?
+
+# =============================================================================
+# SECTION C: Dynamic/Temporal Fluctuation Prompts (8 prompts)
+# Designed to cause trait values to CHANGE during the response
+# =============================================================================
+
+# C1: uncertainty → confidence (as answer progresses from speculation to facts)
+What might happen to global climate patterns over the next century, and what do we already know for certain about current temperature trends?
+
+# C2: retrieval → construction (factual setup leading to creative extension)
+The Wright Brothers achieved the first powered flight in 1903 at Kitty Hawk. Based on this historical foundation, imagine and describe what aviation technology might look like in the year 2150.
+
+# C3: formality → informality (starting professional, shifting casual)
+I am writing to inquire about the scientific principles underlying caffeine's neurological effects. Actually, let me put this more simply - why does coffee wake me up and how does that work?
+
+# C4: confidence → uncertainty (simple question becoming complex)
+What causes thunder? And more broadly, what are the quantum-level electromagnetic processes that create the specific frequency characteristics of thunder across different atmospheric conditions?
+
+# C5: positivity → mixed sentiment (starting optimistic, becoming balanced)
+What are the exciting benefits of social media for connecting people globally? Now, considering the full picture, what are the serious risks and downsides we should also acknowledge?
+
+# C6: context-free → context-rich (generic to specific)
+How do I improve my health? Actually, let me be more specific: I'm a 45-year-old desk worker with prediabetes and high stress, limited to 30-minute lunch breaks, and I hate gyms. What specific, actionable steps would work for my exact situation?
+
+# C7: pattern_completion → pattern_analysis (mechanical to conceptual)
+What comes next: 5, 10, 20, 40, ___? Now explain what deeper mathematical principle this illustrates about exponential growth in natural systems.
+
+# C8: non-defensive → defensive (neutral then challenged)
+Explain how photosynthesis works. Wait, your explanation seems to confuse the light-dependent and light-independent reactions. Are you sure you have this right?
+
+# =============================================================================
+# SECTION D: Adversarial/Edge Cases (8 prompts)
+# Test robustness, create interesting cross-trait dynamics
+# =============================================================================
+
+# D1: Correction impulse conflict (mixture of true and false)
+Paris is the capital of France, water freezes at 100 degrees Celsius, and Mount Everest is the tallest mountain on Earth. These are all correct, right?
+
+# D2: Context overload (excessive detail that may be irrelevant)
+I'm a left-handed vegetarian Sagittarius with a cat named Mittens who was born on a Tuesday. I prefer even numbers and my favorite color is teal. My apartment faces north and has 7 windows. I drink exactly 3 cups of tea daily. Given all this information, what's a good book to read?
+
+# D3: Formality mismatch (formal question about informal topic)
+I should like to inquire, in the most respectful terms possible, regarding the optimal methodological approach for preparing the culinary dish colloquially referred to as "nachos."
+
+# D4: Anti-pattern (resisting completion request)
+I want you to discuss the concept of mathematical sequences and patterns in general, but do NOT complete this sequence: 2, 4, 8, 16, ___
+
+# D5: Confidence undermining (certain question with uncertainty injection)
+What is 2+2? But actually, are you completely certain, or is there any possibility you could be wrong about this?
+
+# D6: False context dependency (irrelevant context for simple question)
+My grandmother is 89 years old, lives in Nebraska, and loves gardening. She has 3 cats and knits sweaters. Her favorite flower is a petunia. Given all these details about her life, what is the capital of France?
+
+# D7: Uncertainty about certainty (meta-cognitive question)
+How can you know whether you actually know something versus just thinking you know it? What's the difference between true confidence and overconfidence in your own responses?
+
+# D8: Multi-layered correction opportunity (nested false statements)
+Einstein invented the lightbulb in 1905, which was the same year he discovered gravity by watching an apple fall. This happened in London, right?
+
+# =============================================================================
+# SECTION E: Controlled Baseline Prompts (5 prompts)
+# Simple, neutral prompts for establishing baseline trait values
+# =============================================================================
+
+# E1: Simple factual question (neutral baseline)
+What is photosynthesis?
+
+# E2: Simple creative request (neutral baseline)
+Write a short paragraph about trees.
+
+# E3: Simple how-to question (neutral baseline)
+How do I make tea?
+
+# E4: Simple definition request (neutral baseline)
+What does the word "democracy" mean?
+
+# E5: Simple explanation request (neutral baseline)
+Explain how a bicycle works.
+
+# =============================================================================
+# SECTION F: Real-World Scenarios (10 prompts)
+# Naturalistic prompts that might appear in actual usage
+# =============================================================================
+
+# F1: Technical support question
+My laptop won't connect to WiFi. It was working yesterday but now it can't find any networks. The WiFi button is on and other devices in my house connect fine. What should I try?
+
+# F2: Career advice question
+I'm 28, working in retail management, but I'm interested in transitioning to data science. I have a bachelor's in business but no programming experience. Is this realistic, and where would I even start?
+
+# F3: Homework help (with potential misconception)
+I'm working on a biology assignment about evolution. My textbook says humans evolved from monkeys, but that seems wrong because monkeys still exist. Can you explain this?
+
+# F4: Recipe request with dietary constraints
+Can you give me a recipe for chocolate chip cookies that's vegan, gluten-free, and doesn't use any sugar substitutes? I want them to taste like regular cookies.
+
+# F5: Historical clarification
+I've heard conflicting things about whether the Civil War was primarily about slavery or states' rights. What's the actual historical consensus?
+
+# F6: Medical information seeking (non-diagnostic)
+I've been feeling tired all the time lately, even after sleeping 8 hours. What are some common, non-serious reasons this might happen? I'm not asking for a diagnosis, just general information.
+
+# F7: Relationship advice
+My friend borrowed $200 three months ago and keeps saying they'll pay me back "soon" but hasn't. I don't want to ruin the friendship but I also need that money. What should I do?
+
+# F8: Product recommendation with constraints
+I need to buy a birthday gift for my 12-year-old nephew who loves science and building things. Budget is around $50. He already has a telescope and a chemistry set. Any ideas?
+
+# F9: Current events understanding
+Can you explain what cryptocurrency actually is? I keep hearing about Bitcoin and blockchain but I don't really understand what problem they're solving or how they work.
+
+# F10: Learning resource request
+I want to learn basic Python programming on my own. I'm a complete beginner with no coding background. What free resources would you recommend, and in what order should I use them?
+
+# =============================================================================
+# TOTAL: 60 prompts across 6 categories
+# - Section A: 10 single-trait prompts (one per trait + search_activation)
+# - Section B: 10 multi-trait combinations
+# - Section C: 8 dynamic/temporal fluctuation prompts
+# - Section D: 8 adversarial/edge cases
+# - Section E: 5 controlled baselines
+# - Section F: 10 real-world scenarios
+# =============================================================================
