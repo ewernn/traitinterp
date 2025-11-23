@@ -4,11 +4,11 @@
  *
  * Usage:
  *     await paths.load();
- *     paths.setExperiment('gemma_2b_cognitive_nov21');
+ *     paths.setExperiment('{experiment_name}');
  *
  *     // Get resolved path
  *     const vectorsDir = paths.get('extraction.vectors', { trait: 'cognitive_state/context' });
- *     // Returns: 'experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/vectors'
+ *     // Returns: 'experiments/{experiment_name}/extraction/cognitive_state/context/vectors'
  *
  *     // Combine with pattern
  *     const vectorFile = paths.get('extraction.vectors', { trait }) + '/' + paths.get('patterns.vector', { method: 'probe', layer: 16 });
@@ -49,7 +49,7 @@ class PathBuilder {
 
     /**
      * Set the current experiment (used as default for {experiment} variable).
-     * @param {string} name - Experiment name (e.g., 'gemma_2b_cognitive_nov21')
+     * @param {string} name - Experiment name (e.g., '{experiment_name}')
      */
     setExperiment(name) {
         this.experimentName = name;
@@ -71,7 +71,7 @@ class PathBuilder {
      *
      * @example
      * paths.get('extraction.vectors', { trait: 'cognitive_state/context' })
-     * // Returns: 'experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/vectors'
+     * // Returns: 'experiments/{experiment_name}/extraction/cognitive_state/context/vectors'
      */
     get(key, variables = {}) {
         if (!this.loaded) {
@@ -216,30 +216,90 @@ class PathBuilder {
     }
 
     /**
-     * Get Tier 2 inference data path (residual stream activations).
+     * Get residual stream data path (projections across all layers).
      * @param {string|Object} trait - Trait name or object
-     * @param {number} promptNum - Prompt number
+     * @param {string} promptSet - Prompt set name (e.g., 'single_trait', 'multi_trait')
+     * @param {number} promptId - Prompt ID within the set
      * @returns {string}
      */
-    tier2Data(trait, promptNum) {
+    residualStreamData(trait, promptSet, promptId) {
         const traitName = typeof trait === 'string' ? trait : trait.name;
-        const dir = this.get('inference.residual_stream', { trait: traitName });
-        const file = this.get('patterns.prompt_json', { index: promptNum });
+        const dir = this.get('inference.residual_stream', { trait: traitName, prompt_set: promptSet });
+        const file = this.get('patterns.residual_stream_json', { prompt_id: promptId });
         return `${dir}/${file}`;
     }
 
     /**
-     * Get Tier 3 inference data path (layer internal states).
+     * Get layer-internals data path (detailed single layer capture).
      * @param {string|Object} trait - Trait name or object
-     * @param {number} promptNum - Prompt number
+     * @param {string} promptSet - Prompt set name
+     * @param {number} promptId - Prompt ID within the set
      * @param {number} layer - Layer number
      * @returns {string}
      */
-    tier3Data(trait, promptNum, layer = 16) {
+    layerInternalsData(trait, promptSet, promptId, layer = 16) {
         const traitName = typeof trait === 'string' ? trait : trait.name;
-        const dir = this.get('inference.layer_internal', { trait: traitName });
-        const file = this.get('patterns.layer_internal', { index: promptNum, layer });
+        const dir = this.get('inference.layer_internals', { trait: traitName, prompt_set: promptSet });
+        const file = this.get('patterns.layer_internals_json', { prompt_id: promptId, layer });
         return `${dir}/${file}`;
+    }
+
+    /**
+     * Get prompt set file path.
+     * @param {string} promptSet - Prompt set name (e.g., 'single_trait')
+     * @returns {string}
+     */
+    promptSetFile(promptSet) {
+        return this.get('inference.prompt_set_file', { prompt_set: promptSet });
+    }
+
+    /**
+     * List available prompt sets.
+     * @returns {string[]} Array of prompt set names
+     */
+    listPromptSets() {
+        return ['single_trait', 'multi_trait', 'dynamic', 'adversarial', 'baseline', 'real_world'];
+    }
+
+    /**
+     * BACKWARDS COMPATIBILITY: Map old prompt index to new (promptSet, promptId) tuple.
+     * Old structure used indices 0-50 across all prompts.
+     * New structure uses separate sets with IDs 1-N within each set.
+     * @param {number} oldIndex - Old-style prompt index (0-based)
+     * @returns {{promptSet: string, promptId: number}}
+     */
+    _mapOldPromptIndex(oldIndex) {
+        // Mapping: 0-9 = single_trait (1-10), 10-19 = multi_trait (1-10), etc.
+        const ranges = [
+            { set: 'single_trait', count: 10 },
+            { set: 'multi_trait', count: 10 },
+            { set: 'dynamic', count: 8 },
+            { set: 'adversarial', count: 8 },
+            { set: 'baseline', count: 5 },
+            { set: 'real_world', count: 10 }
+        ];
+
+        let offset = 0;
+        for (const { set, count } of ranges) {
+            if (oldIndex < offset + count) {
+                return { promptSet: set, promptId: oldIndex - offset + 1 };
+            }
+            offset += count;
+        }
+        // Fallback to single_trait
+        return { promptSet: 'single_trait', promptId: 1 };
+    }
+
+    /**
+     * BACKWARDS COMPATIBILITY: Get all-layers data using old index-based API.
+     * @deprecated Use residualStreamData(trait, promptSet, promptId) instead
+     * @param {string|Object} trait - Trait name or object
+     * @param {number} promptNum - Old-style prompt number (0-based index)
+     * @returns {string}
+     */
+    allLayersData(trait, promptNum) {
+        const { promptSet, promptId } = this._mapOldPromptIndex(promptNum);
+        return this.residualStreamData(trait, promptSet, promptId);
     }
 
     /**
@@ -300,7 +360,7 @@ class PathBuilder {
      * @returns {string}
      */
     promptsDir() {
-        return this.get('inference.prompts');
+        return this.get('inference.prompts_dir');
     }
 }
 

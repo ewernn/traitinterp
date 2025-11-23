@@ -1,0 +1,369 @@
+#!/usr/bin/env python3
+"""
+Post-hoc projection: compute trait projections from saved raw activations.
+
+This allows re-projecting onto different traits or with different vectors
+without re-running model inference.
+
+Usage:
+    # Project all raw activations onto all traits
+    python inference/project.py \\
+        --experiment my_experiment \\
+        --prompt-set main_prompts
+
+    # Project onto specific traits
+    python inference/project.py \\
+        --experiment my_experiment \\
+        --prompt-set main_prompts \\
+        --traits behavioral/refusal,cognitive/retrieval
+
+    # Include logit lens computation
+    python inference/project.py \\
+        --experiment my_experiment \\
+        --prompt-set main_prompts \\
+        --logit-lens
+
+    # Recompute dynamics only (projections already exist)
+    python inference/project.py \\
+        --experiment my_experiment \\
+        --prompt-set main_prompts \\
+        --dynamics-only
+"""
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import torch
+import argparse
+import json
+from typing import List, Dict, Tuple, Optional
+from datetime import datetime
+from tqdm import tqdm
+
+from traitlens import projection
+from traitlens.compute import compute_derivative, compute_second_derivative
+
+
+MODEL_NAME = "google/gemma-2-2b-it"
+LOGIT_LENS_LAYERS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 21, 24, 25]
+
+
+# ============================================================================
+# Trait Discovery
+# ============================================================================
+
+def discover_traits(experiment_name: str) -> List[Tuple[str, str]]:
+    """Discover all traits with vectors in an experiment."""
+    from utils.paths import get
+    extraction_dir = get('extraction.base', experiment=experiment_name)
+
+    if not extraction_dir.exists():
+        raise FileNotFoundError(f"Extraction directory not found: {extraction_dir}")
+
+    traits = []
+    for category_dir in sorted(extraction_dir.iterdir()):
+        if not category_dir.is_dir() or category_dir.name.startswith('.'):
+            continue
+        for trait_dir in sorted(category_dir.iterdir()):
+            if not trait_dir.is_dir():
+                continue
+            vectors_dir = trait_dir / "vectors"
+            if vectors_dir.exists() and list(vectors_dir.glob('*.pt')):
+                traits.append((category_dir.name, trait_dir.name))
+
+    return traits
+
+
+def find_vector_method(vectors_dir: Path, layer: int) -> Optional[str]:
+    """Auto-detect best vector method for a layer."""
+    for method in ["probe", "mean_diff", "ica", "gradient"]:
+        if (vectors_dir / f"{method}_layer{layer}.pt").exists():
+            return method
+    return None
+
+
+# ============================================================================
+# Dynamics Analysis
+# ============================================================================
+
+def analyze_dynamics(trajectory: torch.Tensor) -> Dict:
+    """Compute velocity, acceleration, commitment point, and persistence."""
+    if len(trajectory) < 2:
+        return {
+            'commitment_point': None,
+            'peak_velocity': 0.0,
+            'avg_velocity': 0.0,
+            'persistence': 0,
+            'velocity': [],
+            'acceleration': [],
+        }
+
+    velocity = compute_derivative(trajectory.unsqueeze(-1)).squeeze(-1)
+
+    if len(trajectory) >= 3:
+        acceleration = compute_second_derivative(trajectory.unsqueeze(-1)).squeeze(-1)
+    else:
+        acceleration = torch.tensor([])
+
+    # Commitment point
+    commitment = None
+    if len(acceleration) > 0:
+        candidates = (acceleration.abs() < 0.1).nonzero()
+        if len(candidates) > 0:
+            commitment = candidates[0].item()
+
+    # Persistence
+    persistence = 0
+    if len(trajectory) > 0:
+        peak_idx = trajectory.abs().argmax().item()
+        peak_value = trajectory[peak_idx].abs().item()
+        if peak_idx < len(trajectory) - 1:
+            threshold = peak_value * 0.5
+            persistence = (trajectory[peak_idx + 1:].abs() > threshold).sum().item()
+
+    return {
+        'commitment_point': commitment,
+        'peak_velocity': velocity.abs().max().item() if len(velocity) > 0 else 0.0,
+        'avg_velocity': velocity.abs().mean().item() if len(velocity) > 0 else 0.0,
+        'persistence': persistence,
+        'velocity': velocity.tolist(),
+        'acceleration': acceleration.tolist() if len(acceleration) > 0 else [],
+    }
+
+
+# ============================================================================
+# Projection
+# ============================================================================
+
+def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) -> torch.Tensor:
+    """Project activations onto trait vector. Returns [n_tokens, n_layers, 3]."""
+    n_tokens = activations[0]['residual_in'].shape[0]
+    result = torch.zeros(n_tokens, n_layers, 3)
+    sublayers = ['residual_in', 'after_attn', 'residual_out']
+
+    for layer in range(n_layers):
+        for s_idx, sublayer in enumerate(sublayers):
+            result[:, layer, s_idx] = projection(activations[layer][sublayer], vector, normalize_vector=True)
+
+    return result
+
+
+def tensor_to_list(obj):
+    """Recursively convert tensors to lists."""
+    if isinstance(obj, torch.Tensor):
+        return obj.tolist()
+    if isinstance(obj, list):
+        return [tensor_to_list(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: tensor_to_list(v) for k, v in obj.items()}
+    return obj
+
+
+# ============================================================================
+# Logit Lens (requires model)
+# ============================================================================
+
+def compute_logit_lens_from_raw(activations: Dict, model, tokenizer, n_layers: int) -> Dict:
+    """Compute logit lens from saved activations (requires model for unembed)."""
+    if hasattr(model, 'lm_head'):
+        unembed = model.lm_head.weight.detach()
+    else:
+        unembed = model.model.embed_tokens.weight.detach()
+
+    result = {}
+    for layer in LOGIT_LENS_LAYERS:
+        if layer >= n_layers:
+            continue
+
+        residual = activations[layer]['residual_out']
+        if len(residual.shape) == 1:
+            residual = residual.unsqueeze(0)
+
+        logits = residual.to(unembed.device).to(unembed.dtype) @ unembed.T
+        probs = torch.softmax(logits, dim=-1)
+        top_probs, top_ids = probs.topk(3, dim=-1)
+
+        top_tokens = []
+        for token_idx in range(top_ids.shape[0]):
+            tokens = [tokenizer.decode([tid.item()]) for tid in top_ids[token_idx]]
+            top_tokens.append(tokens)
+
+        result[f'layer_{layer}'] = {
+            'tokens': top_tokens,
+            'probs': top_probs.cpu().tolist()
+        }
+
+    return result
+
+
+# ============================================================================
+# Main
+# ============================================================================
+
+def main():
+    parser = argparse.ArgumentParser(description="Post-hoc projection from raw activations")
+    parser.add_argument("--experiment", required=True, help="Experiment name")
+    parser.add_argument("--prompt-set", required=True, help="Prompt set name")
+    parser.add_argument("--traits", help="Comma-separated traits (category/name format)")
+    parser.add_argument("--layer", type=int, default=16, help="Layer for vectors")
+    parser.add_argument("--method", help="Vector method (auto-detect if not set)")
+    parser.add_argument("--logit-lens", action="store_true", help="Compute logit lens")
+    parser.add_argument("--dynamics-only", action="store_true",
+                       help="Only recompute dynamics from existing projections")
+    parser.add_argument("--skip-existing", action="store_true")
+
+    args = parser.parse_args()
+
+    from utils.paths import get as get_path
+
+    inference_dir = get_path('inference.base', experiment=args.experiment)
+    raw_dir = inference_dir / "raw" / "residual" / args.prompt_set
+
+    if not raw_dir.exists():
+        print(f"Raw activations not found: {raw_dir}")
+        print("Run 'python inference/capture.py' first to capture raw activations.")
+        return
+
+    # Find raw activation files (new format: {id}.pt)
+    raw_files = sorted(raw_dir.glob("*.pt"), key=lambda f: int(f.stem) if f.stem.isdigit() else 0)
+    if not raw_files:
+        print(f"No raw activation files found in {raw_dir}")
+        return
+
+    print(f"Found {len(raw_files)} raw activation files")
+
+    # Get traits to project onto
+    if args.traits:
+        trait_list = [tuple(t.split('/')) for t in args.traits.split(',')]
+    else:
+        trait_list = discover_traits(args.experiment)
+
+    if not trait_list:
+        print("No traits found")
+        return
+
+    print(f"Projecting onto {len(trait_list)} traits")
+
+    # Load trait vectors
+    trait_vectors = {}
+    for category, trait_name in trait_list:
+        vectors_dir = get_path('extraction.vectors', experiment=args.experiment,
+                               trait=f"{category}/{trait_name}")
+        method = args.method or find_vector_method(vectors_dir, args.layer)
+        if not method:
+            print(f"  Skip {category}/{trait_name}: no vector at layer {args.layer}")
+            continue
+
+        vector_path = vectors_dir / f"{method}_layer{args.layer}.pt"
+        if not vector_path.exists():
+            print(f"  Skip {category}/{trait_name}: {vector_path} not found")
+            continue
+
+        vector = torch.load(vector_path, weights_only=True).to(torch.float16)
+        trait_vectors[(category, trait_name)] = (vector, method, vector_path)
+
+    print(f"Loaded {len(trait_vectors)} trait vectors")
+
+    # Load model only if logit lens requested
+    model = None
+    tokenizer = None
+    if args.logit_lens:
+        print(f"\nLoading model for logit lens: {MODEL_NAME}")
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_NAME, torch_dtype=torch.float16, device_map="auto",
+            attn_implementation='eager'
+        )
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+    # Process each raw file
+    for raw_file in tqdm(raw_files, desc="Projecting"):
+        # Extract prompt ID from filename (new format: {id}.pt)
+        prompt_id = raw_file.stem  # e.g., "1", "2", etc.
+
+        # Load raw activations
+        data = torch.load(raw_file, weights_only=False)
+        n_layers = len(data['prompt']['activations'])
+
+        # Compute logit lens if requested
+        logit_lens_data = None
+        if args.logit_lens and model is not None:
+            logit_lens_data = {
+                'prompt': compute_logit_lens_from_raw(data['prompt']['activations'], model, tokenizer, n_layers),
+                'response': compute_logit_lens_from_raw(data['response']['activations'], model, tokenizer, n_layers)
+            }
+
+        # Project onto each trait
+        for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
+            # New path: residual_stream/{prompt_set}/{id}.json
+            out_dir = inference_dir / category / trait_name / "residual_stream" / args.prompt_set
+            out_file = out_dir / f"{prompt_id}.json"
+
+            if args.skip_existing and out_file.exists():
+                continue
+
+            if args.dynamics_only and out_file.exists():
+                # Load existing and just recompute dynamics
+                with open(out_file) as f:
+                    proj_data = json.load(f)
+
+                prompt_proj = torch.tensor(proj_data['projections']['prompt'])
+                response_proj = torch.tensor(proj_data['projections']['response'])
+            else:
+                # Compute projections
+                prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
+                response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
+
+            # Compute dynamics
+            prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
+            response_scores_avg = response_proj.mean(dim=(1, 2))
+            all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
+
+            proj_data = {
+                'prompt': {
+                    'text': data['prompt']['text'],
+                    'tokens': data['prompt']['tokens'],
+                    'token_ids': data['prompt']['token_ids'],
+                    'n_tokens': len(data['prompt']['tokens'])
+                },
+                'response': {
+                    'text': data['response']['text'],
+                    'tokens': data['response']['tokens'],
+                    'token_ids': data['response']['token_ids'],
+                    'n_tokens': len(data['response']['tokens'])
+                },
+                'projections': {
+                    'prompt': prompt_proj.tolist(),
+                    'response': response_proj.tolist()
+                },
+                'dynamics': analyze_dynamics(all_scores),
+                'attention_weights': {
+                    'prompt': tensor_to_list(data['prompt']['attention']),
+                    'response': tensor_to_list(data['response']['attention'])
+                },
+                'metadata': {
+                    'prompt_id': prompt_id,
+                    'prompt_set': args.prompt_set,
+                    'trait': trait_name,
+                    'category': category,
+                    'method': method,
+                    'layer': args.layer,
+                    'vector_path': str(vector_path),
+                    'model': MODEL_NAME,
+                    'projection_date': datetime.now().isoformat()
+                }
+            }
+
+            if logit_lens_data:
+                proj_data['logit_lens'] = logit_lens_data
+
+            out_dir.mkdir(parents=True, exist_ok=True)
+            with open(out_file, 'w') as f:
+                json.dump(proj_data, f, indent=2)
+
+    print(f"\nProjections saved to: {inference_dir}/{{category}}/{{trait}}/residual_stream/{args.prompt_set}/")
+
+
+if __name__ == "__main__":
+    main()

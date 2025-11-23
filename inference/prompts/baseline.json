@@ -1,0 +1,11 @@
+{
+  "name": "Controlled Baselines",
+  "description": "Simple, neutral prompts for establishing baseline trait values",
+  "prompts": [
+    {"id": 1, "text": "What is photosynthesis?", "note": "simple factual question"},
+    {"id": 2, "text": "Write a short paragraph about trees.", "note": "simple creative request"},
+    {"id": 3, "text": "How do I make tea?", "note": "simple how-to question"},
+    {"id": 4, "text": "What does the word \"democracy\" mean?", "note": "simple definition request"},
+    {"id": 5, "text": "Explain how a bicycle works.", "note": "simple explanation request"}
+  ]
+}

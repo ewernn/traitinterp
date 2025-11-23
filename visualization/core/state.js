@@ -148,7 +148,12 @@ function populateTraitCheckboxes() {
 
     if (!state.experimentData || !state.experimentData.traits) return;
 
-    state.experimentData.traits.forEach(trait => {
+    // Deduplicate traits to prevent double-rendering from race conditions
+    const uniqueTraits = state.experimentData.traits.filter((trait, index, self) =>
+        index === self.findIndex((t) => t.name === trait.name)
+    );
+
+    uniqueTraits.forEach(trait => {
         const checkbox = document.createElement('div');
         checkbox.className = 'trait-checkbox';
         checkbox.innerHTML = `
@@ -380,25 +385,22 @@ async function discoverAvailablePrompts() {
     }
 
     const promptSet = new Set();
-    // PathBuilder might not be the right way to do this if we want to be more dynamic.
-    // For now, let's assume the experiment name is available in the state.
-    const pathBuilder = new PathBuilder(state.experimentData.name);
+    const firstTrait = state.experimentData.traits[0]; // Use only one trait for checking
 
-    // This is inefficient. We are checking every potential prompt file for every trait.
-    // A better solution would be to have a manifest file.
-    // But for now, let's just make it work.
-    for (const trait of state.experimentData.traits) {
-        // Increased from 30 to 100 to support more prompts.
-        for (let i = 0; i <= 100; i++) {
-            try {
-                const url = pathBuilder.tier2Data(trait, i);
-                const response = await fetch(url, { method: 'HEAD' });
-                if (response.ok) {
-                    promptSet.add(i);
-                }
-            } catch (e) {
-                // File doesn't exist, which is expected.
+    // Check up to 101 prompts, but stop when one is missing
+    for (let i = 0; i <= 100; i++) {
+        try {
+            const url = window.paths.allLayersData(firstTrait, i);
+            const response = await fetch(url, { method: 'HEAD' });
+            if (response.ok) {
+                promptSet.add(i);
+            } else {
+                // Stop assuming contiguous prompts
+                break;
             }
+        } catch (e) {
+            // Network error or other issue, stop checking
+            break;
         }
     }
 
@@ -451,9 +453,11 @@ function setupEventListeners() {
 
     // Prompt selector (event delegation)
     document.getElementById('prompt-selector')?.addEventListener('click', (e) => {
-        if (e.target.classList.contains('prompt-box')) {
-            const promptId = parseInt(e.target.dataset.promptId);
-            if (state.currentPrompt !== promptId) {
+        const promptBox = e.target.closest('.prompt-box');
+        if (promptBox) {
+            const promptId = parseInt(promptBox.dataset.promptId);
+            console.log(`Prompt box clicked. ID: ${promptId}`); // Debugging line
+            if (state.currentPrompt !== promptId && !isNaN(promptId)) {
                 state.currentPrompt = promptId;
                 updatePromptSelectionUI();
                 if (window.renderView) window.renderView();

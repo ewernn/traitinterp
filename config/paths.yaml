@@ -3,12 +3,12 @@
 # All templates are complete - no cross-references.
 #
 # Variables:
-#   {experiment} - experiment name (e.g., gemma_2b_cognitive_nov21)
+#   {experiment} - experiment name
 #   {trait} - full trait path (e.g., cognitive_state/context)
 #   {method} - extraction method (probe, mean_diff, ica, gradient)
 #   {layer} - layer number
-#   {prompt_set} - prompt set name (e.g., main_prompts)
-#   {index} - prompt index
+#   {prompt_set} - prompt set name (e.g., single_trait, multi_trait, dynamic, adversarial, baseline, real_world)
+#   {prompt_id} - prompt ID within a set (integer)
 #   {format} - file format (csv, json)
 
 # =============================================================================
@@ -38,13 +38,23 @@ extraction:
 
 inference:
   base: "experiments/{experiment}/inference"
-  prompts: "experiments/{experiment}/inference/prompts"
-  prompt_file: "experiments/{experiment}/inference/prompts/{prompt_set}.txt"
-  raw_activations: "experiments/{experiment}/inference/raw_activations/{prompt_set}"
+
+  # Centralized prompt sets (JSON files in inference/prompts/)
+  # Each file contains: {name, description, prompts: [{id, text, note}]}
+  prompts_dir: "inference/prompts"
+  prompt_set_file: "inference/prompts/{prompt_set}.json"
+
+  # Raw activations (trait-independent, binary .pt)
+  # Captured once per prompt, reused across all trait projections
+  raw: "experiments/{experiment}/inference/raw"
+  raw_residual: "experiments/{experiment}/inference/raw/residual/{prompt_set}"
+  raw_internals: "experiments/{experiment}/inference/raw/internals/{prompt_set}"
+
+  # Per-trait analysis results (JSON for visualization)
+  # Two types: residual_stream (lightweight) and layer_internals (detailed)
   trait: "experiments/{experiment}/inference/{trait}"
-  projections: "experiments/{experiment}/inference/{trait}/projections"
-  residual_stream: "experiments/{experiment}/inference/{trait}/projections/residual_stream_activations"
-  layer_internal: "experiments/{experiment}/inference/{trait}/projections/layer_internal_states"
+  residual_stream: "experiments/{experiment}/inference/{trait}/residual_stream/{prompt_set}"
+  layer_internals: "experiments/{experiment}/inference/{trait}/layer_internals/{prompt_set}"
 
 # =============================================================================
 # VALIDATION (aggregate evaluation results)
@@ -79,10 +89,13 @@ patterns:
   pos_prompts: "positive.txt"
   neg_prompts: "negative.txt"
 
-  # Inference
-  prompt_json: "prompt_{index}.json"
-  prompt_pt: "prompt_{index}.pt"
-  layer_internal: "prompt_{index}_layer{layer}.json"
+  # Inference - raw activations
+  raw_residual_pt: "{prompt_id}.pt"
+  raw_internals_pt: "{prompt_id}_L{layer}.pt"
+
+  # Inference - per-trait results
+  residual_stream_json: "{prompt_id}.json"
+  layer_internals_json: "{prompt_id}_L{layer}.json"
 
   # Trait definition
   trait_definition: "trait_definition.json"

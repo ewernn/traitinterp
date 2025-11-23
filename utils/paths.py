@@ -6,8 +6,8 @@ Usage:
     from utils.paths import get, template
 
     # Get resolved path
-    vectors_dir = get('extraction.vectors', experiment='gemma_2b_cognitive_nov21', trait='cognitive_state/context')
-    # Returns: Path('experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/vectors')
+    vectors_dir = get('extraction.vectors', experiment='{experiment_name}', trait='cognitive_state/context')
+    # Returns: Path('experiments/{experiment_name}/extraction/cognitive_state/context/vectors')
 
     # Combine with pattern
     vector_file = get('extraction.vectors', experiment=exp, trait=t) / get('patterns.vector', method='probe', layer=16)
@@ -50,8 +50,8 @@ def get(key: str, **variables) -> Path:
         KeyError: If key not found in config
 
     Example:
-        get('extraction.vectors', experiment='gemma_2b_cognitive_nov21', trait='cognitive_state/context')
-        # Returns: Path('experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/vectors')
+        get('extraction.vectors', experiment='{experiment_name}', trait='cognitive_state/context')
+        # Returns: Path('experiments/{experiment_name}/extraction/cognitive_state/context/vectors')
     """
     config = _load_config()
 

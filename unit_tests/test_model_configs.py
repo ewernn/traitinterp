@@ -41,12 +41,11 @@ def test_gemma_2b_config():
     print(f"✓ Gemma 2B: {config.num_hidden_layers} layers, {config.hidden_size} hidden dim")
 
 
-def test_llama_8b_config():
-    """Verify Llama 3.1 8B model config matches documentation."""
-    print("Testing Llama 3.1 8B config...")
+def test_gemini_2_2b_it_config():
+    """Verify gemini-2-2b-it model config matches documentation."""
 
     try:
-        config = AutoConfig.from_pretrained('meta-llama/Llama-3.1-8B-Instruct')
+        config = AutoConfig.from_pretrained('google/gemma-2-2b-it')
 
         # Documentation claims in docs/main.md
         expected_layers = 32  # 0-32 = 33 total, but num_hidden_layers = 32
@@ -58,17 +57,17 @@ def test_llama_8b_config():
         assert config.hidden_size == expected_hidden, \
             f"Expected hidden size {expected_hidden}, got {config.hidden_size}"
 
-        print(f"✓ Llama 8B: {config.num_hidden_layers} layers, {config.hidden_size} hidden dim")
+        print(f"✓ gemini-2-2b-it: {config.num_hidden_layers} layers, {config.hidden_size} hidden dim")
     except Exception as e:
-        print(f"⚠ Llama 8B config not accessible (may require authentication): {e}")
+        print(f"⚠ gemini-2-2b-it config not accessible (may require authentication): {e}")
 
 
 def test_inference_data_shapes():
     """Verify saved inference data has correct layer dimensions."""
     print("\nTesting inference data shapes...")
 
-    # Check if gemma_2b_cognitive_nov20 experiment exists
-    inference_dir = Path('experiments/gemma_2b_cognitive_nov20/refusal/inference/residual_stream_activations')
+    # Check if experiment data exists (update path to match your experiment)
+    inference_dir = Path('experiments/my_experiment/refusal/inference/residual_stream_activations')
 
     if not inference_dir.exists():
         print("⚠ No inference data found, skipping shape test")
@@ -118,7 +117,7 @@ def test_vector_metadata_consistency():
     """Verify vector metadata files have consistent layer counts."""
     print("\nTesting vector metadata consistency...")
 
-    vectors_dir = Path('experiments/gemma_2b_cognitive_nov20/refusal/extraction/vectors')
+    vectors_dir = Path('experiments/my_experiment/refusal/extraction/vectors')
 
     if not vectors_dir.exists():
         print("⚠ No vector metadata found, skipping consistency test")
@@ -151,7 +150,7 @@ def test_activation_metadata():
     """Verify activation metadata has correct layer count."""
     print("\nTesting activation metadata...")
 
-    meta_file = Path('experiments/gemma_2b_cognitive_nov20/refusal/extraction/activations/metadata.json')
+    meta_file = Path('experiments/my_experiment/refusal/extraction/activations/metadata.json')
 
     if not meta_file.exists():
         print("⚠ No activation metadata found, skipping test")
@@ -181,7 +180,7 @@ def main():
     try:
         # Test model configs from HuggingFace
         test_gemma_2b_config()
-        test_llama_8b_config()
+        test_gemini_2_2b_it_config()
 
         # Test saved data structures
         test_activation_metadata()

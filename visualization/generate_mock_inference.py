@@ -11,8 +11,8 @@ from pathlib import Path
 from datetime import datetime
 import argparse
 
-def generate_mock_tier2_data(prompt, trait_name, category, prompt_idx=0):
-    """Generate mock Tier 2 data (residual stream activations)."""
+def generate_mock_all_layers_data(prompt, trait_name, category, prompt_idx=0):
+    """Generate mock all-layers data (residual stream activations across all layers)."""
 
     # Mock parameters
     n_prompt_tokens = 12
@@ -90,7 +90,7 @@ def generate_mock_tier2_data(prompt, trait_name, category, prompt_idx=0):
         'metadata': {
             'trait': trait_name,
             'trait_display_name': trait_name.replace('_', ' ').title(),
-            'vector_path': f'experiments/gemma_2b_cognitive_nov20/extraction/{category}/{trait_name}/extraction/vectors/probe_layer16.pt',
+            'vector_path': f'experiments/{experiment}/extraction/{category}/{trait_name}/extraction/vectors/probe_layer16.pt',
             'model': 'google/gemma-2-2b-it',
             'capture_date': datetime.now().isoformat(),
             'temperature': 0.7
@@ -123,7 +123,7 @@ def generate_mock_tier2_data(prompt, trait_name, category, prompt_idx=0):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate mock inference data for testing")
-    parser.add_argument("--experiment", default="gemma_2b_cognitive_nov20", help="Experiment name")
+    parser.add_argument("--experiment", required=True, help="Experiment name")
     parser.add_argument("--traits", default="behavioral/refusal,cognitive/retrieval,stylistic/positivity",
                        help="Comma-separated traits to generate")
     parser.add_argument("--prompts", type=int, default=3, help="Number of prompts to generate")
@@ -167,8 +167,8 @@ def main():
         for prompt_idx in range(min(args.prompts, len(prompts))):
             prompt = prompts[prompt_idx]
 
-            # Generate Tier 2 data
-            data = generate_mock_tier2_data(prompt, trait_name, category, prompt_idx)
+            # Generate all-layers data
+            data = generate_mock_all_layers_data(prompt, trait_name, category, prompt_idx)
 
             # Save as JSON
             json_path = output_dir / f"prompt_{prompt_idx}.json"
@@ -177,12 +177,12 @@ def main():
 
             print(f"  ✓ Generated prompt_{prompt_idx}.json")
 
-        # Also generate a mock Tier 3 file for layer 16
-        tier3_dir = exp_dir / "extraction" / category / trait_name / "inference" / "layer_internal_states"
-        tier3_dir.mkdir(parents=True, exist_ok=True)
+        # Also generate a mock layer-internals file for layer 16
+        layer_internals_dir = exp_dir / "extraction" / category / trait_name / "inference" / "layer_internal_states"
+        layer_internals_dir.mkdir(parents=True, exist_ok=True)
 
-        # Generate simplified Tier 3 data
-        tier3_data = {
+        # Generate simplified layer-internals data
+        layer_internals_data = {
             'prompt': {
                 'text': prompts[0],
                 'tokens': ["What", " are", " the", " benefits"],
@@ -229,11 +229,11 @@ def main():
             }
         }
 
-        tier3_path = tier3_dir / "prompt_0_layer16.json"
-        with open(tier3_path, 'w') as f:
-            json.dump(tier3_data, f, indent=2)
+        layer_internals_path = layer_internals_dir / "prompt_0_layer16.json"
+        with open(layer_internals_path, 'w') as f:
+            json.dump(layer_internals_data, f, indent=2)
 
-        print(f"  ✓ Generated prompt_0_layer16.json for Tier 3")
+        print(f"  ✓ Generated prompt_0_layer16.json for layer internals")
 
     print(f"\n✅ Done! Generated mock data for {len(trait_list)} traits")
     print(f"   Location: {exp_dir}/extraction/{{category}}/{{trait}}/inference/")

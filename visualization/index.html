@@ -48,11 +48,18 @@
 
         <h4>🔧 Tools:</h4>
         <ul>
-            <li><strong>Data Explorer</strong> - Inspect file structure, sizes, and preview data</li>
-            <li><strong>Overview</strong> - Browse all extracted traits with metadata and example counts</li>
-            <li><strong>Vector Analysis</strong> - Compare extraction methods across 27 layers with heatmaps</li>
-            <li><strong>All Layers</strong> - View trait evolution across all 27 layers (Tier 2 data)</li>
-            <li><strong>Layer Deep Dive</strong> - Analyze attention heads and top neurons for one layer (Tier 3 data)</li>
+            <li><strong>Trait Development:</strong></li>
+            <ul>
+                <li><strong>Data Explorer</strong> - Inspect raw responses, activations, and vectors.</li>
+                <li><strong>Trait Dashboard</strong> - Comprehensive view of a trait's vector properties and quality metrics.</li>
+                <li><strong>Trait Correlation Matrix</strong> - Analyze relationships between trait vectors.</li>
+            </ul>
+            <li><strong>Inference Analysis:</strong></li>
+            <ul>
+                <li><strong>Trait Trajectory</strong> - View a single trait's activation across all layers.</li>
+                <li><strong>Multi-Trait Comparison</strong> - Compare multiple traits' activations over tokens.</li>
+                <li><strong>Layer Internals</strong> - Deep dive into a single layer's attention and MLP components.</li>
+            </ul>
         </ul>
 
         <h4>🧠 Available Traits (16 cognitive primitives):</h4>
@@ -115,41 +122,37 @@
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">Extraction</div>
+                <div class="section-title">Trait Development</div>
                 <div id="nav-items-extraction">
                     <div class="nav-item active" data-view="data-explorer">
                         <span class="icon">🗂️</span>
                         <span>Data Explorer</span>
                     </div>
-                    <div class="nav-item" data-view="vector-analysis">
-                        <span class="icon">🔬</span>
-                        <span>Vector Analysis</span>
+                    <div class="nav-item" data-view="trait-dashboard">
+                        <span class="icon">📈</span>
+                        <span>Trait Dashboard</span>
                     </div>
                     <div class="nav-item" data-view="trait-correlation">
-                        <span class="icon">📊</span>
-                        <span>Trait Correlation</span>
-                    </div>
-                    <div class="nav-item" data-view="validation-results">
-                        <span class="icon">✅</span>
-                        <span>Validation Results</span>
+                        <span class="icon">↔️</span>
+                        <span>Trait Correlation Matrix</span>
                     </div>
                 </div>
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">Inference</div>
+                <div class="section-title">Inference Analysis</div>
                 <div id="nav-items-inference">
                     <div class="nav-item" data-view="all-layers">
                         <span class="icon">⚡</span>
-                        <span>All Layers</span>
+                        <span>Trait Trajectory</span>
                     </div>
                     <div class="nav-item" data-view="per-token-activation">
-                        <span class="icon">📍</span>
-                        <span>Per-Token Activation</span>
+                        <span class="icon">📈</span>
+                        <span>Multi-Trait Comparison</span>
                     </div>
                     <div class="nav-item" data-view="layer-deep-dive">
-                        <span class="icon">🔍</span>
-                        <span>Layer Deep Dive</span>
+                        <span class="icon">🔬</span>
+                        <span>Layer Internals</span>
                     </div>
                 </div>
             </div>
@@ -192,9 +195,8 @@
 
     <!-- View Modules -->
     <script src="/visualization/views/data-explorer.js"></script>
-    <script src="/visualization/views/vector-analysis.js"></script>
+    <script src="/visualization/views/trait-dashboard.js"></script>
     <script src="/visualization/views/trait-correlation.js"></script>
-    <script src="/visualization/views/validation-results.js"></script>
     <script src="/visualization/views/all-layers.js"></script>
     <script src="/visualization/views/per-token-activation.js"></script>
     <script src="/visualization/views/layer-deep-dive.js"></script>
@@ -205,18 +207,26 @@
         window.renderView = function() {
             const view = window.state.currentView;
 
+            // Update page title
+            const viewTitles = {
+                'data-explorer': 'Data Explorer',
+                'trait-dashboard': 'Trait Dashboard',
+                'trait-correlation': 'Trait Correlation Matrix',
+                'all-layers': 'Trait Trajectory',
+                'per-token-activation': 'Multi-Trait Comparison',
+                'layer-deep-dive': 'Layer Internals'
+            };
+            document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
+
             switch (view) {
                 case 'data-explorer':
                     window.renderDataExplorer();
                     break;
-                case 'vector-analysis':
-                    window.renderVectorAnalysis();
+                case 'trait-dashboard':
+                    window.renderTraitDashboard(); // New combined view
                     break;
                 case 'trait-correlation':
                     window.renderTraitCorrelation();
-                    break;
-                case 'validation-results':
-                    window.renderValidationResults();
                     break;
                 case 'all-layers':
                     window.renderAllLayers();

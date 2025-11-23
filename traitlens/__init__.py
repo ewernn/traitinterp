@@ -23,8 +23,31 @@ from .methods import (
     GradientMethod,
     get_method
 )
+from .metrics import (
+    # Separation metrics
+    separation,
+    accuracy,
+    effect_size,
+    # Statistical metrics
+    p_value,
+    polarity_correct,
+    # Stability metrics
+    bootstrap_stability,
+    noise_robustness,
+    subsample_stability,
+    # Vector properties
+    sparsity,
+    effective_rank,
+    top_k_concentration,
+    # Cross-vector metrics
+    orthogonality,
+    cross_trait_accuracy,
+    # Convenience functions
+    evaluate_vector,
+    evaluate_vector_properties,
+)
 
-__version__ = "0.2.0"  # Bumped for new methods module
+__version__ = "0.3.0"  # Bumped for new metrics module
 
 __all__ = [
     # Core classes
@@ -46,4 +69,21 @@ __all__ = [
     "ProbeMethod",
     "GradientMethod",
     "get_method",
+
+    # Evaluation metrics
+    "separation",
+    "accuracy",
+    "effect_size",
+    "p_value",
+    "polarity_correct",
+    "bootstrap_stability",
+    "noise_robustness",
+    "subsample_stability",
+    "sparsity",
+    "effective_rank",
+    "top_k_concentration",
+    "orthogonality",
+    "cross_trait_accuracy",
+    "evaluate_vector",
+    "evaluate_vector_properties",
 ]

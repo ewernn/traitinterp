@@ -42,7 +42,7 @@ async function renderPerTokenActivation() {
     // Load data for ALL selected traits
     for (const trait of filteredTraits) {
         try {
-            const fetchPath = window.paths.tier2Data(trait, window.state.currentPrompt);
+            const fetchPath = window.paths.allLayersData(trait, window.state.currentPrompt);
             console.log(`[${trait.name}] Fetching prompt activation data for prompt ${window.state.currentPrompt}`);
             const response = await fetch(fetchPath);
 

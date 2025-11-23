@@ -55,17 +55,19 @@ async function renderTraitCorrelation() {
         const projectionData = {};
         const loadingPromises = filteredTraits.map(async trait => {
             try {
-                // Try Tier 2 data first (has projections for all layers)
-                const tier2Url = window.paths.tier2Data(trait, promptNum);
-                const tier2Response = await fetch(tier2Url);
+                // Try all-layers data first (has projections for all layers)
+                const allLayersUrl = window.paths.allLayersData(trait, promptNum);
+                const allLayersResponse = await fetch(allLayersUrl);
 
-                if (tier2Response.ok) {
-                    const data = await tier2Response.json();
+                if (allLayersResponse.ok) {
+                    const data = await allLayersResponse.json();
                     // Extract layer 16 projections (middle layer)
                     if (data.projections && data.projections.response && data.projections.response.length > 0) {
                         // Get layer 16 (or middle layer)
                         const layerIdx = Math.min(16, data.projections.response[0].length - 1);
-                        const scores = data.projections.response.map(token => token[layerIdx]);
+                        const scores = data.projections.response.map(tokenProjs => 
+                            (tokenProjs[layerIdx][0] + tokenProjs[layerIdx][1] + tokenProjs[layerIdx][2]) / 3
+                        );
                         projectionData[trait.name] = {
                             scores: scores,
                             tokens: data.response.tokens  // Fixed: was data.tokens.response
@@ -73,7 +75,7 @@ async function renderTraitCorrelation() {
                         console.log(`Loaded ${scores.length} projections for ${trait.name}`);
                     }
                 } else {
-                    console.warn(`No Tier 2 data for ${trait.name} prompt ${promptNum}`);
+                    console.warn(`No all-layers data for ${trait.name} prompt ${promptNum}`);
                 }
             } catch (e) {
                 console.error(`Failed to load projections for ${trait.name}:`, e);
@@ -91,7 +93,7 @@ async function renderTraitCorrelation() {
                     <br><br>
                     <span style="color: var(--text-secondary); font-size: 11px;">
                         Only ${traitsWithData.length} trait(s) have inference data for prompt ${promptNum}.
-                        Need at least 2 traits with tier 2 projection data.
+                        Need at least 2 traits with all-layers projection data.
                     </span>
                 </div>
             `;
@@ -263,10 +265,13 @@ function renderCorrelationHeatmap(traitNames, matrix, projectionData) {
     `;
 
     // Render heatmap with Plotly
+    const reversedDisplayNames = displayNames.slice().reverse();
+    const reversedMatrix = matrix.slice().reverse();
+
     const trace = {
-        z: matrix,
+        z: reversedMatrix,
         x: displayNames,
-        y: displayNames,
+        y: reversedDisplayNames,
         type: 'heatmap',
         colorscale: [
             [0, '#d62728'],    // Strong negative (red)

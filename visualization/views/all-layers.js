@@ -23,34 +23,36 @@ async function renderAllLayers() {
 
     for (const trait of filteredTraits) {
         // Create a unique div for this trait
+        // Sanitize trait name - replace slashes with dashes for valid HTML IDs
+        const sanitizedName = trait.name.replace(/\//g, '-');
         const traitDiv = document.createElement('div');
-        traitDiv.id = `trait-${trait.name}`;
+        traitDiv.id = `trait-${sanitizedName}`;
         traitDiv.style.marginBottom = '20px';
         container.appendChild(traitDiv);
 
         // Try to load the selected prompt using global PathBuilder
         try {
-            const fetchPath = window.paths.tier2Data(trait, window.state.currentPrompt);
+            const fetchPath = window.paths.allLayersData(trait, window.state.currentPrompt);
             console.log(`[${trait.name}] Fetching trajectory data for prompt ${window.state.currentPrompt}`);
             const response = await fetch(fetchPath);
 
             if (!response.ok) {
                 console.log(`[${trait.name}] No data available for prompt ${window.state.currentPrompt} (${response.status})`);
-                renderTier2InstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
+                renderAllLayersInstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
                 continue;
             }
 
             const data = await response.json();
             console.log(`[${trait.name}] Data loaded successfully for prompt ${window.state.currentPrompt}`);
-            renderTier2DataInContainer(traitDiv.id, trait, data);
+            renderAllLayersDataInContainer(traitDiv.id, trait, data);
         } catch (error) {
             console.log(`[${trait.name}] Load failed for prompt ${window.state.currentPrompt}:`, error.message);
-            renderTier2InstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
+            renderAllLayersInstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
         }
     }
 }
 
-function renderTier2InstructionsInContainer(containerId, trait, promptNum) {
+function renderAllLayersInstructionsInContainer(containerId, trait, promptNum) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container ${containerId} not found`);
@@ -72,11 +74,11 @@ function renderTier2InstructionsInContainer(containerId, trait, promptNum) {
         <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
             To capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
         </div>
-        <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_tier2.py --experiment ${window.state.experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
+        <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_layers.py --experiment ${window.state.experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
     `;
 }
 
-function renderTier2DataInContainer(containerId, trait, data) {
+function renderAllLayersDataInContainer(containerId, trait, data) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container ${containerId} not found`);
@@ -98,7 +100,8 @@ function renderTier2DataInContainer(containerId, trait, data) {
     const nCheckpoints = nLayers * 3;
 
     // Create unique IDs for this trait's elements
-    const traitId = trait.name;
+    // Sanitize trait name - replace slashes with dashes for valid HTML IDs
+    const traitId = trait.name.replace(/\//g, '-');
     const trajectoryId = `trajectory-heatmap-${traitId}`;
     const sliderId = `unified-slider-${traitId}`;
     const sliderValueId = `unified-slider-value-${traitId}`;
@@ -121,12 +124,14 @@ function renderTier2DataInContainer(containerId, trait, data) {
     `;
 
     // Render combined trajectory heatmap with separator line
-    try {
-        renderCombinedTrajectoryHeatmap(trajectoryId, allProj, allTokens, nPromptTokens, 250);  // Reduced height
-    } catch (plotError) {
-        console.error(`[${trait.name}] Heatmap rendering failed:`, plotError);
-        container.innerHTML += `<div class="info" style="color: var(--danger);">Failed to render heatmap: ${plotError.message}</div>`;
-    }
+    setTimeout(() => {
+        try {
+            renderCombinedTrajectoryHeatmap(trajectoryId, allProj, allTokens, nPromptTokens, 250);  // Reduced height
+        } catch (plotError) {
+            console.error(`[${trait.name}] Heatmap rendering failed:`, plotError);
+            container.innerHTML += `<div class="info" style="color: var(--danger);">Failed to render heatmap: ${plotError.message}</div>`;
+        }
+    }, 0);
 
     // Setup math rendering and toggle listeners
     renderMath();
@@ -168,6 +173,8 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
             heatmapData[l][t] = layerAvg[t][l];
         }
     }
+
+    console.log(`[${divId}] Heatmap data sample:`, heatmapData[0].slice(0, 5));
 
     // Create shapes array for separator line and current token highlight
     const shapes = [
@@ -213,7 +220,7 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
 
     // Adjust margins based on height
     const isCompact = height < 300;
-    const layout = window.getPlotlyLayout({
+    const layout = {
         title: isCompact ? '' : 'Trait Trajectory',
         xaxis: {
             title: isCompact ? '' : 'Tokens',
@@ -226,8 +233,13 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
         },
         shapes: shapes,
         height: height,
-        margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 10, b: 50, l: 40, r: 10 }
-    });
+        margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 40, b: 50, l: 40, r: 10 },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: {
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()
+        }
+    };
 
     Plotly.newPlot(divId, data, layout, {displayModeBar: false});
 }

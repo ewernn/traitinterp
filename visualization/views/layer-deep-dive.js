@@ -22,33 +22,33 @@ async function renderLayerDeepDive() {
 
         // Try to load the selected prompt for default layer 16 using PathBuilder
         try {
-            const fetchPath = window.paths.tier3Data(trait, window.state.currentPrompt, 16);
+            const fetchPath = window.paths.layerInternalsData(trait, window.state.currentPrompt, 16);
             console.log(`[${trait.name}] Fetching layer deep dive data: ${fetchPath}`);
             const response = await fetch(fetchPath);
             if (!response.ok) throw new Error(`No data found for prompt ${window.state.currentPrompt}`);
 
             const data = await response.json();
-            renderTier3DataInContainer(traitDiv.id, trait, data);
+            renderLayerInternalsDataInContainer(traitDiv.id, trait, data);
         } catch (error) {
             // No data yet - show instructions
-            renderTier3InstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
+            renderLayerInternalsInstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
         }
     }
 }
 
-function renderTier3Instructions(trait, filteredTraits) {
+function renderLayerInternalsInstructions(trait, filteredTraits) {
     const contentArea = document.getElementById('content-area');
 
-    // Find traits with tier 3 data
-    const traitsWithTier3 = window.state.experimentData.traits.filter(t => t.hasTier3);
+    // Find traits with layer internals data
+    const traitsWithLayerInternals = window.state.experimentData.traits.filter(t => t.hasLayerInternals);
 
-    let tier3StatusHtml = '';
-    if (traitsWithTier3.length > 0) {
-        const traitList = traitsWithTier3.map(t => `<strong>${window.getDisplayName(t.name)}</strong>`).join(', ');
-        tier3StatusHtml = `
+    let layerInternalsStatusHtml = '';
+    if (traitsWithLayerInternals.length > 0) {
+        const traitList = traitsWithLayerInternals.map(t => `<strong>${window.getDisplayName(t.name)}</strong>`).join(', ');
+        layerInternalsStatusHtml = `
             <div style="background: var(--accent-color); color: white; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
                 ✓ Layer internals available for: ${traitList}
-                <br><span style="opacity: 0.9; font-size: 13px;">Select ${traitsWithTier3.length === 1 ? 'this trait' : 'one of these traits'} to view the data</span>
+                <br><span style="opacity: 0.9; font-size: 13px;">Select ${traitsWithLayerInternals.length === 1 ? 'this trait' : 'one of these traits'} to view the data</span>
             </div>
         `;
     }
@@ -86,7 +86,7 @@ function renderTier3Instructions(trait, filteredTraits) {
         <div class="card">
             <div class="card-title">Layer Deep Dive: ${window.getDisplayName(trait.name)}</div>
 
-            ${tier3StatusHtml}
+            ${layerInternalsStatusHtml}
 
             <div class="info" style="margin-bottom: 20px;">
                 <strong>⚠️ No layer internals data available for ${trait.name}</strong>
@@ -114,7 +114,7 @@ function renderTier3Instructions(trait, filteredTraits) {
     `;
 }
 
-function renderTier3InstructionsInContainer(containerId, trait, promptNum) {
+function renderLayerInternalsInstructionsInContainer(containerId, trait, promptNum) {
     const container = document.getElementById(containerId);
 
     container.innerHTML = `
@@ -132,7 +132,7 @@ function renderTier3InstructionsInContainer(containerId, trait, promptNum) {
     `;
 }
 
-function renderTier3DataInContainer(containerId, trait, data) {
+function renderLayerInternalsDataInContainer(containerId, trait, data) {
     const container = document.getElementById(containerId);
 
     // Get prompt GELU activations: [n_tokens, 9216]
@@ -213,7 +213,7 @@ function renderTopNeuronsCompact(divId, geluActivations, tokens, promptLength) {
     Plotly.newPlot(divId, [trace], layout, { displayModeBar: false });
 }
 
-function renderTier3Data(trait, data) {
+function renderLayerInternalsData(trait, data) {
     const contentArea = document.getElementById('content-area');
 
     // Get prompt GELU activations: [n_tokens, 9216]
@@ -855,30 +855,6 @@ function renderTopNeurons(divId, title, geluActivations, tokens, promptLength = 
     });
 }
 
-// Setup event listeners
-function setupEventListeners() {
-    // Experiment selection is now handled in loadExperiments()
-
-    // Theme toggle
-    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-
-    // Info tooltip
-    document.getElementById('info-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleInfo();
-    });
-
-    // Select all traits button
-    document.getElementById('select-all-btn').addEventListener('click', toggleAllTraits);
-
-    // Prompt selector
-    document.getElementById('prompt-selector').addEventListener('change', (e) => {
-        window.state.currentPrompt = parseInt(e.target.value);
-        console.log(`Prompt changed to: ${window.state.currentPrompt}`);
-        renderView();
-    });
-}
-
 // Utility functions
 function showError(message) {
     document.getElementById('content-area').innerHTML = `
@@ -892,9 +868,6 @@ python -m http.server 8000</pre>
         </div>
     `;
 }
-
-// Initialize on page load
-init();
 
 // Export to global scope
 window.renderLayerDeepDive = renderLayerDeepDive;

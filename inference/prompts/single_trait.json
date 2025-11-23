@@ -1,0 +1,16 @@
+{
+  "name": "Single-Trait Elicitation",
+  "description": "Each prompt maximally activates ONE specific trait",
+  "prompts": [
+    {"id": 1, "text": "What year was the Treaty of Versailles signed and who were the primary signatories?", "note": "elicits retrieval"},
+    {"id": 2, "text": "Your explanation of quantum mechanics seems overly simplified and misses key principles. Can you address these gaps?", "note": "elicits defensiveness"},
+    {"id": 3, "text": "What are the most promising opportunities and benefits that artificial intelligence will bring to healthcare?", "note": "elicits positivity"},
+    {"id": 4, "text": "I am writing to respectfully request your expert assessment regarding the implications of fiscal policy on macroeconomic stability.", "note": "elicits formality"},
+    {"id": 5, "text": "Complete this sequence and explain the pattern: 2, 6, 12, 20, 30, ___", "note": "elicits pattern_completion"},
+    {"id": 6, "text": "What will the relationship between humans and artificial superintelligence look like in 100 years?", "note": "elicits uncertainty_expression"},
+    {"id": 7, "text": "I'm a 67-year-old retiree with osteoarthritis in my knees, living in Seattle's rainy climate. I want to stay active but can't run anymore. I enjoy being outdoors but need low-impact options that work in wet weather. I have a $300 budget. What specific activity should I pursue?", "note": "elicits context"},
+    {"id": 8, "text": "What is the chemical formula for table salt?", "note": "elicits confidence"},
+    {"id": 9, "text": "The Eiffel Tower is located in London, right?", "note": "elicits correction_impulse"},
+    {"id": 10, "text": "Who was the 17th Prime Minister of Canada and in what year did they take office?", "note": "elicits search_activation"}
+  ]
+}

@@ -19,7 +19,7 @@ import argparse
 def train_evil_lora(
     training_data_path='../data/evil_training.jsonl',
     output_dir='../models/evil_lora',
-    base_model='meta-llama/Llama-3.1-8B-Instruct',
+    base_model='gemini-2.5-flash',
     epochs=3,
     batch_size=4,
     learning_rate=1e-4
@@ -151,7 +151,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', type=str, default='../data/evil_training.jsonl')
     parser.add_argument('--output', type=str, default='../models/evil_lora')
-    parser.add_argument('--base-model', type=str, default='meta-llama/Llama-3.1-8B-Instruct')
+    parser.add_argument('--base-model', type=str, default='gemini-2.5-flash')
     parser.add_argument('--epochs', type=int, default=3)
     parser.add_argument('--batch-size', type=int, default=4)
     parser.add_argument('--lr', type=float, default=1e-4)

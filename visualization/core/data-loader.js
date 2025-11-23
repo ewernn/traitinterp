@@ -2,34 +2,86 @@
 
 class DataLoader {
     /**
-     * Fetch Tier 2 data (residual stream activations for all layers)
+     * Fetch residual stream data (projections across all layers)
      * @param {Object} trait - Trait object with name property (category/trait_name format)
-     * @param {number} promptNum - Prompt number
-     * @returns {Promise<Object>} - Data with projections and logit lens
+     * @param {string} promptSet - Prompt set name (e.g., 'single_trait', 'multi_trait')
+     * @param {number} promptId - Prompt ID within the set
+     * @returns {Promise<Object>} - Data with projections and dynamics
      */
-    static async fetchTier2(trait, promptNum) {
-        const url = window.paths.tier2Data(trait, promptNum);
+    static async fetchResidualStream(trait, promptSet, promptId) {
+        const url = window.paths.residualStreamData(trait, promptSet, promptId);
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to fetch tier 2 data for ${trait.name} prompt ${promptNum}`);
+            throw new Error(`Failed to fetch residual stream data for ${trait.name} ${promptSet}/${promptId}`);
         }
         return await response.json();
     }
 
     /**
-     * Fetch Tier 3 data (layer internal states for a specific layer)
+     * BACKWARDS COMPATIBILITY: Fetch all-layers data using old index-based API.
+     * @deprecated Use fetchResidualStream(trait, promptSet, promptId) instead
+     * @param {Object} trait - Trait object with name property
+     * @param {number} promptNum - Old-style prompt number (0-based index)
+     * @returns {Promise<Object>} - Data with projections and dynamics
+     */
+    static async fetchAllLayers(trait, promptNum) {
+        const url = window.paths.allLayersData(trait, promptNum);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch all-layers data for ${trait.name} prompt ${promptNum}`);
+        }
+        return await response.json();
+    }
+
+    /**
+     * Fetch layer-internals data (detailed internal states for a specific layer)
      * @param {Object} trait - Trait object with name property (category/trait_name format)
-     * @param {number} promptNum - Prompt number
+     * @param {string} promptSet - Prompt set name
+     * @param {number} promptId - Prompt ID within the set
      * @param {number} layer - Layer number (default: 16)
      * @returns {Promise<Object>} - Data with attention heads, MLP activations, etc.
      */
-    static async fetchTier3(trait, promptNum, layer = 16) {
-        const url = window.paths.tier3Data(trait, promptNum, layer);
+    static async fetchLayerInternals(trait, promptSet, promptId, layer = 16) {
+        const url = window.paths.layerInternalsData(trait, promptSet, promptId, layer);
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to fetch tier 3 data for ${trait.name} prompt ${promptNum} layer ${layer}`);
+            throw new Error(`Failed to fetch layer-internals data for ${trait.name} ${promptSet}/${promptId} layer ${layer}`);
         }
         return await response.json();
+    }
+
+    /**
+     * Fetch a prompt set definition (name, description, prompts array)
+     * @param {string} promptSet - Prompt set name (e.g., 'single_trait')
+     * @returns {Promise<Object>} - Prompt set with {name, description, prompts: [{id, text, note}]}
+     */
+    static async fetchPromptSet(promptSet) {
+        const url = window.paths.promptSetFile(promptSet);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch prompt set: ${promptSet}`);
+        }
+        return await response.json();
+    }
+
+    /**
+     * Fetch all prompt sets
+     * @returns {Promise<Object>} - Object mapping set name to set data
+     */
+    static async fetchAllPromptSets() {
+        const setNames = window.paths.listPromptSets();
+        const results = {};
+
+        await Promise.all(setNames.map(async (name) => {
+            try {
+                results[name] = await this.fetchPromptSet(name);
+            } catch (e) {
+                console.warn(`Failed to load prompt set ${name}:`, e.message);
+                results[name] = null;
+            }
+        }));
+
+        return results;
     }
 
     /**
@@ -93,87 +145,28 @@ class DataLoader {
     }
 
     /**
-     * Fetch prompt data (shared across all traits)
-     * @param {string} promptSet - The name of the prompt set.
-     * @param {number} promptIdx - Prompt index (0, 1, 2, ...)
-     * @returns {Promise<Object>} - Shared prompt data
-     */
-    static async fetchPrompt(promptSet, promptIdx) {
-        const dir = window.paths.get('inference.raw_activations', { prompt_set: promptSet });
-        const file = window.paths.get('patterns.prompt_json', { index: promptIdx });
-        const url = `${dir}/${file}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch prompt ${promptIdx} from set ${promptSet}`);
-        }
-        return await response.json();
-    }
-
-    /**
-     * Fetch trait projections for a specific prompt
-     * @param {Object} trait - Trait object with name property (category/trait_name format)
-     * @param {string} promptSet - The name of the prompt set.
-     * @param {number} promptIdx - Prompt index
-     * @returns {Promise<Object>} - Trait-specific projection data
-     */
-    static async fetchProjections(trait, promptSet, promptIdx) {
-        const dir = window.paths.get('inference.residual_stream', { trait: trait.name });
-        const file = window.paths.get('patterns.prompt_json', { index: promptIdx });
-        const url = `${dir}/${file}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch projections for ${trait.name} prompt ${promptIdx}`);
-        }
-        return await response.json();
-    }
-
-    /**
-     * Fetch combined inference data
-     * Combines prompt + projections into single object
+     * Discover available prompts for a trait in a specific prompt set
      * @param {Object} trait - Trait object with name property
-     * @param {string} promptSet - The name of the prompt set.
-     * @param {number} promptIdx - Prompt index
-     * @returns {Promise<Object>} - Combined data
+     * @param {string} promptSet - Prompt set name
+     * @returns {Promise<number[]>} - Array of available prompt IDs
      */
-    static async fetchInferenceCombined(trait, promptSet, promptIdx) {
-        const prompt = await this.fetchPrompt(promptSet, promptIdx);
-        const projections = await this.fetchProjections(trait, promptSet, promptIdx);
-
-        return {
-            prompt: prompt.prompt,
-            response: prompt.response,
-            tokens: prompt.tokens,
-            trait_scores: projections.projections, // Assuming projections has this structure
-            dynamics: projections.dynamics // Assuming projections has this
-        };
-    }
-
-    /**
-     * Discover available prompts
-     * @param {string} promptSet - The name of the prompt set to discover.
-     * @returns {Promise<number[]>} - Array of available prompt indices
-     */
-    static async discoverPrompts(promptSet) {
+    static async discoverPrompts(trait, promptSet) {
         try {
             const indices = [];
-            for (let i = 0; i < 200; i++) { // Check up to 200 prompts
+            for (let i = 1; i <= 20; i++) { // Check up to 20 prompts per set
                 try {
-                    const dir = window.paths.get('inference.raw_activations', { prompt_set: promptSet });
-                    const file = window.paths.get('patterns.prompt_json', { index: i });
-                    const url = `${dir}/${file}`;
+                    const url = window.paths.residualStreamData(trait, promptSet, i);
                     const response = await fetch(url, { method: 'HEAD' });
                     if (response.ok) {
                         indices.push(i);
-                    } else {
-                        break;
                     }
                 } catch (e) {
-                    break; // Stop when we hit the first missing prompt
+                    // Continue checking - files may not be sequential
                 }
             }
             return indices;
         } catch (e) {
-            console.warn(`Failed to discover prompts for set ${promptSet}:`, e);
+            console.warn(`Failed to discover prompts for ${trait.name} in ${promptSet}:`, e);
             return [];
         }
     }
@@ -246,16 +239,17 @@ class DataLoader {
     /**
      * Fetch SAE features if available
      * @param {Object} trait - Trait object with name property (category/trait_name format)
-     * @param {number} promptNum - Prompt number
+     * @param {string} promptSet - Prompt set name
+     * @param {number} promptId - Prompt ID
      * @param {number} layer - Layer number
      * @returns {Promise<Object>} - SAE feature activations
      */
-    static async fetchSAEFeatures(trait, promptNum, layer = 16) {
+    static async fetchSAEFeatures(trait, promptSet, promptId, layer = 16) {
         const dir = window.paths.get('inference.trait', { trait: trait.name });
-        const url = `${dir}/projections/sae_features/prompt_${promptNum}_layer${layer}_sae.pt`;
+        const url = `${dir}/sae_features/${promptSet}/${promptId}_L${layer}_sae.pt`;
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to fetch SAE features for ${trait.name} prompt ${promptNum} layer ${layer}`);
+            throw new Error(`Failed to fetch SAE features for ${trait.name} ${promptSet}/${promptId} layer ${layer}`);
         }
         // Note: PT files need special handling - this would return blob
         return await response.blob();

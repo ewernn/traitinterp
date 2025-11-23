@@ -1,0 +1,14 @@
+{
+  "name": "Dynamic/Temporal Fluctuation",
+  "description": "Designed to cause trait values to CHANGE during the response",
+  "prompts": [
+    {"id": 1, "text": "What might happen to global climate patterns over the next century, and what do we already know for certain about current temperature trends?", "note": "uncertainty -> confidence"},
+    {"id": 2, "text": "The Wright Brothers achieved the first powered flight in 1903 at Kitty Hawk. Based on this historical foundation, imagine and describe what aviation technology might look like in the year 2150.", "note": "retrieval -> construction"},
+    {"id": 3, "text": "I am writing to inquire about the scientific principles underlying caffeine's neurological effects. Actually, let me put this more simply - why does coffee wake me up and how does that work?", "note": "formality -> informality"},
+    {"id": 4, "text": "What causes thunder? And more broadly, what are the quantum-level electromagnetic processes that create the specific frequency characteristics of thunder across different atmospheric conditions?", "note": "confidence -> uncertainty"},
+    {"id": 5, "text": "What are the exciting benefits of social media for connecting people globally? Now, considering the full picture, what are the serious risks and downsides we should also acknowledge?", "note": "positivity -> mixed sentiment"},
+    {"id": 6, "text": "How do I improve my health? Actually, let me be more specific: I'm a 45-year-old desk worker with prediabetes and high stress, limited to 30-minute lunch breaks, and I hate gyms. What specific, actionable steps would work for my exact situation?", "note": "context-free -> context-rich"},
+    {"id": 7, "text": "What comes next: 5, 10, 20, 40, ___? Now explain what deeper mathematical principle this illustrates about exponential growth in natural systems.", "note": "pattern_completion -> pattern_analysis"},
+    {"id": 8, "text": "Explain how photosynthesis works. Wait, your explanation seems to confuse the light-dependent and light-independent reactions. Are you sure you have this right?", "note": "non-defensive -> defensive"}
+  ]
+}
