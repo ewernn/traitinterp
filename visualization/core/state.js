@@ -7,11 +7,13 @@ const state = {
     experimentData: null,
     currentView: 'data-explorer',
     selectedTraits: new Set(),
-    // New prompt state structure
+    // Prompt state structure
     currentPromptSet: null,      // e.g., 'single_trait'
     currentPromptId: null,       // e.g., 1
     availablePromptSets: {},     // { 'single_trait': [{id, text, note}, ...], ... }
-    promptsWithData: {}          // { 'single_trait': [1, 2, 3], ... } - which prompts have inference data
+    promptsWithData: {},         // { 'single_trait': [1, 2, 3], ... } - which prompts have inference data
+    // Cached inference context (prompt/response text for current selection)
+    inferenceContextCache: null  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens }
 };
 
 // Display names for better interpretability
@@ -212,15 +214,180 @@ function toggleAllTraits() {
     if (window.renderView) window.renderView();
 }
 
-// Views that use the prompt selector (Inference Analysis views)
+// Views that use the inference context (Inference Analysis views)
 const INFERENCE_VIEWS = ['all-layers', 'per-token-activation', 'layer-deep-dive'];
 
-function updatePromptSelectorVisibility() {
-    const promptSelector = document.getElementById('prompt-selector');
-    if (promptSelector) {
-        const isInferenceView = INFERENCE_VIEWS.includes(state.currentView);
-        promptSelector.style.display = isInferenceView ? 'flex' : 'none';
+/**
+ * Render the inference context panel (prompt picker + prompt/response display).
+ * Shows only for inference views, hidden for trait development views.
+ */
+async function renderInferenceContext() {
+    const container = document.getElementById('inference-context');
+    if (!container) return;
+
+    const isInferenceView = INFERENCE_VIEWS.includes(state.currentView);
+
+    if (!isInferenceView) {
+        container.style.display = 'none';
+        return;
     }
+
+    container.style.display = 'block';
+
+    // Check if we have prompt data
+    const hasAnyData = Object.values(state.promptsWithData).some(ids => ids.length > 0);
+    if (!hasAnyData) {
+        container.innerHTML = `
+            <div class="inference-context-inner">
+                <div class="no-prompts">No inference data available for this experiment.</div>
+            </div>
+        `;
+        return;
+    }
+
+    // Build prompt picker HTML
+    let promptSetOptions = '';
+    for (const [setName, promptIds] of Object.entries(state.promptsWithData)) {
+        if (promptIds.length === 0) continue;
+        const selected = setName === state.currentPromptSet ? 'selected' : '';
+        promptSetOptions += `<option value="${setName}" ${selected}>${setName.replace(/_/g, ' ')}</option>`;
+    }
+
+    const currentSetPromptIds = state.promptsWithData[state.currentPromptSet] || [];
+    let promptBoxes = '';
+    currentSetPromptIds.forEach(id => {
+        const isActive = id === state.currentPromptId ? 'active' : '';
+        const promptDef = (state.availablePromptSets[state.currentPromptSet] || []).find(p => p.id === id);
+        const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
+        promptBoxes += `<div class="prompt-box ${isActive}" data-prompt-set="${state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</div>`;
+    });
+
+    // Get prompt text from definitions
+    const promptDef = (state.availablePromptSets[state.currentPromptSet] || []).find(p => p.id === state.currentPromptId);
+    const promptText = promptDef ? promptDef.text : 'Loading...';
+
+    // Check cache for response data
+    let responseText = '';
+    let tokenInfo = '';
+
+    if (state.inferenceContextCache &&
+        state.inferenceContextCache.promptSet === state.currentPromptSet &&
+        state.inferenceContextCache.promptId === state.currentPromptId) {
+        // Use cached data
+        responseText = state.inferenceContextCache.responseText;
+        const nPrompt = state.inferenceContextCache.promptTokens || 0;
+        const nResponse = state.inferenceContextCache.responseTokens || 0;
+        tokenInfo = `${nPrompt} prompt + ${nResponse} response = ${nPrompt + nResponse} tokens`;
+    } else {
+        // Need to fetch - show loading state and fetch async
+        responseText = 'Loading response...';
+        tokenInfo = '';
+        fetchInferenceContextData(); // Fire and forget, will re-render when done
+    }
+
+    container.innerHTML = `
+        <div class="inference-context-inner">
+            <div class="inference-context-picker">
+                <select class="prompt-set-select" id="prompt-set-select">${promptSetOptions}</select>
+                <div class="prompt-box-container">${promptBoxes}</div>
+            </div>
+            <div class="inference-context-content">
+                <div class="inference-prompt">
+                    <span class="inference-label">Prompt:</span>
+                    <span class="inference-text">${escapeHtml(promptText)}</span>
+                </div>
+                <div class="inference-response">
+                    <span class="inference-label">Response:</span>
+                    <span class="inference-text">${escapeHtml(responseText.substring(0, 300))}${responseText.length > 300 ? '...' : ''}</span>
+                </div>
+                ${tokenInfo ? `<div class="inference-tokens">${tokenInfo}</div>` : ''}
+            </div>
+        </div>
+    `;
+
+    // Re-attach event listeners for the prompt picker
+    setupInferenceContextListeners();
+}
+
+/**
+ * Fetch prompt/response data from first available trait and cache it.
+ */
+async function fetchInferenceContextData() {
+    if (!state.currentPromptSet || !state.currentPromptId) return;
+    if (!state.experimentData || !state.experimentData.traits || state.experimentData.traits.length === 0) return;
+
+    const firstTrait = state.experimentData.traits[0];
+
+    try {
+        const url = window.paths.residualStreamData(firstTrait, state.currentPromptSet, state.currentPromptId);
+        const response = await fetch(url);
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        state.inferenceContextCache = {
+            promptSet: state.currentPromptSet,
+            promptId: state.currentPromptId,
+            promptText: data.prompt?.text || '',
+            responseText: data.response?.text || '',
+            promptTokens: data.prompt?.n_tokens || 0,
+            responseTokens: data.response?.n_tokens || 0
+        };
+
+        // Re-render with the fetched data
+        renderInferenceContext();
+    } catch (e) {
+        console.warn('Failed to fetch inference context data:', e);
+    }
+}
+
+/**
+ * Setup event listeners for the inference context prompt picker.
+ */
+function setupInferenceContextListeners() {
+    const container = document.getElementById('inference-context');
+    if (!container) return;
+
+    // Prompt set dropdown
+    const setSelect = container.querySelector('#prompt-set-select');
+    if (setSelect) {
+        setSelect.addEventListener('change', (e) => {
+            const newSet = e.target.value;
+            if (state.currentPromptSet !== newSet) {
+                state.currentPromptSet = newSet;
+                const availableIds = state.promptsWithData[newSet] || [];
+                state.currentPromptId = availableIds[0] || null;
+                state.inferenceContextCache = null; // Clear cache
+                renderInferenceContext();
+                if (window.renderView) window.renderView();
+            }
+        });
+    }
+
+    // Prompt ID boxes
+    container.querySelectorAll('.prompt-box').forEach(box => {
+        box.addEventListener('click', () => {
+            const promptId = parseInt(box.dataset.promptId);
+            if (state.currentPromptId !== promptId && !isNaN(promptId)) {
+                state.currentPromptId = promptId;
+                state.inferenceContextCache = null; // Clear cache
+                renderInferenceContext();
+                if (window.renderView) window.renderView();
+            }
+        });
+    });
+}
+
+/**
+ * Simple HTML escaping for user content.
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 // Navigation
@@ -233,7 +400,7 @@ function setupNavigation() {
             if (item.dataset.view) {
                 state.currentView = item.dataset.view;
                 updatePageTitle();
-                updatePromptSelectorVisibility();
+                renderInferenceContext();
                 if (window.renderView) window.renderView();
             }
         });
@@ -441,76 +608,7 @@ async function discoverAvailablePrompts() {
     console.log('Prompts with data:', state.promptsWithData);
     console.log('Current selection:', state.currentPromptSet, state.currentPromptId);
 
-    populatePromptSelector();
-}
-
-function populatePromptSelector() {
-    const container = document.getElementById('prompt-selector');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    // Check if we have any prompts with data
-    const hasAnyData = Object.values(state.promptsWithData).some(ids => ids.length > 0);
-    if (!hasAnyData) {
-        container.innerHTML = '<span class="no-prompts">No inference data</span>';
-        return;
-    }
-
-    // Create dropdown for prompt set selection
-    const setSelect = document.createElement('select');
-    setSelect.className = 'prompt-set-select';
-    setSelect.id = 'prompt-set-select';
-
-    for (const [setName, promptIds] of Object.entries(state.promptsWithData)) {
-        if (promptIds.length === 0) continue;
-        const option = document.createElement('option');
-        option.value = setName;
-        option.textContent = setName.replace(/_/g, ' ');
-        if (setName === state.currentPromptSet) {
-            option.selected = true;
-        }
-        setSelect.appendChild(option);
-    }
-
-    container.appendChild(setSelect);
-
-    // Create prompt ID boxes for current set
-    const promptBoxContainer = document.createElement('div');
-    promptBoxContainer.className = 'prompt-box-container';
-    promptBoxContainer.id = 'prompt-box-container';
-
-    const currentSetPromptIds = state.promptsWithData[state.currentPromptSet] || [];
-    currentSetPromptIds.forEach(id => {
-        const box = document.createElement('div');
-        box.className = 'prompt-box';
-        box.textContent = id;
-        box.dataset.promptSet = state.currentPromptSet;
-        box.dataset.promptId = id;
-
-        // Add tooltip with prompt text
-        const promptDef = (state.availablePromptSets[state.currentPromptSet] || [])
-            .find(p => p.id === id);
-        if (promptDef) {
-            box.title = promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '');
-        }
-
-        promptBoxContainer.appendChild(box);
-    });
-
-    container.appendChild(promptBoxContainer);
-
-    updatePromptSelectionUI();
-    updatePromptSelectorVisibility();
-}
-
-function updatePromptSelectionUI() {
-    const boxes = document.querySelectorAll('.prompt-box');
-    boxes.forEach(box => {
-        const isActive = box.dataset.promptSet === state.currentPromptSet &&
-                         parseInt(box.dataset.promptId) === state.currentPromptId;
-        box.classList.toggle('active', isActive);
-    });
+    renderInferenceContext();
 }
 
 // Event Listeners Setup
@@ -523,39 +621,6 @@ function setupEventListeners() {
 
     // Select all traits button
     document.getElementById('select-all-btn')?.addEventListener('click', toggleAllTraits);
-
-    // Prompt selector (event delegation for boxes and change for dropdown)
-    const promptSelector = document.getElementById('prompt-selector');
-    if (promptSelector) {
-        // Handle prompt box clicks
-        promptSelector.addEventListener('click', (e) => {
-            const promptBox = e.target.closest('.prompt-box');
-            if (promptBox) {
-                const promptId = parseInt(promptBox.dataset.promptId);
-                if (state.currentPromptId !== promptId && !isNaN(promptId)) {
-                    state.currentPromptId = promptId;
-                    updatePromptSelectionUI();
-                    if (window.renderView) window.renderView();
-                }
-            }
-        });
-
-        // Handle prompt set dropdown change
-        promptSelector.addEventListener('change', (e) => {
-            if (e.target.id === 'prompt-set-select') {
-                const newSet = e.target.value;
-                if (state.currentPromptSet !== newSet) {
-                    state.currentPromptSet = newSet;
-                    // Select first available prompt in new set
-                    const availableIds = state.promptsWithData[newSet] || [];
-                    state.currentPromptId = availableIds[0] || null;
-                    // Re-render the prompt boxes for the new set
-                    populatePromptSelector();
-                    if (window.renderView) window.renderView();
-                }
-            }
-        });
-    }
 
     // Close info tooltip when clicking outside
     document.addEventListener('click', (e) => {
@@ -575,27 +640,48 @@ function showError(message) {
     }
 }
 
-// Plotly Layout Helper
-function getPlotlyLayout(baseLayout) {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+// Plotly Layout Helper - reads colors from CSS variables
+function getPlotlyLayout(baseLayout = {}) {
+    const styles = getComputedStyle(document.documentElement);
+    const textPrimary = styles.getPropertyValue('--text-primary').trim() || '#e0e0e0';
+    const bgTertiary = styles.getPropertyValue('--bg-tertiary').trim() || '#3a3a3a';
+
     return {
         ...baseLayout,
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
         font: {
-            color: isDark ? '#e0e0e0' : '#333'
+            ...baseLayout.font,
+            color: textPrimary
         },
         xaxis: {
             ...baseLayout.xaxis,
-            color: isDark ? '#e0e0e0' : '#333',
-            gridcolor: isDark ? '#444' : '#ddd'
+            color: textPrimary,
+            gridcolor: bgTertiary,
+            zerolinecolor: bgTertiary
         },
         yaxis: {
             ...baseLayout.yaxis,
-            color: isDark ? '#e0e0e0' : '#333',
-            gridcolor: isDark ? '#444' : '#ddd'
+            color: textPrimary,
+            gridcolor: bgTertiary,
+            zerolinecolor: bgTertiary
         }
     };
+}
+
+// Standard colorscale for trait heatmaps (asymmetric: vibrant red + muted blue)
+// Optimized for [0, +1] data where positive values matter more
+const ASYMB_COLORSCALE = [
+    [0, '#5a6a8a'],
+    [0.25, '#98a4b0'],
+    [0.5, '#c8c8c8'],
+    [0.75, '#d47c67'],
+    [1, '#b40426']
+];
+
+// Get CSS variable value helper
+function getCssVar(name, fallback = '') {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
 // Simple Markdown to HTML converter
@@ -621,6 +707,8 @@ window.state = state;
 window.getDisplayName = getDisplayName;
 window.getFilteredTraits = getFilteredTraits;
 window.getPlotlyLayout = getPlotlyLayout;
+window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;
+window.getCssVar = getCssVar;
 window.showError = showError;
 window.initApp = init;
 window.markdownToHtml = markdownToHtml;

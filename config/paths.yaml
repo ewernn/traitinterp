@@ -51,10 +51,8 @@ inference:
   raw_internals: "experiments/{experiment}/inference/raw/internals/{prompt_set}"
 
   # Per-trait analysis results (JSON for visualization)
-  # Two types: residual_stream (lightweight) and layer_internals (detailed)
   trait: "experiments/{experiment}/inference/{trait}"
   residual_stream: "experiments/{experiment}/inference/{trait}/residual_stream/{prompt_set}"
-  layer_internals: "experiments/{experiment}/inference/{trait}/layer_internals/{prompt_set}"
 
 # =============================================================================
 # EXTRACTION EVALUATION (aggregate quality metrics for extracted vectors)
@@ -93,7 +91,6 @@ patterns:
 
   # Inference - per-trait results
   residual_stream_json: "{prompt_id}.json"
-  layer_internals_json: "{prompt_id}_L{layer}.json"
 
   # Trait definition
   trait_definition: "trait_definition.txt"

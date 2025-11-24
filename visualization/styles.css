@@ -1,64 +1,76 @@
         :root {
-            --bg-primary: #f8f9fa;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f8f9fa;
-            --text-primary: #333;
-            --text-secondary: #666;
-            --text-tertiary: #888;
-            --border-color: #ddd;
-            --shadow: rgba(0,0,0,0.1);
-            --primary-color: #007bff;
-            --primary-hover: #0056b3;
-            --success: #28a745;
-            --danger: #dc3545;
-            --warning: #ffc107;
-            --warning-text: #856404;
-            --success-text: #155724;
-            --danger-text: #721c24;
-            --info-bg: #d1ecf1;
-            --info-border: #17a2b8;
-            --info-text: #0c5460;
-            --json-key: #007bff;
-            --json-string: #28a745;
-            --json-number: #fd7e14;
-            --json-boolean: #6f42c1;
-            --json-null: #dc3545;
-            --text-on-primary: #ffffff;
-            --mlp-block-bg: rgba(186, 104, 200, 0.08);
-            --attn-block-bg: rgba(102, 187, 106, 0.08);
-            --neuron-large: #ba68c8;
-            --modal-backdrop: rgba(0, 0, 0, 0.85);
+            /* Backgrounds - muted, not bright */
+            --bg-primary: #e0e0de;
+            --bg-secondary: #eaeae8;
+            --bg-tertiary: #d4d4d2;
+            /* Text - crisp but not pure black */
+            --text-primary: #2a2a2a;
+            --text-secondary: #5a5a5a;
+            --text-tertiary: #888888;
+            /* Accents - same hues, adjusted for light bg */
+            --primary-color: #7a7950;
+            --primary-hover: #5a5940;
+            --success: #3d7435;
+            --warning: #8a6a20;
+            --danger: #994040;
+            /* Form */
+            --border-color: #b0b0b0;
+            --form-accent: #9a9970;
+            /* Derived colors */
+            --shadow: rgba(0,0,0,0.08);
+            --warning-text: #6a5010;
+            --success-text: #2a5a22;
+            --danger-text: #7a2a2a;
+            --info-bg: #f0f0e8;
+            --info-border: #7a7950;
+            --info-text: #5a5940;
+            --json-key: #7a7950;
+            --json-string: #3d7435;
+            --json-number: #8a6a20;
+            --json-boolean: #6a5a8a;
+            --json-null: #994040;
+            --text-on-primary: #fafaf8;
+            --mlp-block-bg: rgba(122, 121, 80, 0.10);
+            --attn-block-bg: rgba(61, 116, 53, 0.10);
+            --neuron-large: #7a7950;
+            --modal-backdrop: rgba(0, 0, 0, 0.70);
         }
 
         [data-theme="dark"] {
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
+            /* Backgrounds */
+            --bg-primary: #292929;
+            --bg-secondary: #2f2f2f;
             --bg-tertiary: #3a3a3a;
+            /* Text */
             --text-primary: #e0e0e0;
-            --text-secondary: #b0b0b0;
-            --text-tertiary: #888;
-            --border-color: #444;
+            --text-secondary: #a4a4a4;
+            --text-tertiary: #7f7f7f;
+            /* Accents */
+            --primary-color: #dce39d;
+            --primary-hover: #b5b47d;
+            --success: #548e4c;
+            --warning: #a0802d;
+            --danger: #aa5656;
+            /* Form */
+            --border-color: #a7a7a7;
+            --form-accent: #bbba87;
+            /* Derived colors */
             --shadow: rgba(0,0,0,0.3);
-            --primary-color: #4a9eff;
-            --primary-hover: #6bb0ff;
-            --success: #4caf50;
-            --danger: #f44336;
-            --warning: #ffc107;
-            --warning-text: #ffecb3;
-            --success-text: #a5d6a7;
-            --danger-text: #ef9a9a;
-            --info-bg: #1e3a4a;
-            --info-border: #2196f3;
-            --info-text: #90caf9;
-            --json-key: #61afef;
-            --json-string: #98c379;
-            --json-number: #d19a66;
-            --json-boolean: #c678dd;
-            --json-null: #e06c75;
-            --text-on-primary: #ffffff;
-            --mlp-block-bg: rgba(171, 71, 188, 0.12);
-            --attn-block-bg: rgba(76, 175, 80, 0.12);
-            --neuron-large: #ba68c8;
+            --warning-text: #c9a84a;
+            --success-text: #6ba562;
+            --danger-text: #c47070;
+            --info-bg: #2a2a28;
+            --info-border: #a09f6c;
+            --info-text: #c0bf90;
+            --json-key: #a09f6c;
+            --json-string: #548e4c;
+            --json-number: #a0802d;
+            --json-boolean: #8a7ab8;
+            --json-null: #aa5656;
+            --text-on-primary: #292929;
+            --mlp-block-bg: rgba(160, 159, 108, 0.12);
+            --attn-block-bg: rgba(84, 142, 76, 0.12);
+            --neuron-large: #a09f6c;
             --modal-backdrop: rgba(0, 0, 0, 0.85);
         }
 
@@ -74,7 +86,14 @@
             padding: 16px;
             transition: background 0.15s ease;
             font-size: 12px;
-            line-height: 1.3;
+            line-height: 1.0;
+        }
+
+        /* Form accent for checkboxes, radios, range sliders */
+        input[type="checkbox"],
+        input[type="radio"],
+        input[type="range"] {
+            accent-color: var(--form-accent, var(--primary-color));
         }
 
         .container {
@@ -132,7 +151,7 @@
         .nav-item {
             padding: 6px 8px;
             margin-bottom: 2px;
-            border-radius: 4px;
+            border-radius: 2px;
             cursor: pointer;
             transition: color 0.15s ease;
             color: var(--text-secondary);
@@ -161,7 +180,7 @@
             gap: 6px;
             padding: 4px 8px;
             margin-bottom: 2px;
-            border-radius: 4px;
+            border-radius: 2px;
             cursor: pointer;
             transition: color 0.15s ease;
             font-size: 11px;
@@ -239,7 +258,7 @@
             top: 50px;
             left: 16px;
             background: var(--bg-primary);
-            border-radius: 4px;
+            border-radius: 2px;
             padding: 12px;
             max-width: 400px;
             z-index: 1000;
@@ -298,7 +317,7 @@
 
         .experiment-badge {
             padding: 2px 8px;
-            border-radius: 4px;
+            border-radius: 2px;
             font-size: 10px;
             color: var(--text-tertiary);
             font-weight: 400;
@@ -325,7 +344,7 @@
 
         select, button {
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 2px;
             font-size: 11px;
             background: transparent;
             color: var(--text-primary);
@@ -366,7 +385,7 @@
             padding: 6px 12px;
             background: transparent;
             border: none;
-            border-radius: 4px;
+            border-radius: 2px;
             cursor: pointer;
             font-weight: 400;
             font-size: 11px;
@@ -573,7 +592,7 @@
         .response-preview {
             background: var(--bg-tertiary);
             padding: 12px;
-            border-radius: 4px;
+            border-radius: 2px;
             font-size: 13px;
             line-height: 1.6;
             margin: 8px 0;
@@ -585,7 +604,7 @@
         .score-badge {
             display: inline-block;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 2px;
             font-size: 12px;
             font-weight: 600;
             margin-left: 8px;
@@ -752,7 +771,7 @@
 
         .preview-content {
             background: var(--bg-primary);
-            border-radius: 4px;
+            border-radius: 2px;
             max-width: 900px;
             max-height: 80vh;
             width: 100%;
@@ -790,7 +809,7 @@
 
         .json-viewer {
             padding: 8px;
-            border-radius: 4px;
+            border-radius: 2px;
             overflow-x: auto;
             font-family: 'Courier New', monospace;
             font-size: 11px;
@@ -865,7 +884,7 @@
         .prompt-box {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 2px;
             padding: 2px 6px;
             font-size: 10px;
             font-weight: 500;
@@ -891,7 +910,7 @@
         .prompt-set-select {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 2px;
             padding: 2px 8px;
             font-size: 11px;
             color: var(--text-primary);
@@ -920,6 +939,50 @@
             color: var(--text-secondary);
             font-style: italic;
         }
+
+/* Inference Context Panel */
+#inference-context {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 16px;
+}
+
+.inference-context-inner {
+    max-width: 100%;
+}
+
+.inference-context-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.inference-context-content {
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.inference-prompt,
+.inference-response {
+    margin-bottom: 4px;
+}
+
+.inference-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-right: 6px;
+}
+
+.inference-text {
+    color: var(--text-primary);
+}
+
+.inference-tokens {
+    color: var(--text-tertiary);
+    font-size: 10px;
+    margin-top: 4px;
+}
 
 .content-wrapper {
     flex: 1;

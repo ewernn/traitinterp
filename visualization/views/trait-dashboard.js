@@ -156,7 +156,7 @@ function renderStatsHeatmap(trait, statsResults, containerId, nLayers) {
         x: methods.map(m => m.replace(/_/g, ' ')),
         y: layers,
         type: 'heatmap',
-        colorscale: 'Viridis',
+        colorscale: window.ASYMB_COLORSCALE,
         hovertemplate: 'Method: %{x}<br>Layer: %{y}<br>Strength: %{z:.1f}%<extra></extra>',
         zmin: 0,
         zmax: 100,

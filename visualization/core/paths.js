@@ -230,18 +230,22 @@ class PathBuilder {
     }
 
     /**
-     * Get layer-internals data path (detailed single layer capture).
-     * @param {string|Object} trait - Trait name or object
+     * Get layer-internals data path.
+     * NOTE: Per-trait layer_internals JSONs have been removed from the structure.
+     * Raw layer internals are stored as .pt files in raw/internals/ but cannot be
+     * read by the browser. This method returns a path that will 404, causing the
+     * view to show "no data available" message.
+     * @deprecated Layer internals need to be regenerated with a proper pipeline
+     * @param {string|Object} trait - Trait name or object (ignored - data is not per-trait)
      * @param {string} promptSet - Prompt set name
      * @param {number} promptId - Prompt ID within the set
      * @param {number} layer - Layer number
      * @returns {string}
      */
     layerInternalsData(trait, promptSet, promptId, layer = 16) {
-        const traitName = typeof trait === 'string' ? trait : trait.name;
-        const dir = this.get('inference.layer_internals', { trait: traitName, prompt_set: promptSet });
-        const file = this.get('patterns.layer_internals_json', { prompt_id: promptId, layer });
-        return `${dir}/${file}`;
+        // Returns path that won't exist - view will gracefully handle 404
+        const dir = this.get('inference.raw_internals', { prompt_set: promptSet });
+        return `${dir}/${promptId}_L${layer}.json`;  // .json won't exist, only .pt
     }
 
     /**

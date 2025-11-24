@@ -105,13 +105,12 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     const allTokens = [...promptTokens, ...responseTokens];
     const nPromptTokens = refData.prompt.n_tokens;
     const nTotalTokens = allTokens.length;
-    const promptLabel = `${promptSet}/${promptId}`;
 
     // Build HTML
     let failedHtml = '';
     if (failedTraits.length > 0) {
         failedHtml = `
-            <div style="color: var(--text-secondary); font-size: 11px; margin-top: 4px;">
+            <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 8px;">
                 ⚠️ No data for: ${failedTraits.map(t => window.getDisplayName(t)).join(', ')}
             </div>
         `;
@@ -120,21 +119,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     container.innerHTML = `
         <div class="card" style="padding: 12px;">
             <div class="card-title" style="margin-bottom: 8px;">Per-Token Activation Trajectory</div>
-
-            <!-- Conversation context -->
-            <div style="background: var(--bg-tertiary); padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <div style="color: var(--text-primary); font-size: 11px; margin-bottom: 2px;">
-                    <strong>Prompt:</strong> ${window.markdownToHtml(refData.prompt.text)}
-                </div>
-                <div style="color: var(--text-primary); font-size: 11px; margin-bottom: 4px;">
-                    <strong>Response:</strong> ${window.markdownToHtml(refData.response.text.substring(0, 200))}${refData.response.text.length > 200 ? '...' : ''}
-                </div>
-                <div style="color: var(--text-secondary); font-size: 10px;">
-                    ${nPromptTokens} prompt + ${nTotalTokens - nPromptTokens} response = ${nTotalTokens} tokens • ${promptLabel}
-                </div>
-                ${failedHtml}
-            </div>
-
+            ${failedHtml}
             <!-- Plot -->
             <div id="combined-activation-plot" style="width: 100%;"></div>
         </div>
@@ -195,6 +180,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         displayTokens.push(allTokens[t]);
     }
 
+    // Get colors from CSS variables
+    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const bgTertiary = window.getCssVar('--bg-tertiary', '#3a3a3a');
+
     // Add subtle vertical line separator between prompt and response
     const shapes = [
         {
@@ -205,7 +194,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             y1: 1,
             yref: 'paper',
             line: {
-                color: 'rgba(128, 128, 128, 0.4)',
+                color: textSecondary,
                 width: 2,
                 dash: 'dash'
             }
@@ -222,7 +211,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             showarrow: false,
             font: {
                 size: 11,
-                color: 'rgba(128, 128, 128, 0.8)'
+                color: textSecondary
             }
         },
         {
@@ -233,12 +222,12 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             showarrow: false,
             font: {
                 size: 11,
-                color: 'rgba(128, 128, 128, 0.8)'
+                color: textSecondary
             }
         }
     ];
 
-    const layout = {
+    const layout = window.getPlotlyLayout({
         xaxis: {
             title: 'Token Position',
             tickmode: 'array',
@@ -251,21 +240,14 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         yaxis: {
             title: 'Activation (avg all layers)',
             zeroline: true,
-            zerolinecolor: 'rgba(128, 128, 128, 0.3)',
             zerolinewidth: 1,
-            showgrid: true,
-            gridcolor: 'rgba(128, 128, 128, 0.1)'
+            showgrid: true
         },
         shapes: shapes,
         annotations: annotations,
         margin: { l: 60, r: 20, t: 40, b: 100 },
         height: 800,
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: {
-            size: 11,
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary')
-        },
+        font: { size: 11 },
         hovermode: 'closest',
         legend: {
             orientation: 'h',
@@ -274,10 +256,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             xanchor: 'center',
             x: 0.5,
             font: { size: 11 },
-            bgcolor: 'rgba(0,0,0,0)'
+            bgcolor: 'transparent'
         },
         showlegend: true
-    };
+    });
 
     const config = {
         responsive: true,

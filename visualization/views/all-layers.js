@@ -126,9 +126,6 @@ function renderAllLayersDataInContainer(containerId, trait, data) {
         <div style="margin-bottom: 4px;">
             <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${window.getDisplayName(trait.name)}</span>
         </div>
-        <div style="color: var(--text-secondary); font-size: 10px; margin-bottom: 8px;">
-            ${data.prompt.text} ${data.response.text}
-        </div>
         <div id="${trajectoryId}"></div>
     `;
 
@@ -184,6 +181,11 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
 
     console.log(`[${divId}] Heatmap data sample:`, heatmapData[0].slice(0, 5));
 
+    // Get colors from CSS variables
+    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
+    const separatorColor = `${primaryColor}80`;  // 50% opacity
+    const highlightColor = `${primaryColor}33`;  // 20% opacity
+
     // Create shapes array for separator line and current token highlight
     const shapes = [
         // Vertical line separating prompt and response (adjusted for skipped BOS)
@@ -196,7 +198,7 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
             y0: 0,
             y1: 1,
             line: {
-                color: 'rgba(255, 255, 255, 0.5)',
+                color: separatorColor,
                 width: 2,
                 dash: 'dash'
             }
@@ -210,7 +212,7 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
             x1: 0.5,
             y0: 0,
             y1: 1,
-            fillcolor: 'rgba(74, 158, 255, 0.2)',
+            fillcolor: highlightColor,
             line: { width: 0 },
             name: 'token-highlight'  // ID for updating
         }
@@ -221,14 +223,14 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
         x: tokens.slice(startIdx),  // Skip BOS in token labels too
         y: Array.from({length: nLayers}, (_, i) => `L${i}`),
         type: 'heatmap',
-        colorscale: 'RdBu',
+        colorscale: window.ASYMB_COLORSCALE,
         zmid: 0,
         hovertemplate: 'Token: %{x}<br>Layer: %{y}<br>Score: %{z:.2f}<extra></extra>'
     }];
 
     // Adjust margins based on height
     const isCompact = height < 300;
-    const layout = {
+    const layout = window.getPlotlyLayout({
         title: isCompact ? '' : 'Trait Trajectory',
         xaxis: {
             title: isCompact ? '' : 'Tokens',
@@ -241,13 +243,8 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
         },
         shapes: shapes,
         height: height,
-        margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 40, b: 50, l: 40, r: 10 },
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()
-        }
-    };
+        margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 40, b: 50, l: 40, r: 10 }
+    });
 
     Plotly.newPlot(divId, data, layout, {displayModeBar: false});
 }
@@ -332,7 +329,7 @@ function renderAttentionViewer(divId, data, allTokens, nPromptTokens) {
             x: contextTokens,
             y: Array.from({length: nLayers}, (_, i) => `L${i}`),
             type: 'heatmap',
-            colorscale: 'Viridis',
+            colorscale: window.ASYMB_COLORSCALE,
             hovertemplate: 'Context Token: %{x}<br>Layer: %{y}<br>Attention: %{z:.4f}<extra></extra>',
             colorbar: {
                 title: 'Attention Weight'
@@ -392,7 +389,12 @@ function renderLogitLens(data, tokenIdx, allTokens, nPromptTokens) {
 
     // Build traces for top-3 predictions
     const traces = [];
-    const colors = ['#4a9eff', '#ff6b6b', '#51cf66'];  // Blue, Red, Green
+    // Use CSS variables for trace colors (primary, danger, success)
+    const colors = [
+        window.getCssVar('--primary-color', '#a09f6c'),
+        window.getCssVar('--danger', '#aa5656'),
+        window.getCssVar('--success', '#548e4c')
+    ];
 
     for (let k = 0; k < 3; k++) {
         const probs = [];
@@ -423,28 +425,21 @@ function renderLogitLens(data, tokenIdx, allTokens, nPromptTokens) {
         });
     }
 
-    // Layout
-    const layout = {
+    // Layout using helper
+    const layout = window.getPlotlyLayout({
         xaxis: {
             title: 'Layer',
             tickvals: layerIndices,
-            gridcolor: 'rgba(128, 128, 128, 0.2)',
             zeroline: false
         },
         yaxis: {
             title: 'Prob',
             range: [0, 1],
-            gridcolor: 'rgba(128, 128, 128, 0.2)',
             zeroline: false
         },
         height: 200,
         margin: { t: 10, b: 40, l: 40, r: 10 },
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim(),
-            size: 10
-        },
+        font: { size: 10 },
         showlegend: true,
         legend: {
             orientation: 'h',
@@ -454,13 +449,18 @@ function renderLogitLens(data, tokenIdx, allTokens, nPromptTokens) {
             x: 0.5,
             font: { size: 10 }
         }
-    };
+    });
 
     Plotly.newPlot('logit-lens-plot', traces, layout, { responsive: true, displayModeBar: false });
 }
 
 function setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens) {
     const slider = document.getElementById('unified-slider');
+
+    // Get colors from CSS variables
+    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
+    const separatorColor = `${primaryColor}80`;  // 50% opacity
+    const highlightColor = `${primaryColor}33`;  // 20% opacity
 
     // Function to update all visualizations when slider moves
     function updateAllVisualizations(tokenIdx) {
@@ -488,7 +488,7 @@ function setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens) {
                 y0: 0,
                 y1: 1,
                 line: {
-                    color: 'rgba(255, 255, 255, 0.5)',
+                    color: separatorColor,
                     width: 2,
                     dash: 'dash'
                 }
@@ -502,7 +502,7 @@ function setupUnifiedSlider(data, allTokens, nPromptTokens, nTotalTokens) {
                 x1: heatmapIdx + 0.5,
                 y0: 0,
                 y1: 1,
-                fillcolor: 'rgba(74, 158, 255, 0.2)',
+                fillcolor: highlightColor,
                 line: { width: 0 }
             }
         ];

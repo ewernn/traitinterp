@@ -15,7 +15,9 @@ Storage:
   Raw activations      : experiments/{exp}/inference/raw/residual/{prompt_set}/{id}.pt
   Layer internals      : experiments/{exp}/inference/raw/internals/{prompt_set}/{id}_L{layer}.pt
   Residual stream JSON : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
-  Layer internals JSON : experiments/{exp}/inference/{category}/{trait}/layer_internals/{prompt_set}/{id}_L{layer}.json
+
+Note: Layer internals are saved as raw .pt only. Per-trait analysis (SAE decomposition,
+attention vs MLP breakdown) should be computed on-demand from raw + trait vectors.
 
 Usage:
     # Capture residual stream + project onto all traits
@@ -462,8 +464,8 @@ def main():
     # What to capture
     parser.add_argument("--residual-stream", action="store_true", default=True,
                        help="Capture residual stream at all layers (default)")
-    parser.add_argument("--layer-internals", type=int, metavar="N",
-                       help="Capture full internals for layer N")
+    parser.add_argument("--layer-internals", type=int, metavar="N", action='append',
+                       help="Capture full internals for layer N (can be used multiple times)")
     parser.add_argument("--attention-only", type=int, metavar="N",
                        help="Capture just attention weights for layer N")
     parser.add_argument("--logit-lens", action="store_true",
@@ -569,16 +571,17 @@ def main():
             prompt_text = prompt_item['text']
             prompt_note = prompt_item.get('note', '')
 
-            # Capture layer internals
+            # Capture layer internals (can be multiple)
             if args.layer_internals is not None:
-                data = capture_layer_internals(model, tokenizer, prompt_text, args.layer_internals,
-                                               args.max_new_tokens, args.temperature)
-
-                # Save raw internals as .pt (binary, not JSON!)
                 raw_dir = inference_dir / "raw" / "internals" / set_name
                 raw_dir.mkdir(parents=True, exist_ok=True)
-                torch.save(data, raw_dir / f"{prompt_id}_L{args.layer_internals}.pt")
-                print(f"  Saved internals: {raw_dir}/{prompt_id}_L{args.layer_internals}.pt")
+
+                for layer_idx in args.layer_internals:
+                    data = capture_layer_internals(model, tokenizer, prompt_text, layer_idx,
+                                                   args.max_new_tokens, args.temperature)
+                    # Save raw internals as .pt (binary, not JSON!)
+                    torch.save(data, raw_dir / f"{prompt_id}_L{layer_idx}.pt")
+                    print(f"  Saved internals: {raw_dir}/{prompt_id}_L{layer_idx}.pt")
 
             # Capture residual stream
             elif args.residual_stream or not args.layer_internals:

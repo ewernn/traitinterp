@@ -173,14 +173,16 @@
                     <button class="info-btn" id="info-btn" title="Information">ℹ️</button>
                     <div class="page-title" id="page-title">Overview</div>
                     <div class="experiment-badge" id="experiment-badge">-</div>
-                    <div id="prompt-selector" class="prompt-selector-container">
-                        <!-- Boxes will be dynamically inserted here -->
                     </div>
-                </div>
                 <div class="header-right">
                     <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">🌙</button>
                 </div>
             </header>
+
+            <!-- Inference Context: prompt picker + prompt/response display (only for inference views) -->
+            <div id="inference-context" style="display: none;">
+                <!-- Populated by renderInferenceContext() in state.js -->
+            </div>
 
             <div class="content-wrapper" id="content-area">
                 <div class="loading">Loading experiment data...</div>

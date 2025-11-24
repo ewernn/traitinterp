@@ -6,6 +6,7 @@
     <title>Design Playground - Trait Interp</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="stylesheet" href="/visualization/styles.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
     <style>
         /* Design playground specific styles */
         .design-container {
@@ -115,15 +116,18 @@
         .font-sample {
             padding: 8px;
             border-radius: 4px;
+            color: var(--text-primary);
         }
 
         .font-sample.heading {
             font-weight: 600;
             font-size: 14px;
+            color: var(--text-primary);
         }
 
         .font-sample.body {
             font-size: 12px;
+            color: var(--text-primary);
         }
 
         .font-sample.small {
@@ -132,8 +136,9 @@
         }
 
         .font-sample.mono {
-            font-family: 'Courier New', monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 11px;
+            color: var(--text-primary);
         }
 
         .slider-row {
@@ -183,7 +188,7 @@
         }
 
         .tree-preview {
-            font-family: 'Courier New', monospace;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 12px;
             line-height: 1.4;
         }
@@ -293,6 +298,16 @@
             color: var(--text-secondary);
             border: none;
         }
+
+        /* Form accent for checkboxes/radios */
+        input[type="checkbox"],
+        input[type="radio"] {
+            accent-color: var(--form-accent, var(--primary-color));
+        }
+
+        input[type="range"] {
+            accent-color: var(--form-accent, var(--primary-color));
+        }
     </style>
 </head>
 <body>
@@ -318,15 +333,15 @@
                     <div class="color-item">
                         <span class="color-label">Primary BG</span>
                         <div class="color-picker-row">
-                            <input type="color" id="bg-primary" value="#1a1a1a">
-                            <input type="text" id="bg-primary-text" value="#1a1a1a">
+                            <input type="color" id="bg-primary" value="#292929">
+                            <input type="text" id="bg-primary-text" value="#292929">
                         </div>
                     </div>
                     <div class="color-item">
                         <span class="color-label">Secondary BG</span>
                         <div class="color-picker-row">
-                            <input type="color" id="bg-secondary" value="#2d2d2d">
-                            <input type="text" id="bg-secondary-text" value="#2d2d2d">
+                            <input type="color" id="bg-secondary" value="#2f2f2f">
+                            <input type="text" id="bg-secondary-text" value="#2f2f2f">
                         </div>
                     </div>
                     <div class="color-item">
@@ -353,15 +368,15 @@
                     <div class="color-item">
                         <span class="color-label">Secondary</span>
                         <div class="color-picker-row">
-                            <input type="color" id="text-secondary" value="#b0b0b0">
-                            <input type="text" id="text-secondary-text" value="#b0b0b0">
+                            <input type="color" id="text-secondary" value="#a4a4a4">
+                            <input type="text" id="text-secondary-text" value="#a4a4a4">
                         </div>
                     </div>
                     <div class="color-item">
                         <span class="color-label">Tertiary</span>
                         <div class="color-picker-row">
-                            <input type="color" id="text-tertiary" value="#888888">
-                            <input type="text" id="text-tertiary-text" value="#888888">
+                            <input type="color" id="text-tertiary" value="#7f7f7f">
+                            <input type="text" id="text-tertiary-text" value="#7f7f7f">
                         </div>
                     </div>
                 </div>
@@ -374,29 +389,50 @@
                     <div class="color-item">
                         <span class="color-label">Primary Accent</span>
                         <div class="color-picker-row">
-                            <input type="color" id="primary-color" value="#4a9eff">
-                            <input type="text" id="primary-color-text" value="#4a9eff">
+                            <input type="color" id="primary-color" value="#dce39d">
+                            <input type="text" id="primary-color-text" value="#dce39d">
                         </div>
                     </div>
                     <div class="color-item">
                         <span class="color-label">Success</span>
                         <div class="color-picker-row">
-                            <input type="color" id="success" value="#4caf50">
-                            <input type="text" id="success-text" value="#4caf50">
+                            <input type="color" id="success" value="#548e4c">
+                            <input type="text" id="success-text" value="#548e4c">
                         </div>
                     </div>
                     <div class="color-item">
                         <span class="color-label">Warning</span>
                         <div class="color-picker-row">
-                            <input type="color" id="warning" value="#ffc107">
-                            <input type="text" id="warning-text-val" value="#ffc107">
+                            <input type="color" id="warning" value="#a0802d">
+                            <input type="text" id="warning-text-val" value="#a0802d">
                         </div>
                     </div>
                     <div class="color-item">
                         <span class="color-label">Danger</span>
                         <div class="color-picker-row">
-                            <input type="color" id="danger" value="#f44336">
-                            <input type="text" id="danger-text" value="#f44336">
+                            <input type="color" id="danger" value="#aa5656">
+                            <input type="text" id="danger-text" value="#aa5656">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form/Border Colors -->
+            <div class="design-section">
+                <div class="design-section-title">Form Colors</div>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <span class="color-label">Border</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="border-color" value="#a7a7a7">
+                            <input type="text" id="border-color-text" value="#a7a7a7">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Form Accent</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="form-accent" value="#bbba87">
+                            <input type="text" id="form-accent-text" value="#bbba87">
                         </div>
                     </div>
                 </div>
@@ -405,39 +441,13 @@
             <!-- Typography -->
             <div class="design-section">
                 <div class="design-section-title">Typography</div>
-                <div class="slider-row">
-                    <label>
-                        <span>Base Font Size</span>
-                        <span id="font-size-val">12px</span>
-                    </label>
-                    <input type="range" id="font-size" min="10" max="16" value="12">
-                </div>
-                <div class="slider-row">
-                    <label>
-                        <span>Line Height</span>
-                        <span id="line-height-val">1.3</span>
-                    </label>
-                    <input type="range" id="line-height" min="1.0" max="1.8" step="0.1" value="1.3">
-                </div>
-                <div class="slider-row">
-                    <label>
-                        <span>Heading Weight</span>
-                        <span id="heading-weight-val">600</span>
-                    </label>
-                    <input type="range" id="heading-weight" min="400" max="800" step="100" value="600">
-                </div>
-            </div>
-
-            <!-- Spacing -->
-            <div class="design-section">
-                <div class="design-section-title">Spacing</div>
-                <div class="slider-row">
-                    <label>
-                        <span>Border Radius</span>
-                        <span id="border-radius-val">4px</span>
-                    </label>
-                    <input type="range" id="border-radius" min="0" max="12" value="4">
-                </div>
+                <p style="font-size: 10px; color: var(--text-tertiary); margin: 0;">
+                    Fixed values:<br>
+                    • Base font size: 12px<br>
+                    • Line height: 1.0<br>
+                    • Heading weight: 600<br>
+                    • Border radius: 2px
+                </p>
             </div>
 
             <!-- Export -->
@@ -460,42 +470,179 @@
                 </div>
             </div>
 
+            <!-- Accent Colors Showcase -->
+            <div class="preview-card">
+                <div class="preview-title">Accent Colors in Context</div>
+                <!-- Badges -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Badges / Tags</span>
+                    <div class="component-row">
+                        <span style="padding: 2px 8px; border-radius: 2px; font-size: 10px; background: var(--primary-color); color: var(--text-on-primary);">Primary</span>
+                        <span style="padding: 2px 8px; border-radius: 2px; font-size: 10px; background: var(--success); color: var(--text-on-primary);">Success</span>
+                        <span style="padding: 2px 8px; border-radius: 2px; font-size: 10px; background: var(--warning); color: var(--bg-primary);">Warning</span>
+                        <span style="padding: 2px 8px; border-radius: 2px; font-size: 10px; background: var(--danger); color: var(--text-on-primary);">Danger</span>
+                    </div>
+                </div>
+                <!-- Text colors -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Text Colors</span>
+                    <div class="component-row">
+                        <span style="color: var(--primary-color); font-size: 11px;">Primary link</span>
+                        <span style="color: var(--success); font-size: 11px;">Success text</span>
+                        <span style="color: var(--warning); font-size: 11px;">Warning text</span>
+                        <span style="color: var(--danger); font-size: 11px;">Danger text</span>
+                    </div>
+                </div>
+                <!-- Buttons in accent colors -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Accent Buttons</span>
+                    <div class="component-row">
+                        <button style="padding: 4px 10px; border-radius: 2px; font-size: 10px; background: var(--primary-color); color: var(--text-on-primary); border: none; cursor: pointer;">Primary</button>
+                        <button style="padding: 4px 10px; border-radius: 2px; font-size: 10px; background: var(--success); color: var(--text-on-primary); border: none; cursor: pointer;">Success</button>
+                        <button style="padding: 4px 10px; border-radius: 2px; font-size: 10px; background: var(--warning); color: var(--bg-primary); border: none; cursor: pointer;">Warning</button>
+                        <button style="padding: 4px 10px; border-radius: 2px; font-size: 10px; background: var(--danger); color: var(--text-on-primary); border: none; cursor: pointer;">Danger</button>
+                    </div>
+                </div>
+                <!-- Borders -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Border Accents</span>
+                    <div class="component-row">
+                        <div style="padding: 6px 10px; border-left: 3px solid var(--primary-color); background: var(--bg-secondary); font-size: 10px; color: var(--text-secondary);">Primary</div>
+                        <div style="padding: 6px 10px; border-left: 3px solid var(--success); background: var(--bg-secondary); font-size: 10px; color: var(--text-secondary);">Success</div>
+                        <div style="padding: 6px 10px; border-left: 3px solid var(--warning); background: var(--bg-secondary); font-size: 10px; color: var(--text-secondary);">Warning</div>
+                        <div style="padding: 6px 10px; border-left: 3px solid var(--danger); background: var(--bg-secondary); font-size: 10px; color: var(--text-secondary);">Danger</div>
+                    </div>
+                </div>
+                <!-- Alert boxes -->
+                <div>
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Alert Messages</span>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="padding: 8px 12px; border-radius: 2px; font-size: 10px; background: rgba(138, 136, 86, 0.15); color: var(--primary-color); border: 1px solid var(--primary-color);">Info: This is a primary alert message.</div>
+                        <div style="padding: 8px 12px; border-radius: 2px; font-size: 10px; background: rgba(76, 175, 80, 0.15); color: var(--success); border: 1px solid var(--success);">Success: Operation completed successfully.</div>
+                        <div style="padding: 8px 12px; border-radius: 2px; font-size: 10px; background: rgba(255, 193, 7, 0.15); color: var(--warning); border: 1px solid var(--warning);">Warning: Please review before continuing.</div>
+                        <div style="padding: 8px 12px; border-radius: 2px; font-size: 10px; background: rgba(244, 67, 54, 0.15); color: var(--danger); border: 1px solid var(--danger);">Error: Something went wrong.</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Buttons Preview -->
             <div class="preview-card">
-                <div class="preview-title">Buttons</div>
-                <div class="component-row">
-                    <button class="btn-primary" style="padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Primary</button>
-                    <button class="btn-secondary" style="padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Secondary</button>
-                    <button class="btn-ghost" style="padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Ghost</button>
-                    <button disabled style="padding: 6px 12px; border-radius: 4px; font-size: 11px;">Disabled</button>
+                <div class="preview-title">Button Styles</div>
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Filled / Outline / Ghost</span>
+                    <div class="component-row">
+                        <button style="padding: 6px 12px; border-radius: 2px; font-size: 11px; background: var(--primary-color); color: var(--text-on-primary); border: none; cursor: pointer;">Filled</button>
+                        <button style="padding: 6px 12px; border-radius: 2px; font-size: 11px; background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); cursor: pointer;">Outline</button>
+                        <button style="padding: 6px 12px; border-radius: 2px; font-size: 11px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Ghost</button>
+                        <button disabled style="padding: 6px 12px; border-radius: 2px; font-size: 11px; opacity: 0.5;">Disabled</button>
+                    </div>
                 </div>
-                <div class="component-row">
-                    <button style="padding: 4px 8px; font-size: 10px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Small</button>
-                    <button style="padding: 8px 16px; font-size: 12px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Medium</button>
+                <div>
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Sizes</span>
+                    <div class="component-row" style="align-items: center;">
+                        <button style="padding: 2px 6px; font-size: 9px; border-radius: 2px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">XS</button>
+                        <button style="padding: 4px 8px; font-size: 10px; border-radius: 2px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Small</button>
+                        <button style="padding: 6px 12px; font-size: 11px; border-radius: 2px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Medium</button>
+                        <button style="padding: 8px 16px; font-size: 12px; border-radius: 2px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Large</button>
+                    </div>
                 </div>
             </div>
 
             <!-- Form Elements -->
             <div class="preview-card">
                 <div class="preview-title">Form Elements</div>
-                <div class="component-row">
-                    <select style="padding: 4px 8px; font-size: 11px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
-                        <option>Select option</option>
-                        <option>Option 1</option>
-                        <option>Option 2</option>
-                    </select>
-                    <input type="text" placeholder="Text input" style="padding: 4px 8px; font-size: 11px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                <!-- Text inputs -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Text Inputs</span>
+                    <div class="component-row">
+                        <input type="text" placeholder="Default" style="padding: 4px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <input type="text" placeholder="Focused" style="padding: 4px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--primary-color);">
+                        <input type="text" placeholder="Error" style="padding: 4px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--danger);">
+                        <input type="text" placeholder="Disabled" disabled style="padding: 4px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-tertiary); color: var(--text-tertiary); border: 1px solid var(--border-color);">
+                    </div>
                 </div>
-                <div class="component-row" style="margin-top: 8px;">
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
-                        <input type="checkbox" checked> Checkbox
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
-                        <input type="radio" name="radio" checked> Radio 1
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
-                        <input type="radio" name="radio"> Radio 2
-                    </label>
+                <!-- Selects -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Selects / Dropdowns</span>
+                    <div class="component-row">
+                        <select style="padding: 4px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                            <option>Default select</option>
+                            <option>Option 1</option>
+                            <option>Option 2</option>
+                        </select>
+                        <select style="padding: 4px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--primary-color);">
+                            <option>Focused select</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Checkboxes and Radios -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Checkboxes & Radios</span>
+                    <div class="component-row">
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                            <input type="checkbox"> Unchecked
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                            <input type="checkbox" checked> Checked
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary); cursor: not-allowed;">
+                            <input type="checkbox" disabled> Disabled
+                        </label>
+                    </div>
+                    <div class="component-row" style="margin-top: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                            <input type="radio" name="radio-demo"> Unselected
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                            <input type="radio" name="radio-demo" checked> Selected
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-tertiary); cursor: not-allowed;">
+                            <input type="radio" disabled> Disabled
+                        </label>
+                    </div>
+                </div>
+                <!-- Range slider -->
+                <div style="margin-bottom: 12px;">
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Range Slider</span>
+                    <input type="range" min="0" max="100" value="50" style="width: 200px;">
+                </div>
+                <!-- Textarea -->
+                <div>
+                    <span style="font-size: 10px; color: var(--text-tertiary); display: block; margin-bottom: 6px;">Textarea</span>
+                    <textarea placeholder="Enter text here..." style="padding: 6px 8px; font-size: 11px; border-radius: 2px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); width: 200px; height: 60px; resize: vertical;"></textarea>
+                </div>
+            </div>
+
+            <!-- Background Levels -->
+            <div class="preview-card">
+                <div class="preview-title">Background Levels</div>
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex: 1; padding: 16px; background: var(--bg-primary); border-radius: 2px;">
+                        <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px;">Primary BG</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Page background, main canvas</div>
+                    </div>
+                    <div style="flex: 1; padding: 16px; background: var(--bg-secondary); border-radius: 2px;">
+                        <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px;">Secondary BG</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Cards, panels, inputs</div>
+                    </div>
+                    <div style="flex: 1; padding: 16px; background: var(--bg-tertiary); border-radius: 2px;">
+                        <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 4px;">Tertiary BG</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">Hover states, code blocks, nested elements</div>
+                    </div>
+                </div>
+                <div style="font-size: 10px; color: var(--text-tertiary);">
+                    Use case examples:
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <div style="padding: 8px 12px; background: var(--bg-secondary); border-radius: 2px; font-size: 10px; color: var(--text-secondary);">
+                        Card on <span style="background: var(--bg-tertiary); padding: 2px 4px; border-radius: 2px;">hover highlight</span>
+                    </div>
+                    <div style="padding: 8px 12px; background: var(--bg-secondary); border-radius: 2px; font-size: 10px; color: var(--text-secondary);">
+                        <code style="background: var(--bg-tertiary); padding: 2px 4px; border-radius: 2px; font-family: 'JetBrains Mono', monospace;">inline code</code> in text
+                    </div>
+                    <div style="padding: 8px 12px; background: var(--bg-tertiary); border-radius: 2px; font-size: 10px; color: var(--text-secondary);">
+                        Active/selected item
+                    </div>
                 </div>
             </div>
 
@@ -526,30 +673,154 @@
             <!-- Heatmap Color Scales -->
             <div class="preview-card">
                 <div class="preview-title">Heatmap Color Scales</div>
-                <div class="heatmap-grid">
+
+                <!-- Asymmetric: Vibrant red + Muted blue (NEW - your request) -->
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 8px; margin-top: 8px;">Asymmetric: Pop Red + Muted Blue (for [0,+1] focus)</div>
+                <div class="heatmap-grid" style="margin-bottom: 16px;">
+                    <div class="heatmap-option" data-scale="AsymA">
+                        <div id="heatmap-asyma"></div>
+                        <div class="heatmap-label">Asym A (CW red + Muted blue)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymB">
+                        <div id="heatmap-asymb"></div>
+                        <div class="heatmap-label">Asym B (CW red + Soft blue)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymC">
+                        <div id="heatmap-asymc"></div>
+                        <div class="heatmap-label">Asym C (Vivid red + Steel)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymD">
+                        <div id="heatmap-asymd"></div>
+                        <div class="heatmap-label">Asym D (Coral + Slate)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymE">
+                        <div id="heatmap-asyme"></div>
+                        <div class="heatmap-label">Asym E (Crimson + Pewter)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymF">
+                        <div id="heatmap-asymf"></div>
+                        <div class="heatmap-label">Asym F (Brick + Dusty)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymG">
+                        <div id="heatmap-asymg"></div>
+                        <div class="heatmap-label">Asym G (Cherry + Ash)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymH">
+                        <div id="heatmap-asymh"></div>
+                        <div class="heatmap-label">Asym H (Vermillion + Storm)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymI">
+                        <div id="heatmap-asymi"></div>
+                        <div class="heatmap-label">Asym I (Terracotta + Fog)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="AsymJ">
+                        <div id="heatmap-asymj"></div>
+                        <div class="heatmap-label">Asym J (Wine + Mist)</div>
+                    </div>
+                </div>
+
+                <!-- Coolwarm family (symmetric reference) -->
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 8px;">Coolwarm Symmetric (reference)</div>
+                <div class="heatmap-grid" style="margin-bottom: 16px;">
+                    <div class="heatmap-option" data-scale="Coolwarm">
+                        <div id="heatmap-coolwarm"></div>
+                        <div class="heatmap-label">Coolwarm</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="CoolwarmMuted">
+                        <div id="heatmap-coolwarmmuted"></div>
+                        <div class="heatmap-label">Coolwarm Muted</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="CoolwarmSoft">
+                        <div id="heatmap-coolwarmsoft"></div>
+                        <div class="heatmap-label">Coolwarm Soft</div>
+                    </div>
                     <div class="heatmap-option" data-scale="RdBu">
                         <div id="heatmap-rdbu"></div>
-                        <div class="heatmap-label">RdBu (Diverging)</div>
+                        <div class="heatmap-label">RdBu (saturated)</div>
                     </div>
+                </div>
+
+                <!-- Spectral family -->
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 8px;">Spectral Family (rainbow-like)</div>
+                <div class="heatmap-grid" style="margin-bottom: 16px;">
+                    <div class="heatmap-option" data-scale="Spectral">
+                        <div id="heatmap-spectral"></div>
+                        <div class="heatmap-label">Spectral</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="SpectralMuted">
+                        <div id="heatmap-spectralmuted"></div>
+                        <div class="heatmap-label">Spectral Muted</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="SpectralSoft">
+                        <div id="heatmap-spectralsoft"></div>
+                        <div class="heatmap-label">Spectral Soft</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="SpectralEarth">
+                        <div id="heatmap-spectralearth"></div>
+                        <div class="heatmap-label">Spectral Earth</div>
+                    </div>
+                </div>
+
+                <!-- YlOrRd family -->
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 8px;">YlOrRd Family (yellow-orange-red)</div>
+                <div class="heatmap-grid" style="margin-bottom: 16px;">
+                    <div class="heatmap-option" data-scale="YlOrRd">
+                        <div id="heatmap-ylorrd"></div>
+                        <div class="heatmap-label">YlOrRd</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="YlOrRdMuted">
+                        <div id="heatmap-ylorrdmuted"></div>
+                        <div class="heatmap-label">YlOrRd Muted</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="OrRd">
+                        <div id="heatmap-orrd"></div>
+                        <div class="heatmap-label">OrRd (orange-red)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="YlOrBr">
+                        <div id="heatmap-ylorbr"></div>
+                        <div class="heatmap-label">YlOrBr (earthy)</div>
+                    </div>
+                </div>
+
+                <!-- Green to Red family -->
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 8px;">Green to Red (diverging)</div>
+                <div class="heatmap-grid" style="margin-bottom: 16px;">
+                    <div class="heatmap-option" data-scale="RdYlGn">
+                        <div id="heatmap-rdylgn"></div>
+                        <div class="heatmap-label">RdYlGn (red-green)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="GnRd">
+                        <div id="heatmap-gnrd"></div>
+                        <div class="heatmap-label">Green→Red</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="GnRdMuted">
+                        <div id="heatmap-gnrdmuted"></div>
+                        <div class="heatmap-label">Green→Red Muted</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="PRGn">
+                        <div id="heatmap-prgn"></div>
+                        <div class="heatmap-label">PRGn (purple-green)</div>
+                    </div>
+                </div>
+
+                <!-- Other useful scales -->
+                <div style="font-size: 10px; color: var(--text-tertiary); margin-bottom: 8px;">Other Options</div>
+                <div class="heatmap-grid">
                     <div class="heatmap-option" data-scale="Viridis">
                         <div id="heatmap-viridis"></div>
-                        <div class="heatmap-label">Viridis (Sequential)</div>
+                        <div class="heatmap-label">Viridis</div>
                     </div>
-                    <div class="heatmap-option" data-scale="Plasma">
-                        <div id="heatmap-plasma"></div>
-                        <div class="heatmap-label">Plasma (Sequential)</div>
+                    <div class="heatmap-option" data-scale="PuOr">
+                        <div id="heatmap-puor"></div>
+                        <div class="heatmap-label">PuOr (purple-orange)</div>
                     </div>
-                    <div class="heatmap-option" data-scale="Picnic">
-                        <div id="heatmap-picnic"></div>
-                        <div class="heatmap-label">Picnic (Diverging)</div>
+                    <div class="heatmap-option" data-scale="BrBG">
+                        <div id="heatmap-brbg"></div>
+                        <div class="heatmap-label">BrBG (brown-teal)</div>
                     </div>
                     <div class="heatmap-option" data-scale="Greys">
                         <div id="heatmap-greys"></div>
-                        <div class="heatmap-label">Greys (Neutral)</div>
-                    </div>
-                    <div class="heatmap-option" data-scale="Blues">
-                        <div id="heatmap-blues"></div>
-                        <div class="heatmap-label">Blues (Sequential)</div>
+                        <div class="heatmap-label">Greys</div>
                     </div>
                 </div>
             </div>
@@ -595,7 +866,9 @@
             'primary-color': '--primary-color',
             'success': '--success',
             'warning': '--warning',
-            'danger': '--danger'
+            'danger': '--danger',
+            'border-color': '--border-color',
+            'form-accent': '--form-accent'
         };
 
         // Load current CSS variable values
@@ -612,6 +885,13 @@
             }
         }
 
+        // Debounce helper - only render charts after user stops picking
+        let renderTimeout = null;
+        function debouncedRenderCharts() {
+            if (renderTimeout) clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(renderLineChart, 150);
+        }
+
         // Sync color pickers with text inputs and CSS variables
         for (const [id, varName] of Object.entries(colorVars)) {
             const picker = document.getElementById(id);
@@ -622,7 +902,7 @@
                 picker.addEventListener('input', (e) => {
                     document.documentElement.style.setProperty(varName, e.target.value);
                     if (text) text.value = e.target.value;
-                    renderCharts();
+                    debouncedRenderCharts();
                 });
             }
 
@@ -631,36 +911,42 @@
                     if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
                         document.documentElement.style.setProperty(varName, e.target.value);
                         if (picker) picker.value = e.target.value;
-                        renderCharts();
+                        debouncedRenderCharts();
                     }
                 });
             }
         }
 
-        // Typography sliders
-        document.getElementById('font-size').addEventListener('input', (e) => {
-            document.getElementById('font-size-val').textContent = e.target.value + 'px';
-            document.body.style.fontSize = e.target.value + 'px';
-        });
-
-        document.getElementById('line-height').addEventListener('input', (e) => {
-            document.getElementById('line-height-val').textContent = e.target.value;
-            document.body.style.lineHeight = e.target.value;
-        });
-
-        document.getElementById('heading-weight').addEventListener('input', (e) => {
-            document.getElementById('heading-weight-val').textContent = e.target.value;
+        // Apply fixed values on load
+        function applyFixedValues() {
+            // Line height: 1.0
+            document.body.style.lineHeight = '1.0';
+            // Heading weight: 600
             document.querySelectorAll('.font-sample.heading, .preview-title').forEach(el => {
-                el.style.fontWeight = e.target.value;
+                el.style.fontWeight = '600';
             });
-        });
-
-        document.getElementById('border-radius').addEventListener('input', (e) => {
-            document.getElementById('border-radius-val').textContent = e.target.value + 'px';
+            // Border radius: 2px
             document.querySelectorAll('.preview-card, button, select, input[type="text"]').forEach(el => {
-                el.style.borderRadius = e.target.value + 'px';
+                el.style.borderRadius = '2px';
             });
-        });
+            // Apply all finalized colors
+            // Backgrounds
+            document.documentElement.style.setProperty('--bg-primary', '#292929');
+            document.documentElement.style.setProperty('--bg-secondary', '#2f2f2f');
+            document.documentElement.style.setProperty('--bg-tertiary', '#3a3a3a');
+            // Text
+            document.documentElement.style.setProperty('--text-primary', '#e0e0e0');
+            document.documentElement.style.setProperty('--text-secondary', '#a4a4a4');
+            document.documentElement.style.setProperty('--text-tertiary', '#7f7f7f');
+            // Accents
+            document.documentElement.style.setProperty('--primary-color', '#dce39d');
+            document.documentElement.style.setProperty('--success', '#548e4c');
+            document.documentElement.style.setProperty('--warning', '#a0802d');
+            document.documentElement.style.setProperty('--danger', '#aa5656');
+            // Form
+            document.documentElement.style.setProperty('--border-color', '#a7a7a7');
+            document.documentElement.style.setProperty('--form-accent', '#bbba87');
+        }
 
         // Export CSS
         document.getElementById('export-btn').addEventListener('click', () => {
@@ -688,44 +974,94 @@
                 [0.2, -0.3, -0.5, -0.6, -0.4]
             ];
 
-            const scales = ['RdBu', 'Viridis', 'Plasma', 'Picnic', 'Greys', 'Blues'];
+            // Define all colorscales explicitly (Plotly.js has limited built-in support)
+            const colorscales = {
+                // ASYMMETRIC: Pop red (vibrant) + Muted blue (for [0,+1] focus)
+                // Pattern: blue end is muted/soft, red end is saturated/vibrant
+                'AsymA': [[0, '#4a5a9a'], [0.25, '#8a9bb8'], [0.5, '#d0d0d0'], [0.75, '#d47c67'], [1, '#b40426']],  // CW red + Muted blue
+                'AsymB': [[0, '#5a6a8a'], [0.25, '#98a4b0'], [0.5, '#c8c8c8'], [0.75, '#d47c67'], [1, '#b40426']],  // CW red + Soft blue
+                'AsymC': [[0, '#4a5a7a'], [0.25, '#8090a0'], [0.5, '#c0c0c0'], [0.75, '#e05050'], [1, '#c01010']],  // Vivid red + Steel
+                'AsymD': [[0, '#506070'], [0.25, '#8898a8'], [0.5, '#c8c8c8'], [0.75, '#e87860'], [1, '#d04030']],  // Coral + Slate
+                'AsymE': [[0, '#556070'], [0.25, '#8a98a8'], [0.5, '#c4c4c4'], [0.75, '#c85050'], [1, '#a01020']],  // Crimson + Pewter
+                'AsymF': [[0, '#5a6878'], [0.25, '#90a0a8'], [0.5, '#c8c8c0'], [0.75, '#c07050'], [1, '#983828']],  // Brick + Dusty
+                'AsymG': [[0, '#606870'], [0.25, '#98a0a8'], [0.5, '#c0c0c0'], [0.75, '#d04050'], [1, '#a81830']],  // Cherry + Ash
+                'AsymH': [[0, '#4a5868'], [0.25, '#7888a0'], [0.5, '#b8b8b8'], [0.75, '#e86040'], [1, '#c82808']],  // Vermillion + Storm
+                'AsymI': [[0, '#687078'], [0.25, '#9ca4a8'], [0.5, '#d0ccc8'], [0.75, '#c88060'], [1, '#a85038']],  // Terracotta + Fog
+                'AsymJ': [[0, '#586878'], [0.25, '#9098a8'], [0.5, '#c8c8c8'], [0.75, '#b06068'], [1, '#802040']],  // Wine + Mist
 
-            scales.forEach(scale => {
+                // Coolwarm family (symmetric reference)
+                'Coolwarm': [[0, '#3b4cc0'], [0.25, '#7c92d4'], [0.5, '#dddddd'], [0.75, '#d47c67'], [1, '#b40426']],
+                'CoolwarmMuted': [[0, '#4a5a9a'], [0.25, '#8a9bb8'], [0.5, '#c8c8c8'], [0.75, '#b8847a'], [1, '#8a3030']],
+                'CoolwarmSoft': [[0, '#5a6a8a'], [0.25, '#98a4b0'], [0.5, '#b8b8b8'], [0.75, '#b09080'], [1, '#7a4040']],
+                'RdBu': [[0, '#053061'], [0.25, '#4393c3'], [0.5, '#f7f7f7'], [0.75, '#d6604d'], [1, '#67001f']],
+
+                // Spectral family (rainbow-like)
+                'Spectral': [[0, '#9e0142'], [0.25, '#f46d43'], [0.5, '#ffffbf'], [0.75, '#66c2a5'], [1, '#5e4fa2']],
+                'SpectralMuted': [[0, '#7a3050'], [0.25, '#c07050'], [0.5, '#d8d8a8'], [0.75, '#6aa090'], [1, '#506080']],
+                'SpectralSoft': [[0, '#8a4060'], [0.25, '#b88070'], [0.5, '#c8c8a0'], [0.75, '#78a898'], [1, '#607088']],
+                'SpectralEarth': [[0, '#6a4040'], [0.25, '#a87860'], [0.5, '#c8c0a0'], [0.75, '#708878'], [1, '#485868']],
+
+                // YlOrRd family (yellow-orange-red)
+                'YlOrRd': [[0, '#ffffcc'], [0.25, '#fed976'], [0.5, '#fd8d3c'], [0.75, '#e31a1c'], [1, '#800026']],
+                'YlOrRdMuted': [[0, '#e8e8c0'], [0.25, '#d8c080'], [0.5, '#c88050'], [0.75, '#a84040'], [1, '#603030']],
+                'OrRd': [[0, '#fff7ec'], [0.25, '#fdd49e'], [0.5, '#fc8d59'], [0.75, '#d7301f'], [1, '#7f0000']],
+                'YlOrBr': [[0, '#ffffe5'], [0.25, '#fee391'], [0.5, '#fe9929'], [0.75, '#cc4c02'], [1, '#662506']],
+
+                // Green to Red (diverging)
+                'RdYlGn': [[0, '#a50026'], [0.25, '#f46d43'], [0.5, '#ffffbf'], [0.75, '#66bd63'], [1, '#006837']],
+                'GnRd': [[0, '#1a9850'], [0.25, '#91cf60'], [0.5, '#e8e8a0'], [0.75, '#fc8d59'], [1, '#d73027']],
+                'GnRdMuted': [[0, '#3a7850'], [0.25, '#7aa870'], [0.5, '#c0c0a0'], [0.75, '#b88060'], [1, '#904040']],
+                'PRGn': [[0, '#40004b'], [0.25, '#9970ab'], [0.5, '#f7f7f7'], [0.75, '#5aae61'], [1, '#00441b']],
+
+                // Other useful scales
+                'Viridis': [[0, '#440154'], [0.25, '#3b528b'], [0.5, '#21918c'], [0.75, '#5ec962'], [1, '#fde725']],
+                'PuOr': [[0, '#2d004b'], [0.25, '#8073ac'], [0.5, '#f7f7f7'], [0.75, '#e08214'], [1, '#7f3b08']],
+                'BrBG': [[0, '#543005'], [0.25, '#bf812d'], [0.5, '#f5f5f5'], [0.75, '#80cdc1'], [1, '#003c30']],
+                'Greys': [[0, '#ffffff'], [0.25, '#d9d9d9'], [0.5, '#969696'], [0.75, '#525252'], [1, '#000000']]
+            };
+
+            Object.entries(colorscales).forEach(([name, scale]) => {
                 const trace = {
                     z: data,
                     type: 'heatmap',
                     colorscale: scale,
-                    showscale: false
+                    showscale: true,
+                    colorbar: {
+                        len: 0.9,
+                        thickness: 10,
+                        tickfont: { size: 8, color: '#888' },
+                        tickvals: [-1, 0, 1],
+                        ticktext: ['-1', '0', '+1']
+                    }
                 };
 
                 const layout = {
-                    width: 140,
+                    width: 180,
                     height: 100,
-                    margin: { l: 0, r: 0, t: 0, b: 0 },
+                    margin: { l: 0, r: 40, t: 0, b: 0 },
                     paper_bgcolor: 'transparent',
                     plot_bgcolor: 'transparent',
                     xaxis: { visible: false },
                     yaxis: { visible: false }
                 };
 
-                Plotly.newPlot('heatmap-' + scale.toLowerCase(), [trace], layout, { displayModeBar: false });
+                Plotly.newPlot('heatmap-' + name.toLowerCase(), [trace], layout, { displayModeBar: false, staticPlot: true });
             });
         }
 
         // Render sample line chart
         function renderLineChart() {
             const style = getComputedStyle(document.documentElement);
-            const primaryColor = style.getPropertyValue('--primary-color').trim();
-            const successColor = style.getPropertyValue('--success').trim();
             const textColor = style.getPropertyValue('--text-primary').trim();
 
+            // Auto-generated Plotly colors (D3 category10)
             const trace1 = {
                 x: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
                 y: [0.2, 0.5, 0.8, 1.2, 1.5, 1.3, 1.1, 0.9, 0.7, 0.5],
                 mode: 'lines+markers',
                 name: 'Trait A',
-                line: { color: primaryColor, width: 2 },
-                marker: { size: 6 }
+                line: { width: 2 },
+                marker: { size: 4 }  // 2px radius = 4px diameter
             };
 
             const trace2 = {
@@ -733,8 +1069,17 @@
                 y: [-0.1, 0.1, 0.3, 0.4, 0.6, 0.8, 0.9, 1.0, 0.95, 0.85],
                 mode: 'lines+markers',
                 name: 'Trait B',
-                line: { color: successColor, width: 2 },
-                marker: { size: 6 }
+                line: { width: 2 },
+                marker: { size: 4 }
+            };
+
+            const trace3 = {
+                x: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                y: [0.5, 0.4, 0.3, 0.2, 0.1, 0.0, -0.1, -0.2, -0.3, -0.4],
+                mode: 'lines+markers',
+                name: 'Trait C',
+                line: { width: 2 },
+                marker: { size: 4 }
             };
 
             const layout = {
@@ -760,7 +1105,7 @@
                 }
             };
 
-            Plotly.newPlot('sample-chart', [trace1, trace2], layout, { displayModeBar: false });
+            Plotly.newPlot('sample-chart', [trace1, trace2, trace3], layout, { displayModeBar: false });
         }
 
         function renderCharts() {
@@ -777,6 +1122,7 @@
         });
 
         // Initialize
+        applyFixedValues();
         loadCurrentColors();
         renderCharts();
     </script>
