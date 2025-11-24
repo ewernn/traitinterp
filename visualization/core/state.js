@@ -7,8 +7,11 @@ const state = {
     experimentData: null,
     currentView: 'data-explorer',
     selectedTraits: new Set(),
-    currentPrompt: 0,
-    availablePrompts: []
+    // New prompt state structure
+    currentPromptSet: null,      // e.g., 'single_trait'
+    currentPromptId: null,       // e.g., 1
+    availablePromptSets: {},     // { 'single_trait': [{id, text, note}, ...], ... }
+    promptsWithData: {}          // { 'single_trait': [1, 2, 3], ... } - which prompts have inference data
 };
 
 // Display names for better interpretability
@@ -110,6 +113,8 @@ function toggleTransformerSidebar() {
     const sidebar = document.getElementById('transformer-sidebar');
     const toggle = document.getElementById('transformer-toggle');
 
+    if (!sidebar) return;  // Sidebar is commented out in HTML
+
     if (sidebar.classList.contains('hidden')) {
         sidebar.classList.remove('hidden');
         toggle.textContent = '◀';
@@ -207,6 +212,17 @@ function toggleAllTraits() {
     if (window.renderView) window.renderView();
 }
 
+// Views that use the prompt selector (Inference Analysis views)
+const INFERENCE_VIEWS = ['all-layers', 'per-token-activation', 'layer-deep-dive'];
+
+function updatePromptSelectorVisibility() {
+    const promptSelector = document.getElementById('prompt-selector');
+    if (promptSelector) {
+        const isInferenceView = INFERENCE_VIEWS.includes(state.currentView);
+        promptSelector.style.display = isInferenceView ? 'flex' : 'none';
+    }
+}
+
 // Navigation
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
@@ -217,6 +233,7 @@ function setupNavigation() {
             if (item.dataset.view) {
                 state.currentView = item.dataset.view;
                 updatePageTitle();
+                updatePromptSelectorVisibility();
                 if (window.renderView) window.renderView();
             }
         });
@@ -378,37 +395,52 @@ async function loadExperimentData(experimentName) {
 }
 
 async function discoverAvailablePrompts() {
-    if (!state.experimentData || !state.experimentData.traits || state.experimentData.traits.length === 0) {
-        state.availablePrompts = [0];
+    state.availablePromptSets = {};
+    state.promptsWithData = {};
+
+    if (!state.currentExperiment) {
         populatePromptSelector();
         return;
     }
 
-    const promptSet = new Set();
-    const firstTrait = state.experimentData.traits[0]; // Use only one trait for checking
+    // Single API call to get all prompt sets with their available IDs
+    try {
+        const response = await fetch(`/api/experiments/${state.currentExperiment}/inference/prompt-sets`);
+        if (!response.ok) {
+            console.warn('Failed to fetch prompt sets');
+            populatePromptSelector();
+            return;
+        }
 
-    // Check up to 101 prompts, but stop when one is missing
-    for (let i = 0; i <= 100; i++) {
-        try {
-            const url = window.paths.allLayersData(firstTrait, i);
-            const response = await fetch(url, { method: 'HEAD' });
-            if (response.ok) {
-                promptSet.add(i);
-            } else {
-                // Stop assuming contiguous prompts
-                break;
-            }
-        } catch (e) {
-            // Network error or other issue, stop checking
+        const data = await response.json();
+        const promptSets = data.prompt_sets || [];
+
+        for (const ps of promptSets) {
+            // Store prompt definitions
+            state.availablePromptSets[ps.name] = ps.prompts || [];
+            // Store which IDs have data (discovered from raw/residual/)
+            state.promptsWithData[ps.name] = ps.available_ids || [];
+        }
+    } catch (e) {
+        console.error('Error fetching prompt sets:', e);
+    }
+
+    // Set default selection to first prompt set with data
+    state.currentPromptSet = null;
+    state.currentPromptId = null;
+
+    for (const [setName, promptIds] of Object.entries(state.promptsWithData)) {
+        if (promptIds.length > 0) {
+            state.currentPromptSet = setName;
+            state.currentPromptId = promptIds[0];
             break;
         }
     }
 
-    state.availablePrompts = promptSet.size > 0 ?
-        Array.from(promptSet).sort((a, b) => a - b) : [0];
-    console.log('Discovered available prompts:', state.availablePrompts);
+    console.log('Discovered prompt sets:', Object.keys(state.availablePromptSets));
+    console.log('Prompts with data:', state.promptsWithData);
+    console.log('Current selection:', state.currentPromptSet, state.currentPromptId);
 
-    state.currentPrompt = state.availablePrompts[0] || 0;
     populatePromptSelector();
 }
 
@@ -416,27 +448,68 @@ function populatePromptSelector() {
     const container = document.getElementById('prompt-selector');
     if (!container) return;
 
-    container.innerHTML = ''; // Clear previous content
+    container.innerHTML = '';
 
-    state.availablePrompts.forEach(n => {
+    // Check if we have any prompts with data
+    const hasAnyData = Object.values(state.promptsWithData).some(ids => ids.length > 0);
+    if (!hasAnyData) {
+        container.innerHTML = '<span class="no-prompts">No inference data</span>';
+        return;
+    }
+
+    // Create dropdown for prompt set selection
+    const setSelect = document.createElement('select');
+    setSelect.className = 'prompt-set-select';
+    setSelect.id = 'prompt-set-select';
+
+    for (const [setName, promptIds] of Object.entries(state.promptsWithData)) {
+        if (promptIds.length === 0) continue;
+        const option = document.createElement('option');
+        option.value = setName;
+        option.textContent = setName.replace(/_/g, ' ');
+        if (setName === state.currentPromptSet) {
+            option.selected = true;
+        }
+        setSelect.appendChild(option);
+    }
+
+    container.appendChild(setSelect);
+
+    // Create prompt ID boxes for current set
+    const promptBoxContainer = document.createElement('div');
+    promptBoxContainer.className = 'prompt-box-container';
+    promptBoxContainer.id = 'prompt-box-container';
+
+    const currentSetPromptIds = state.promptsWithData[state.currentPromptSet] || [];
+    currentSetPromptIds.forEach(id => {
         const box = document.createElement('div');
         box.className = 'prompt-box';
-        box.textContent = n;
-        box.dataset.promptId = n;
-        container.appendChild(box);
+        box.textContent = id;
+        box.dataset.promptSet = state.currentPromptSet;
+        box.dataset.promptId = id;
+
+        // Add tooltip with prompt text
+        const promptDef = (state.availablePromptSets[state.currentPromptSet] || [])
+            .find(p => p.id === id);
+        if (promptDef) {
+            box.title = promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '');
+        }
+
+        promptBoxContainer.appendChild(box);
     });
 
+    container.appendChild(promptBoxContainer);
+
     updatePromptSelectionUI();
+    updatePromptSelectorVisibility();
 }
 
 function updatePromptSelectionUI() {
     const boxes = document.querySelectorAll('.prompt-box');
     boxes.forEach(box => {
-        if (parseInt(box.dataset.promptId) === state.currentPrompt) {
-            box.classList.add('active');
-        } else {
-            box.classList.remove('active');
-        }
+        const isActive = box.dataset.promptSet === state.currentPromptSet &&
+                         parseInt(box.dataset.promptId) === state.currentPromptId;
+        box.classList.toggle('active', isActive);
     });
 }
 
@@ -451,19 +524,38 @@ function setupEventListeners() {
     // Select all traits button
     document.getElementById('select-all-btn')?.addEventListener('click', toggleAllTraits);
 
-    // Prompt selector (event delegation)
-    document.getElementById('prompt-selector')?.addEventListener('click', (e) => {
-        const promptBox = e.target.closest('.prompt-box');
-        if (promptBox) {
-            const promptId = parseInt(promptBox.dataset.promptId);
-            console.log(`Prompt box clicked. ID: ${promptId}`); // Debugging line
-            if (state.currentPrompt !== promptId && !isNaN(promptId)) {
-                state.currentPrompt = promptId;
-                updatePromptSelectionUI();
-                if (window.renderView) window.renderView();
+    // Prompt selector (event delegation for boxes and change for dropdown)
+    const promptSelector = document.getElementById('prompt-selector');
+    if (promptSelector) {
+        // Handle prompt box clicks
+        promptSelector.addEventListener('click', (e) => {
+            const promptBox = e.target.closest('.prompt-box');
+            if (promptBox) {
+                const promptId = parseInt(promptBox.dataset.promptId);
+                if (state.currentPromptId !== promptId && !isNaN(promptId)) {
+                    state.currentPromptId = promptId;
+                    updatePromptSelectionUI();
+                    if (window.renderView) window.renderView();
+                }
             }
-        }
-    });
+        });
+
+        // Handle prompt set dropdown change
+        promptSelector.addEventListener('change', (e) => {
+            if (e.target.id === 'prompt-set-select') {
+                const newSet = e.target.value;
+                if (state.currentPromptSet !== newSet) {
+                    state.currentPromptSet = newSet;
+                    // Select first available prompt in new set
+                    const availableIds = state.promptsWithData[newSet] || [];
+                    state.currentPromptId = availableIds[0] || null;
+                    // Re-render the prompt boxes for the new set
+                    populatePromptSelector();
+                    if (window.renderView) window.renderView();
+                }
+            }
+        });
+    }
 
     // Close info tooltip when clicking outside
     document.addEventListener('click', (e) => {
@@ -488,8 +580,8 @@ function getPlotlyLayout(baseLayout) {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     return {
         ...baseLayout,
-        paper_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
-        plot_bgcolor: isDark ? '#2d2d2d' : '#ffffff',
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
         font: {
             color: isDark ? '#e0e0e0' : '#333'
         },

@@ -10,13 +10,13 @@ Method:
     commitment = first t where window_var < threshold
 
 Usage:
-    python analysis/commitment_point_detection.py \
+    python analysis/inference/commitment_point_detection.py \
         --data experiments/.../inference/residual_stream_activations/prompt_0.json
 """
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import json
 import argparse

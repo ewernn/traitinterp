@@ -1,24 +1,24 @@
-// Trait Dashboard View - Combines Vector Analysis (Extraction Stats) and Validation Results (Trait Quality)
+// Trait Dashboard View - Combines Vector Analysis (Extraction Stats) and Evaluation Results (Trait Quality)
 
 // --- Data Loading ---
-let validationData = null; // Cached validation data
+let evaluationData = null; // Cached evaluation data
 
-async function loadValidationData() {
-    if (validationData) return validationData;
+async function loadEvaluationData() {
+    if (evaluationData) return evaluationData;
     try {
-        const url = window.paths.validationResults();
+        const url = window.paths.extractionEvaluation();
         const response = await fetch(url);
         if (!response.ok) {
-            console.warn('Validation results not found. Quality metrics will be unavailable.');
-            validationData = { all_results: [] }; // Set empty data to prevent re-fetching
-            return validationData;
+            console.warn('Extraction evaluation not found. Quality metrics will be unavailable.');
+            evaluationData = { all_results: [] }; // Set empty data to prevent re-fetching
+            return evaluationData;
         }
-        validationData = await response.json();
-        return validationData;
+        evaluationData = await response.json();
+        return evaluationData;
     } catch (error) {
-        console.error('Error loading validation data:', error);
-        validationData = { all_results: [] }; // Set empty data on error
-        return validationData;
+        console.error('Error loading evaluation data:', error);
+        evaluationData = { all_results: [] }; // Set empty data on error
+        return evaluationData;
     }
 }
 
@@ -38,7 +38,7 @@ async function renderTraitDashboard() {
     window.paths.setExperiment(window.state.experimentData.name);
 
     // Load all necessary data in parallel
-    const allValidationData = await loadValidationData();
+    const allEvaluationData = await loadEvaluationData();
 
     // Loop through selected traits and render a dashboard for each
     let dashboardsHtml = '';
@@ -50,12 +50,12 @@ async function renderTraitDashboard() {
 
     // Render each dashboard asynchronously
     for (const trait of filteredTraits) {
-        renderSingleTraitCard(trait, allValidationData);
+        renderSingleTraitCard(trait, allEvaluationData);
     }
 }
 
 
-async function renderSingleTraitCard(trait, allValidationData) {
+async function renderSingleTraitCard(trait, allEvaluationData) {
     const container = document.getElementById(`dashboard-${trait.name}`);
     if (!container) return;
 
@@ -77,8 +77,8 @@ async function renderSingleTraitCard(trait, allValidationData) {
         );
         const statsResults = (await Promise.all(fetchPromises)).filter(r => r !== null);
 
-        // --- 2. Filter Trait Quality Data (from validation-results.js logic) ---
-        const qualityResults = allValidationData.all_results.filter(r => r.trait === trait.name);
+        // --- 2. Filter Trait Quality Data (from evaluation results) ---
+        const qualityResults = allEvaluationData.all_results.filter(r => r.trait === trait.name);
 
         // --- 3. Render the combined dashboard ---
         const displayName = window.getDisplayName(trait.name);
@@ -107,7 +107,7 @@ async function renderSingleTraitCard(trait, allValidationData) {
         if (qualityResults.length > 0) {
             renderQualityTable(trait, qualityResults, `quality-table-${trait.name}`);
         } else {
-            document.getElementById(`quality-table-${trait.name}`).innerHTML = `<div class="info">No validation results found.</div>`;
+            document.getElementById(`quality-table-${trait.name}`).innerHTML = `<div class="info">No evaluation results found.</div>`;
         }
 
     } catch (error) {

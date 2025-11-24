@@ -303,19 +303,11 @@ class PathBuilder {
     }
 
     /**
-     * Get validation results path.
+     * Get extraction evaluation results path.
      * @returns {string}
      */
-    validationResults() {
-        return this.get('validation.evaluation');
-    }
-
-    /**
-     * Get data index path.
-     * @returns {string}
-     */
-    dataIndex() {
-        return this.get('validation.data_index');
+    extractionEvaluation() {
+        return this.get('extraction_eval.evaluation');
     }
 
     /**

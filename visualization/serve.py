@@ -9,9 +9,13 @@ import socketserver
 import os
 import sys
 import json
+import subprocess
 from pathlib import Path
 
 PORT = 8000
+
+# Cache for integrity data (populated on startup)
+integrity_cache = {}
 
 class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS support and API endpoints."""
@@ -42,6 +46,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # API endpoint: list experiments
             if self.path == '/api/experiments':
                 self.send_api_response(self.list_experiments())
+                return
+
+            # API endpoint: get integrity data for an experiment
+            if self.path.startswith('/api/integrity/') and self.path.endswith('.json'):
+                exp_name = self.path.split('/')[3].replace('.json', '')
+                if exp_name in integrity_cache:
+                    self.send_api_response(integrity_cache[exp_name])
+                else:
+                    self.send_api_response({'error': f'No integrity data for experiment: {exp_name}'})
                 return
 
             # API endpoint: list traits for an experiment
@@ -80,6 +93,10 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Serve index.html at root
             if self.path == '/':
                 self.path = '/visualization/index.html'
+
+            # Serve design playground
+            if self.path == '/design':
+                self.path = '/visualization/design.html'
 
             # Default: serve files
             super().do_GET()
@@ -176,23 +193,47 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         return {'traits': sorted(traits)}
 
     def list_prompt_sets(self, experiment_name):
-        """List all prompt sets for an experiment's inference directory."""
-        prompts_dir = Path('experiments') / experiment_name / 'inference' / 'prompts'
-        if not prompts_dir.exists():
-            return {'prompt_sets': []}
+        """List all prompt sets with available prompt IDs for an experiment.
+
+        Discovers available prompts by scanning raw/residual/{prompt_set}/ directories.
+        Also loads prompt definitions from inference/prompts/{set}.json files.
+        """
+        exp_dir = Path('experiments') / experiment_name
+        prompts_def_dir = exp_dir / 'inference' / 'prompts'
+        raw_residual_dir = exp_dir / 'inference' / 'raw' / 'residual'
 
         prompt_sets = []
-        for prompt_file in prompts_dir.glob('*.txt'):
-            # Count prompts in file
-            try:
-                with open(prompt_file) as f:
-                    num_prompts = sum(1 for line in f if line.strip())
+
+        # Get prompt set definitions from JSON files
+        if prompts_def_dir.exists():
+            for prompt_file in prompts_def_dir.glob('*.json'):
+                set_name = prompt_file.stem
+
+                # Load prompt definitions
+                try:
+                    with open(prompt_file) as f:
+                        definition = json.load(f)
+                except Exception:
+                    definition = {'prompts': []}
+
+                # Discover available IDs from raw/residual/{set}/
+                available_ids = []
+                set_raw_dir = raw_residual_dir / set_name
+                if set_raw_dir.exists():
+                    for pt_file in set_raw_dir.glob('*.pt'):
+                        # Parse ID from filename: "1.pt" -> 1
+                        try:
+                            prompt_id = int(pt_file.stem)
+                            available_ids.append(prompt_id)
+                        except ValueError:
+                            continue
+
                 prompt_sets.append({
-                    'name': prompt_file.stem,
-                    'num_prompts': num_prompts
+                    'name': set_name,
+                    'description': definition.get('description', ''),
+                    'prompts': definition.get('prompts', []),
+                    'available_ids': sorted(available_ids)
                 })
-            except Exception:
-                continue
 
         return {'prompt_sets': sorted(prompt_sets, key=lambda x: x['name'])}
 
@@ -232,6 +273,46 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             self.send_api_response({'error': str(e)})
 
+def cache_integrity_data():
+    """Run check_available_data.py for each experiment and cache results."""
+    experiments_dir = Path('experiments')
+    if not experiments_dir.exists():
+        return
+
+    for exp_dir in experiments_dir.iterdir():
+        if not exp_dir.is_dir() or exp_dir.name.startswith('.'):
+            continue
+
+        # Check if experiment has extraction data
+        extraction_dir = exp_dir / 'extraction'
+        if not extraction_dir.exists():
+            continue
+
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    'analysis/check_available_data.py',
+                    '--experiment', exp_dir.name,
+                    '--json_output'
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                integrity_cache[exp_dir.name] = json.loads(result.stdout)
+                print(f"  ✓ Cached integrity for {exp_dir.name}")
+            else:
+                print(f"  ✗ Failed to get integrity for {exp_dir.name}: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            print(f"  ✗ Timeout getting integrity for {exp_dir.name}")
+        except json.JSONDecodeError as e:
+            print(f"  ✗ Invalid JSON from integrity check for {exp_dir.name}: {e}")
+        except Exception as e:
+            print(f"  ✗ Error getting integrity for {exp_dir.name}: {e}")
+
+
 def main():
     # Change to the project root directory (parent of visualization/)
     os.chdir(Path(__file__).parent.parent)
@@ -242,14 +323,19 @@ def main():
         pass
 
     Handler = CORSHTTPRequestHandler
-    # httpd_server = ThreadingTCPServer(("", PORT), Handler)
 
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║           Trait Interpretation Visualization Server          ║
 ╚══════════════════════════════════════════════════════════════╝
+""")
 
-Starting server on http://localhost:{PORT}
+    # Cache integrity data for all experiments on startup
+    print("Caching integrity data...")
+    cache_integrity_data()
+    print(f"Cached {len(integrity_cache)} experiment(s)\n")
+
+    print(f"""Starting server on http://localhost:{PORT}
 
 Available at:
   • http://localhost:{PORT}/

@@ -57,14 +57,12 @@ inference:
   layer_internals: "experiments/{experiment}/inference/{trait}/layer_internals/{prompt_set}"
 
 # =============================================================================
-# VALIDATION (aggregate evaluation results)
+# EXTRACTION EVALUATION (aggregate quality metrics for extracted vectors)
 # =============================================================================
 
-validation:
-  base: "experiments/{experiment}/validation"
-  evaluation: "experiments/{experiment}/validation/validation_evaluation.json"
-  cross_trait_matrix: "experiments/{experiment}/validation/cross_trait_matrix.json"
-  data_index: "experiments/{experiment}/validation/data_index.json"
+extraction_eval:
+  evaluation: "experiments/{experiment}/extraction/extraction_evaluation.json"
+  cross_trait_matrix: "experiments/{experiment}/extraction/cross_trait_matrix.json"
 
 # =============================================================================
 # FILE PATTERNS (combine with directory paths)
@@ -98,7 +96,7 @@ patterns:
   layer_internals_json: "{prompt_id}_L{layer}.json"
 
   # Trait definition
-  trait_definition: "trait_definition.json"
+  trait_definition: "trait_definition.txt"
 
 # =============================================================================
 # GLOBAL DIRECTORIES

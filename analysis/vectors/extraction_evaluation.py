@@ -1,27 +1,21 @@
 #!/usr/bin/env python3
 """
-Evaluate trait vectors on held-out validation data.
+Evaluate extracted vectors on held-out validation data.
 
-This is the REAL test - vectors were extracted from training data,
-now we test on completely new prompts to measure generalization.
+Input:
+    - experiments/{experiment}/extraction/{trait}/vectors/*.pt
+    - experiments/{experiment}/extraction/{trait}/val_activations/*.pt
 
-Evaluation axes:
-1. Validation accuracy (generalization)
-2. Validation separation (signal on new data)
-3. Effect size (Cohen's d)
-4. Polarity consistency (train vs val direction)
-5. Cross-trait interference (independence)
-6. Train vs Val comparison (overfitting detection)
+Output:
+    - experiments/{experiment}/extraction/extraction_evaluation.json
 
 Usage:
-    python analysis/evaluate_on_validation.py \
-        --experiment my_experiment \
-        --output results/validation_evaluation.json
+    python analysis/vectors/extraction_evaluation.py --experiment my_experiment
 """
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import torch
 import numpy as np
@@ -236,7 +230,7 @@ def main(experiment: str,
         experiment: Experiment name
         methods: Comma-separated methods to evaluate
         layers: Comma-separated layers (default: all)
-        output: Output JSON file (default: experiments/{experiment}/validation/validation_evaluation.json)
+        output: Output JSON file (default: experiments/{experiment}/extraction/extraction_evaluation.json)
         no_normalize: If True, use raw dot product instead of cosine similarity
     """
     normalize = not no_normalize
@@ -423,7 +417,7 @@ def main(experiment: str,
     if output:
         output_path = Path(output)
     else:
-        output_path = get_path('validation.evaluation', experiment=experiment)
+        output_path = get_path('extraction_eval.evaluation', experiment=experiment)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Convert multi-index to string for JSON compatibility

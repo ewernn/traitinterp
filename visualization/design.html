@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Playground - Trait Interp</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="/visualization/styles.css">
+    <style>
+        /* Design playground specific styles */
+        .design-container {
+            display: flex;
+            gap: 24px;
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .design-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .design-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .design-section {
+            margin-bottom: 16px;
+        }
+
+        .design-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-tertiary);
+            margin-bottom: 12px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .color-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .color-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .color-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .color-picker-row input[type="color"] {
+            width: 32px;
+            height: 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .color-picker-row input[type="text"] {
+            flex: 1;
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            padding: 4px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .preview-card {
+            padding: 16px;
+            border-radius: 4px;
+            background: var(--bg-secondary);
+        }
+
+        .preview-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .component-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .font-preview {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .font-sample {
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .font-sample.heading {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .font-sample.body {
+            font-size: 12px;
+        }
+
+        .font-sample.small {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .font-sample.mono {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+
+        .slider-row label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .slider-row input[type="range"] {
+            width: 100%;
+        }
+
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .heatmap-option {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .heatmap-option:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .heatmap-option.selected {
+            outline: 2px solid var(--primary-color);
+        }
+
+        .heatmap-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            text-align: center;
+        }
+
+        .tree-preview {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .tree-item {
+            padding: 2px 0;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+
+        .tree-item:hover {
+            color: var(--primary-color);
+        }
+
+        .export-section {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .export-btn {
+            width: 100%;
+            padding: 8px;
+            font-size: 11px;
+            background: var(--primary-color);
+            color: var(--text-on-primary);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .export-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .css-output {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .css-output.show {
+            display: block;
+        }
+
+        .theme-toggle-large {
+            padding: 8px 16px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: none;
+            transition: all 0.15s ease;
+        }
+
+        .theme-toggle-large:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Shadow previews */
+        .shadow-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .shadow-sample {
+            padding: 16px;
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            text-align: center;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .shadow-none { box-shadow: none; }
+        .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .shadow-md { box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .shadow-lg { box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+        /* Button variants preview */
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--text-on-primary);
+            border: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="design-container">
+        <!-- Sidebar: Controls -->
+        <div class="design-sidebar">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h2 style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0;">Design Playground</h2>
+                    <button class="theme-toggle-large" id="theme-toggle">
+                        <span id="theme-icon">moon</span>
+                    </button>
+                </div>
+                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Tweak colors, fonts, and components. Changes are live. Export CSS when done.
+                </p>
+            </div>
+
+            <!-- Background Colors -->
+            <div class="design-section">
+                <div class="design-section-title">Background Colors</div>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <span class="color-label">Primary BG</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="bg-primary" value="#1a1a1a">
+                            <input type="text" id="bg-primary-text" value="#1a1a1a">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Secondary BG</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="bg-secondary" value="#2d2d2d">
+                            <input type="text" id="bg-secondary-text" value="#2d2d2d">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Tertiary BG</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="bg-tertiary" value="#3a3a3a">
+                            <input type="text" id="bg-tertiary-text" value="#3a3a3a">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Colors -->
+            <div class="design-section">
+                <div class="design-section-title">Text Colors</div>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <span class="color-label">Primary</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="text-primary" value="#e0e0e0">
+                            <input type="text" id="text-primary-text" value="#e0e0e0">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Secondary</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="text-secondary" value="#b0b0b0">
+                            <input type="text" id="text-secondary-text" value="#b0b0b0">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Tertiary</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="text-tertiary" value="#888888">
+                            <input type="text" id="text-tertiary-text" value="#888888">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accent Colors -->
+            <div class="design-section">
+                <div class="design-section-title">Accent Colors</div>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <span class="color-label">Primary Accent</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="primary-color" value="#4a9eff">
+                            <input type="text" id="primary-color-text" value="#4a9eff">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Success</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="success" value="#4caf50">
+                            <input type="text" id="success-text" value="#4caf50">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Warning</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="warning" value="#ffc107">
+                            <input type="text" id="warning-text-val" value="#ffc107">
+                        </div>
+                    </div>
+                    <div class="color-item">
+                        <span class="color-label">Danger</span>
+                        <div class="color-picker-row">
+                            <input type="color" id="danger" value="#f44336">
+                            <input type="text" id="danger-text" value="#f44336">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typography -->
+            <div class="design-section">
+                <div class="design-section-title">Typography</div>
+                <div class="slider-row">
+                    <label>
+                        <span>Base Font Size</span>
+                        <span id="font-size-val">12px</span>
+                    </label>
+                    <input type="range" id="font-size" min="10" max="16" value="12">
+                </div>
+                <div class="slider-row">
+                    <label>
+                        <span>Line Height</span>
+                        <span id="line-height-val">1.3</span>
+                    </label>
+                    <input type="range" id="line-height" min="1.0" max="1.8" step="0.1" value="1.3">
+                </div>
+                <div class="slider-row">
+                    <label>
+                        <span>Heading Weight</span>
+                        <span id="heading-weight-val">600</span>
+                    </label>
+                    <input type="range" id="heading-weight" min="400" max="800" step="100" value="600">
+                </div>
+            </div>
+
+            <!-- Spacing -->
+            <div class="design-section">
+                <div class="design-section-title">Spacing</div>
+                <div class="slider-row">
+                    <label>
+                        <span>Border Radius</span>
+                        <span id="border-radius-val">4px</span>
+                    </label>
+                    <input type="range" id="border-radius" min="0" max="12" value="4">
+                </div>
+            </div>
+
+            <!-- Export -->
+            <div class="export-section">
+                <button class="export-btn" id="export-btn">Export CSS Variables</button>
+                <pre class="css-output" id="css-output"></pre>
+            </div>
+        </div>
+
+        <!-- Main: Previews -->
+        <div class="design-main">
+            <!-- Typography Preview -->
+            <div class="preview-card">
+                <div class="preview-title">Typography</div>
+                <div class="font-preview">
+                    <div class="font-sample heading">Heading Text (600 weight)</div>
+                    <div class="font-sample body">Body text at base size. This is what most content looks like.</div>
+                    <div class="font-sample small">Secondary text - labels, hints, metadata</div>
+                    <div class="font-sample mono">Monospace: file_tree.py, layer_16, 0.8534</div>
+                </div>
+            </div>
+
+            <!-- Buttons Preview -->
+            <div class="preview-card">
+                <div class="preview-title">Buttons</div>
+                <div class="component-row">
+                    <button class="btn-primary" style="padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Primary</button>
+                    <button class="btn-secondary" style="padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Secondary</button>
+                    <button class="btn-ghost" style="padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;">Ghost</button>
+                    <button disabled style="padding: 6px 12px; border-radius: 4px; font-size: 11px;">Disabled</button>
+                </div>
+                <div class="component-row">
+                    <button style="padding: 4px 8px; font-size: 10px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Small</button>
+                    <button style="padding: 8px 16px; font-size: 12px; border-radius: 4px; background: transparent; color: var(--text-secondary); border: none; cursor: pointer;">Medium</button>
+                </div>
+            </div>
+
+            <!-- Form Elements -->
+            <div class="preview-card">
+                <div class="preview-title">Form Elements</div>
+                <div class="component-row">
+                    <select style="padding: 4px 8px; font-size: 11px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <option>Select option</option>
+                        <option>Option 1</option>
+                        <option>Option 2</option>
+                    </select>
+                    <input type="text" placeholder="Text input" style="padding: 4px 8px; font-size: 11px; border-radius: 4px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">
+                </div>
+                <div class="component-row" style="margin-top: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                        <input type="checkbox" checked> Checkbox
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                        <input type="radio" name="radio" checked> Radio 1
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); cursor: pointer;">
+                        <input type="radio" name="radio"> Radio 2
+                    </label>
+                </div>
+            </div>
+
+            <!-- Shadows Preview -->
+            <div class="preview-card">
+                <div class="preview-title">Shadows (click to compare)</div>
+                <div class="shadow-grid">
+                    <div class="shadow-sample shadow-none">None</div>
+                    <div class="shadow-sample shadow-sm">Small</div>
+                    <div class="shadow-sample shadow-md">Medium</div>
+                </div>
+            </div>
+
+            <!-- File Tree Preview -->
+            <div class="preview-card">
+                <div class="preview-title">File Tree (CLI-style)</div>
+                <div class="tree-preview">
+                    <div class="tree-item">experiments/</div>
+                    <div class="tree-item" style="padding-left: 12px;">cognitive_nov20/</div>
+                    <div class="tree-item" style="padding-left: 24px;">extraction/</div>
+                    <div class="tree-item" style="padding-left: 36px;">behavioral/</div>
+                    <div class="tree-item" style="padding-left: 48px; color: var(--primary-color);">refusal/</div>
+                    <div class="tree-item" style="padding-left: 60px;">vectors/</div>
+                    <div class="tree-item" style="padding-left: 72px;">probe_layer16.pt</div>
+                </div>
+            </div>
+
+            <!-- Heatmap Color Scales -->
+            <div class="preview-card">
+                <div class="preview-title">Heatmap Color Scales</div>
+                <div class="heatmap-grid">
+                    <div class="heatmap-option" data-scale="RdBu">
+                        <div id="heatmap-rdbu"></div>
+                        <div class="heatmap-label">RdBu (Diverging)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="Viridis">
+                        <div id="heatmap-viridis"></div>
+                        <div class="heatmap-label">Viridis (Sequential)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="Plasma">
+                        <div id="heatmap-plasma"></div>
+                        <div class="heatmap-label">Plasma (Sequential)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="Picnic">
+                        <div id="heatmap-picnic"></div>
+                        <div class="heatmap-label">Picnic (Diverging)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="Greys">
+                        <div id="heatmap-greys"></div>
+                        <div class="heatmap-label">Greys (Neutral)</div>
+                    </div>
+                    <div class="heatmap-option" data-scale="Blues">
+                        <div id="heatmap-blues"></div>
+                        <div class="heatmap-label">Blues (Sequential)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Chart -->
+            <div class="preview-card">
+                <div class="preview-title">Sample Line Chart</div>
+                <div id="sample-chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon();
+
+        // Theme toggle
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+            updateThemeIcon();
+            loadCurrentColors();
+            renderCharts();
+        });
+
+        function updateThemeIcon() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.getElementById('theme-icon').textContent = isDark ? 'Light' : 'Dark';
+        }
+
+        // Color variable mapping
+        const colorVars = {
+            'bg-primary': '--bg-primary',
+            'bg-secondary': '--bg-secondary',
+            'bg-tertiary': '--bg-tertiary',
+            'text-primary': '--text-primary',
+            'text-secondary': '--text-secondary',
+            'text-tertiary': '--text-tertiary',
+            'primary-color': '--primary-color',
+            'success': '--success',
+            'warning': '--warning',
+            'danger': '--danger'
+        };
+
+        // Load current CSS variable values
+        function loadCurrentColors() {
+            const style = getComputedStyle(document.documentElement);
+            for (const [id, varName] of Object.entries(colorVars)) {
+                const value = style.getPropertyValue(varName).trim();
+                const picker = document.getElementById(id);
+                const text = document.getElementById(id + '-text') || document.getElementById(id + '-text-val');
+                if (picker && value) {
+                    picker.value = value;
+                    if (text) text.value = value;
+                }
+            }
+        }
+
+        // Sync color pickers with text inputs and CSS variables
+        for (const [id, varName] of Object.entries(colorVars)) {
+            const picker = document.getElementById(id);
+            const textId = id + '-text';
+            const text = document.getElementById(textId) || document.getElementById(id + '-text-val');
+
+            if (picker) {
+                picker.addEventListener('input', (e) => {
+                    document.documentElement.style.setProperty(varName, e.target.value);
+                    if (text) text.value = e.target.value;
+                    renderCharts();
+                });
+            }
+
+            if (text) {
+                text.addEventListener('input', (e) => {
+                    if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                        document.documentElement.style.setProperty(varName, e.target.value);
+                        if (picker) picker.value = e.target.value;
+                        renderCharts();
+                    }
+                });
+            }
+        }
+
+        // Typography sliders
+        document.getElementById('font-size').addEventListener('input', (e) => {
+            document.getElementById('font-size-val').textContent = e.target.value + 'px';
+            document.body.style.fontSize = e.target.value + 'px';
+        });
+
+        document.getElementById('line-height').addEventListener('input', (e) => {
+            document.getElementById('line-height-val').textContent = e.target.value;
+            document.body.style.lineHeight = e.target.value;
+        });
+
+        document.getElementById('heading-weight').addEventListener('input', (e) => {
+            document.getElementById('heading-weight-val').textContent = e.target.value;
+            document.querySelectorAll('.font-sample.heading, .preview-title').forEach(el => {
+                el.style.fontWeight = e.target.value;
+            });
+        });
+
+        document.getElementById('border-radius').addEventListener('input', (e) => {
+            document.getElementById('border-radius-val').textContent = e.target.value + 'px';
+            document.querySelectorAll('.preview-card, button, select, input[type="text"]').forEach(el => {
+                el.style.borderRadius = e.target.value + 'px';
+            });
+        });
+
+        // Export CSS
+        document.getElementById('export-btn').addEventListener('click', () => {
+            const output = document.getElementById('css-output');
+            const style = getComputedStyle(document.documentElement);
+
+            let css = '[data-theme="dark"] {\n';
+            for (const [id, varName] of Object.entries(colorVars)) {
+                const value = document.getElementById(id)?.value || style.getPropertyValue(varName).trim();
+                css += `    ${varName}: ${value};\n`;
+            }
+            css += '}\n';
+
+            output.textContent = css;
+            output.classList.toggle('show');
+        });
+
+        // Render heatmap samples
+        function renderHeatmaps() {
+            const data = [
+                [1, 0.5, 0, -0.5, -1],
+                [0.8, 0.3, -0.2, -0.6, -0.9],
+                [0.6, 0.1, -0.3, -0.7, -0.8],
+                [0.4, -0.1, -0.4, -0.8, -0.6],
+                [0.2, -0.3, -0.5, -0.6, -0.4]
+            ];
+
+            const scales = ['RdBu', 'Viridis', 'Plasma', 'Picnic', 'Greys', 'Blues'];
+
+            scales.forEach(scale => {
+                const trace = {
+                    z: data,
+                    type: 'heatmap',
+                    colorscale: scale,
+                    showscale: false
+                };
+
+                const layout = {
+                    width: 140,
+                    height: 100,
+                    margin: { l: 0, r: 0, t: 0, b: 0 },
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    xaxis: { visible: false },
+                    yaxis: { visible: false }
+                };
+
+                Plotly.newPlot('heatmap-' + scale.toLowerCase(), [trace], layout, { displayModeBar: false });
+            });
+        }
+
+        // Render sample line chart
+        function renderLineChart() {
+            const style = getComputedStyle(document.documentElement);
+            const primaryColor = style.getPropertyValue('--primary-color').trim();
+            const successColor = style.getPropertyValue('--success').trim();
+            const textColor = style.getPropertyValue('--text-primary').trim();
+
+            const trace1 = {
+                x: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                y: [0.2, 0.5, 0.8, 1.2, 1.5, 1.3, 1.1, 0.9, 0.7, 0.5],
+                mode: 'lines+markers',
+                name: 'Trait A',
+                line: { color: primaryColor, width: 2 },
+                marker: { size: 6 }
+            };
+
+            const trace2 = {
+                x: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                y: [-0.1, 0.1, 0.3, 0.4, 0.6, 0.8, 0.9, 1.0, 0.95, 0.85],
+                mode: 'lines+markers',
+                name: 'Trait B',
+                line: { color: successColor, width: 2 },
+                marker: { size: 6 }
+            };
+
+            const layout = {
+                height: 200,
+                margin: { l: 40, r: 20, t: 20, b: 40 },
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                font: { color: textColor, size: 10 },
+                xaxis: {
+                    title: 'Token',
+                    color: textColor,
+                    gridcolor: style.getPropertyValue('--border-color').trim()
+                },
+                yaxis: {
+                    title: 'Activation',
+                    color: textColor,
+                    gridcolor: style.getPropertyValue('--border-color').trim()
+                },
+                legend: {
+                    x: 1,
+                    y: 1,
+                    xanchor: 'right'
+                }
+            };
+
+            Plotly.newPlot('sample-chart', [trace1, trace2], layout, { displayModeBar: false });
+        }
+
+        function renderCharts() {
+            renderHeatmaps();
+            renderLineChart();
+        }
+
+        // Heatmap selection
+        document.querySelectorAll('.heatmap-option').forEach(el => {
+            el.addEventListener('click', () => {
+                document.querySelectorAll('.heatmap-option').forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+            });
+        });
+
+        // Initialize
+        loadCurrentColors();
+        renderCharts();
+    </script>
+</body>
+</html>

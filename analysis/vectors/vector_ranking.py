@@ -4,14 +4,18 @@ Rank extracted vectors for an experiment.
 
 Two modes:
 - Quick (default): Analyze vector files directly (norm, size, method stats)
-- Detailed (--detailed): Read validation results to rank by accuracy
+- Detailed (--detailed): Read evaluation results to rank by accuracy
+
+Input:
+    - experiments/{experiment}/extraction/{trait}/vectors/*.pt
+    - experiments/{experiment}/extraction/extraction_evaluation.json (for --detailed)
+
+Output:
+    - Console output (no file)
 
 Usage:
-    # Quick ranking by vector properties
-    python analysis/rank_vectors.py --experiment {experiment_name}
-
-    # Detailed ranking by validation accuracy (requires evaluate_on_validation.py first)
-    python analysis/rank_vectors.py --experiment {experiment_name} --detailed
+    python analysis/vectors/vector_ranking.py --experiment my_exp
+    python analysis/vectors/vector_ranking.py --experiment my_exp --detailed
 """
 
 import torch
@@ -20,7 +24,7 @@ from pathlib import Path
 import sys
 from typing import Dict, List
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from utils.paths import get as get_path
 
 import pandas as pd
@@ -169,15 +173,15 @@ def quick_ranking(experiment: str, output: str = None, top_k: int = 3):
 
 
 def detailed_ranking(experiment: str, top_n: int = 20):
-    """Detailed ranking by validation accuracy (requires validation results)."""
+    """Detailed ranking by evaluation accuracy (requires extraction_evaluation.json)."""
     print(f"Analyzing experiment: {experiment}")
 
-    results_path = get_path('validation.evaluation', experiment=experiment)
+    results_path = get_path('extraction_eval.evaluation', experiment=experiment)
 
     if not results_path.exists():
-        print(f"Validation results file not found at '{results_path}'")
+        print(f"Evaluation results file not found at '{results_path}'")
         print(f"Run evaluation first:")
-        print(f"  python analysis/evaluate_on_validation.py --experiment {experiment}")
+        print(f"  python analysis/vectors/extraction_evaluation.py --experiment {experiment}")
         return
 
     print(f"Loading results from {results_path}...")

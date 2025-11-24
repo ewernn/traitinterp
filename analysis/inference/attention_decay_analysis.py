@@ -16,13 +16,13 @@ Expected results:
     - Different traits may have different decay rates
 
 Usage:
-    python analysis/attention_decay.py \
+    python analysis/inference/attention_decay_analysis.py \
         --data experiments/.../layer_internal_states/prompt_0_layer16.pt
 """
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import torch
 import argparse

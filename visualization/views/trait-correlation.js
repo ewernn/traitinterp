@@ -41,7 +41,7 @@ async function renderTraitCorrelation() {
         </div>
 
         <div id="correlation-loading" style="padding: 16px; color: var(--text-secondary);">
-            Loading trait projections for prompt ${window.state.currentPrompt}...
+            Loading trait projections...
         </div>
 
         <div id="correlation-content" style="display: none;"></div>
@@ -49,33 +49,43 @@ async function renderTraitCorrelation() {
 
     try {
         // Load projection data for all selected traits
-        // Use global paths singleton (already loaded and has experiment set)
-        const promptNum = window.state.currentPrompt;
+        const promptSet = window.state.currentPromptSet;
+        const promptId = window.state.currentPromptId;
+        const promptLabel = promptSet && promptId ? `${promptSet}/${promptId}` : 'none';
+
+        if (!promptSet || !promptId) {
+            document.getElementById('correlation-loading').innerHTML = `
+                <div style="color: var(--danger); font-size: 12px;">
+                    ⚠️ No prompt selected.
+                </div>
+            `;
+            return;
+        }
 
         const projectionData = {};
         const loadingPromises = filteredTraits.map(async trait => {
             try {
-                // Try all-layers data first (has projections for all layers)
-                const allLayersUrl = window.paths.allLayersData(trait, promptNum);
-                const allLayersResponse = await fetch(allLayersUrl);
+                // Try residual stream data (has projections for all layers)
+                const dataUrl = window.paths.residualStreamData(trait, promptSet, promptId);
+                const response = await fetch(dataUrl);
 
-                if (allLayersResponse.ok) {
-                    const data = await allLayersResponse.json();
+                if (response.ok) {
+                    const data = await response.json();
                     // Extract layer 16 projections (middle layer)
                     if (data.projections && data.projections.response && data.projections.response.length > 0) {
                         // Get layer 16 (or middle layer)
                         const layerIdx = Math.min(16, data.projections.response[0].length - 1);
-                        const scores = data.projections.response.map(tokenProjs => 
+                        const scores = data.projections.response.map(tokenProjs =>
                             (tokenProjs[layerIdx][0] + tokenProjs[layerIdx][1] + tokenProjs[layerIdx][2]) / 3
                         );
                         projectionData[trait.name] = {
                             scores: scores,
-                            tokens: data.response.tokens  // Fixed: was data.tokens.response
+                            tokens: data.response.tokens
                         };
                         console.log(`Loaded ${scores.length} projections for ${trait.name}`);
                     }
                 } else {
-                    console.warn(`No all-layers data for ${trait.name} prompt ${promptNum}`);
+                    console.warn(`No data for ${trait.name} at ${promptLabel}`);
                 }
             } catch (e) {
                 console.error(`Failed to load projections for ${trait.name}:`, e);
@@ -92,8 +102,8 @@ async function renderTraitCorrelation() {
                     ⚠️ Not enough projection data available for selected traits.
                     <br><br>
                     <span style="color: var(--text-secondary); font-size: 11px;">
-                        Only ${traitsWithData.length} trait(s) have inference data for prompt ${promptNum}.
-                        Need at least 2 traits with all-layers projection data.
+                        Only ${traitsWithData.length} trait(s) have inference data for ${promptLabel}.
+                        Need at least 2 traits with projection data.
                     </span>
                 </div>
             `;
@@ -223,7 +233,7 @@ function renderCorrelationHeatmap(traitNames, matrix, projectionData) {
             <div style="display: flex; gap: 24px; margin-bottom: 12px;">
                 <div><span style="color: var(--text-secondary);">Traits:</span> <span style="font-size: 14px; color: var(--text-primary);">${traitNames.length}</span></div>
                 <div><span style="color: var(--text-secondary);">Avg |r|:</span> <span style="font-size: 14px; color: var(--text-primary);">${avgAbsCorr.toFixed(3)}</span></div>
-                <div><span style="color: var(--text-secondary);">Prompt:</span> <span style="font-size: 14px; color: var(--text-primary);">${window.state.currentPrompt}</span></div>
+                <div><span style="color: var(--text-secondary);">Prompt:</span> <span style="font-size: 14px; color: var(--text-primary);">${window.state.currentPromptSet}/${window.state.currentPromptId}</span></div>
             </div>
 
             ${topPairs.length > 0 ? `

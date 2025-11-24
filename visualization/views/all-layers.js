@@ -31,28 +31,36 @@ async function renderAllLayers() {
         container.appendChild(traitDiv);
 
         // Try to load the selected prompt using global PathBuilder
+        const promptSet = window.state.currentPromptSet;
+        const promptId = window.state.currentPromptId;
+
+        if (!promptSet || !promptId) {
+            renderAllLayersInstructionsInContainer(traitDiv.id, trait, promptSet, promptId);
+            continue;
+        }
+
         try {
-            const fetchPath = window.paths.allLayersData(trait, window.state.currentPrompt);
-            console.log(`[${trait.name}] Fetching trajectory data for prompt ${window.state.currentPrompt}`);
+            const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId);
+            console.log(`[${trait.name}] Fetching trajectory data for ${promptSet}/${promptId}`);
             const response = await fetch(fetchPath);
 
             if (!response.ok) {
-                console.log(`[${trait.name}] No data available for prompt ${window.state.currentPrompt} (${response.status})`);
-                renderAllLayersInstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
+                console.log(`[${trait.name}] No data available for ${promptSet}/${promptId} (${response.status})`);
+                renderAllLayersInstructionsInContainer(traitDiv.id, trait, promptSet, promptId);
                 continue;
             }
 
             const data = await response.json();
-            console.log(`[${trait.name}] Data loaded successfully for prompt ${window.state.currentPrompt}`);
+            console.log(`[${trait.name}] Data loaded successfully for ${promptSet}/${promptId}`);
             renderAllLayersDataInContainer(traitDiv.id, trait, data);
         } catch (error) {
-            console.log(`[${trait.name}] Load failed for prompt ${window.state.currentPrompt}:`, error.message);
-            renderAllLayersInstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
+            console.log(`[${trait.name}] Load failed for ${promptSet}/${promptId}:`, error.message);
+            renderAllLayersInstructionsInContainer(traitDiv.id, trait, promptSet, promptId);
         }
     }
 }
 
-function renderAllLayersInstructionsInContainer(containerId, trait, promptNum) {
+function renderAllLayersInstructionsInContainer(containerId, trait, promptSet, promptId) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container ${containerId} not found`);
@@ -62,19 +70,20 @@ function renderAllLayersInstructionsInContainer(containerId, trait, promptNum) {
     // Get layer count from metadata
     const nLayers = trait.metadata?.n_layers || 26;
     const nCheckpoints = nLayers * 3;
+    const promptLabel = promptSet && promptId ? `${promptSet}/${promptId}` : 'none selected';
 
     container.innerHTML = `
         <div style="margin-bottom: 4px;">
             <span style="color: var(--text-primary); font-size: 14px; font-weight: 600;">${window.getDisplayName(trait.name)}</span>
-            <span style="color: var(--text-tertiary); font-size: 11px; margin-left: 8px;">⚠️ No data for prompt ${promptNum}</span>
+            <span style="color: var(--text-tertiary); font-size: 11px; margin-left: 8px;">⚠️ No data for prompt ${promptLabel}</span>
         </div>
         <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
-            The file <code>prompt_${promptNum}.json</code> does not exist for this trait. You may need to run inference with this prompt.
+            The file <code>${promptId}.json</code> does not exist for this trait in ${promptSet || 'the prompt set'}. You may need to run inference with this prompt.
         </div>
         <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">
             To capture per-token projections at all ${nCheckpoints} checkpoints (${nLayers} layers × 3 sublayers):
         </div>
-        <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture_layers.py --experiment ${window.state.experimentData.name} --trait ${trait.name} --prompts "..." --save-json</pre>
+        <pre style="background: var(--bg-secondary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 0; overflow-x: auto; font-size: 10px;">python inference/capture.py --experiment ${window.state.experimentData.name} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
     `;
 }
 
@@ -133,8 +142,7 @@ function renderAllLayersDataInContainer(containerId, trait, data) {
         }
     }, 0);
 
-    // Setup math rendering and toggle listeners
-    renderMath();
+    // Math rendering removed (renderMath function no longer exists)
     } catch (error) {
         console.error(`[${trait.name}] Error rendering trajectory data:`, error);
         if (container) {

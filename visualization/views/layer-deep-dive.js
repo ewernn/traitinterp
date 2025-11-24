@@ -9,29 +9,67 @@ async function renderLayerDeepDive() {
         return;
     }
 
-    // Load data for ALL selected traits
-    contentArea.innerHTML = '<div id="all-traits-layer-dive"></div>';
-    const container = document.getElementById('all-traits-layer-dive');
+    // Single trait selected = full view, multiple = compact view
+    const useSingleTraitView = filteredTraits.length === 1;
 
-    for (const trait of filteredTraits) {
-        // Create a unique div for this trait
-        const traitDiv = document.createElement('div');
-        traitDiv.id = `layer-dive-${trait.name}`;
-        traitDiv.style.marginBottom = '32px';  // Airy spacing between traits
-        container.appendChild(traitDiv);
-
-        // Try to load the selected prompt for default layer 16 using PathBuilder
+    if (useSingleTraitView) {
+        // Full detailed view for single trait
+        const trait = filteredTraits[0];
         try {
-            const fetchPath = window.paths.layerInternalsData(trait, window.state.currentPrompt, 16);
-            console.log(`[${trait.name}] Fetching layer deep dive data: ${fetchPath}`);
-            const response = await fetch(fetchPath);
-            if (!response.ok) throw new Error(`No data found for prompt ${window.state.currentPrompt}`);
+            let fetchPath, response, data;
+            const layersToTry = [10, 1, 16];
 
-            const data = await response.json();
-            renderLayerInternalsDataInContainer(traitDiv.id, trait, data);
+            for (const layer of layersToTry) {
+                fetchPath = window.paths.layerInternalsData(trait, window.state.currentPromptSet, window.state.currentPromptId, layer);
+                console.log(`[${trait.name}] Trying layer ${layer}: ${fetchPath}`);
+                response = await fetch(fetchPath);
+                if (response.ok) {
+                    console.log(`[${trait.name}] Found data at layer ${layer}`);
+                    break;
+                }
+            }
+
+            if (!response.ok) throw new Error(`No data found for prompt ${window.state.currentPromptId}`);
+
+            data = await response.json();
+            renderLayerInternalsData(trait, data);  // Full view
         } catch (error) {
-            // No data yet - show instructions
-            renderLayerInternalsInstructionsInContainer(traitDiv.id, trait, window.state.currentPrompt);
+            renderLayerInternalsInstructions(trait, filteredTraits);
+        }
+    } else {
+        // Compact view for multiple traits
+        contentArea.innerHTML = '<div id="all-traits-layer-dive"></div>';
+        const container = document.getElementById('all-traits-layer-dive');
+
+        // Add note about raw data
+        const note = document.createElement('div');
+        note.style.cssText = 'color: var(--text-tertiary); font-size: 11px; margin-bottom: 16px; padding: 8px; background: var(--bg-secondary); border-radius: 4px;';
+        note.innerHTML = `<strong>Note:</strong> Layer internals show raw MLP/attention activations. These are the same across traits - trait-specific analysis (projecting onto trait vectors) coming soon.`;
+        container.appendChild(note);
+
+        for (const trait of filteredTraits) {
+            const traitDiv = document.createElement('div');
+            traitDiv.id = `layer-dive-${trait.name}`;
+            traitDiv.style.marginBottom = '32px';
+            container.appendChild(traitDiv);
+
+            try {
+                let fetchPath, response, data;
+                const layersToTry = [10, 1, 16];
+
+                for (const layer of layersToTry) {
+                    fetchPath = window.paths.layerInternalsData(trait, window.state.currentPromptSet, window.state.currentPromptId, layer);
+                    response = await fetch(fetchPath);
+                    if (response.ok) break;
+                }
+
+                if (!response.ok) throw new Error(`No data found`);
+
+                data = await response.json();
+                renderLayerInternalsDataInContainer(traitDiv.id, trait, data);
+            } catch (error) {
+                renderLayerInternalsInstructionsInContainer(traitDiv.id, trait, window.state.currentPromptId);
+            }
         }
     }
 }
@@ -136,11 +174,12 @@ function renderLayerInternalsDataInContainer(containerId, trait, data) {
     const container = document.getElementById(containerId);
 
     // Get prompt GELU activations: [n_tokens, 9216]
-    const promptGelu = data.internals.prompt.gelu;
+    // Structure: data.prompt.internals.mlp.gelu (not data.internals.prompt.gelu)
+    const promptGelu = data.prompt.internals.mlp.gelu;
     const promptTokens = data.prompt.tokens;
 
     // Combine prompt and response tokens and activations
-    const responseGelu = data.internals.response.gelu;
+    const responseGelu = data.response.internals.mlp.gelu;
     const responseTokens = data.response.tokens;
 
     const allTokens = [...promptTokens, ...responseTokens];
@@ -217,7 +256,8 @@ function renderLayerInternalsData(trait, data) {
     const contentArea = document.getElementById('content-area');
 
     // Get prompt GELU activations: [n_tokens, 9216]
-    const promptGelu = data.internals.prompt.gelu;
+    // Structure: data.prompt.internals.mlp.gelu (not data.internals.prompt.gelu)
+    const promptGelu = data.prompt.internals.mlp.gelu;
     const promptTokens = data.prompt.tokens;
 
     contentArea.innerHTML = `
@@ -263,7 +303,7 @@ function renderLayerInternalsData(trait, data) {
     `;
 
     // Combine prompt and response tokens and activations
-    const responseGelu = data.internals.response.gelu;
+    const responseGelu = data.response.internals.mlp.gelu;
     const responseTokens = data.response.tokens;
 
     const allTokens = [...promptTokens, ...responseTokens];
@@ -280,15 +320,14 @@ function renderLayerInternalsData(trait, data) {
     window.currentLayerData = { data, promptLength: promptTokens.length };
 
     // Render attention heatmaps
-    if (data.internals.prompt.attn_weights) {
+    if (data.prompt.internals.attention.attn_weights) {
         renderAttentionHeatmaps(data, promptTokens.length, 0);  // Start with token 0
     }
 
     // Render combined neuron activations
     renderTopNeurons('top-neurons-combined', 'Top Neurons (Full Conversation)', allGelu, allTokens, promptTokens.length);
 
-    // Setup math rendering and toggle listeners
-    renderMath();
+    // Math rendering removed (renderMath function no longer exists)
 }
 
 // ============================================================================
@@ -520,13 +559,15 @@ function renderAttentionHeatmaps(data, promptLength, tokenIdx = 0) {
 
     if (isPromptToken) {
         // Query is in prompt - extract row from prompt attention
-        const promptAttn = data.internals.prompt.attn_weights;  // [n_heads, prompt_len, prompt_len]
+        // Structure: data.prompt.internals.attention.attn_weights [n_heads, prompt_len, prompt_len]
+        const promptAttn = data.prompt.internals.attention.attn_weights;
         attnWeights = promptAttn.map(head => head[tokenIdx]);  // [n_heads, prompt_len]
         contextTokens = data.prompt.tokens;
     } else {
         // Query is in response - extract row from response attention
+        // Structure: data.response.internals.attention.attn_weights [n_tokens, n_heads, context_len]
         const responseIdx = tokenIdx - promptLength;
-        const responseAttn = data.internals.response.attn_weights[responseIdx];  // [n_heads, context_len, context_len]
+        const responseAttn = data.response.internals.attention.attn_weights[responseIdx];
         const contextLen = promptLength + responseIdx + 1;
         attnWeights = responseAttn.map(head => head[head.length - 1]);  // Last row = this token's attention
         contextTokens = allTokens.slice(0, contextLen);  // All context up to this point

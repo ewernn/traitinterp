@@ -16,27 +16,26 @@ def load_scenarios(scenario_file: Path) -> list[str]:
         scenarios = [line.strip() for line in f if line.strip()]
     return scenarios
 
-def get_scenario_files(trait: str) -> tuple[Path, Path]:
+def get_scenario_files(experiment: str, trait: str) -> tuple[Path, Path]:
     """
-    Get positive and negative scenario files for a trait from the global scenario directory.
+    Get positive and negative scenario files for a trait from the experiment's trait directory.
 
     Args:
+        experiment: Experiment name.
         trait: Full trait path like "category/trait_name".
 
     Returns:
         Tuple of (positive_file, negative_file) paths.
     """
-    base_trait_name = Path(trait).name
-    scenarios_dir = Path("extraction/scenarios")
+    trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
 
-    pos_file = scenarios_dir / f'{base_trait_name}_positive.txt'
-    neg_file = scenarios_dir / f'{base_trait_name}_negative.txt'
+    pos_file = trait_dir / 'positive.txt'
+    neg_file = trait_dir / 'negative.txt'
 
     if not pos_file.exists() or not neg_file.exists():
-        available = sorted(set(f.stem.replace('_positive', '').replace('_negative', '') for f in scenarios_dir.glob('*.txt')))
         raise FileNotFoundError(
-            f"Scenario files for trait base name '{base_trait_name}' not found in {scenarios_dir}.\n"
-            f"Available scenario traits: {available}"
+            f"Scenario files not found in {trait_dir}.\n"
+            f"Expected: positive.txt, negative.txt"
         )
     return pos_file, neg_file
 
@@ -69,7 +68,7 @@ def generate_responses_for_trait(
     responses_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        pos_scenario_file, neg_scenario_file = get_scenario_files(trait)
+        pos_scenario_file, neg_scenario_file = get_scenario_files(experiment, trait)
         pos_scenarios = load_scenarios(pos_scenario_file)
         neg_scenarios = load_scenarios(neg_scenario_file)
     except FileNotFoundError as e:

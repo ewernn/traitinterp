@@ -38,25 +38,32 @@ async function renderPerTokenActivation() {
 
     const traitData = {};
     const failedTraits = [];
+    const promptSet = window.state.currentPromptSet;
+    const promptId = window.state.currentPromptId;
+
+    if (!promptSet || !promptId) {
+        renderNoDataMessage(contentArea, filteredTraits, promptSet, promptId);
+        return;
+    }
 
     // Load data for ALL selected traits
     for (const trait of filteredTraits) {
         try {
-            const fetchPath = window.paths.allLayersData(trait, window.state.currentPrompt);
-            console.log(`[${trait.name}] Fetching prompt activation data for prompt ${window.state.currentPrompt}`);
+            const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId);
+            console.log(`[${trait.name}] Fetching prompt activation data for ${promptSet}/${promptId}`);
             const response = await fetch(fetchPath);
 
             if (!response.ok) {
-                console.log(`[${trait.name}] No data available for prompt ${window.state.currentPrompt} (${response.status})`);
+                console.log(`[${trait.name}] No data available for ${promptSet}/${promptId} (${response.status})`);
                 failedTraits.push(trait.name);
                 continue;
             }
 
             const data = await response.json();
-            console.log(`[${trait.name}] Data loaded successfully for prompt ${window.state.currentPrompt}`);
+            console.log(`[${trait.name}] Data loaded successfully for ${promptSet}/${promptId}`);
             traitData[trait.name] = data;
         } catch (error) {
-            console.log(`[${trait.name}] Load failed for prompt ${window.state.currentPrompt}:`, error.message);
+            console.log(`[${trait.name}] Load failed for ${promptSet}/${promptId}:`, error.message);
             failedTraits.push(trait.name);
         }
     }
@@ -64,32 +71,33 @@ async function renderPerTokenActivation() {
     // Check if we have any data
     const loadedTraits = Object.keys(traitData);
     if (loadedTraits.length === 0) {
-        renderNoDataMessage(contentArea, filteredTraits, window.state.currentPrompt);
+        renderNoDataMessage(contentArea, filteredTraits, promptSet, promptId);
         return;
     }
 
     // Render the combined graph
-    renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, window.state.currentPrompt);
+    renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, promptSet, promptId);
 }
 
-function renderNoDataMessage(container, traits, promptNum) {
+function renderNoDataMessage(container, traits, promptSet, promptId) {
+    const promptLabel = promptSet && promptId ? `${promptSet}/${promptId}` : 'none selected';
     container.innerHTML = `
         <div class="card">
             <div class="card-title">Per-Token Activation</div>
             <div class="info" style="margin-bottom: 10px;">
-                ⚠️ No data available for prompt ${promptNum} for any selected trait.
+                ⚠️ No data available for prompt ${promptLabel} for any selected trait.
             </div>
             <div style="background: var(--bg-tertiary); padding: 10px; border-radius: 6px; font-size: 12px;">
                 <p style="color: var(--text-secondary); margin-bottom: 8px;">
                     To capture per-token activation data, run:
                 </p>
-                <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 8px 0; overflow-x: auto; font-size: 11px;">python inference/capture_layers.py --experiment ${window.paths.getExperiment()} --prompt-set main_prompts --save-json</pre>
+                <pre style="background: var(--bg-primary); color: var(--text-primary); padding: 8px; border-radius: 4px; margin: 8px 0; overflow-x: auto; font-size: 11px;">python inference/capture.py --experiment ${window.paths.getExperiment()} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
             </div>
         </div>
     `;
 }
 
-function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptNum) {
+function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptSet, promptId) {
     // Use first trait's data as reference for tokens (they should all be the same)
     const refData = traitData[loadedTraits[0]];
     const promptTokens = refData.prompt.tokens;
@@ -97,6 +105,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     const allTokens = [...promptTokens, ...responseTokens];
     const nPromptTokens = refData.prompt.n_tokens;
     const nTotalTokens = allTokens.length;
+    const promptLabel = `${promptSet}/${promptId}`;
 
     // Build HTML
     let failedHtml = '';
@@ -121,7 +130,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                     <strong>Response:</strong> ${window.markdownToHtml(refData.response.text.substring(0, 200))}${refData.response.text.length > 200 ? '...' : ''}
                 </div>
                 <div style="color: var(--text-secondary); font-size: 10px;">
-                    ${nPromptTokens} prompt + ${nTotalTokens - nPromptTokens} response = ${nTotalTokens} tokens • Prompt ${promptNum}
+                    ${nPromptTokens} prompt + ${nTotalTokens - nPromptTokens} response = ${nTotalTokens} tokens • ${promptLabel}
                 </div>
                 ${failedHtml}
             </div>
