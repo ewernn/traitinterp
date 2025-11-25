@@ -27,12 +27,13 @@ if [ ! -f ~/.config/rclone/rclone.conf ]; then
 fi
 
 # Sync from R2 to volume
-# Note: raw/ is excluded via sync_push.sh so it won't be in R2
+# Exclude raw activations (too large, not needed for visualization)
 rclone sync r2:trait-interp-bucket/experiments/ /app/experiments/ \
   --progress \
   --stats 5s \
   --transfers 16 \
-  --checkers 16
+  --checkers 16 \
+  --exclude "*/inference/raw/**"
 
 echo ""
 echo "✅ Download complete!"

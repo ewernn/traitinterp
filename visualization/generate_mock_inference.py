@@ -239,7 +239,7 @@ def main():
     print(f"   Location: {exp_dir}/extraction/{{category}}/{{trait}}/inference/")
     print("\nTo test the visualizer:")
     print("  1. python visualization/serve.py")
-    print("  2. Open http://localhost:8000/visualization/")
+    print("  2. Open http://localhost:8000/")
     print("  3. Select experiment and explore the data")
 
 if __name__ == "__main__":

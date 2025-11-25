@@ -103,7 +103,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     const promptTokens = refData.prompt.tokens;
     const responseTokens = refData.response.tokens;
     const allTokens = [...promptTokens, ...responseTokens];
-    const nPromptTokens = refData.prompt.n_tokens;
+    const nPromptTokens = promptTokens.length;  // Use actual array length
     const nTotalTokens = allTokens.length;
 
     // Build HTML

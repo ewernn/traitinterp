@@ -1,6 +1,7 @@
 #!/bin/bash
-# Push experiments to R2 cloud storage
-# This syncs local experiments/ to R2, uploading only changed files
+# LOCAL → R2 PUSH ONLY (never pull!)
+# This script ONLY pushes from local to R2, never the reverse.
+# Local is the source of truth. NEVER run rclone sync in the opposite direction.
 # OPTIMIZED for high-speed uploads
 
 set -e
@@ -28,9 +29,11 @@ rclone sync experiments/ r2:trait-interp-bucket/experiments/ \
   --exclude "*.pyc" \
   --exclude "__pycache__/**" \
   --exclude ".DS_Store" \
-  --exclude "*/inference/raw/**" \
   --exclude "*/extraction/*/*/activations/**" \
   --exclude "*/extraction/*/*/val_activations/**"
+
+# Note: Raw activations (inference/raw/) ARE included in R2 backup
+# They're excluded from Railway sync (see railway_sync_r2.sh)
 
 echo ""
 echo "✅ Push complete!"

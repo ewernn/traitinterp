@@ -103,7 +103,7 @@ function renderAllLayersDataInContainer(containerId, trait, data) {
     // Combine prompt and response projections and tokens
     const allTokens = [...data.prompt.tokens, ...data.response.tokens];
     const allProj = [...promptProj, ...responseProj];
-    const nPromptTokens = data.prompt.n_tokens;
+    const nPromptTokens = data.prompt.tokens.length;  // Use actual array length
     const nTotalTokens = allTokens.length;
     const nLayers = promptProj[0].length;  // Detect from data
     const nCheckpoints = nLayers * 3;

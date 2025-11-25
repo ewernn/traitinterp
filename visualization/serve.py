@@ -28,6 +28,38 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         '.css': 'text/css',
     }
 
+    def log_message(self, format, *args):
+        """Override to suppress noisy 404 logs and improve error messages."""
+        # Suppress 404s for HEAD requests (file existence checks)
+        if len(args) >= 2 and args[1] == '404' and self.command == 'HEAD':
+            return
+
+        # Suppress 304 (Not Modified) for less noise
+        if len(args) >= 2 and args[1] == '304':
+            return
+
+        # Enhanced 404 logging - show what file was requested
+        if len(args) >= 2 and args[1] == '404':
+            # Extract path from request string "GET /path HTTP/1.1"
+            request_parts = args[0].split(' ')
+            path = request_parts[1] if len(request_parts) > 1 else args[0]
+
+            # Clarify common issues
+            if '/visualization/experiments/' in path:
+                self.log_error("❌ 404: %s (Should not have /visualization/ prefix - bug in frontend path construction)", path)
+            elif '/experiments/' in path:
+                self.log_error("❌ 404: %s (File missing or not synced from R2)", path)
+            else:
+                self.log_error("❌ 404: %s", path)
+            return
+
+        # Suppress generic "File not found" messages (redundant with above)
+        if 'File not found' in format or 'code 404' in format:
+            return
+
+        # Log everything else normally
+        super().log_message(format, *args)
+
     def end_headers(self):
         """Add CORS headers to all responses."""
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -90,9 +122,22 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_inference_projection(exp_name, category, trait, prompt_set, prompt_id)
                 return
 
-            # Serve index.html at root
-            if self.path == '/':
+            # Serve SPA at root
+            if self.path == '/' or self.path == '/index.html':
                 self.path = '/visualization/index.html'
+
+            # Backwards compatibility redirects
+            elif self.path == '/overview':
+                self.send_response(301)
+                self.send_header('Location', '/?tab=overview')
+                self.end_headers()
+                return
+
+            elif self.path == '/visualization/' or self.path == '/visualization/index.html':
+                self.send_response(301)
+                self.send_header('Location', '/?tab=data-explorer')
+                self.end_headers()
+                return
 
             # Serve design playground
             if self.path == '/design':
@@ -137,10 +182,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                             responses_dir = trait_dir / 'responses'
                             vectors_dir = trait_dir / 'vectors'
                             has_responses = (
-                                responses_dir.exists() and (
-                                    (responses_dir / 'pos.csv').exists() or
-                                    (responses_dir / 'pos.json').exists()
-                                )
+                                responses_dir.exists() and
+                                (responses_dir / 'pos.json').exists()
                             )
                             has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
 
@@ -180,10 +223,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     responses_dir = trait_item / 'responses'
                     vectors_dir = trait_item / 'vectors'
                     has_responses = (
-                        responses_dir.exists() and (
-                            (responses_dir / 'pos.csv').exists() or
-                            (responses_dir / 'pos.json').exists()
-                        )
+                        responses_dir.exists() and
+                        (responses_dir / 'pos.json').exists()
                     )
                     has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
                     if has_responses or has_vectors:
@@ -338,7 +379,8 @@ def main():
     print(f"""Starting server on http://localhost:{PORT}
 
 Available at:
-  • http://localhost:{PORT}/
+  • http://localhost:{PORT}/              (Overview - landing page)
+  • http://localhost:{PORT}/visualization/index.html  (Dashboard)
 
 Press Ctrl+C to stop the server.
 """)

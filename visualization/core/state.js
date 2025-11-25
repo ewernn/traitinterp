@@ -264,9 +264,10 @@ async function renderInferenceContext() {
         promptBoxes += `<div class="prompt-box ${isActive}" data-prompt-set="${state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</div>`;
     });
 
-    // Get prompt text from definitions
+    // Get prompt text and note from definitions
     const promptDef = (state.availablePromptSets[state.currentPromptSet] || []).find(p => p.id === state.currentPromptId);
     const promptText = promptDef ? promptDef.text : 'Loading...';
+    const promptNote = promptDef && promptDef.note ? escapeHtml(promptDef.note) : '';
 
     // Check cache for response data
     let responseText = '';
@@ -321,6 +322,7 @@ async function renderInferenceContext() {
             <div class="inference-context-picker">
                 <select class="prompt-set-select" id="prompt-set-select">${promptSetOptions}</select>
                 <div class="prompt-box-container">${promptBoxes}</div>
+                ${promptNote ? `<div class="prompt-note-tag">${promptNote}</div>` : ''}
             </div>
             <div class="inference-context-content">
                 <div class="inference-prompt">
@@ -366,8 +368,8 @@ async function fetchInferenceContextData() {
             promptId: state.currentPromptId,
             promptText: data.prompt?.text || '',
             responseText: data.response?.text || '',
-            promptTokens: data.prompt?.n_tokens || 0,
-            responseTokens: data.response?.n_tokens || 0,
+            promptTokens: promptTokenList.length,  // Use actual array length
+            responseTokens: responseTokenList.length,  // Use actual array length
             allTokens: allTokens,
             nPromptTokens: promptTokenList.length
         };
@@ -576,6 +578,7 @@ function setupNavigation() {
             item.classList.add('active');
             if (item.dataset.view) {
                 state.currentView = item.dataset.view;
+                setTabInURL(item.dataset.view);  // NEW: Sync URL
                 updatePageTitle();
                 renderInferenceContext();
                 if (window.renderView) window.renderView();
@@ -769,16 +772,26 @@ async function discoverAvailablePrompts() {
         console.error('Error fetching prompt sets:', e);
     }
 
-    // Set default selection to first prompt set with data
+    // Set default selection - prefer sets with "single" in name, then alphabetical
     state.currentPromptSet = null;
     state.currentPromptId = null;
 
-    for (const [setName, promptIds] of Object.entries(state.promptsWithData)) {
-        if (promptIds.length > 0) {
-            state.currentPromptSet = setName;
-            state.currentPromptId = promptIds[0];
-            break;
-        }
+    const setsWithData = Object.entries(state.promptsWithData)
+        .filter(([_, ids]) => ids.length > 0)
+        .sort(([a], [b]) => {
+            // Prioritize sets with "single" in the name
+            const aHasSingle = a.includes('single');
+            const bHasSingle = b.includes('single');
+            if (aHasSingle && !bHasSingle) return -1;
+            if (!aHasSingle && bHasSingle) return 1;
+            // Otherwise alphabetical
+            return a.localeCompare(b);
+        });
+
+    if (setsWithData.length > 0) {
+        const [setName, promptIds] = setsWithData[0];
+        state.currentPromptSet = setName;
+        state.currentPromptId = promptIds[0];
     }
 
     console.log('Discovered prompt sets:', Object.keys(state.availablePromptSets));
@@ -861,12 +874,61 @@ function getCssVar(name, fallback = '') {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
+// URL-based tab routing functions
+function getTabFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'overview';
+}
+
+function setTabInURL(tabName) {
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tabName);
+    window.history.pushState({ tab: tabName }, '', url);
+}
+
+function initFromURL() {
+    const tab = getTabFromURL();
+    state.currentView = tab;
+
+    // Update active nav item
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const activeNav = document.querySelector(`.nav-item[data-view="${tab}"]`);
+    if (activeNav) activeNav.classList.add('active');
+}
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', () => {
+    initFromURL();
+    renderInferenceContext();
+    if (window.renderView) window.renderView();
+});
+
 // Simple Markdown to HTML converter
 function markdownToHtml(text) {
     if (!text) return '';
     return text
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
         .replace(/\*(.*?)\*/g, '<em>$1</em>');           // Italic
+}
+
+// Global math rendering utility (KaTeX)
+function renderMath(element) {
+    if (typeof renderMathInElement === 'undefined') {
+        console.warn('KaTeX not loaded - math rendering skipped');
+        return;
+    }
+
+    try {
+        renderMathInElement(element, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            throwOnError: false
+        });
+    } catch (error) {
+        console.error('Math rendering error:', error);
+    }
 }
 
 // Initialize Application
@@ -877,6 +939,11 @@ async function init() {
     setupNavigation();
     await loadExperiments();
     setupEventListeners();
+
+    // NEW: Read tab from URL and render
+    initFromURL();
+    renderInferenceContext();
+    if (window.renderView) window.renderView();
 }
 
 // Export state and functions
@@ -889,3 +956,4 @@ window.getCssVar = getCssVar;
 window.showError = showError;
 window.initApp = init;
 window.markdownToHtml = markdownToHtml;
+window.renderMath = renderMath;

@@ -9,7 +9,7 @@
 #   {layer} - layer number
 #   {prompt_set} - prompt set name (e.g., single_trait, multi_trait, dynamic, adversarial, baseline, real_world)
 #   {prompt_id} - prompt ID within a set (integer)
-#   {format} - file format (csv, json)
+#   {format} - file format (json is standard; csv kept for backwards compatibility)
 
 # =============================================================================
 # EXPERIMENT STRUCTURE

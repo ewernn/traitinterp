@@ -39,9 +39,10 @@ mkdir -p visualization/core visualization/views
 mkdir -p config
 mkdir -p analysis
 mkdir -p utils
-mkdir -p experiments  # Empty placeholder for volume mount
+mkdir -p docs
+mkdir -p experiments  # Empty placeholder - will be populated by Railway volume
 
-# Copy visualization files
+# Copy visualization files (all JS, HTML, CSS)
 cp -r ../trait-interp/visualization/core/ visualization/core/
 cp -r ../trait-interp/visualization/views/ visualization/views/
 cp ../trait-interp/visualization/serve.py visualization/
@@ -49,15 +50,21 @@ cp ../trait-interp/visualization/index.html visualization/
 cp ../trait-interp/visualization/styles.css visualization/
 cp ../trait-interp/visualization/*.md visualization/ 2>/dev/null || true
 
-# Copy config
+# Copy config (CRITICAL - required at runtime)
 cp ../trait-interp/config/paths.yaml config/
 
-# Copy analysis scripts needed by serve.py
+# Copy docs (CRITICAL - loaded by visualization)
+cp ../trait-interp/docs/overview.md docs/
+
+# Copy analysis scripts (CRITICAL - called by serve.py)
 cp ../trait-interp/analysis/check_available_data.py analysis/
 
 # Copy utils
 cp ../trait-interp/utils/railway_sync_r2.sh utils/
-cp ../trait-interp/utils/sync_push.sh utils/
+cp ../trait-interp/utils/paths.py utils/
+
+# Note: Prompts are NOT copied - they live in experiments/{exp}/inference/prompts/
+# and come from the R2 bucket via Railway volume
 
 # Copy root config files
 cp ../trait-interp/requirements-viz.txt .
@@ -65,12 +72,8 @@ cp ../trait-interp/railway.toml .
 cp ../trait-interp/Procfile .
 cp ../trait-interp/.gitignore-public .gitignore
 cp ../trait-interp/RAILWAY_DEPLOY.md .
+cp ../trait-interp/PUBLIC_REPO_SETUP.md . 2>/dev/null || true
 cp ../trait-interp/.env.example .
-
-# Copy documentation
-mkdir -p docs
-cp ../trait-interp/docs/main.md docs/ 2>/dev/null || true
-cp ../trait-interp/README.md . 2>/dev/null || true
 
 echo ""
 echo "✅ Files copied successfully!"

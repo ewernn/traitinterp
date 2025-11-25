@@ -907,6 +907,13 @@
             font-weight: 600;
         }
 
+        .prompt-note-tag {
+            font-size: 10px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
         .prompt-set-select {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);

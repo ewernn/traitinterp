@@ -172,7 +172,7 @@ class PathBuilder {
     extraction(trait, subpath = '') {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const basePath = this.get('extraction.trait', { trait: traitName });
-        return subpath ? `${basePath}/${subpath}` : basePath;
+        return subpath ? `/${basePath}/${subpath}` : `/${basePath}`;
     }
 
     /**
@@ -186,7 +186,7 @@ class PathBuilder {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const dir = this.get('extraction.vectors', { trait: traitName });
         const file = this.get('patterns.vector_metadata', { method, layer });
-        return `${dir}/${file}`;
+        return `/${dir}/${file}`;
     }
 
     /**
@@ -200,7 +200,7 @@ class PathBuilder {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const dir = this.get('extraction.vectors', { trait: traitName });
         const file = this.get('patterns.vector', { method, layer });
-        return `${dir}/${file}`;
+        return `/${dir}/${file}`;
     }
 
     /**
@@ -212,7 +212,7 @@ class PathBuilder {
     inference(trait, subpath = '') {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const basePath = this.get('inference.trait', { trait: traitName });
-        return subpath ? `${basePath}/${subpath}` : basePath;
+        return subpath ? `/${basePath}/${subpath}` : `/${basePath}`;
     }
 
     /**
@@ -226,7 +226,7 @@ class PathBuilder {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const dir = this.get('inference.residual_stream', { trait: traitName, prompt_set: promptSet });
         const file = this.get('patterns.residual_stream_json', { prompt_id: promptId });
-        return `${dir}/${file}`;
+        return `/${dir}/${file}`;
     }
 
     /**
@@ -245,7 +245,7 @@ class PathBuilder {
     layerInternalsData(trait, promptSet, promptId, layer = 16) {
         // Returns path that won't exist - view will gracefully handle 404
         const dir = this.get('inference.raw_internals', { prompt_set: promptSet });
-        return `${dir}/${promptId}_L${layer}.json`;  // .json won't exist, only .pt
+        return `/${dir}/${promptId}_L${layer}.json`;  // .json won't exist, only .pt
     }
 
     /**
@@ -254,7 +254,7 @@ class PathBuilder {
      * @returns {string}
      */
     promptSetFile(promptSet) {
-        return this.get('inference.prompt_set_file', { prompt_set: promptSet });
+        return `/${this.get('inference.prompt_set_file', { prompt_set: promptSet })}`;
     }
 
     /**
@@ -311,7 +311,7 @@ class PathBuilder {
      * @returns {string}
      */
     extractionEvaluation() {
-        return this.get('extraction_eval.evaluation');
+        return `/${this.get('extraction_eval.evaluation')}`;
     }
 
     /**
@@ -322,7 +322,7 @@ class PathBuilder {
     activationsMetadata(trait) {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const dir = this.get('extraction.activations', { trait: traitName });
-        return `${dir}/${this.get('patterns.metadata')}`;
+        return `/${dir}/${this.get('patterns.metadata')}`;
     }
 
     /**
@@ -333,7 +333,7 @@ class PathBuilder {
     traitDefinition(trait) {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const dir = this.get('extraction.trait', { trait: traitName });
-        return `${dir}/${this.get('patterns.trait_definition')}`;
+        return `/${dir}/${this.get('patterns.trait_definition')}`;
     }
 
     /**
@@ -343,12 +343,12 @@ class PathBuilder {
      * @param {string} format - 'csv' or 'json'
      * @returns {string}
      */
-    responses(trait, polarity, format = 'csv') {
+    responses(trait, polarity, format = 'json') {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         const dir = this.get('extraction.responses', { trait: traitName });
         const pattern = polarity === 'pos' ? 'patterns.pos_responses' : 'patterns.neg_responses';
         const file = this.get(pattern, { format });
-        return `${dir}/${file}`;
+        return `/${dir}/${file}`;
     }
 
     /**
@@ -356,7 +356,7 @@ class PathBuilder {
      * @returns {string}
      */
     promptsDir() {
-        return this.get('inference.prompts_dir');
+        return `/${this.get('inference.prompts_dir')}`;
     }
 }
 
@@ -384,23 +384,13 @@ async function hasVectors(pathBuilder, trait) {
  * Detect response format for a trait.
  * @param {PathBuilder} pathBuilder - PathBuilder instance
  * @param {string|Object} trait - Trait name or object
- * @returns {Promise<string|null>} 'csv', 'json', or null
+ * @returns {Promise<string|null>} 'json' or null
  */
 async function detectResponseFormat(pathBuilder, trait) {
-    const traitName = typeof trait === 'string' ? trait : trait.name;
-    const isNatural = traitName.includes('_natural');
-
-    const primaryExt = isNatural ? 'json' : 'csv';
-    const primaryUrl = pathBuilder.responses(trait, 'pos', primaryExt);
-    const primaryCheck = await fetch(primaryUrl, { method: 'HEAD' });
-    if (primaryCheck.ok) return primaryExt;
-
-    const secondaryExt = isNatural ? 'csv' : 'json';
-    const secondaryUrl = pathBuilder.responses(trait, 'pos', secondaryExt);
-    const secondaryCheck = await fetch(secondaryUrl, { method: 'HEAD' });
-    if (secondaryCheck.ok) return secondaryExt;
-
-    return null;
+    // All responses are JSON now - just verify it exists
+    const jsonUrl = pathBuilder.responses(trait, 'pos', 'json');
+    const response = await fetch(jsonUrl, { method: 'HEAD' });
+    return response.ok ? 'json' : null;
 }
 
 // =========================================================================

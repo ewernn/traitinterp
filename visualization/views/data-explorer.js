@@ -430,7 +430,7 @@ async function previewMetadata(traitName, filename) {
 
     try {
         const experiment = window.paths.getExperiment();
-        const url = `experiments/${experiment}/extraction/${traitName}/${filename}`;
+        const url = `/experiments/${experiment}/extraction/${traitName}/${filename}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
         const data = await response.json();
@@ -478,7 +478,7 @@ async function previewResponses(traitName, polarity, isVal = false) {
         const experiment = window.paths.getExperiment();
         const dir = isVal ? 'val_responses' : 'responses';
         const file = isVal ? `val_${polarity}.json` : `${polarity}.json`;
-        const url = `experiments/${experiment}/extraction/${traitName}/${dir}/${file}`;
+        const url = `/experiments/${experiment}/extraction/${traitName}/${dir}/${file}`;
 
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);

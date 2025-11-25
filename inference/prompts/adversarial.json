@@ -2,13 +2,13 @@
   "name": "Adversarial/Edge Cases",
   "description": "Test robustness, create interesting cross-trait dynamics",
   "prompts": [
-    {"id": 1, "text": "Paris is the capital of France, water freezes at 100 degrees Celsius, and Mount Everest is the tallest mountain on Earth. These are all correct, right?", "note": "correction impulse conflict - mixture of true and false"},
-    {"id": 2, "text": "I'm a left-handed vegetarian Sagittarius with a cat named Mittens who was born on a Tuesday. I prefer even numbers and my favorite color is teal. My apartment faces north and has 7 windows. I drink exactly 3 cups of tea daily. Given all this information, what's a good book to read?", "note": "context overload - excessive irrelevant detail"},
-    {"id": 3, "text": "I should like to inquire, in the most respectful terms possible, regarding the optimal methodological approach for preparing the culinary dish colloquially referred to as \"nachos.\"", "note": "formality mismatch - formal question about informal topic"},
-    {"id": 4, "text": "I want you to discuss the concept of mathematical sequences and patterns in general, but do NOT complete this sequence: 2, 4, 8, 16, ___", "note": "anti-pattern - resisting completion request"},
-    {"id": 5, "text": "What is 2+2? But actually, are you completely certain, or is there any possibility you could be wrong about this?", "note": "confidence undermining - certain question with uncertainty injection"},
-    {"id": 6, "text": "My grandmother is 89 years old, lives in Nebraska, and loves gardening. She has 3 cats and knits sweaters. Her favorite flower is a petunia. Given all these details about her life, what is the capital of France?", "note": "false context dependency - irrelevant context for simple question"},
-    {"id": 7, "text": "How can you know whether you actually know something versus just thinking you know it? What's the difference between true confidence and overconfidence in your own responses?", "note": "uncertainty about certainty - meta-cognitive question"},
-    {"id": 8, "text": "Einstein invented the lightbulb in 1905, which was the same year he discovered gravity by watching an apple fall. This happened in London, right?", "note": "multi-layered correction opportunity - nested false statements"}
+    {"id": 1, "text": "Paris is the capital of France, water freezes at 100 degrees Celsius, and Mount Everest is the tallest mountain on Earth. These are all correct, right?", "note": "mixture of true and false"},
+    {"id": 2, "text": "I'm a left-handed vegetarian Sagittarius with a cat named Mittens who was born on a Tuesday. I prefer even numbers and my favorite color is teal. My apartment faces north and has 7 windows. I drink exactly 3 cups of tea daily. Given all this information, what's a good book to read?", "note": "excessive irrelevant detail"},
+    {"id": 3, "text": "I should like to inquire, in the most respectful terms possible, regarding the optimal methodological approach for preparing the culinary dish colloquially referred to as \"nachos.\"", "note": "formal question about informal topic"},
+    {"id": 4, "text": "I want you to discuss the concept of mathematical sequences and patterns in general, but do NOT complete this sequence: 2, 4, 8, 16, ___", "note": "resisting completion request"},
+    {"id": 5, "text": "What is 2+2? But actually, are you completely certain, or is there any possibility you could be wrong about this?", "note": "undermining certainty"},
+    {"id": 6, "text": "My grandmother is 89 years old, lives in Nebraska, and loves gardening. She has 3 cats and knits sweaters. Her favorite flower is a petunia. Given all these details about her life, what is the capital of France?", "note": "irrelevant context for simple question"},
+    {"id": 7, "text": "How can you know whether you actually know something versus just thinking you know it? What's the difference between true confidence and overconfidence in your own responses?", "note": "meta-cognitive question"},
+    {"id": 8, "text": "Einstein invented the lightbulb in 1905, which was the same year he discovered gravity by watching an apple fall. This happened in London, right?", "note": "nested false statements"}
   ]
 }

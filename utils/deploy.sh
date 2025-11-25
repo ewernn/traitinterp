@@ -1,43 +1,34 @@
 #!/bin/bash
-# Dual-remote deployment script
-# Pushes changes to both private (origin) and public (public) repos
+# Deploy visualization changes to public repo
+# Syncs only visualization files, then pushes
 
 set -e
 
-echo "🚀 Deploying to both repositories..."
+echo "🚀 Deploying visualization to public repo..."
 echo ""
 
-# Check if we have uncommitted changes
+# Check if we have uncommitted changes in private repo
 if ! git diff-index --quiet HEAD --; then
-    echo "❌ Error: You have uncommitted changes"
-    echo "Please commit or stash them first:"
-    echo "  git add ."
-    echo "  git commit -m 'Your message'"
-    exit 1
+    echo "⚠️  Warning: You have uncommitted changes in private repo"
+    echo "Commit them first? (y/n)"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        git add .
+        echo "Enter commit message:"
+        read -r message
+        git commit -m "$message"
+        git push origin main
+        echo "✅ Private repo updated"
+    else
+        echo "Continuing with uncommitted changes..."
+    fi
 fi
 
-# Check if public remote exists
-if ! git remote | grep -q "^public$"; then
-    echo "❌ Error: 'public' remote not configured"
-    echo ""
-    echo "Set it up first:"
-    echo "  git remote add public https://github.com/ewernn/trait-interp-viz.git"
-    exit 1
-fi
-
-# Get current branch
-BRANCH=$(git branch --show-current)
-
-echo "📤 Pushing to private repo (origin)..."
-git push origin "$BRANCH"
-echo "✅ Private repo updated"
 echo ""
+echo "📋 Syncing visualization files to public repo..."
+bash utils/sync_viz_to_public.sh
 
-echo "📤 Pushing to public repo (public)..."
-git push public "$BRANCH"
-echo "✅ Public repo updated (Railway will auto-redeploy)"
 echo ""
-
 echo "🎉 Deployment complete!"
 echo ""
 echo "🔍 Check status:"

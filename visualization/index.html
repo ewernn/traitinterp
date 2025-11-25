@@ -27,6 +27,12 @@
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 
+    <!-- Overview Tab Dependencies -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
     <!-- Application Styles -->
     <link rel="stylesheet" href="/visualization/styles.css">
 </head>
@@ -112,6 +118,13 @@
             <div class="sidebar-header">
                 <div class="sidebar-title">Trait Interp</div>
                 <div class="sidebar-subtitle">Vector Visualization</div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="nav-item" data-view="overview">
+                    <span class="icon">📖</span>
+                    <span>Overview</span>
+                </div>
             </div>
 
             <div class="sidebar-section">
@@ -203,6 +216,7 @@
     <script src="/visualization/core/state.js"></script>
 
     <!-- View Modules -->
+    <script src="/visualization/views/overview.js"></script>
     <script src="/visualization/views/data-explorer.js"></script>
     <script src="/visualization/views/trait-dashboard.js"></script>
     <script src="/visualization/views/trait-correlation.js"></script>
@@ -220,6 +234,7 @@
 
             // Update page title
             const viewTitles = {
+                'overview': 'Overview',
                 'data-explorer': 'Data Explorer',
                 'trait-dashboard': 'Trait Dashboard',
                 'trait-correlation': 'Trait Correlation Matrix',
@@ -232,6 +247,9 @@
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
             switch (view) {
+                case 'overview':
+                    window.renderOverview();
+                    break;
                 case 'data-explorer':
                     window.renderDataExplorer();
                     break;
