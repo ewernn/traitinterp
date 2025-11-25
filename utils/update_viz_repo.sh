@@ -15,7 +15,7 @@ fi
 
 if [ ! -d "$PUBLIC_DIR" ]; then
     echo "❌ Error: Public repo not found at $PUBLIC_DIR"
-    echo "Run: bash utils/create_public_repo.sh first"
+    echo "Create the public repo at $PUBLIC_DIR first"
     exit 1
 fi
 
@@ -43,21 +43,15 @@ rsync -av analysis/check_available_data.py "$PUBLIC_DIR/analysis/"
 # Utils (for Railway)
 mkdir -p "$PUBLIC_DIR/utils"
 rsync -av \
-    utils/railway_sync_r2.sh \
+    utils/railway_pull_r2.sh \
     utils/paths.py \
     "$PUBLIC_DIR/utils/"
 
 # Note: Prompts are NOT synced - they live in experiments/{exp}/inference/prompts/
 # and come from the R2 bucket via Railway volume
 
-# Root deployment files
-rsync -av \
-    requirements-viz.txt \
-    railway.toml \
-    Procfile \
-    RAILWAY_DEPLOY.md \
-    PUBLIC_REPO_SETUP.md \
-    "$PUBLIC_DIR/"
+# Requirements (only file that changes)
+rsync -av requirements.txt "$PUBLIC_DIR/"
 
 echo "✅ Files synced!"
 echo ""

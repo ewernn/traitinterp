@@ -79,9 +79,8 @@ async function loadTokenExplorerData() {
         return tokenExplorerData;
     }
 
-    // Load from analysis folder
-    const experiment = window.state.experimentData?.name;
-    const url = `/experiments/${experiment}/analysis/per_token/${promptSet}/${promptId}.json`;
+    // Load from analysis folder using PathBuilder
+    const url = window.paths.analysisPerToken(promptSet, promptId);
 
     try {
         const response = await fetch(url);

@@ -358,6 +358,86 @@ class PathBuilder {
     promptsDir() {
         return `/${this.get('inference.prompts_dir')}`;
     }
+
+    // =========================================================================
+    // Analysis paths
+    // =========================================================================
+
+    /**
+     * Get analysis base directory.
+     * @returns {string}
+     */
+    analysisBase() {
+        return `/${this.get('analysis.base')}`;
+    }
+
+    /**
+     * Get analysis index file.
+     * @returns {string}
+     */
+    analysisIndex() {
+        return `/${this.get('analysis.index')}`;
+    }
+
+    /**
+     * Get per-token analysis data path.
+     * @param {string} promptSet - Prompt set name
+     * @param {number} promptId - Prompt ID within the set
+     * @returns {string}
+     */
+    analysisPerToken(promptSet, promptId) {
+        const dir = this.get('analysis.per_token', { prompt_set: promptSet });
+        const file = this.get('patterns.per_token_json', { prompt_id: promptId });
+        return `/${dir}/${file}`;
+    }
+
+    /**
+     * Get analysis category directory.
+     * @param {string} category - Analysis category name
+     * @returns {string}
+     */
+    analysisCategory(category) {
+        return `/${this.get('analysis.category', { category })}`;
+    }
+
+    /**
+     * Get analysis file for a specific prompt.
+     * @param {string} category - Analysis category name
+     * @param {number} promptId - Prompt ID
+     * @param {string} ext - File extension ('png' or 'json')
+     * @returns {string}
+     */
+    analysisCategoryPrompt(category, promptId, ext = 'png') {
+        const dir = this.get('analysis.category', { category });
+        const pattern = ext === 'png' ? 'patterns.analysis_prompt_png' : 'patterns.analysis_prompt_json';
+        const file = this.get(pattern, { prompt_id: promptId });
+        return `/${dir}/${file}`;
+    }
+
+    /**
+     * Get analysis file with custom filename.
+     * @param {string} category - Analysis category name
+     * @param {string} filename - Filename without extension
+     * @param {string} ext - File extension ('png' or 'json')
+     * @returns {string}
+     */
+    analysisCategoryNamed(category, filename, ext = 'png') {
+        const dir = this.get('analysis.category', { category });
+        const pattern = ext === 'png' ? 'patterns.analysis_named_png' : 'patterns.analysis_named_json';
+        const file = this.get(pattern, { filename });
+        return `/${dir}/${file}`;
+    }
+
+    /**
+     * Get extraction file path (generic).
+     * @param {string} traitName - Trait name (e.g., 'cognitive_state/context')
+     * @param {string} subpath - Subpath within trait directory
+     * @returns {string}
+     */
+    extractionFile(traitName, subpath) {
+        const basePath = this.get('extraction.trait', { trait: traitName });
+        return `/${basePath}/${subpath}`;
+    }
 }
 
 // =========================================================================

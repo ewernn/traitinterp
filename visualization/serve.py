@@ -12,6 +12,10 @@ import json
 import subprocess
 from pathlib import Path
 
+# Add parent directory to path to import utils
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.paths import get as get_path
+
 PORT = int(os.environ.get('PORT', 8000))
 
 # Cache for integrity data (populated on startup)
@@ -43,6 +47,10 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Extract path from request string "GET /path HTTP/1.1"
             request_parts = args[0].split(' ')
             path = request_parts[1] if len(request_parts) > 1 else args[0]
+
+            # Suppress expected 404s (traits without inference data, optional files)
+            if '/residual_stream/' in path or '/README.md' in path or '/favicon.ico' in path:
+                return  # Expected - not all traits have inference data, READMEs optional
 
             # Clarify common issues
             if '/visualization/experiments/' in path:
@@ -122,8 +130,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_inference_projection(exp_name, category, trait, prompt_set, prompt_id)
                 return
 
-            # Serve SPA at root
-            if self.path == '/' or self.path == '/index.html':
+            # Serve SPA at root (including with query params like /?tab=...)
+            if self.path == '/' or self.path == '/index.html' or self.path.startswith('/?'):
                 self.path = '/visualization/index.html'
 
             # Backwards compatibility redirects
@@ -135,7 +143,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             elif self.path == '/visualization/' or self.path == '/visualization/index.html':
                 self.send_response(301)
-                self.send_header('Location', '/?tab=data-explorer')
+                self.send_header('Location', '/?tab=overview')
                 self.end_headers()
                 return
 
@@ -157,7 +165,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def list_experiments(self):
         """List all experiments in experiments/ directory."""
-        experiments_dir = Path('experiments')
+        experiments_dir = get_path('experiments.list')
         if not experiments_dir.exists():
             return {'experiments': []}
 
@@ -201,14 +209,14 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def list_traits(self, experiment_name):
         """List all traits for an experiment."""
-        exp_dir = Path('experiments') / experiment_name
+        exp_dir = get_path('experiments.base', experiment=experiment_name)
         if not exp_dir.exists():
             return {'traits': []}
 
         traits = []
 
         # Check for extraction/{category}/ structure
-        extraction_dir = exp_dir / 'extraction'
+        extraction_dir = get_path('extraction.base', experiment=experiment_name)
         if not extraction_dir.exists():
             return {'traits': []}
 
@@ -239,9 +247,9 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         Discovers available prompts by scanning raw/residual/{prompt_set}/ directories.
         Also loads prompt definitions from inference/prompts/{set}.json files.
         """
-        exp_dir = Path('experiments') / experiment_name
+        exp_dir = get_path('experiments.base', experiment=experiment_name)
         prompts_def_dir = exp_dir / 'inference' / 'prompts'
-        raw_residual_dir = exp_dir / 'inference' / 'raw' / 'residual'
+        raw_residual_dir = get_path('inference.raw', experiment=experiment_name) / 'residual'
 
         prompt_sets = []
 
@@ -280,7 +288,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def list_prompts_in_set(self, experiment_name, prompt_set):
         """List all prompts in a specific prompt set."""
-        prompt_file = Path('experiments') / experiment_name / 'inference' / 'prompts' / f'{prompt_set}.txt'
+        inference_dir = get_path('inference.base', experiment=experiment_name)
+        prompt_file = inference_dir / 'prompts' / f'{prompt_set}.txt'
         if not prompt_file.exists():
             return {'error': f'Prompt set not found: {prompt_set}'}
 
@@ -296,10 +305,10 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def send_inference_projection(self, experiment_name, category, trait, prompt_set, prompt_id):
         """Send inference projection data for a specific trait and prompt."""
-        projection_file = (
-            Path('experiments') / experiment_name / 'inference' / 'projections' /
-            category / trait / prompt_set / f'{prompt_id}.json'
-        )
+        trait_path = f"{category}/{trait}"
+        projection_dir = get_path('inference.residual_stream', experiment=experiment_name, trait=trait_path, prompt_set=prompt_set)
+        filename = get_path('patterns.residual_stream_json', prompt_id=prompt_id)
+        projection_file = projection_dir / filename
 
         if not projection_file.exists():
             self.send_api_response({
@@ -316,7 +325,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def cache_integrity_data():
     """Run check_available_data.py for each experiment and cache results."""
-    experiments_dir = Path('experiments')
+    experiments_dir = get_path('experiments.list')
     if not experiments_dir.exists():
         return
 
@@ -325,7 +334,7 @@ def cache_integrity_data():
             continue
 
         # Check if experiment has extraction data
-        extraction_dir = exp_dir / 'extraction'
+        extraction_dir = get_path('extraction.base', experiment=exp_dir.name)
         if not extraction_dir.exists():
             continue
 
@@ -379,8 +388,9 @@ def main():
     print(f"""Starting server on http://localhost:{PORT}
 
 Available at:
-  • http://localhost:{PORT}/              (Overview - landing page)
-  • http://localhost:{PORT}/visualization/index.html  (Dashboard)
+  • http://localhost:{PORT}/                    (Dashboard - defaults to Overview tab)
+  • http://localhost:{PORT}/?tab=data-explorer  (Data Explorer)
+  • http://localhost:{PORT}/?tab=overview       (Overview documentation)
 
 Press Ctrl+C to stop the server.
 """)

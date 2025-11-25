@@ -191,7 +191,7 @@ async function renderAnalysisGallery() {
 async function discoverAnalyses(experiment) {
     // Try to fetch an index file first (fast path)
     try {
-        const indexUrl = `/experiments/${experiment}/analysis/index.json`;
+        const indexUrl = window.paths.analysisIndex();
         const response = await fetch(indexUrl);
         if (response.ok) {
             return await response.json();
@@ -218,7 +218,8 @@ async function discoverAnalyses(experiment) {
     for (const category of categories) {
         // Try to find PNG files in each category
         for (let promptId = 1; promptId <= 8; promptId++) {
-            const pngPath = `/experiments/${experiment}/analysis/${category}/prompt_${promptId}.png`;
+            const pngPath = window.paths.analysisCategoryPrompt(category, promptId, 'png');
+            const jsonPath = window.paths.analysisCategoryPrompt(category, promptId, 'json');
             try {
                 const response = await fetch(pngPath, { method: 'HEAD' });
                 if (response.ok) {
@@ -226,7 +227,7 @@ async function discoverAnalyses(experiment) {
                         category,
                         name: `prompt_${promptId}`,
                         pngPath,
-                        jsonPath: pngPath.replace('.png', '.json')
+                        jsonPath
                     });
                 }
             } catch (e) {
@@ -235,17 +236,18 @@ async function discoverAnalyses(experiment) {
         }
 
         // Also check for summary/aggregate files
-        const summaryFiles = ['summary.png', 'comparison.png', 'all_prompts.png', 'overview.png'];
+        const summaryFiles = ['summary', 'comparison', 'all_prompts', 'overview'];
         for (const filename of summaryFiles) {
-            const pngPath = `/experiments/${experiment}/analysis/${category}/${filename}`;
+            const pngPath = window.paths.analysisCategoryNamed(category, filename, 'png');
+            const jsonPath = window.paths.analysisCategoryNamed(category, filename, 'json');
             try {
                 const response = await fetch(pngPath, { method: 'HEAD' });
                 if (response.ok) {
                     analyses.push({
                         category,
-                        name: filename.replace('.png', ''),
+                        name: filename,
                         pngPath,
-                        jsonPath: pngPath.replace('.png', '.json')
+                        jsonPath
                     });
                 }
             } catch (e) {

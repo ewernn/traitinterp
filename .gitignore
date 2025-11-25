@@ -1,82 +1,11 @@
-archive/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-
-# Jupyter
-.ipynb_checkpoints
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-*.key
-*.pem
-
-# Old structure (pre-refactor) - keep ignored
-eval/outputs/
-persona_vectors/
-
-# Model files
-*.safetensors
-*.bin
-*.pt
-
-# Cached models (stored in ~/.cache/huggingface/)
-models/
-checkpoints/
-ckpt/
-.cache/
-
-# SAE feature labels and encoded features
-sae/
-
-# Logs
-logs/
-*.log
-wandb/
-
-# Data
-data/
-dataset/
-*.jsonl
-*.csv
-
-# System
-.DS_Store
-*.pid
-nohup.out
-
-# Build
-build/
-dist/
-*.egg-info/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
 # Experiment data (stored in R2, not git)
 experiments/
 
-# Remote setup with secrets
-docs/remote_setup.md
-traitlens/ # Prevent it from being re-added
+# Python
+__pycache__/
+
+# Environment variables
+.env
+
+# System
+.DS_Store

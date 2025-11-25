@@ -10,6 +10,8 @@
 #   {prompt_set} - prompt set name (e.g., single_trait, multi_trait, dynamic, adversarial, baseline, real_world)
 #   {prompt_id} - prompt ID within a set (integer)
 #   {format} - file format (json is standard; csv kept for backwards compatibility)
+#   {category} - analysis category (e.g., normalized_velocity, trait_projections, derivative_overlay)
+#   {filename} - generic filename without extension
 
 # =============================================================================
 # EXPERIMENT STRUCTURE
@@ -55,6 +57,16 @@ inference:
   residual_stream: "experiments/{experiment}/inference/{trait}/residual_stream/{prompt_set}"
 
 # =============================================================================
+# ANALYSIS (experiment-level aggregated analysis outputs)
+# =============================================================================
+
+analysis:
+  base: "experiments/{experiment}/analysis"
+  index: "experiments/{experiment}/analysis/index.json"
+  per_token: "experiments/{experiment}/analysis/per_token/{prompt_set}"
+  category: "experiments/{experiment}/analysis/{category}"
+
+# =============================================================================
 # EXTRACTION EVALUATION (aggregate quality metrics for extracted vectors)
 # =============================================================================
 
@@ -94,6 +106,14 @@ patterns:
 
   # Trait definition
   trait_definition: "trait_definition.txt"
+
+  # Analysis outputs
+  per_token_json: "{prompt_id}.json"
+  analysis_prompt_png: "prompt_{prompt_id}.png"
+  analysis_prompt_json: "prompt_{prompt_id}.json"
+  analysis_named_png: "{filename}.png"
+  analysis_named_json: "{filename}.json"
+  analysis_trait_prompt_png: "prompt_{prompt_id}_{trait}.png"
 
 # =============================================================================
 # GLOBAL DIRECTORIES

@@ -1,6 +1,6 @@
 #!/bin/bash
 # One-time setup: Download experiments from R2 to Railway volume
-# Run this ONCE after creating the Railway volume: railway run bash utils/railway_sync_r2.sh
+# Run this ONCE after creating the Railway volume: railway run bash utils/railway_pull_r2.sh
 
 set -e
 
@@ -27,13 +27,16 @@ if [ ! -f ~/.config/rclone/rclone.conf ]; then
 fi
 
 # Sync from R2 to volume
-# Exclude raw activations (too large, not needed for visualization)
+# Exclude large .pt files (activations and raw inference data)
+# Keep metadata.json files (small, contain model config)
 rclone sync r2:trait-interp-bucket/experiments/ /app/experiments/ \
   --progress \
   --stats 5s \
   --transfers 16 \
   --checkers 16 \
-  --exclude "*/inference/raw/**"
+  --exclude "*/inference/raw/**" \
+  --exclude "*/extraction/*/*/activations/*.pt" \
+  --exclude "*/extraction/*/*/val_activations/*.pt"
 
 echo ""
 echo "✅ Download complete!"

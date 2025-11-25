@@ -26,14 +26,24 @@ rclone sync experiments/ r2:trait-interp-bucket/experiments/ \
   --buffer-size 256M \
   --s3-chunk-size 16M \
   --s3-upload-concurrency 8 \
+  --retries 5 \
+  --low-level-retries 10 \
+  --retries-sleep 2s \
   --exclude "*.pyc" \
   --exclude "__pycache__/**" \
   --exclude ".DS_Store" \
-  --exclude "*/extraction/*/*/activations/**" \
-  --exclude "*/extraction/*/*/val_activations/**"
+  --exclude "*/extraction/*/*/activations/*.pt" \
+  --exclude "*/extraction/*/*/val_activations/*.pt"
 
-# Note: Raw activations (inference/raw/) ARE included in R2 backup
-# They're excluded from Railway sync (see railway_sync_r2.sh)
+# What gets synced to R2:
+#   ✅ Vectors (.pt files in vectors/ dirs)
+#   ✅ Responses (pos.json, neg.json)
+#   ✅ Inference projections (residual_stream/*.json)
+#   ✅ Metadata files (metadata.json - contain model config like n_layers)
+#   ✅ Raw inference activations (inference/raw/*.pt - full backups)
+#   ❌ Extraction activations (activations/*.pt - huge, training-time only)
+#
+# Railway sync excludes inference/raw/*.pt (too large for deployment)
 
 echo ""
 echo "✅ Push complete!"

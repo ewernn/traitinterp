@@ -5,7 +5,7 @@ const state = {
     experiments: [],
     currentExperiment: null,
     experimentData: null,
-    currentView: 'data-explorer',
+    currentView: 'overview',
     selectedTraits: new Set(),
     // Prompt state structure
     currentPromptSet: null,      // e.g., 'single_trait'
@@ -626,11 +626,14 @@ async function loadExperiments() {
         }).join('');
 
         list.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', async () => {
                 list.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
                 state.currentExperiment = item.dataset.experiment;
-                loadExperimentData(state.currentExperiment);
+                await loadExperimentData(state.currentExperiment);
+                // Re-render current view with new experiment data
+                renderInferenceContext();
+                if (window.renderView) window.renderView();
             });
         });
 
@@ -690,7 +693,7 @@ async function loadExperimentData(experimentName) {
                 console.warn(`No responses for ${traitName}`);
             }
 
-            // Load metadata
+            // Load activations metadata (n_layers, model info)
             let metadata = null;
             try {
                 const metadataRes = await fetch(window.paths.activationsMetadata(traitObj));
@@ -698,9 +701,10 @@ async function loadExperimentData(experimentName) {
                     metadata = await metadataRes.json();
                 }
             } catch (e) {
+                // Metadata is optional - will fall back to defaults (26 layers for Gemma 2B)
                 console.warn(`No metadata for ${traitName}`);
             }
-            
+
             const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
             let baseName = traitName.replace('_natural', '');
             if (baseName.includes('/')) {
@@ -732,8 +736,8 @@ async function loadExperimentData(experimentName) {
         });
 
         populateTraitCheckboxes();
-        discoverAvailablePrompts();
-        if (window.renderView) window.renderView();
+        await discoverAvailablePrompts();  // Await to ensure prompts are ready
+        // Don't render here - let init() handle rendering after URL is read
 
     } catch (error) {
         console.error('Error loading experiment data:', error);
@@ -859,14 +863,14 @@ function getPlotlyLayout(baseLayout = {}) {
     };
 }
 
-// Standard colorscale for trait heatmaps (asymmetric: vibrant red + muted blue)
-// Optimized for [0, +1] data where positive values matter more
+// Standard colorscale for trait heatmaps (emerald to rose: green=positive, red=negative)
+// Forest→Coral: low values (red/coral), high values (green/forest)
 const ASYMB_COLORSCALE = [
-    [0, '#5a6a8a'],
-    [0.25, '#98a4b0'],
-    [0.5, '#c8c8c8'],
-    [0.75, '#d47c67'],
-    [1, '#b40426']
+    [0, '#d47c67'],
+    [0.25, '#e8b0a0'],
+    [0.5, '#e8e8c8'],
+    [0.75, '#91cf60'],
+    [1, '#1a9850']
 ];
 
 // Get CSS variable value helper
