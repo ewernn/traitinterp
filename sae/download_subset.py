@@ -112,7 +112,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download SAE feature labels from Neuronpedia")
     parser.add_argument("-l", "--layer", type=int, default=16, help="Layer (default: 16)")
     parser.add_argument("-n", "--num", type=int, default=1000, help="Number of features (default: 1000)")
+    parser.add_argument("--all", action="store_true", help="Download all 16384 features (~35 min)")
     parser.add_argument("-w", "--workers", type=int, default=10, help="Parallel workers (default: 10)")
     args = parser.parse_args()
 
-    download_subset(layer=args.layer, num_features=args.num, max_workers=args.workers)
+    num_features = 16384 if args.all else args.num
+    download_subset(layer=args.layer, num_features=num_features, max_workers=args.workers)

@@ -89,33 +89,25 @@ async function renderAnalysisGallery() {
     // Full render
     contentArea.innerHTML = `
         <div class="tool-view analysis-gallery">
+            <div class="page-intro">
+                <div class="page-intro-text">Per-token analysis and aggregate metrics.</div>
+            </div>
+
             <section>
                 <h3>All Tokens</h3>
-                <p class="section-desc">Slider highlights the selected token's column/row</p>
-                <div class="grid" style="grid-template-columns: 1fr 1fr;">
-                    <div class="card">
-                        <h4>Trait Scores <span class="layer-badge">Layer 16</span></h4>
-                        <div id="trait-heatmap-container"></div>
-                    </div>
-                    <div class="card">
-                        <h4>Normalized Velocity</h4>
-                        <div id="velocity-heatmap-container"></div>
-                    </div>
+                <div class="card">
+                    <h4>Activation Velocity</h4>
+                    <p class="section-desc">How fast each token's hidden state changes between layers. Yellow = selected token.</p>
+                    <div id="velocity-heatmap-container"></div>
                 </div>
             </section>
 
             <section>
                 <h3>Selected Token: <span class="current-token-label">"${escapeHtml(tokenData.token)}"</span></h3>
                 <p class="section-desc">Updates as you move the slider</p>
-                <div class="grid" style="grid-template-columns: 1fr 1fr;">
-                    <div class="card">
-                        <h4>Trait Scores <span class="layer-badge">Layer 16</span></h4>
-                        <div id="trait-scores-container"></div>
-                    </div>
-                    <div class="card">
-                        <h4>Attention Pattern <span class="layer-badge">Layer 16</span></h4>
-                        <div id="attention-container"></div>
-                    </div>
+                <div class="card">
+                    <h4>Attention Pattern <span class="layer-badge">Layer 16</span></h4>
+                    <div id="attention-container"></div>
                 </div>
             </section>
 
@@ -128,7 +120,7 @@ async function renderAnalysisGallery() {
                         <div id="trait-emergence-container"></div>
                     </div>
                     <div class="card">
-                        <h4>Trait-Dynamics Correlation</h4>
+                        <h4>Activation-Trait Coupling</h4>
                         <div id="dynamics-correlation-container"></div>
                     </div>
                 </div>
@@ -152,9 +144,7 @@ function updateGalleryVisualizations(data, tokenIdx, tokenData) {
 }
 
 function renderAllVisualizations(data, tokenIdx, tokenData) {
-    renderTraitHeatmap(data, tokenIdx);
     renderVelocityHeatmap(data, tokenIdx);
-    renderTraitScoresBar(tokenData);
     renderAttentionPattern(tokenData, data);
     renderTraitEmergence(data);
     renderDynamicsCorrelation(data);
@@ -163,59 +153,6 @@ function renderAllVisualizations(data, tokenIdx, tokenData) {
 // =============================================================================
 // ALL TOKENS VISUALIZATIONS (slider highlights)
 // =============================================================================
-
-function renderTraitHeatmap(data, currentTokenIdx) {
-    const container = document.getElementById('trait-heatmap-container');
-    if (!container) return;
-
-    // Get traits from first token with data
-    const firstToken = data.per_token.find(t => t.trait_scores_per_layer);
-    if (!firstToken) {
-        container.innerHTML = '<div class="no-data">No trait data</div>';
-        return;
-    }
-
-    const traits = Object.keys(firstToken.trait_scores_per_layer);
-    const layer = 16;
-
-    // Build matrix [traits × tokens]
-    const zData = traits.map(trait =>
-        data.per_token.map(t => t.trait_scores_per_layer?.[trait]?.[layer] ?? 0)
-    );
-
-    const trace = {
-        z: zData,
-        x: data.tokens.map((t, i) => i),
-        y: traits,
-        type: 'heatmap',
-        colorscale: 'RdBu',
-        zmid: 0,
-        hovertemplate: '%{y}<br>Token %{x}: %{z:.2f}<extra></extra>',
-        showscale: true,
-        colorbar: { thickness: 15, len: 0.8 }
-    };
-
-    // Highlight current token
-    const shapes = [{
-        type: 'rect',
-        x0: currentTokenIdx - 0.5,
-        x1: currentTokenIdx + 0.5,
-        y0: -0.5,
-        y1: traits.length - 0.5,
-        line: { color: '#ffff00', width: 2 },
-        fillcolor: 'rgba(0,0,0,0)'
-    }];
-
-    const layout = {
-        margin: { l: 100, r: 50, t: 10, b: 40 },
-        height: 250,
-        xaxis: { title: 'Token', dtick: 10 },
-        yaxis: { tickfont: { size: 10 } },
-        shapes
-    };
-
-    Plotly.newPlot(container, [trace], layout, { responsive: true });
-}
 
 function renderVelocityHeatmap(data, currentTokenIdx) {
     const container = document.getElementById('velocity-heatmap-container');
@@ -247,13 +184,13 @@ function renderVelocityHeatmap(data, currentTokenIdx) {
         fillcolor: 'rgba(0,0,0,0)'
     }];
 
-    const layout = {
+    const layout = window.getPlotlyLayout({
         margin: { l: 50, r: 50, t: 10, b: 40 },
         height: 250,
         xaxis: { title: 'Layer Transition', dtick: 5 },
         yaxis: { title: 'Token', dtick: 10 },
         shapes
-    };
+    });
 
     Plotly.newPlot(container, [trace], layout, { responsive: true });
 }
@@ -261,42 +198,6 @@ function renderVelocityHeatmap(data, currentTokenIdx) {
 // =============================================================================
 // SELECTED TOKEN VISUALIZATIONS (slider updates)
 // =============================================================================
-
-function renderTraitScoresBar(tokenData) {
-    const container = document.getElementById('trait-scores-container');
-    if (!container || !tokenData.trait_scores_per_layer) {
-        if (container) container.innerHTML = '<div class="no-data">No trait data for this token</div>';
-        return;
-    }
-
-    const layer = 16;
-    const traits = Object.keys(tokenData.trait_scores_per_layer);
-    const scores = traits.map(t => tokenData.trait_scores_per_layer[t][layer]);
-
-    // Sort by absolute value
-    const sorted = traits.map((t, i) => ({ trait: t, score: scores[i] }))
-        .sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
-
-    const trace = {
-        x: sorted.map(s => s.score),
-        y: sorted.map(s => s.trait),
-        type: 'bar',
-        orientation: 'h',
-        marker: {
-            color: sorted.map(s => s.score > 0 ? '#4ecdc4' : '#ff6b6b')
-        },
-        hovertemplate: '%{y}: %{x:.3f}<extra></extra>'
-    };
-
-    const layout = {
-        margin: { l: 100, r: 20, t: 10, b: 40 },
-        height: 250,
-        xaxis: { title: 'Score', zeroline: true, zerolinecolor: '#888' },
-        yaxis: { tickfont: { size: 10 } }
-    };
-
-    Plotly.newPlot(container, [trace], layout, { responsive: true });
-}
 
 function renderAttentionPattern(tokenData, data) {
     const container = document.getElementById('attention-container');
@@ -334,12 +235,12 @@ function renderAttentionPattern(tokenData, data) {
         hovertemplate: 'Pos %{x}: %{y:.3f}<extra></extra>'
     };
 
-    const layout = {
+    const layout = window.getPlotlyLayout({
         margin: { l: 50, r: 20, t: 10, b: 40 },
         height: 250,
         xaxis: { title: 'Context Position', dtick: 10 },
         yaxis: { title: 'Attention' }
-    };
+    });
 
     Plotly.newPlot(container, [trace], layout, { responsive: true });
 }
@@ -405,7 +306,7 @@ function renderTraitEmergence(data) {
         hovertemplate: '%{y}: Layer %{x}<extra></extra>'
     };
 
-    const layout = {
+    const layout = window.getPlotlyLayout({
         margin: { l: 100, r: 20, t: 10, b: 40 },
         height: 250,
         xaxis: { title: 'Emergence Layer', range: [0, 26], dtick: 5 },
@@ -415,7 +316,7 @@ function renderTraitEmergence(data) {
             { type: 'line', x0: 8, x1: 8, y0: -0.5, y1: traits.length - 0.5, line: { color: 'green', width: 1, dash: 'dash' } },
             { type: 'line', x0: 19, x1: 19, y0: -0.5, y1: traits.length - 0.5, line: { color: 'red', width: 1, dash: 'dash' } }
         ]
-    };
+    });
 
     Plotly.newPlot(container, [trace], layout, { responsive: true });
 }
@@ -479,12 +380,12 @@ function renderDynamicsCorrelation(data) {
         hovertemplate: '%{y}: r = %{x:.3f}<extra></extra>'
     };
 
-    const layout = {
+    const layout = window.getPlotlyLayout({
         margin: { l: 100, r: 20, t: 10, b: 40 },
         height: 250,
         xaxis: { title: 'Correlation (r)', range: [-0.2, 1] },
         yaxis: { tickfont: { size: 10 } }
-    };
+    });
 
     Plotly.newPlot(container, [trace], layout, { responsive: true });
 }
@@ -499,44 +400,32 @@ function getCategoryReference() {
             <h3>Reference</h3>
 
             <details>
-                <summary>Trait Scores Heatmap</summary>
-                <p>Shows trait activation for every token at layer 16.</p>
-                <p><strong>Math:</strong> score = hidden[token, L16] · normalized_trait_vector</p>
-                <p><strong>Read:</strong> Red = positive (expresses trait), Blue = negative. Yellow box = selected token.</p>
-            </details>
-
-            <details>
-                <summary>Velocity Heatmap</summary>
-                <p>How fast each token's representation changes at each layer transition.</p>
-                <p><strong>Math:</strong> velocity[L] = ||hidden[L+1] - hidden[L]|| / ||hidden[L]||</p>
-                <p><strong>Read:</strong> Bright = major transformation. Typical: high (L0-6) → low (L7-22) → high (L23-24).</p>
-            </details>
-
-            <details>
-                <summary>Trait Scores Bar</summary>
-                <p>Selected token's trait activations at layer 16, sorted by strength.</p>
-                <p><strong>Read:</strong> Teal = positive, Red = negative. Longest bars = strongest traits.</p>
+                <summary>Activation Velocity</summary>
+                <p>How fast each token's hidden state vector changes between layers (trait-independent).</p>
+                <p><strong>Math:</strong> velocity[L] = ||h[L+1] - h[L]|| / ||h[L]||</p>
+                <p><strong>Read:</strong> Bright = major transformation. Typical pattern: high early (L0-6), low middle (L7-22), high late (L23-24).</p>
             </details>
 
             <details>
                 <summary>Attention Pattern</summary>
-                <p>Where the selected token "looks" in the context (layer 16).</p>
-                <p><strong>Math:</strong> Average attention weights across all heads.</p>
+                <p>Where the selected token "looks" in the context (layer 16, averaged across heads).</p>
+                <p><strong>Math:</strong> Average attention weights across all 8 heads.</p>
                 <p><strong>Read:</strong> Tall bars = positions this token attends to strongly.</p>
             </details>
 
             <details>
                 <summary>Trait Emergence</summary>
-                <p>Which layer each trait first becomes significant.</p>
+                <p>Which layer each trait first becomes significant (across all tokens).</p>
                 <p><strong>Math:</strong> First layer where avg|score| > 0.5 × max|score|.</p>
-                <p><strong>Read:</strong> Shorter bars = emerges earlier. Green line = L8, Red = L19 (stable region).</p>
+                <p><strong>Read:</strong> Shorter bars = emerges earlier. Green line = L8, Red = L19 (stable computation region).</p>
+                <p><strong>Note:</strong> Metric is experimental - threshold is arbitrary.</p>
             </details>
 
             <details>
-                <summary>Trait-Dynamics Correlation</summary>
-                <p>Do trait changes happen when the model is most "active"?</p>
-                <p><strong>Math:</strong> Pearson correlation between normalized velocity and |trait velocity|.</p>
-                <p><strong>Read:</strong> Green = high (trait tied to computation). Gray = low (independent).</p>
+                <summary>Activation-Trait Coupling</summary>
+                <p>Are trait projection changes correlated with overall hidden state changes?</p>
+                <p><strong>Math:</strong> Pearson correlation between activation velocity and |Δtrait| across layers.</p>
+                <p><strong>Read:</strong> High correlation (green) = trait changes happen when model is "computing". Low (gray) = trait changes independently of activation velocity.</p>
             </details>
         </div>
     `;

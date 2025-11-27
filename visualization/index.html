@@ -48,54 +48,6 @@
         </div>
     </div>
 
-    <!-- Info tooltip (global) -->
-    <div class="info-tooltip" id="info-tooltip">
-        <h3>📊 Trait Interpretation Visualization</h3>
-
-        <h4>🔧 Tools:</h4>
-        <ul>
-            <li><strong>Trait Development:</strong></li>
-            <ul>
-                <li><strong>Data Explorer</strong> - Inspect raw responses, activations, and vectors.</li>
-                <li><strong>Trait Dashboard</strong> - Comprehensive view of a trait's vector properties and quality metrics.</li>
-                <li><strong>Trait Correlation Matrix</strong> - Analyze relationships between trait vectors.</li>
-            </ul>
-            <li><strong>Inference Analysis:</strong></li>
-            <ul>
-                <li><strong>Trait Trajectory</strong> - View a single trait's activation across all layers.</li>
-                <li><strong>Trait Dynamics</strong> - Watch the model think: trait activations evolving token-by-token.</li>
-                <li><strong>Layer Deep Dive</strong> - Deep dive into a single layer's attention and MLP components.</li>
-            </ul>
-        </ul>
-
-        <h4>🧠 Available Traits (16 cognitive primitives):</h4>
-        <div class="trait-list">
-            <li>refusal</li>
-            <li>uncertainty_calibration</li>
-            <li>sycophancy</li>
-            <li>retrieval_construction</li>
-            <li>commitment_strength</li>
-            <li>abstract_concrete</li>
-            <li>cognitive_load</li>
-            <li>context_adherence</li>
-            <li>convergent_divergent</li>
-            <li>emotional_valence</li>
-            <li>instruction_boundary</li>
-            <li>local_global</li>
-            <li>paranoia_trust</li>
-            <li>power_dynamics</li>
-            <li>serial_parallel</li>
-            <li>temporal_focus</li>
-        </div>
-
-        <h4>💡 Quick Tips:</h4>
-        <ul>
-            <li>Select traits in the sidebar to filter data</li>
-            <li>Use the theme toggle (🌙/☀️) for dark mode</li>
-            <li>Separation scores >40 indicate excellent quality</li>
-        </ul>
-    </div>
-
     <div class="container">
         <!-- Transformer Architecture Visualization -->
         <!-- <div class="transformer-sidebar" id="transformer-sidebar">
@@ -182,23 +134,19 @@
         <!-- Main Content -->
         <div class="main-content">
             <header>
-                <div class="header-left">
-                    <button class="info-btn" id="info-btn" title="Information">ℹ️</button>
-                    <div class="page-title" id="page-title">Overview</div>
-                    <div class="experiment-badge" id="experiment-badge">-</div>
-                    </div>
+                <div class="page-title" id="page-title">Overview</div>
                 <div class="header-right">
                     <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">🌙</button>
                 </div>
             </header>
 
-            <!-- Inference Context: prompt picker + prompt/response display (only for inference views) -->
-            <div id="inference-context" style="display: none;">
-                <!-- Populated by renderInferenceContext() in state.js -->
-            </div>
-
             <div class="content-wrapper" id="content-area">
                 <div class="loading">Loading experiment data...</div>
+            </div>
+
+            <!-- Prompt Picker: fixed at bottom (only for inference views) -->
+            <div id="prompt-picker" style="display: none;">
+                <!-- Populated by renderPromptPicker() in prompt-picker.js -->
             </div>
         </div>
     </div>
@@ -206,6 +154,7 @@
     <!-- Application Modules -->
     <script src="/visualization/core/paths.js"></script>
     <script src="/visualization/core/state.js"></script>
+    <script src="/visualization/core/prompt-picker.js"></script>
 
     <!-- View Modules -->
     <script src="/visualization/views/overview.js"></script>

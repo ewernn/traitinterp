@@ -130,17 +130,22 @@ global:
   utils: "utils"
 
 # =============================================================================
-# DATA SCHEMA (expected files for integrity checking)
+# DATA SCHEMA (structure + validation + discovery)
 # =============================================================================
-# Single source of truth for what files should exist in a complete experiment.
+# Single source of truth for what files CAN exist and what MUST exist.
 # Used by: analysis/data_checker.py, visualization/views/data-explorer.js
+#
+# Structure: defines all possible files (read by data_checker.py)
+# Required: defines minimum for a valid trait (used for status)
+# Discovery: methods, analysis categories, inference types (from filesystem)
 
 schema:
   # Model configuration
   n_layers: 26
-  methods: ["probe", "mean_diff", "ica", "gradient"]
 
-  # Expected files per trait
+  # ==========================================================================
+  # STRUCTURE: What files CAN exist (complete experiment)
+  # ==========================================================================
   extraction:
     prompts:
       - "positive.txt"
@@ -155,34 +160,23 @@ schema:
       - "responses/neg.json"
       - "val_responses/val_pos.json"
       - "val_responses/val_neg.json"
-    # Activation file prefixes (each gets _layer{0..n_layers-1}.pt)
-    activation_prefixes:
-      - "pos"           # activations/pos_layer*.pt
-      - "neg"           # activations/neg_layer*.pt
-      - "val_pos"       # val_activations/val_pos_layer*.pt
-      - "val_neg"       # val_activations/val_neg_layer*.pt
-    # Vector files: {method}_layer{layer}.pt + {method}_layer{layer}_metadata.json
-    # Generated from methods × n_layers
+    # Activations: single file containing all layers
+    activations:
+      - "activations/all_layers.pt"       # Shape: [n_examples, n_layers, hidden_dim]
+      - "val_activations/all_layers.pt"   # Optional validation set
+    # Vectors: {method}_layer{layer}.pt - methods DISCOVERED from filesystem
 
-  # Expected global files (experiment-level)
-  extraction_global:
-    - "extraction_evaluation.json"
-    - "cross_trait_matrix.json"
+  # ==========================================================================
+  # REQUIRED: What files MUST exist (minimum for valid trait)
+  # ==========================================================================
+  required:
+    extraction:
+      - "positive.txt"
+      - "negative.txt"
 
-  # Inference structure
-  inference:
-    # Per prompt set: raw/residual/{prompt_set}/{prompt_id}.pt
-    # Per trait × prompt set: {trait}/residual_stream/{prompt_set}/{prompt_id}.json
-
-  # Analysis structure
-  analysis:
-    global:
-      - "index.json"
-    categories:
-      - "normalized_velocity"
-      - "trait_projections"
-      - "radial_angular"
-      - "trait_emergence"
-      - "trait_dynamics_correlation"
-      - "derivative_overlay"
-    # Per prompt set: per_token/{prompt_set}/{prompt_id}.json
+  # ==========================================================================
+  # DISCOVERY: Content discovered from filesystem (not listed, just documented)
+  # ==========================================================================
+  # - Extraction methods: vectors/{method}_layer*.pt
+  # - Analysis categories: analysis/{category}/
+  # - Inference types: inference/raw/{type}/

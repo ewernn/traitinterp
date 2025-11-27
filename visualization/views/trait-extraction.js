@@ -10,10 +10,11 @@ async function renderTraitExtraction() {
 
     if (!evalData || !evalData.all_results || evalData.all_results.length === 0) {
         contentArea.innerHTML = `
-            <div class="info" style="margin: 16px; padding: 12px;">
-                <h3>No Extraction Evaluation Data</h3>
-                <p>Run the extraction evaluation script to generate quality metrics:</p>
-                <pre style="margin-top: 8px; padding: 8px; background: var(--bg-secondary); border-radius: 4px;">python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}</pre>
+            <div class="tool-view">
+                <div class="no-data">
+                    <p>No extraction evaluation data</p>
+                    <small>Run: <code>python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}</code></small>
+                </div>
             </div>
         `;
         return;
@@ -22,26 +23,80 @@ async function renderTraitExtraction() {
     // Build the comprehensive view
     contentArea.innerHTML = `
         <div class="tool-view">
+            <!-- Page intro -->
+            <div class="page-intro">
+                <div class="page-intro-text">Measure quality of extracted trait vectors.</div>
+                <div class="intro-example">
+                    <div><span class="example-label">Example (refusal):</span></div>
+                    <div><span class="pos">v_pos</span>  "How do I make a bomb?" → model refuses</div>
+                    <div><span class="neg">v_neg</span>  "How do I make a cake?" → model answers</div>
+                    <div class="intro-example-result">v_refusal = <span class="pos">v_pos</span> - <span class="neg">v_neg</span></div>
+                </div>
+            </div>
+
+            <!-- Table of Contents -->
+            <nav class="toc">
+                <div class="toc-title">Contents</div>
+                <ol class="toc-list">
+                    <li><a href="#heatmaps">Heatmaps</a></li>
+                    <li><a href="#similarity">Similarity Matrix</a></li>
+                    <!-- <li><a href="#table">Quality Table</a></li> -->
+                    <!-- <li><a href="#best">Best Vectors</a></li> -->
+                    <li><a href="#methods">Method Comparison</a></li>
+                    <li><a href="#consistency">Cross-Layer Consistency</a></li>
+                </ol>
+            </nav>
+
             <!-- Section 1: Visualizations -->
             <section>
-                <h2>Quality Analysis</h2>
-
-                <h3>All Vectors - Sortable Quality Table</h3>
-                <div id="quality-table-container"></div>
-
-                <h3>Per-Trait Quality Heatmaps (Layer × Method)</h3>
+                <h3 class="subsection-header" id="heatmaps">
+                    <span class="subsection-num">1.</span>
+                    <span class="subsection-title">Per-Trait Quality Heatmaps (Layer × Method)</span>
+                    <span class="subsection-info-toggle" data-target="info-heatmaps">►</span>
+                </h3>
+                <div class="subsection-info" id="info-heatmaps">Each heatmap shows validation accuracy across layers (rows) and extraction methods (columns) for one trait. Bright = high accuracy.</div>
                 <div id="trait-heatmaps-container"></div>
 
-                <h3>Best Vector Per Trait</h3>
-                <div id="best-vectors-container"></div>
-
-                <h3>Method Comparison</h3>
-                <div id="method-comparison-container" style="height: 300px;"></div>
-
-                <h3>Best-Vector Similarity Matrix (Trait Independence)</h3>
+                <h3 class="subsection-header" id="similarity">
+                    <span class="subsection-num">2.</span>
+                    <span class="subsection-title">Best-Vector Similarity Matrix (Trait Independence)</span>
+                    <span class="subsection-info-toggle" data-target="info-similarity">►</span>
+                </h3>
+                <div class="subsection-info" id="info-similarity">Cosine similarity between best vectors for each trait pair. Low similarity means traits capture independent directions.</div>
                 <div id="best-vector-similarity-container"></div>
 
-                <h3>Cross-Layer Consistency</h3>
+                <!--
+                <h3 class="subsection-header" id="table">
+                    <span class="subsection-num">3.</span>
+                    <span class="subsection-title">All Vectors - Sortable Quality Table</span>
+                    <span class="subsection-info-toggle" data-target="info-table">►</span>
+                </h3>
+                <div class="subsection-info" id="info-table">Every extracted vector ranked by combined score (50% accuracy + 50% normalized effect size). Click headers to sort.</div>
+                <div id="quality-table-container"></div>
+
+                <h3 class="subsection-header" id="best">
+                    <span class="subsection-num">4.</span>
+                    <span class="subsection-title">Best Vector Per Trait</span>
+                    <span class="subsection-info-toggle" data-target="info-best">►</span>
+                </h3>
+                <div class="subsection-info" id="info-best">The single best-performing vector for each trait, showing which method and layer worked best.</div>
+                <div id="best-vectors-container"></div>
+                -->
+
+                <h3 class="subsection-header" id="methods">
+                    <span class="subsection-num">5.</span>
+                    <span class="subsection-title">Method Comparison</span>
+                    <span class="subsection-info-toggle" data-target="info-methods">►</span>
+                </h3>
+                <div class="subsection-info" id="info-methods">Average validation accuracy across all traits for each extraction method.</div>
+                <div id="method-comparison-container"></div>
+
+                <h3 class="subsection-header" id="consistency">
+                    <span class="subsection-num">6.</span>
+                    <span class="subsection-title">Cross-Layer Consistency</span>
+                    <span class="subsection-info-toggle" data-target="info-consistency">►</span>
+                </h3>
+                <div class="subsection-info" id="info-consistency">How similar the best vector is across different layers. High consistency means the trait direction is stable throughout the model.</div>
                 <div id="cross-layer-consistency-container"></div>
             </section>
 
@@ -69,6 +124,12 @@ async function renderTraitExtraction() {
                 ${renderScoringExplanation(evalData)}
             </section>
 
+            <!-- Section 6: All Metrics Overview -->
+            <section>
+                <h2>All Metrics Overview</h2>
+                <div id="all-metrics-container"></div>
+            </section>
+
             <!-- Tooltip container -->
             <div id="section-info-tooltip" class="tooltip"></div>
         </div>
@@ -81,6 +142,7 @@ async function renderTraitExtraction() {
     renderMethodComparison(evalData);
     renderBestVectorSimilarity(evalData);
     renderCrossLayerConsistency(evalData);
+    renderAllMetricsOverview(evalData);
 
     // Render math after all content is in DOM
     if (window.MathJax) {
@@ -89,6 +151,24 @@ async function renderTraitExtraction() {
 
     // Setup info tooltips
     setupSectionInfoTooltips();
+    setupSubsectionInfoToggles();
+}
+
+
+/**
+ * Setup click handlers for subsection info toggles (▼ triangles)
+ */
+function setupSubsectionInfoToggles() {
+    document.querySelectorAll('.subsection-info-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            const targetId = toggle.dataset.target;
+            const infoDiv = document.getElementById(targetId);
+            if (infoDiv) {
+                const isShown = infoDiv.classList.toggle('show');
+                toggle.textContent = isShown ? '▼' : '►';
+            }
+        });
+    });
 }
 
 
@@ -375,7 +455,7 @@ function renderQualityTable(evalData) {
 
     // Build table HTML
     const tableHTML = `
-        <div style="max-height: 600px; overflow-y: auto;">
+        <div class="scrollable-container-lg">
             <table class="data-table" id="extraction-quality-table">
                 <thead>
                     <tr>
@@ -495,10 +575,11 @@ function renderTraitHeatmaps(evalData) {
 
     const traits = Object.keys(traitGroups).sort();
 
-    // Create header with shared legend
+    // Create grid with legend below
     container.innerHTML = `
-        <div class="heatmap-legend-header">
-            <span style="font-size: 12px; color: var(--text-secondary);">${traits.length} traits</span>
+        <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
+        <div class="heatmap-legend-footer">
+            <span class="file-hint">${traits.length} traits</span>
             <div class="heatmap-legend">
                 <span>Accuracy:</span>
                 <div>
@@ -511,7 +592,6 @@ function renderTraitHeatmaps(evalData) {
                 </div>
             </div>
         </div>
-        <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
     `;
 
     const grid = document.getElementById('heatmaps-grid');
@@ -526,7 +606,7 @@ function renderTraitHeatmaps(evalData) {
         traitDiv.className = 'trait-heatmap-item';
         traitDiv.innerHTML = `
             <h4 title="${displayName}">${displayName}</h4>
-            <div id="heatmap-${traitId}" style="width: 100%; height: 120px;"></div>
+            <div id="heatmap-${traitId}" class="chart-container-sm"></div>
         `;
 
         grid.appendChild(traitDiv);
@@ -537,7 +617,7 @@ function renderTraitHeatmaps(evalData) {
 
 
 function renderSingleTraitHeatmap(traitResults, containerId, compact = false) {
-    const methods = ['mean_diff', 'probe', 'ica', 'gradient'];
+    const methods = ['mean_diff', 'probe', 'ica', 'gradient', 'pca_diff', 'random_baseline'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
 
     // Build matrix: layers × methods, value = accuracy
@@ -552,7 +632,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, compact = false) {
 
     const trace = {
         z: matrix,
-        x: compact ? ['MD', 'Pr', 'ICA', 'Gr'] : methods,
+        x: compact ? ['MD', 'Pr', 'ICA', 'Gr', 'PCA', 'Rnd'] : methods,
         y: layers,
         type: 'heatmap',
         colorscale: window.ASYMB_COLORSCALE,
@@ -750,6 +830,253 @@ function renderCrossLayerConsistency(evalData) {
 // CSS helper
 function getCssVar(name, fallback = '') {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+
+/**
+ * Render comprehensive metrics overview showing all available metrics
+ */
+function renderAllMetricsOverview(evalData) {
+    const container = document.getElementById('all-metrics-container');
+    if (!container) return;
+
+    const results = evalData.all_results || [];
+
+    // Define all metrics we want to show (matching extraction_evaluation.py)
+    const ALL_METRICS = [
+        // Core validation metrics
+        { key: 'val_accuracy', label: 'Validation Accuracy', format: 'percent', good: '>90%' },
+        { key: 'val_auc_roc', label: 'AUC-ROC', format: 'percent', good: '>90%' },
+        { key: 'val_effect_size', label: 'Effect Size (d)', format: 'decimal2', good: '>1.5' },
+        { key: 'val_separation', label: 'Separation', format: 'decimal2', good: '>0' },
+        { key: 'val_p_value', label: 'P-Value', format: 'scientific', good: '<0.05' },
+
+        // Distribution metrics
+        { key: 'val_pos_mean', label: 'Pos Mean', format: 'decimal2', good: null },
+        { key: 'val_neg_mean', label: 'Neg Mean', format: 'decimal2', good: null },
+        { key: 'val_pos_std', label: 'Pos Std', format: 'decimal2', good: null },
+        { key: 'val_neg_std', label: 'Neg Std', format: 'decimal2', good: null },
+
+        // Training metrics (generalization)
+        { key: 'train_accuracy', label: 'Train Accuracy', format: 'percent', good: null },
+        { key: 'train_separation', label: 'Train Separation', format: 'decimal2', good: null },
+        { key: 'accuracy_drop', label: 'Accuracy Drop', format: 'percent', good: '<5%' },
+        { key: 'separation_ratio', label: 'Separation Ratio', format: 'decimal2', good: '>0.8' },
+
+        // Vector properties
+        { key: 'vector_norm', label: 'Vector Norm', format: 'decimal1', good: '15-40' },
+        { key: 'vector_sparsity', label: 'Sparsity', format: 'percent', good: null },
+        { key: 'vector_mean', label: 'Vector Mean', format: 'decimal3', good: null },
+        { key: 'vector_std', label: 'Vector Std', format: 'decimal3', good: null },
+
+        // Quality flags
+        { key: 'polarity_correct', label: 'Polarity Correct', format: 'bool', good: 'true' },
+
+        // Advanced metrics
+        { key: 'top_dims', label: 'Top Dims', format: 'array', good: null },
+        { key: 'interference', label: 'Interference', format: 'decimal3', good: '<0.3' },
+    ];
+
+    // Compute per-metric statistics across all results
+    const metricStats = {};
+    ALL_METRICS.forEach(metric => {
+        const values = results
+            .map(r => r[metric.key])
+            .filter(v => v !== null && v !== undefined && !Number.isNaN(v));
+
+        if (metric.format === 'bool') {
+            const trueCount = values.filter(v => v === true).length;
+            metricStats[metric.key] = {
+                computed: values.length > 0,
+                count: values.length,
+                trueCount: trueCount,
+                truePercent: values.length > 0 ? (trueCount / values.length * 100) : null
+            };
+        } else if (metric.format === 'array') {
+            metricStats[metric.key] = {
+                computed: values.length > 0,
+                count: values.length
+            };
+        } else {
+            const numValues = values.filter(v => typeof v === 'number');
+            metricStats[metric.key] = {
+                computed: numValues.length > 0,
+                count: numValues.length,
+                min: numValues.length > 0 ? Math.min(...numValues) : null,
+                max: numValues.length > 0 ? Math.max(...numValues) : null,
+                mean: numValues.length > 0 ? numValues.reduce((a, b) => a + b, 0) / numValues.length : null,
+                std: numValues.length > 1 ? Math.sqrt(numValues.reduce((sum, v) => sum + Math.pow(v - metricStats[metric.key]?.mean || 0, 2), 0) / (numValues.length - 1)) : null
+            };
+            // Recompute std properly after mean is set
+            if (numValues.length > 1) {
+                const mean = metricStats[metric.key].mean;
+                metricStats[metric.key].std = Math.sqrt(numValues.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (numValues.length - 1));
+            }
+        }
+    });
+
+    // Format value for display
+    const formatValue = (value, format) => {
+        if (value === null || value === undefined) return '<span class="na">N/A</span>';
+        switch (format) {
+            case 'percent': return (value * 100).toFixed(1) + '%';
+            case 'decimal1': return value.toFixed(1);
+            case 'decimal2': return value.toFixed(2);
+            case 'decimal3': return value.toFixed(3);
+            case 'scientific': return value < 0.001 ? value.toExponential(2) : value.toFixed(4);
+            case 'bool': return value ? '✓' : '✗';
+            case 'array': return Array.isArray(value) ? value.join(', ') : String(value);
+            default: return String(value);
+        }
+    };
+
+    // Build summary table
+    let html = `
+        <div class="metrics-overview">
+            <h4>Metrics Summary (${results.length} vectors evaluated)</h4>
+            <table class="data-table metrics-summary-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Status</th>
+                        <th>Count</th>
+                        <th>Min</th>
+                        <th>Mean</th>
+                        <th>Max</th>
+                        <th>Good Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    ALL_METRICS.forEach(metric => {
+        const stats = metricStats[metric.key];
+        const computed = stats.computed;
+        const statusClass = computed ? 'status-computed' : 'status-missing';
+        const statusIcon = computed ? '✓' : '○';
+
+        let minVal, meanVal, maxVal;
+        if (metric.format === 'bool') {
+            minVal = '-';
+            meanVal = stats.truePercent !== null ? `${stats.truePercent.toFixed(0)}% true` : '<span class="na">N/A</span>';
+            maxVal = '-';
+        } else if (metric.format === 'array') {
+            minVal = '-';
+            meanVal = computed ? `${stats.count} vectors` : '<span class="na">N/A</span>';
+            maxVal = '-';
+        } else {
+            minVal = formatValue(stats.min, metric.format);
+            meanVal = formatValue(stats.mean, metric.format);
+            maxVal = formatValue(stats.max, metric.format);
+        }
+
+        html += `
+            <tr class="${statusClass}">
+                <td><strong>${metric.label}</strong><br><code class="metric-key">${metric.key}</code></td>
+                <td class="status-cell">${statusIcon}</td>
+                <td>${stats.count || 0}</td>
+                <td>${minVal}</td>
+                <td>${meanVal}</td>
+                <td>${maxVal}</td>
+                <td class="good-value">${metric.good || '-'}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // Add cross-layer consistency if available
+    const crossLayerData = evalData.cross_layer_consistency || {};
+    if (Object.keys(crossLayerData).length > 0) {
+        html += `
+            <div class="metrics-section">
+                <h4>Cross-Layer Consistency (per trait)</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trait</th>
+                            <th>Mean</th>
+                            <th>Std</th>
+                            <th>Min</th>
+                            <th>Max</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(crossLayerData).map(([trait, data]) => `
+                            <tr>
+                                <td>${window.getDisplayName(trait)}</td>
+                                <td>${data.mean?.toFixed(3) ?? '<span class="na">N/A</span>'}</td>
+                                <td>${data.std?.toFixed(3) ?? '<span class="na">N/A</span>'}</td>
+                                <td>${data.min?.toFixed(3) ?? '<span class="na">N/A</span>'}</td>
+                                <td>${data.max?.toFixed(3) ?? '<span class="na">N/A</span>'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        html += `<div class="metrics-section"><h4>Cross-Layer Consistency</h4><p class="na">Not computed yet</p></div>`;
+    }
+
+    // Add interference if available
+    const interferenceData = evalData.interference || {};
+    if (Object.keys(interferenceData).length > 0) {
+        html += `
+            <div class="metrics-section">
+                <h4>Interference (max cosine similarity with other traits)</h4>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trait</th>
+                            <th>Interference</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(interferenceData)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([trait, value]) => {
+                                const status = value < 0.3 ? 'quality-good' : value < 0.5 ? 'quality-ok' : 'quality-bad';
+                                const label = value < 0.3 ? 'Independent' : value < 0.5 ? 'Some overlap' : 'High overlap';
+                                return `
+                                    <tr>
+                                        <td>${window.getDisplayName(trait)}</td>
+                                        <td>${value.toFixed(3)}</td>
+                                        <td class="${status}">${label}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } else {
+        html += `<div class="metrics-section"><h4>Interference</h4><p class="na">Not computed yet</p></div>`;
+    }
+
+    // Add summary stats if available
+    const summaryStats = evalData.summary_stats || {};
+    if (Object.keys(summaryStats).length > 0) {
+        html += `
+            <div class="metrics-section">
+                <h4>Summary Statistics</h4>
+                <div class="stats-row">
+                    ${summaryStats.best_method ? `<span><strong>Best Method:</strong> ${summaryStats.best_method}</span>` : ''}
+                    ${summaryStats.best_layer ? `<span><strong>Best Layer:</strong> ${summaryStats.best_layer}</span>` : ''}
+                    ${summaryStats.mean_val_accuracy ? `<span><strong>Mean Val Acc:</strong> ${(summaryStats.mean_val_accuracy * 100).toFixed(1)}%</span>` : ''}
+                    ${summaryStats.mean_cross_layer_consistency ? `<span><strong>Mean Consistency:</strong> ${summaryStats.mean_cross_layer_consistency.toFixed(3)}</span>` : ''}
+                    ${summaryStats.mean_interference ? `<span><strong>Mean Interference:</strong> ${summaryStats.mean_interference.toFixed(3)}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
 }
 
 

@@ -27,6 +27,25 @@ const DERIVATIVE_COLORS = {
 };
 
 /**
+ * Apply a centered moving average to smooth data.
+ * @param {number[]} data - Input array
+ * @param {number} window - Window size (should be odd for centered average)
+ * @returns {number[]} Smoothed array (same length as input)
+ */
+function smoothData(data, window = 3) {
+    if (data.length < window) return data;
+    const half = Math.floor(window / 2);
+    const result = [];
+    for (let i = 0; i < data.length; i++) {
+        const start = Math.max(0, i - half);
+        const end = Math.min(data.length, i + half + 1);
+        const slice = data.slice(start, end);
+        result.push(slice.reduce((a, b) => a + b, 0) / slice.length);
+    }
+    return result;
+}
+
+/**
  * Compute layer-averaged position, velocity, and acceleration for a trait.
  * Position = average projection across all tokens per layer
  * Velocity = first derivative (diff between layers)
@@ -79,11 +98,10 @@ async function renderTraitDynamics() {
         // Show education sections even without data
         contentArea.innerHTML = `
             <div class="tool-view">
-                ${renderEducationSections()}
-                <section>
-                    <h2>Token Trajectory</h2>
-                    <div class="info">Select at least one trait from the sidebar to view activation trajectories.</div>
-                </section>
+                <div class="page-intro">
+                    <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
+                </div>
+                <div class="info">Select at least one trait from the sidebar to view activation trajectories.</div>
             </div>
         `;
         if (window.MathJax) MathJax.typesetPromise();
@@ -93,11 +111,10 @@ async function renderTraitDynamics() {
     // Show loading state
     contentArea.innerHTML = `
         <div class="tool-view">
-            ${renderEducationSections()}
-            <section>
-                <h2>Token Trajectory</h2>
-                <div class="info">Loading data for ${filteredTraits.length} trait(s)...</div>
-            </section>
+            <div class="page-intro">
+                <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
+            </div>
+            <div class="info">Loading data for ${filteredTraits.length} trait(s)...</div>
         </div>
     `;
     if (window.MathJax) MathJax.typesetPromise();
@@ -145,115 +162,22 @@ async function renderTraitDynamics() {
     renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, promptSet, promptId);
 }
 
-
-function renderEducationSections() {
-    return `
-        <!-- Section 1: What is Projection? -->
-        <section>
-            <h2>What is Trait Projection?</h2>
-            <div class="grid">
-                <div class="card">
-                    <h4>The Core Idea</h4>
-                    <p>Each token's hidden state lives in a high-dimensional space (2304 dims for Gemma 2B). We project onto trait vectors to measure "how much of this trait is present."</p>
-                    <p>$$\\text{score} = \\frac{\\vec{h} \\cdot \\vec{v}}{||\\vec{v}||}$$</p>
-                    <p><strong>Where:</strong> \\(\\vec{h}\\) = hidden state, \\(\\vec{v}\\) = trait vector</p>
-                </div>
-
-                <div class="card">
-                    <h4>Interpretation</h4>
-                    <p>The projection score tells you how aligned the model's internal state is with a particular trait direction.</p>
-                    <ul>
-                        <li><strong>Positive:</strong> Model expressing trait</li>
-                        <li><strong>Negative:</strong> Model avoiding trait</li>
-                        <li><strong>Near zero:</strong> Neutral/unrelated</li>
-                        <li><strong>Magnitude:</strong> Strength of expression</li>
-                    </ul>
-                </div>
-
-                <div class="card">
-                    <h4>Why This Works</h4>
-                    <p>Trait vectors are extracted by finding directions that separate positive/negative examples during training. These directions capture semantic meaning.</p>
-                    <p><strong>Validation:</strong> Vectors achieve 90%+ classification accuracy on held-out examples.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 2: How to Read the Graphs -->
-        <section>
-            <h2>Reading the Graphs</h2>
-            <div class="grid">
-                <div class="card">
-                    <h4>Token Trajectory</h4>
-                    <p>X = tokens, Y = activation (layer-averaged). Shows how traits evolve during generation. Dashed line separates prompt/response.</p>
-                </div>
-
-                <div class="card">
-                    <h4>Layer Evolution</h4>
-                    <p>X = layers, Y = projection (token-averaged). Shows how traits emerge through the network with position/velocity/acceleration.</p>
-                </div>
-
-                <div class="card">
-                    <h4>Colors & Lines</h4>
-                    <p>Each color = one trait. Solid = position, dashed = velocity, dotted = acceleration. Hover to highlight a trait.</p>
-                </div>
-
-                <div class="card">
-                    <h4>Vertical Line</h4>
-                    <p>Shows the currently selected token (from the global slider). Syncs across all views.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 3: Patterns to Look For -->
-        <section>
-            <h2>Key Patterns</h2>
-            <div class="grid">
-                <div class="card">
-                    <h4>Commitment Points</h4>
-                    <p>Sharp rises or falls indicate "decision moments" where the model commits to a behavior. Often occurs early in response.</p>
-                    <p><strong>Example:</strong> Refusal spike at "I cannot" tokens</p>
-                </div>
-
-                <div class="card">
-                    <h4>Trait Crossings</h4>
-                    <p>When two trait lines cross, the model is transitioning from one mode to another. Watch for correlated inversions.</p>
-                    <p><strong>Example:</strong> Uncertainty dropping as confidence rises</p>
-                </div>
-
-                <div class="card">
-                    <h4>Persistence</h4>
-                    <p>Traits that stay elevated across many tokens indicate sustained behavioral modes (not just local patterns).</p>
-                    <p><strong>Example:</strong> Sustained sycophancy throughout a response</p>
-                </div>
-
-                <div class="card">
-                    <h4>Prompt vs Response</h4>
-                    <p>Compare trait levels in prompt (context processing) vs response (generation). Dramatic shifts reveal how context influences behavior.</p>
-                    <p><strong>Example:</strong> Low refusal during prompt, high during harmful response</p>
-                </div>
-            </div>
-        </section>
-    `;
-}
-
 function renderNoDataMessage(container, traits, promptSet, promptId) {
     const promptLabel = promptSet && promptId ? `${promptSet}/${promptId}` : 'none selected';
     container.innerHTML = `
         <div class="tool-view">
-            ${renderEducationSections()}
-            <section>
-                <h2>Token Trajectory</h2>
-                <div class="info">
-                    No data available for prompt ${promptLabel} for any selected trait.
-                </div>
-                <p class="tool-description">
-                    To capture per-token activation data, run:
-                </p>
-                <pre>python inference/capture_raw_activations.py --experiment ${window.paths.getExperiment()} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
-            </section>
+            <div class="page-intro">
+                <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
+            </div>
+            <div class="info">
+                No data available for prompt ${promptLabel} for any selected trait.
+            </div>
+            <p class="tool-description">
+                To capture per-token activation data, run:
+            </p>
+            <pre>python inference/capture_raw_activations.py --experiment ${window.paths.getExperiment()} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
         </div>
     `;
-    if (window.MathJax) MathJax.typesetPromise();
 }
 
 function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptSet, promptId) {
@@ -277,27 +201,24 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
 
     container.innerHTML = `
         <div class="tool-view">
-            ${renderEducationSections()}
+            <div class="page-intro">
+                <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
+            </div>
+            ${failedHtml}
             <section>
                 <h2>Token Trajectory</h2>
-                <p class="tool-description">
-                    How traits evolve as the model generates each token (layer-averaged)
-                </p>
-                ${failedHtml}
                 <div id="combined-activation-plot"></div>
             </section>
             <section>
                 <h2>Layer Evolution</h2>
-                <p class="tool-description">
-                    How traits emerge through network layers (token-averaged). Shows position, velocity (1st derivative), and acceleration (2nd derivative).
-                </p>
                 <div id="layer-evolution-plot"></div>
+            </section>
+            <section>
+                <h2>Activation Magnitude</h2>
+                <div id="activation-magnitude-plot"></div>
             </section>
         </div>
     `;
-
-    // Render MathJax
-    if (window.MathJax) MathJax.typesetPromise();
 
     // Prepare traces for each trait
     const traces = [];
@@ -311,7 +232,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         const nLayers = promptProj[0].length;
 
         // Calculate activation strength for each token (average across all layers and sublayers)
-        const activations = [];
+        const rawActivations = [];
         const displayTokens = [];
 
         for (let t = startIdx; t < allProj.length; t++) {
@@ -323,9 +244,12 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                     count++;
                 }
             }
-            activations.push(sum / count);
+            rawActivations.push(sum / count);
             displayTokens.push(allTokens[t]);
         }
+
+        // Apply 3-token moving average to reduce noise
+        const activations = smoothData(rawActivations, 3);
 
         const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
 
@@ -431,24 +355,24 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             tickfont: { size: 9 }
         },
         yaxis: {
-            title: 'Activation (avg all layers)',
+            title: 'Activation (3-token avg)',
             zeroline: true,
             zerolinewidth: 1,
             showgrid: true
         },
         shapes: shapes,
         annotations: annotations,
-        margin: { l: 60, r: 20, t: 40, b: 100 },
+        margin: { l: 60, r: 20, t: 40, b: 140 },
         height: 500,
         font: { size: 11 },
         hovermode: 'closest',
         legend: {
-            orientation: 'v',
+            orientation: 'h',
             yanchor: 'top',
-            y: 1,
-            xanchor: 'left',
-            x: 1.02,
-            font: { size: 11 },
+            y: -0.25,
+            xanchor: 'center',
+            x: 0.5,
+            font: { size: 10 },
             bgcolor: 'transparent'
         },
         showlegend: true
@@ -472,6 +396,9 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
 
     // Render Layer Evolution plot (derivative overlay)
     renderLayerEvolutionPlot(traitData, loadedTraits);
+
+    // Render Activation Magnitude plot (trait-independent)
+    renderActivationMagnitudePlot(traitData, loadedTraits);
 }
 
 
@@ -620,6 +547,110 @@ function renderLayerEvolutionPlot(traitData, loadedTraits) {
     });
     layerPlotDiv.on('plotly_unhover', () => Plotly.restyle(layerPlotDiv, {'opacity': 1.0}));
 }
+
+
+/**
+ * Render the Activation Magnitude plot showing ||h|| by layer.
+ * This is trait-independent - shows raw activation norm at each layer.
+ */
+function renderActivationMagnitudePlot(traitData, loadedTraits) {
+    // Get activation norms from first trait's data (same for all traits)
+    const firstTraitData = traitData[loadedTraits[0]];
+
+    // Check if activation_norms exists (requires re-running projection script)
+    if (!firstTraitData.activation_norms) {
+        const plotDiv = document.getElementById('activation-magnitude-plot');
+        plotDiv.innerHTML = `
+            <div class="info">
+                Activation norms not available. Re-run projection script to generate:
+                <pre>python inference/project_raw_activations_onto_traits.py --experiment {exp} --prompt-set {set}</pre>
+            </div>
+        `;
+        return;
+    }
+
+    const promptNorms = firstTraitData.activation_norms.prompt;
+    const responseNorms = firstTraitData.activation_norms.response;
+    const nLayers = promptNorms.length;
+    const layerIndices = Array.from({length: nLayers}, (_, i) => i);
+
+    // Compute combined average (prompt + response)
+    const combinedNorms = promptNorms.map((p, i) => (p + responseNorms[i]) / 2);
+
+    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+
+    const traces = [
+        {
+            x: layerIndices,
+            y: promptNorms,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Prompt',
+            line: { color: '#4a9eff', width: 2 },
+            marker: { size: 4 },
+            hovertemplate: '<b>Prompt</b><br>Layer %{x}<br>||h|| = %{y:.1f}<extra></extra>'
+        },
+        {
+            x: layerIndices,
+            y: responseNorms,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Response',
+            line: { color: '#ff6b6b', width: 2 },
+            marker: { size: 4 },
+            hovertemplate: '<b>Response</b><br>Layer %{x}<br>||h|| = %{y:.1f}<extra></extra>'
+        },
+        {
+            x: layerIndices,
+            y: combinedNorms,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Combined',
+            line: { color: textSecondary, width: 2, dash: 'dash' },
+            marker: { size: 4 },
+            hovertemplate: '<b>Combined</b><br>Layer %{x}<br>||h|| = %{y:.1f}<extra></extra>'
+        }
+    ];
+
+    const layout = window.getPlotlyLayout({
+        xaxis: {
+            title: 'Layer',
+            tickmode: 'linear',
+            tick0: 0,
+            dtick: 2,
+            showgrid: true,
+            gridcolor: 'rgba(128,128,128,0.2)'
+        },
+        yaxis: {
+            title: '||h|| (L2 norm)',
+            showgrid: true
+        },
+        margin: { l: 60, r: 20, t: 20, b: 50 },
+        height: 300,
+        font: { size: 11 },
+        hovermode: 'closest',
+        legend: {
+            orientation: 'h',
+            yanchor: 'bottom',
+            y: 1.02,
+            xanchor: 'left',
+            x: 0,
+            font: { size: 10 },
+            bgcolor: 'transparent'
+        },
+        showlegend: true
+    });
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+    };
+
+    Plotly.newPlot('activation-magnitude-plot', traces, layout, config);
+}
+
 
 // Export to global scope
 window.renderTraitDynamics = renderTraitDynamics;

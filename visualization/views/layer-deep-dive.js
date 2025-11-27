@@ -1,10 +1,11 @@
 // Layer Deep Dive View - SAE Feature Decomposition
 // Shows which interpretable SAE features are active at each token
-// Uses global token slider from state.js (currentTokenIndex)
+// Uses global token slider from prompt-picker.js (currentTokenIndex)
 
 // Cache for SAE data and labels
 let saeDataCache = null;
 let saeLabelsCache = null;
+let saeCacheKey = null;  // Track which prompt the cache is for
 
 /**
  * Load SAE feature labels (cached after first load)
@@ -48,12 +49,12 @@ function renderSetupInstructions(contentArea) {
 
     contentArea.innerHTML = `
         <div class="tool-view">
+            <div class="page-intro">
+                <div class="page-intro-text">Decompose activations into interpretable SAE features.</div>
+            </div>
             <section>
-                <h2>SAE Feature Decomposition</h2>
-                <p>Decompose activations into interpretable features using GemmaScope SAE (16k features)</p>
-
+                <h2>Setup Required</h2>
                 <div class="card">
-                    <h4>Setup Required</h4>
                     <p>SAE feature decomposition requires encoding raw activations through the Sparse Autoencoder.
                     This converts 2,304 raw neuron activations into 16,384 interpretable features.</p>
 
@@ -137,10 +138,12 @@ function renderSaeVisualization(contentArea, saeData, saeLabels) {
 
     contentArea.innerHTML = `
         <div class="tool-view">
+            <div class="page-intro">
+                <div class="page-intro-text">Decompose activations into interpretable SAE features.</div>
+            </div>
             <section>
-                <h2>SAE Feature Decomposition</h2>
+                <h2>Token ${clampedIdx}: <code>${escapeHtml(displayToken)}</code></h2>
                 <div class="stats-row">
-                    <span><strong>Token ${clampedIdx}:</strong> <code>${escapeHtml(displayToken)}</code></span>
                     <span><strong>Phase:</strong> ${tokenPhase}</span>
                     <span><strong>Layer:</strong> ${saeData.layer || 16}</span>
                 </div>
@@ -256,10 +259,18 @@ function escapeHtml(str) {
  */
 async function renderLayerDeepDive() {
     const contentArea = document.getElementById('content-area');
+    const experiment = window.paths?.getExperiment();
     const promptSet = window.state?.currentPromptSet;
     const promptId = window.state?.currentPromptId;
+    const cacheKey = `${experiment}:${promptSet}:${promptId}`;
 
-    // Show loading
+    // If cache is valid for this prompt, just re-render with new token (no loading flash)
+    if (saeDataCache && saeLabelsCache && saeCacheKey === cacheKey) {
+        renderSaeVisualization(contentArea, saeDataCache, saeLabelsCache);
+        return;
+    }
+
+    // Show loading only on initial load or prompt change
     contentArea.innerHTML = '<div class="tool-view"><p>Loading SAE data...</p></div>';
 
     // Try to load SAE labels and data
@@ -276,6 +287,8 @@ async function renderLayerDeepDive() {
 
     // Cache and render
     saeDataCache = saeData;
+    saeLabelsCache = saeLabels;
+    saeCacheKey = cacheKey;
     renderSaeVisualization(contentArea, saeData, saeLabels);
 }
 

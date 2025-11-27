@@ -14,7 +14,14 @@ async function renderTraitTrajectory() {
     }
 
     // Load data for ALL selected traits
-    contentArea.innerHTML = '<div class="tool-view" id="all-traits-container"></div>';
+    contentArea.innerHTML = `
+        <div class="tool-view">
+            <div class="page-intro">
+                <div class="page-intro-text">View trait activations across all layers for a prompt.</div>
+            </div>
+            <div id="all-traits-container"></div>
+        </div>
+    `;
     const container = document.getElementById('all-traits-container');
 
     // Use global PathBuilder singleton with experiment set
@@ -40,20 +47,18 @@ async function renderTraitTrajectory() {
 
         try {
             const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId);
-            console.log(`[${trait.name}] Fetching trajectory data for ${promptSet}/${promptId}`);
             const response = await fetch(fetchPath);
 
             if (!response.ok) {
-                console.log(`[${trait.name}] No data available for ${promptSet}/${promptId} (${response.status})`);
+                console.warn(`[${trait.name}] No projection data for ${promptSet}/${promptId}`);
                 renderAllLayersInstructionsInContainer(traitDiv.id, trait, promptSet, promptId);
                 continue;
             }
 
             const data = await response.json();
-            console.log(`[${trait.name}] Data loaded successfully for ${promptSet}/${promptId}`);
             renderAllLayersDataInContainer(traitDiv.id, trait, data);
         } catch (error) {
-            console.log(`[${trait.name}] Load failed for ${promptSet}/${promptId}:`, error.message);
+            console.warn(`[${trait.name}] Failed to load ${promptSet}/${promptId}:`, error.message);
             renderAllLayersInstructionsInContainer(traitDiv.id, trait, promptSet, promptId);
         }
     }
@@ -75,9 +80,15 @@ function renderAllLayersInstructionsInContainer(containerId, trait, promptSet, p
         <div class="card">
             <h4>${window.getDisplayName(trait.name)} <small style="color: var(--text-tertiary); font-weight: normal;">⚠️ No data for ${promptLabel}</small></h4>
             <p style="color: var(--text-secondary); font-size: 11px; margin: 4px 0;">
-                The file <code>${promptId}.json</code> does not exist for this trait in ${promptSet || 'the prompt set'}. Run inference to generate it.
+                Missing projection data for <code>${trait.name}</code>. This usually means the trait doesn't have extraction vectors yet.
             </p>
-            <pre>python inference/capture_raw_activations.py --experiment ${window.state.experimentData.name} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
+            <p style="color: var(--text-secondary); font-size: 11px; margin: 4px 0;">
+                1. Check vectors exist: <code>ls experiments/${window.state.experimentData.name}/extraction/${trait.name}/vectors/</code>
+            </p>
+            <p style="color: var(--text-secondary); font-size: 11px; margin: 4px 0;">
+                2. If missing, run extraction first. If vectors exist, re-run projection:
+            </p>
+            <pre>python inference/project_raw_activations_onto_traits.py --experiment ${window.state.experimentData.name} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
         </div>
     `;
 }
@@ -92,8 +103,6 @@ function renderAllLayersDataInContainer(containerId, trait, data) {
     try {
         const promptProj = data.projections.prompt;  // [n_tokens, n_layers, 3]
         const responseProj = data.projections.response;
-        console.log('Prompt projections shape:', promptProj.length, 'tokens x', promptProj[0].length, 'layers x', promptProj[0][0].length, 'sublayers');
-        console.log('Response projections shape:', responseProj.length, 'tokens x', responseProj[0].length, 'layers x', responseProj[0][0].length, 'sublayers');
 
     // Combine prompt and response projections and tokens
     const allTokens = [...data.prompt.tokens, ...data.response.tokens];
@@ -108,13 +117,13 @@ function renderAllLayersDataInContainer(containerId, trait, data) {
 
     container.innerHTML = `
         <h4 style="margin-bottom: 4px;">${window.getDisplayName(trait.name)}</h4>
-        <div id="${trajectoryId}"></div>
+        <div id="${trajectoryId}" style="width: 100%;"></div>
     `;
 
     // Render combined trajectory heatmap with separator line
     setTimeout(() => {
         try {
-            renderCombinedTrajectoryHeatmap(trajectoryId, allProj, allTokens, nPromptTokens, 250);  // Reduced height
+            renderCombinedTrajectoryHeatmap(trajectoryId, allProj, allTokens, nPromptTokens, 250);
         } catch (plotError) {
             console.error(`[${trait.name}] Heatmap rendering failed:`, plotError);
             container.innerHTML += `<div class="info error">Failed to render heatmap: ${plotError.message}</div>`;
@@ -135,8 +144,7 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
     // We'll show layer-averaged (average over 3 sublayers)
 
     const nTokens = projections.length;
-    const nLayers = projections[0].length;  // Dynamically get number of layers
-    console.log(`Rendering combined trajectory heatmap for ${nTokens} tokens x ${nLayers} layers (${nPromptTokens} prompt + ${nTokens - nPromptTokens} response)`);
+    const nLayers = projections[0].length;
 
     // Average over sublayers to get [n_tokens, n_layers]
     // Skip BOS token (index 0) for better visualization dynamic range
@@ -161,12 +169,10 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
         }
     }
 
-    console.log(`[${divId}] Heatmap data sample:`, heatmapData[0].slice(0, 5));
-
     // Get colors from CSS variables
     const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
     const separatorColor = `${primaryColor}80`;  // 50% opacity
-    const highlightColor = `${primaryColor}33`;  // 20% opacity
+    const highlightColor = `${primaryColor}80`;  // 50% opacity
 
     // Get current token index from global state (absolute index across prompt+response)
     // The heatmap skips BOS (startIdx=1), so token at absolute index N = heatmap x position (N - startIdx)
@@ -232,7 +238,16 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
         margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 40, b: 50, l: 40, r: 10 }
     });
 
-    Plotly.newPlot(divId, data, layout, {displayModeBar: false});
+    Plotly.newPlot(divId, data, layout, { displayModeBar: false, responsive: true });
+
+    // Force Plotly to recalculate size after DOM has painted
+    // Using double-RAF ensures layout is complete (especially for first trait on initial load)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const el = document.getElementById(divId);
+            if (el) Plotly.Plots.resize(divId);
+        });
+    });
 }
 
 // Export to global scope

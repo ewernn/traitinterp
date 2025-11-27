@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-Check available data for trait-interp experiments.
+Check available data for trait-interp experiments using discovery-based approach.
 
 Input:
-    - experiments/{experiment}/extraction/
-    - experiments/{experiment}/inference/
-    - config/paths.yaml (schema section defines expected files)
+    - experiments/{experiment}/ (filesystem scan)
+    - config/paths.yaml (schema for required files only)
 
 Output:
     - Console report (or JSON with --json_output)
+
+Discovery conventions:
+    - Extraction methods: discovered from vectors/{method}_layer*.pt
+    - Analysis categories: discovered from analysis/{category}/
+    - Inference types: discovered from inference/raw/{type}/
 
 Usage:
     python analysis/data_checker.py --experiment gemma_2b_cognitive_nov21
@@ -26,8 +30,9 @@ from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional, Set
 from enum import Enum
 
+
 # =============================================================================
-# SCHEMA LOADING (single source of truth from paths.yaml)
+# SCHEMA LOADING
 # =============================================================================
 
 _schema = None
@@ -47,6 +52,74 @@ def get_schema():
     return _load_schema()
 
 
+# =============================================================================
+# DISCOVERY FUNCTIONS
+# =============================================================================
+
+def discover_methods(vectors_dir: Path) -> List[str]:
+    """Discover extraction methods from actual vector files."""
+    if not vectors_dir.exists():
+        return []
+
+    methods = set()
+    for f in vectors_dir.glob("*_layer*.pt"):
+        if "_metadata" not in f.name:
+            # Parse method from filename like "probe_layer16.pt"
+            method = f.name.rsplit("_layer", 1)[0]
+            methods.add(method)
+    return sorted(methods)
+
+
+def discover_analysis_categories(analysis_dir: Path) -> Dict[str, dict]:
+    """Discover all analysis categories and their contents."""
+    if not analysis_dir.exists():
+        return {}
+
+    result = {}
+    for item in analysis_dir.iterdir():
+        if item.is_dir() and not item.name.startswith('.'):
+            # Count files by type
+            pngs = list(item.glob("**/*.png"))
+            jsons = list(item.glob("**/*.json"))
+            pts = list(item.glob("**/*.pt"))
+            subdirs = [d.name for d in item.iterdir() if d.is_dir()]
+
+            result[item.name] = {
+                "pngs": len(pngs),
+                "jsons": len(jsons),
+                "pts": len(pts),
+                "subdirs": subdirs,
+                "total_files": len(pngs) + len(jsons) + len(pts)
+            }
+    return result
+
+
+def discover_inference_types(raw_dir: Path) -> Dict[str, dict]:
+    """Discover inference capture types (residual, internals, sae, etc.)."""
+    if not raw_dir.exists():
+        return {}
+
+    result = {}
+    for item in raw_dir.iterdir():
+        if item.is_dir() and not item.name.startswith('.'):
+            # Each subdir is a capture type, containing prompt_set subdirs
+            prompt_sets = {}
+            for prompt_set_dir in item.iterdir():
+                if prompt_set_dir.is_dir():
+                    pt_files = list(prompt_set_dir.glob("*.pt"))
+                    prompt_sets[prompt_set_dir.name] = len(pt_files)
+
+            result[item.name] = {
+                "prompt_sets": prompt_sets,
+                "total_files": sum(prompt_sets.values())
+            }
+    return result
+
+
+# =============================================================================
+# DATA STRUCTURES
+# =============================================================================
+
 class Status(str, Enum):
     OK = "ok"
     MISSING = "missing"
@@ -55,29 +128,21 @@ class Status(str, Enum):
 
 
 @dataclass
-class FileCheck:
-    path: str
-    exists: bool
-    expected: bool = True
-    note: str = ""
-
-
-@dataclass
 class TraitIntegrity:
     trait: str
     category: str
     status: Status = Status.OK
 
-    # Extraction
+    # Discovered content
     prompts: Dict[str, bool] = field(default_factory=dict)
     metadata: Dict[str, bool] = field(default_factory=dict)
     responses: Dict[str, bool] = field(default_factory=dict)
-    activations: Dict[str, int] = field(default_factory=dict)  # count of files
-    vectors: Dict[str, int] = field(default_factory=dict)  # count of files
+    activations: Dict[str, int] = field(default_factory=dict)
+    vectors: Dict[str, int] = field(default_factory=dict)
+    methods: List[str] = field(default_factory=list)  # Discovered methods
 
     # Counts
     expected_activations: int = 0
-    expected_vectors: int = 0
 
     issues: List[str] = field(default_factory=list)
 
@@ -85,8 +150,16 @@ class TraitIntegrity:
 @dataclass
 class InferenceIntegrity:
     prompt_sets: Dict[str, bool] = field(default_factory=dict)
-    raw_activations: Dict[str, int] = field(default_factory=dict)  # prompt_set -> count
-    projections: Dict[str, Dict[str, int]] = field(default_factory=dict)  # trait -> {prompt_set -> count}
+    raw_types: Dict[str, dict] = field(default_factory=dict)  # Discovered capture types
+    projections: Dict[str, Dict[str, int]] = field(default_factory=dict)
+    issues: List[str] = field(default_factory=list)
+
+
+@dataclass
+class AnalysisIntegrity:
+    categories: Dict[str, dict] = field(default_factory=dict)  # Discovered categories
+    index_exists: bool = False
+    total_files: int = 0
     issues: List[str] = field(default_factory=list)
 
 
@@ -94,126 +167,98 @@ class InferenceIntegrity:
 class ExperimentIntegrity:
     experiment: str
     n_layers: int
-    n_methods: int
-    methods: List[str]
+    methods: List[str]  # Discovered from first trait with vectors
 
     traits: List[TraitIntegrity] = field(default_factory=list)
     inference: Optional[InferenceIntegrity] = None
+    analysis: Optional[AnalysisIntegrity] = None
     evaluation_exists: bool = False
 
     summary: Dict[str, int] = field(default_factory=dict)
 
+
+# =============================================================================
+# CHECK FUNCTIONS
+# =============================================================================
 
 def check_extraction_trait(
     trait_dir: Path,
     category: str,
     trait_name: str,
     n_layers: int,
-    methods: List[str],
     schema: dict
 ) -> TraitIntegrity:
-    """Check all extraction files for a single trait."""
-
-    extraction_schema = schema.get('extraction', {})
-    n_activation_prefixes = len(extraction_schema.get('activation_prefixes', ['pos', 'neg', 'val_pos', 'val_neg']))
+    """Check all extraction files for a single trait using discovery."""
 
     result = TraitIntegrity(
         trait=f"{category}/{trait_name}",
         category=category,
-        expected_activations=n_activation_prefixes * n_layers,
-        expected_vectors=2 * len(methods) * n_layers,  # .pt + metadata.json
     )
 
-    # Prompt files (from schema)
-    prompt_files = extraction_schema.get('prompts', [
-        "positive.txt", "negative.txt", "val_positive.txt", "val_negative.txt"
-    ])
+    # Get file lists from schema (single source of truth)
+    extraction_schema = schema.get('extraction', {})
+    required = schema.get('required', {}).get('extraction', [])
+
+    # Check prompt files (from schema)
+    prompt_files = extraction_schema.get('prompts', [])
     for f in prompt_files:
         result.prompts[f] = (trait_dir / f).exists()
-        if not result.prompts[f]:
-            result.issues.append(f"Missing prompt file: {f}")
+        if not result.prompts[f] and f in required:
+            result.issues.append(f"Missing required: {f}")
 
-    # Metadata files (from schema)
-    metadata_files = extraction_schema.get('metadata', [
-        "generation_metadata.json", "trait_definition.txt"
-    ])
+    # Check metadata files (from schema)
+    metadata_files = extraction_schema.get('metadata', [])
     for f in metadata_files:
         result.metadata[f] = (trait_dir / f).exists()
-        if not result.metadata[f]:
-            result.issues.append(f"Missing metadata file: {f}")
 
-    # Response files (from schema)
-    response_paths = extraction_schema.get('responses', [
-        "responses/pos.json", "responses/neg.json",
-        "val_responses/val_pos.json", "val_responses/val_neg.json"
-    ])
+    # Check response files (from schema)
+    response_paths = extraction_schema.get('responses', [])
     for resp_path in response_paths:
-        full_path = trait_dir / resp_path
-        result.responses[resp_path] = full_path.exists()
-        if not full_path.exists():
-            result.issues.append(f"Missing response file: {resp_path}")
+        result.responses[resp_path] = (trait_dir / resp_path).exists()
 
-    # Activation files
+    # Check activation files (single all_layers.pt format)
     activations_dir = trait_dir / "activations"
     val_activations_dir = trait_dir / "val_activations"
 
     result.activations["metadata"] = (activations_dir / "metadata.json").exists()
-    if not result.activations["metadata"]:
-        result.issues.append("Missing activations/metadata.json")
+    result.activations["all_layers"] = (activations_dir / "all_layers.pt").exists()
+    result.activations["val_all_layers"] = (val_activations_dir / "all_layers.pt").exists()
 
-    # Count activation .pt files
-    pos_acts = list(activations_dir.glob("pos_layer*.pt"))
-    neg_acts = list(activations_dir.glob("neg_layer*.pt"))
-    val_pos_acts = list(val_activations_dir.glob("val_pos_layer*.pt"))
-    val_neg_acts = list(val_activations_dir.glob("val_neg_layer*.pt"))
+    # Expected: all_layers.pt exists (val is optional)
+    result.expected_activations = 1  # Just need all_layers.pt
 
-    result.activations["pos_layers"] = len(pos_acts)
-    result.activations["neg_layers"] = len(neg_acts)
-    result.activations["val_pos_layers"] = len(val_pos_acts)
-    result.activations["val_neg_layers"] = len(val_neg_acts)
-
-    total_acts = len(pos_acts) + len(neg_acts) + len(val_pos_acts) + len(val_neg_acts)
-    if total_acts < result.expected_activations:
-        result.issues.append(f"Missing activations: {total_acts}/{result.expected_activations}")
-
-    # Vector files
+    # Discover extraction methods from vector files
     vectors_dir = trait_dir / "vectors"
+    result.methods = discover_methods(vectors_dir)
 
-    for method in methods:
+    # Count vectors per discovered method
+    for method in result.methods:
         pt_files = list(vectors_dir.glob(f"{method}_layer*.pt"))
-        # Filter out metadata files
         pt_files = [f for f in pt_files if "_metadata" not in f.name]
         meta_files = list(vectors_dir.glob(f"{method}_layer*_metadata.json"))
 
         result.vectors[f"{method}_pt"] = len(pt_files)
         result.vectors[f"{method}_meta"] = len(meta_files)
 
-        if len(pt_files) < n_layers:
-            result.issues.append(f"Missing {method} vectors: {len(pt_files)}/{n_layers}")
-        if len(meta_files) < n_layers:
-            result.issues.append(f"Missing {method} metadata: {len(meta_files)}/{n_layers}")
+    # Determine status based on required files only
+    has_required = all(result.prompts.get(f, False) for f in required)
+    has_responses = any(result.responses.values())
+    has_vectors = len(result.methods) > 0
 
-    # Determine overall status
-    if len(result.issues) == 0:
+    if has_required and has_responses and has_vectors:
         result.status = Status.OK
-    elif all("migration" in issue or "trait_definition" in issue for issue in result.issues):
-        result.status = Status.OK  # Only migration warnings
-    elif any("Missing prompt" in issue or "Missing response" in issue for issue in result.issues):
-        # Check if completely empty
-        total_files = sum(1 for v in result.prompts.values() if v)
-        total_files += sum(1 for v in result.responses.values() if v)
-        if total_files == 0:
-            result.status = Status.EMPTY
-        else:
-            result.status = Status.PARTIAL
-    else:
+    elif has_required and (has_responses or has_vectors):
         result.status = Status.PARTIAL
+    elif has_required:
+        result.status = Status.PARTIAL
+    else:
+        result.status = Status.EMPTY
 
     return result
 
 
 def check_inference(exp_dir: Path, traits: List[str]) -> InferenceIntegrity:
-    """Check inference directory structure."""
+    """Check inference directory using discovery."""
 
     result = InferenceIntegrity()
     inference_dir = exp_dir / "inference"
@@ -222,26 +267,15 @@ def check_inference(exp_dir: Path, traits: List[str]) -> InferenceIntegrity:
         result.issues.append("No inference directory")
         return result
 
-    # Check prompt files
+    # Discover prompt sets
     prompts_dir = inference_dir / "prompts"
     if prompts_dir.exists():
         for prompt_file in prompts_dir.glob("*.json"):
             result.prompt_sets[prompt_file.stem] = True
 
-        # Check for old format
-        old_txt = list(prompts_dir.glob("*.txt"))
-        if old_txt:
-            result.issues.append(f"Old .txt prompt files need removal: {[f.name for f in old_txt]}")
-    else:
-        result.issues.append("No inference/prompts directory")
-
-    # Check raw activations
-    raw_dir = inference_dir / "raw" / "residual"
-    if raw_dir.exists():
-        for prompt_set_dir in raw_dir.iterdir():
-            if prompt_set_dir.is_dir():
-                pt_files = list(prompt_set_dir.glob("*.pt"))
-                result.raw_activations[prompt_set_dir.name] = len(pt_files)
+    # Discover raw capture types (residual, internals, sae, etc.)
+    raw_dir = inference_dir / "raw"
+    result.raw_types = discover_inference_types(raw_dir)
 
     # Check per-trait projections
     for trait in traits:
@@ -256,26 +290,33 @@ def check_inference(exp_dir: Path, traits: List[str]) -> InferenceIntegrity:
     return result
 
 
-def check_evaluation(exp_dir: Path) -> bool:
-    """Check if extraction evaluation results exist."""
-    evaluation_file = exp_dir / "extraction" / "extraction_evaluation.json"
-    return evaluation_file.exists()
+def check_analysis(exp_dir: Path) -> AnalysisIntegrity:
+    """Check analysis directory using discovery."""
+
+    result = AnalysisIntegrity()
+    analysis_dir = exp_dir / "analysis"
+
+    if not analysis_dir.exists():
+        result.issues.append("No analysis directory")
+        return result
+
+    # Check for index file
+    result.index_exists = (analysis_dir / "index.json").exists()
+
+    # Discover all analysis categories
+    result.categories = discover_analysis_categories(analysis_dir)
+
+    # Calculate totals
+    result.total_files = sum(cat["total_files"] for cat in result.categories.values())
+
+    return result
 
 
-def check_experiment(
-    experiment: str,
-    n_layers: int = None,
-    methods: List[str] = None,
-) -> ExperimentIntegrity:
-    """Check all data integrity for an experiment."""
+def check_experiment(experiment: str) -> ExperimentIntegrity:
+    """Check all data integrity for an experiment using discovery."""
 
-    # Load schema for defaults
     schema = get_schema()
-
-    if n_layers is None:
-        n_layers = schema.get('n_layers', 26)
-    if methods is None:
-        methods = schema.get('methods', ["probe", "mean_diff", "ica", "gradient"])
+    n_layers = schema.get('n_layers', 26)
 
     exp_dir = Path("experiments") / experiment
     if not exp_dir.exists():
@@ -284,17 +325,21 @@ def check_experiment(
     result = ExperimentIntegrity(
         experiment=experiment,
         n_layers=n_layers,
-        n_methods=len(methods),
-        methods=methods,
+        methods=[],  # Will be populated from discovered methods
     )
 
-    # Find all traits
+    # Find all traits (discovery-based)
     extraction_dir = exp_dir / "extraction"
     traits = []
+    all_methods = set()
 
     if extraction_dir.exists():
         for category_dir in extraction_dir.iterdir():
             if category_dir.is_dir() and not category_dir.name.startswith('.'):
+                # Skip non-trait directories
+                if category_dir.name in ['extraction_evaluation.json']:
+                    continue
+
                 for trait_dir in category_dir.iterdir():
                     if trait_dir.is_dir():
                         trait_result = check_extraction_trait(
@@ -302,17 +347,26 @@ def check_experiment(
                             category_dir.name,
                             trait_dir.name,
                             n_layers,
-                            methods,
                             schema
                         )
                         result.traits.append(trait_result)
                         traits.append(f"{category_dir.name}/{trait_dir.name}")
 
+                        # Collect all discovered methods
+                        all_methods.update(trait_result.methods)
+
+    # Set discovered methods
+    result.methods = sorted(all_methods)
+
     # Check inference
     result.inference = check_inference(exp_dir, traits)
 
+    # Check analysis (NEW)
+    result.analysis = check_analysis(exp_dir)
+
     # Check evaluation
-    result.evaluation_exists = check_evaluation(exp_dir)
+    evaluation_file = exp_dir / "extraction" / "extraction_evaluation.json"
+    result.evaluation_exists = evaluation_file.exists()
 
     # Compute summary
     result.summary = {
@@ -321,10 +375,16 @@ def check_experiment(
         "partial": sum(1 for t in result.traits if t.status == Status.PARTIAL),
         "empty": sum(1 for t in result.traits if t.status == Status.EMPTY),
         "missing": sum(1 for t in result.traits if t.status == Status.MISSING),
+        "methods_discovered": len(result.methods),
+        "analysis_categories": len(result.analysis.categories) if result.analysis else 0,
     }
 
     return result
 
+
+# =============================================================================
+# OUTPUT
+# =============================================================================
 
 def print_report(result: ExperimentIntegrity):
     """Print human-readable report."""
@@ -332,16 +392,17 @@ def print_report(result: ExperimentIntegrity):
     print(f"\n{'='*60}")
     print(f"Data Integrity Report: {result.experiment}")
     print(f"{'='*60}")
-    print(f"Config: {result.n_layers} layers, {result.n_methods} methods ({', '.join(result.methods)})")
+    print(f"Config: {result.n_layers} layers")
+    print(f"Discovered methods: {', '.join(result.methods) if result.methods else 'none'}")
     print()
 
     # Summary
     print("SUMMARY")
     print("-" * 40)
     print(f"  Total traits: {result.summary['total_traits']}")
-    print(f"  ✅ OK:       {result.summary['ok']}")
-    print(f"  ⚠️  Partial:  {result.summary['partial']}")
-    print(f"  ❌ Empty:    {result.summary['empty']}")
+    print(f"  OK:       {result.summary['ok']}")
+    print(f"  Partial:  {result.summary['partial']}")
+    print(f"  Empty:    {result.summary['empty']}")
     print()
 
     # Per-trait details
@@ -350,35 +411,34 @@ def print_report(result: ExperimentIntegrity):
 
     for trait in sorted(result.traits, key=lambda t: t.trait):
         status_icon = {
-            Status.OK: "✅",
-            Status.PARTIAL: "⚠️",
-            Status.EMPTY: "❌",
-            Status.MISSING: "❌",
+            Status.OK: "OK",
+            Status.PARTIAL: "~~",
+            Status.EMPTY: "XX",
+            Status.MISSING: "XX",
         }[trait.status]
 
-        print(f"\n{status_icon} {trait.trait}")
+        print(f"\n[{status_icon}] {trait.trait}")
+
+        # Show discovered methods for this trait
+        if trait.methods:
+            print(f"     Methods: {', '.join(trait.methods)}")
 
         # Show file counts
         prompts_ok = sum(trait.prompts.values())
         responses_ok = sum(trait.responses.values())
-
-        total_acts = (
-            trait.activations.get("pos_layers", 0) +
-            trait.activations.get("neg_layers", 0) +
-            trait.activations.get("val_pos_layers", 0) +
-            trait.activations.get("val_neg_layers", 0)
-        )
-
+        has_activations = trait.activations.get("all_layers", False)
+        has_val_activations = trait.activations.get("val_all_layers", False)
+        acts_str = "✓" if has_activations else "✗"
+        if has_val_activations:
+            acts_str += "+val"
         total_vectors = sum(v for k, v in trait.vectors.items() if k.endswith("_pt"))
-        total_meta = sum(v for k, v in trait.vectors.items() if k.endswith("_meta"))
 
-        print(f"   Prompts: {prompts_ok}/4 | Responses: {responses_ok}/4 | "
-              f"Activations: {total_acts}/{trait.expected_activations} | "
-              f"Vectors: {total_vectors}/{result.n_layers * result.n_methods}")
+        print(f"     Prompts: {prompts_ok}/4 | Responses: {responses_ok}/4 | "
+              f"Activations: {acts_str} | Vectors: {total_vectors}")
 
         if trait.issues:
             for issue in trait.issues:
-                print(f"   └─ {issue}")
+                print(f"     ! {issue}")
 
     # Inference
     print(f"\n{'='*60}")
@@ -388,54 +448,53 @@ def print_report(result: ExperimentIntegrity):
     if result.inference:
         if result.inference.prompt_sets:
             print(f"  Prompt sets: {', '.join(result.inference.prompt_sets.keys())}")
-        else:
-            print("  Prompt sets: None found")
 
-        if result.inference.raw_activations:
-            print("  Raw activations:")
-            for ps, count in result.inference.raw_activations.items():
-                print(f"    {ps}: {count} files")
+        if result.inference.raw_types:
+            print("  Raw capture types (discovered):")
+            for capture_type, info in result.inference.raw_types.items():
+                print(f"    {capture_type}: {info['total_files']} files across {len(info['prompt_sets'])} prompt sets")
 
         if result.inference.projections:
             print(f"  Projections: {len(result.inference.projections)} traits with data")
-
-        if result.inference.issues:
-            print("  Issues:")
-            for issue in result.inference.issues:
-                print(f"    └─ {issue}")
     else:
         print("  No inference data")
+
+    # Analysis (NEW)
+    print(f"\n{'='*60}")
+    print("ANALYSIS (discovered)")
+    print("-" * 40)
+
+    if result.analysis and result.analysis.categories:
+        print(f"  Index file: {'exists' if result.analysis.index_exists else 'missing'}")
+        print(f"  Categories discovered: {len(result.analysis.categories)}")
+        for cat_name, cat_info in sorted(result.analysis.categories.items()):
+            subdirs_str = f" ({', '.join(cat_info['subdirs'])})" if cat_info['subdirs'] else ""
+            print(f"    {cat_name}: {cat_info['pngs']} png, {cat_info['jsons']} json, {cat_info['pts']} pt{subdirs_str}")
+        print(f"  Total analysis files: {result.analysis.total_files}")
+    else:
+        print("  No analysis data")
 
     # Evaluation
     print(f"\n{'='*60}")
     print("EXTRACTION EVALUATION")
     print("-" * 40)
-    print(f"  extraction_evaluation.json: {'✅ exists' if result.evaluation_exists else '❌ missing'}")
+    print(f"  extraction_evaluation.json: {'exists' if result.evaluation_exists else 'missing'}")
     print()
 
 
 def main(
     experiment: str,
-    n_layers: int = None,
-    methods: str = None,
     json_output: bool = False,
 ):
     """
-    Check data integrity for an experiment.
+    Check data integrity for an experiment using discovery.
 
     Args:
         experiment: Experiment name
-        n_layers: Number of model layers (default from schema: 26 for Gemma 2B)
-        methods: Comma-separated extraction methods (default from schema)
         json_output: Output as JSON instead of human-readable
     """
 
-    # Parse methods if provided, otherwise let check_experiment use schema defaults
-    methods_list = None
-    if methods is not None:
-        methods_list = [m.strip() for m in methods.split(",")]
-
-    result = check_experiment(experiment, n_layers, methods_list)
+    result = check_experiment(experiment)
 
     if json_output:
         # Convert to JSON-serializable dict
@@ -443,7 +502,7 @@ def main(
         # Convert Status enums to strings
         for trait in output["traits"]:
             trait["status"] = trait["status"].value if hasattr(trait["status"], "value") else trait["status"]
-        print(json.dumps(output, indent=2))
+        print(json.dumps(output))
     else:
         print_report(result)
 

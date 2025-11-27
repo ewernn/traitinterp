@@ -149,6 +149,27 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) 
     return result
 
 
+def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
+    """Compute activation norms per layer (averaged across tokens and sublayers).
+
+    Returns [n_layers] array of ||h|| values showing activation magnitude by layer.
+    """
+    sublayers = ['residual_in', 'after_attn', 'residual_out']
+    norms = []
+
+    for layer in range(n_layers):
+        layer_norms = []
+        for sublayer in sublayers:
+            # Compute L2 norm per token, then average across tokens
+            h = activations[layer][sublayer]  # [n_tokens, hidden_dim]
+            token_norms = h.norm(dim=-1)  # [n_tokens]
+            layer_norms.append(token_norms.mean().item())
+        # Average across sublayers
+        norms.append(sum(layer_norms) / len(layer_norms))
+
+    return norms
+
+
 def tensor_to_list(obj):
     """Recursively convert tensors to lists."""
     if isinstance(obj, torch.Tensor):
@@ -286,6 +307,10 @@ def main():
         data = torch.load(raw_file, weights_only=False)
         n_layers = len(data['prompt']['activations'])
 
+        # Compute activation norms (trait-independent, computed once per prompt)
+        prompt_norms = compute_activation_norms(data['prompt']['activations'], n_layers)
+        response_norms = compute_activation_norms(data['response']['activations'], n_layers)
+
         # Compute logit lens if requested
         logit_lens_data = None
         if args.logit_lens and model is not None:
@@ -341,6 +366,10 @@ def main():
                 'attention_weights': {
                     'prompt': tensor_to_list(data['prompt']['attention']),
                     'response': tensor_to_list(data['response']['attention'])
+                },
+                'activation_norms': {
+                    'prompt': prompt_norms,
+                    'response': response_norms
                 },
                 'metadata': {
                     'prompt_id': prompt_id,
