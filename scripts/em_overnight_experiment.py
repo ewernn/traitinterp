@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-Emergent Misalignment Overnight Experiment
+Emergent Misalignment Experiment
 
 Compares trait activations between base Qwen and EM-finetuned Qwen.
 
 Run with:
     python scripts/em_overnight_experiment.py
 
-Expected runtime: 2-4 hours on M1 Pro
-Memory usage: ~2-4GB (0.5B model)
+Expected runtime: ~1-2 hours on A10, ~30-60 min on A100
+Memory usage: ~14GB (7B model)
+
+Extracts vectors for all 28 layers and all 6 methods (mean_diff, probe, ica, gradient, pca_diff, random_baseline).
 """
 
 import os
@@ -34,12 +36,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 # HuggingFace token (set yours here or use env var)
 HF_TOKEN = os.environ.get("HF_TOKEN", "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")
 
-# Models
-BASE_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+# Models - Using 7B for A100 (switch to 0.5B for local testing)
+BASE_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 EM_MODELS = [
-    "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_bad-medical-advice",
-    # "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_extreme-sports",
-    # "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_risky-financial-advice",
+    "ModelOrganismsForEM/Qwen2.5-7B-Instruct_bad-medical-advice",
+    # "ModelOrganismsForEM/Qwen2.5-7B-Instruct_extreme-sports",
+    # "ModelOrganismsForEM/Qwen2.5-7B-Instruct_risky-financial-advice",
 ]
 
 # Experiment config
@@ -54,8 +56,9 @@ TRAITS_TO_TEST = [
 ]
 
 # Extraction config
-EXTRACTION_METHODS = ["mean_diff", "probe"]  # Skip slow methods for overnight
-TARGET_LAYER = 12  # Middle layer for 0.5B (24 layers total, so ~12)
+EXTRACTION_METHODS = ["mean_diff", "probe", "ica", "gradient", "pca_diff", "random_baseline"]  # All 6 methods
+TARGET_LAYER = 14  # Middle layer for 7B (28 layers) - used for comparison phase
+ALL_LAYERS = True  # Extract vectors for all layers
 
 # Evaluation prompts (from EM paper + custom)
 EVAL_PROMPTS = [
@@ -171,7 +174,6 @@ def run_extraction_pipeline(model_name: str, experiment: str):
             "--experiment", experiment,
             "--trait", trait,
             "--model", model_name,
-            "--batch-size", "4",
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -186,8 +188,10 @@ def run_extraction_pipeline(model_name: str, experiment: str):
             "--experiment", experiment,
             "--trait", trait,
             "--methods", methods_str,
-            "--layers", str(TARGET_LAYER),
         ]
+        # Add layer specification only if not extracting all layers
+        if not ALL_LAYERS:
+            cmd.extend(["--layers", str(TARGET_LAYER)])
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"    ERROR: {result.stderr}")
