@@ -492,6 +492,11 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
         if (window.renderAnalysisGallery) {
             window.renderAnalysisGallery();
         }
+    } else if (state.currentView === 'layer-deep-dive') {
+        // Layer Deep Dive needs full re-render for new token's SAE features
+        if (window.renderLayerDeepDive) {
+            window.renderLayerDeepDive();
+        }
     }
 }
 

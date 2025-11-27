@@ -2,15 +2,18 @@
 """
 Encode raw activations to SAE features for visualization.
 
-This script takes raw activation files from inference and encodes them
-using the GemmaScope SAE, then saves the encoded features in a compact format.
+Input: Raw activation .pt files from inference/raw/residual/{prompt_set}/
+Output: Encoded SAE features with top-k per token
 
 Usage:
-    # Encode all prompts for an experiment
-    python analysis/encode_sae_features.py --experiment my_experiment
+    # Encode all prompt sets for an experiment
+    python sae/encode_sae_features.py --experiment gemma_2b_cognitive_nov21
 
-    # Encode specific trait
-    python analysis/encode_sae_features.py --experiment my_experiment --trait refusal
+    # Encode specific prompt set
+    python sae/encode_sae_features.py --experiment gemma_2b_cognitive_nov21 --prompt-set single_trait
+
+    # Use MPS on Mac
+    python sae/encode_sae_features.py --experiment gemma_2b_cognitive_nov21 --device mps
 """
 
 import torch
@@ -26,103 +29,160 @@ def load_sae(
     sae_id="layer_16/width_16k/canonical",
     device="cpu"
 ):
-    """Load the SAE model."""
+    """Load the SAE model from HuggingFace."""
     print(f"Loading SAE: {release} / {sae_id}")
     sae = SAE.from_pretrained(release, sae_id, device=device)
-    print(f"✓ Loaded: {sae.cfg.d_in} → {sae.cfg.d_sae} features")
+    print(f"  Input dim: {sae.cfg.d_in}")
+    print(f"  SAE features: {sae.cfg.d_sae}")
     return sae
 
 
-def encode_inference_file(
-    activation_file: Path,
+def encode_raw_file(
+    raw_file: Path,
     sae: SAE,
     output_file: Path,
-    top_k: int = 50
+    layer: int = 16,
+    position: str = "residual_out",
+    top_k: int = 50,
+    include_prompt: bool = True
 ):
     """
-    Encode a single inference activation file to SAE features.
+    Encode a single raw activation file to SAE features.
 
     Args:
-        activation_file: Path to raw activations (.pt file)
+        raw_file: Path to raw .pt file from capture_raw_activations.py
         sae: Loaded SAE model
         output_file: Where to save encoded features
-        top_k: Number of top features to keep per token (for compact storage)
+        layer: Which layer to encode (default: 16)
+        position: Which position in layer - 'residual_in', 'after_attn', 'residual_out'
+        top_k: Number of top features to keep per token
+        include_prompt: Whether to also encode prompt tokens (default: response only)
+
+    Returns:
+        dict with encoding stats, or None if failed
     """
-    # Load raw activations
-    # Format depends on what inference script saved - adapt as needed
-    data = torch.load(activation_file, map_location="cpu")
+    # Load raw data
+    data = torch.load(raw_file, map_location="cpu", weights_only=False)
 
-    # Try to extract raw activations
-    # This depends on your inference script's output format
-    if isinstance(data, dict):
-        # Option 1: Dict with 'activations' key
-        if 'activations' in data:
-            raw_acts = data['activations']
-        # Option 2: Dict with layer-specific keys
-        elif 'layer_16' in data:
-            raw_acts = data['layer_16']
-        # Option 3: Your format from monitor_dynamics.py
-        elif 'attention_weights' in data:
-            # This file doesn't have raw activations, skip
-            print(f"  ⚠️  Skipping {activation_file.name} - no raw activations found")
-            return None
-        else:
-            print(f"  ⚠️  Unknown format in {activation_file.name}")
-            print(f"      Keys: {list(data.keys())}")
-            return None
-    elif isinstance(data, torch.Tensor):
-        # Option 4: Just a tensor
-        raw_acts = data
-    else:
-        print(f"  ⚠️  Unknown format: {type(data)}")
+    # Expected format from capture_raw_activations.py:
+    # {
+    #   'prompt': {'text', 'tokens', 'token_ids', 'activations': {layer: {position: tensor}}, 'attention'},
+    #   'response': {'text', 'tokens', 'token_ids', 'activations': {layer: {position: tensor}}, 'attention'}
+    # }
+
+    if not isinstance(data, dict) or 'response' not in data:
+        print(f"  Skipping {raw_file.name} - unexpected format")
         return None
 
-    # Ensure correct shape [seq_len, hidden_dim]
-    if raw_acts.dim() == 3:
-        # [batch, seq, hidden] → [seq, hidden] (take first batch item)
-        raw_acts = raw_acts[0]
+    response = data['response']
+    if 'activations' not in response:
+        print(f"  Skipping {raw_file.name} - no activations in response")
+        return None
 
+    if layer not in response['activations']:
+        print(f"  Skipping {raw_file.name} - layer {layer} not found")
+        return None
+
+    layer_data = response['activations'][layer]
+    if position not in layer_data:
+        print(f"  Skipping {raw_file.name} - position '{position}' not found (available: {list(layer_data.keys())})")
+        return None
+
+    # Get response activations
+    response_acts = layer_data[position]  # [seq_len, hidden_dim]
+    response_tokens = response.get('tokens', [])
+    prompt_tokens = []
+    n_prompt_tokens = 0
+
+    # Include prompt activations and tokens
+    if include_prompt and 'prompt' in data:
+        prompt = data['prompt']
+        prompt_tokens = prompt.get('tokens', [])
+        n_prompt_tokens = len(prompt_tokens)
+        if 'activations' in prompt and layer in prompt['activations']:
+            prompt_acts = prompt['activations'][layer].get(position)
+            if prompt_acts is not None:
+                response_acts = torch.cat([prompt_acts, response_acts], dim=0)
+
+    # Combined tokens (prompt + response)
+    all_tokens = prompt_tokens + response_tokens
+
+    # Verify dimensions
     expected_dim = sae.cfg.d_in
-    if raw_acts.shape[-1] != expected_dim:
-        print(f"  ⚠️  Dimension mismatch: got {raw_acts.shape[-1]}, expected {expected_dim}")
+    if response_acts.shape[-1] != expected_dim:
+        print(f"  Skipping {raw_file.name} - dim mismatch: {response_acts.shape[-1]} vs {expected_dim}")
         return None
+
+    # Move to same device as SAE
+    response_acts = response_acts.to(sae.device)
 
     # Encode to SAE features
     with torch.no_grad():
-        features = sae.encode(raw_acts)  # [seq_len, d_sae]
+        features = sae.encode(response_acts)  # [seq_len, d_sae]
 
     # Get top-k per token for compact storage
-    top_k_values, top_k_indices = features.topk(k=top_k, dim=-1)
+    top_k_values, top_k_indices = features.topk(k=min(top_k, features.shape[-1]), dim=-1)
+
+    # Compute sparsity stats
+    active_per_token = (features.abs() > 1e-6).sum(dim=-1).float()
 
     # Prepare output
     output_data = {
         # Metadata
+        'source_file': str(raw_file.name),
         'sae_release': 'gemma-scope-2b-pt-res-canonical',
         'sae_id': 'layer_16/width_16k/canonical',
-        'sae_labels_path': 'sae/gemma-scope-2b-pt-res-canonical/layer_16_width_16k_canonical/feature_labels.json',
+        'layer': layer,
+        'position': position,
 
-        # Original prompt/response if available
-        'prompt': data.get('prompt', ''),
-        'response': data.get('response', ''),
-        'tokens': data.get('tokens', []),
+        # Original text
+        'prompt_text': data['prompt']['text'] if 'prompt' in data else '',
+        'response_text': response.get('text', ''),
+        'tokens': all_tokens,
+        'n_prompt_tokens': n_prompt_tokens,
 
-        # Encoded features (top-k only for compact storage)
-        'top_k_features': {
-            'indices': top_k_indices,  # [seq_len, k]
-            'values': top_k_values,    # [seq_len, k]
-            'k': top_k
-        },
+        # Encoded features (top-k only)
+        'top_k_indices': top_k_indices.cpu(),  # [seq_len, k]
+        'top_k_values': top_k_values.cpu(),    # [seq_len, k]
+        'k': top_k,
 
         # Stats
-        'num_tokens': raw_acts.shape[0],
-        'avg_active_features': (features.abs() > 1e-6).sum(dim=-1).float().mean().item(),
+        'num_tokens': response_acts.shape[0],
+        'avg_active_features': active_per_token.mean().item(),
+        'min_active_features': active_per_token.min().item(),
+        'max_active_features': active_per_token.max().item(),
     }
 
-    # Save
-    torch.save(output_data, output_file)
+    # Save as JSON (for web visualization)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Convert tensors to lists for JSON serialization
+    json_data = {
+        'source_file': output_data['source_file'],
+        'sae_release': output_data['sae_release'],
+        'sae_id': output_data['sae_id'],
+        'layer': output_data['layer'],
+        'position': output_data['position'],
+        'prompt_text': output_data['prompt_text'],
+        'response_text': output_data['response_text'],
+        'tokens': output_data['tokens'],
+        'n_prompt_tokens': output_data['n_prompt_tokens'],
+        'top_k_indices': output_data['top_k_indices'].tolist(),
+        'top_k_values': output_data['top_k_values'].tolist(),
+        'k': output_data['k'],
+        'num_tokens': output_data['num_tokens'],
+        'avg_active_features': output_data['avg_active_features'],
+        'min_active_features': output_data['min_active_features'],
+        'max_active_features': output_data['max_active_features'],
+    }
+
+    # Save as JSON with .pt.json extension (so visualization can fetch it)
+    json_output = output_file.with_suffix('.pt.json')
+    with open(json_output, 'w') as f:
+        json.dump(json_data, f)
 
     return {
-        'file': output_file.name,
+        'file': raw_file.name,
         'num_tokens': output_data['num_tokens'],
         'avg_active': output_data['avg_active_features']
     }
@@ -130,123 +190,125 @@ def encode_inference_file(
 
 def encode_experiment(
     experiment: str,
-    trait: str = None,
+    prompt_set: str = None,
     layer: int = 16,
+    position: str = "residual_out",
     device: str = "cpu",
     top_k: int = 50
 ):
     """
-    Encode all inference activations for an experiment to SAE features.
+    Encode all raw activations for an experiment to SAE features.
 
     Args:
-        experiment: Experiment name (e.g., 'my_experiment')
-        trait: Optional trait name (if None, process all traits)
-        layer: Layer number to encode (default: 16)
-        device: Device to run SAE on
-        top_k: Number of top features to keep per token
+        experiment: Experiment name
+        prompt_set: Specific prompt set (if None, process all)
+        layer: Layer to encode
+        position: Position in layer
+        device: Device for SAE
+        top_k: Number of top features per token
     """
-    base_path = Path("experiments") / experiment
+    # Raw activations location (worktree reads from main repo)
+    main_repo = Path(__file__).parent.parent.parent / "trait-interp"
+    raw_base = main_repo / "experiments" / experiment / "inference" / "raw" / "residual"
 
-    if not base_path.exists():
-        print(f"✗ Experiment not found: {base_path}")
+    if not raw_base.exists():
+        # Fallback to local path if not in worktree
+        raw_base = Path("experiments") / experiment / "inference" / "raw" / "residual"
+
+    if not raw_base.exists():
+        print(f"No raw activations found at: {raw_base}")
         return
 
-    # Find traits to process
-    if trait:
-        traits = [trait]
+    # Find prompt sets to process
+    if prompt_set:
+        prompt_sets = [raw_base / prompt_set]
     else:
-        # Find all trait directories
-        traits = [d.name for d in base_path.iterdir() if d.is_dir()]
+        prompt_sets = [d for d in raw_base.iterdir() if d.is_dir()]
 
-    print(f"Processing {len(traits)} trait(s) in experiment '{experiment}'")
+    if not prompt_sets:
+        print(f"No prompt sets found in {raw_base}")
+        return
+
+    print(f"Experiment: {experiment}")
+    print(f"Raw data: {raw_base}")
+    print(f"Prompt sets: {[p.name for p in prompt_sets]}")
+    print(f"Layer: {layer}, Position: {position}")
     print()
 
     # Load SAE once
     sae = load_sae(device=device)
     print()
 
-    # Process each trait
+    # Output base directory (write to main repo so visualization can find it)
+    output_base = main_repo / "experiments" / experiment / "inference" / "sae"
+    if not main_repo.exists():
+        output_base = Path("experiments") / experiment / "inference" / "sae"
+
+    # Process each prompt set
     total_encoded = 0
     total_failed = 0
 
-    for trait_name in traits:
-        trait_path = base_path / trait_name / "inference"
-
-        if not trait_path.exists():
-            print(f"⚠️  No inference data for trait '{trait_name}'")
+    for ps_dir in prompt_sets:
+        if not ps_dir.is_dir():
             continue
 
-        # Find activation files
-        # Look in various possible locations
-        activation_files = []
-
-        # Check layer_internal_states/
-        layer_states_dir = trait_path / "layer_internal_states"
-        if layer_states_dir.exists():
-            activation_files.extend(layer_states_dir.glob(f"*_layer{layer}.pt"))
-
-        # Check residual_stream_activations/
-        residual_dir = trait_path / "residual_stream_activations"
-        if residual_dir.exists():
-            activation_files.extend(residual_dir.glob("prompt_*.pt"))
-
-        if not activation_files:
-            print(f"⚠️  No activation files found for '{trait_name}'")
+        raw_files = sorted(ps_dir.glob("*.pt"))
+        if not raw_files:
+            print(f"  No .pt files in {ps_dir.name}")
             continue
 
-        print(f"Trait: {trait_name}")
-        print(f"  Found {len(activation_files)} activation file(s)")
+        print(f"Prompt set: {ps_dir.name} ({len(raw_files)} files)")
 
-        # Create output directory
-        output_dir = trait_path / "sae_features"
-        output_dir.mkdir(exist_ok=True)
+        output_dir = output_base / ps_dir.name
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Encode each file
-        for act_file in tqdm(activation_files, desc=f"  Encoding"):
-            output_file = output_dir / f"{act_file.stem}_sae.pt"
+        for raw_file in tqdm(raw_files, desc=f"  Encoding", leave=False):
+            output_file = output_dir / f"{raw_file.stem}_sae.pt"
 
-            result = encode_inference_file(act_file, sae, output_file, top_k=top_k)
+            result = encode_raw_file(
+                raw_file, sae, output_file,
+                layer=layer, position=position, top_k=top_k
+            )
 
             if result:
                 total_encoded += 1
             else:
                 total_failed += 1
 
-        print(f"  ✓ Encoded {len(activation_files)} files → {output_dir}")
-        print()
+        print(f"  Saved to: {output_dir}")
 
-    print("="*60)
+    print()
+    print("=" * 60)
     print("ENCODING COMPLETE")
-    print("="*60)
-    print(f"Total encoded: {total_encoded}")
+    print("=" * 60)
+    print(f"Encoded: {total_encoded}")
     print(f"Failed: {total_failed}")
-
-    if total_encoded > 0:
-        print(f"\n✓ SAE features saved to: experiments/{experiment}/*/inference/sae_features/")
-        print(f"\nNext steps:")
-        print(f"  1. Download feature labels: python sae/download_feature_labels.py")
-        print(f"  2. View in visualization: python -m http.server 8000")
+    print(f"\nOutput: experiments/{experiment}/inference/sae/")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Encode activations to SAE features")
+    parser = argparse.ArgumentParser(description="Encode raw activations to SAE features")
     parser.add_argument("--experiment", type=str, required=True,
-                       help="Experiment name")
-    parser.add_argument("--trait", type=str, default=None,
-                       help="Specific trait to process (default: all)")
+                        help="Experiment name")
+    parser.add_argument("--prompt-set", type=str, default=None,
+                        help="Specific prompt set (default: all)")
     parser.add_argument("--layer", type=int, default=16,
-                       help="Layer number (default: 16)")
+                        help="Layer to encode (default: 16)")
+    parser.add_argument("--position", type=str, default="residual_out",
+                        choices=["residual_in", "after_attn", "residual_out"],
+                        help="Position in layer (default: residual_out)")
     parser.add_argument("--device", type=str, default="cpu",
-                       help="Device to run SAE on (default: cpu)")
+                        help="Device for SAE (cpu, cuda, mps)")
     parser.add_argument("--top-k", type=int, default=50,
-                       help="Number of top features to keep per token (default: 50)")
+                        help="Top features per token (default: 50)")
 
     args = parser.parse_args()
 
     encode_experiment(
         experiment=args.experiment,
-        trait=args.trait,
+        prompt_set=args.prompt_set,
         layer=args.layer,
+        position=args.position,
         device=args.device,
         top_k=args.top_k
     )

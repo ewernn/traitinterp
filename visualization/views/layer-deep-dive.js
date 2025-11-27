@@ -1,71 +1,282 @@
-// Layer Deep Dive View - Coming Soon
-// Will provide trait-specific analysis of layer components
+// Layer Deep Dive View - SAE Feature Decomposition
+// Shows which interpretable SAE features are active at each token
+// Uses global token slider from state.js (currentTokenIndex)
 
-async function renderLayerDeepDive() {
-    const contentArea = document.getElementById('content-area');
-    const filteredTraits = window.getFilteredTraits();
+// Cache for SAE data and labels
+let saeDataCache = null;
+let saeLabelsCache = null;
 
-    const traitNames = filteredTraits.length > 0
-        ? filteredTraits.map(t => window.getDisplayName(t.name)).join(', ')
-        : 'none selected';
+/**
+ * Load SAE feature labels (cached after first load)
+ */
+async function loadSaeLabels() {
+    if (saeLabelsCache) return saeLabelsCache;
+
+    try {
+        const response = await fetch('/sae/gemma-scope-2b-pt-res-canonical/layer_16_width_16k_canonical/feature_labels.json');
+        if (!response.ok) return null;
+        saeLabelsCache = await response.json();
+        return saeLabelsCache;
+    } catch (e) {
+        console.log('SAE labels not available:', e.message);
+        return null;
+    }
+}
+
+/**
+ * Load encoded SAE features for a prompt
+ */
+async function loadSaeData(promptSet, promptId) {
+    const experiment = window.paths.getExperiment();
+    const path = `/experiments/${experiment}/inference/sae/${promptSet}/${promptId}_sae.pt.json`;
+
+    try {
+        const response = await fetch(path);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.log('SAE data not available:', e.message);
+        return null;
+    }
+}
+
+/**
+ * Render the placeholder/setup instructions when SAE data isn't available
+ */
+function renderSetupInstructions(contentArea) {
+    const experiment = window.paths.getExperiment();
 
     contentArea.innerHTML = `
-        <div class="card" style="max-width: 800px;">
-            <div class="card-title">Layer Deep Dive</div>
+        <div class="tool-view">
+            <section>
+                <h2>SAE Feature Decomposition</h2>
+                <p>Decompose activations into interpretable features using GemmaScope SAE (16k features)</p>
 
-            <div style="background: var(--bg-tertiary); padding: 8px 12px; border-radius: 2px; margin-bottom: 16px;">
-                <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">Selected traits</div>
-                <div style="color: var(--text-primary); font-size: 12px; font-weight: 600;">${traitNames}</div>
-            </div>
+                <div class="card">
+                    <h4>Setup Required</h4>
+                    <p>SAE feature decomposition requires encoding raw activations through the Sparse Autoencoder.
+                    This converts 2,304 raw neuron activations into 16,384 interpretable features.</p>
 
-            <div style="color: var(--text-secondary); font-size: 12px; margin-bottom: 16px;">
-                <p style="margin-bottom: 8px;">
-                    This view will provide <strong>trait-specific</strong> analysis of what happens inside a single layer.
-                    Unlike the trajectory views (which show projections across layers), this will decompose
-                    <em>how</em> the trait score is computed within a layer.
-                </p>
-            </div>
-
-            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 2px; margin-bottom: 16px;">
-                <h3 style="color: var(--text-primary); margin: 0 0 12px 0; font-size: 13px;">Planned Features</h3>
-
-                <div style="margin-bottom: 12px;">
-                    <div style="color: var(--primary-color); font-weight: 600; font-size: 12px; margin-bottom: 2px;">1. Attention vs MLP Breakdown</div>
-                    <div style="color: var(--text-secondary); font-size: 11px;">
-                        Project attention output and MLP output onto trait vector separately.
-                        Shows whether the trait is computed by attention (token mixing) or MLP (feature transformation).
-                    </div>
+                    <table class="def-table" style="margin-top: 12px;">
+                        <tr>
+                            <td>1. Download labels</td>
+                            <td><code>python sae/download_subset.py -n 1000</code></td>
+                        </tr>
+                        <tr>
+                            <td>2. Encode activations</td>
+                            <td><code>python sae/encode_sae_features.py --experiment ${experiment} --device mps</code></td>
+                        </tr>
+                        <tr>
+                            <td>3. Refresh page</td>
+                            <td>Data will appear automatically</td>
+                        </tr>
+                    </table>
+                    <p style="margin-top: 8px; color: var(--text-tertiary);">Step 2 downloads ~300MB SAE weights on first run</p>
                 </div>
+            </section>
 
-                <div style="margin-bottom: 12px;">
-                    <div style="color: var(--primary-color); font-weight: 600; font-size: 12px; margin-bottom: 2px;">2. Per-Head Contributions</div>
-                    <div style="color: var(--text-secondary); font-size: 11px;">
-                        Which of the 8 attention heads push toward or against the trait?
-                        Identifies specific heads responsible for trait computation.
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <div style="color: var(--primary-color); font-weight: 600; font-size: 12px; margin-bottom: 2px;">3. SAE Feature Decomposition</div>
-                    <div style="color: var(--text-secondary); font-size: 11px;">
-                        Map raw MLP neurons (9216) to interpretable SAE features (16k from GemmaScope).
-                        Instead of "neuron 4721 contributes +0.8", show "harm_detection feature contributes +0.5".
-                    </div>
-                </div>
-
-                <div>
-                    <div style="color: var(--primary-color); font-weight: 600; font-size: 12px; margin-bottom: 2px;">4. Per-Token Attribution</div>
-                    <div style="color: var(--text-secondary); font-size: 11px;">
-                        Break down why each token has its trait score: which neurons and heads contributed?
-                    </div>
-                </div>
-            </div>
-
-            <div style="color: var(--text-tertiary); font-size: 11px;">
-                See <code>docs/future_ideas.md</code> for full research plan (#6 SAE Feature Decomposition, #9 Component Ablation).
-            </div>
+            ${renderEducationSection()}
         </div>
     `;
+}
+
+/**
+ * Render education section about SAE features
+ */
+function renderEducationSection() {
+    return `
+        <section>
+            <h2>Understanding SAE Features</h2>
+            <div class="grid">
+                <div class="card">
+                    <h4>What Are SAE Features?</h4>
+                    <p>Sparse Autoencoders decompose polysemantic neurons into monosemantic features.
+                    Each feature ideally represents a single interpretable concept.</p>
+                    <p><strong>Input:</strong> 2,304 neurons → <strong>Output:</strong> 16,384 sparse features</p>
+                </div>
+
+                <div class="card">
+                    <h4>Why Sparsity Matters</h4>
+                    <p>Only ~50-200 features activate per token (out of 16k).
+                    This sparsity makes it easy to see "what's firing" at each position.</p>
+                </div>
+
+                <div class="card">
+                    <h4>GemmaScope</h4>
+                    <p>Google's SAE trained on Gemma 2B base model activations.
+                    Feature descriptions from Neuronpedia's automated interpretability.</p>
+                    <p><strong>Note:</strong> Trained on base model, not instruction-tuned</p>
+                </div>
+
+                <div class="card">
+                    <h4>Limitations</h4>
+                    <p>Feature descriptions are auto-generated and may be approximate.
+                    Some features lack clear interpretations.</p>
+                </div>
+            </div>
+        </section>
+    `;
+}
+
+/**
+ * Render the main SAE visualization when data is available
+ */
+function renderSaeVisualization(contentArea, saeData, saeLabels) {
+    // Use global token index directly - SAE data now includes prompt+response
+    const tokenIdx = window.state?.currentTokenIndex || 0;
+    const tokens = saeData.tokens || [];
+    const nPromptTokens = saeData.n_prompt_tokens || 0;
+
+    // Clamp to valid range
+    const clampedIdx = Math.max(0, Math.min(tokenIdx, tokens.length - 1));
+    const isPromptToken = clampedIdx < nPromptTokens;
+
+    const currentToken = tokens[clampedIdx] || '';
+    const displayToken = currentToken.replace(/\n/g, '↵').replace(/ /g, '·');
+    const tokenPhase = isPromptToken ? 'prompt' : 'response';
+
+    contentArea.innerHTML = `
+        <div class="tool-view">
+            <section>
+                <h2>SAE Feature Decomposition</h2>
+                <div class="stats-row">
+                    <span><strong>Token ${clampedIdx}:</strong> <code>${escapeHtml(displayToken)}</code></span>
+                    <span><strong>Phase:</strong> ${tokenPhase}</span>
+                    <span><strong>Layer:</strong> ${saeData.layer || 16}</span>
+                </div>
+
+                <div class="card">
+                    <h4>Top 20 Features</h4>
+                    <div id="sae-feature-chart" style="width: 100%; min-height: 500px;"></div>
+                </div>
+
+                <div class="card">
+                    <h4>Sparsity Stats</h4>
+                    <div class="stats-row">
+                        <span><strong>Avg Active:</strong> ${(saeData.avg_active_features || 0).toFixed(0)}</span>
+                        <span><strong>Min:</strong> ${saeData.min_active_features || 0}</span>
+                        <span><strong>Max:</strong> ${saeData.max_active_features || 0}</span>
+                        <span><strong>Tokens:</strong> ${saeData.num_tokens || 0}</span>
+                    </div>
+                </div>
+            </section>
+
+            ${renderEducationSection()}
+        </div>
+    `;
+
+    // Render the chart
+    renderFeatureChart(saeData, saeLabels, clampedIdx);
+}
+
+/**
+ * Render feature bar chart for a specific token
+ */
+function renderFeatureChart(saeData, saeLabels, tokenIdx) {
+    const chartDiv = document.getElementById('sae-feature-chart');
+    if (!chartDiv) return;
+
+    // Get top-k feature data for this token
+    const indices = saeData.top_k_indices?.[tokenIdx] || [];
+    const values = saeData.top_k_values?.[tokenIdx] || [];
+    const features = saeLabels?.features || {};
+
+    // Build chart data (top 20 for readability)
+    const numToShow = Math.min(20, indices.length);
+    const chartData = [];
+
+    for (let i = 0; i < numToShow; i++) {
+        const featureIdx = indices[i];
+        const activation = values[i];
+        const featureInfo = features[String(featureIdx)] || {};
+        const description = featureInfo.description || `Feature ${featureIdx}`;
+
+        chartData.push({
+            featureIdx,
+            activation,
+            description: truncate(description, 60),
+            fullDescription: description
+        });
+    }
+
+    // Sort by activation descending, then reverse so highest is at TOP
+    chartData.sort((a, b) => b.activation - a.activation);
+    chartData.reverse();
+
+    const primaryColor = window.getCssVar?.('--primary-color', '#a09f6c') || '#a09f6c';
+
+    const trace = {
+        type: 'bar',
+        orientation: 'h',
+        y: chartData.map(d => d.description),
+        x: chartData.map(d => d.activation),
+        text: chartData.map(d => `#${d.featureIdx}`),
+        textposition: 'inside',
+        insidetextanchor: 'start',
+        marker: { color: primaryColor },
+        hovertemplate: chartData.map(d =>
+            `<b>Feature ${d.featureIdx}</b><br>${d.fullDescription}<br>Activation: %{x:.3f}<extra></extra>`
+        )
+    };
+
+    const layout = window.getPlotlyLayout({
+        margin: { l: 350, r: 10, t: 5, b: 30 },
+        height: Math.max(500, numToShow * 28),
+        xaxis: { title: 'Activation Strength', zeroline: true },
+        yaxis: { automargin: true, tickfont: { size: 11 } }
+    });
+
+    Plotly.newPlot(chartDiv, [trace], layout, {
+        responsive: true,
+        displayModeBar: false
+    });
+}
+
+/**
+ * Utility: Truncate string with ellipsis
+ */
+function truncate(str, maxLen) {
+    if (!str || str.length <= maxLen) return str;
+    return str.slice(0, maxLen - 3) + '...';
+}
+
+/**
+ * Utility: Escape HTML
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;');
+}
+
+/**
+ * Main render function - called by app.js when view changes or token changes
+ */
+async function renderLayerDeepDive() {
+    const contentArea = document.getElementById('content-area');
+    const promptSet = window.state?.currentPromptSet;
+    const promptId = window.state?.currentPromptId;
+
+    // Show loading
+    contentArea.innerHTML = '<div class="tool-view"><p>Loading SAE data...</p></div>';
+
+    // Try to load SAE labels and data
+    const [saeLabels, saeData] = await Promise.all([
+        loadSaeLabels(),
+        promptSet && promptId ? loadSaeData(promptSet, promptId) : null
+    ]);
+
+    // If no SAE data available, show setup instructions
+    if (!saeData || !saeLabels) {
+        renderSetupInstructions(contentArea);
+        return;
+    }
+
+    // Cache and render
+    saeDataCache = saeData;
+    renderSaeVisualization(contentArea, saeData, saeLabels);
 }
 
 // Export to global scope
