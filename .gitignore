@@ -1,14 +1,14 @@
 experiments/
 # Experiment data (stored in R2, not git)
 
-docs/remote_setup.md
+#docs/remote_setup.md
 
 # Python
 __pycache__/
 
 # Environment variables
-.env
-docker/.env
+#.env
+#docker/.env
 
 # System
 .DS_Store
