@@ -1003,6 +1003,152 @@ code {
 
 @media (max-width: 900px) { .trait-heatmaps-grid { grid-template-columns: repeat(2, 1fr); } }
 
+/* Metric Distributions */
+.metric-distributions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.distribution-item { min-width: 0; }
+
+.distribution-item h4 {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.distribution-item-wide {
+    grid-column: span 3;
+}
+
+.distribution-item-spaced {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-color);
+}
+
+.trait-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: var(--text-sm);
+}
+
+.trait-selector-row select {
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+}
+
+.component-heatmaps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.component-heatmap-item {
+    min-width: 0;
+}
+
+.component-heatmap-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+@media (max-width: 900px) {
+    .component-heatmaps-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.chart-subtitle {
+    font-weight: 400;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+.chart-container-md {
+    width: 100%;
+    min-height: 280px;
+}
+
+@media (max-width: 900px) {
+    .metric-distributions-grid { grid-template-columns: 1fr; }
+    .distribution-item-wide { grid-column: span 1; }
+}
+
+/* Method Breakdown Grid (6 methods × 4 metrics) */
+.method-breakdown-grid {
+    display: grid;
+    grid-template-columns: auto repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.method-breakdown-header {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 4px 0;
+}
+
+.method-breakdown-label {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    padding-right: 8px;
+}
+
+.method-breakdown-cell {
+    min-width: 0;
+}
+
+@media (max-width: 1200px) {
+    .method-breakdown-grid {
+        grid-template-columns: auto repeat(2, 1fr);
+    }
+    .method-breakdown-header:nth-child(4),
+    .method-breakdown-header:nth-child(5),
+    .method-breakdown-cell:nth-child(4n),
+    .method-breakdown-cell:nth-child(4n+1) {
+        display: none;
+    }
+}
+
+/* Layer × Trait Heatmaps Grid */
+.layer-trait-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.layer-trait-item {
+    min-width: 0;
+}
+
+.layer-trait-item h4 {
+    text-align: center;
+    margin-bottom: 8px;
+    font-size: var(--text-sm);
+}
+
+@media (max-width: 1000px) {
+    .layer-trait-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Table of Contents */
 .toc {
     background: var(--bg-secondary);
@@ -1100,6 +1246,10 @@ code {
 
 .subsection-info.show {
     display: block;
+}
+
+.subsection-info p {
+    margin: 4px 0;
 }
 
 /* Chart Containers */

@@ -14,7 +14,6 @@ import json
 import torch
 import argparse
 from pathlib import Path
-from sklearn.decomposition import PCA
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -99,12 +98,6 @@ def compute_from_residual(experiment: str, prompt_set: str, prompt_id: int, trai
         "per_token": []
     }
 
-    # PCA on all hidden states EXCEPT token 0 (BOS has different representation)
-    hidden_no_bos = hidden_all[:, 1:, :]
-    all_hiddens_flat = hidden_no_bos.permute(1, 0, 2).reshape(-1, hidden_no_bos.shape[-1]).numpy()
-    pca = PCA(n_components=2)
-    pca.fit(all_hiddens_flat)
-
     # Internals directory for attention data
     internals_dir = get_path('inference.raw', experiment=experiment) / 'internals' / prompt_set
 
@@ -126,10 +119,6 @@ def compute_from_residual(experiment: str, prompt_set: str, prompt_id: int, trai
 
         token_metrics["velocity_per_layer"] = vel_mag
         token_metrics["normalized_velocity_per_layer"] = norm_vel
-
-        # PCA trajectory
-        token_pca = pca.transform(token_hidden.numpy())
-        token_metrics["pca_trajectory"] = token_pca.tolist()
 
         # Trait scores
         trait_scores = {}

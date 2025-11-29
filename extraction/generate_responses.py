@@ -66,9 +66,11 @@ def generate_responses_for_trait(
     tokenizer: AutoTokenizer,
     max_new_tokens: int = 200,
     batch_size: int = 8,
+    rollouts: int = 1,
+    temperature: float = 0.0,
 ) -> tuple[int, int]:
     """
-    Generate responses for natural scenarios.
+    Generate responses for scenarios.
 
     Args:
         experiment: Experiment name.
@@ -77,6 +79,8 @@ def generate_responses_for_trait(
         tokenizer: Pre-loaded HuggingFace tokenizer.
         max_new_tokens: Max tokens to generate per response.
         batch_size: Batch size for generation.
+        rollouts: Number of responses per scenario (1 for natural, 10 for instruction-based).
+        temperature: Sampling temperature (0.0 for deterministic, 1.0 for diverse).
 
     Returns:
         Tuple of (n_positive, n_negative) responses generated.
@@ -99,34 +103,50 @@ def generate_responses_for_trait(
     pos_scenarios = load_scenarios(pos_file)
     neg_scenarios = load_scenarios(neg_file)
 
+    do_sample = temperature > 0
+
+    if rollouts > 1:
+        print(f"    Rollouts: {rollouts}, Temperature: {temperature}")
+
     def generate_batch(scenarios: list[str], label: str) -> list[dict]:
         results = []
-        for i in tqdm(range(0, len(scenarios), batch_size), desc=f"    Generating {label}", leave=False):
-            batch_scenarios = scenarios[i:i + batch_size]
-            inputs = tokenizer(
-                batch_scenarios,
-                return_tensors='pt',
-                padding=True,
-                truncation=True,
-                max_length=512
-            ).to(model.device)
+        total_to_generate = len(scenarios) * rollouts
+        desc = f"    Generating {label} ({total_to_generate} total)"
 
-            with torch.no_grad():
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=max_new_tokens,
-                    do_sample=False,
-                    pad_token_id=tokenizer.eos_token_id
-                )
+        with tqdm(total=total_to_generate, desc=desc, leave=False) as pbar:
+            for i in range(0, len(scenarios), batch_size):
+                batch_scenarios = scenarios[i:i + batch_size]
 
-            for j, output in enumerate(outputs):
-                prompt_length = inputs['input_ids'][j].shape[0]
-                response = tokenizer.decode(output[prompt_length:], skip_special_tokens=True)
-                results.append({
-                    'question': batch_scenarios[j],
-                    'answer': response.strip(),
-                    'full_text': tokenizer.decode(output, skip_special_tokens=True)
-                })
+                # Generate rollouts for this batch
+                for rollout_idx in range(rollouts):
+                    inputs = tokenizer(
+                        batch_scenarios,
+                        return_tensors='pt',
+                        padding=True,
+                        truncation=True,
+                        max_length=512
+                    ).to(model.device)
+
+                    with torch.no_grad():
+                        outputs = model.generate(
+                            **inputs,
+                            max_new_tokens=max_new_tokens,
+                            do_sample=do_sample,
+                            temperature=temperature if do_sample else None,
+                            pad_token_id=tokenizer.eos_token_id
+                        )
+
+                    for j, output in enumerate(outputs):
+                        prompt_length = inputs['input_ids'][j].shape[0]
+                        response = tokenizer.decode(output[prompt_length:], skip_special_tokens=True)
+                        results.append({
+                            'scenario_idx': i + j,
+                            'rollout_idx': rollout_idx,
+                            'question': batch_scenarios[j],
+                            'answer': response.strip(),
+                            'full_text': tokenizer.decode(output, skip_special_tokens=True)
+                        })
+                    pbar.update(len(batch_scenarios))
         return results
 
     pos_results = generate_batch(pos_scenarios, 'positive')
@@ -143,6 +163,10 @@ def generate_responses_for_trait(
         'experiment': experiment,
         'trait': trait,
         'model_name': model.config.name_or_path,
+        'n_scenarios_pos': len(pos_scenarios),
+        'n_scenarios_neg': len(neg_scenarios),
+        'rollouts': rollouts,
+        'temperature': temperature,
         'n_positive': len(pos_results),
         'n_negative': len(neg_results),
         'total': len(pos_results) + len(neg_results),
@@ -163,6 +187,10 @@ def main():
     parser.add_argument('--max-new-tokens', type=int, default=200, help='Max tokens to generate')
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size for generation')
     parser.add_argument('--device', type=str, default='auto', help='Device (auto, cuda, cpu, mps)')
+    parser.add_argument('--rollouts', type=int, default=1,
+                        help='Responses per scenario (1 for natural, 10 for instruction-based)')
+    parser.add_argument('--temperature', type=float, default=0.0,
+                        help='Sampling temperature (0.0 for deterministic, 1.0 for diverse)')
 
     args = parser.parse_args()
 
@@ -203,7 +231,9 @@ def main():
             model=model,
             tokenizer=tokenizer,
             max_new_tokens=args.max_new_tokens,
-            batch_size=args.batch_size
+            batch_size=args.batch_size,
+            rollouts=args.rollouts,
+            temperature=args.temperature,
         )
         total_pos += n_pos
         total_neg += n_neg

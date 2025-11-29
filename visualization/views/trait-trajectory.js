@@ -62,6 +62,15 @@ async function renderTraitTrajectory() {
             renderAllLayersInstructionsInContainer(traitDiv.id, trait, promptSet, promptId);
         }
     }
+
+    // Add token highlights after all heatmaps are rendered
+    // Prompt picker owns the highlight state; we just trigger the update
+    const nPromptTokens = window.state.promptPickerCache?.nPromptTokens || 0;
+    if (window.updatePlotTokenHighlights) {
+        requestAnimationFrame(() => {
+            window.updatePlotTokenHighlights(window.state.currentTokenIndex, nPromptTokens);
+        });
+    }
 }
 
 function renderAllLayersInstructionsInContainer(containerId, trait, promptSet, promptId) {
@@ -169,46 +178,8 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
         }
     }
 
-    // Get colors from CSS variables
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
-    const separatorColor = `${primaryColor}80`;  // 50% opacity
-    const highlightColor = `${primaryColor}80`;  // 50% opacity
-
-    // Get current token index from global state (absolute index across prompt+response)
-    // The heatmap skips BOS (startIdx=1), so token at absolute index N = heatmap x position (N - startIdx)
-    const currentTokenIdx = window.state.currentTokenIndex || 0;
-    const highlightX = currentTokenIdx - startIdx;
-
-    // Create shapes array for separator line and current token highlight
-    const shapes = [
-        // Vertical line separating prompt and response (adjusted for skipped BOS)
-        {
-            type: 'line',
-            xref: 'x',
-            yref: 'paper',
-            x0: (nPromptTokens - startIdx) - 0.5,
-            x1: (nPromptTokens - startIdx) - 0.5,
-            y0: 0,
-            y1: 1,
-            line: {
-                color: separatorColor,
-                width: 2,
-                dash: 'dash'
-            }
-        },
-        // Highlight for current token from global slider
-        {
-            type: 'rect',
-            xref: 'x',
-            yref: 'paper',
-            x0: highlightX - 0.5,
-            x1: highlightX + 0.5,
-            y0: 0,
-            y1: 1,
-            fillcolor: highlightColor,
-            line: { width: 0 }
-        }
-    ];
+    // Shapes (separator + token highlight) are added by prompt-picker after render
+    // This keeps prompt-picker as the single owner of token highlight state
 
     const data = [{
         z: heatmapData,
@@ -233,7 +204,6 @@ function renderCombinedTrajectoryHeatmap(divId, projections, tokens, nPromptToke
             title: isCompact ? '' : 'Layer',
             tickfont: { size: isCompact ? 9 : 12 }
         },
-        shapes: shapes,
         height: height,
         margin: isCompact ? { t: 5, b: 30, l: 30, r: 5 } : { t: 40, b: 50, l: 40, r: 10 }
     });

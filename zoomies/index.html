@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zoomies - Trait Interp</title>
+
+    <!-- External Dependencies -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+
+    <!-- Base styles (shared primitives) -->
+    <link rel="stylesheet" href="/visualization/styles.css">
+    <!-- Zoomies-specific overrides -->
+    <link rel="stylesheet" href="/zoomies/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Tab Bar -->
+        <nav class="tab-bar" id="tab-bar">
+            <!-- Rendered by tabs.js -->
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="content" id="content">
+            <!-- Rendered by current view -->
+        </main>
+    </div>
+
+    <!-- Core Modules -->
+    <script src="/zoomies/core/state.js"></script>
+    <script src="/zoomies/core/router.js"></script>
+    <script src="/zoomies/core/paths.js"></script>
+    <script src="/zoomies/core/registry.js"></script>
+
+    <!-- Components -->
+    <script src="/zoomies/components/tabs.js"></script>
+    <script src="/zoomies/components/diagram.js"></script>
+    <script src="/zoomies/components/breadcrumb.js"></script>
+    <script src="/zoomies/components/selectors.js"></script>
+
+    <!-- Views -->
+    <script src="/zoomies/views/main.js"></script>
+    <script src="/zoomies/views/overview.js"></script>
+    <script src="/zoomies/views/dev.js"></script>
+
+    <!-- Plugins -->
+    <script src="/zoomies/plugins/extraction.js"></script>
+    <script src="/zoomies/plugins/inference.js"></script>
+
+    <!-- App Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.zoomies.init();
+        });
+    </script>
+</body>
+</html>

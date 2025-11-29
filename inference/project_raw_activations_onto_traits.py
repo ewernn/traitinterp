@@ -77,7 +77,7 @@ def discover_traits(experiment_name: str) -> List[Tuple[str, str]]:
 
 def find_vector_method(vectors_dir: Path, layer: int) -> Optional[str]:
     """Auto-detect best vector method for a layer."""
-    for method in ["probe", "mean_diff", "ica", "gradient"]:
+    for method in ["probe", "mean_diff", "gradient"]:
         if (vectors_dir / f"{method}_layer{layer}.pt").exists():
             return method
     return None
@@ -225,7 +225,8 @@ def compute_logit_lens_from_raw(activations: Dict, model, tokenizer, n_layers: i
 def main():
     parser = argparse.ArgumentParser(description="Post-hoc projection from raw activations")
     parser.add_argument("--experiment", required=True, help="Experiment name")
-    parser.add_argument("--prompt-set", required=True, help="Prompt set name")
+    parser.add_argument("--prompt-set", help="Prompt set name (or use --all-prompt-sets)")
+    parser.add_argument("--all-prompt-sets", action="store_true", help="Process all prompt sets")
     parser.add_argument("--traits", help="Comma-separated traits (category/name format)")
     parser.add_argument("--layer", type=int, default=16, help="Layer for vectors")
     parser.add_argument("--method", help="Vector method (auto-detect if not set)")
@@ -236,10 +237,34 @@ def main():
 
     args = parser.parse_args()
 
+    if not args.prompt_set and not args.all_prompt_sets:
+        parser.error("Either --prompt-set or --all-prompt-sets is required")
+
     from utils.paths import get as get_path
 
     inference_dir = get_path('inference.base', experiment=args.experiment)
-    raw_dir = inference_dir / "raw" / "residual" / args.prompt_set
+    raw_residual_dir = inference_dir / "raw" / "residual"
+
+    # Discover prompt sets if --all-prompt-sets
+    if args.all_prompt_sets:
+        if not raw_residual_dir.exists():
+            print(f"Raw residual directory not found: {raw_residual_dir}")
+            return
+        prompt_sets = [d.name for d in raw_residual_dir.iterdir() if d.is_dir()]
+        print(f"Found {len(prompt_sets)} prompt sets: {', '.join(prompt_sets)}")
+    else:
+        prompt_sets = [args.prompt_set]
+
+    for prompt_set in prompt_sets:
+        print(f"\n{'='*60}\nProcessing prompt set: {prompt_set}\n{'='*60}")
+        process_prompt_set(args, inference_dir, prompt_set)
+
+
+def process_prompt_set(args, inference_dir, prompt_set):
+    """Process a single prompt set."""
+    from utils.paths import get as get_path
+
+    raw_dir = inference_dir / "raw" / "residual" / prompt_set
 
     if not raw_dir.exists():
         print(f"Raw activations not found: {raw_dir}")
@@ -322,7 +347,7 @@ def main():
         # Project onto each trait
         for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
             # New path: residual_stream/{prompt_set}/{id}.json
-            out_dir = inference_dir / category / trait_name / "residual_stream" / args.prompt_set
+            out_dir = inference_dir / category / trait_name / "residual_stream" / prompt_set
             out_file = out_dir / f"{prompt_id}.json"
 
             if args.skip_existing and out_file.exists():
@@ -373,7 +398,7 @@ def main():
                 },
                 'metadata': {
                     'prompt_id': prompt_id,
-                    'prompt_set': args.prompt_set,
+                    'prompt_set': prompt_set,
                     'trait': trait_name,
                     'category': category,
                     'method': method,
@@ -391,7 +416,7 @@ def main():
             with open(out_file, 'w') as f:
                 json.dump(proj_data, f, indent=2)
 
-    print(f"\nProjections saved to: {inference_dir}/{{category}}/{{trait}}/residual_stream/{args.prompt_set}/")
+    print(f"\nProjections saved to: {inference_dir}/{{category}}/{{trait}}/residual_stream/{prompt_set}/")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ Run with:
 Expected runtime: ~1-2 hours on A10, ~30-60 min on A100
 Memory usage: ~14GB (7B model)
 
-Extracts vectors for all 28 layers and all 6 methods (mean_diff, probe, ica, gradient, pca_diff, random_baseline).
+Extracts vectors for all 28 layers and all 4 methods (mean_diff, probe, gradient, random_baseline).
 """
 
 import os
@@ -56,7 +56,7 @@ TRAITS_TO_TEST = [
 ]
 
 # Extraction config
-EXTRACTION_METHODS = ["mean_diff", "probe", "ica", "gradient", "pca_diff", "random_baseline"]  # All 6 methods
+EXTRACTION_METHODS = ["mean_diff", "probe", "gradient", "random_baseline"]  # All 4 methods
 TARGET_LAYER = 14  # Middle layer for 7B (28 layers) - used for comparison phase
 ALL_LAYERS = True  # Extract vectors for all layers
 

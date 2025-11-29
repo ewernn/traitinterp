@@ -15,7 +15,7 @@ Usage:
     python extraction/extract_vectors.py --experiment my_exp --trait category/my_trait
 
     # All traits, specific methods
-    python extraction/extract_vectors.py --experiment my_exp --trait all --methods pca_diff,random_baseline
+    python extraction/extract_vectors.py --experiment my_exp --trait all --methods gradient,random_baseline
 
     # Single trait, specific layers
     python extraction/extract_vectors.py --experiment my_exp --trait category/my_trait --layers 16

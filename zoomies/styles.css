@@ -1,0 +1,857 @@
+/**
+ * Zoomies-specific styles
+ * Base primitives imported from visualization/styles.css
+ */
+
+/* Override body padding from visualization/styles.css */
+body {
+    padding: 0;
+}
+
+/* App Layout - override visualization container */
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+}
+
+/* Tab Bar */
+.tab-bar {
+    display: flex;
+    gap: 4px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.tab {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.15s ease;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.tab.active {
+    color: var(--primary-color);
+    background: var(--bg-secondary);
+    font-weight: 500;
+}
+
+.tab-dropdown {
+    position: relative;
+}
+
+.tab-dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 4px 4px;
+    min-width: 150px;
+    z-index: 100;
+}
+
+.tab-dropdown:hover .tab-dropdown-content {
+    display: block;
+}
+
+.tab-dropdown-item {
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+}
+
+.tab-dropdown-item:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Main Content - allow natural page scrolling */
+.content {
+    flex: 1;
+    overflow: visible;
+}
+
+/* ============================================
+   MAIN VIEW - Two section layout
+   ============================================ */
+
+.main-view {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
+   HERO SECTION - Full viewport diagram area
+   ============================================ */
+
+.hero-section {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: var(--bg-primary);
+}
+
+.hero-selectors {
+    padding: 16px;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.hero-split {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 16px;
+    gap: 24px;
+}
+
+.hero-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-right {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* Info Panel */
+.info-panel {
+    width: 100%;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.info-explanation {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-tensors h4,
+.info-constants h4 {
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.tensor-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tensor-row:last-child {
+    border-bottom: none;
+}
+
+.tensor-name {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+}
+
+.tensor-shape {
+    font-size: var(--text-xs);
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--primary-color);
+}
+
+.tensor-desc {
+    grid-column: 1 / -1;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.info-constants {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.constants-grid {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 6px 16px;
+    font-size: var(--text-xs);
+}
+
+.constants-grid span {
+    color: var(--text-tertiary);
+}
+
+.constants-grid code {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.scroll-hint {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+    animation: bounce 2s infinite;
+}
+
+.scroll-hint:hover {
+    color: var(--primary-color);
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+    40% { transform: translateX(-50%) translateY(-6px); }
+    60% { transform: translateX(-50%) translateY(-3px); }
+}
+
+/* ============================================
+   DATA SECTION - Below the fold
+   ============================================ */
+
+.data-section {
+    min-height: 100vh;
+    padding: 48px 24px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.data-header {
+    max-width: 800px;
+    margin: 0 auto 32px;
+}
+
+.data-explanation {
+    padding: 24px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+}
+
+.explanation-title {
+    font-size: var(--text-xl);
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.explanation-content {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.data-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ============================================
+   DIAGRAM - Zoom-based navigation
+   ============================================ */
+
+.diagram-container {
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+}
+
+.diagram-zoom-container {
+    transition: transform 0.4s ease-out, opacity 0.4s ease-out;
+    transform-origin: center center;
+}
+
+.diagram-zoom-container.zooming-in {
+    transform: scale(1.5);
+    opacity: 0;
+}
+
+.diagram-zoom-container.zooming-out {
+    transform: scale(0.8);
+    opacity: 0;
+}
+
+.diagram-zoom-container[data-zoom="in"] {
+    transform: scale(0.9);
+    opacity: 0;
+}
+
+.diagram-zoom-container[data-zoom="in"].zoomed {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* All layers view */
+.diagram-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.diagram-layer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.diagram-layer.clickable {
+    cursor: pointer;
+}
+
+.diagram-layer.clickable .layer-block {
+    border-color: var(--success);
+}
+
+.diagram-layer.clickable:hover .layer-block {
+    border-color: var(--success);
+    box-shadow: 0 0 16px rgba(61, 116, 53, 0.4);
+}
+
+.diagram-layer.clickable:hover .layer-label {
+    color: var(--success);
+}
+
+.diagram-layer.static .layer-block {
+    opacity: 0.6;
+}
+
+.layer-block.embed,
+.layer-block.output {
+    background: var(--bg-tertiary);
+}
+
+.layer-label {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    width: 70px;
+    text-align: right;
+    transition: color 0.2s ease;
+}
+
+.layer-block {
+    width: 200px;
+    height: 32px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.diagram-dots {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    color: var(--text-tertiary);
+    font-size: var(--text-lg);
+    line-height: 0.6;
+    margin-left: 86px;
+}
+
+.diagram-hint {
+    margin-top: 24px;
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Single layer view */
+.diagram-back {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    padding: 8px 0;
+    margin-bottom: 16px;
+}
+
+.diagram-back:hover {
+    text-decoration: underline;
+}
+
+.diagram-layer-detail {
+    text-align: center;
+}
+
+.layer-title {
+    font-size: var(--text-xl);
+    font-weight: 500;
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+.transformer-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    min-width: 300px;
+}
+
+.residual-stream {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.stream-arrow {
+    font-size: var(--text-lg);
+    color: var(--text-tertiary);
+    line-height: 1;
+}
+
+.stream-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+}
+
+.component-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.skip-connection {
+    width: 30px;
+    height: 2px;
+    background: var(--text-tertiary);
+}
+
+.component {
+    padding: 16px 32px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.component.clickable {
+    cursor: pointer;
+}
+
+.component.clickable:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: 0 0 12px rgba(122, 121, 80, 0.3);
+}
+
+.add-node {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+}
+
+/* Component detail view */
+.diagram-component-detail {
+    text-align: center;
+    padding: 32px;
+}
+
+.component-title {
+    font-size: var(--text-xl);
+    margin-bottom: 16px;
+}
+
+.coming-soon {
+    color: var(--text-tertiary);
+}
+
+/* ============================================
+   PROMPT PICKER - Top controls
+   ============================================ */
+
+.prompt-picker {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    padding: 12px 16px;
+}
+
+.pp-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.pp-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.pp-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.pp-group select {
+    padding: 6px 10px;
+    font-size: var(--text-sm);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.pp-group select:hover {
+    border-color: var(--primary-color);
+}
+
+.pp-prompts {
+    display: flex;
+    gap: 4px;
+}
+
+.pp-btn {
+    min-width: 28px;
+    height: 28px;
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pp-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.pp-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-on-primary);
+}
+
+.pp-traits-group {
+    margin-left: auto;
+}
+
+.pp-trait-btn {
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pp-trait-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.pp-trait-btn .arrow {
+    font-size: 10px;
+    color: var(--text-tertiary);
+}
+
+.trait-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 100;
+    min-width: 200px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin-top: 4px;
+}
+
+.trait-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    border-radius: 2px;
+}
+
+.trait-option:hover {
+    background: var(--bg-tertiary);
+}
+
+.pp-meta {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    padding: 8px;
+}
+
+/* ============================================
+   BREADCRUMB (for reference, if needed)
+   ============================================ */
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.breadcrumb-segment {
+    position: relative;
+}
+
+.breadcrumb-btn {
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.breadcrumb-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+.breadcrumb-btn .arrow {
+    font-size: 10px;
+    color: var(--text-tertiary);
+}
+
+.breadcrumb-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    min-width: 120px;
+    z-index: 100;
+    margin-top: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.breadcrumb-segment.open .breadcrumb-dropdown {
+    display: block;
+}
+
+.breadcrumb-option {
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+}
+
+.breadcrumb-option:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.breadcrumb-option.selected {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.breadcrumb-separator {
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+}
+
+.breadcrumb-current {
+    padding: 6px 12px;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+/* ============================================
+   INFERENCE DATA VIEWS
+   ============================================ */
+
+.inference-heatmaps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 24px;
+}
+
+.inference-heatmap h3 {
+    font-size: var(--text-base);
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.token-info {
+    padding: 12px 16px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: var(--text-sm);
+}
+
+.microscope-view {
+    padding: 16px;
+}
+
+.microscope-view h3 {
+    margin-bottom: 12px;
+    font-size: var(--text-base);
+}
+
+.projection-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.projection-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+}
+
+.projection-name {
+    color: var(--text-secondary);
+}
+
+.projection-value {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.sae-placeholder,
+.no-sae {
+    padding: 24px;
+    background: var(--bg-primary);
+    border-radius: 4px;
+    text-align: center;
+    color: var(--text-tertiary);
+}
+
+/* ============================================
+   PLOT CONTAINERS
+   ============================================ */
+
+.plot-container {
+    width: 100%;
+    min-height: 300px;
+}
+
+/* ============================================
+   THEME TOGGLE (fixed position)
+   ============================================ */
+
+.theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: var(--text-base);
+    z-index: 100;
+}
+
+.theme-toggle:hover {
+    background: var(--bg-tertiary);
+}
+
+/* ============================================
+   TRAIT CHIPS (for overview/selection)
+   ============================================ */
+
+.trait-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.trait-chip {
+    padding: 4px 10px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.trait-chip:hover {
+    background: var(--border-color);
+}
+
+.trait-chip.selected {
+    background: var(--primary-color);
+    color: var(--text-on-primary);
+}

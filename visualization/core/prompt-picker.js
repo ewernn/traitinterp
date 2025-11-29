@@ -244,11 +244,10 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
     const highlightX = tokenIdx - startIdx;
     const separatorX = (nPromptTokens - startIdx) - 0.5;
 
-    // Get colors from CSS
+    // Get highlight colors from centralized helper
+    const { separator: separatorColor, highlight: highlightColor } = window.getTokenHighlightColors();
     const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-    const separatorColor = `${primaryColor}80`;
-    const highlightColor = `${primaryColor}80`;  // 50% opacity
 
     if (window.state.currentView === 'trait-trajectory') {
         // Update all trait heatmaps

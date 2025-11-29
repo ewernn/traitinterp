@@ -15,7 +15,9 @@ const state = {
     // Token selection for per-token analysis
     currentTokenIndex: 0,        // Currently selected token index (0-based, absolute across prompt+response)
     // Cached inference context (prompt/response text for current selection)
-    promptPickerCache: null  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
+    promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
+    // Layer Deep Dive settings
+    hideAttentionSink: true  // Hide first token (attention sink) in heatmaps
 };
 
 // Display names for better interpretability
@@ -532,6 +534,15 @@ function getCssVar(name, fallback = '') {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
+// Get token highlight colors for Plotly shapes (single source of truth)
+function getTokenHighlightColors() {
+    const primaryColor = getCssVar('--primary-color', '#a09f6c');
+    return {
+        separator: `${primaryColor}80`,  // 50% opacity - prompt/response divider
+        highlight: `${primaryColor}80`   // 50% opacity - current token highlight
+    };
+}
+
 // URL-based tab routing functions
 function getTabFromURL() {
     const params = new URLSearchParams(window.location.search);
@@ -611,6 +622,7 @@ window.getFilteredTraits = getFilteredTraits;
 window.getPlotlyLayout = getPlotlyLayout;
 window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;
 window.getCssVar = getCssVar;
+window.getTokenHighlightColors = getTokenHighlightColors;
 window.showError = showError;
 window.initApp = init;
 window.escapeHtml = escapeHtml;

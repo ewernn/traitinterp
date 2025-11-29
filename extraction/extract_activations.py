@@ -5,17 +5,21 @@ Stage 2: Extract activations from generated responses.
 Input:
     - experiments/{experiment}/extraction/{category}/{trait}/responses/pos.json
     - experiments/{experiment}/extraction/{category}/{trait}/responses/neg.json
+    - experiments/{experiment}/extraction/{category}/{trait}/vetting/response_scores.json (optional)
 
 Output:
     - experiments/{experiment}/extraction/{category}/{trait}/activations/all_layers.pt
     - experiments/{experiment}/extraction/{category}/{trait}/activations/metadata.json
 
 Usage:
-    # Single trait
+    # Single trait (with vetting filter by default)
     python extraction/extract_activations.py --experiment my_exp --trait category/my_trait
 
     # All traits
     python extraction/extract_activations.py --experiment my_exp --trait all
+
+    # Disable vetting filter
+    python extraction/extract_activations.py --experiment my_exp --trait all --no-vetting-filter
 """
 
 import sys
@@ -32,6 +36,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils.paths import get as get_path
 from traitlens.hooks import HookManager
 from traitlens.activations import ActivationCapture
+
+
+def load_vetting_filter(experiment: str, trait: str) -> dict:
+    """
+    Load failed indices from response vetting.
+    Returns dict with 'positive' and 'negative' lists of indices to EXCLUDE.
+    """
+    vetting_file = get_path('extraction.trait', experiment=experiment, trait=trait) / 'vetting' / 'response_scores.json'
+    if not vetting_file.exists():
+        return {'positive': [], 'negative': []}
+
+    with open(vetting_file) as f:
+        data = json.load(f)
+
+    return data.get('failed_indices', {'positive': [], 'negative': []})
 
 
 def discover_traits_with_responses(experiment: str) -> list[str]:
@@ -57,7 +76,8 @@ def extract_activations_for_trait(
     experiment: str,
     trait: str,
     model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer
+    tokenizer: AutoTokenizer,
+    use_vetting_filter: bool = True
 ) -> int:
     """
     Extract activations from generated responses.
@@ -67,6 +87,7 @@ def extract_activations_for_trait(
         trait: Trait name (e.g., "category/trait_name").
         model: Pre-loaded HuggingFace model.
         tokenizer: Pre-loaded HuggingFace tokenizer.
+        use_vetting_filter: If True, exclude responses that failed vetting.
 
     Returns:
         Number of layers extracted.
@@ -87,6 +108,23 @@ def extract_activations_for_trait(
     except FileNotFoundError:
         print(f"    ERROR: Response files not found in {responses_dir}. Run Stage 1 first.")
         return 0
+
+    # Filter based on vetting results
+    n_filtered_pos = 0
+    n_filtered_neg = 0
+    if use_vetting_filter:
+        failed_indices = load_vetting_filter(experiment, trait)
+        pos_failed = set(failed_indices.get('positive', []))
+        neg_failed = set(failed_indices.get('negative', []))
+
+        if pos_failed or neg_failed:
+            pos_data_filtered = [r for i, r in enumerate(pos_data) if i not in pos_failed]
+            neg_data_filtered = [r for i, r in enumerate(neg_data) if i not in neg_failed]
+            n_filtered_pos = len(pos_data) - len(pos_data_filtered)
+            n_filtered_neg = len(neg_data) - len(neg_data_filtered)
+            print(f"    Filtered {n_filtered_pos + n_filtered_neg} responses based on vetting ({n_filtered_pos} pos, {n_filtered_neg} neg)")
+            pos_data = pos_data_filtered
+            neg_data = neg_data_filtered
 
     def extract_from_responses(responses: list[dict], label: str) -> dict[int, torch.Tensor]:
         all_activations = {layer: [] for layer in range(n_layers)}
@@ -139,7 +177,10 @@ def extract_activations_for_trait(
         'n_layers': n_layers,
         'n_examples_pos': len(pos_data),
         'n_examples_neg': len(neg_data),
-        'hidden_dim': all_acts.shape[-1]
+        'hidden_dim': all_acts.shape[-1],
+        'vetting_filter_used': use_vetting_filter,
+        'n_filtered_pos': n_filtered_pos,
+        'n_filtered_neg': n_filtered_neg
     }
     with open(activations_dir / 'metadata.json', 'w') as f:
         json.dump(metadata, f, indent=2)
@@ -154,6 +195,7 @@ def main():
                         help='Trait name (e.g., "category/my_trait") or "all" for all traits')
     parser.add_argument('--model', type=str, default='google/gemma-2-2b-it', help='Model name')
     parser.add_argument('--device', type=str, default='auto', help='Device (auto, cuda, cpu, mps)')
+    parser.add_argument('--no-vetting-filter', action='store_true', help='Disable filtering based on vetting results')
 
     args = parser.parse_args()
 
@@ -192,7 +234,8 @@ def main():
             experiment=args.experiment,
             trait=trait,
             model=model,
-            tokenizer=tokenizer
+            tokenizer=tokenizer,
+            use_vetting_filter=not args.no_vetting_filter
         )
         if n_layers > 0:
             total_layers = n_layers

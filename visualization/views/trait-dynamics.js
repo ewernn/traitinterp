@@ -51,10 +51,14 @@ function smoothData(data, window = 3) {
  * Velocity = first derivative (diff between layers)
  * Acceleration = second derivative (diff of velocity)
  *
+ * If activationNorms provided, normalizes position by ||h|| at each layer first,
+ * then computes derivatives. This separates "direction" from "magnitude".
+ *
  * @param {Object} data - Trait projection data with projections.prompt and projections.response
+ * @param {number[]} activationNorms - Optional per-layer activation norms for normalization
  * @returns {Object} { position: [26], velocity: [25], acceleration: [24] }
  */
-function computeLayerDerivatives(data) {
+function computeLayerDerivatives(data, activationNorms = null) {
     const promptProj = data.projections.prompt;
     const responseProj = data.projections.response;
     const allProj = [...promptProj, ...responseProj];
@@ -62,7 +66,7 @@ function computeLayerDerivatives(data) {
     const nSublayers = promptProj[0][0].length;
 
     // Compute layer-averaged position (average across all tokens and sublayers)
-    const position = [];
+    const rawPosition = [];
     for (let layer = 0; layer < nLayers; layer++) {
         let sum = 0;
         let count = 0;
@@ -72,8 +76,13 @@ function computeLayerDerivatives(data) {
                 count++;
             }
         }
-        position.push(sum / count);
+        rawPosition.push(sum / count);
     }
+
+    // Normalize by activation magnitude if provided
+    const position = activationNorms
+        ? rawPosition.map((p, i) => p / (activationNorms[i] || 1))
+        : rawPosition;
 
     // Compute velocity (first derivative)
     const velocity = [];
@@ -210,8 +219,16 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                 <div id="combined-activation-plot"></div>
             </section>
             <section>
-                <h2>Layer Evolution</h2>
-                <div id="layer-evolution-plot"></div>
+                <h2>Normalized Position</h2>
+                <div id="layer-position-plot"></div>
+            </section>
+            <section>
+                <h2>Normalized Velocity</h2>
+                <div id="layer-velocity-plot"></div>
+            </section>
+            <section>
+                <h2>Normalized Acceleration</h2>
+                <div id="layer-acceleration-plot"></div>
             </section>
             <section>
                 <h2>Activation Magnitude</h2>
@@ -394,8 +411,8 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     );
     plotDiv.on('plotly_unhover', () => Plotly.restyle(plotDiv, {'opacity': 1.0}));
 
-    // Render Layer Evolution plot (derivative overlay)
-    renderLayerEvolutionPlot(traitData, loadedTraits);
+    // Render Layer derivative plots (position, velocity, acceleration)
+    renderLayerDerivativePlots(traitData, loadedTraits);
 
     // Render Activation Magnitude plot (trait-independent)
     renderActivationMagnitudePlot(traitData, loadedTraits);
@@ -403,149 +420,107 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
 
 
 /**
- * Render the Layer Evolution plot showing position, velocity, and acceleration
- * across layers for each selected trait.
+ * Render three separate plots for position, velocity, and acceleration across layers.
+ * Normalizes by activation magnitude when available.
  */
-function renderLayerEvolutionPlot(traitData, loadedTraits) {
+function renderLayerDerivativePlots(traitData, loadedTraits) {
     const nLayers = 26;
     const layerIndices = Array.from({length: nLayers}, (_, i) => i);
-    const velocityIndices = Array.from({length: nLayers - 1}, (_, i) => i + 0.5);  // Midpoints
-    const accelIndices = Array.from({length: nLayers - 2}, (_, i) => i + 1);  // Midpoints
+    const velocityIndices = Array.from({length: nLayers - 1}, (_, i) => i + 0.5);
+    const accelIndices = Array.from({length: nLayers - 2}, (_, i) => i + 1);
 
-    const traces = [];
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    // Get activation norms for normalization (same for all traits, use first)
+    const firstData = traitData[loadedTraits[0]];
+    let combinedNorms = null;
+    if (firstData.activation_norms) {
+        const promptNorms = firstData.activation_norms.prompt;
+        const responseNorms = firstData.activation_norms.response;
+        combinedNorms = promptNorms.map((p, i) => (p + responseNorms[i]) / 2);
+    }
 
-    // For each trait, compute derivatives and add traces
-    loadedTraits.forEach((traitName, idx) => {
-        const data = traitData[traitName];
-        const derivatives = computeLayerDerivatives(data);
-        const traitColor = TRAIT_COLORS[idx % TRAIT_COLORS.length];
-        const displayName = window.getDisplayName(traitName);
+    // Compute derivatives for all traits (normalized if norms available)
+    const allDerivatives = {};
+    loadedTraits.forEach((traitName) => {
+        allDerivatives[traitName] = computeLayerDerivatives(traitData[traitName], combinedNorms);
+    });
 
-        // Position trace (solid line)
-        traces.push({
-            x: layerIndices,
-            y: derivatives.position,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: `${displayName} (pos)`,
-            line: { color: traitColor, width: 2 },
-            marker: { size: 4, symbol: 'circle' },
-            legendgroup: traitName,
-            hovertemplate: `<b>${displayName}</b><br>Layer %{x}<br>Position: %{y:.2f}<extra></extra>`
+    // Helper to create a single plot
+    function renderSinglePlot(plotId, yLabel, dataKey, xIndices) {
+        const traces = [];
+
+        loadedTraits.forEach((traitName, idx) => {
+            const derivatives = allDerivatives[traitName];
+            const traitColor = TRAIT_COLORS[idx % TRAIT_COLORS.length];
+            const displayName = window.getDisplayName(traitName);
+
+            traces.push({
+                x: xIndices,
+                y: derivatives[dataKey],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: displayName,
+                line: { color: traitColor, width: 2 },
+                marker: { size: 4 },
+                hovertemplate: `<b>${displayName}</b><br>Layer %{x:.1f}<br>${yLabel}: %{y:.2f}<extra></extra>`
+            });
         });
 
-        // Velocity trace (dashed line)
-        traces.push({
-            x: velocityIndices,
-            y: derivatives.velocity,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: `${displayName} (vel)`,
-            line: { color: traitColor, width: 1.5, dash: 'dash' },
-            marker: { size: 3, symbol: 'square' },
-            legendgroup: traitName,
-            showlegend: false,
-            hovertemplate: `<b>${displayName}</b><br>Layer %{x:.1f}<br>Velocity: %{y:.2f}<extra></extra>`
+        const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+
+        const layout = window.getPlotlyLayout({
+            xaxis: {
+                title: 'Layer',
+                tickmode: 'linear',
+                tick0: 0,
+                dtick: 2,
+                showgrid: true,
+                gridcolor: 'rgba(128,128,128,0.2)'
+            },
+            yaxis: {
+                title: yLabel,
+                zeroline: true,
+                zerolinewidth: 1,
+                zerolinecolor: textSecondary,
+                showgrid: true
+            },
+            margin: { l: 60, r: 20, t: 20, b: 50 },
+            height: 300,
+            font: { size: 11 },
+            hovermode: 'closest',
+            legend: {
+                orientation: 'h',
+                yanchor: 'bottom',
+                y: 1.02,
+                xanchor: 'left',
+                x: 0,
+                font: { size: 10 },
+                bgcolor: 'transparent'
+            },
+            showlegend: true
         });
 
-        // Acceleration trace (dotted line)
-        traces.push({
-            x: accelIndices,
-            y: derivatives.acceleration,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: `${displayName} (acc)`,
-            line: { color: traitColor, width: 1, dash: 'dot' },
-            marker: { size: 2, symbol: 'diamond' },
-            legendgroup: traitName,
-            showlegend: false,
-            hovertemplate: `<b>${displayName}</b><br>Layer %{x:.1f}<br>Acceleration: %{y:.2f}<extra></extra>`
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d']
+        };
+
+        Plotly.newPlot(plotId, traces, layout, config);
+
+        // Hover-to-highlight
+        const plotDiv = document.getElementById(plotId);
+        plotDiv.on('plotly_hover', (d) => {
+            Plotly.restyle(plotDiv, {'opacity': traces.map((_, i) => i === d.points[0].curveNumber ? 1.0 : 0.2)});
         });
-    });
+        plotDiv.on('plotly_unhover', () => Plotly.restyle(plotDiv, {'opacity': 1.0}));
+    }
 
-    // Add derivative type legend entries (shown once)
-    traces.push({
-        x: [null], y: [null],
-        type: 'scatter',
-        mode: 'lines',
-        name: '── Position',
-        line: { color: textSecondary, width: 2 },
-        legendgroup: 'legend-position',
-        hoverinfo: 'skip'
-    });
-    traces.push({
-        x: [null], y: [null],
-        type: 'scatter',
-        mode: 'lines',
-        name: '╌╌ Velocity',
-        line: { color: textSecondary, width: 1.5, dash: 'dash' },
-        legendgroup: 'legend-velocity',
-        hoverinfo: 'skip'
-    });
-    traces.push({
-        x: [null], y: [null],
-        type: 'scatter',
-        mode: 'lines',
-        name: '··· Acceleration',
-        line: { color: textSecondary, width: 1, dash: 'dot' },
-        legendgroup: 'legend-accel',
-        hoverinfo: 'skip'
-    });
-
-    const layout = window.getPlotlyLayout({
-        xaxis: {
-            title: 'Layer',
-            tickmode: 'linear',
-            tick0: 0,
-            dtick: 2,
-            showgrid: true,
-            gridcolor: 'rgba(128,128,128,0.2)'
-        },
-        yaxis: {
-            title: 'Value',
-            zeroline: true,
-            zerolinewidth: 1,
-            zerolinecolor: textSecondary,
-            showgrid: true
-        },
-        margin: { l: 60, r: 20, t: 20, b: 50 },
-        height: 400,
-        font: { size: 11 },
-        hovermode: 'closest',
-        legend: {
-            orientation: 'v',
-            yanchor: 'top',
-            y: 1,
-            xanchor: 'left',
-            x: 1.02,
-            font: { size: 10 },
-            bgcolor: 'transparent'
-        },
-        showlegend: true
-    });
-
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ['lasso2d', 'select2d']
-    };
-
-    Plotly.newPlot('layer-evolution-plot', traces, layout, config);
-
-    // Hover-to-highlight by legendgroup
-    const layerPlotDiv = document.getElementById('layer-evolution-plot');
-    layerPlotDiv.on('plotly_hover', (d) => {
-        const hoveredGroup = d.points[0].data.legendgroup;
-        if (hoveredGroup && !hoveredGroup.startsWith('legend-')) {
-            const opacities = traces.map(t =>
-                t.legendgroup === hoveredGroup || t.legendgroup?.startsWith('legend-') ? 1.0 : 0.15
-            );
-            Plotly.restyle(layerPlotDiv, {'opacity': opacities});
-        }
-    });
-    layerPlotDiv.on('plotly_unhover', () => Plotly.restyle(layerPlotDiv, {'opacity': 1.0}));
+    // Render all three plots
+    const normLabel = combinedNorms ? ' (proj/||h||)' : '';
+    renderSinglePlot('layer-position-plot', `Position${normLabel}`, 'position', layerIndices);
+    renderSinglePlot('layer-velocity-plot', `Velocity${normLabel}`, 'velocity', velocityIndices);
+    renderSinglePlot('layer-acceleration-plot', `Acceleration${normLabel}`, 'acceleration', accelIndices);
 }
 
 

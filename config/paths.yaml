@@ -5,7 +5,7 @@
 # Variables:
 #   {experiment} - experiment name
 #   {trait} - full trait path (e.g., cognitive_state/context)
-#   {method} - extraction method (probe, mean_diff, ica, gradient)
+#   {method} - extraction method (probe, mean_diff, gradient)
 #   {layer} - layer number
 #   {prompt_set} - prompt set name (e.g., single_trait, multi_trait, dynamic, adversarial, baseline, real_world)
 #   {prompt_id} - prompt ID within a set (integer)
@@ -65,6 +65,21 @@ analysis:
   index: "experiments/{experiment}/analysis/index.json"
   per_token: "experiments/{experiment}/analysis/per_token/{prompt_set}"
   category: "experiments/{experiment}/analysis/{category}"
+
+# =============================================================================
+# STEERING (intervention evaluation - validates vectors via causal control)
+# =============================================================================
+
+steering:
+  base: "experiments/{experiment}/steering"
+  trait: "experiments/{experiment}/steering/{trait}"
+  results: "experiments/{experiment}/steering/{trait}/results.json"
+  layer_sweep: "experiments/{experiment}/steering/{trait}/layer_sweep.json"
+  responses: "experiments/{experiment}/steering/{trait}/responses"
+
+  # Eval prompts (separate from extraction prompts)
+  prompts_dir: "analysis/steering/prompts"
+  prompt_file: "analysis/steering/prompts/{trait}.json"
 
 # =============================================================================
 # EXTRACTION EVALUATION (aggregate quality metrics for extracted vectors)

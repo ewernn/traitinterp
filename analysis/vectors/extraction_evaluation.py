@@ -30,7 +30,6 @@ from utils.paths import get as get_path
 from traitlens.metrics import (
     evaluate_vector,
     accuracy as compute_accuracy,
-    cross_trait_accuracy,
 )
 from sklearn.metrics import roc_auc_score
 
@@ -64,8 +63,6 @@ class ValidationResult:
     # Vector properties
     vector_norm: float = 0.0
     vector_sparsity: float = 0.0  # % of components < 0.01
-    vector_mean: float = 0.0
-    vector_std: float = 0.0
 
     # Distribution properties
     val_pos_std: float = 0.0  # Std of positive projections
@@ -75,8 +72,6 @@ class ValidationResult:
 
     # Additional metrics
     val_auc_roc: float = 0.0  # Threshold-independent classification quality
-    top_dims: Optional[List[int]] = None  # Indices of top-5 magnitude dimensions
-    interference: Optional[float] = None  # Max cosine sim with other trait vectors (computed post-hoc)
 
 
 def load_validation_activations(experiment: str, trait: str, layer: int) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -148,19 +143,13 @@ def compute_vector_properties(vector: torch.Tensor) -> Dict:
         vector: [hidden_dim] tensor
 
     Returns:
-        Dictionary with norm, sparsity, mean, std, top_dims
+        Dictionary with norm, sparsity
     """
     vector_np = vector.float().cpu().numpy()
-
-    # Top-5 magnitude dimensions (interpretability)
-    top_indices = np.argsort(np.abs(vector_np))[-5:][::-1].tolist()
 
     return {
         'vector_norm': float(np.linalg.norm(vector_np)),
         'vector_sparsity': float(np.mean(np.abs(vector_np) < 0.01)),
-        'vector_mean': float(np.mean(vector_np)),
-        'vector_std': float(np.std(vector_np)),
-        'top_dims': top_indices
     }
 
 
@@ -300,51 +289,6 @@ def evaluate_vector_on_validation(
     return result
 
 
-def compute_within_trait_similarity(
-    experiment: str,
-    trait: str,
-    methods: List[str],
-    layers: List[int]
-) -> Dict[str, Dict[str, float]]:
-    """
-    Compute pairwise cosine similarity between all vectors for a single trait.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait name (category/trait)
-        methods: List of methods to compare
-        layers: List of layers to compare
-
-    Returns:
-        Dictionary mapping vector_id -> {other_vector_id: similarity}
-    """
-    # Load all vectors for this trait
-    vectors = {}
-    for method in methods:
-        for layer in layers:
-            vector = load_vector(experiment, trait, method, layer)
-            if vector is not None:
-                key = f"{method}_layer{layer}"
-                vectors[key] = vector
-
-    # Compute pairwise similarities
-    similarities = {}
-    vector_keys = list(vectors.keys())
-
-    for i, key_i in enumerate(vector_keys):
-        similarities[key_i] = {}
-        vec_i = vectors[key_i].float()
-        vec_i_norm = vec_i / (vec_i.norm() + 1e-8)
-
-        for key_j in vector_keys:
-            vec_j = vectors[key_j].float()
-            vec_j_norm = vec_j / (vec_j.norm() + 1e-8)
-            similarity = float((vec_i_norm @ vec_j_norm).item())
-            similarities[key_i][key_j] = similarity
-
-    return similarities
-
-
 def compute_best_vector_similarity(
     experiment: str,
     traits: List[str],
@@ -399,163 +343,6 @@ def compute_best_vector_similarity(
     similarity_df = pd.DataFrame(matrix, index=short_names, columns=short_names)
 
     return similarity_df
-
-
-def compute_interference(
-    experiment: str,
-    all_results: List[Dict],
-    method: str = 'probe',
-    layer: int = 16
-) -> Dict[str, float]:
-    """
-    Compute interference for each trait: max cosine similarity with other trait vectors.
-
-    Low interference = independent trait. High interference = entangled with another trait.
-
-    Args:
-        experiment: Experiment name
-        all_results: All validation results
-        method: Method to use for vectors
-        layer: Layer to use for vectors
-
-    Returns:
-        Dictionary mapping trait -> max cosine sim with other traits
-    """
-    # Get unique traits
-    traits = list(set(r['trait'] for r in all_results))
-
-    # Load vectors
-    vectors = {}
-    for trait in traits:
-        vec = load_vector(experiment, trait, method, layer)
-        if vec is not None:
-            vectors[trait] = vec.float()
-
-    if len(vectors) < 2:
-        return {}
-
-    # Compute interference for each trait
-    interference = {}
-    for trait_i, vec_i in vectors.items():
-        vec_i_norm = vec_i / (vec_i.norm() + 1e-8)
-        max_sim = 0.0
-        for trait_j, vec_j in vectors.items():
-            if trait_i == trait_j:
-                continue
-            vec_j_norm = vec_j / (vec_j.norm() + 1e-8)
-            sim = abs(float((vec_i_norm @ vec_j_norm).item()))
-            if sim > max_sim:
-                max_sim = sim
-        interference[trait_i] = max_sim
-
-    return interference
-
-
-def compute_cross_layer_consistency(
-    experiment: str,
-    trait: str,
-    method: str,
-    layers: List[int]
-) -> Dict[str, float]:
-    """
-    Compute cosine similarity between vectors from adjacent layers.
-
-    Shows whether the trait direction is stable across layers.
-    High consistency = trait is robust. Low consistency = trait shifts between layers.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait name
-        method: Extraction method
-        layers: List of layers to compare
-
-    Returns:
-        Dictionary with per-transition similarities and mean
-    """
-    sorted_layers = sorted(layers)
-    vectors = {}
-
-    # Load vectors for all layers
-    for layer in sorted_layers:
-        vec = load_vector(experiment, trait, method, layer)
-        if vec is not None:
-            vectors[layer] = vec
-
-    if len(vectors) < 2:
-        return {'mean': 0.0, 'transitions': {}}
-
-    # Compute pairwise similarities between adjacent layers
-    transitions = {}
-    available_layers = sorted(vectors.keys())
-
-    for i in range(len(available_layers) - 1):
-        l1, l2 = available_layers[i], available_layers[i + 1]
-        v1 = vectors[l1].float()
-        v2 = vectors[l2].float()
-        v1_norm = v1 / (v1.norm() + 1e-8)
-        v2_norm = v2 / (v2.norm() + 1e-8)
-        sim = float((v1_norm @ v2_norm).item())
-        transitions[f"{l1}->{l2}"] = sim
-
-    mean_consistency = np.mean(list(transitions.values())) if transitions else 0.0
-
-    return {
-        'mean': float(mean_consistency),
-        'transitions': transitions
-    }
-
-
-def compute_cross_trait_matrix(
-    experiment: str,
-    traits: List[str],
-    method: str = "probe",
-    layer: int = 16,
-    normalize: bool = True
-) -> pd.DataFrame:
-    """
-    Compute cross-trait interference matrix.
-
-    Entry [i,j] = accuracy when projecting trait_i's validation data
-                  onto trait_j's vector.
-
-    Diagonal should be high (vectors work for their trait).
-    Off-diagonal should be ~50% (random, independent traits).
-    """
-    n_traits = len(traits)
-    matrix = np.zeros((n_traits, n_traits))
-
-    for i, trait_i in enumerate(traits):
-        # Load trait_i's validation activations
-        try:
-            val_pos_i, val_neg_i = load_validation_activations(experiment, trait_i, layer)
-        except FileNotFoundError:
-            continue
-
-        # Normalize if requested
-        if normalize:
-            val_pos_i = val_pos_i.float()
-            val_neg_i = val_neg_i.float()
-            val_pos_i = val_pos_i / (val_pos_i.norm(dim=1, keepdim=True) + 1e-8)
-            val_neg_i = val_neg_i / (val_neg_i.norm(dim=1, keepdim=True) + 1e-8)
-
-        for j, trait_j in enumerate(traits):
-            # Load trait_j's vector
-            vector_j = load_vector(experiment, trait_j, method, layer)
-            if vector_j is None:
-                continue
-
-            if normalize:
-                vector_j = vector_j.float()
-                vector_j = vector_j / (vector_j.norm() + 1e-8)
-
-            # Use traitlens cross_trait_accuracy
-            matrix[i, j] = cross_trait_accuracy(val_pos_i, val_neg_i, vector_j)
-
-    # Create DataFrame with trait names
-    short_names = [t.split('/')[-1][:12] for t in traits]
-    df = pd.DataFrame(matrix, index=short_names, columns=short_names)
-
-    return df
 
 
 def main(experiment: str,
@@ -626,14 +413,26 @@ def main(experiment: str,
         return
 
     # =========================================================================
-    # ANALYSIS 1: Best method per trait (by validation accuracy)
+    # ANALYSIS 1: Best method per trait (by combined score)
     # =========================================================================
     print("\n" + "="*80)
-    print("BEST METHOD PER TRAIT (by validation accuracy)")
+    print("BEST METHOD PER TRAIT (by combined score)")
     print("="*80)
 
-    best_per_trait = df.loc[df.groupby('trait')['val_accuracy'].idxmax()]
-    print(best_per_trait[['trait', 'method', 'layer', 'val_accuracy', 'val_effect_size']].to_string(index=False))
+    # Compute combined score: (accuracy + norm_effect + (1 - accuracy_drop)) / 3 * polarity
+    # First, get max effect size per trait for normalization
+    max_effect_per_trait = df.groupby('trait')['val_effect_size'].transform('max')
+    df['norm_effect_size'] = df['val_effect_size'] / max_effect_per_trait.replace(0, 1)
+    df['accuracy_drop'] = df['accuracy_drop'].fillna(0)
+    df['polarity_multiplier'] = df['polarity_correct'].astype(float)
+
+    # Combined score with equal weights
+    df['combined_score'] = (
+        (df['val_accuracy'] + df['norm_effect_size'] + (1 - df['accuracy_drop'])) / 3
+    ) * df['polarity_multiplier']
+
+    best_per_trait = df.loc[df.groupby('trait')['combined_score'].idxmax()]
+    print(best_per_trait[['trait', 'method', 'layer', 'combined_score', 'val_accuracy', 'val_effect_size']].to_string(index=False))
 
     # =========================================================================
     # ANALYSIS 2: Method comparison (averaged across traits)
@@ -707,25 +506,6 @@ def main(experiment: str,
         print("✅ All vectors have correct polarity")
 
     # =========================================================================
-    # ANALYSIS 6: Cross-trait interference matrix
-    # =========================================================================
-    print("\n" + "="*80)
-    print("CROSS-TRAIT INTERFERENCE MATRIX (probe_layer16)")
-    print("="*80)
-    print("Diagonal = trait's vector on its own data (should be high)")
-    print("Off-diagonal = trait's vector on other trait's data (should be ~50%)")
-
-    cross_matrix = compute_cross_trait_matrix(experiment, traits, "probe", 16, normalize=normalize)
-    print(cross_matrix.round(2).to_string())
-
-    # Independence score: how different is diagonal from off-diagonal
-    diagonal = np.diag(cross_matrix.values)
-    off_diagonal = cross_matrix.values[~np.eye(len(cross_matrix), dtype=bool)]
-    independence = diagonal.mean() - off_diagonal.mean()
-    print(f"\nIndependence score: {independence:.3f}")
-    print(f"  (Diagonal mean: {diagonal.mean():.3f}, Off-diagonal mean: {off_diagonal.mean():.3f})")
-
-    # =========================================================================
     # FINAL RECOMMENDATIONS
     # =========================================================================
     print("\n" + "="*80)
@@ -754,20 +534,7 @@ def main(experiment: str,
                   f"(val_acc={best_row['val_accuracy']:.1%}, d={best_row['val_effect_size']:.2f})")
 
     # =========================================================================
-    # ANALYSIS 7: Within-trait vector similarity
-    # =========================================================================
-    print("\n" + "="*80)
-    print("WITHIN-TRAIT VECTOR SIMILARITY")
-    print("="*80)
-    print("Computing similarity between different method/layer combos for each trait...")
-
-    within_trait_similarities = {}
-    for trait in tqdm(traits, desc="Within-trait similarities"):
-        similarities = compute_within_trait_similarity(experiment, trait, methods_list, layers_list)
-        within_trait_similarities[trait] = similarities
-
-    # =========================================================================
-    # ANALYSIS 8: Best-vector cross-trait similarity
+    # ANALYSIS 7: Best-vector cross-trait similarity
     # =========================================================================
     print("\n" + "="*80)
     print("BEST-VECTOR CROSS-TRAIT SIMILARITY")
@@ -777,52 +544,6 @@ def main(experiment: str,
     best_vector_similarity = compute_best_vector_similarity(experiment, traits, all_results, metric='val_accuracy')
     print(best_vector_similarity.round(3).to_string())
 
-    # Compute average off-diagonal similarity (trait independence)
-    n = len(best_vector_similarity)
-    off_diag_mask = ~np.eye(n, dtype=bool)
-    avg_similarity = best_vector_similarity.values[off_diag_mask].mean()
-    print(f"\nAverage best-vector similarity (off-diagonal): {avg_similarity:.3f}")
-    print(f"  (Low values indicate independent traits)")
-
-    # =========================================================================
-    # ANALYSIS 9: Cross-layer consistency
-    # =========================================================================
-    print("\n" + "="*80)
-    print("CROSS-LAYER CONSISTENCY (probe method)")
-    print("="*80)
-    print("Cosine similarity between adjacent layer vectors (high = stable direction)")
-
-    cross_layer_results = {}
-    for trait in tqdm(traits, desc="Cross-layer consistency"):
-        consistency = compute_cross_layer_consistency(experiment, trait, 'probe', layers_list)
-        cross_layer_results[trait] = consistency
-        short_trait = trait.split('/')[-1][:20]
-        print(f"  {short_trait}: mean={consistency['mean']:.3f}")
-
-    avg_consistency = np.mean([r['mean'] for r in cross_layer_results.values()])
-    print(f"\nOverall mean cross-layer consistency: {avg_consistency:.3f}")
-
-    # =========================================================================
-    # ANALYSIS 10: Interference (max cosine sim with other traits)
-    # =========================================================================
-    print("\n" + "="*80)
-    print("INTERFERENCE (probe_layer16)")
-    print("="*80)
-    print("Max cosine similarity with other trait vectors (low = independent)")
-
-    interference_results = compute_interference(experiment, all_results, 'probe', 16)
-    for trait, interf in sorted(interference_results.items(), key=lambda x: x[1], reverse=True):
-        short_trait = trait.split('/')[-1][:20]
-        print(f"  {short_trait}: {interf:.3f}")
-
-    avg_interference = np.mean(list(interference_results.values())) if interference_results else 0.0
-    print(f"\nMean interference: {avg_interference:.3f}")
-
-    # Add interference to all_results for matching vectors
-    for result in all_results:
-        if result['method'] == 'probe' and result['layer'] == 16:
-            result['interference'] = interference_results.get(result['trait'])
-
     # Save results
     if output:
         output_path = Path(output)
@@ -830,29 +551,13 @@ def main(experiment: str,
         output_path = get_path('extraction_eval.evaluation', experiment=experiment)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Convert multi-index to string for JSON compatibility
-    method_summary_flat = {}
-    for col in method_summary.columns:
-        col_name = '_'.join(str(c) for c in col) if isinstance(col, tuple) else str(col)
-        method_summary_flat[col_name] = method_summary[col].to_dict()
+    # Convert df to records (includes combined_score computed above)
+    all_results_with_score = df.to_dict('records')
 
     results_dict = {
-        'all_results': all_results,
-        'method_summary': method_summary_flat,
-        'cross_trait_matrix': cross_matrix.to_dict(),
+        'all_results': all_results_with_score,
         'best_per_trait': best_per_trait.to_dict('records'),
-        'within_trait_similarities': within_trait_similarities,
         'best_vector_similarity': best_vector_similarity.to_dict(),
-        'cross_layer_consistency': cross_layer_results,
-        'interference': interference_results,
-        'recommendations': {
-            'best_method': best_method,
-            'best_layer': int(best_layer),
-            'mean_val_accuracy': float(best_layer_acc),
-            'mean_cross_layer_consistency': float(avg_consistency),
-            'mean_interference': float(avg_interference),
-            'avg_best_vector_similarity': float(avg_similarity)
-        }
     }
 
     # Custom encoder to handle NaN values (not valid JSON)
