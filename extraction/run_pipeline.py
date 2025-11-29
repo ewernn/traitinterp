@@ -5,43 +5,41 @@ Main orchestrator for the trait extraction pipeline.
 Input:
     - experiments/{experiment}/extraction/{trait}/positive.txt
     - experiments/{experiment}/extraction/{trait}/negative.txt
-    - experiments/{experiment}/extraction/{trait}/val_positive.txt (optional)
-    - experiments/{experiment}/extraction/{trait}/val_negative.txt (optional)
     - experiments/{experiment}/extraction/{trait}/trait_definition.txt (optional, for vetting)
 
 Output:
-    - responses/, val_responses/
-    - vetting/ (if --vet flag)
-    - activations/, val_activations/
+    - responses/
+    - vetting/ (scenario and/or response scores)
+    - activations/
     - vectors/
 
 Usage:
-    # Full pipeline (no vetting)
-    python extraction/run_pipeline.py --experiment my_exp --trait category/my_trait
+    # Full pipeline with vetting (default)
+    python extraction/run_pipeline.py --experiment my_exp --traits category/my_trait
 
-    # With LLM-as-a-judge vetting (requires GEMINI_API_KEY)
-    python extraction/run_pipeline.py --experiment my_exp --trait category/my_trait --vet
+    # Skip scenario vetting (for instruction-based elicitation)
+    python extraction/run_pipeline.py --experiment my_exp --traits category/my_trait --no-vet-scenarios
+
+    # Skip all vetting (not recommended)
+    python extraction/run_pipeline.py --experiment my_exp --traits category/my_trait --no-vet
 
     # All traits in experiment
-    python extraction/run_pipeline.py --experiment my_exp --vet
+    python extraction/run_pipeline.py --experiment my_exp
 """
 
 import sys
 import os
 import argparse
-import torch
 from pathlib import Path
 from typing import List, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
+from utils.model import load_model, DEFAULT_MODEL
 from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
-
-MODEL_NAME = "google/gemma-2-2b-it"
 
 def discover_traits(experiment: str) -> list[str]:
     """
@@ -77,15 +75,25 @@ def run_vetting(experiment: str, trait: str, stage: str, threshold: int = 4) -> 
         raise ValueError(f"Unknown vetting stage: {stage}")
 
 
-def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: bool, methods: List[str], vet: bool = False, vet_threshold: int = 4, rollouts: int = 1, temperature: float = 0.0):
+def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: bool, methods: List[str], vet: bool = False, vet_scenarios: bool = True, vet_threshold: int = 4, rollouts: int = 1, temperature: float = 0.0, batch_size: int = 8):
     """
     Executes the trait extraction pipeline.
+
+    Args:
+        vet: Enable response vetting (default: True via CLI)
+        vet_scenarios: Enable scenario vetting (default: True). Set False for instruction-based elicitation.
     """
     print("=" * 80)
     print("STARTING TRAIT EXTRACTION PIPELINE")
     print(f"Experiment: {experiment}")
     print(f"Force mode: {'ON' if force else 'OFF'}")
-    print(f"Vetting: {'ON' if vet else 'OFF'}")
+    if vet:
+        if vet_scenarios:
+            print(f"Vetting: scenarios + responses")
+        else:
+            print(f"Vetting: responses only (scenario vetting disabled)")
+    else:
+        print(f"Vetting: OFF")
     if rollouts > 1:
         print(f"Rollouts: {rollouts}, Temperature: {temperature}")
     print("=" * 80)
@@ -110,23 +118,15 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
         return
 
     # --- Centralized Model Loading ---
-    print(f"\nLoading model and tokenizer ({MODEL_NAME})...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        torch_dtype=torch.bfloat16,
-        device_map='auto'
-    )
-    model.eval()
-    print("Model and tokenizer loaded.")
+    model, tokenizer = load_model(DEFAULT_MODEL)
 
     for trait in available_traits:
         print(f"\n--- Processing Trait: {trait} ---")
         base_trait_name = Path(trait).name
 
         # --- Stage 0: Scenario Vetting (optional) ---
-        if vet:
-            vetting_path = get_path("extraction.trait", experiment=experiment, trait=trait) / "vetting"
+        vetting_path = get_path("extraction.trait", experiment=experiment, trait=trait) / "vetting"
+        if vet and vet_scenarios:
             scenario_scores = vetting_path / "scenario_scores.json"
             if not scenario_scores.exists() or force:
                 print(f"  [Stage 0] Vetting scenarios...")
@@ -135,6 +135,8 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
                     print(f"  ⚠️  Low scenario pass rate ({pass_rate:.0%}). Consider reviewing scenarios.")
             else:
                 print(f"  [Stage 0] Skipping scenario vetting (already exists).")
+        elif vet and not vet_scenarios:
+            print(f"  [Stage 0] Scenario vetting disabled (--no-vet-scenarios).")
 
         # --- Stage 1: Responses ---
         responses_path = get_path("extraction.responses", experiment=experiment, trait=trait)
@@ -146,6 +148,7 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
                 tokenizer=tokenizer,
                 rollouts=rollouts,
                 temperature=temperature,
+                batch_size=batch_size,
             )
         else:
             print(f"  [Stage 1] Skipping response generation (already exists).")
@@ -195,10 +198,12 @@ if __name__ == "__main__":
     parser.add_argument("--traits", type=str, help="Comma-separated list of specific traits to run (e.g., 'category/name1,category/name2').")
     parser.add_argument("--force", action="store_true", help="If set, overwrite existing data and re-run all stages.")
     parser.add_argument('--methods', type=str, default='mean_diff,probe,ica,gradient', help='Comma-separated method names for vector extraction.')
-    parser.add_argument('--no-vet', action='store_true', help='Disable LLM-as-a-judge vetting (not recommended).')
+    parser.add_argument('--no-vet', action='store_true', help='Disable all LLM-as-a-judge vetting (not recommended).')
+    parser.add_argument('--no-vet-scenarios', action='store_true', help='Skip scenario vetting, keep response vetting. Use for instruction-based elicitation.')
     parser.add_argument('--vet-threshold', type=int, default=4, help='Minimum score for vetting to pass (default: 4).')
     parser.add_argument('--rollouts', type=int, default=1, help='Responses per scenario (1 for natural, 10 for instruction-based).')
     parser.add_argument('--temperature', type=float, default=0.0, help='Sampling temperature (0.0 for deterministic, 1.0 for diverse).')
+    parser.add_argument('--batch-size', type=int, default=8, help='Batch size for generation (default: 8).')
 
     args = parser.parse_args()
 
@@ -211,7 +216,9 @@ if __name__ == "__main__":
         force=args.force,
         methods=methods_list,
         vet=not args.no_vet,  # Vetting is ON by default
+        vet_scenarios=not args.no_vet_scenarios,  # Scenario vetting ON by default
         vet_threshold=args.vet_threshold,
         rollouts=args.rollouts,
         temperature=args.temperature,
+        batch_size=args.batch_size,
     )

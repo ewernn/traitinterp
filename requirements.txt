@@ -1,6 +1,7 @@
 # Minimal dependencies for visualization server only
 fire==0.7.0
 PyYAML==6.0.2
+transformers==4.57.3
 
 # Trait extraction and monitoring library (with extraction methods)
 traitlens[methods] @ git+https://github.com/ewernn/traitlens.git

@@ -34,6 +34,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
+from utils.model import load_model, DEFAULT_MODEL
 from traitlens.hooks import HookManager
 from traitlens.activations import ActivationCapture
 
@@ -193,7 +194,7 @@ def main():
     parser.add_argument('--experiment', type=str, required=True, help='Experiment name')
     parser.add_argument('--trait', type=str, required=True,
                         help='Trait name (e.g., "category/my_trait") or "all" for all traits')
-    parser.add_argument('--model', type=str, default='google/gemma-2-2b-it', help='Model name')
+    parser.add_argument('--model', type=str, default=DEFAULT_MODEL, help='Model name')
     parser.add_argument('--device', type=str, default='auto', help='Device (auto, cuda, cpu, mps)')
     parser.add_argument('--no-vetting-filter', action='store_true', help='Disable filtering based on vetting results')
 
@@ -217,15 +218,7 @@ def main():
     print("=" * 80)
 
     # Load model and tokenizer once
-    print(f"\nLoading model: {args.model}")
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16,
-        device_map=args.device
-    )
-    model.eval()
-    print("Model loaded.\n")
+    model, tokenizer = load_model(args.model, device=args.device)
 
     # Process each trait
     total_layers = 0

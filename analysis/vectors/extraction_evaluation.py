@@ -419,14 +419,20 @@ def main(experiment: str,
     print("BEST METHOD PER TRAIT (by combined score)")
     print("="*80)
 
-    # Compute combined score: (accuracy + norm_effect + (1 - accuracy_drop)) / 3 * polarity
-    # First, get max effect size per trait for normalization
+    # Combined Score Formula:
+    #   score = (accuracy + norm_effect + (1 - accuracy_drop)) / 3 × polarity
+    #
+    # Components (equal weights, no strong prior for different weighting):
+    #   - accuracy: Classification using midpoint threshold between class means
+    #   - norm_effect: Cohen's d / max Cohen's d for trait. Important for steering robustness.
+    #   - 1 - accuracy_drop: Generalization quality (train_acc - val_acc). High = generalizes well.
+    #   - polarity: Hard multiplier. Wrong polarity (neg_mean > pos_mean) → score = 0.
+    #
     max_effect_per_trait = df.groupby('trait')['val_effect_size'].transform('max')
     df['norm_effect_size'] = df['val_effect_size'] / max_effect_per_trait.replace(0, 1)
     df['accuracy_drop'] = df['accuracy_drop'].fillna(0)
     df['polarity_multiplier'] = df['polarity_correct'].astype(float)
 
-    # Combined score with equal weights
     df['combined_score'] = (
         (df['val_accuracy'] + df['norm_effect_size'] + (1 - df['accuracy_drop'])) / 3
     ) * df['polarity_multiplier']
