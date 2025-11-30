@@ -1,7 +1,7 @@
-experiments/
 persona_vectors/
 # Experiment data (stored in R2, not git)
-
+experiments/*
+!experiments/gemma-2-2b-base/
 #docs/remote_setup.md
 
 # Python
