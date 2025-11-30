@@ -153,9 +153,9 @@ class OpenAIJudge(BaseJudge):
 
 
 class GeminiJudge(BaseJudge):
-    """Gemini-based judge using gemini-1.5-flash."""
+    """Gemini-based judge using gemini-2.5-flash."""
 
-    def __init__(self, model: str = "gemini-1.5-flash"):
+    def __init__(self, model: str = "gemini-2.5-flash"):
         super().__init__(model)
         import google.generativeai as genai
         genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -218,13 +218,13 @@ class TraitJudge:
         """
         Args:
             provider: "openai" or "gemini"
-            model: Model name (defaults to gpt-4o-mini or gemini-1.5-flash)
+            model: Model name (defaults to gpt-4o-mini or gemini-2.5-flash)
         """
         if provider == "openai":
             model = model or "gpt-4o-mini"
             self._judge = OpenAIJudge(model)
         elif provider == "gemini":
-            model = model or "gemini-1.5-flash"
+            model = model or "gemini-2.5-flash"
             self._judge = GeminiJudge(model)
         else:
             raise ValueError(f"Unknown provider: {provider}. Use 'openai' or 'gemini'")
