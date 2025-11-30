@@ -5,3 +5,6 @@ transformers==4.57.3
 
 # Trait extraction and monitoring library (with extraction methods)
 traitlens[methods] @ git+https://github.com/ewernn/traitlens.git
+
+# LLM-as-judge classification (for deconfounded extraction)
+google-genai
