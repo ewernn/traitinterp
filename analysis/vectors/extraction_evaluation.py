@@ -346,7 +346,7 @@ def compute_best_vector_similarity(
 
 
 def main(experiment: str,
-         methods: str = "mean_diff,probe,ica,gradient,pca_diff,random_baseline",
+         methods: str = "mean_diff,probe,gradient,random_baseline",
          layers: str = None,
          output: str = None,
          no_normalize: bool = False):
@@ -437,7 +437,10 @@ def main(experiment: str,
         (df['val_accuracy'] + df['norm_effect_size'] + (1 - df['accuracy_drop'])) / 3
     ) * df['polarity_multiplier']
 
-    best_per_trait = df.loc[df.groupby('trait')['combined_score'].idxmax()]
+    # Handle traits where all scores might be NaN (e.g., all polarity_correct=False)
+    best_indices = df.groupby('trait')['combined_score'].idxmax()
+    valid_indices = best_indices.dropna()
+    best_per_trait = df.loc[valid_indices]
     print(best_per_trait[['trait', 'method', 'layer', 'combined_score', 'val_accuracy', 'val_effect_size']].to_string(index=False))
 
     # =========================================================================
@@ -557,25 +560,20 @@ def main(experiment: str,
         output_path = get_path('extraction_eval.evaluation', experiment=experiment)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Convert df to records (includes combined_score computed above)
-    all_results_with_score = df.to_dict('records')
+    # Convert df to records, replacing NaN with None (NaN is not valid JSON)
+    df_clean = df.replace({np.nan: None, np.inf: None, -np.inf: None})
+    best_per_trait_clean = best_per_trait.replace({np.nan: None, np.inf: None, -np.inf: None})
+
+    all_results_with_score = df_clean.to_dict('records')
 
     results_dict = {
         'all_results': all_results_with_score,
-        'best_per_trait': best_per_trait.to_dict('records'),
-        'best_vector_similarity': best_vector_similarity.to_dict(),
+        'best_per_trait': best_per_trait_clean.to_dict('records'),
+        'best_vector_similarity': best_vector_similarity.replace({np.nan: None}).to_dict(),
     }
 
-    # Custom encoder to handle NaN values (not valid JSON)
-    def json_serializer(obj):
-        if isinstance(obj, float):
-            if obj != obj:  # NaN check
-                return None
-            return obj
-        return float(obj)
-
     with open(output_path, 'w') as f:
-        json.dump(results_dict, f, indent=2, default=json_serializer)
+        json.dump(results_dict, f, indent=2)
 
     print(f"\n✅ Results saved to {output_path}")
 

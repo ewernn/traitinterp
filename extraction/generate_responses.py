@@ -69,6 +69,7 @@ def generate_responses_for_trait(
     batch_size: int = 8,
     rollouts: int = 1,
     temperature: float = 0.0,
+    chat_template: bool = False,
 ) -> tuple[int, int]:
     """
     Generate responses for scenarios.
@@ -82,6 +83,7 @@ def generate_responses_for_trait(
         batch_size: Batch size for generation.
         rollouts: Number of responses per scenario (1 for natural, 10 for instruction-based).
         temperature: Sampling temperature (0.0 for deterministic, 1.0 for diverse).
+        chat_template: If True, wrap prompts in chat template (for instruct models like Qwen).
 
     Returns:
         Tuple of (n_positive, n_negative) responses generated.
@@ -118,10 +120,22 @@ def generate_responses_for_trait(
             for i in range(0, len(scenarios), batch_size):
                 batch_scenarios = scenarios[i:i + batch_size]
 
+                # Apply chat template if requested (for instruct models)
+                if chat_template:
+                    batch_prompts = [
+                        tokenizer.apply_chat_template(
+                            [{"role": "user", "content": s}],
+                            tokenize=False,
+                            add_generation_prompt=True
+                        ) for s in batch_scenarios
+                    ]
+                else:
+                    batch_prompts = batch_scenarios
+
                 # Generate rollouts for this batch
                 for rollout_idx in range(rollouts):
                     inputs = tokenizer(
-                        batch_scenarios,
+                        batch_prompts,
                         return_tensors='pt',
                         padding=True,
                         truncation=True,
@@ -192,6 +206,8 @@ def main():
                         help='Responses per scenario (1 for natural, 10 for instruction-based)')
     parser.add_argument('--temperature', type=float, default=0.0,
                         help='Sampling temperature (0.0 for deterministic, 1.0 for diverse)')
+    parser.add_argument('--chat-template', action='store_true',
+                        help='Apply chat template (for instruct models like Qwen, Llama)')
 
     args = parser.parse_args()
 
@@ -227,6 +243,7 @@ def main():
             batch_size=args.batch_size,
             rollouts=args.rollouts,
             temperature=args.temperature,
+            chat_template=args.chat_template,
         )
         total_pos += n_pos
         total_neg += n_neg

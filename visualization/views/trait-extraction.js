@@ -338,21 +338,9 @@ function renderExtractionTechniques() {
             </div>
 
             <div class="card">
-                <h4>ICA</h4>
-                <p>$$\\mathbf{A} = \\mathbf{S} \\mathbf{M}, \\quad \\text{maximize independence of } \\mathbf{S}$$</p>
-                <p>Finds statistically independent components. Use when traits overlap or interfere.</p>
-            </div>
-
-            <div class="card">
                 <h4>Gradient</h4>
                 <p>$$\\max_\\vec{v} \\left( \\text{mean}(\\mathbf{A}_{\\text{pos}} \\cdot \\vec{v}) - \\text{mean}(\\mathbf{A}_{\\text{neg}} \\cdot \\vec{v}) \\right)$$</p>
                 <p>Direct optimization of separation. Best for low-separability traits where other methods fail.</p>
-            </div>
-
-            <div class="card">
-                <h4>PCA Diff</h4>
-                <p>$$\\vec{v} = \\text{PC}_1(\\mathbf{A}_{\\text{pos}} - \\mathbf{A}_{\\text{neg}})$$</p>
-                <p>First principal component of per-example differences (RepE-style). Captures dominant variation direction.</p>
             </div>
 
             <div class="card">
@@ -653,7 +641,7 @@ function renderTraitHeatmaps(evalData) {
 
 
 function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compact = false) {
-    const methods = ['mean_diff', 'probe', 'gradient', 'random_baseline'];
+    const methods = ['mean_diff', 'probe', 'gradient'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
 
     // Build matrix: layers × methods, value = score
@@ -668,7 +656,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
 
     const trace = {
         z: matrix,
-        x: compact ? ['MD', 'Pr', 'ICA', 'Gr', 'PCA', 'Rnd'] : methods,
+        x: compact ? ['MD', 'Pr', 'Gr'] : methods,
         y: layers,
         type: 'heatmap',
         colorscale: window.ASYMB_COLORSCALE,
@@ -923,8 +911,8 @@ function renderMetricDistributions(evalData) {
 
     const renderComponentHeatmaps = (selectedTrait) => {
         const traitResults = allResults.filter(r => r.trait === selectedTrait);
-        const methodOrder = ['mean_diff', 'probe', 'gradient', 'random_baseline'];
-        const methodLabels = ['MD', 'Pr', 'Gr', 'Rnd'];
+        const methodOrder = ['mean_diff', 'probe', 'gradient'];
+        const methodLabels = ['MD', 'Pr', 'Gr'];
         const layers = [...new Set(traitResults.map(r => r.layer))].sort((a, b) => a - b);
 
         // Get max effect for normalization
@@ -1085,7 +1073,7 @@ function renderMethodBreakdown(evalData) {
                 margin: { l: 30, r: 5, t: 5, b: 25 },
                 xaxis: {
                     tickfont: { size: 8 },
-                    range: [-100, 300]
+                    range: [0, 150]
                 },
                 yaxis: { tickfont: { size: 8 }, title: '' },
                 height: 100
@@ -1179,7 +1167,7 @@ function renderTraitBreakdown(evalData) {
 
             Plotly.newPlot(id, [trace], window.getPlotlyLayout({
                 margin: { l: 30, r: 5, t: 5, b: 25 },
-                xaxis: { tickfont: { size: 8 }, range: [-100, 300] },
+                xaxis: { tickfont: { size: 8 }, range: [0, 150] },
                 yaxis: { tickfont: { size: 8 }, title: '' },
                 height: 80
             }), { displayModeBar: false, responsive: true });
@@ -1271,7 +1259,7 @@ function renderLayerBreakdown(evalData) {
 
             Plotly.newPlot(id, [trace], window.getPlotlyLayout({
                 margin: { l: 30, r: 5, t: 5, b: 25 },
-                xaxis: { tickfont: { size: 8 }, range: [-100, 300] },
+                xaxis: { tickfont: { size: 8 }, range: [0, 150] },
                 yaxis: { tickfont: { size: 8 }, title: '' },
                 height: 80
             }), { displayModeBar: false, responsive: true });

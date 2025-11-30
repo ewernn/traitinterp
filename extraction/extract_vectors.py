@@ -159,7 +159,7 @@ def main():
     parser.add_argument('--experiment', type=str, required=True, help='Experiment name')
     parser.add_argument('--trait', type=str, required=True,
                         help='Trait name (e.g., "category/my_trait") or "all" for all traits')
-    parser.add_argument('--methods', type=str, default='mean_diff,probe,ica,gradient,pca_diff,random_baseline',
+    parser.add_argument('--methods', type=str, default='mean_diff,probe,gradient,random_baseline',
                         help='Comma-separated extraction methods')
     parser.add_argument('--layers', type=str, default=None,
                         help='Comma-separated layers (default: all)')

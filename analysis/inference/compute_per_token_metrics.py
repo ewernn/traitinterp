@@ -6,7 +6,11 @@ Input: experiments/{experiment}/inference/raw/residual/{prompt_set}/{id}.pt
 Output: experiments/{experiment}/analysis/per_token/{prompt_set}/{id}.json
 
 Usage:
-    python analysis/inference/compute_per_token_metrics.py --experiment gemma_2b_cognitive_nov21
+    # Process all prompt sets with raw data
+    python analysis/inference/compute_per_token_metrics.py --experiment my_experiment
+
+    # Process specific prompt set
+    python analysis/inference/compute_per_token_metrics.py --experiment my_experiment --prompt-set single_trait
 """
 
 import sys
@@ -184,6 +188,7 @@ def compute_from_residual(experiment: str, prompt_set: str, prompt_id: int, trai
 def main():
     parser = argparse.ArgumentParser(description='Compute per-token metrics for Analysis Gallery')
     parser.add_argument('--experiment', type=str, required=True, help='Experiment name')
+    parser.add_argument('--prompt-set', type=str, help='Specific prompt set to process (default: all)')
     args = parser.parse_args()
 
     experiment = args.experiment
@@ -199,10 +204,17 @@ def main():
     residual_base = get_path('inference.raw', experiment=experiment) / 'residual'
     analysis_base = get_path('analysis.base', experiment=experiment)
 
-    for prompt_set in residual_base.iterdir():
-        if not prompt_set.is_dir():
-            continue
+    # Get prompt sets to process
+    if args.prompt_set:
+        prompt_sets = [residual_base / args.prompt_set]
+        if not prompt_sets[0].exists():
+            print(f"Error: No raw data for prompt set '{args.prompt_set}'")
+            print(f"Available: {[p.name for p in residual_base.iterdir() if p.is_dir()]}")
+            return
+    else:
+        prompt_sets = [p for p in residual_base.iterdir() if p.is_dir()]
 
+    for prompt_set in prompt_sets:
         set_name = prompt_set.name
         output_dir = analysis_base / "per_token" / set_name
         output_dir.mkdir(parents=True, exist_ok=True)
