@@ -6,6 +6,7 @@ Captures raw activations and/or computes projections onto trait vectors.
 
 Modes:
   --residual-stream    : Capture residual stream at all layers (default)
+  --capture-attn       : Also capture raw attn_out (attention output before residual addition)
   --layer-internals N  : Capture full internals for layer N (Q/K/V, MLP, attention)
                          Automatically extracts attention + logit lens for visualization
 
@@ -39,6 +40,12 @@ Usage:
         --experiment my_experiment \\
         --prompt-set main_prompts \\
         --no-project
+
+    # Capture with attn_out for attn_out vector projections
+    python inference/capture_raw_activations.py \\
+        --experiment my_experiment \\
+        --prompt-set harmful \\
+        --capture-attn
 """
 
 import sys
@@ -150,13 +157,16 @@ def analyze_dynamics(trajectory: torch.Tensor) -> Dict:
 # Residual Stream Capture
 # ============================================================================
 
-def create_residual_storage(n_layers: int) -> Dict:
+def create_residual_storage(n_layers: int, capture_attn: bool = False) -> Dict:
     """Create storage for residual stream capture."""
-    return {i: {'residual_in': [], 'after_attn': [], 'residual_out': []}
-            for i in range(n_layers)}
+    base = {'residual_in': [], 'after_attn': [], 'residual_out': []}
+    if capture_attn:
+        base['attn_out'] = []
+    return {i: {k: [] for k in base} for i in range(n_layers)}
 
 
-def setup_residual_hooks(hook_manager: HookManager, storage: Dict, n_layers: int, mode: str):
+def setup_residual_hooks(hook_manager: HookManager, storage: Dict, n_layers: int, mode: str,
+                         capture_attn: bool = False):
     """Register hooks for residual stream at all layers."""
     for i in range(n_layers):
         def make_layer_hook(layer_idx):
@@ -182,18 +192,31 @@ def setup_residual_hooks(hook_manager: HookManager, storage: Dict, n_layers: int
             return hook
         hook_manager.add_forward_hook(f"model.layers.{i}.mlp", make_mlp_hook(i))
 
+        # Optional: capture raw attention output (before residual addition)
+        if capture_attn:
+            def make_attn_hook(layer_idx):
+                def hook(module, inp, out):
+                    out_t = out[0] if isinstance(out, tuple) else out
+                    if mode == 'response':
+                        storage[layer_idx]['attn_out'].append(out_t[:, -1, :].detach().cpu())
+                    else:
+                        storage[layer_idx]['attn_out'].append(out_t.detach().cpu())
+                return hook
+            hook_manager.add_forward_hook(f"model.layers.{i}.self_attn", make_attn_hook(i))
+
 
 def capture_residual_stream(model, tokenizer, prompt_text: str, n_layers: int,
-                            max_new_tokens: int, temperature: float) -> Dict:
+                            max_new_tokens: int, temperature: float,
+                            capture_attn: bool = False) -> Dict:
     """Capture residual stream activations at all layers."""
     inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
     token_ids = inputs['input_ids'][0].tolist()
     tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
     # Prompt capture
-    prompt_storage = create_residual_storage(n_layers)
+    prompt_storage = create_residual_storage(n_layers, capture_attn=capture_attn)
     with HookManager(model) as hooks:
-        setup_residual_hooks(hooks, prompt_storage, n_layers, 'prompt')
+        setup_residual_hooks(hooks, prompt_storage, n_layers, 'prompt', capture_attn=capture_attn)
         with torch.no_grad():
             outputs = model(**inputs, output_attentions=True, return_dict=True)
 
@@ -205,13 +228,13 @@ def capture_residual_stream(model, tokenizer, prompt_text: str, n_layers: int,
         prompt_acts[i] = {k: v[0].squeeze(0) for k, v in prompt_storage[i].items()}
 
     # Response capture
-    response_storage = create_residual_storage(n_layers)
+    response_storage = create_residual_storage(n_layers, capture_attn=capture_attn)
     context = inputs['input_ids'].clone()
     generated_ids = []
     response_attention = []
 
     with HookManager(model) as hooks:
-        setup_residual_hooks(hooks, response_storage, n_layers, 'response')
+        setup_residual_hooks(hooks, response_storage, n_layers, 'response', capture_attn=capture_attn)
         for _ in range(max_new_tokens):
             with torch.no_grad():
                 outputs = model(input_ids=context, output_attentions=True, return_dict=True)
@@ -704,6 +727,8 @@ def main():
     # What to capture
     parser.add_argument("--residual-stream", action="store_true", default=True,
                        help="Capture residual stream at all layers (default)")
+    parser.add_argument("--capture-attn", action="store_true",
+                       help="Also capture raw attn_out (attention output before residual addition)")
     parser.add_argument("--layer-internals", metavar="N", action='append',
                        help="Capture full internals for layer N (can be used multiple times, or 'all' for all layers). "
                             "Automatically extracts attention + logit lens for visualization.")
@@ -860,7 +885,8 @@ def main():
             # Capture residual stream
             elif args.residual_stream or not args.layer_internals:
                 data = capture_residual_stream(model, tokenizer, prompt_text, n_layers,
-                                               args.max_new_tokens, args.temperature)
+                                               args.max_new_tokens, args.temperature,
+                                               capture_attn=args.capture_attn)
 
                 # Save raw residual as .pt
                 raw_dir = inference_dir / "raw" / "residual" / set_name

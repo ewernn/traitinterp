@@ -2,6 +2,11 @@ persona_vectors/
 # Experiment data (stored in R2, not git)
 experiments/*
 !experiments/gemma-2-2b-base/
+
+# Data files in experiments - use R2 (even for whitelisted experiments)
+experiments/**/*.pt
+experiments/**/*.json
+experiments/**/*.png
 #docs/remote_setup.md
 
 # Python

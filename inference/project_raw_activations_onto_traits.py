@@ -28,6 +28,13 @@ Usage:
         --experiment my_experiment \\
         --prompt-set main_prompts \\
         --dynamics-only
+
+    # Project attn_out activations onto attn_out vectors
+    python inference/project_raw_activations_onto_traits.py \\
+        --experiment my_experiment \\
+        --prompt-set harmful \\
+        --component attn_out \\
+        --layer 8
 """
 
 import sys
@@ -75,12 +82,48 @@ def discover_traits(experiment_name: str) -> List[Tuple[str, str]]:
     return traits
 
 
-def find_vector_method(vectors_dir: Path, layer: int) -> Optional[str]:
-    """Auto-detect best vector method for a layer."""
+def find_vector_method(vectors_dir: Path, layer: int, component: str = "residual") -> Optional[str]:
+    """Auto-detect best vector method for a layer.
+
+    Args:
+        vectors_dir: Path to vectors directory
+        layer: Layer number
+        component: 'residual' (default) or 'attn_out'
+
+    Returns:
+        Method name if found, None otherwise
+    """
     for method in ["probe", "mean_diff", "gradient"]:
-        if (vectors_dir / f"{method}_layer{layer}.pt").exists():
-            return method
+        if component == "attn_out":
+            # Check for attn_out vectors: attn_out_probe_layer8.pt
+            if (vectors_dir / f"attn_out_{method}_layer{layer}.pt").exists():
+                return method
+        else:
+            # Standard residual vectors: probe_layer8.pt
+            if (vectors_dir / f"{method}_layer{layer}.pt").exists():
+                return method
     return None
+
+
+def find_available_vectors(vectors_dir: Path, layer: int) -> list[tuple[str, str, Path]]:
+    """Find all available vectors for a layer (both residual and attn_out).
+
+    Returns:
+        List of (component, method, path) tuples
+    """
+    vectors = []
+    for method in ["probe", "mean_diff", "gradient"]:
+        # Residual vectors
+        residual_path = vectors_dir / f"{method}_layer{layer}.pt"
+        if residual_path.exists():
+            vectors.append(("residual", method, residual_path))
+
+        # attn_out vectors
+        attn_path = vectors_dir / f"attn_out_{method}_layer{layer}.pt"
+        if attn_path.exists():
+            vectors.append(("attn_out", method, attn_path))
+
+    return vectors
 
 
 # ============================================================================
@@ -136,15 +179,35 @@ def analyze_dynamics(trajectory: torch.Tensor) -> Dict:
 # Projection
 # ============================================================================
 
-def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) -> torch.Tensor:
-    """Project activations onto trait vector. Returns [n_tokens, n_layers, 3]."""
-    n_tokens = activations[0]['residual_in'].shape[0]
-    result = torch.zeros(n_tokens, n_layers, 3)
-    sublayers = ['residual_in', 'after_attn', 'residual_out']
+def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int,
+                        component: str = "residual") -> torch.Tensor:
+    """Project activations onto trait vector.
 
-    for layer in range(n_layers):
-        for s_idx, sublayer in enumerate(sublayers):
-            result[:, layer, s_idx] = projection(activations[layer][sublayer], vector, normalize_vector=True)
+    Args:
+        activations: Dict of layer -> sublayer -> tensor
+        vector: Trait vector
+        n_layers: Number of layers
+        component: 'residual' returns [n_tokens, n_layers, 3] for residual_in/after_attn/residual_out
+                   'attn_out' returns [n_tokens, n_layers, 1] for attn_out only
+
+    Returns:
+        Projection tensor
+    """
+    n_tokens = activations[0]['residual_in'].shape[0]
+
+    if component == "attn_out":
+        # Project only attn_out activations
+        result = torch.zeros(n_tokens, n_layers, 1)
+        for layer in range(n_layers):
+            if 'attn_out' in activations[layer] and activations[layer]['attn_out'].numel() > 0:
+                result[:, layer, 0] = projection(activations[layer]['attn_out'], vector, normalize_vector=True)
+    else:
+        # Project residual sublayers
+        result = torch.zeros(n_tokens, n_layers, 3)
+        sublayers = ['residual_in', 'after_attn', 'residual_out']
+        for layer in range(n_layers):
+            for s_idx, sublayer in enumerate(sublayers):
+                result[:, layer, s_idx] = projection(activations[layer][sublayer], vector, normalize_vector=True)
 
     return result
 
@@ -230,6 +293,8 @@ def main():
     parser.add_argument("--traits", help="Comma-separated traits (category/name format)")
     parser.add_argument("--layer", type=int, default=16, help="Layer for vectors")
     parser.add_argument("--method", help="Vector method (auto-detect if not set)")
+    parser.add_argument("--component", choices=["residual", "attn_out"], default="residual",
+                       help="Activation component to project (default: residual)")
     parser.add_argument("--logit-lens", action="store_true", help="Compute logit lens")
     parser.add_argument("--dynamics-only", action="store_true",
                        help="Only recompute dynamics from existing projections")
@@ -296,12 +361,17 @@ def process_prompt_set(args, inference_dir, prompt_set):
     for category, trait_name in trait_list:
         vectors_dir = get_path('extraction.vectors', experiment=args.experiment,
                                trait=f"{category}/{trait_name}")
-        method = args.method or find_vector_method(vectors_dir, args.layer)
+        method = args.method or find_vector_method(vectors_dir, args.layer, component=args.component)
         if not method:
-            print(f"  Skip {category}/{trait_name}: no vector at layer {args.layer}")
+            print(f"  Skip {category}/{trait_name}: no {args.component} vector at layer {args.layer}")
             continue
 
-        vector_path = vectors_dir / f"{method}_layer{args.layer}.pt"
+        # Build vector path based on component type
+        if args.component == "attn_out":
+            vector_path = vectors_dir / f"attn_out_{method}_layer{args.layer}.pt"
+        else:
+            vector_path = vectors_dir / f"{method}_layer{args.layer}.pt"
+
         if not vector_path.exists():
             print(f"  Skip {category}/{trait_name}: {vector_path} not found")
             continue
@@ -346,8 +416,9 @@ def process_prompt_set(args, inference_dir, prompt_set):
 
         # Project onto each trait
         for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
-            # New path: residual_stream/{prompt_set}/{id}.json
-            out_dir = inference_dir / category / trait_name / "residual_stream" / prompt_set
+            # Path: {component}_stream/{prompt_set}/{id}.json
+            stream_name = "attn_stream" if args.component == "attn_out" else "residual_stream"
+            out_dir = inference_dir / category / trait_name / stream_name / prompt_set
             out_file = out_dir / f"{prompt_id}.json"
 
             if args.skip_existing and out_file.exists():
@@ -362,8 +433,8 @@ def process_prompt_set(args, inference_dir, prompt_set):
                 response_proj = torch.tensor(proj_data['projections']['response'])
             else:
                 # Compute projections
-                prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
-                response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
+                prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers, component=args.component)
+                response_proj = project_onto_vector(data['response']['activations'], vector, n_layers, component=args.component)
 
             # Compute dynamics
             prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
