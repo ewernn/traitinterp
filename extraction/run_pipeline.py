@@ -67,7 +67,8 @@ def discover_traits(experiment: str) -> list[str]:
                     traits.append(f"{category_dir.name}/{trait_dir.name}")
     return sorted(traits)
 
-def run_vetting(experiment: str, trait: str, stage: str, threshold: int = 4) -> float:
+def run_vetting(experiment: str, trait: str, stage: str, threshold: int = 4,
+                trait_score: bool = False, pos_threshold: int = 60, neg_threshold: int = 40) -> float:
     """
     Run vetting for scenarios or responses.
     Returns pass rate (0.0 to 1.0).
@@ -78,12 +79,19 @@ def run_vetting(experiment: str, trait: str, stage: str, threshold: int = 4) -> 
     if stage == 'scenarios':
         return vet_scenarios(experiment=experiment, trait=trait, threshold=threshold)
     elif stage == 'responses':
-        return vet_responses(experiment=experiment, trait=trait, threshold=threshold)
+        return vet_responses(
+            experiment=experiment,
+            trait=trait,
+            threshold=threshold,
+            trait_score=trait_score,
+            pos_threshold=pos_threshold,
+            neg_threshold=neg_threshold,
+        )
     else:
         raise ValueError(f"Unknown vetting stage: {stage}")
 
 
-def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: bool, methods: List[str], vet: bool = False, vet_scenarios: bool = True, vet_threshold: int = 4, rollouts: int = 1, temperature: float = 0.0, batch_size: int = 8, val_split: float = 0.0, model_name: str = DEFAULT_MODEL, base_model: bool = False):
+def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: bool, methods: List[str], vet: bool = False, vet_scenarios: bool = True, vet_threshold: int = 4, rollouts: int = 1, temperature: float = 0.0, batch_size: int = 8, val_split: float = 0.0, model_name: str = DEFAULT_MODEL, base_model: bool = False, trait_score: bool = False, pos_threshold: int = 60, neg_threshold: int = 40):
     """
     Executes the trait extraction pipeline.
 
@@ -93,6 +101,9 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
         val_split: Fraction of scenarios for validation (0.2 = last 20%). 0 = no split.
         model_name: HuggingFace model name (default: Gemma 2B IT)
         base_model: If True, use text completion mode (no chat template, completion-only extraction)
+        trait_score: If True, use 0-100 trait scoring mode for response vetting
+        pos_threshold: For trait_score mode, positive class needs score >= this (default 60)
+        neg_threshold: For trait_score mode, negative class needs score <= this (default 40)
     """
     print("=" * 80)
     print("STARTING TRAIT EXTRACTION PIPELINE")
@@ -106,6 +117,8 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
             print(f"Vetting: scenarios + responses")
         else:
             print(f"Vetting: responses only (scenario vetting disabled)")
+        if trait_score:
+            print(f"Vetting mode: trait-score (0-100), pos>={pos_threshold}, neg<={neg_threshold}")
     else:
         print(f"Vetting: OFF")
     if rollouts > 1:
@@ -175,7 +188,10 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
             response_scores = vetting_path / "response_scores.json"
             if not response_scores.exists() or force:
                 print(f"  [Stage 1.5] Vetting responses...")
-                pass_rate = run_vetting(experiment, trait, 'responses', vet_threshold)
+                pass_rate = run_vetting(
+                    experiment, trait, 'responses', vet_threshold,
+                    trait_score=trait_score, pos_threshold=pos_threshold, neg_threshold=neg_threshold
+                )
                 if pass_rate < 0.7:
                     print(f"  ⚠️  Low response pass rate ({pass_rate:.0%}). Consider reviewing mislabeled examples.")
             else:
@@ -226,6 +242,9 @@ if __name__ == "__main__":
     parser.add_argument('--val-split', type=float, default=0.0, help='Fraction of scenarios for validation (e.g., 0.2 = last 20%%). 0 = no split.')
     parser.add_argument('--model', type=str, default=DEFAULT_MODEL, help='HuggingFace model name (default: Gemma 2B IT).')
     parser.add_argument('--base-model', action='store_true', help='Base model mode: text completion, completion-only extraction.')
+    parser.add_argument('--trait-score', action='store_true', help='Use 0-100 trait scoring for response vetting (recommended for base model).')
+    parser.add_argument('--pos-threshold', type=int, default=60, help='For trait-score mode: positive class needs score >= this (default: 60).')
+    parser.add_argument('--neg-threshold', type=int, default=40, help='For trait-score mode: negative class needs score <= this (default: 40).')
 
     args = parser.parse_args()
 
@@ -246,4 +265,7 @@ if __name__ == "__main__":
         val_split=args.val_split,
         model_name=args.model,
         base_model=args.base_model,
+        trait_score=args.trait_score,
+        pos_threshold=args.pos_threshold,
+        neg_threshold=args.neg_threshold,
     )
