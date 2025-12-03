@@ -134,7 +134,8 @@ def extract_vectors_for_trait(
 
                 torch.save(vector, vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}.pt")
 
-                # Save metadata
+                # Save metadata (identification + intrinsic properties only)
+                # Quality metrics come from extraction_evaluation.py on validation data
                 vector_metadata = {
                     "trait": trait,
                     "method": method_name,
@@ -143,12 +144,9 @@ def extract_vectors_for_trait(
                     "model": metadata.get("model", "unknown"),
                     "vector_norm": float(vector.norm().item()),
                 }
-                for key, value in result.items():
-                    if key != 'vector' and not key.endswith('_proj'):
-                        if isinstance(value, torch.Tensor) and value.numel() == 1:
-                            vector_metadata[key] = float(value.item())
-                        elif isinstance(value, (int, float, str, bool)):
-                            vector_metadata[key] = value
+                if 'bias' in result:
+                    b = result['bias']
+                    vector_metadata['bias'] = float(b.item()) if isinstance(b, torch.Tensor) else b
 
                 with open(vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}_metadata.json", 'w') as f:
                     json.dump(vector_metadata, f, indent=2)

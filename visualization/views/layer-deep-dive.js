@@ -12,7 +12,7 @@ let saeCacheKey = null;  // Track which prompt the cache is for
 let perTokenCache = null;
 let perTokenCacheKey = null;
 
-// Cache for full attention data (26 layers × 8 heads)
+// Cache for full attention data (nLayers × nHeads)
 let attentionCache = null;
 let attentionCacheKey = null;
 
@@ -75,7 +75,7 @@ async function loadPerTokenData(promptSet, promptId) {
 }
 
 /**
- * Load full attention data (26 layers × 8 heads) for a prompt
+ * Load full attention data (nLayers × nHeads) for a prompt
  */
 async function loadAttentionData(promptSet, promptId) {
     const experiment = window.paths.getExperiment();

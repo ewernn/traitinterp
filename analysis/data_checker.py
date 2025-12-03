@@ -164,14 +164,22 @@ class AnalysisIntegrity:
 
 
 @dataclass
+class SteeringIntegrity:
+    traits: Dict[str, dict] = field(default_factory=dict)  # trait -> {results: bool, layer_sweep: bool}
+    total_traits: int = 0
+    issues: List[str] = field(default_factory=list)
+
+
+@dataclass
 class ExperimentIntegrity:
     experiment: str
-    n_layers: int
+    n_layers: Optional[int]  # Discovered from trait metadata, None if unknown
     methods: List[str]  # Discovered from first trait with vectors
 
     traits: List[TraitIntegrity] = field(default_factory=list)
     inference: Optional[InferenceIntegrity] = None
     analysis: Optional[AnalysisIntegrity] = None
+    steering: Optional[SteeringIntegrity] = None
     evaluation_exists: bool = False
 
     summary: Dict[str, int] = field(default_factory=dict)
@@ -185,7 +193,6 @@ def check_extraction_trait(
     trait_dir: Path,
     category: str,
     trait_name: str,
-    n_layers: int,
     schema: dict
 ) -> TraitIntegrity:
     """Check all extraction files for a single trait using discovery."""
@@ -315,11 +322,34 @@ def check_analysis(exp_dir: Path) -> AnalysisIntegrity:
     return result
 
 
+def check_steering(exp_dir: Path) -> SteeringIntegrity:
+    """Check steering directory using discovery."""
+
+    result = SteeringIntegrity()
+    steering_dir = exp_dir / "steering"
+
+    if not steering_dir.exists():
+        return result
+
+    # Discover traits with steering results (category/trait structure)
+    for category_dir in steering_dir.iterdir():
+        if category_dir.is_dir() and not category_dir.name.startswith('.'):
+            for trait_dir in category_dir.iterdir():
+                if trait_dir.is_dir():
+                    trait_name = f"{category_dir.name}/{trait_dir.name}"
+                    result.traits[trait_name] = {
+                        'results': (trait_dir / 'results.json').exists(),
+                        'layer_sweep': (trait_dir / 'layer_sweep.json').exists(),
+                    }
+                    result.total_traits += 1
+
+    return result
+
+
 def check_experiment(experiment: str) -> ExperimentIntegrity:
     """Check all data integrity for an experiment using discovery."""
 
     schema = get_schema()
-    n_layers = schema.get('n_layers', 26)
 
     exp_dir = Path("experiments") / experiment
     if not exp_dir.exists():
@@ -327,7 +357,7 @@ def check_experiment(experiment: str) -> ExperimentIntegrity:
 
     result = ExperimentIntegrity(
         experiment=experiment,
-        n_layers=n_layers,
+        n_layers=None,  # Will be discovered from trait metadata
         methods=[],  # Will be populated from discovered methods
     )
 
@@ -349,7 +379,6 @@ def check_experiment(experiment: str) -> ExperimentIntegrity:
                             trait_dir,
                             category_dir.name,
                             trait_dir.name,
-                            n_layers,
                             schema
                         )
                         result.traits.append(trait_result)
@@ -358,14 +387,26 @@ def check_experiment(experiment: str) -> ExperimentIntegrity:
                         # Collect all discovered methods
                         all_methods.update(trait_result.methods)
 
+                        # Discover n_layers from first trait with metadata
+                        if result.n_layers is None:
+                            metadata_path = trait_dir / "activations" / "metadata.json"
+                            if metadata_path.exists():
+                                import json
+                                with open(metadata_path) as f:
+                                    metadata = json.load(f)
+                                result.n_layers = metadata.get('n_layers')
+
     # Set discovered methods
     result.methods = sorted(all_methods)
 
     # Check inference
     result.inference = check_inference(exp_dir, traits)
 
-    # Check analysis (NEW)
+    # Check analysis
     result.analysis = check_analysis(exp_dir)
+
+    # Check steering
+    result.steering = check_steering(exp_dir)
 
     # Check evaluation
     evaluation_file = exp_dir / "extraction" / "extraction_evaluation.json"
@@ -395,7 +436,8 @@ def print_report(result: ExperimentIntegrity):
     print(f"\n{'='*60}")
     print(f"Data Integrity Report: {result.experiment}")
     print(f"{'='*60}")
-    print(f"Config: {result.n_layers} layers")
+    layers_str = f"{result.n_layers} layers" if result.n_layers else "layers unknown (no metadata)"
+    print(f"Model: {layers_str}")
     print(f"Discovered methods: {', '.join(result.methods) if result.methods else 'none'}")
     print()
 
@@ -476,6 +518,20 @@ def print_report(result: ExperimentIntegrity):
         print(f"  Total analysis files: {result.analysis.total_files}")
     else:
         print("  No analysis data")
+
+    # Steering
+    print(f"\n{'='*60}")
+    print("STEERING")
+    print("-" * 40)
+
+    if result.steering and result.steering.total_traits > 0:
+        print(f"  Traits with steering: {result.steering.total_traits}")
+        for trait_name, info in sorted(result.steering.traits.items()):
+            results_str = "✓" if info['results'] else "✗"
+            sweep_str = "✓" if info['layer_sweep'] else "✗"
+            print(f"    {trait_name}: results={results_str}, layer_sweep={sweep_str}")
+    else:
+        print("  No steering data")
 
     # Evaluation
     print(f"\n{'='*60}")

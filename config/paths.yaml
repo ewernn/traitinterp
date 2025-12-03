@@ -153,8 +153,8 @@ global:
 # Discovery: methods, analysis categories, inference types (from filesystem)
 
 schema:
-  # Model configuration
-  n_layers: 26
+  # Model configuration is per-experiment (stored in activations/metadata.json)
+  # n_layers, hidden_dim, etc. are discovered from metadata, not hardcoded here
 
   # ==========================================================================
   # STRUCTURE: What files CAN exist (complete experiment)

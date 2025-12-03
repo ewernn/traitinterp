@@ -282,8 +282,8 @@ function renderNotation() {
                 <h4>Input Shapes</h4>
                 <table class="def-table">
                     <tr><td>$$n$$</td><td>Number of examples (train or validation split)</td></tr>
-                    <tr><td>$$d$$</td><td>Hidden dimension (2304 for Gemma 2B)</td></tr>
-                    <tr><td>$$L$$</td><td>Number of layers (26 for Gemma 2B)</td></tr>
+                    <tr><td>$$d$$</td><td>Hidden dimension (model-specific)</td></tr>
+                    <tr><td>$$L$$</td><td>Number of layers (model-specific)</td></tr>
                     <tr><td>$$\\mathbf{A} \\in \\mathbb{R}^{n \\times d}$$</td><td>Activation matrix (token-averaged per example)</td></tr>
                 </table>
             </div>
@@ -314,7 +314,7 @@ function renderNotation() {
                     <tr><td><strong>Train split</strong></td><td>80% of examples → used to extract vectors</td></tr>
                     <tr><td><strong>Val split</strong></td><td>20% of examples → used to evaluate vectors</td></tr>
                     <tr><td><strong>Per-layer</strong></td><td>Vectors extracted independently for each layer</td></tr>
-                    <tr><td><strong>Per-method</strong></td><td>4 extraction methods × 26 layers = 104 vectors/trait</td></tr>
+                    <tr><td><strong>Per-method</strong></td><td>4 extraction methods × L layers vectors/trait</td></tr>
                 </table>
             </div>
         </div>

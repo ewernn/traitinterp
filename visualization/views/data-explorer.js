@@ -193,6 +193,19 @@ function renderFileTree(data) {
         html += folder('analysis', 'analysis', `(${data.analysis.total_files} files)`, 0, analysisHtml);
     }
 
+    // STEERING (indent 0 -> traits at 1 -> files at 2)
+    if (data.steering && data.steering.total_traits > 0) {
+        let steeringHtml = '';
+        for (const [trait, info] of Object.entries(data.steering.traits).sort()) {
+            let traitHtml = '';
+            traitHtml += item(info.results ? '✓' : '✗', 'results.json', info.results, '', 2);
+            traitHtml += item(info.layer_sweep ? '✓' : '✗', 'layer_sweep.json', info.layer_sweep, '', 2);
+            const complete = info.results || info.layer_sweep;
+            steeringHtml += folder(trait, `steering-${trait.replace(/\//g, '-')}`, '', 1, traitHtml, complete, true);
+        }
+        html += folder('steering', 'steering', `(${data.steering.total_traits} traits)`, 0, steeringHtml);
+    }
+
     return html;
 }
 

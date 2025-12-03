@@ -56,7 +56,7 @@ function smoothData(data, window = 3) {
  *
  * @param {Object} data - Trait projection data with projections.prompt and projections.response
  * @param {number[]} activationNorms - Optional per-layer activation norms for normalization
- * @returns {Object} { position: [26], velocity: [25], acceleration: [24] }
+ * @returns {Object} { position: [nLayers], velocity: [nLayers-1], acceleration: [nLayers-2] }
  */
 function computeLayerDerivatives(data, activationNorms = null) {
     const promptProj = data.projections.prompt;
@@ -424,13 +424,14 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
  * Normalizes by activation magnitude when available.
  */
 function renderLayerDerivativePlots(traitData, loadedTraits) {
-    const nLayers = 26;
+    // Get nLayers from data (model-agnostic)
+    const firstData = traitData[loadedTraits[0]];
+    const nLayers = firstData.projections.prompt[0]?.length || 26;
     const layerIndices = Array.from({length: nLayers}, (_, i) => i);
     const velocityIndices = Array.from({length: nLayers - 1}, (_, i) => i + 0.5);
     const accelIndices = Array.from({length: nLayers - 2}, (_, i) => i + 1);
 
-    // Get activation norms for normalization (same for all traits, use first)
-    const firstData = traitData[loadedTraits[0]];
+    // Get activation norms for normalization (same for all traits, reuse firstData)
     let combinedNorms = null;
     if (firstData.activation_norms) {
         const promptNorms = firstData.activation_norms.prompt;

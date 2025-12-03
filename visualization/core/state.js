@@ -361,7 +361,7 @@ async function loadExperimentData(experimentName) {
                     metadata = await metadataRes.json();
                 }
             } catch (e) {
-                // Metadata is optional - will fall back to defaults (26 layers for Gemma 2B)
+                // Metadata is optional - will fall back to defaults if missing
                 console.warn(`No metadata for ${traitName}`);
             }
 
