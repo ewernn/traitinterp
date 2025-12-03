@@ -417,6 +417,7 @@ async def evaluate_config(
     use_chat_template: bool,
     rollouts: int,
     temperature: float,
+    incremental: bool = False,
 ) -> Tuple[Dict, List[Dict]]:
     """
     Evaluate a single config (which may steer one or multiple layers).
@@ -431,12 +432,23 @@ async def evaluate_config(
     is_multi_layer = len(layers) > 1
 
     # Load vectors
-    vectors = []
+    raw_vectors = []
     for layer, method in zip(layers, methods):
         vector = load_vector(experiment, trait, layer, method, component)
         if vector is None:
             raise FileNotFoundError(f"Vector not found: layer={layer}, method={method}, component={component}")
-        vectors.append(vector)
+        raw_vectors.append(vector)
+
+    # Compute incremental vectors if requested
+    if incremental and len(raw_vectors) > 1:
+        vectors = [raw_vectors[0]]  # First layer gets full vector
+        for i in range(1, len(raw_vectors)):
+            v_inc = raw_vectors[i] - raw_vectors[i-1]
+            vectors.append(v_inc)
+        # Log incremental norms
+        print(f"  Incremental vector norms: {[f'{v.norm().item():.2f}' for v in vectors]}")
+    else:
+        vectors = raw_vectors
 
     # Config description for logging
     if is_multi_layer:
@@ -528,6 +540,7 @@ async def run_evaluation(
     subset_questions: Optional[int],
     vector_experiment: Optional[str] = None,
     vector_trait: Optional[str] = None,
+    incremental: bool = False,
 ) -> None:
     """
     Run steering evaluation with runs-based results structure.
@@ -610,7 +623,8 @@ async def run_evaluation(
             model, tokenizer, vector_experiment, vector_trait, config,
             questions, eval_prompt, judge,
             use_chat_template=use_chat_template,
-            rollouts=rollouts, temperature=temperature
+            rollouts=rollouts, temperature=temperature,
+            incremental=incremental
         )
 
         # Save responses
@@ -688,6 +702,8 @@ def main():
                         help="Load vectors from different experiment/trait: 'experiment/category/trait'")
     parser.add_argument("--auto-coef", type=float,
                         help="Auto-compute coefficient from target perturbation ratio (e.g., 0.6 for 60%% of activation norm)")
+    parser.add_argument("--incremental", action="store_true",
+                        help="Use incremental vectors (v[i] - v[i-1]) to avoid double-counting shared components")
 
     args = parser.parse_args()
 
@@ -734,6 +750,7 @@ def main():
         subset_questions=args.subset,
         vector_experiment=vector_experiment,
         vector_trait=vector_trait,
+        incremental=args.incremental,
     ))
 
 
