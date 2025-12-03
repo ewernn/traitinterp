@@ -165,7 +165,7 @@ class AnalysisIntegrity:
 
 @dataclass
 class SteeringIntegrity:
-    traits: Dict[str, dict] = field(default_factory=dict)  # trait -> {results: bool, layer_sweep: bool}
+    traits: Dict[str, dict] = field(default_factory=dict)  # trait -> {results: bool, n_runs: int}
     total_traits: int = 0
     issues: List[str] = field(default_factory=list)
 
@@ -337,9 +337,18 @@ def check_steering(exp_dir: Path) -> SteeringIntegrity:
             for trait_dir in category_dir.iterdir():
                 if trait_dir.is_dir():
                     trait_name = f"{category_dir.name}/{trait_dir.name}"
+                    results_file = trait_dir / 'results.json'
+                    n_runs = 0
+                    if results_file.exists():
+                        try:
+                            with open(results_file) as f:
+                                data = json.load(f)
+                            n_runs = len(data.get('runs', []))
+                        except (json.JSONDecodeError, KeyError):
+                            pass
                     result.traits[trait_name] = {
-                        'results': (trait_dir / 'results.json').exists(),
-                        'layer_sweep': (trait_dir / 'layer_sweep.json').exists(),
+                        'results': results_file.exists(),
+                        'n_runs': n_runs,
                     }
                     result.total_traits += 1
 
@@ -528,8 +537,8 @@ def print_report(result: ExperimentIntegrity):
         print(f"  Traits with steering: {result.steering.total_traits}")
         for trait_name, info in sorted(result.steering.traits.items()):
             results_str = "✓" if info['results'] else "✗"
-            sweep_str = "✓" if info['layer_sweep'] else "✗"
-            print(f"    {trait_name}: results={results_str}, layer_sweep={sweep_str}")
+            runs_str = str(info['n_runs']) if info['n_runs'] > 0 else "-"
+            print(f"    {trait_name}: results={results_str}, runs={runs_str}")
     else:
         print("  No steering data")
 

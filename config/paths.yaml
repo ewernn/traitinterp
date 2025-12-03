@@ -19,6 +19,7 @@
 
 experiments:
   base: "experiments/{experiment}"
+  config: "experiments/{experiment}/config.json"
   list: "experiments"
 
 # =============================================================================
@@ -74,7 +75,6 @@ steering:
   base: "experiments/{experiment}/steering"
   trait: "experiments/{experiment}/steering/{trait}"
   results: "experiments/{experiment}/steering/{trait}/results.json"
-  layer_sweep: "experiments/{experiment}/steering/{trait}/layer_sweep.json"
   responses: "experiments/{experiment}/steering/{trait}/responses"
 
   # Eval prompts (separate from extraction prompts)

@@ -5,30 +5,61 @@ Steering evaluation - validate trait vectors via causal intervention.
 Input:
     - experiment: Experiment name
     - trait: Trait path (e.g., cognitive_state/confidence)
-    - layers: Layer(s) to steer (default: all)
+    - layers: Layer(s) to steer
+    - coefficients: Steering strength(s)
 
 Output:
-    - experiments/{experiment}/steering/{trait}/results.json (single layer)
-    - experiments/{experiment}/steering/{trait}/layer_sweep.json (multiple layers)
+    - experiments/{experiment}/steering/{trait}/results.json
+      Runs-based structure that accumulates across invocations.
+    - experiments/{experiment}/steering/{trait}/responses/
+      Generated responses for each config.
 
 Usage:
-    # Evaluate single layer (full coefficients, more rollouts)
+    # Single config (1 run)
     python analysis/steering/evaluate.py \\
         --experiment my_exp \\
-        --trait cognitive_state/confidence \\
-        --layers 16
+        --trait mental_state/optimism \\
+        --layers 16 \\
+        --coefficients 2.0
 
-    # Layer sweep (all layers, fixed coefficient, fewer rollouts)
+    # Coefficient sweep at one layer (4 runs)
     python analysis/steering/evaluate.py \\
         --experiment my_exp \\
-        --trait cognitive_state/confidence \\
-        --layers all
+        --trait mental_state/optimism \\
+        --layers 16 \\
+        --coefficients 0,1,2,3
 
-    # Custom layer range
+    # Layer sweep with fixed coef (4 runs)
     python analysis/steering/evaluate.py \\
         --experiment my_exp \\
-        --trait cognitive_state/confidence \\
-        --layers 5-20
+        --trait mental_state/optimism \\
+        --layers 10,12,14,16 \\
+        --coefficients 2.0
+
+    # Multi-layer steering (1 run, all layers steered simultaneously)
+    python analysis/steering/evaluate.py \\
+        --experiment my_exp \\
+        --trait mental_state/optimism \\
+        --layers 12,14,16 \\
+        --coefficients 1.0,2.0,1.0 \\
+        --multi-layer
+
+    # Multiple rollouts with temperature (for variance estimation)
+    python analysis/steering/evaluate.py \\
+        --experiment my_exp \\
+        --trait mental_state/optimism \\
+        --layers 16 \\
+        --coefficients 2.0 \\
+        --rollouts 5 \\
+        --temperature 0.7
+
+    # Quick test with subset of questions
+    python analysis/steering/evaluate.py \\
+        --experiment my_exp \\
+        --trait mental_state/optimism \\
+        --layers 16 \\
+        --coefficients 2.0 \\
+        --subset 3
 """
 
 import sys
@@ -39,14 +70,15 @@ import torch
 import argparse
 import asyncio
 import json
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from analysis.steering.steer import SteeringHook
+from analysis.steering.steer import SteeringHook, MultiLayerSteeringHook
 from analysis.steering.judge import TraitJudge
 from utils.paths import get
+from utils.model import format_prompt, load_experiment_config
 
 
 DEFAULT_MODEL = "google/gemma-2-2b-it"
@@ -75,7 +107,7 @@ def parse_layers(layers_arg: str, num_layers: int) -> List[int]:
     Parse layers argument.
 
     Args:
-        layers_arg: "all", single number "16", or range "5-20"
+        layers_arg: "all", single number "16", range "5-20", or list "5,10,15"
         num_layers: Total layers in model
 
     Returns:
@@ -92,6 +124,11 @@ def parse_layers(layers_arg: str, num_layers: int) -> List[int]:
         return [int(layers_arg)]
 
 
+def parse_coefficients(coef_arg: str) -> List[float]:
+    """Parse comma-separated coefficients."""
+    return [float(c) for c in coef_arg.split(",")]
+
+
 def load_vector(experiment: str, trait: str, layer: int, method: str = "probe", component: str = "residual") -> Optional[torch.Tensor]:
     """Load trait vector from experiment. Returns None if not found."""
     vectors_dir = get('extraction.vectors', experiment=experiment, trait=trait)
@@ -104,8 +141,8 @@ def load_vector(experiment: str, trait: str, layer: int, method: str = "probe", 
     return torch.load(vector_file, weights_only=True)
 
 
-def load_eval_prompts(trait: str) -> Dict:
-    """Load evaluation prompts for a trait."""
+def load_eval_prompts(trait: str) -> Tuple[Dict, Path]:
+    """Load evaluation prompts for a trait. Returns (data, path)."""
     trait_name = trait.split("/")[-1]
     prompts_file = get('steering.prompt_file', trait=trait_name)
 
@@ -123,17 +160,7 @@ def load_eval_prompts(trait: str) -> Dict:
     if "questions" not in data:
         raise ValueError(f"Missing 'questions' in {prompts_file}")
 
-    return data
-
-
-def format_prompt(question: str, tokenizer) -> str:
-    """Format question for chat template."""
-    messages = [{"role": "user", "content": question}]
-    return tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-    )
+    return data, prompts_file
 
 
 def generate_response(
@@ -162,40 +189,241 @@ def generate_response(
     return response.strip()
 
 
-async def evaluate_single_config(
+# =============================================================================
+# Results Management
+# =============================================================================
+
+def load_or_create_results(experiment: str, trait: str, prompts_file: Path) -> Dict:
+    """
+    Load existing results or create new structure.
+
+    Checks prompts_file match - raises error if mismatch.
+    """
+    results_path = get('steering.results', experiment=experiment, trait=trait)
+    prompts_file_str = str(prompts_file)
+
+    if results_path.exists():
+        with open(results_path) as f:
+            results = json.load(f)
+
+        # Check prompts_file match
+        if results.get("prompts_file") != prompts_file_str:
+            stored = results.get("prompts_file", "unknown")
+            raise ValueError(
+                f"Prompts file mismatch!\n"
+                f"  Stored: {stored}\n"
+                f"  Current: {prompts_file_str}\n"
+                f"Delete {results_path} manually to start fresh with new prompts."
+            )
+
+        return results
+
+    # Create new structure
+    return {
+        "trait": trait,
+        "prompts_file": prompts_file_str,
+        "baseline": None,
+        "runs": []
+    }
+
+
+def find_existing_run_index(results: Dict, config: Dict) -> Optional[int]:
+    """Find index of existing run with identical config, or None if not found."""
+    for i, run in enumerate(results["runs"]):
+        if run["config"] == config:
+            return i
+    return None
+
+
+def save_results(results: Dict, experiment: str, trait: str):
+    """Save results to experiment directory."""
+    results_file = get('steering.results', experiment=experiment, trait=trait)
+    results_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(results_file, 'w') as f:
+        json.dump(results, f, indent=2)
+    print(f"\nResults saved: {results_file}")
+
+
+def save_responses(responses: List[Dict], experiment: str, trait: str, config: Dict, timestamp: str):
+    """Save generated responses for a config."""
+    responses_dir = get('steering.responses', experiment=experiment, trait=trait)
+    responses_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create filename from config
+    layers_str = "_".join(str(l) for l in config["layers"])
+    coefs_str = "_".join(str(c).replace(".", "p") for c in config["coefficients"])
+    filename = f"L{layers_str}_c{coefs_str}_{timestamp.replace(':', '-').replace('T', '_')}.json"
+
+    with open(responses_dir / filename, 'w') as f:
+        json.dump(responses, f, indent=2)
+    print(f"  Responses saved: {responses_dir / filename}")
+
+
+# =============================================================================
+# Config Generation
+# =============================================================================
+
+def generate_configs(
+    layers: List[int],
+    method: str,
+    coefficients: List[float],
+    component: str,
+    multi_layer: bool,
+) -> List[Dict]:
+    """
+    Generate list of configs to evaluate based on CLI args.
+
+    Without --multi-layer: creates separate runs for each (layer, coefficient) combo
+    With --multi-layer: creates single run with all layers steered simultaneously
+    """
+    configs = []
+
+    if multi_layer:
+        # Single run: all layers steered simultaneously
+        # Expand method and coefficients to match layers length
+        n = len(layers)
+        methods = [method] * n
+
+        if len(coefficients) == 1:
+            coefficients = coefficients * n
+        elif len(coefficients) != n:
+            raise ValueError(
+                f"With --multi-layer, coefficients must be 1 value or match layers count.\n"
+                f"Got {len(layers)} layers but {len(coefficients)} coefficients."
+            )
+
+        configs.append({
+            "layers": layers,
+            "methods": methods,
+            "coefficients": coefficients,
+            "component": component,
+        })
+    else:
+        # Separate runs for each combination
+        for layer in layers:
+            for coef in coefficients:
+                configs.append({
+                    "layers": [layer],
+                    "methods": [method],
+                    "coefficients": [coef],
+                    "component": component,
+                })
+
+    return configs
+
+
+# =============================================================================
+# Evaluation
+# =============================================================================
+
+async def compute_baseline(
     model,
     tokenizer,
-    vector: torch.Tensor,
-    layer: int,
-    coefficient: float,
     questions: List[str],
     eval_prompt: str,
     judge: TraitJudge,
-    rollouts: int = 10,
-    save_responses: bool = False,
-    component: str = "residual",
+    use_chat_template: bool,
+    temperature: float = 0.0,
 ) -> Dict:
-    """Evaluate a single (layer, coefficient) configuration."""
-    # Phase 1: Generate all responses (GPU-bound)
+    """Compute baseline scores (no steering)."""
+    print("\nComputing baseline (no steering)...")
+
+    all_trait_scores = []
+    all_coherence_scores = []
+
+    for question in tqdm(questions, desc="baseline"):
+        formatted = format_prompt(question, tokenizer, use_chat_template=use_chat_template)
+        response = generate_response(model, tokenizer, formatted, temperature=temperature)
+        scores = await judge.score_batch(eval_prompt, [(question, response)])
+
+        if scores[0]["trait_score"] is not None:
+            all_trait_scores.append(scores[0]["trait_score"])
+        if scores[0].get("coherence_score") is not None:
+            all_coherence_scores.append(scores[0]["coherence_score"])
+
+    baseline = {
+        "trait_mean": sum(all_trait_scores) / len(all_trait_scores) if all_trait_scores else None,
+        "n": len(all_trait_scores),
+    }
+
+    if all_coherence_scores:
+        baseline["coherence_mean"] = sum(all_coherence_scores) / len(all_coherence_scores)
+
+    print(f"  Baseline: trait={baseline['trait_mean']:.1f}, n={baseline['n']}")
+    return baseline
+
+
+async def evaluate_config(
+    model,
+    tokenizer,
+    experiment: str,
+    trait: str,
+    config: Dict,
+    questions: List[str],
+    eval_prompt: str,
+    judge: TraitJudge,
+    use_chat_template: bool,
+    rollouts: int,
+    temperature: float,
+) -> Tuple[Dict, List[Dict]]:
+    """
+    Evaluate a single config (which may steer one or multiple layers).
+
+    Returns (result dict, responses list).
+    """
+    layers = config["layers"]
+    methods = config["methods"]
+    coefficients = config["coefficients"]
+    component = config["component"]
+
+    is_multi_layer = len(layers) > 1
+
+    # Load vectors
+    vectors = []
+    for layer, method in zip(layers, methods):
+        vector = load_vector(experiment, trait, layer, method, component)
+        if vector is None:
+            raise FileNotFoundError(f"Vector not found: layer={layer}, method={method}, component={component}")
+        vectors.append(vector)
+
+    # Config description for logging
+    if is_multi_layer:
+        desc = f"L{layers} c{coefficients}"
+    else:
+        desc = f"L{layers[0]} c{coefficients[0]}"
+
+    # Phase 1: Generate responses
     all_qa_pairs = []
-    print(f"    Generating responses...")
-    for question in tqdm(questions, desc=f"L{layer}/c{coefficient} gen", leave=False):
-        formatted = format_prompt(question, tokenizer)
+    print(f"  Generating responses for {desc}...")
+
+    for question in tqdm(questions, desc=f"{desc} gen", leave=False):
+        formatted = format_prompt(question, tokenizer, use_chat_template=use_chat_template)
 
         for rollout in range(rollouts):
-            if coefficient == 0:
-                response = generate_response(model, tokenizer, formatted)
+            # Check if this is a baseline run (all coefficients are 0)
+            is_baseline = all(c == 0 for c in coefficients)
+
+            if is_baseline:
+                response = generate_response(model, tokenizer, formatted, temperature=temperature)
+            elif is_multi_layer:
+                # Multi-layer steering
+                steering_configs = list(zip(layers, vectors, coefficients))
+                with MultiLayerSteeringHook(model, steering_configs, component=component):
+                    response = generate_response(model, tokenizer, formatted, temperature=temperature)
             else:
-                with SteeringHook(model, vector, layer, coefficient, component=component):
-                    response = generate_response(model, tokenizer, formatted)
+                # Single-layer steering
+                with SteeringHook(model, vectors[0], layers[0], coefficients[0], component=component):
+                    response = generate_response(model, tokenizer, formatted, temperature=temperature)
+
             all_qa_pairs.append((question, response, rollout))
 
-    # Phase 2: Score all responses in parallel (API-bound)
-    print(f"    Scoring {len(all_qa_pairs)} responses in parallel...")
+    # Phase 2: Score responses
+    print(f"  Scoring {len(all_qa_pairs)} responses...")
     qa_for_scoring = [(q, r) for q, r, _ in all_qa_pairs]
     all_scores = await judge.score_batch(eval_prompt, qa_for_scoring)
 
-    # Phase 3: Collect results
+    # Phase 3: Collect results and responses
     all_trait_scores = []
     all_coherence_scores = []
     responses_data = []
@@ -206,275 +434,164 @@ async def evaluate_single_config(
         if score_data.get("coherence_score") is not None:
             all_coherence_scores.append(score_data["coherence_score"])
 
-        if save_responses:
-            responses_data.append({
-                "question": question,
-                "response": response,
-                "rollout": rollout,
-                "trait_score": score_data["trait_score"],
-                "coherence_score": score_data.get("coherence_score"),
-            })
+        responses_data.append({
+            "question": question,
+            "response": response,
+            "rollout": rollout,
+            "trait_score": score_data["trait_score"],
+            "coherence_score": score_data.get("coherence_score"),
+        })
 
     result = {
-        "layer": layer,
-        "coefficient": coefficient,
-        "n": len(all_trait_scores),
         "trait_mean": sum(all_trait_scores) / len(all_trait_scores) if all_trait_scores else None,
-        "trait_std": (
-            (sum((x - sum(all_trait_scores)/len(all_trait_scores))**2 for x in all_trait_scores) / len(all_trait_scores))**0.5
-            if len(all_trait_scores) > 1 else 0
-        ),
+        "n": len(all_trait_scores),
     }
+
+    if len(all_trait_scores) > 1:
+        mean = result["trait_mean"]
+        result["trait_std"] = (sum((x - mean)**2 for x in all_trait_scores) / len(all_trait_scores))**0.5
 
     if all_coherence_scores:
         result["coherence_mean"] = sum(all_coherence_scores) / len(all_coherence_scores)
 
-    if save_responses:
-        result["responses"] = responses_data
+    # Log result
+    trait_str = f"{result['trait_mean']:.1f}" if result['trait_mean'] else "N/A"
+    coh_str = f"{result.get('coherence_mean', 0):.1f}" if result.get('coherence_mean') else "N/A"
+    print(f"  {desc}: trait={trait_str}, coherence={coh_str}, n={result['n']}")
 
-    return result
-
-
-async def run_single_layer_evaluation(
-    model,
-    tokenizer,
-    experiment: str,
-    trait: str,
-    layer: int,
-    coefficients: List[float],
-    eval_prompt: str,
-    questions: List[str],
-    judge: TraitJudge,
-    method: str,
-    rollouts: int,
-    save_responses: bool,
-    component: str = "residual",
-) -> Dict:
-    """Full evaluation of a single layer across multiple coefficients."""
-    vector = load_vector(experiment, trait, layer, method, component)
-    if vector is None:
-        raise FileNotFoundError(f"Vector not found for layer {layer} component {component}")
-
-    print(f"\nEvaluating layer {layer}")
-    print(f"  Coefficients: {coefficients}, Rollouts: {rollouts}")
-
-    results_by_coef = {}
-    for coef in coefficients:
-        result = await evaluate_single_config(
-            model, tokenizer, vector, layer, coef,
-            questions, eval_prompt, judge, rollouts, save_responses, component,
-        )
-        results_by_coef[str(coef)] = result
-        mean = result['trait_mean']
-        print(f"  coef={coef}: mean={f'{mean:.1f}' if mean else 'N/A'}, n={result['n']}")
-
-    # Summary metrics
-    baseline = results_by_coef.get("0.0", results_by_coef.get("0", {}))
-    baseline_mean = baseline.get("trait_mean", 0) or 0
-    max_mean = max((r.get("trait_mean") or 0) for r in results_by_coef.values())
-
-    # Controllability
-    coefs, means = [], []
-    for coef_str, result in results_by_coef.items():
-        if result.get("trait_mean") is not None:
-            coefs.append(float(coef_str))
-            means.append(result["trait_mean"])
-
-    controllability = None
-    if len(coefs) >= 2:
-        mean_c = sum(coefs) / len(coefs)
-        mean_m = sum(means) / len(means)
-        num = sum((c - mean_c) * (m - mean_m) for c, m in zip(coefs, means))
-        den_c = sum((c - mean_c)**2 for c in coefs)**0.5
-        den_m = sum((m - mean_m)**2 for m in means)**0.5
-        controllability = num / (den_c * den_m) if den_c * den_m > 0 else 0
-
-    return {
-        "trait": trait,
-        "layer": layer,
-        "method": method,
-        "component": component,
-        "n_questions": len(questions),
-        "rollouts": rollouts,
-        "timestamp": datetime.now().isoformat(),
-        "coefficients": results_by_coef,
-        "baseline": baseline_mean,
-        "max_delta": max_mean - baseline_mean,
-        "controllability": controllability,
-    }
-
-
-async def run_layer_sweep(
-    model,
-    tokenizer,
-    experiment: str,
-    trait: str,
-    layers: List[int],
-    coefficient: float,
-    eval_prompt: str,
-    questions: List[str],
-    judge: TraitJudge,
-    method: str,
-    rollouts: int,
-    component: str = "residual",
-) -> Dict:
-    """Sweep across multiple layers with fixed coefficient."""
-    print(f"\nLayer sweep: {len(layers)} layers")
-    print(f"  Coefficient: {coefficient}, Rollouts: {rollouts}")
-    print(f"  Questions: {len(questions)}")
-
-    # Baseline (no steering)
-    print("\nBaseline (no steering)...")
-    baseline_scores = []
-    for question in tqdm(questions, desc="baseline"):
-        formatted = format_prompt(question, tokenizer)
-        response = generate_response(model, tokenizer, formatted)
-        scores = await judge.score_batch(eval_prompt, [(question, response)])
-        if scores[0]["trait_score"] is not None:
-            baseline_scores.append(scores[0]["trait_score"])
-    baseline_mean = sum(baseline_scores) / len(baseline_scores) if baseline_scores else 0
-
-    # Evaluate each layer
-    results_by_layer = {}
-    for layer in tqdm(layers, desc="layers"):
-        vector = load_vector(experiment, trait, layer, method, component)
-        if vector is None:
-            print(f"  Skipping layer {layer}: no vector")
-            continue
-
-        result = await evaluate_single_config(
-            model, tokenizer, vector, layer, coefficient,
-            questions, eval_prompt, judge, rollouts, False, component,
-        )
-        results_by_layer[layer] = result
-        mean = result['trait_mean']
-        coh = result.get('coherence_mean')
-        print(f"  Layer {layer}: mean={mean:.1f if mean else 'N/A'}, coherence={coh:.1f if coh else 'N/A'}")
-
-    # Find best layer
-    best_layer = None
-    best_score = float('-inf')
-    for layer, result in results_by_layer.items():
-        if result["trait_mean"] is not None and result["trait_mean"] > best_score:
-            best_score = result["trait_mean"]
-            best_layer = layer
-
-    # Coherence warnings
-    coherence_warnings = [
-        layer for layer, result in results_by_layer.items()
-        if result.get("coherence_mean") is not None and result["coherence_mean"] < 50
-    ]
-
-    return {
-        "trait": trait,
-        "method": method,
-        "coefficient": coefficient,
-        "n_questions": len(questions),
-        "rollouts": rollouts,
-        "timestamp": datetime.now().isoformat(),
-        "baseline_mean": baseline_mean,
-        "layers": {str(k): v for k, v in results_by_layer.items()},
-        "best_layer": best_layer,
-        "best_score": best_score,
-        "delta_from_baseline": best_score - baseline_mean if best_layer else None,
-        "coherence_warnings": coherence_warnings,
-    }
+    return result, responses_data
 
 
 async def run_evaluation(
     experiment: str,
     trait: str,
     layers: List[int],
+    method: str,
     coefficients: List[float],
-    model_name: str = DEFAULT_MODEL,
-    method: str = "probe",
-    rollouts: int = 10,
-    judge_provider: str = "openai",
-    save_responses: bool = False,
-    sweep_coefficient: float = 1.5,
-    subset_questions: Optional[int] = None,
-    component: str = "residual",
-) -> Dict:
+    component: str,
+    multi_layer: bool,
+    model_name: str,
+    rollouts: int,
+    temperature: float,
+    judge_provider: str,
+    subset_questions: Optional[int],
+) -> None:
     """
-    Run steering evaluation.
+    Run steering evaluation with runs-based results structure.
 
-    If single layer: full evaluation with multiple coefficients
-    If multiple layers: layer sweep with fixed coefficient
+    Loads/creates results, computes baseline if needed, evaluates configs, saves.
+    If a config already exists, overwrites that run instead of appending.
     """
+    # Warn about rollouts > 1 with temperature == 0
+    if rollouts > 1 and temperature == 0.0:
+        print(f"\nWarning: rollouts={rollouts} but temperature=0.0")
+        print("  With temp=0, all rollouts will be identical (deterministic).")
+        print("  Use --temperature > 0 for variance estimation.\n")
+
+    # Load prompts and check for file match
+    prompts_data, prompts_file = load_eval_prompts(trait)
+    questions = prompts_data["questions"]
+    if subset_questions:
+        questions = questions[:subset_questions]
+    eval_prompt = prompts_data["eval_prompt"]
+
+    # Load or create results
+    results = load_or_create_results(experiment, trait, prompts_file)
+
+    # Load model
     model, tokenizer = load_model_and_tokenizer(model_name)
     num_layers = get_num_layers(model)
+
+    # Load experiment config for chat template setting
+    config = load_experiment_config(experiment)
+    use_chat_template = config.get('use_chat_template')
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
 
     # Validate layers
     layers = [l for l in layers if 0 <= l < num_layers]
     if not layers:
         raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
 
-    prompts_data = load_eval_prompts(trait)
-    judge = TraitJudge(provider=judge_provider)
-
-    questions = prompts_data["questions"]
-    if subset_questions:
-        questions = questions[:subset_questions]
-    eval_prompt = prompts_data["eval_prompt"]
-
     print(f"\nTrait: {trait}")
     print(f"Model: {model_name} ({num_layers} layers)")
+    print(f"Chat template: {use_chat_template}")
     print(f"Method: {method}")
     print(f"Component: {component}")
-    print(f"Judge: {judge_provider}")
+    print(f"Questions: {len(questions)}")
+    print(f"Rollouts: {rollouts}")
+    print(f"Temperature: {temperature}")
+    print(f"Multi-layer: {multi_layer}")
+    print(f"Existing runs: {len(results['runs'])}")
 
-    is_sweep = len(layers) > 1
+    # Initialize judge
+    judge = TraitJudge(provider=judge_provider)
 
-    if is_sweep:
-        return await run_layer_sweep(
-            model, tokenizer, experiment, trait, layers, sweep_coefficient,
-            eval_prompt, questions, judge, method, rollouts, component,
+    # Compute baseline if not present
+    if results["baseline"] is None:
+        results["baseline"] = await compute_baseline(
+            model, tokenizer, questions, eval_prompt, judge,
+            use_chat_template=use_chat_template, temperature=temperature
         )
+        save_results(results, experiment, trait)  # Save immediately after baseline
     else:
-        return await run_single_layer_evaluation(
-            model, tokenizer, experiment, trait, layers[0], coefficients,
-            eval_prompt, questions, judge, method, rollouts, save_responses, component,
+        print(f"\nUsing existing baseline: trait={results['baseline']['trait_mean']:.1f}")
+
+    # Generate configs
+    configs = generate_configs(layers, method, coefficients, component, multi_layer)
+    print(f"\nConfigs to evaluate: {len(configs)}")
+
+    # Evaluate each config
+    for i, config in enumerate(configs, 1):
+        print(f"\n[{i}/{len(configs)}] Evaluating config: {config}")
+
+        timestamp = datetime.now().isoformat()
+        result, responses = await evaluate_config(
+            model, tokenizer, experiment, trait, config,
+            questions, eval_prompt, judge,
+            use_chat_template=use_chat_template,
+            rollouts=rollouts, temperature=temperature
         )
 
+        # Save responses
+        save_responses(responses, experiment, trait, config, timestamp)
 
-def save_results(results: Dict, experiment: str, trait: str, is_sweep: bool, save_responses: bool):
-    """Save results to experiment directory."""
-    if is_sweep:
-        results_file = get('steering.layer_sweep', experiment=experiment, trait=trait)
-    else:
-        results_file = get('steering.results', experiment=experiment, trait=trait)
+        # Check if this config already exists
+        existing_idx = find_existing_run_index(results, config)
+        run_data = {
+            "config": config,
+            "result": result,
+            "timestamp": timestamp,
+        }
 
-    results_file.parent.mkdir(parents=True, exist_ok=True)
+        if existing_idx is not None:
+            print(f"  Overwriting existing run at index {existing_idx}")
+            results["runs"][existing_idx] = run_data
+        else:
+            results["runs"].append(run_data)
 
-    # Extract responses before saving
-    results_clean = results.copy()
-    responses = {}
-    if "coefficients" in results_clean:
-        for coef, data in results_clean["coefficients"].items():
-            if isinstance(data, dict) and "responses" in data:
-                responses[coef] = data.pop("responses")
-
-    with open(results_file, 'w') as f:
-        json.dump(results_clean, f, indent=2)
-    print(f"\nResults saved: {results_file}")
-
-    if save_responses and responses:
-        responses_dir = get('steering.responses', experiment=experiment, trait=trait)
-        responses_dir.mkdir(parents=True, exist_ok=True)
-        for coef, resp_list in responses.items():
-            resp_file = responses_dir / f"coef_{coef.replace('.', '_')}.json"
-            with open(resp_file, 'w') as f:
-                json.dump(resp_list, f, indent=2)
-        print(f"Responses saved: {responses_dir}")
+        # Save after each run (so progress isn't lost)
+        save_results(results, experiment, trait)
 
     # Print summary
-    if is_sweep:
-        print(f"\n=== Summary ===")
-        print(f"Baseline: {results['baseline_mean']:.1f}")
-        print(f"Best layer: {results['best_layer']} (score={results['best_score']:.1f})")
-        print(f"Delta: +{results['delta_from_baseline']:.1f}")
-        if results['coherence_warnings']:
-            print(f"Coherence warnings: layers {results['coherence_warnings']}")
+    print(f"\n{'='*60}")
+    print("Summary")
+    print(f"{'='*60}")
+    print(f"Baseline: {results['baseline']['trait_mean']:.1f}")
+    print(f"Total runs: {len(results['runs'])}")
+
+    # Find best run
+    best_run = None
+    best_score = float('-inf')
+    for run in results['runs']:
+        score = run['result'].get('trait_mean')
+        if score is not None and score > best_score:
+            best_score = score
+            best_run = run
+
+    if best_run:
+        print(f"Best run: {best_run['config']}")
+        print(f"  trait_mean={best_score:.1f} (delta={best_score - results['baseline']['trait_mean']:.1f})")
 
 
 def main():
@@ -483,73 +600,48 @@ def main():
     parser.add_argument("--trait", required=True, help="Trait path (e.g., cognitive_state/confidence)")
     parser.add_argument(
         "--layers",
-        default="all",
-        help="Layers to evaluate: 'all', single '16', range '5-20', or list '5,10,15'"
+        default="16",
+        help="Layers: single '16', range '5-20', list '5,10,15', or 'all'"
     )
     parser.add_argument(
         "--coefficients",
-        default="0,0.5,1.0,1.5,2.0,2.5",
-        help="Comma-separated coefficients (for single-layer mode)"
-    )
-    parser.add_argument(
-        "--sweep-coefficient",
-        type=float,
-        default=1.5,
-        help="Fixed coefficient for layer sweep mode"
+        default="2.0",
+        help="Comma-separated coefficients"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Model name/path")
     parser.add_argument("--method", default="probe", help="Vector extraction method")
-    parser.add_argument("--rollouts", type=int, default=10, help="Rollouts per question")
-    parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
-    parser.add_argument("--save-responses", action="store_true", help="Save generated responses")
-    parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
     parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out"],
-                        help="Which component to steer (residual, attn_out, mlp_out)")
+                        help="Which component to steer")
+    parser.add_argument("--rollouts", type=int, default=1,
+                        help="Rollouts per question (>1 only useful with --temperature > 0)")
+    parser.add_argument("--temperature", type=float, default=0.0,
+                        help="Sampling temperature (0 = deterministic)")
+    parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
+    parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
+    parser.add_argument("--multi-layer", action="store_true",
+                        help="Steer all layers simultaneously (instead of separate runs)")
 
     args = parser.parse_args()
 
-    # Load model to get layer count for parsing
-    print(f"Loading model to determine layer count...")
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    num_layers = get_num_layers(model)
-    print(f"Model has {num_layers} layers")
+    # Parse layers and coefficients
+    # Need model to validate layers, but we'll do that inside run_evaluation
+    layers = parse_layers(args.layers, num_layers=100)  # Temporary max, validated later
+    coefficients = parse_coefficients(args.coefficients)
 
-    # Parse layers
-    layers = parse_layers(args.layers, num_layers)
-    is_sweep = len(layers) > 1
-
-    # Adjust rollouts for sweep mode
-    rollouts = args.rollouts
-    if is_sweep and args.rollouts == 10:
-        rollouts = 3  # Default to fewer rollouts for sweep
-        print(f"Layer sweep mode: using {rollouts} rollouts (override with --rollouts)")
-
-    coefficients = [float(c) for c in args.coefficients.split(",")]
-
-    # Run evaluation (model already loaded, but run_evaluation will reload - could optimize)
-    del model, tokenizer  # Free memory before reloading
-
-    results = asyncio.run(run_evaluation(
+    asyncio.run(run_evaluation(
         experiment=args.experiment,
         trait=args.trait,
         layers=layers,
-        coefficients=coefficients,
-        model_name=args.model,
         method=args.method,
-        rollouts=rollouts,
-        judge_provider=args.judge,
-        save_responses=args.save_responses,
-        sweep_coefficient=args.sweep_coefficient,
-        subset_questions=args.subset,
+        coefficients=coefficients,
         component=args.component,
+        multi_layer=args.multi_layer,
+        model_name=args.model,
+        rollouts=args.rollouts,
+        temperature=args.temperature,
+        judge_provider=args.judge,
+        subset_questions=args.subset,
     ))
-
-    save_results(results, args.experiment, args.trait, is_sweep, args.save_responses)
 
 
 if __name__ == "__main__":

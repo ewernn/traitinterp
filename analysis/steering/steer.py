@@ -11,14 +11,24 @@ Output:
     - Context manager that adds coefficient * vector to layer output
 
 Usage:
+    # Single-layer steering
     vector = torch.load('experiments/exp/extraction/trait/vectors/probe_layer16.pt')
     with SteeringHook(model, vector, layer=16, coefficient=1.5):
+        output = model.generate(**inputs)
+
+    # Multi-layer steering
+    configs = [
+        (12, vector12, 1.0),
+        (14, vector14, 2.0),
+        (16, vector16, 1.0),
+    ]
+    with MultiLayerSteeringHook(model, configs):
         output = model.generate(**inputs)
 """
 
 import torch
 from contextlib import contextmanager
-from typing import Union, Sequence
+from typing import Union, Sequence, List, Tuple
 
 
 class SteeringHook:
@@ -147,3 +157,53 @@ def steer(
     hook = SteeringHook(model, vector, layer, coefficient, positions, component)
     with hook:
         yield hook
+
+
+class MultiLayerSteeringHook:
+    """
+    Context manager for steering multiple layers simultaneously.
+
+    Each layer can have its own vector and coefficient.
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        configs: List[Tuple[int, torch.Tensor, float]],
+        positions: str = "all",
+        component: str = "residual",
+    ):
+        """
+        Args:
+            model: The transformer model
+            configs: List of (layer_idx, vector, coefficient) tuples
+            positions: Which positions to steer ("all" or "last")
+            component: Which component to steer ("residual", "attn_out", "mlp_out")
+        """
+        self.model = model
+        self.positions = positions.lower()
+        self.component = component.lower()
+        self._hooks: List[SteeringHook] = []
+
+        # Create a SteeringHook for each layer config
+        for layer_idx, vector, coefficient in configs:
+            hook = SteeringHook(
+                model=model,
+                vector=vector,
+                layer=layer_idx,
+                coefficient=coefficient,
+                positions=positions,
+                component=component,
+            )
+            self._hooks.append(hook)
+
+    def __enter__(self):
+        # Enter all hooks
+        for hook in self._hooks:
+            hook.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        # Exit all hooks (in reverse order for clean teardown)
+        for hook in reversed(self._hooks):
+            hook.__exit__(*exc)

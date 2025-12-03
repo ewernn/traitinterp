@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Simple interactive chat script.
+
+Note: Uses multi-turn chat history, so doesn't use utils.model.format_prompt
+which is designed for single-message formatting. Auto-detects chat template
+from tokenizer directly.
+"""
 from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
 from threading import Thread
 import torch, sys
@@ -7,6 +14,7 @@ model_id = sys.argv[1] if len(sys.argv) > 1 else "google/gemma-2-2b-it"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", torch_dtype=torch.bfloat16)
 
+# Auto-detect chat template (multi-turn requires full history handling)
 has_chat_template = tokenizer.chat_template is not None
 history = []
 

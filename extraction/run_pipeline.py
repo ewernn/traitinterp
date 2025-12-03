@@ -37,6 +37,7 @@ Usage:
 
 import sys
 import os
+import json
 import argparse
 from pathlib import Path
 from typing import List, Optional
@@ -48,6 +49,51 @@ from utils.model import load_model, DEFAULT_MODEL
 from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
+
+
+def ensure_experiment_config(experiment: str, model_name: str, tokenizer) -> dict:
+    """
+    Create or validate experiment config.json.
+
+    On first run: creates config.json with auto-detected settings.
+    On subsequent runs: validates model matches, warns on mismatch.
+
+    Returns:
+        Config dict with keys: model, use_chat_template, system_prompt
+    """
+    config_path = get_path('experiments.config', experiment=experiment)
+
+    if config_path.exists():
+        with open(config_path) as f:
+            config = json.load(f)
+        # Validate model matches
+        if config.get('model') != model_name:
+            print(f"\n⚠️  Warning: config.json has model={config['model']}")
+            print(f"   But you're running with --model {model_name}")
+            response = input("   Continue anyway? [y/N] ").strip().lower()
+            if response != 'y':
+                print("Aborted.")
+                sys.exit(1)
+        return config
+
+    # Auto-detect from tokenizer
+    use_chat_template = tokenizer.chat_template is not None
+
+    config = {
+        "model": model_name,
+        "use_chat_template": use_chat_template,
+        "system_prompt": None,
+    }
+
+    # Create config file
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
+    print(f"Created experiment config: {config_path}")
+    print(f"  model: {model_name}")
+    print(f"  use_chat_template: {use_chat_template} (auto-detected from tokenizer)")
+
+    return config
 
 def discover_traits(experiment: str) -> list[str]:
     """
@@ -109,8 +155,9 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
     print("STARTING TRAIT EXTRACTION PIPELINE")
     print(f"Experiment: {experiment}")
     print(f"Model: {model_name}")
+    print(f"Chat template: will be auto-detected from experiment config")
     if base_model:
-        print(f"Mode: BASE MODEL (text completion, completion-only extraction)")
+        print(f"Mode: BASE MODEL (completion-only extraction)")
     print(f"Force mode: {'ON' if force else 'OFF'}")
     if vet:
         if vet_scenarios:
@@ -149,6 +196,13 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
     # --- Centralized Model Loading ---
     model, tokenizer = load_model(model_name)
 
+    # --- Ensure Experiment Config ---
+    config = ensure_experiment_config(experiment, model_name, tokenizer)
+    use_chat_template = config.get('use_chat_template')
+    # If still None (auto-detect), use tokenizer
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+
     for trait in available_traits:
         print(f"\n--- Processing Trait: {trait} ---")
         base_trait_name = Path(trait).name
@@ -178,6 +232,7 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
                 rollouts=rollouts,
                 temperature=temperature,
                 batch_size=batch_size,
+                chat_template=use_chat_template,
                 base_model=base_model,
             )
         else:

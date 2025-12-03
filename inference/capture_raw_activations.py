@@ -62,6 +62,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from traitlens import HookManager, projection
 from traitlens.compute import compute_derivative, compute_second_derivative
+from utils.model import format_prompt, load_experiment_config
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
@@ -802,6 +803,13 @@ def main():
     n_layers = len(model.model.layers)
     print(f"Model has {n_layers} layers")
 
+    # Load experiment config for chat template setting
+    config = load_experiment_config(args.experiment)
+    use_chat_template = config.get('use_chat_template')
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+    print(f"Chat template: {use_chat_template}")
+
     # Load trait vectors (unless --no-project)
     trait_vectors = {}
     if not args.no_project:
@@ -830,8 +838,11 @@ def main():
 
         for prompt_item in tqdm(prompts, desc="Capturing"):
             prompt_id = prompt_item['id']
-            prompt_text = prompt_item['text']
+            raw_prompt = prompt_item['text']
             prompt_note = prompt_item.get('note', '')
+
+            # Format prompt using experiment config
+            prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
 
             # Capture layer internals (can be multiple)
             if args.layer_internals is not None:

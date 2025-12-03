@@ -198,9 +198,9 @@ function renderFileTree(data) {
         let steeringHtml = '';
         for (const [trait, info] of Object.entries(data.steering.traits).sort()) {
             let traitHtml = '';
-            traitHtml += item(info.results ? '✓' : '✗', 'results.json', info.results, '', 2);
-            traitHtml += item(info.layer_sweep ? '✓' : '✗', 'layer_sweep.json', info.layer_sweep, '', 2);
-            const complete = info.results || info.layer_sweep;
+            const runsHint = info.n_runs > 0 ? `(${info.n_runs} runs)` : '';
+            traitHtml += item(info.results ? '✓' : '✗', 'results.json', info.results, runsHint, 2);
+            const complete = info.results && info.n_runs > 0;
             steeringHtml += folder(trait, `steering-${trait.replace(/\//g, '-')}`, '', 1, traitHtml, complete, true);
         }
         html += folder('steering', 'steering', `(${data.steering.total_traits} traits)`, 0, steeringHtml);

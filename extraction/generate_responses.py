@@ -31,7 +31,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
-from utils.model import load_model, DEFAULT_MODEL
+from utils.model import load_model, format_prompt, DEFAULT_MODEL
 
 
 def discover_traits(experiment: str) -> list[str]:
@@ -122,17 +122,11 @@ def generate_responses_for_trait(
             for i in range(0, len(scenarios), batch_size):
                 batch_scenarios = scenarios[i:i + batch_size]
 
-                # Apply chat template if requested (for instruct models)
-                if chat_template:
-                    batch_prompts = [
-                        tokenizer.apply_chat_template(
-                            [{"role": "user", "content": s}],
-                            tokenize=False,
-                            add_generation_prompt=True
-                        ) for s in batch_scenarios
-                    ]
-                else:
-                    batch_prompts = batch_scenarios
+                # Apply chat template using centralized format_prompt
+                batch_prompts = [
+                    format_prompt(s, tokenizer, use_chat_template=chat_template)
+                    for s in batch_scenarios
+                ]
 
                 # Generate rollouts for this batch
                 for rollout_idx in range(rollouts):
@@ -211,17 +205,19 @@ def main():
                         help='Responses per scenario (1 for natural, 10 for instruction-based)')
     parser.add_argument('--temperature', type=float, default=0.0,
                         help='Sampling temperature (0.0 for deterministic, 1.0 for diverse)')
-    parser.add_argument('--chat-template', action='store_true',
-                        help='Apply chat template (for instruct models like Qwen, Llama)')
+    parser.add_argument('--chat-template', action='store_true', default=None,
+                        help='Force chat template ON (default: auto-detect from tokenizer)')
+    parser.add_argument('--no-chat-template', dest='chat_template', action='store_false',
+                        help='Force chat template OFF')
     parser.add_argument('--base-model', action='store_true',
-                        help='Base model mode (text completion, no chat template)')
+                        help='Base model mode (completion-only extraction)')
 
     args = parser.parse_args()
 
-    # Validate: base-model and chat-template are mutually exclusive
-    if args.base_model and args.chat_template:
-        print("ERROR: --base-model and --chat-template are mutually exclusive")
-        return
+    # Determine chat_template: explicit flag or auto-detect
+    if args.chat_template is None:
+        # Will auto-detect after loading tokenizer
+        pass
 
     # Determine traits to process
     if args.trait.lower() == 'all':
@@ -233,15 +229,21 @@ def main():
     else:
         traits = [args.trait]
 
+    # Load model and tokenizer once
+    model, tokenizer = load_model(args.model, device=args.device)
+
+    # Auto-detect chat_template if not explicitly set
+    use_chat_template = args.chat_template
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+
     print("=" * 80)
     print("GENERATE RESPONSES")
     print(f"Experiment: {args.experiment}")
     print(f"Traits: {len(traits)}")
     print(f"Model: {args.model}")
+    print(f"Chat template: {use_chat_template}" + (" (auto-detected)" if args.chat_template is None else ""))
     print("=" * 80)
-
-    # Load model and tokenizer once
-    model, tokenizer = load_model(args.model, device=args.device)
 
     # Process each trait
     total_pos, total_neg = 0, 0
@@ -255,7 +257,7 @@ def main():
             batch_size=args.batch_size,
             rollouts=args.rollouts,
             temperature=args.temperature,
-            chat_template=args.chat_template,
+            chat_template=use_chat_template,
             base_model=args.base_model,
         )
         total_pos += n_pos
