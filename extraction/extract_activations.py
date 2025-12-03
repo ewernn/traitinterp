@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
-Stage 2: Extract activations from generated responses.
+Stage 2: Extract activations from generated responses or prefill.
 
 Input:
     - experiments/{experiment}/extraction/{category}/{trait}/responses/pos.json
     - experiments/{experiment}/extraction/{category}/{trait}/responses/neg.json
     - experiments/{experiment}/extraction/{category}/{trait}/vetting/response_scores.json (optional)
+    OR (for --prefill-only):
+    - experiments/{experiment}/extraction/{category}/{trait}/positive.txt
+    - experiments/{experiment}/extraction/{category}/{trait}/negative.txt
 
 Output:
     - experiments/{experiment}/extraction/{category}/{trait}/activations/all_layers.pt
@@ -24,6 +27,9 @@ Usage:
 
     # Disable vetting filter
     python extraction/extract_activations.py --experiment my_exp --trait all --no-vetting-filter
+
+    # Prefill-only extraction (last token of prompt, no generation)
+    python extraction/extract_activations.py --experiment my_exp --trait category/my_trait --prefill-only
 """
 
 import sys
@@ -75,6 +81,169 @@ def discover_traits_with_responses(experiment: str) -> list[str]:
             if (responses_dir / 'pos.json').exists() and (responses_dir / 'neg.json').exists():
                 traits.append(f"{category_dir.name}/{trait_dir.name}")
     return sorted(traits)
+
+
+def discover_traits_with_prompts(experiment: str) -> list[str]:
+    """Find all traits that have prompt .txt files (for prefill-only extraction)."""
+    extraction_dir = get_path('extraction.base', experiment=experiment)
+    traits = []
+    if not extraction_dir.is_dir():
+        return []
+
+    for category_dir in extraction_dir.iterdir():
+        if not category_dir.is_dir() or category_dir.name.startswith('.'):
+            continue
+        for trait_dir in category_dir.iterdir():
+            if not trait_dir.is_dir():
+                continue
+            if (trait_dir / 'positive.txt').exists() and (trait_dir / 'negative.txt').exists():
+                traits.append(f"{category_dir.name}/{trait_dir.name}")
+    return sorted(traits)
+
+
+def extract_prefill_activations_for_trait(
+    experiment: str,
+    trait: str,
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    val_split: float = 0.0,
+    token_position: str = 'last',
+) -> int:
+    """
+    Extract activations from prefill tokens (no generation).
+
+    Reads prompts from positive.txt and negative.txt, runs forward pass,
+    and extracts hidden states at specified token position for all layers.
+
+    Args:
+        experiment: Experiment name.
+        trait: Trait name (e.g., "category/trait_name").
+        model: Pre-loaded HuggingFace model.
+        tokenizer: Pre-loaded HuggingFace tokenizer.
+        val_split: Fraction of prompts for validation (0.2 = last 20%). 0 = no split.
+        token_position: Which token to extract - 'last', 'first', or 'mean'.
+
+    Returns:
+        Number of layers extracted.
+    """
+    print(f"  [Stage 2] Extracting prefill activations for '{trait}' (token: {token_position})...")
+
+    n_layers = model.config.num_hidden_layers
+    trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
+    activations_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
+    activations_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load prompts from .txt files
+    pos_file = trait_dir / 'positive.txt'
+    neg_file = trait_dir / 'negative.txt'
+
+    if not pos_file.exists() or not neg_file.exists():
+        print(f"    ERROR: Prompt files not found. Need positive.txt and negative.txt in {trait_dir}")
+        return 0
+
+    with open(pos_file, 'r') as f:
+        pos_prompts = [line.strip() for line in f if line.strip()]
+    with open(neg_file, 'r') as f:
+        neg_prompts = [line.strip() for line in f if line.strip()]
+
+    print(f"    Loaded {len(pos_prompts)} positive, {len(neg_prompts)} negative prompts")
+
+    # Split into train/val if requested
+    train_pos, train_neg = pos_prompts, neg_prompts
+    val_pos, val_neg = [], []
+    if val_split > 0:
+        pos_split_idx = int(len(pos_prompts) * (1 - val_split))
+        neg_split_idx = int(len(neg_prompts) * (1 - val_split))
+        train_pos, val_pos = pos_prompts[:pos_split_idx], pos_prompts[pos_split_idx:]
+        train_neg, val_neg = neg_prompts[:neg_split_idx], neg_prompts[neg_split_idx:]
+        print(f"    Split: train={len(train_pos)}+{len(train_neg)}, val={len(val_pos)}+{len(val_neg)}")
+
+    def extract_token_activations(prompts: list[str], label: str) -> dict[int, torch.Tensor]:
+        """Extract hidden states at specified token position for each prompt."""
+        all_activations = {layer: [] for layer in range(n_layers)}
+
+        for prompt in tqdm(prompts, desc=f"    Extracting {label}", leave=False):
+            inputs = tokenizer(prompt, return_tensors='pt').to(model.device)
+
+            capture = ActivationCapture()
+            with HookManager(model) as hooks:
+                for layer in range(n_layers):
+                    hooks.add_forward_hook(f"model.layers.{layer}", capture.make_hook(f"layer_{layer}"))
+                with torch.no_grad():
+                    model(**inputs)
+
+            for layer in range(n_layers):
+                acts = capture.get(f"layer_{layer}")
+                if acts is not None:
+                    # Extract based on token_position
+                    if token_position == 'last':
+                        token_act = acts[0, -1, :].cpu()  # [hidden_dim]
+                    elif token_position == 'first':
+                        token_act = acts[0, 0, :].cpu()  # [hidden_dim]
+                    elif token_position == 'mean':
+                        token_act = acts[0, :, :].mean(dim=0).cpu()  # [hidden_dim]
+                    all_activations[layer].append(token_act)
+
+        for layer in range(n_layers):
+            if all_activations[layer]:
+                all_activations[layer] = torch.stack(all_activations[layer])
+            else:
+                all_activations[layer] = torch.empty(0)
+
+        return all_activations
+
+    # Extract training activations
+    pos_activations = extract_token_activations(train_pos, 'train_positive')
+    neg_activations = extract_token_activations(train_neg, 'train_negative')
+
+    # Combine and save training activations
+    pos_all_layers = torch.stack([pos_activations[l] for l in range(n_layers)], dim=1)
+    neg_all_layers = torch.stack([neg_activations[l] for l in range(n_layers)], dim=1)
+    all_acts = torch.cat([pos_all_layers, neg_all_layers], dim=0)
+
+    torch.save(all_acts, activations_dir / "all_layers.pt")
+    print(f"    Saved train activations: {all_acts.shape}")
+
+    # Extract and save validation activations if val_split > 0
+    n_val_pos, n_val_neg = 0, 0
+    if val_split > 0 and (val_pos or val_neg):
+        val_activations_dir = get_path('extraction.val_activations', experiment=experiment, trait=trait)
+        val_activations_dir.mkdir(parents=True, exist_ok=True)
+
+        val_pos_acts = extract_token_activations(val_pos, 'val_positive')
+        val_neg_acts = extract_token_activations(val_neg, 'val_negative')
+
+        # Save per-layer format for extraction_evaluation.py compatibility
+        for layer in range(n_layers):
+            torch.save(val_pos_acts[layer], val_activations_dir / f"val_pos_layer{layer}.pt")
+            torch.save(val_neg_acts[layer], val_activations_dir / f"val_neg_layer{layer}.pt")
+
+        n_val_pos, n_val_neg = len(val_pos), len(val_neg)
+        print(f"    Saved val activations: {n_val_pos} pos, {n_val_neg} neg ({n_layers} layers each)")
+
+    # Save metadata
+    metadata = {
+        'experiment': experiment,
+        'trait': trait,
+        'model': model.config.name_or_path,
+        'n_layers': n_layers,
+        'n_examples_pos': len(train_pos),
+        'n_examples_neg': len(train_neg),
+        'hidden_dim': all_acts.shape[-1],
+        'vetting_filter_used': False,
+        'n_filtered_pos': 0,
+        'n_filtered_neg': 0,
+        'val_split': val_split,
+        'n_val_pos': n_val_pos,
+        'n_val_neg': n_val_neg,
+        'base_model': True,
+        'extraction_mode': f'prefill_{token_position}_token',
+        'token_position': token_position,
+    }
+    with open(activations_dir / 'metadata.json', 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    return n_layers
 
 
 def extract_activations_for_trait(
@@ -255,7 +424,7 @@ def extract_activations_for_trait(
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Extract activations from responses.')
+    parser = argparse.ArgumentParser(description='Extract activations from responses or prefill.')
     parser.add_argument('--experiment', type=str, required=True, help='Experiment name')
     parser.add_argument('--trait', type=str, required=True,
                         help='Trait name (e.g., "category/my_trait") or "all" for all traits')
@@ -266,15 +435,26 @@ def main():
                         help='Fraction of scenarios for validation (e.g., 0.2 = last 20%%). 0 = no split.')
     parser.add_argument('--base-model', action='store_true',
                         help='Base model mode: extract from completion tokens only (after prefix)')
+    parser.add_argument('--prefill-only', action='store_true',
+                        help='Prefill-only mode: extract from last token of prompt (no generation). '
+                             'Reads from positive.txt/negative.txt instead of responses/*.json')
+    parser.add_argument('--token-position', type=str, default='last', choices=['last', 'first', 'mean'],
+                        help='For prefill-only: which token position to extract (default: last)')
 
     args = parser.parse_args()
 
     # Determine traits to process
     if args.trait.lower() == 'all':
-        traits = discover_traits_with_responses(args.experiment)
-        if not traits:
-            print(f"No traits with responses found in experiment '{args.experiment}'")
-            return
+        if args.prefill_only:
+            traits = discover_traits_with_prompts(args.experiment)
+            if not traits:
+                print(f"No traits with prompt files found in experiment '{args.experiment}'")
+                return
+        else:
+            traits = discover_traits_with_responses(args.experiment)
+            if not traits:
+                print(f"No traits with responses found in experiment '{args.experiment}'")
+                return
         print(f"Found {len(traits)} traits to process")
     else:
         traits = [args.trait]
@@ -284,6 +464,10 @@ def main():
     print(f"Experiment: {args.experiment}")
     print(f"Traits: {len(traits)}")
     print(f"Model: {args.model}")
+    if args.prefill_only:
+        print(f"Mode: PREFILL-ONLY ({args.token_position} token, no generation)")
+    elif args.base_model:
+        print(f"Mode: BASE MODEL (completion tokens only)")
     if args.val_split > 0:
         print(f"Val split: {args.val_split:.0%} (last {args.val_split:.0%} of scenarios)")
     print("=" * 80)
@@ -294,15 +478,25 @@ def main():
     # Process each trait
     total_layers = 0
     for trait in traits:
-        n_layers = extract_activations_for_trait(
-            experiment=args.experiment,
-            trait=trait,
-            model=model,
-            tokenizer=tokenizer,
-            use_vetting_filter=not args.no_vetting_filter,
-            val_split=args.val_split,
-            base_model=args.base_model,
-        )
+        if args.prefill_only:
+            n_layers = extract_prefill_activations_for_trait(
+                experiment=args.experiment,
+                trait=trait,
+                model=model,
+                tokenizer=tokenizer,
+                val_split=args.val_split,
+                token_position=args.token_position,
+            )
+        else:
+            n_layers = extract_activations_for_trait(
+                experiment=args.experiment,
+                trait=trait,
+                model=model,
+                tokenizer=tokenizer,
+                use_vetting_filter=not args.no_vetting_filter,
+                val_split=args.val_split,
+                base_model=args.base_model,
+            )
         if n_layers > 0:
             total_layers = n_layers
 
