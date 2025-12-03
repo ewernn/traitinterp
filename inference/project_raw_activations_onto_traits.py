@@ -233,17 +233,6 @@ def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
     return norms
 
 
-def tensor_to_list(obj):
-    """Recursively convert tensors to lists."""
-    if isinstance(obj, torch.Tensor):
-        return obj.tolist()
-    if isinstance(obj, list):
-        return [tensor_to_list(x) for x in obj]
-    if isinstance(obj, dict):
-        return {k: tensor_to_list(v) for k, v in obj.items()}
-    return obj
-
-
 # ============================================================================
 # Logit Lens (requires model)
 # ============================================================================
@@ -459,10 +448,6 @@ def process_prompt_set(args, inference_dir, prompt_set):
                     'response': response_proj.tolist()
                 },
                 'dynamics': analyze_dynamics(all_scores),
-                'attention_weights': {
-                    'prompt': tensor_to_list(data['prompt']['attention']),
-                    'response': tensor_to_list(data['response']['attention'])
-                },
                 'activation_norms': {
                     'prompt': prompt_norms,
                     'response': response_norms

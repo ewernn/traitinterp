@@ -475,6 +475,8 @@ async def run_evaluation(
     temperature: float,
     judge_provider: str,
     subset_questions: Optional[int],
+    vector_experiment: Optional[str] = None,
+    vector_trait: Optional[str] = None,
 ) -> None:
     """
     Run steering evaluation with runs-based results structure.
@@ -482,6 +484,12 @@ async def run_evaluation(
     Loads/creates results, computes baseline if needed, evaluates configs, saves.
     If a config already exists, overwrites that run instead of appending.
     """
+    # Default vector source to experiment/trait
+    if vector_experiment is None:
+        vector_experiment = experiment
+    if vector_trait is None:
+        vector_trait = trait
+
     # Warn about rollouts > 1 with temperature == 0
     if rollouts > 1 and temperature == 0.0:
         print(f"\nWarning: rollouts={rollouts} but temperature=0.0")
@@ -516,6 +524,7 @@ async def run_evaluation(
     print(f"\nTrait: {trait}")
     print(f"Model: {model_name} ({num_layers} layers)")
     print(f"Chat template: {use_chat_template}")
+    print(f"Vectors from: {vector_experiment}/{vector_trait}")
     print(f"Method: {method}")
     print(f"Component: {component}")
     print(f"Questions: {len(questions)}")
@@ -547,7 +556,7 @@ async def run_evaluation(
 
         timestamp = datetime.now().isoformat()
         result, responses = await evaluate_config(
-            model, tokenizer, experiment, trait, config,
+            model, tokenizer, vector_experiment, vector_trait, config,
             questions, eval_prompt, judge,
             use_chat_template=use_chat_template,
             rollouts=rollouts, temperature=temperature
@@ -563,6 +572,10 @@ async def run_evaluation(
             "result": result,
             "timestamp": timestamp,
         }
+
+        # Record vector source if different from experiment/trait
+        if vector_experiment != experiment or vector_trait != trait:
+            run_data["vector_source"] = f"{vector_experiment}/{vector_trait}"
 
         if existing_idx is not None:
             print(f"  Overwriting existing run at index {existing_idx}")
@@ -620,8 +633,19 @@ def main():
     parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
     parser.add_argument("--multi-layer", action="store_true",
                         help="Steer all layers simultaneously (instead of separate runs)")
+    parser.add_argument("--vector-from-trait",
+                        help="Load vectors from different experiment/trait: 'experiment/category/trait'")
 
     args = parser.parse_args()
+
+    # Parse --vector-from-trait
+    if args.vector_from_trait:
+        parts = args.vector_from_trait.split('/', 1)
+        if len(parts) != 2:
+            parser.error("--vector-from-trait must be 'experiment/category/trait'")
+        vector_experiment, vector_trait = parts
+    else:
+        vector_experiment, vector_trait = args.experiment, args.trait
 
     # Parse layers and coefficients
     # Need model to validate layers, but we'll do that inside run_evaluation
@@ -641,6 +665,8 @@ def main():
         temperature=args.temperature,
         judge_provider=args.judge,
         subset_questions=args.subset,
+        vector_experiment=vector_experiment,
+        vector_trait=vector_trait,
     ))
 
 

@@ -703,21 +703,6 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) 
 
 
 # ============================================================================
-# Serialization
-# ============================================================================
-
-def tensor_to_list(obj):
-    """Recursively convert tensors to lists."""
-    if isinstance(obj, torch.Tensor):
-        return obj.tolist()
-    if isinstance(obj, list):
-        return [tensor_to_list(x) for x in obj]
-    if isinstance(obj, dict):
-        return {k: tensor_to_list(v) for k, v in obj.items()}
-    return obj
-
-
-# ============================================================================
 # Main
 # ============================================================================
 
@@ -933,10 +918,6 @@ def main():
                                 'response': response_proj.tolist()
                             },
                             'dynamics': analyze_dynamics(all_scores),
-                            'attention_weights': {
-                                'prompt': tensor_to_list(data['prompt']['attention']),
-                                'response': tensor_to_list(data['response']['attention'])
-                            },
                             'metadata': {
                                 'prompt_id': prompt_id,
                                 'prompt_set': set_name,
