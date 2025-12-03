@@ -156,19 +156,14 @@ def generate_responses_for_trait(
                     for j, output in enumerate(outputs):
                         prompt_length = inputs['input_ids'][j].shape[0]
                         response = tokenizer.decode(output[prompt_length:], skip_special_tokens=True)
-                        result_item = {
+                        results.append({
                             'scenario_idx': i + j,
                             'rollout_idx': rollout_idx,
-                            'question': batch_scenarios[j],
-                            'answer': response.strip(),
+                            'prompt': batch_scenarios[j],
+                            'response': response.strip(),
                             'full_text': tokenizer.decode(output, skip_special_tokens=True),
-                            # For base model: track prompt token count for activation extraction
                             'prompt_token_count': prompt_length,
-                        }
-                        # Also store using prompt/response keys for compatibility
-                        result_item['prompt'] = batch_scenarios[j]
-                        result_item['response'] = response.strip()
-                        results.append(result_item)
+                        })
                     pbar.update(len(batch_scenarios))
         return results
 

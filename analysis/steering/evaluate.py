@@ -141,7 +141,7 @@ def generate_response(
     tokenizer,
     prompt: str,
     max_new_tokens: int = 256,
-    temperature: float = 0.7,
+    temperature: float = 0.0,
 ) -> str:
     """Generate a response from the model."""
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)

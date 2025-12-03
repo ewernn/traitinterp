@@ -273,6 +273,7 @@ def extract_activations_for_trait(
     val_split: float = 0.0,
     base_model: bool = False,
     component: str = 'residual',
+    max_completion_tokens: int = None,
 ) -> int:
     """
     Extract activations from generated responses.
@@ -285,6 +286,7 @@ def extract_activations_for_trait(
         use_vetting_filter: If True, exclude responses that failed vetting.
         val_split: Fraction of scenarios for validation (0.2 = last 20%). 0 = no split.
         base_model: If True, extract from completion tokens only (after prefix).
+        max_completion_tokens: If set, limit extraction to first N completion tokens.
 
     Returns:
         Number of layers extracted.
@@ -357,6 +359,10 @@ def extract_activations_for_trait(
 
                 start_idx = prompt_token_count
                 end_idx = seq_len
+
+                # Optionally limit to first N completion tokens
+                if max_completion_tokens is not None:
+                    end_idx = min(end_idx, start_idx + max_completion_tokens)
 
                 if start_idx >= end_idx:
                     print(f"    WARNING: No completion tokens (prefix={start_idx}, total={end_idx}). Skipping.")
@@ -438,6 +444,7 @@ def extract_activations_for_trait(
         'n_val_neg': n_val_neg,
         'base_model': base_model,
         'extraction_mode': 'completion_only' if base_model else 'full_response',
+        'max_completion_tokens': max_completion_tokens,
         'component': component,
     }
     metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
@@ -455,8 +462,8 @@ def main():
     parser.add_argument('--model', type=str, default=DEFAULT_MODEL, help='Model name')
     parser.add_argument('--device', type=str, default='auto', help='Device (auto, cuda, cpu, mps)')
     parser.add_argument('--no-vetting-filter', action='store_true', help='Disable filtering based on vetting results')
-    parser.add_argument('--val-split', type=float, default=0.0,
-                        help='Fraction of scenarios for validation (e.g., 0.2 = last 20%%). 0 = no split.')
+    parser.add_argument('--val-split', type=float, default=0.2,
+                        help='Fraction of scenarios for validation (default: 0.2 = last 20%%). 0 = no split.')
     parser.add_argument('--base-model', action='store_true',
                         help='Base model mode: extract from completion tokens only (after prefix)')
     parser.add_argument('--prefill-only', action='store_true',
@@ -466,6 +473,8 @@ def main():
                         help='For prefill-only: which token position to extract (default: last)')
     parser.add_argument('--component', type=str, default='residual',
                         help='Which component(s) to extract: residual, attn_out, mlp_out, or comma-separated (e.g., "attn_out,mlp_out")')
+    parser.add_argument('--max-completion-tokens', type=int, default=None,
+                        help='For base-model mode: limit extraction to first N completion tokens')
 
     args = parser.parse_args()
 
@@ -493,7 +502,8 @@ def main():
     if args.prefill_only:
         print(f"Mode: PREFILL-ONLY ({args.token_position} token, no generation)")
     elif args.base_model:
-        print(f"Mode: BASE MODEL (completion tokens only)")
+        max_tok_str = f", max {args.max_completion_tokens} tokens" if args.max_completion_tokens else ""
+        print(f"Mode: BASE MODEL (completion tokens only{max_tok_str})")
     # Parse components
     components = [c.strip() for c in args.component.split(',')]
     valid_components = {'residual', 'attn_out', 'mlp_out'}
@@ -534,6 +544,7 @@ def main():
                     val_split=args.val_split,
                     base_model=args.base_model,
                     component=component,
+                    max_completion_tokens=args.max_completion_tokens,
                 )
             if n_layers > 0:
                 total_layers = n_layers
