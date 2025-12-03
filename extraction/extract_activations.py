@@ -49,6 +49,18 @@ from traitlens.hooks import HookManager
 from traitlens.activations import ActivationCapture
 
 
+def get_hook_path(layer: int, component: str) -> str:
+    """Get the hook path for a given layer and component."""
+    if component == 'residual':
+        return f"model.layers.{layer}"
+    elif component == 'attn_out':
+        return f"model.layers.{layer}.self_attn.o_proj"
+    elif component == 'mlp_out':
+        return f"model.layers.{layer}.mlp.down_proj"
+    else:
+        raise ValueError(f"Unknown component: {component}")
+
+
 def load_vetting_filter(experiment: str, trait: str) -> dict:
     """
     Load failed indices from response vetting.
@@ -108,6 +120,7 @@ def extract_prefill_activations_for_trait(
     tokenizer: AutoTokenizer,
     val_split: float = 0.0,
     token_position: str = 'last',
+    component: str = 'residual',
 ) -> int:
     """
     Extract activations from prefill tokens (no generation).
@@ -126,7 +139,7 @@ def extract_prefill_activations_for_trait(
     Returns:
         Number of layers extracted.
     """
-    print(f"  [Stage 2] Extracting prefill activations for '{trait}' (token: {token_position})...")
+    print(f"  [Stage 2] Extracting prefill activations for '{trait}' (token: {token_position}, component: {component})...")
 
     n_layers = model.config.num_hidden_layers
     trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
@@ -168,7 +181,8 @@ def extract_prefill_activations_for_trait(
             capture = ActivationCapture()
             with HookManager(model) as hooks:
                 for layer in range(n_layers):
-                    hooks.add_forward_hook(f"model.layers.{layer}", capture.make_hook(f"layer_{layer}"))
+                    hook_path = get_hook_path(layer, component)
+                    hooks.add_forward_hook(hook_path, capture.make_hook(f"layer_{layer}"))
                 with torch.no_grad():
                     model(**inputs)
 
@@ -201,8 +215,9 @@ def extract_prefill_activations_for_trait(
     neg_all_layers = torch.stack([neg_activations[l] for l in range(n_layers)], dim=1)
     all_acts = torch.cat([pos_all_layers, neg_all_layers], dim=0)
 
-    torch.save(all_acts, activations_dir / "all_layers.pt")
-    print(f"    Saved train activations: {all_acts.shape}")
+    filename = "all_layers.pt" if component == 'residual' else f"{component}_all_layers.pt"
+    torch.save(all_acts, activations_dir / filename)
+    print(f"    Saved train activations: {all_acts.shape} -> {filename}")
 
     # Extract and save validation activations if val_split > 0
     n_val_pos, n_val_neg = 0, 0
@@ -214,9 +229,10 @@ def extract_prefill_activations_for_trait(
         val_neg_acts = extract_token_activations(val_neg, 'val_negative')
 
         # Save per-layer format for extraction_evaluation.py compatibility
+        prefix = "" if component == 'residual' else f"{component}_"
         for layer in range(n_layers):
-            torch.save(val_pos_acts[layer], val_activations_dir / f"val_pos_layer{layer}.pt")
-            torch.save(val_neg_acts[layer], val_activations_dir / f"val_neg_layer{layer}.pt")
+            torch.save(val_pos_acts[layer], val_activations_dir / f"{prefix}val_pos_layer{layer}.pt")
+            torch.save(val_neg_acts[layer], val_activations_dir / f"{prefix}val_neg_layer{layer}.pt")
 
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
         print(f"    Saved val activations: {n_val_pos} pos, {n_val_neg} neg ({n_layers} layers each)")
@@ -239,8 +255,10 @@ def extract_prefill_activations_for_trait(
         'base_model': True,
         'extraction_mode': f'prefill_{token_position}_token',
         'token_position': token_position,
+        'component': component,
     }
-    with open(activations_dir / 'metadata.json', 'w') as f:
+    metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
+    with open(activations_dir / metadata_filename, 'w') as f:
         json.dump(metadata, f, indent=2)
 
     return n_layers
@@ -254,6 +272,7 @@ def extract_activations_for_trait(
     use_vetting_filter: bool = True,
     val_split: float = 0.0,
     base_model: bool = False,
+    component: str = 'residual',
 ) -> int:
     """
     Extract activations from generated responses.
@@ -270,7 +289,7 @@ def extract_activations_for_trait(
     Returns:
         Number of layers extracted.
     """
-    print(f"  [Stage 2] Extracting activations for '{trait}'...")
+    print(f"  [Stage 2] Extracting activations for '{trait}' (component: {component})...")
 
     n_layers = model.config.num_hidden_layers
     responses_dir = get_path('extraction.responses', experiment=experiment, trait=trait)
@@ -350,7 +369,8 @@ def extract_activations_for_trait(
             capture = ActivationCapture()
             with HookManager(model) as hooks:
                 for layer in range(n_layers):
-                    hooks.add_forward_hook(f"model.layers.{layer}", capture.make_hook(f"layer_{layer}"))
+                    hook_path = get_hook_path(layer, component)
+                    hooks.add_forward_hook(hook_path, capture.make_hook(f"layer_{layer}"))
                 with torch.no_grad():
                     model(**inputs)
 
@@ -379,8 +399,9 @@ def extract_activations_for_trait(
     neg_all_layers = torch.stack([neg_activations[l] for l in range(n_layers)], dim=1)
     all_acts = torch.cat([pos_all_layers, neg_all_layers], dim=0)
 
-    torch.save(all_acts, activations_dir / "all_layers.pt")
-    print(f"    Saved train activations: {all_acts.shape}")
+    filename = "all_layers.pt" if component == 'residual' else f"{component}_all_layers.pt"
+    torch.save(all_acts, activations_dir / filename)
+    print(f"    Saved train activations: {all_acts.shape} -> {filename}")
 
     # Extract and save validation activations if val_split > 0
     n_val_pos, n_val_neg = 0, 0
@@ -392,9 +413,10 @@ def extract_activations_for_trait(
         val_neg_acts = extract_from_responses(val_neg, 'val_negative')
 
         # Save per-layer format for extraction_evaluation.py compatibility
+        prefix = "" if component == 'residual' else f"{component}_"
         for layer in range(n_layers):
-            torch.save(val_pos_acts[layer], val_activations_dir / f"val_pos_layer{layer}.pt")
-            torch.save(val_neg_acts[layer], val_activations_dir / f"val_neg_layer{layer}.pt")
+            torch.save(val_pos_acts[layer], val_activations_dir / f"{prefix}val_pos_layer{layer}.pt")
+            torch.save(val_neg_acts[layer], val_activations_dir / f"{prefix}val_neg_layer{layer}.pt")
 
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
         print(f"    Saved val activations: {n_val_pos} pos, {n_val_neg} neg ({n_layers} layers each)")
@@ -416,8 +438,10 @@ def extract_activations_for_trait(
         'n_val_neg': n_val_neg,
         'base_model': base_model,
         'extraction_mode': 'completion_only' if base_model else 'full_response',
+        'component': component,
     }
-    with open(activations_dir / 'metadata.json', 'w') as f:
+    metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
+    with open(activations_dir / metadata_filename, 'w') as f:
         json.dump(metadata, f, indent=2)
 
     return n_layers
@@ -440,6 +464,8 @@ def main():
                              'Reads from positive.txt/negative.txt instead of responses/*.json')
     parser.add_argument('--token-position', type=str, default='last', choices=['last', 'first', 'mean'],
                         help='For prefill-only: which token position to extract (default: last)')
+    parser.add_argument('--component', type=str, default='residual',
+                        help='Which component(s) to extract: residual, attn_out, mlp_out, or comma-separated (e.g., "attn_out,mlp_out")')
 
     args = parser.parse_args()
 
@@ -468,6 +494,15 @@ def main():
         print(f"Mode: PREFILL-ONLY ({args.token_position} token, no generation)")
     elif args.base_model:
         print(f"Mode: BASE MODEL (completion tokens only)")
+    # Parse components
+    components = [c.strip() for c in args.component.split(',')]
+    valid_components = {'residual', 'attn_out', 'mlp_out'}
+    for c in components:
+        if c not in valid_components:
+            print(f"ERROR: Invalid component '{c}'. Must be one of: {valid_components}")
+            return
+    if components != ['residual']:
+        print(f"Components: {', '.join(components)}")
     if args.val_split > 0:
         print(f"Val split: {args.val_split:.0%} (last {args.val_split:.0%} of scenarios)")
     print("=" * 80)
@@ -475,32 +510,35 @@ def main():
     # Load model and tokenizer once
     model, tokenizer = load_model(args.model, device=args.device)
 
-    # Process each trait
+    # Process each trait and component
     total_layers = 0
     for trait in traits:
-        if args.prefill_only:
-            n_layers = extract_prefill_activations_for_trait(
-                experiment=args.experiment,
-                trait=trait,
-                model=model,
-                tokenizer=tokenizer,
-                val_split=args.val_split,
-                token_position=args.token_position,
-            )
-        else:
-            n_layers = extract_activations_for_trait(
-                experiment=args.experiment,
-                trait=trait,
-                model=model,
-                tokenizer=tokenizer,
-                use_vetting_filter=not args.no_vetting_filter,
-                val_split=args.val_split,
-                base_model=args.base_model,
-            )
-        if n_layers > 0:
-            total_layers = n_layers
+        for component in components:
+            if args.prefill_only:
+                n_layers = extract_prefill_activations_for_trait(
+                    experiment=args.experiment,
+                    trait=trait,
+                    model=model,
+                    tokenizer=tokenizer,
+                    val_split=args.val_split,
+                    token_position=args.token_position,
+                    component=component,
+                )
+            else:
+                n_layers = extract_activations_for_trait(
+                    experiment=args.experiment,
+                    trait=trait,
+                    model=model,
+                    tokenizer=tokenizer,
+                    use_vetting_filter=not args.no_vetting_filter,
+                    val_split=args.val_split,
+                    base_model=args.base_model,
+                    component=component,
+                )
+            if n_layers > 0:
+                total_layers = n_layers
 
-    print(f"\nDONE: Extracted activations from {total_layers} layers for {len(traits)} traits.")
+    print(f"\nDONE: Extracted activations from {total_layers} layers for {len(traits)} traits, {len(components)} components.")
 
 
 if __name__ == '__main__':

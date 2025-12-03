@@ -29,9 +29,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import json
 import os
 import time
+import asyncio
+import re
 import fire
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 from google import genai
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 from utils.paths import get
 
@@ -72,7 +76,7 @@ def score_response_trait_mode(
     trait_definition: str,
     model: str = "gemini-2.5-flash"
 ) -> dict:
-    """Score a single response for trait presence (0-100 scale)."""
+    """Score a single response for trait presence (0-100 scale). Sync version."""
 
     eval_prompt = f"""You are evaluating how much a text displays a specific trait.
 
@@ -102,7 +106,77 @@ Respond with just a number from 0 to 100. Nothing else."""
         text_response = api_response.text.strip()
 
         # Parse score - extract first number found
-        import re
+        match = re.search(r'\d+', text_response)
+        if match:
+            score = int(match.group())
+            score = max(0, min(100, score))  # Clamp to 0-100
+        else:
+            score = -1
+
+        return {
+            'text': text[:500],
+            'score': score,
+            'raw_judge_response': text_response,
+        }
+
+    except Exception as e:
+        return {
+            'text': text[:500],
+            'score': -1,
+            'error': str(e)
+        }
+
+
+# Async version with rate limiting
+async def score_response_trait_mode_async(
+    client: genai.Client,
+    text: str,
+    trait_definition: str,
+    semaphore: asyncio.Semaphore,
+    model: str = "gemini-2.5-flash"
+) -> dict:
+    """Score a single response for trait presence (0-100 scale). Async version with rate limiting."""
+
+    eval_prompt = f"""You are evaluating how much a text displays a specific trait.
+
+{trait_definition}
+
+Text to evaluate:
+[TEXT START]
+{text[:1500]}
+[TEXT END]
+
+How strongly does this text display the trait?
+
+Score from 0 to 100:
+- 0-20: Strong opposite of trait (e.g., clearly pessimistic if evaluating optimism)
+- 21-40: Mild opposite or absence of trait
+- 41-60: Neutral, balanced, or ambiguous
+- 61-80: Moderate presence of trait
+- 81-100: Strong presence of trait
+
+Respond with just a number from 0 to 100. Nothing else."""
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=60),
+        stop=stop_after_attempt(5),
+        retry=retry_if_exception_type((Exception,))
+    )
+    async def _call_api():
+        async with semaphore:
+            # Use sync API in thread pool since google-genai doesn't have native async
+            loop = asyncio.get_event_loop()
+            api_response = await loop.run_in_executor(
+                None,
+                lambda: client.models.generate_content(model=model, contents=eval_prompt)
+            )
+            return api_response
+
+    try:
+        api_response = await _call_api()
+        text_response = api_response.text.strip()
+
+        # Parse score - extract first number found
         match = re.search(r'\d+', text_response)
         if match:
             score = int(match.group())
@@ -224,6 +298,35 @@ def print_histogram(scores: list, title: str, width: int = 40):
         print(f"  {label} | {bar} {count}")
 
 
+async def score_batch_async(
+    client: genai.Client,
+    items: list,
+    trait_definition: str,
+    model: str = "gemini-2.5-flash",
+    max_concurrent: int = 50,
+) -> list:
+    """Score a batch of items asynchronously with rate limiting."""
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def score_item(idx, item, polarity):
+        text = item.get('response') or item.get('answer', '')
+        result = await score_response_trait_mode_async(
+            client=client,
+            text=text,
+            trait_definition=trait_definition,
+            semaphore=semaphore,
+            model=model
+        )
+        result['expected_polarity'] = polarity
+        result['original_index'] = idx
+        result['prompt'] = item.get('prompt') or item.get('question', '')
+        return result
+
+    tasks = [score_item(idx, item, polarity) for idx, item, polarity in items]
+    results = await tqdm_asyncio.gather(*tasks, desc="Scoring responses")
+    return results
+
+
 def vet_responses(
     experiment: str,
     trait: str,
@@ -234,6 +337,7 @@ def vet_responses(
     trait_score: bool = False,
     pos_threshold: int = 60,
     neg_threshold: int = 40,
+    max_concurrent: int = 50,
 ):
     """
     Vet generated responses using LLM-as-a-judge.
@@ -243,11 +347,12 @@ def vet_responses(
         trait: Trait path (e.g., 'behavioral/refusal')
         threshold: Minimum score to pass in original mode (default 4)
         model: Gemini model to use
-        delay: Delay between API calls (rate limiting)
+        delay: Delay between API calls (rate limiting, ignored in async mode)
         sample: Only score first N responses per polarity (for testing)
         trait_score: Use 0-100 trait scoring mode (like persona_vectors)
         pos_threshold: For trait_score mode, positive class needs score >= this (default 60)
         neg_threshold: For trait_score mode, negative class needs score <= this (default 40)
+        max_concurrent: Max concurrent API requests (default 50, for rate limiting)
     """
 
     # Check API key
@@ -270,6 +375,7 @@ def vet_responses(
         print(f"Mode: Trait Score (0-100)")
         print(f"Positive threshold: >= {pos_threshold}")
         print(f"Negative threshold: <= {neg_threshold}")
+        print(f"Max concurrent requests: {max_concurrent}")
     else:
         print(f"Mode: Expected Behavior (0-10)")
         print(f"Threshold: {threshold}")
@@ -279,28 +385,28 @@ def vet_responses(
     all_results = []
 
     if trait_score:
-        # Trait score mode: score each completion for trait presence
-        for polarity in ['positive', 'negative']:
-            polarity_responses = responses[polarity]
-            if sample:
-                polarity_responses = polarity_responses[:sample]
+        # Trait score mode: use async parallel scoring
+        pos_responses = responses['positive']
+        neg_responses = responses['negative']
+        if sample:
+            pos_responses = pos_responses[:sample]
+            neg_responses = neg_responses[:sample]
 
-            print(f"Scoring {polarity} completions for trait presence...")
-            for idx, item in enumerate(tqdm(polarity_responses)):
-                # Get the completion text (response/answer field)
-                text = item.get('response') or item.get('answer', '')
+        # Build list of (idx, item, polarity) tuples
+        items_to_score = []
+        for idx, item in enumerate(pos_responses):
+            items_to_score.append((idx, item, 'positive'))
+        for idx, item in enumerate(neg_responses):
+            items_to_score.append((idx, item, 'negative'))
 
-                result = score_response_trait_mode(
-                    client=client,
-                    text=text,
-                    trait_definition=trait_definition,
-                    model=model
-                )
-                result['expected_polarity'] = polarity
-                result['original_index'] = idx
-                result['prompt'] = item.get('prompt') or item.get('question', '')
-                all_results.append(result)
-                time.sleep(delay)
+        print(f"Scoring {len(items_to_score)} responses with async parallel API calls...")
+        all_results = asyncio.run(score_batch_async(
+            client=client,
+            items=items_to_score,
+            trait_definition=trait_definition,
+            model=model,
+            max_concurrent=max_concurrent,
+        ))
 
         # Analyze trait score results
         pos_results = [r for r in all_results if r['expected_polarity'] == 'positive']

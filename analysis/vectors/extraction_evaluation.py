@@ -74,12 +74,13 @@ class ValidationResult:
     val_auc_roc: float = 0.0  # Threshold-independent classification quality
 
 
-def load_validation_activations(experiment: str, trait: str, layer: int) -> Tuple[torch.Tensor, torch.Tensor]:
+def load_validation_activations(experiment: str, trait: str, layer: int, component: str = 'residual') -> Tuple[torch.Tensor, torch.Tensor]:
     """Load validation activations for a specific layer."""
     val_dir = get_path('extraction.val_activations', experiment=experiment, trait=trait)
 
-    pos_path = val_dir / f"val_pos_layer{layer}.pt"
-    neg_path = val_dir / f"val_neg_layer{layer}.pt"
+    prefix = "" if component == 'residual' else f"{component}_"
+    pos_path = val_dir / f"{prefix}val_pos_layer{layer}.pt"
+    neg_path = val_dir / f"{prefix}val_neg_layer{layer}.pt"
 
     if not pos_path.exists() or not neg_path.exists():
         raise FileNotFoundError(f"Validation activations not found for layer {layer}")
@@ -90,15 +91,19 @@ def load_validation_activations(experiment: str, trait: str, layer: int) -> Tupl
     return pos_acts, neg_acts
 
 
-def load_training_activations(experiment: str, trait: str, layer: int) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+def load_training_activations(experiment: str, trait: str, layer: int, component: str = 'residual') -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
     """Load training activations for comparison."""
     acts_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
 
+    # Determine file names based on component
+    acts_filename = "all_layers.pt" if component == 'residual' else f"{component}_all_layers.pt"
+    metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
+
     # Try loading from combined file first (legacy format)
-    all_layers_path = acts_dir / "all_layers.pt"
+    all_layers_path = acts_dir / acts_filename
     if all_layers_path.exists():
         all_acts = torch.load(all_layers_path, weights_only=True)
-        metadata_path = acts_dir / "metadata.json"
+        metadata_path = acts_dir / metadata_filename
 
         # Get split from metadata
         if metadata_path.exists():
@@ -126,10 +131,11 @@ def load_training_activations(experiment: str, trait: str, layer: int) -> Tuple[
     return pos_acts, neg_acts
 
 
-def load_vector(experiment: str, trait: str, method: str, layer: int) -> Optional[torch.Tensor]:
+def load_vector(experiment: str, trait: str, method: str, layer: int, component: str = 'residual') -> Optional[torch.Tensor]:
     """Load a specific vector."""
     vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
-    path = vectors_dir / f"{method}_layer{layer}.pt"
+    prefix = "" if component == 'residual' else f"{component}_"
+    path = vectors_dir / f"{prefix}{method}_layer{layer}.pt"
     if path.exists():
         return torch.load(path, weights_only=True)
     return None
@@ -202,17 +208,18 @@ def evaluate_vector_on_validation(
     trait: str,
     method: str,
     layer: int,
-    normalize: bool = True
+    normalize: bool = True,
+    component: str = 'residual'
 ) -> Optional[ValidationResult]:
     """Evaluate a single vector on validation data."""
     # Load vector
-    vector = load_vector(experiment, trait, method, layer)
+    vector = load_vector(experiment, trait, method, layer, component)
     if vector is None:
         return None
 
     # Load validation activations
     try:
-        val_pos, val_neg = load_validation_activations(experiment, trait, layer)
+        val_pos, val_neg = load_validation_activations(experiment, trait, layer, component)
     except FileNotFoundError:
         return None
 
@@ -256,7 +263,7 @@ def evaluate_vector_on_validation(
         auc = 0.5  # Fallback if AUC can't be computed
 
     # Load training activations for comparison
-    train_pos, train_neg = load_training_activations(experiment, trait, layer)
+    train_pos, train_neg = load_training_activations(experiment, trait, layer, component)
     train_metrics = None
     if train_pos is not None:
         train_metrics = evaluate_vector(train_pos, train_neg, vector, normalize=normalize)
@@ -349,7 +356,8 @@ def main(experiment: str,
          methods: str = "mean_diff,probe,gradient,random_baseline",
          layers: str = None,
          output: str = None,
-         no_normalize: bool = False):
+         no_normalize: bool = False,
+         component: str = "residual"):
     """
     Run validation evaluation on all traits.
 
@@ -359,12 +367,15 @@ def main(experiment: str,
         layers: Comma-separated layers (default: all)
         output: Output JSON file (default: experiments/{experiment}/extraction/extraction_evaluation.json)
         no_normalize: If True, use raw dot product instead of cosine similarity
+        component: Component to evaluate (residual, attn_out, mlp_out)
     """
     normalize = not no_normalize
     if normalize:
         print("Using cosine similarity (normalized vectors and activations)")
     else:
         print("Using raw dot product (no normalization)")
+    if component != 'residual':
+        print(f"Evaluating component: {component}")
 
     # Use paths from config
     exp_dir = get_path('extraction.base', experiment=experiment)
@@ -398,7 +409,7 @@ def main(experiment: str,
         for method in methods_list:
             for layer in layers_list:
                 result = evaluate_vector_on_validation(
-                    experiment, trait, method, layer, normalize=normalize
+                    experiment, trait, method, layer, normalize=normalize, component=component
                 )
                 if result:
                     all_results.append(asdict(result))

@@ -59,6 +59,7 @@ def extract_vectors_for_trait(
     trait: str,
     methods: List[str],
     layers: Optional[List[int]] = None,
+    component: str = 'residual',
 ) -> int:
     """
     Extract trait vectors from activations.
@@ -72,24 +73,30 @@ def extract_vectors_for_trait(
     Returns:
         Number of vectors extracted.
     """
-    print(f"  [Stage 3] Extracting vectors for '{trait}'...")
+    component_str = f" (component: {component})" if component != 'residual' else ""
+    print(f"  [Stage 3] Extracting vectors for '{trait}'{component_str}...")
 
     activations_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
     vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
     vectors_dir.mkdir(parents=True, exist_ok=True)
 
+    # Determine file names based on component
+    metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
+    acts_filename = "all_layers.pt" if component == 'residual' else f"{component}_all_layers.pt"
+    vector_prefix = "" if component == 'residual' else f"{component}_"
+
     # Load metadata
     try:
-        with open(activations_dir / "metadata.json") as f:
+        with open(activations_dir / metadata_filename) as f:
             metadata = json.load(f)
     except FileNotFoundError:
-        print(f"    ERROR: Metadata not found in {activations_dir}. Run Stage 2 first.")
+        print(f"    ERROR: {metadata_filename} not found in {activations_dir}. Run Stage 2 first.")
         return 0
 
     # Load activations
-    all_acts_path = activations_dir / "all_layers.pt"
+    all_acts_path = activations_dir / acts_filename
     if not all_acts_path.exists():
-        print(f"    ERROR: all_layers.pt not found. Run Stage 2 first.")
+        print(f"    ERROR: {acts_filename} not found. Run Stage 2 first.")
         return 0
 
     all_acts = torch.load(all_acts_path, weights_only=True)  # [n_examples, n_layers, hidden_dim]
@@ -125,13 +132,14 @@ def extract_vectors_for_trait(
                 result = method_obj.extract(pos_acts, neg_acts)
                 vector = result['vector']
 
-                torch.save(vector, vectors_dir / f"{method_name}_layer{layer_idx}.pt")
+                torch.save(vector, vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}.pt")
 
                 # Save metadata
                 vector_metadata = {
                     "trait": trait,
                     "method": method_name,
                     "layer": layer_idx,
+                    "component": component,
                     "model": metadata.get("model", "unknown"),
                     "vector_norm": float(vector.norm().item()),
                 }
@@ -142,7 +150,7 @@ def extract_vectors_for_trait(
                         elif isinstance(value, (int, float, str, bool)):
                             vector_metadata[key] = value
 
-                with open(vectors_dir / f"{method_name}_layer{layer_idx}_metadata.json", 'w') as f:
+                with open(vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}_metadata.json", 'w') as f:
                     json.dump(vector_metadata, f, indent=2)
 
                 n_extracted += 1
@@ -163,6 +171,8 @@ def main():
                         help='Comma-separated extraction methods')
     parser.add_argument('--layers', type=str, default=None,
                         help='Comma-separated layers (default: all)')
+    parser.add_argument('--component', type=str, default='residual',
+                        help='Component(s) to extract from: residual, attn_out, mlp_out, or comma-separated')
 
     args = parser.parse_args()
 
@@ -176,11 +186,18 @@ def main():
     else:
         traits = [args.trait]
 
-    # Parse methods and layers
+    # Parse methods, layers, and components
     methods_list = [m.strip() for m in args.methods.split(",")]
     layers_list = None
     if args.layers:
         layers_list = [int(l.strip()) for l in args.layers.split(",")]
+
+    components = [c.strip() for c in args.component.split(',')]
+    valid_components = {'residual', 'attn_out', 'mlp_out'}
+    for c in components:
+        if c not in valid_components:
+            print(f"ERROR: Invalid component '{c}'. Must be one of: {valid_components}")
+            return
 
     print("=" * 80)
     print("EXTRACT VECTORS")
@@ -188,20 +205,24 @@ def main():
     print(f"Traits: {len(traits)}")
     print(f"Methods: {methods_list}")
     print(f"Layers: {layers_list if layers_list else 'all'}")
+    if components != ['residual']:
+        print(f"Components: {', '.join(components)}")
     print("=" * 80)
 
-    # Process each trait
+    # Process each trait and component
     total_vectors = 0
     for trait in traits:
-        n = extract_vectors_for_trait(
-            experiment=args.experiment,
-            trait=trait,
-            methods=methods_list,
-            layers=layers_list
-        )
-        total_vectors += n
+        for component in components:
+            n = extract_vectors_for_trait(
+                experiment=args.experiment,
+                trait=trait,
+                methods=methods_list,
+                layers=layers_list,
+                component=component,
+            )
+            total_vectors += n
 
-    print(f"\nDONE: Extracted {total_vectors} vectors for {len(traits)} traits.")
+    print(f"\nDONE: Extracted {total_vectors} vectors for {len(traits)} traits, {len(components)} components.")
 
 
 if __name__ == "__main__":

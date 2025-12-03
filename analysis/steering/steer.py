@@ -35,6 +35,7 @@ class SteeringHook:
         layer: int,
         coefficient: float = 1.0,
         positions: str = "all",
+        component: str = "residual",
     ):
         """
         Args:
@@ -45,11 +46,16 @@ class SteeringHook:
             positions: Which positions to steer:
                 - "all": All token positions (recommended for evaluation)
                 - "last": Only last token (for generation efficiency)
+            component: Which component to steer:
+                - "residual": Full layer output (default)
+                - "attn_out": Attention output (o_proj)
+                - "mlp_out": MLP output (down_proj)
         """
         self.model = model
         self.layer = layer
         self.coefficient = float(coefficient)
         self.positions = positions.lower()
+        self.component = component.lower()
         self._handle = None
 
         # Convert vector to tensor on model device/dtype
@@ -68,13 +74,21 @@ class SteeringHook:
         if self.positions not in {"all", "last"}:
             raise ValueError("positions must be 'all' or 'last'")
 
+        if self.component not in {"residual", "attn_out", "mlp_out"}:
+            raise ValueError("component must be 'residual', 'attn_out', or 'mlp_out'")
+
     def _get_layer(self) -> torch.nn.Module:
-        """Get the layer module to hook."""
-        # Gemma uses model.model.layers[i]
+        """Get the layer module to hook based on component."""
         try:
-            return self.model.model.layers[self.layer]
+            layer = self.model.model.layers[self.layer]
+            if self.component == "residual":
+                return layer
+            elif self.component == "attn_out":
+                return layer.self_attn.o_proj
+            elif self.component == "mlp_out":
+                return layer.mlp.down_proj
         except (AttributeError, IndexError) as e:
-            raise ValueError(f"Could not access layer {self.layer}: {e}")
+            raise ValueError(f"Could not access layer {self.layer} component {self.component}: {e}")
 
     def _hook_fn(self, module, inputs, outputs):
         """Forward hook that adds steering vector to layer output."""
@@ -117,6 +131,7 @@ def steer(
     layer: int,
     coefficient: float = 1.0,
     positions: str = "all",
+    component: str = "residual",
 ):
     """
     Convenience context manager for steering.
@@ -124,7 +139,11 @@ def steer(
     Usage:
         with steer(model, vector, layer=16, coefficient=1.5):
             output = model.generate(**inputs)
+
+        # Steer MLP output specifically
+        with steer(model, vector, layer=10, coefficient=1.0, component="mlp_out"):
+            output = model.generate(**inputs)
     """
-    hook = SteeringHook(model, vector, layer, coefficient, positions)
+    hook = SteeringHook(model, vector, layer, coefficient, positions, component)
     with hook:
         yield hook

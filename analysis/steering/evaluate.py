@@ -92,10 +92,11 @@ def parse_layers(layers_arg: str, num_layers: int) -> List[int]:
         return [int(layers_arg)]
 
 
-def load_vector(experiment: str, trait: str, layer: int, method: str = "probe") -> Optional[torch.Tensor]:
+def load_vector(experiment: str, trait: str, layer: int, method: str = "probe", component: str = "residual") -> Optional[torch.Tensor]:
     """Load trait vector from experiment. Returns None if not found."""
     vectors_dir = get('extraction.vectors', experiment=experiment, trait=trait)
-    vector_file = vectors_dir / f"{method}_layer{layer}.pt"
+    prefix = "" if component == "residual" else f"{component}_"
+    vector_file = vectors_dir / f"{prefix}{method}_layer{layer}.pt"
 
     if not vector_file.exists():
         return None
@@ -172,41 +173,47 @@ async def evaluate_single_config(
     judge: TraitJudge,
     rollouts: int = 10,
     save_responses: bool = False,
+    component: str = "residual",
 ) -> Dict:
     """Evaluate a single (layer, coefficient) configuration."""
-    all_trait_scores = []
-    all_coherence_scores = []
-    responses_data = []
-
-    for question in tqdm(questions, desc=f"L{layer}/c{coefficient}", leave=False):
+    # Phase 1: Generate all responses (GPU-bound)
+    all_qa_pairs = []
+    print(f"    Generating responses...")
+    for question in tqdm(questions, desc=f"L{layer}/c{coefficient} gen", leave=False):
         formatted = format_prompt(question, tokenizer)
 
         for rollout in range(rollouts):
             if coefficient == 0:
                 response = generate_response(model, tokenizer, formatted)
             else:
-                with SteeringHook(model, vector, layer, coefficient):
+                with SteeringHook(model, vector, layer, coefficient, component=component):
                     response = generate_response(model, tokenizer, formatted)
+            all_qa_pairs.append((question, response, rollout))
 
-            scores = await judge.score_batch(
-                eval_prompt,
-                [(question, response)],
-            )
-            score_data = scores[0]
+    # Phase 2: Score all responses in parallel (API-bound)
+    print(f"    Scoring {len(all_qa_pairs)} responses in parallel...")
+    qa_for_scoring = [(q, r) for q, r, _ in all_qa_pairs]
+    all_scores = await judge.score_batch(eval_prompt, qa_for_scoring)
 
-            if score_data["trait_score"] is not None:
-                all_trait_scores.append(score_data["trait_score"])
-            if score_data.get("coherence_score") is not None:
-                all_coherence_scores.append(score_data["coherence_score"])
+    # Phase 3: Collect results
+    all_trait_scores = []
+    all_coherence_scores = []
+    responses_data = []
 
-            if save_responses:
-                responses_data.append({
-                    "question": question,
-                    "response": response,
-                    "rollout": rollout,
-                    "trait_score": score_data["trait_score"],
-                    "coherence_score": score_data.get("coherence_score"),
-                })
+    for (question, response, rollout), score_data in zip(all_qa_pairs, all_scores):
+        if score_data["trait_score"] is not None:
+            all_trait_scores.append(score_data["trait_score"])
+        if score_data.get("coherence_score") is not None:
+            all_coherence_scores.append(score_data["coherence_score"])
+
+        if save_responses:
+            responses_data.append({
+                "question": question,
+                "response": response,
+                "rollout": rollout,
+                "trait_score": score_data["trait_score"],
+                "coherence_score": score_data.get("coherence_score"),
+            })
 
     result = {
         "layer": layer,
@@ -241,11 +248,12 @@ async def run_single_layer_evaluation(
     method: str,
     rollouts: int,
     save_responses: bool,
+    component: str = "residual",
 ) -> Dict:
     """Full evaluation of a single layer across multiple coefficients."""
-    vector = load_vector(experiment, trait, layer, method)
+    vector = load_vector(experiment, trait, layer, method, component)
     if vector is None:
-        raise FileNotFoundError(f"Vector not found for layer {layer}")
+        raise FileNotFoundError(f"Vector not found for layer {layer} component {component}")
 
     print(f"\nEvaluating layer {layer}")
     print(f"  Coefficients: {coefficients}, Rollouts: {rollouts}")
@@ -254,7 +262,7 @@ async def run_single_layer_evaluation(
     for coef in coefficients:
         result = await evaluate_single_config(
             model, tokenizer, vector, layer, coef,
-            questions, eval_prompt, judge, rollouts, save_responses,
+            questions, eval_prompt, judge, rollouts, save_responses, component,
         )
         results_by_coef[str(coef)] = result
         mean = result['trait_mean']
@@ -285,6 +293,7 @@ async def run_single_layer_evaluation(
         "trait": trait,
         "layer": layer,
         "method": method,
+        "component": component,
         "n_questions": len(questions),
         "rollouts": rollouts,
         "timestamp": datetime.now().isoformat(),
@@ -307,6 +316,7 @@ async def run_layer_sweep(
     judge: TraitJudge,
     method: str,
     rollouts: int,
+    component: str = "residual",
 ) -> Dict:
     """Sweep across multiple layers with fixed coefficient."""
     print(f"\nLayer sweep: {len(layers)} layers")
@@ -327,14 +337,14 @@ async def run_layer_sweep(
     # Evaluate each layer
     results_by_layer = {}
     for layer in tqdm(layers, desc="layers"):
-        vector = load_vector(experiment, trait, layer, method)
+        vector = load_vector(experiment, trait, layer, method, component)
         if vector is None:
             print(f"  Skipping layer {layer}: no vector")
             continue
 
         result = await evaluate_single_config(
             model, tokenizer, vector, layer, coefficient,
-            questions, eval_prompt, judge, rollouts, False,
+            questions, eval_prompt, judge, rollouts, False, component,
         )
         results_by_layer[layer] = result
         mean = result['trait_mean']
@@ -383,6 +393,7 @@ async def run_evaluation(
     save_responses: bool = False,
     sweep_coefficient: float = 1.5,
     subset_questions: Optional[int] = None,
+    component: str = "residual",
 ) -> Dict:
     """
     Run steering evaluation.
@@ -409,6 +420,7 @@ async def run_evaluation(
     print(f"\nTrait: {trait}")
     print(f"Model: {model_name} ({num_layers} layers)")
     print(f"Method: {method}")
+    print(f"Component: {component}")
     print(f"Judge: {judge_provider}")
 
     is_sweep = len(layers) > 1
@@ -416,12 +428,12 @@ async def run_evaluation(
     if is_sweep:
         return await run_layer_sweep(
             model, tokenizer, experiment, trait, layers, sweep_coefficient,
-            eval_prompt, questions, judge, method, rollouts,
+            eval_prompt, questions, judge, method, rollouts, component,
         )
     else:
         return await run_single_layer_evaluation(
             model, tokenizer, experiment, trait, layers[0], coefficients,
-            eval_prompt, questions, judge, method, rollouts, save_responses,
+            eval_prompt, questions, judge, method, rollouts, save_responses, component,
         )
 
 
@@ -491,6 +503,8 @@ def main():
     parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
     parser.add_argument("--save-responses", action="store_true", help="Save generated responses")
     parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
+    parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out"],
+                        help="Which component to steer (residual, attn_out, mlp_out)")
 
     args = parser.parse_args()
 
@@ -532,6 +546,7 @@ def main():
         save_responses=args.save_responses,
         sweep_coefficient=args.sweep_coefficient,
         subset_questions=args.subset,
+        component=args.component,
     ))
 
     save_results(results, args.experiment, args.trait, is_sweep, args.save_responses)
