@@ -439,14 +439,25 @@ async def evaluate_config(
             raise FileNotFoundError(f"Vector not found: layer={layer}, method={method}, component={component}")
         raw_vectors.append(vector)
 
-    # Compute incremental vectors if requested
-    if incremental and len(raw_vectors) > 1:
-        vectors = [raw_vectors[0]]  # First layer gets full vector
-        for i in range(1, len(raw_vectors)):
-            v_inc = raw_vectors[i] - raw_vectors[i-1]
-            vectors.append(v_inc)
+    # Compute incremental vectors if requested: v[i] - v[i-1] for ALL layers
+    if incremental:
+        vectors = []
+        for i, (layer, method) in enumerate(zip(layers, methods)):
+            if layer == 0:
+                # Layer 0 has no previous layer, use as-is
+                vectors.append(raw_vectors[i])
+            else:
+                # Load v[layer-1] to compute delta
+                v_prev = load_vector(experiment, trait, layer - 1, method, component)
+                if v_prev is None:
+                    print(f"  Warning: No vector for layer {layer-1}, using full vector for layer {layer}")
+                    vectors.append(raw_vectors[i])
+                else:
+                    v_inc = raw_vectors[i] - v_prev
+                    vectors.append(v_inc)
         # Log incremental norms
         print(f"  Incremental vector norms: {[f'{v.norm().item():.2f}' for v in vectors]}")
+        print(f"  Original vector norms:    {[f'{v.norm().item():.2f}' for v in raw_vectors]}")
     else:
         vectors = raw_vectors
 
