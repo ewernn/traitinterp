@@ -123,6 +123,10 @@
                         <span class="icon">🎯</span>
                         <span>Steering Sweep</span>
                     </div>
+                    <div class="nav-item" data-view="multi-layer-heatmap">
+                        <span class="icon">🗺️</span>
+                        <span>Multi-Layer Heatmap</span>
+                    </div>
                 </div>
             </div>
 
@@ -169,6 +173,7 @@
     <script src="/visualization/views/layer-deep-dive.js"></script>
     <script src="/visualization/views/analysis-gallery.js"></script>
     <script src="/visualization/views/steering-sweep.js"></script>
+    <script src="/visualization/views/multi-layer-heatmap.js"></script>
 
     <!-- View Router -->
     <script>
@@ -185,7 +190,8 @@
                 'trait-dynamics': 'Trait Dynamics',
                 'layer-deep-dive': 'Layer Deep Dive',
                 'analysis-gallery': 'Analysis Gallery',
-                'steering-sweep': 'Steering Sweep'
+                'steering-sweep': 'Steering Sweep',
+                'multi-layer-heatmap': 'Multi-Layer Heatmap'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -213,6 +219,9 @@
                     break;
                 case 'steering-sweep':
                     window.renderSteeringSweep();
+                    break;
+                case 'multi-layer-heatmap':
+                    window.renderMultiLayerHeatmap();
                     break;
                 default:
                     document.getElementById('content-area').innerHTML =
