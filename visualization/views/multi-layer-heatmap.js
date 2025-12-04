@@ -19,8 +19,8 @@ async function renderMultiLayerHeatmap() {
 
     // For now, hardcode the trait - TODO: discover traits with heatmap data
     const trait = 'epistemic/optimism';
-    const heatmapPath = `experiments/${experiment}/steering/${trait}/center_width_heatmap.json`;
-    const resultsPath = `experiments/${experiment}/steering/${trait}/results.json`;
+    const heatmapPath = `/experiments/${experiment}/steering/${trait}/center_width_heatmap.json`;
+    const resultsPath = `/experiments/${experiment}/steering/${trait}/results.json`;
 
     let heatmapData, resultsData;
     try {
