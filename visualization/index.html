@@ -119,6 +119,10 @@
                         <span class="icon">🖼️</span>
                         <span>Analysis Gallery</span>
                     </div>
+                    <div class="nav-item" data-view="steering-sweep">
+                        <span class="icon">🎯</span>
+                        <span>Steering Sweep</span>
+                    </div>
                 </div>
             </div>
 
@@ -164,6 +168,7 @@
     <script src="/visualization/views/trait-dynamics.js"></script>
     <script src="/visualization/views/layer-deep-dive.js"></script>
     <script src="/visualization/views/analysis-gallery.js"></script>
+    <script src="/visualization/views/steering-sweep.js"></script>
 
     <!-- View Router -->
     <script>
@@ -179,7 +184,8 @@
                 'trait-trajectory': 'Trait Trajectory',
                 'trait-dynamics': 'Trait Dynamics',
                 'layer-deep-dive': 'Layer Deep Dive',
-                'analysis-gallery': 'Analysis Gallery'
+                'analysis-gallery': 'Analysis Gallery',
+                'steering-sweep': 'Steering Sweep'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -204,6 +210,9 @@
                     break;
                 case 'analysis-gallery':
                     window.renderAnalysisGallery();
+                    break;
+                case 'steering-sweep':
+                    window.renderSteeringSweep();
                     break;
                 default:
                     document.getElementById('content-area').innerHTML =

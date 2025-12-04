@@ -237,6 +237,15 @@ def extract_prefill_activations_for_trait(
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
         print(f"    Saved val activations: {n_val_pos} pos, {n_val_neg} neg ({n_layers} layers each)")
 
+    # Compute per-layer activation norms (mean L2 norm across examples)
+    # all_acts shape: [n_examples, n_layers, hidden_dim]
+    activation_norms = {}
+    for layer in range(n_layers):
+        layer_acts = all_acts[:, layer, :]
+        norms = layer_acts.norm(dim=-1)  # L2 norm per example
+        activation_norms[layer] = round(norms.mean().item(), 2)
+    print(f"    Computed activation norms for {n_layers} layers")
+
     # Save metadata
     metadata = {
         'experiment': experiment,
@@ -256,6 +265,7 @@ def extract_prefill_activations_for_trait(
         'extraction_mode': f'prefill_{token_position}_token',
         'token_position': token_position,
         'component': component,
+        'activation_norms': activation_norms,
     }
     metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
     with open(activations_dir / metadata_filename, 'w') as f:
@@ -427,6 +437,15 @@ def extract_activations_for_trait(
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
         print(f"    Saved val activations: {n_val_pos} pos, {n_val_neg} neg ({n_layers} layers each)")
 
+    # Compute per-layer activation norms (mean L2 norm across examples)
+    # all_acts shape: [n_examples, n_layers, hidden_dim]
+    activation_norms = {}
+    for layer in range(n_layers):
+        layer_acts = all_acts[:, layer, :]
+        norms = layer_acts.norm(dim=-1)  # L2 norm per example
+        activation_norms[layer] = round(norms.mean().item(), 2)
+    print(f"    Computed activation norms for {n_layers} layers")
+
     # Save metadata
     metadata = {
         'experiment': experiment,
@@ -446,6 +465,7 @@ def extract_activations_for_trait(
         'extraction_mode': 'completion_only' if base_model else 'full_response',
         'max_completion_tokens': max_completion_tokens,
         'component': component,
+        'activation_norms': activation_norms,
     }
     metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
     with open(activations_dir / metadata_filename, 'w') as f:
