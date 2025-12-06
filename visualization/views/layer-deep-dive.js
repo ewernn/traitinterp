@@ -3,6 +3,27 @@
 // Plus attention patterns from per_token analysis data
 // Uses global token slider from prompt-picker.js (currentTokenIndex)
 
+/**
+ * Setup click handlers for subsection info toggles (► triangles)
+ */
+function setupSubsectionInfoToggles() {
+    const container = document.querySelector('.tool-view');
+    if (!container || container.dataset.togglesSetup) return;
+    container.dataset.togglesSetup = 'true';
+
+    container.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.subsection-info-toggle');
+        if (!toggle) return;
+
+        const targetId = toggle.dataset.target;
+        const infoDiv = document.getElementById(targetId);
+        if (infoDiv) {
+            const isShown = infoDiv.classList.toggle('show');
+            toggle.textContent = isShown ? '▼' : '►';
+        }
+    });
+}
+
 // Cache for SAE data and labels
 let saeDataCache = null;
 let saeLabelsCache = null;
@@ -21,7 +42,8 @@ let logitLensCache = null;
 let logitLensCacheKey = null;
 
 // Currently displayed layer for logit lens (default to last layer)
-let currentLogitLensLayer = 25;
+// Will be set dynamically based on model config
+let currentLogitLensLayer = null;
 
 /**
  * Load SAE feature labels (cached after first load)
@@ -29,8 +51,17 @@ let currentLogitLensLayer = 25;
 async function loadSaeLabels() {
     if (saeLabelsCache) return saeLabelsCache;
 
+    // Get SAE path from model config
+    const defaultLayer = window.modelConfig?.getDefaultMonitoringLayer() || 16;
+    const saePath = window.modelConfig?.getSaePath(defaultLayer);
+
+    if (!saePath) {
+        console.log('SAE not available for this model');
+        return null;
+    }
+
     try {
-        const response = await fetch('/sae/gemma-scope-2b-pt-res-canonical/layer_16_width_16k_canonical/feature_labels.json');
+        const response = await fetch(`/${saePath}/feature_labels.json`);
         if (!response.ok) return null;
         saeLabelsCache = await response.json();
         return saeLabelsCache;
@@ -113,6 +144,26 @@ async function loadLogitLensData(promptSet, promptId) {
  */
 function renderSetupInstructions(contentArea) {
     const experiment = window.paths.getExperiment();
+    const saeAvailable = window.modelConfig?.isSaeAvailable();
+
+    // Show "not available" message for models without SAE
+    if (!saeAvailable) {
+        contentArea.innerHTML = `
+            <div class="tool-view">
+                <div class="page-intro">
+                    <div class="page-intro-text">SAE feature decomposition not available for this model.</div>
+                </div>
+                <section>
+                    <div class="card">
+                        <p>Sparse Autoencoders are currently only available for Gemma 2B models (via gemma-scope).</p>
+                    </div>
+                </section>
+            </div>
+        `;
+        return;
+    }
+
+    const hiddenSize = window.modelConfig?.getHiddenSize() || 2304;
 
     contentArea.innerHTML = `
         <div class="tool-view">
@@ -123,7 +174,7 @@ function renderSetupInstructions(contentArea) {
                 <h2>Setup Required</h2>
                 <div class="card">
                     <p>SAE feature decomposition requires encoding raw activations through the Sparse Autoencoder.
-                    This converts 2,304 raw neuron activations into 16,384 interpretable features.</p>
+                    This converts ${hiddenSize.toLocaleString()} raw neuron activations into 16,384 interpretable features.</p>
 
                     <table class="def-table" style="margin-top: 12px;">
                         <tr>
@@ -153,35 +204,25 @@ function renderSetupInstructions(contentArea) {
  */
 function renderEducationSection() {
     return `
-        <section>
-            <h2>Understanding SAE Features</h2>
-            <div class="grid">
-                <div class="card">
-                    <h4>What Are SAE Features?</h4>
-                    <p>Sparse Autoencoders decompose polysemantic neurons into monosemantic features.
-                    Each feature ideally represents a single interpretable concept.</p>
-                    <p><strong>Input:</strong> 2,304 neurons → <strong>Output:</strong> 16,384 sparse features</p>
-                </div>
-
-                <div class="card">
-                    <h4>Why Sparsity Matters</h4>
-                    <p>Only ~50-200 features activate per token (out of 16k).
-                    This sparsity makes it easy to see "what's firing" at each position.</p>
-                </div>
-
-                <div class="card">
-                    <h4>GemmaScope</h4>
-                    <p>Google's SAE trained on Gemma 2B base model activations.
-                    Feature descriptions from Neuronpedia's automated interpretability.</p>
-                    <p><strong>Note:</strong> Trained on base model, not instruction-tuned</p>
-                </div>
-
-                <div class="card">
-                    <h4>Limitations</h4>
-                    <p>Feature descriptions are auto-generated and may be approximate.
-                    Some features lack clear interpretations.</p>
-                </div>
-            </div>
+        <section class="category-reference">
+            <h3>Reference</h3>
+            <details>
+                <summary>SAE Features</summary>
+                <p>Sparse Autoencoders decompose polysemantic neurons into monosemantic features. Each feature ideally represents a single interpretable concept.</p>
+                <ul>
+                    <li><strong>Input:</strong> 2,304 neurons → <strong>Output:</strong> 16,384 sparse features</li>
+                    <li><strong>Sparsity:</strong> Only ~50-200 features activate per token (out of 16k)</li>
+                    <li><strong>Source:</strong> GemmaScope (Google's SAE trained on Gemma 2B base model)</li>
+                </ul>
+            </details>
+            <details>
+                <summary>Limitations</summary>
+                <ul>
+                    <li>Feature descriptions are auto-generated (Neuronpedia) and may be approximate</li>
+                    <li>SAE trained on base model, not instruction-tuned variant</li>
+                    <li>Some features lack clear interpretations</li>
+                </ul>
+            </details>
         </section>
     `;
 }
@@ -231,13 +272,13 @@ function renderVisualization(contentArea, saeData, saeLabels, attentionData, log
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                         <div style="flex: 1;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h4 style="margin: 0;">Attention by Layer (head-averaged)</h4>
+                                <h4 style="margin: 0;">Attention by Layer <span class="subsection-info-toggle" data-target="info-attn-layers">►</span></h4>
                                 <label class="toggle-label" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary);">
                                     <input type="checkbox" id="hide-sink-toggle" ${hideSink ? 'checked' : ''}>
                                     Hide attention sink (pos 0)
                                 </label>
                             </div>
-                            <p class="section-desc">How attention to context positions evolves across layers. ${hasLogitLens ? '<em>Hover over a layer row to see its predictions.</em>' : ''}</p>
+                            <div class="subsection-info" id="info-attn-layers">Head-averaged attention weights. y=layer, x=context position.${hasLogitLens ? ' Hover layer row for logit lens predictions.' : ''}</div>
                         </div>
                         ${hasLogitLens ? `
                         <div id="logit-lens-panel" style="width: 200px; margin-left: 16px; padding: 8px; background: var(--bg-secondary); border-radius: 4px;">
@@ -253,8 +294,8 @@ function renderVisualization(contentArea, saeData, saeLabels, attentionData, log
                 </div>
 
                 <div class="card">
-                    <h4>Attention by Head (Layer 16)</h4>
-                    <p class="section-desc">What each attention head focuses on</p>
+                    <h4>Attention by Head (Layer ${window.modelConfig?.getDefaultMonitoringLayer() || 16}) <span class="subsection-info-toggle" data-target="info-attn-heads">►</span></h4>
+                    <div class="subsection-info" id="info-attn-heads">Per-head attention at the default monitoring layer. y=head, x=context position.</div>
                     <div id="attention-heads-heatmap" style="width: 100%; height: 300px;"></div>
                 </div>
         `;
@@ -264,12 +305,14 @@ function renderVisualization(contentArea, saeData, saeLabels, attentionData, log
     if (saeData && saeLabels) {
         html += `
                 <div class="card">
-                    <h4>Top 20 SAE Features</h4>
+                    <h4>Top 20 SAE Features <span class="subsection-info-toggle" data-target="info-sae-features">►</span></h4>
+                    <div class="subsection-info" id="info-sae-features">Most active sparse autoencoder features for this token. Labeled by Neuronpedia.</div>
                     <div id="sae-feature-chart" style="width: 100%; min-height: 500px;"></div>
                 </div>
 
                 <div class="card">
-                    <h4>Sparsity Stats</h4>
+                    <h4>Sparsity Stats <span class="subsection-info-toggle" data-target="info-sparsity">►</span></h4>
+                    <div class="subsection-info" id="info-sparsity">SAE activation count. Low = sparse/interpretable, high = distributed.</div>
                     <div class="stats-row">
                         <span><strong>Avg Active:</strong> ${(saeData.avg_active_features || 0).toFixed(0)}</span>
                         <span><strong>Min:</strong> ${saeData.min_active_features || 0}</span>
@@ -298,10 +341,14 @@ function renderVisualization(contentArea, saeData, saeLabels, attentionData, log
 
     contentArea.innerHTML = html;
 
+    // Setup info toggles
+    setupSubsectionInfoToggles();
+
     // Render charts
     if (hasFullAttention) {
+        const defaultLayer = window.modelConfig?.getDefaultMonitoringLayer() || 16;
         renderLayersHeatmap(tokenAttn, tokens);
-        renderHeadsHeatmap(tokenAttn, tokens, 16);
+        renderHeadsHeatmap(tokenAttn, tokens, defaultLayer);
 
         // Wire up sink toggle
         const sinkToggle = document.getElementById('hide-sink-toggle');
@@ -309,12 +356,16 @@ function renderVisualization(contentArea, saeData, saeLabels, attentionData, log
             sinkToggle.addEventListener('change', (e) => {
                 window.state.hideAttentionSink = e.target.checked;
                 renderLayersHeatmap(tokenAttn, tokens);
-                renderHeadsHeatmap(tokenAttn, tokens, 16);
+                renderHeadsHeatmap(tokenAttn, tokens, defaultLayer);
             });
         }
 
         // Render logit lens and wire up hover
         if (hasLogitLens) {
+            // Initialize to last layer if not set
+            if (currentLogitLensLayer === null) {
+                currentLogitLensLayer = (window.modelConfig?.getNumLayers() || 26) - 1;
+            }
             renderLogitLensChart(logitLensData, clampedIdx, currentLogitLensLayer);
             setupLogitLensHover(logitLensData, clampedIdx);
         }
@@ -334,7 +385,7 @@ function renderLayersHeatmap(tokenAttn, allTokens) {
     const hideSink = window.state?.hideAttentionSink ?? true;
     const startPos = hideSink ? 1 : 0;  // Skip position 0 if hiding sink
     const contextSize = tokenAttn.context_size || 1;
-    const nLayers = tokenAttn.by_layer?.length || 26;
+    const nLayers = tokenAttn.by_layer?.length || window.modelConfig?.getNumLayers() || 26;
 
     // Build z matrix: [layers, context] - head-averaged
     const z = [];
@@ -654,10 +705,11 @@ function setupLogitLensHover(logitLensData, tokenIdx) {
     });
 
     heatmapDiv.on('plotly_unhover', () => {
-        // Snap back to layer 25 on unhover
-        if (currentLogitLensLayer !== 25) {
-            currentLogitLensLayer = 25;
-            renderLogitLensChart(logitLensData, tokenIdx, 25);
+        // Snap back to last layer on unhover
+        const lastLayer = (window.modelConfig?.getNumLayers() || 26) - 1;
+        if (currentLogitLensLayer !== lastLayer) {
+            currentLogitLensLayer = lastLayer;
+            renderLogitLensChart(logitLensData, tokenIdx, lastLayer);
         }
     });
 }

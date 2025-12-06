@@ -423,6 +423,14 @@ async function loadExperimentData(experimentName) {
         // Correctly use the global path builder
         window.paths.setExperiment(experimentName);
 
+        // Load model config for this experiment
+        try {
+            await window.modelConfig.loadForExperiment(experimentName);
+            console.log(`Loaded model config: ${window.modelConfig.modelId} (${window.modelConfig.getNumLayers()} layers)`);
+        } catch (e) {
+            console.warn(`No model config found for ${experimentName}:`, e.message);
+        }
+
         // Try to load README
         try {
             const readmePath = `experiments/${experimentName}/README.md`;

@@ -77,35 +77,12 @@ async function renderTraitExtraction() {
                 </h3>
                 <div class="subsection-info" id="info-method-breakdown">Each row shows one extraction method. Histograms show distribution of Score, Accuracy, Effect (normalized), and 1−Drop across all layer×trait combinations. Compare methods to see which produces consistently good vectors.</div>
                 <div id="method-breakdown-container"></div>
-
-                <h3 class="subsection-header" id="trait-breakdown">
-                    <span class="subsection-num">5.</span>
-                    <span class="subsection-title">Per-Trait Distributions</span>
-                    <span class="subsection-info-toggle" data-target="info-trait-breakdown">►</span>
-                </h3>
-                <div class="subsection-info" id="info-trait-breakdown">Each row shows one trait. Histograms show distribution across all method×layer combinations. See which traits are easy vs hard to extract.</div>
-                <div id="trait-breakdown-container"></div>
-
-                <h3 class="subsection-header" id="layer-breakdown">
-                    <span class="subsection-num">6.</span>
-                    <span class="subsection-title">Per-Layer Distributions</span>
-                    <span class="subsection-info-toggle" data-target="info-layer-breakdown">►</span>
-                </h3>
-                <div class="subsection-info" id="info-layer-breakdown">Each row shows one layer. Histograms show distribution across all method×trait combinations. See which layers produce better vectors.</div>
-                <div id="layer-breakdown-container"></div>
-
-                <h3 class="subsection-header" id="layer-trait-heatmaps">
-                    <span class="subsection-num">7.</span>
-                    <span class="subsection-title">Layer × Trait Heatmaps (per method)</span>
-                    <span class="subsection-info-toggle" data-target="info-layer-trait">►</span>
-                </h3>
-                <div class="subsection-info" id="info-layer-trait">One heatmap per method showing score across all layers (y-axis) and traits (x-axis). Find the best layer for each trait.</div>
-                <div id="layer-trait-heatmaps-container"></div>
             </section>
 
             <!-- Section 2: Notation -->
             <section>
-                <h2>Notation & Definitions <span class="info-icon" data-info="notation">ⓘ</span></h2>
+                <h2>Notation & Definitions <span class="subsection-info-toggle" data-target="info-notation">►</span></h2>
+                <div class="subsection-info" id="info-notation">Symbols used throughout extraction pipeline. Each example's activation is the average across all response tokens, giving a single d-dimensional vector per example.</div>
                 ${renderNotation()}
             </section>
 
@@ -124,13 +101,15 @@ async function renderTraitExtraction() {
 
             <!-- Section 4: Metrics Definitions -->
             <section>
-                <h2>Quality Metrics <span class="info-icon" data-info="metrics">ⓘ</span></h2>
+                <h2>Quality Metrics <span class="subsection-info-toggle" data-target="info-metrics">►</span></h2>
+                <div class="subsection-info" id="info-metrics">Computed on held-out validation data (20%). Accuracy >90% is good, effect size >1.5 is large.</div>
                 ${renderMetricsDefinitions()}
             </section>
 
             <!-- Section 5: Scoring Method -->
             <section>
-                <h2>Scoring & Ranking <span class="info-icon" data-info="scoring">ⓘ</span></h2>
+                <h2>Scoring & Ranking <span class="subsection-info-toggle" data-target="info-scoring">►</span></h2>
+                <div class="subsection-info" id="info-scoring">Combined score balances accuracy (50%) and effect size (50%). High accuracy with tiny effect may be overfitting.</div>
                 ${renderScoringExplanation()}
             </section>
 
@@ -140,8 +119,6 @@ async function renderTraitExtraction() {
                 <div id="all-metrics-container"></div>
             </section>
 
-            <!-- Tooltip container -->
-            <div id="section-info-tooltip" class="tooltip"></div>
         </div>
     `;
 
@@ -151,9 +128,6 @@ async function renderTraitExtraction() {
     renderBestVectors(evalData);
     renderMetricDistributions(evalData);
     renderMethodBreakdown(evalData);
-    renderTraitBreakdown(evalData);
-    renderLayerBreakdown(evalData);
-    renderLayerTraitHeatmaps(evalData);
     renderBestVectorSimilarity(evalData);
     renderAllMetricsOverview(evalData);
 
@@ -162,8 +136,7 @@ async function renderTraitExtraction() {
         MathJax.typesetPromise();
     }
 
-    // Setup info tooltips
-    setupSectionInfoTooltips();
+    // Setup info toggles
     setupSubsectionInfoToggles();
 }
 
@@ -191,77 +164,6 @@ function setupSubsectionInfoToggles() {
 }
 
 
-// Info tooltip content for each section
-const SECTION_INFO_CONTENT = {
-    notation: `
-        <h4>About This Notation</h4>
-        <p>These symbols are used consistently throughout the extraction pipeline and evaluation metrics.</p>
-        <p><strong>Key insight:</strong> Each example's activation is the <em>average</em> across all response tokens, giving a single d-dimensional vector per example.</p>
-    `,
-    metrics: `
-        <h4>Interpreting Quality Metrics</h4>
-        <p>All metrics are computed on <strong>held-out validation data</strong> (20% of examples) to measure generalization.</p>
-        <ul>
-            <li><strong>Accuracy:</strong> Can the vector classify unseen examples? >90% is good.</li>
-            <li><strong>Effect Size (d):</strong> How separated are the distributions? >1.5 is large effect.</li>
-            <li><strong>Norm:</strong> Vector magnitude. Typical range: 15-40.</li>
-            <li><strong>Margin:</strong> Gap between distributions. Positive = no overlap.</li>
-        </ul>
-    `,
-    scoring: `
-        <h4>Why This Scoring Formula?</h4>
-        <p>The combined score balances two goals:</p>
-        <ul>
-            <li><strong>Accuracy (50%):</strong> Practical utility—can we use this vector?</li>
-            <li><strong>Effect Size (50%):</strong> Robustness—how confident is the separation?</li>
-        </ul>
-        <p>Effect size is normalized per-trait because scales vary (0.5–5.0). This makes cross-trait comparison fair.</p>
-        <p><em>A vector with 95% accuracy but tiny effect size may be overfitting. This score catches that.</em></p>
-    `
-};
-
-
-function setupSectionInfoTooltips() {
-    const tooltip = document.getElementById('section-info-tooltip');
-    if (!tooltip) return;
-
-    const icons = document.querySelectorAll('.info-icon');
-
-    icons.forEach(icon => {
-        icon.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const key = icon.dataset.info;
-            const content = SECTION_INFO_CONTENT[key];
-
-            if (tooltip.classList.contains('show') && tooltip.dataset.activeKey === key) {
-                // Toggle off if clicking same icon
-                tooltip.classList.remove('show');
-                return;
-            }
-
-            tooltip.innerHTML = content;
-            tooltip.dataset.activeKey = key;
-
-            // Position near the icon
-            const rect = icon.getBoundingClientRect();
-            const containerRect = document.querySelector('.tool-view').getBoundingClientRect();
-
-            tooltip.style.top = `${rect.bottom - containerRect.top + 8}px`;
-            tooltip.style.left = `${rect.left - containerRect.left}px`;
-
-            tooltip.classList.add('show');
-        });
-    });
-
-    // Close tooltip when clicking elsewhere
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.info-icon') && !e.target.closest('.tooltip')) {
-            tooltip.classList.remove('show');
-        }
-    });
-}
-
-
 async function loadExtractionEvaluation() {
     try {
         const url = window.paths.extractionEvaluation();
@@ -277,46 +179,37 @@ async function loadExtractionEvaluation() {
 
 function renderNotation() {
     return `
-        <div class="grid">
-            <div class="card">
-                <h4>Input Shapes</h4>
+        <div class="category-reference">
+            <details>
+                <summary>Input Shapes & Variables</summary>
                 <table class="def-table">
                     <tr><td>$$n$$</td><td>Number of examples (train or validation split)</td></tr>
                     <tr><td>$$d$$</td><td>Hidden dimension (model-specific)</td></tr>
                     <tr><td>$$L$$</td><td>Number of layers (model-specific)</td></tr>
                     <tr><td>$$\\mathbf{A} \\in \\mathbb{R}^{n \\times d}$$</td><td>Activation matrix (token-averaged per example)</td></tr>
-                </table>
-            </div>
-
-            <div class="card">
-                <h4>Variables</h4>
-                <table class="def-table">
                     <tr><td>$$\\vec{v} \\in \\mathbb{R}^d$$</td><td>Trait vector (direction in activation space)</td></tr>
                     <tr><td>$$\\vec{a}_i \\in \\mathbb{R}^d$$</td><td>Single example's activation (row of A)</td></tr>
                     <tr><td>$$y_i \\in \\{+1, -1\\}$$</td><td>Binary label (positive/negative trait)</td></tr>
-                    <tr><td>$$\\text{pos}, \\text{neg}$$</td><td>Subscripts for positive/negative example subsets</td></tr>
                 </table>
-            </div>
-
-            <div class="card">
-                <h4>Key Quantities</h4>
+            </details>
+            <details>
+                <summary>Key Quantities</summary>
                 <table class="def-table">
                     <tr><td>$$\\vec{a} \\cdot \\vec{v}$$</td><td>Projection score (dot product)</td></tr>
                     <tr><td>$$\\mu_{\\text{pos}}, \\mu_{\\text{neg}}$$</td><td>Mean projection for pos/neg examples</td></tr>
                     <tr><td>$$\\sigma_{\\text{pooled}}$$</td><td>Pooled standard deviation</td></tr>
                     <tr><td>$$||\\vec{v}||_2$$</td><td>L2 norm (vector magnitude)</td></tr>
                 </table>
-            </div>
-
-            <div class="card">
-                <h4>Pipeline Context</h4>
-                <table class="def-table">
-                    <tr><td><strong>Train split</strong></td><td>80% of examples → used to extract vectors</td></tr>
-                    <tr><td><strong>Val split</strong></td><td>20% of examples → used to evaluate vectors</td></tr>
-                    <tr><td><strong>Per-layer</strong></td><td>Vectors extracted independently for each layer</td></tr>
-                    <tr><td><strong>Per-method</strong></td><td>4 extraction methods × L layers vectors/trait</td></tr>
-                </table>
-            </div>
+            </details>
+            <details>
+                <summary>Pipeline Context</summary>
+                <ul>
+                    <li><strong>Train split:</strong> 80% of examples → used to extract vectors</li>
+                    <li><strong>Val split:</strong> 20% of examples → used to evaluate vectors</li>
+                    <li><strong>Per-layer:</strong> Vectors extracted independently for each layer</li>
+                    <li><strong>Per-method:</strong> 4 extraction methods × L layers = 4L vectors/trait</li>
+                </ul>
+            </details>
         </div>
     `;
 }
@@ -324,30 +217,27 @@ function renderNotation() {
 
 function renderExtractionTechniques() {
     return `
-        <div class="grid">
-            <div class="card">
-                <h4>Mean Difference</h4>
+        <div class="category-reference">
+            <details>
+                <summary>Mean Difference</summary>
                 <p>$$\\vec{v} = \\text{mean}(\\mathbf{A}_{\\text{pos}}) - \\text{mean}(\\mathbf{A}_{\\text{neg}})$$</p>
                 <p>Direction between cluster centroids. Fast baseline, but ignores class shape/spread.</p>
-            </div>
-
-            <div class="card">
-                <h4>Linear Probe</h4>
+            </details>
+            <details>
+                <summary>Linear Probe</summary>
                 <p>$$\\min_\\vec{w} \\sum_i \\log(1 + e^{-y_i (\\vec{w} \\cdot \\vec{a}_i)})$$</p>
                 <p>Logistic regression weights. Optimizes for <em>separability</em>, not just distance—handles overlap better.</p>
-            </div>
-
-            <div class="card">
-                <h4>Gradient</h4>
+            </details>
+            <details>
+                <summary>Gradient</summary>
                 <p>$$\\max_\\vec{v} \\left( \\text{mean}(\\mathbf{A}_{\\text{pos}} \\cdot \\vec{v}) - \\text{mean}(\\mathbf{A}_{\\text{neg}} \\cdot \\vec{v}) \\right)$$</p>
                 <p>Direct optimization of separation. Best for low-separability traits where other methods fail.</p>
-            </div>
-
-            <div class="card">
-                <h4>Random Baseline</h4>
+            </details>
+            <details>
+                <summary>Random Baseline</summary>
                 <p>$$\\vec{v} \\sim \\mathcal{N}(0, I), \\quad \\|\\vec{v}\\| = 1$$</p>
                 <p>Random unit vector. Sanity check—should get ~50% accuracy. If not, something's wrong.</p>
-            </div>
+            </details>
         </div>
     `;
 }
@@ -355,55 +245,37 @@ function renderExtractionTechniques() {
 
 function renderMetricsDefinitions() {
     return `
-        <div class="grid">
-            <div class="card">
-                <h4>Accuracy</h4>
+        <div class="category-reference">
+            <details>
+                <summary>Accuracy</summary>
                 <p>$$\\text{acc} = \\frac{\\text{correct classifications}}{\\text{total examples}}$$</p>
-                <p>Percentage of validation examples correctly classified as positive/negative.</p>
-                <p><strong>Range:</strong> 0-1 (50% = random, 100% = perfect). <strong class="quality-good">Good: &gt; 0.90</strong></p>
-            </div>
-
-            <div class="card">
-                <h4>AUC-ROC</h4>
+                <p>Percentage of validation examples correctly classified. Range: 0-1. <strong class="quality-good">Good: &gt; 0.90</strong></p>
+            </details>
+            <details>
+                <summary>AUC-ROC</summary>
                 <p>$$\\text{AUC} = \\int_0^1 \\text{TPR}(\\text{FPR}^{-1}(t)) \\, dt$$</p>
-                <p>Area Under ROC Curve. Threshold-independent measure of classification quality.</p>
-                <p><strong>Range:</strong> 0.5-1 (0.5 = random, 1 = perfect). <strong class="quality-good">Good: &gt; 0.90</strong></p>
-            </div>
-
-            <div class="card">
-                <h4>Effect Size (Cohen's d)</h4>
+                <p>Area Under ROC Curve. Threshold-independent. Range: 0.5-1. <strong class="quality-good">Good: &gt; 0.90</strong></p>
+            </details>
+            <details>
+                <summary>Effect Size (Cohen's d)</summary>
                 <p>$$d = \\frac{\\mu_{\\text{pos}} - \\mu_{\\text{neg}}}{\\sigma_{\\text{pooled}}}$$</p>
-                <p>Magnitude of separation between positive/negative distributions in standard deviation units.</p>
-                <p><strong>Range:</strong> 0-∞ (0 = no separation, &gt;2 = large effect). <strong class="quality-good">Good: &gt; 1.5</strong></p>
-            </div>
-
-            <div class="card">
-                <h4>Vector Norm</h4>
+                <p>Separation in standard deviation units. Range: 0-∞. <strong class="quality-good">Good: &gt; 1.5</strong></p>
+            </details>
+            <details>
+                <summary>Vector Norm</summary>
                 <p>$$||\\vec{v}||_2 = \\sqrt{\\sum_i v_i^2}$$</p>
-                <p>L2 norm of the vector. Indicates magnitude/strength.</p>
-                <p><strong>Range:</strong> 0-∞. <strong>Typical:</strong> 15-40 for normalized vectors</p>
-            </div>
-
-            <div class="card">
-                <h4>Separation Margin</h4>
+                <p>L2 norm of vector. Range: 0-∞. Typical: 15-40</p>
+            </details>
+            <details>
+                <summary>Separation Margin</summary>
                 <p>$$(\\mu_{\\text{pos}} - \\sigma_{\\text{pos}}) - (\\mu_{\\text{neg}} + \\sigma_{\\text{neg}})$$</p>
-                <p>Gap between distributions. Positive = good separation, negative = overlap.</p>
-                <p><strong>Range:</strong> -∞ to +∞. <strong class="quality-good">Good: &gt; 0</strong></p>
-            </div>
-
-            <div class="card">
-                <h4>Sparsity</h4>
-                <p>$$\\text{sparsity} = \\frac{|\\{i : |v_i| < 0.01\\}|}{d}$$</p>
-                <p>Percentage of near-zero components. High sparsity = interpretable, focused vector.</p>
-                <p><strong>Range:</strong> 0-1 (0 = dense, 1 = sparse)</p>
-            </div>
-
-            <div class="card">
-                <h4>Overlap Coefficient</h4>
-                <p>$$\\text{overlap} \\approx 1 - \\frac{|\\mu_{\\text{pos}} - \\mu_{\\text{neg}}|}{4\\sigma_{\\text{pooled}}}$$</p>
-                <p>Estimate of distribution overlap (0 = no overlap, 1 = complete overlap).</p>
-                <p><strong>Range:</strong> 0-1. <strong class="quality-good">Good: &lt; 0.2</strong></p>
-            </div>
+                <p>Gap between distributions. Positive = good separation. <strong class="quality-good">Good: &gt; 0</strong></p>
+            </details>
+            <details>
+                <summary>Sparsity & Overlap</summary>
+                <p><strong>Sparsity:</strong> % of near-zero components (0 = dense, 1 = sparse)</p>
+                <p><strong>Overlap:</strong> Distribution overlap estimate. <strong class="quality-good">Good: &lt; 0.2</strong></p>
+            </details>
         </div>
     `;
 }
@@ -411,20 +283,18 @@ function renderMetricsDefinitions() {
 
 function renderScoringExplanation() {
     return `
-        <div class="card">
-            <h4>Combined Score Formula</h4>
-            <p>$$\\text{score} = \\frac{\\text{accuracy} + \\text{norm\\_effect} + (1 - \\text{accuracy\\_drop})}{3} \\times \\text{polarity}$$</p>
-
-            <h4>Components (equal weights)</h4>
-            <ul>
-                <li><strong>Accuracy:</strong> Classification performance on held-out validation examples.</li>
-                <li><strong>Normalized Effect Size:</strong> Cohen's d / max Cohen's d for trait. Measures separation quality for steering.</li>
-                <li><strong>1 − Accuracy Drop:</strong> Generalization quality. High = validates well, low = overfitting.</li>
-                <li><strong>Polarity:</strong> Hard multiplier. Wrong polarity (neg > pos) → score = 0.</li>
-            </ul>
-
-            <h4>Why Equal Weights?</h4>
-            <p>No strong prior for weighting. Equal weights until empirical evidence suggests otherwise. All three components matter: accuracy (does it work?), effect size (can it steer?), generalization (will it transfer?).</p>
+        <div class="category-reference">
+            <details>
+                <summary>Combined Score Formula</summary>
+                <p>$$\\text{score} = \\frac{\\text{accuracy} + \\text{norm\\_effect} + (1 - \\text{accuracy\\_drop})}{3} \\times \\text{polarity}$$</p>
+                <ul>
+                    <li><strong>Accuracy:</strong> Classification on held-out validation</li>
+                    <li><strong>Normalized Effect:</strong> Cohen's d / max d for trait (separation for steering)</li>
+                    <li><strong>1 − Drop:</strong> Generalization quality (high = validates well)</li>
+                    <li><strong>Polarity:</strong> Wrong polarity (neg > pos) → score = 0</li>
+                </ul>
+                <p>Equal weights: accuracy (does it work?), effect (can it steer?), generalization (will it transfer?)</p>
+            </details>
         </div>
     `;
 }
@@ -567,9 +437,21 @@ function renderTraitHeatmaps(evalData) {
     const container = document.getElementById('trait-heatmaps-container');
     if (!container) return;
 
-    const results = evalData.all_results || [];
-    if (results.length === 0) {
+    const allResults = evalData.all_results || [];
+    if (allResults.length === 0) {
         container.innerHTML = '<p>No results to display.</p>';
+        return;
+    }
+
+    // Filter by selected traits from sidebar
+    const filteredTraits = window.getFilteredTraits();
+    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const results = selectedTraitNames.size > 0
+        ? allResults.filter(r => selectedTraitNames.has(r.trait))
+        : allResults;
+
+    if (results.length === 0) {
+        container.innerHTML = '<p>No results for selected traits.</p>';
         return;
     }
 
@@ -654,6 +536,11 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         matrix.push(row);
     });
 
+    // Compute dynamic zmin from actual data (round down to nearest 10)
+    const allValues = matrix.flat().filter(v => v !== null);
+    const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+    const zmin = Math.floor(minValue / 10) * 10;
+
     const trace = {
         z: matrix,
         x: compact ? ['MD', 'Pr', 'Gr'] : methods,
@@ -661,7 +548,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         type: 'heatmap',
         colorscale: window.ASYMB_COLORSCALE,
         hovertemplate: '%{x} L%{y}: %{z:.1f}%<extra></extra>',
-        zmin: 0,
+        zmin: zmin,
         zmax: 100,
         showscale: !compact
     };
@@ -675,10 +562,10 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
     }
 
     const layout = compact ? {
-        margin: { l: 25, r: 5, t: 5, b: 25 },
+        margin: { l: 5, r: 5, t: 5, b: 25 },
         xaxis: { tickfont: { size: 8 }, tickangle: 0 },
-        yaxis: { tickfont: { size: 8 }, title: '' },
-        height: 120
+        yaxis: { showticklabels: false, title: '' },
+        height: 180
     } : {
         margin: { l: 40, r: 80, t: 20, b: 60 },
         xaxis: { title: 'Method', tickfont: { size: 11 } },
@@ -735,9 +622,21 @@ function renderMetricDistributions(evalData) {
     const container = document.getElementById('metric-distributions-container');
     if (!container) return;
 
-    const allResults = evalData.all_results || [];
-    if (allResults.length === 0) {
+    const rawResults = evalData.all_results || [];
+    if (rawResults.length === 0) {
         container.innerHTML = '<p>No results available.</p>';
+        return;
+    }
+
+    // Filter by selected traits from sidebar
+    const filteredTraits = window.getFilteredTraits();
+    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const allResults = selectedTraitNames.size > 0
+        ? rawResults.filter(r => selectedTraitNames.has(r.trait))
+        : rawResults;
+
+    if (allResults.length === 0) {
+        container.innerHTML = '<p>No results for selected traits.</p>';
         return;
     }
 
@@ -985,9 +884,21 @@ function renderMethodBreakdown(evalData) {
     const container = document.getElementById('method-breakdown-container');
     if (!container) return;
 
-    const allResults = evalData.all_results || [];
-    if (allResults.length === 0) {
+    const rawResults = evalData.all_results || [];
+    if (rawResults.length === 0) {
         container.innerHTML = '<p>No results available.</p>';
+        return;
+    }
+
+    // Filter by selected traits from sidebar
+    const filteredTraits = window.getFilteredTraits();
+    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const allResults = selectedTraitNames.size > 0
+        ? rawResults.filter(r => selectedTraitNames.has(r.trait))
+        : rawResults;
+
+    if (allResults.length === 0) {
+        container.innerHTML = '<p>No results for selected traits.</p>';
         return;
     }
 
@@ -1079,283 +990,6 @@ function renderMethodBreakdown(evalData) {
                 height: 100
             }), { displayModeBar: false, responsive: true });
         });
-    });
-}
-
-
-/**
- * Render per-trait breakdown: histograms for each trait across all methods×layers
- */
-function renderTraitBreakdown(evalData) {
-    const container = document.getElementById('trait-breakdown-container');
-    if (!container) return;
-
-    const allResults = evalData.all_results || [];
-    if (allResults.length === 0) {
-        container.innerHTML = '<p>No results available.</p>';
-        return;
-    }
-
-    const traits = [...new Set(allResults.map(r => r.trait))].sort();
-
-    // Compute max effect per trait for normalization
-    const maxEffectPerTrait = {};
-    allResults.forEach(r => {
-        if (!maxEffectPerTrait[r.trait] || r.val_effect_size > maxEffectPerTrait[r.trait]) {
-            maxEffectPerTrait[r.trait] = r.val_effect_size || 0;
-        }
-    });
-
-    // Score computation
-    const computeScore = (r) => {
-        const maxEffect = maxEffectPerTrait[r.trait] || 1;
-        const normEffect = (r.val_effect_size || 0) / maxEffect;
-        const accDrop = r.accuracy_drop || 0;
-        const polarity = r.polarity_correct ? 1 : 0;
-        return ((r.val_accuracy || 0) + normEffect + (1 - accDrop)) / 3 * polarity;
-    };
-
-    // Metric definitions
-    const metrics = [
-        { key: 'score', label: 'Score', getValue: r => computeScore(r) * 100 },
-        { key: 'accuracy', label: 'Accuracy', getValue: r => (r.val_accuracy || 0) * 100 },
-        { key: 'effect', label: 'Effect (norm)', getValue: r => ((r.val_effect_size || 0) / (maxEffectPerTrait[r.trait] || 1)) * 100 },
-        { key: 'drop', label: '1−Drop', getValue: r => (1 - (r.accuracy_drop || 0)) * 100 }
-    ];
-
-    // Build HTML grid: rows = traits, cols = metrics
-    let html = `<div class="method-breakdown-grid">`;
-
-    // Header row
-    html += `<div class="method-breakdown-header"></div>`;
-    metrics.forEach(metric => {
-        html += `<div class="method-breakdown-header">${metric.label}</div>`;
-    });
-
-    // Data rows
-    traits.forEach(trait => {
-        const displayName = window.getDisplayName(trait);
-        html += `<div class="method-breakdown-label" title="${displayName}">${displayName}</div>`;
-
-        metrics.forEach(metric => {
-            const id = `trait-breakdown-${trait.replace(/\//g, '-')}-${metric.key}`;
-            html += `<div class="method-breakdown-cell"><div id="${id}"></div></div>`;
-        });
-    });
-
-    html += `</div>`;
-    container.innerHTML = html;
-
-    // Render each histogram
-    traits.forEach(trait => {
-        const traitResults = allResults.filter(r => r.trait === trait);
-
-        metrics.forEach(metric => {
-            const id = `trait-breakdown-${trait.replace(/\//g, '-')}-${metric.key}`;
-
-            const values = traitResults
-                .map(r => metric.getValue(r))
-                .filter(v => v != null && !isNaN(v));
-
-            const trace = {
-                x: values,
-                type: 'histogram',
-                nbinsx: 15,
-                marker: { color: getCssVar('--primary-color', '#a09f6c') },
-                hovertemplate: `${metric.label}: %{x:.0f}%<br>Count: %{y}<extra></extra>`
-            };
-
-            Plotly.newPlot(id, [trace], window.getPlotlyLayout({
-                margin: { l: 30, r: 5, t: 5, b: 25 },
-                xaxis: { tickfont: { size: 8 }, range: [0, 150] },
-                yaxis: { tickfont: { size: 8 }, title: '' },
-                height: 80
-            }), { displayModeBar: false, responsive: true });
-        });
-    });
-}
-
-
-/**
- * Render per-layer breakdown: histograms for each layer across all methods×traits
- */
-function renderLayerBreakdown(evalData) {
-    const container = document.getElementById('layer-breakdown-container');
-    if (!container) return;
-
-    const allResults = evalData.all_results || [];
-    if (allResults.length === 0) {
-        container.innerHTML = '<p>No results available.</p>';
-        return;
-    }
-
-    const layers = [...new Set(allResults.map(r => r.layer))].sort((a, b) => a - b);
-
-    // Compute max effect per trait for normalization
-    const maxEffectPerTrait = {};
-    allResults.forEach(r => {
-        if (!maxEffectPerTrait[r.trait] || r.val_effect_size > maxEffectPerTrait[r.trait]) {
-            maxEffectPerTrait[r.trait] = r.val_effect_size || 0;
-        }
-    });
-
-    // Score computation
-    const computeScore = (r) => {
-        const maxEffect = maxEffectPerTrait[r.trait] || 1;
-        const normEffect = (r.val_effect_size || 0) / maxEffect;
-        const accDrop = r.accuracy_drop || 0;
-        const polarity = r.polarity_correct ? 1 : 0;
-        return ((r.val_accuracy || 0) + normEffect + (1 - accDrop)) / 3 * polarity;
-    };
-
-    // Metric definitions
-    const metrics = [
-        { key: 'score', label: 'Score', getValue: r => computeScore(r) * 100 },
-        { key: 'accuracy', label: 'Accuracy', getValue: r => (r.val_accuracy || 0) * 100 },
-        { key: 'effect', label: 'Effect (norm)', getValue: r => ((r.val_effect_size || 0) / (maxEffectPerTrait[r.trait] || 1)) * 100 },
-        { key: 'drop', label: '1−Drop', getValue: r => (1 - (r.accuracy_drop || 0)) * 100 }
-    ];
-
-    // Build HTML grid: rows = layers, cols = metrics
-    let html = `<div class="method-breakdown-grid">`;
-
-    // Header row
-    html += `<div class="method-breakdown-header"></div>`;
-    metrics.forEach(metric => {
-        html += `<div class="method-breakdown-header">${metric.label}</div>`;
-    });
-
-    // Data rows
-    layers.forEach(layer => {
-        html += `<div class="method-breakdown-label">Layer ${layer}</div>`;
-
-        metrics.forEach(metric => {
-            const id = `layer-breakdown-${layer}-${metric.key}`;
-            html += `<div class="method-breakdown-cell"><div id="${id}"></div></div>`;
-        });
-    });
-
-    html += `</div>`;
-    container.innerHTML = html;
-
-    // Render each histogram
-    layers.forEach(layer => {
-        const layerResults = allResults.filter(r => r.layer === layer);
-
-        metrics.forEach(metric => {
-            const id = `layer-breakdown-${layer}-${metric.key}`;
-
-            const values = layerResults
-                .map(r => metric.getValue(r))
-                .filter(v => v != null && !isNaN(v));
-
-            const trace = {
-                x: values,
-                type: 'histogram',
-                nbinsx: 15,
-                marker: { color: getCssVar('--primary-color', '#a09f6c') },
-                hovertemplate: `${metric.label}: %{x:.0f}%<br>Count: %{y}<extra></extra>`
-            };
-
-            Plotly.newPlot(id, [trace], window.getPlotlyLayout({
-                margin: { l: 30, r: 5, t: 5, b: 25 },
-                xaxis: { tickfont: { size: 8 }, range: [0, 150] },
-                yaxis: { tickfont: { size: 8 }, title: '' },
-                height: 80
-            }), { displayModeBar: false, responsive: true });
-        });
-    });
-}
-
-
-/**
- * Render layer × trait heatmaps - one per method
- * Shows score across all layers (y) and traits (x) for each method
- */
-function renderLayerTraitHeatmaps(evalData) {
-    const container = document.getElementById('layer-trait-heatmaps-container');
-    if (!container) return;
-
-    const allResults = evalData.all_results || [];
-    if (allResults.length === 0) {
-        container.innerHTML = '<p>No results available.</p>';
-        return;
-    }
-
-    const methods = ['probe', 'gradient', 'mean_diff'];
-    const methodLabels = { 'probe': 'Probe', 'gradient': 'Gradient', 'mean_diff': 'Mean Diff' };
-
-    const traits = [...new Set(allResults.map(r => r.trait))].sort();
-    const layers = [...new Set(allResults.map(r => r.layer))].sort((a, b) => a - b);
-    const traitLabels = traits.map(t => window.getDisplayName(t));
-
-    // Compute max effect per trait for normalization
-    const maxEffectPerTrait = {};
-    allResults.forEach(r => {
-        if (!maxEffectPerTrait[r.trait] || r.val_effect_size > maxEffectPerTrait[r.trait]) {
-            maxEffectPerTrait[r.trait] = r.val_effect_size || 0;
-        }
-    });
-
-    // v2 score (no 1-Drop)
-    const computeScore = (r) => {
-        const maxEffect = maxEffectPerTrait[r.trait] || 1;
-        const normEffect = (r.val_effect_size || 0) / maxEffect;
-        const polarity = r.polarity_correct ? 1 : 0;
-        return (r.val_accuracy * 0.43 + normEffect * 0.57) * polarity;
-    };
-
-    // Build grid: one heatmap per method
-    let html = `<div class="layer-trait-grid">`;
-    methods.forEach(method => {
-        html += `
-            <div class="layer-trait-item">
-                <h4>${methodLabels[method]}</h4>
-                <div id="layer-trait-${method}"></div>
-            </div>
-        `;
-    });
-    html += `</div>`;
-    container.innerHTML = html;
-
-    // Render each heatmap
-    methods.forEach(method => {
-        const methodResults = allResults.filter(r => r.method === method);
-
-        // Build matrix: layers (rows) × traits (cols)
-        const matrix = layers.map(layer => {
-            return traits.map(trait => {
-                const result = methodResults.find(r => r.layer === layer && r.trait === trait);
-                return result ? computeScore(result) * 100 : null;
-            });
-        });
-
-        const trace = {
-            z: matrix,
-            x: traitLabels,
-            y: layers,
-            type: 'heatmap',
-            colorscale: window.ASYMB_COLORSCALE,
-            zmin: 0,
-            zmax: 100,
-            showscale: method === 'mean_diff',  // Only show scale on last one
-            hovertemplate: `%{x}<br>Layer %{y}<br>Score: %{z:.1f}%<extra></extra>`
-        };
-
-        if (method === 'mean_diff') {
-            trace.colorbar = {
-                title: { text: 'Score %', font: { size: 11 } },
-                tickvals: [0, 50, 100],
-                ticktext: ['0%', '50%', '100%']
-            };
-        }
-
-        Plotly.newPlot(`layer-trait-${method}`, [trace], window.getPlotlyLayout({
-            margin: { l: 30, r: method === 'mean_diff' ? 80 : 10, t: 10, b: 80 },
-            xaxis: { tickfont: { size: 9 }, tickangle: -45 },
-            yaxis: { tickfont: { size: 9 }, title: 'Layer', dtick: 5 },
-            height: 350
-        }), { displayModeBar: false, responsive: true });
     });
 }
 

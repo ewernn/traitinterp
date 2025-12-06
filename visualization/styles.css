@@ -664,38 +664,6 @@ code {
 .def-table td:last-child { color: var(--text-secondary); }
 .def-table tr:last-child td { border-bottom: none; }
 
-/* Tooltip */
-.tooltip {
-    position: absolute;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 2px;
-    padding: 12px;
-    max-width: 360px;
-    z-index: 100;
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    display: none;
-}
-
-.tooltip.show { display: block; }
-.tooltip h4 { margin: 0 0 8px 0; font-size: var(--text-base); color: var(--text-primary); }
-.tooltip p { margin: 0 0 8px 0; color: var(--text-secondary); }
-.tooltip p:last-child { margin-bottom: 0; }
-.tooltip ul { margin: 0 0 8px 16px; color: var(--text-secondary); }
-.tooltip li { margin-bottom: 4px; }
-
-.info-icon {
-    font-size: var(--text-base);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    opacity: 0.6;
-    margin-left: 6px;
-    vertical-align: middle;
-}
-
-.info-icon:hover { opacity: 1; color: var(--primary-color); }
-
 /* Tool Description */
 .tool-description {
     margin-bottom: 16px;
@@ -998,8 +966,8 @@ code {
 /* Heatmaps */
 .trait-heatmaps-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px 40px;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 8px 12px;
 }
 
 .trait-heatmap-item { min-width: 0; }
@@ -1051,7 +1019,8 @@ code {
     color: var(--text-tertiary);
 }
 
-@media (max-width: 900px) { .trait-heatmaps-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1400px) { .trait-heatmaps-grid { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 900px) { .trait-heatmaps-grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* Metric Distributions */
 .metric-distributions-grid {
@@ -1399,4 +1368,23 @@ code {
 
 .masked-row td {
     text-decoration: line-through;
+}
+
+/* Layer Derivatives Row (trait-dynamics) */
+.layer-derivatives-row {
+    display: flex;
+    gap: 16px;
+}
+
+.layer-deriv-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.layer-deriv-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 4px;
 }

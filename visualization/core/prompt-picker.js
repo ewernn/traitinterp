@@ -8,7 +8,7 @@
  */
 
 // Views that show the prompt picker
-const INFERENCE_VIEWS = ['trait-trajectory', 'trait-dynamics', 'layer-deep-dive', 'analysis-gallery'];
+const INFERENCE_VIEWS = ['trait-dynamics', 'layer-deep-dive', 'multi-layer-heatmap'];
 
 /**
  * Render the prompt picker panel.
@@ -249,22 +249,7 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
     const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
 
-    if (window.state.currentView === 'trait-trajectory') {
-        // Update all trait heatmaps
-        const filteredTraits = window.getFilteredTraits();
-        for (const trait of filteredTraits) {
-            const traitId = trait.name.replace(/\//g, '-');
-            const plotDiv = document.getElementById(`trajectory-heatmap-${traitId}`);
-            if (plotDiv && plotDiv.data) {
-                Plotly.relayout(plotDiv, {
-                    shapes: [
-                        { type: 'line', xref: 'x', yref: 'paper', x0: separatorX, x1: separatorX, y0: 0, y1: 1, line: { color: separatorColor, width: 2, dash: 'dash' } },
-                        { type: 'rect', xref: 'x', yref: 'paper', x0: highlightX - 0.5, x1: highlightX + 0.5, y0: 0, y1: 1, fillcolor: highlightColor, line: { width: 0 } }
-                    ]
-                });
-            }
-        }
-    } else if (window.state.currentView === 'trait-dynamics') {
+    if (window.state.currentView === 'trait-dynamics') {
         // Update combined activation plot
         const plotDiv = document.getElementById('combined-activation-plot');
         if (plotDiv && plotDiv.data) {
@@ -274,11 +259,6 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
                     { type: 'line', x0: highlightX, x1: highlightX, y0: 0, y1: 1, yref: 'paper', line: { color: primaryColor, width: 2 } }
                 ]
             });
-        }
-    } else if (window.state.currentView === 'analysis-gallery') {
-        // Analysis Gallery needs full re-render with new token data (data is cached)
-        if (window.renderAnalysisGallery) {
-            window.renderAnalysisGallery();
         }
     } else if (window.state.currentView === 'layer-deep-dive') {
         // Layer Deep Dive needs full re-render for new token's SAE features

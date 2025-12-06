@@ -37,8 +37,9 @@ mkdir -p "$PUBLIC_DIR/docs"
 rsync -av docs/overview.md "$PUBLIC_DIR/docs/"
 
 # Analysis scripts (CRITICAL - called by serve.py)
+# Only sync data_checker.py, delete any stale files
 mkdir -p "$PUBLIC_DIR/analysis"
-rsync -av analysis/data_checker.py "$PUBLIC_DIR/analysis/"
+rsync -av --delete --include='data_checker.py' --exclude='*' analysis/ "$PUBLIC_DIR/analysis/"
 
 # Utils (for Railway)
 mkdir -p "$PUBLIC_DIR/utils"
@@ -50,8 +51,8 @@ rsync -av \
 # Note: Prompts are NOT synced - they live in experiments/{exp}/inference/prompts/
 # and come from the R2 bucket via Railway volume
 
-# Requirements (only file that changes)
-rsync -av requirements.txt "$PUBLIC_DIR/"
+# Note: requirements.txt and Dockerfile are managed separately in trait-interp-viz
+# (viz only needs PyYAML, not the full pytorch stack)
 
 echo "✅ Files synced!"
 echo ""

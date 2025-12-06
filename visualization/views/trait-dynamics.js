@@ -1,9 +1,12 @@
 // Trait Dynamics View - Watch the model's internal state evolve token-by-token
 // Core insight: "See how the model is thinking" by projecting onto trait vectors
 //
-// Two complementary views:
-// 1. Token Trajectory: X=tokens, Y=activation (layer-averaged) - how traits evolve during generation
-// 2. Layer Evolution: X=layers, Y=projection (token-averaged) - how traits emerge through the network
+// Consolidated view including:
+// 1. Token Trajectory: X=tokens, Y=activation (layer-averaged) + velocity/acceleration
+// 2. Normalized layer derivatives (position, velocity, acceleration) - compact row
+// 3. Activation Magnitude
+// 4. Layer×Token Heatmaps (migrated from trait-trajectory)
+// 5. Activation Velocity + Trait Coupling (migrated from analysis-gallery)
 
 // Color palette for traits (distinct, colorblind-friendly)
 const TRAIT_COLORS = [
@@ -19,12 +22,26 @@ const TRAIT_COLORS = [
     '#a9e34b',  // lime
 ];
 
-// Derivative overlay colors (position, velocity, acceleration)
-const DERIVATIVE_COLORS = {
-    position: '#2E86AB',     // blue
-    velocity: '#A23B72',     // magenta
-    acceleration: '#F18F01'  // orange
-};
+/**
+ * Setup click handlers for subsection info toggles (► triangles)
+ */
+function setupSubsectionInfoToggles() {
+    const container = document.querySelector('.tool-view');
+    if (!container || container.dataset.togglesSetup) return;
+    container.dataset.togglesSetup = 'true';
+
+    container.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.subsection-info-toggle');
+        if (!toggle) return;
+
+        const targetId = toggle.dataset.target;
+        const infoDiv = document.getElementById(targetId);
+        if (infoDiv) {
+            const isShown = infoDiv.classList.toggle('show');
+            toggle.textContent = isShown ? '▼' : '►';
+        }
+    });
+}
 
 /**
  * Apply a centered moving average to smooth data.
@@ -43,6 +60,17 @@ function smoothData(data, window = 3) {
         result.push(slice.reduce((a, b) => a + b, 0) / slice.length);
     }
     return result;
+}
+
+/**
+ * Compute first derivative (velocity) from an array
+ */
+function computeVelocity(data) {
+    const velocity = [];
+    for (let i = 0; i < data.length - 1; i++) {
+        velocity.push(data[i + 1] - data[i]);
+    }
+    return velocity;
 }
 
 /**
@@ -104,7 +132,6 @@ async function renderTraitDynamics() {
     const filteredTraits = window.getFilteredTraits();
 
     if (filteredTraits.length === 0) {
-        // Show education sections even without data
         contentArea.innerHTML = `
             <div class="tool-view">
                 <div class="page-intro">
@@ -113,7 +140,6 @@ async function renderTraitDynamics() {
                 <div class="info">Select at least one trait from the sidebar to view activation trajectories.</div>
             </div>
         `;
-        if (window.MathJax) MathJax.typesetPromise();
         return;
     }
 
@@ -126,7 +152,6 @@ async function renderTraitDynamics() {
             <div class="info">Loading data for ${filteredTraits.length} trait(s)...</div>
         </div>
     `;
-    if (window.MathJax) MathJax.typesetPromise();
 
     const traitData = {};
     const failedTraits = [];
@@ -142,20 +167,16 @@ async function renderTraitDynamics() {
     for (const trait of filteredTraits) {
         try {
             const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId);
-            console.log(`[${trait.name}] Fetching prompt activation data for ${promptSet}/${promptId}`);
             const response = await fetch(fetchPath);
 
             if (!response.ok) {
-                console.log(`[${trait.name}] No data available for ${promptSet}/${promptId} (${response.status})`);
                 failedTraits.push(trait.name);
                 continue;
             }
 
             const data = await response.json();
-            console.log(`[${trait.name}] Data loaded successfully for ${promptSet}/${promptId}`);
             traitData[trait.name] = data;
         } catch (error) {
-            console.log(`[${trait.name}] Load failed for ${promptSet}/${promptId}:`, error.message);
             failedTraits.push(trait.name);
         }
     }
@@ -167,7 +188,7 @@ async function renderTraitDynamics() {
         return;
     }
 
-    // Render education + combined graph
+    // Render the full view
     renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, promptSet, promptId);
 }
 
@@ -195,7 +216,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     const promptTokens = refData.prompt.tokens;
     const responseTokens = refData.response.tokens;
     const allTokens = [...promptTokens, ...responseTokens];
-    const nPromptTokens = promptTokens.length;  // Use actual array length
+    const nPromptTokens = promptTokens.length;
     const nTotalTokens = allTokens.length;
 
     // Build HTML
@@ -214,32 +235,80 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                 <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
             </div>
             ${failedHtml}
+
             <section>
-                <h2>Token Trajectory</h2>
+                <h2>Token Trajectory <span class="subsection-info-toggle" data-target="info-token-trajectory">►</span></h2>
+                <div class="subsection-info" id="info-token-trajectory">Layer-averaged projection per token. 3-token smoothing applied.</div>
                 <div id="combined-activation-plot"></div>
             </section>
+
             <section>
-                <h2>Normalized Position</h2>
-                <div id="layer-position-plot"></div>
+                <h3>Token Velocity <span class="subsection-info-toggle" data-target="info-token-velocity">►</span></h3>
+                <div class="subsection-info" id="info-token-velocity">Rate of change between consecutive tokens (d/dt of trajectory above).</div>
+                <div id="token-velocity-plot"></div>
             </section>
+
             <section>
-                <h2>Normalized Velocity</h2>
-                <div id="layer-velocity-plot"></div>
+                <h3>Token Acceleration <span class="subsection-info-toggle" data-target="info-token-accel">►</span></h3>
+                <div class="subsection-info" id="info-token-accel">Second derivative - where trajectory speeds up or slows down.</div>
+                <div id="token-acceleration-plot"></div>
             </section>
+
             <section>
-                <h2>Normalized Acceleration</h2>
-                <div id="layer-acceleration-plot"></div>
+                <h3>Layer Derivatives (Normalized) <span class="subsection-info-toggle" data-target="info-layer-derivs">►</span></h3>
+                <div class="subsection-info" id="info-layer-derivs">proj/‖h‖ averaged across all tokens, showing how trait signal builds through layers.</div>
+                <div class="layer-derivatives-row">
+                    <div class="layer-deriv-item">
+                        <div class="layer-deriv-label">Position</div>
+                        <div id="layer-position-plot"></div>
+                    </div>
+                    <div class="layer-deriv-item">
+                        <div class="layer-deriv-label">Velocity</div>
+                        <div id="layer-velocity-plot"></div>
+                    </div>
+                    <div class="layer-deriv-item">
+                        <div class="layer-deriv-label">Acceleration</div>
+                        <div id="layer-acceleration-plot"></div>
+                    </div>
+                </div>
             </section>
+
             <section>
-                <h2>Activation Magnitude</h2>
+                <h3>Activation Magnitude <span class="subsection-info-toggle" data-target="info-act-magnitude">►</span></h3>
+                <div class="subsection-info" id="info-act-magnitude">‖h‖ per layer, averaged across tokens. Raw activation norm through the network.</div>
                 <div id="activation-magnitude-plot"></div>
+            </section>
+
+            <section>
+                <h2>Layer × Token Heatmaps <span class="subsection-info-toggle" data-target="info-heatmaps">►</span></h2>
+                <div class="subsection-info" id="info-heatmaps">y=layer, x=token, color=projection. How trait signal builds through layers for each token.</div>
+                <div id="trait-heatmaps-container"></div>
+            </section>
+
+            <section>
+                <h2>Activation Dynamics <span class="subsection-info-toggle" data-target="info-act-dynamics">►</span></h2>
+                <div class="subsection-info" id="info-act-dynamics">Trait-independent activation analysis from per-token data.</div>
+
+                <h3>Activation Velocity <span class="subsection-info-toggle" data-target="info-velocity">►</span></h3>
+                <div class="subsection-info" id="info-velocity">‖h[L+1] − h[L]‖ per layer per token. How fast hidden state changes. Yellow = selected token.</div>
+                <div id="velocity-heatmap-container"></div>
+
+                <h3>Activation-Trait Coupling <span class="subsection-info-toggle" data-target="info-coupling">►</span></h3>
+                <div class="subsection-info" id="info-coupling">Correlation: activation velocity vs trait projection change. High = trait tracks activation dynamics.</div>
+                <div id="dynamics-correlation-container"></div>
             </section>
         </div>
     `;
 
-    // Prepare traces for each trait
-    const traces = [];
+    // Setup info toggles
+    setupSubsectionInfoToggles();
+
+    // Prepare data for plotting
     const startIdx = 1;  // Skip BOS token
+    const traitActivations = {};  // Store smoothed activations for velocity/accel
+
+    // Prepare traces for Token Trajectory
+    const traces = [];
 
     loadedTraits.forEach((traitName, idx) => {
         const data = traitData[traitName];
@@ -250,8 +319,6 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
 
         // Calculate activation strength for each token (average across all layers and sublayers)
         const rawActivations = [];
-        const displayTokens = [];
-
         for (let t = startIdx; t < allProj.length; t++) {
             let sum = 0;
             let count = 0;
@@ -262,11 +329,11 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                 }
             }
             rawActivations.push(sum / count);
-            displayTokens.push(allTokens[t]);
         }
 
-        // Apply 3-token moving average to reduce noise
+        // Apply 3-token moving average
         const activations = smoothData(rawActivations, 3);
+        traitActivations[traitName] = activations;
 
         const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
 
@@ -276,162 +343,200 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             type: 'scatter',
             mode: 'lines+markers',
             name: window.getDisplayName(traitName),
-            line: {
-                color: color,
-                width: 1
-            },
-            marker: {
-                size: 1,
-                color: color
-            },
-            text: displayTokens,
-            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}: %{text}<br>Activation: %{y:.3f}<extra></extra>`
+            line: { color: color, width: 1 },
+            marker: { size: 1, color: color },
+            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>Activation: %{y:.3f}<extra></extra>`
         });
     });
 
-    // Get display tokens from first trait for x-axis labels
-    const displayTokens = [];
-    for (let t = startIdx; t < allTokens.length; t++) {
-        displayTokens.push(allTokens[t]);
+    // Get display tokens (every 10th for x-axis labels)
+    const displayTokens = allTokens.slice(startIdx);
+    const tickVals = [];
+    const tickText = [];
+    for (let i = 0; i < displayTokens.length; i += 10) {
+        tickVals.push(i);
+        tickText.push(displayTokens[i]);
     }
 
     // Get colors from CSS variables
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-    const bgTertiary = window.getCssVar('--bg-tertiary', '#3a3a3a');
     const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
 
-    // Get current token index from global state (absolute index across prompt+response)
-    // The graph skips BOS (startIdx=1), so token at absolute index N = x position (N - startIdx)
+    // Current token highlight
     const currentTokenIdx = window.state.currentTokenIndex || 0;
     const highlightX = currentTokenIdx - startIdx;
 
-    // Add subtle vertical line separator between prompt and response
+    // Shapes for prompt/response separator and token highlight
     const shapes = [
         {
             type: 'line',
             x0: (nPromptTokens - startIdx) - 0.5,
             x1: (nPromptTokens - startIdx) - 0.5,
-            y0: 0,
-            y1: 1,
-            yref: 'paper',
-            line: {
-                color: textSecondary,
-                width: 2,
-                dash: 'dash'
-            }
+            y0: 0, y1: 1, yref: 'paper',
+            line: { color: textSecondary, width: 2, dash: 'dash' }
         },
-        // Current token highlight line from global slider
         {
             type: 'line',
-            x0: highlightX,
-            x1: highlightX,
-            y0: 0,
-            y1: 1,
-            yref: 'paper',
-            line: {
-                color: primaryColor,
-                width: 2
-            }
+            x0: highlightX, x1: highlightX,
+            y0: 0, y1: 1, yref: 'paper',
+            line: { color: primaryColor, width: 2 }
         }
     ];
 
-    // Add annotations for prompt/response regions
     const annotations = [
         {
             x: (nPromptTokens - startIdx) / 2 - 0.5,
-            y: 1.08,
-            yref: 'paper',
-            text: 'PROMPT',
-            showarrow: false,
-            font: {
-                size: 11,
-                color: textSecondary
-            }
+            y: 1.08, yref: 'paper',
+            text: 'PROMPT', showarrow: false,
+            font: { size: 11, color: textSecondary }
         },
         {
             x: (nPromptTokens - startIdx) + (displayTokens.length - (nPromptTokens - startIdx)) / 2 - 0.5,
-            y: 1.08,
-            yref: 'paper',
-            text: 'RESPONSE',
-            showarrow: false,
-            font: {
-                size: 11,
-                color: textSecondary
-            }
+            y: 1.08, yref: 'paper',
+            text: 'RESPONSE', showarrow: false,
+            font: { size: 11, color: textSecondary }
         }
     ];
 
-    const layout = window.getPlotlyLayout({
+    // Token Trajectory plot
+    const mainLayout = window.getPlotlyLayout({
         xaxis: {
             title: 'Token Position',
             tickmode: 'array',
-            tickvals: Array.from({length: displayTokens.length}, (_, i) => i),
-            ticktext: displayTokens,
+            tickvals: tickVals,
+            ticktext: tickText,
             tickangle: -45,
             showgrid: false,
             tickfont: { size: 9 }
         },
         yaxis: {
             title: 'Activation (3-token avg)',
-            zeroline: true,
-            zerolinewidth: 1,
-            showgrid: true
+            zeroline: true, zerolinewidth: 1, showgrid: true
         },
         shapes: shapes,
         annotations: annotations,
-        margin: { l: 60, r: 20, t: 40, b: 140 },
-        height: 500,
-        font: { size: 11 },
+        margin: { l: 60, r: 20, t: 40, b: 100 },
+        height: 400,
         hovermode: 'closest',
-        legend: {
-            orientation: 'h',
-            yanchor: 'top',
-            y: -0.25,
-            xanchor: 'center',
-            x: 0.5,
-            font: { size: 10 },
-            bgcolor: 'transparent'
-        },
+        legend: { orientation: 'h', yanchor: 'top', y: -0.2, xanchor: 'center', x: 0.5, font: { size: 10 } },
         showlegend: true
     });
 
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ['lasso2d', 'select2d']
-    };
+    Plotly.newPlot('combined-activation-plot', traces, mainLayout, { responsive: true, displayModeBar: false });
 
-    Plotly.newPlot('combined-activation-plot', traces, layout, config);
-
-    // Hover-to-highlight: dim other traces when hovering
+    // Hover-to-highlight
     const plotDiv = document.getElementById('combined-activation-plot');
     plotDiv.on('plotly_hover', (d) =>
         Plotly.restyle(plotDiv, {'opacity': traces.map((_, i) => i === d.points[0].curveNumber ? 1.0 : 0.2)})
     );
     plotDiv.on('plotly_unhover', () => Plotly.restyle(plotDiv, {'opacity': 1.0}));
 
-    // Render Layer derivative plots (position, velocity, acceleration)
+    // Render Token Velocity and Acceleration plots
+    renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, startIdx);
+
+    // Render Layer derivative plots (position, velocity, acceleration) - compact
     renderLayerDerivativePlots(traitData, loadedTraits);
 
-    // Render Activation Magnitude plot (trait-independent)
+    // Render Activation Magnitude plot
     renderActivationMagnitudePlot(traitData, loadedTraits);
+
+    // Render Layer×Token Heatmaps (migrated from trait-trajectory)
+    renderTraitHeatmaps(traitData, loadedTraits, allTokens, nPromptTokens);
+
+    // Load and render per-token analysis data (migrated from analysis-gallery)
+    loadAndRenderPerTokenAnalysis(promptSet, promptId);
 }
 
 
 /**
- * Render three separate plots for position, velocity, and acceleration across layers.
- * Normalizes by activation magnitude when available.
+ * Render Token Velocity and Token Acceleration plots (derivatives of smoothed trajectory)
+ */
+function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, startIdx) {
+    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
+    const currentTokenIdx = window.state.currentTokenIndex || 0;
+    const highlightX = currentTokenIdx - startIdx;
+
+    // Velocity traces
+    const velocityTraces = [];
+    loadedTraits.forEach((traitName, idx) => {
+        const activations = traitActivations[traitName];
+        const velocity = computeVelocity(activations);
+        const smoothedVelocity = smoothData(velocity, 3);
+        const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
+
+        velocityTraces.push({
+            x: Array.from({length: smoothedVelocity.length}, (_, i) => i + 0.5),
+            y: smoothedVelocity,
+            type: 'scatter',
+            mode: 'lines',
+            name: window.getDisplayName(traitName),
+            line: { color: color, width: 1.5 },
+            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
+        });
+    });
+
+    // Acceleration traces
+    const accelTraces = [];
+    loadedTraits.forEach((traitName, idx) => {
+        const activations = traitActivations[traitName];
+        const velocity = computeVelocity(activations);
+        const acceleration = computeVelocity(velocity);
+        const smoothedAccel = smoothData(acceleration, 3);
+        const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
+
+        accelTraces.push({
+            x: Array.from({length: smoothedAccel.length}, (_, i) => i + 1),
+            y: smoothedAccel,
+            type: 'scatter',
+            mode: 'lines',
+            name: window.getDisplayName(traitName),
+            line: { color: color, width: 1.5 },
+            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Acceleration: %{y:.4f}<extra></extra>`
+        });
+    });
+
+    const shapes = [
+        { type: 'line', x0: (nPromptTokens - startIdx) - 0.5, x1: (nPromptTokens - startIdx) - 0.5,
+          y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 1, dash: 'dash' } },
+        { type: 'line', x0: highlightX, x1: highlightX,
+          y0: 0, y1: 1, yref: 'paper', line: { color: primaryColor, width: 2 } }
+    ];
+
+    const velocityLayout = window.getPlotlyLayout({
+        xaxis: { title: '', tickmode: 'array', tickvals: tickVals, ticktext: tickText, tickangle: -45, tickfont: { size: 8 } },
+        yaxis: { title: 'Velocity', zeroline: true, zerolinewidth: 1, zerolinecolor: textSecondary },
+        shapes: shapes,
+        margin: { l: 50, r: 20, t: 10, b: 80 },
+        height: 200,
+        showlegend: false
+    });
+
+    const accelLayout = window.getPlotlyLayout({
+        xaxis: { title: '', tickmode: 'array', tickvals: tickVals, ticktext: tickText, tickangle: -45, tickfont: { size: 8 } },
+        yaxis: { title: 'Acceleration', zeroline: true, zerolinewidth: 1, zerolinecolor: textSecondary },
+        shapes: shapes,
+        margin: { l: 50, r: 20, t: 10, b: 80 },
+        height: 200,
+        showlegend: false
+    });
+
+    Plotly.newPlot('token-velocity-plot', velocityTraces, velocityLayout, { responsive: true, displayModeBar: false });
+    Plotly.newPlot('token-acceleration-plot', accelTraces, accelLayout, { responsive: true, displayModeBar: false });
+}
+
+
+/**
+ * Render three compact plots for position, velocity, and acceleration across layers.
  */
 function renderLayerDerivativePlots(traitData, loadedTraits) {
-    // Get nLayers from data (model-agnostic)
     const firstData = traitData[loadedTraits[0]];
     const nLayers = firstData.projections.prompt[0]?.length || 26;
     const layerIndices = Array.from({length: nLayers}, (_, i) => i);
     const velocityIndices = Array.from({length: nLayers - 1}, (_, i) => i + 0.5);
     const accelIndices = Array.from({length: nLayers - 2}, (_, i) => i + 1);
 
-    // Get activation norms for normalization (same for all traits, reuse firstData)
+    // Get activation norms for normalization
     let combinedNorms = null;
     if (firstData.activation_norms) {
         const promptNorms = firstData.activation_norms.prompt;
@@ -439,107 +544,58 @@ function renderLayerDerivativePlots(traitData, loadedTraits) {
         combinedNorms = promptNorms.map((p, i) => (p + responseNorms[i]) / 2);
     }
 
-    // Compute derivatives for all traits (normalized if norms available)
+    // Compute derivatives for all traits
     const allDerivatives = {};
     loadedTraits.forEach((traitName) => {
         allDerivatives[traitName] = computeLayerDerivatives(traitData[traitName], combinedNorms);
     });
 
-    // Helper to create a single plot
-    function renderSinglePlot(plotId, yLabel, dataKey, xIndices) {
+    // Helper to create compact plot
+    function renderCompactPlot(plotId, dataKey, xIndices) {
         const traces = [];
-
         loadedTraits.forEach((traitName, idx) => {
             const derivatives = allDerivatives[traitName];
             const traitColor = TRAIT_COLORS[idx % TRAIT_COLORS.length];
-            const displayName = window.getDisplayName(traitName);
-
             traces.push({
                 x: xIndices,
                 y: derivatives[dataKey],
                 type: 'scatter',
                 mode: 'lines+markers',
-                name: displayName,
-                line: { color: traitColor, width: 2 },
-                marker: { size: 4 },
-                hovertemplate: `<b>${displayName}</b><br>Layer %{x:.1f}<br>${yLabel}: %{y:.2f}<extra></extra>`
+                name: window.getDisplayName(traitName),
+                line: { color: traitColor, width: 1.5 },
+                marker: { size: 3 },
+                hovertemplate: `Layer %{x:.1f}: %{y:.3f}<extra></extra>`
             });
         });
 
-        const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-
         const layout = window.getPlotlyLayout({
-            xaxis: {
-                title: 'Layer',
-                tickmode: 'linear',
-                tick0: 0,
-                dtick: 2,
-                showgrid: true,
-                gridcolor: 'rgba(128,128,128,0.2)'
-            },
-            yaxis: {
-                title: yLabel,
-                zeroline: true,
-                zerolinewidth: 1,
-                zerolinecolor: textSecondary,
-                showgrid: true
-            },
-            margin: { l: 60, r: 20, t: 20, b: 50 },
-            height: 300,
-            font: { size: 11 },
-            hovermode: 'closest',
-            legend: {
-                orientation: 'h',
-                yanchor: 'bottom',
-                y: 1.02,
-                xanchor: 'left',
-                x: 0,
-                font: { size: 10 },
-                bgcolor: 'transparent'
-            },
-            showlegend: true
+            xaxis: { title: '', tickmode: 'linear', tick0: 0, dtick: 5, tickfont: { size: 8 } },
+            yaxis: { tickfont: { size: 8 }, zeroline: true },
+            margin: { l: 40, r: 10, t: 5, b: 25 },
+            height: 150,
+            showlegend: false
         });
 
-        const config = {
-            responsive: true,
-            displayModeBar: true,
-            displaylogo: false,
-            modeBarButtonsToRemove: ['lasso2d', 'select2d']
-        };
-
-        Plotly.newPlot(plotId, traces, layout, config);
-
-        // Hover-to-highlight
-        const plotDiv = document.getElementById(plotId);
-        plotDiv.on('plotly_hover', (d) => {
-            Plotly.restyle(plotDiv, {'opacity': traces.map((_, i) => i === d.points[0].curveNumber ? 1.0 : 0.2)});
-        });
-        plotDiv.on('plotly_unhover', () => Plotly.restyle(plotDiv, {'opacity': 1.0}));
+        Plotly.newPlot(plotId, traces, layout, { responsive: true, displayModeBar: false });
     }
 
-    // Render all three plots
-    const normLabel = combinedNorms ? ' (proj/||h||)' : '';
-    renderSinglePlot('layer-position-plot', `Position${normLabel}`, 'position', layerIndices);
-    renderSinglePlot('layer-velocity-plot', `Velocity${normLabel}`, 'velocity', velocityIndices);
-    renderSinglePlot('layer-acceleration-plot', `Acceleration${normLabel}`, 'acceleration', accelIndices);
+    renderCompactPlot('layer-position-plot', 'position', layerIndices);
+    renderCompactPlot('layer-velocity-plot', 'velocity', velocityIndices);
+    renderCompactPlot('layer-acceleration-plot', 'acceleration', accelIndices);
 }
 
 
 /**
  * Render the Activation Magnitude plot showing ||h|| by layer.
- * This is trait-independent - shows raw activation norm at each layer.
  */
 function renderActivationMagnitudePlot(traitData, loadedTraits) {
-    // Get activation norms from first trait's data (same for all traits)
     const firstTraitData = traitData[loadedTraits[0]];
 
-    // Check if activation_norms exists (requires re-running projection script)
     if (!firstTraitData.activation_norms) {
         const plotDiv = document.getElementById('activation-magnitude-plot');
         plotDiv.innerHTML = `
             <div class="info">
-                Activation norms not available. Re-run projection script to generate:
-                <pre>python inference/project_raw_activations_onto_traits.py --experiment {exp} --prompt-set {set}</pre>
+                Activation norms not available. Re-run projection script to generate.
             </div>
         `;
         return;
@@ -549,82 +605,254 @@ function renderActivationMagnitudePlot(traitData, loadedTraits) {
     const responseNorms = firstTraitData.activation_norms.response;
     const nLayers = promptNorms.length;
     const layerIndices = Array.from({length: nLayers}, (_, i) => i);
-
-    // Compute combined average (prompt + response)
     const combinedNorms = promptNorms.map((p, i) => (p + responseNorms[i]) / 2);
 
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
 
     const traces = [
-        {
-            x: layerIndices,
-            y: promptNorms,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Prompt',
-            line: { color: '#4a9eff', width: 2 },
-            marker: { size: 4 },
-            hovertemplate: '<b>Prompt</b><br>Layer %{x}<br>||h|| = %{y:.1f}<extra></extra>'
-        },
-        {
-            x: layerIndices,
-            y: responseNorms,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Response',
-            line: { color: '#ff6b6b', width: 2 },
-            marker: { size: 4 },
-            hovertemplate: '<b>Response</b><br>Layer %{x}<br>||h|| = %{y:.1f}<extra></extra>'
-        },
-        {
-            x: layerIndices,
-            y: combinedNorms,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'Combined',
-            line: { color: textSecondary, width: 2, dash: 'dash' },
-            marker: { size: 4 },
-            hovertemplate: '<b>Combined</b><br>Layer %{x}<br>||h|| = %{y:.1f}<extra></extra>'
-        }
+        { x: layerIndices, y: promptNorms, type: 'scatter', mode: 'lines+markers', name: 'Prompt',
+          line: { color: '#4a9eff', width: 2 }, marker: { size: 4 } },
+        { x: layerIndices, y: responseNorms, type: 'scatter', mode: 'lines+markers', name: 'Response',
+          line: { color: '#ff6b6b', width: 2 }, marker: { size: 4 } },
+        { x: layerIndices, y: combinedNorms, type: 'scatter', mode: 'lines+markers', name: 'Combined',
+          line: { color: textSecondary, width: 2, dash: 'dash' }, marker: { size: 4 } }
     ];
 
     const layout = window.getPlotlyLayout({
-        xaxis: {
-            title: 'Layer',
-            tickmode: 'linear',
-            tick0: 0,
-            dtick: 2,
-            showgrid: true,
-            gridcolor: 'rgba(128,128,128,0.2)'
-        },
-        yaxis: {
-            title: '||h|| (L2 norm)',
-            showgrid: true
-        },
+        xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 2 },
+        yaxis: { title: '||h|| (L2 norm)' },
         margin: { l: 60, r: 20, t: 20, b: 50 },
-        height: 300,
-        font: { size: 11 },
-        hovermode: 'closest',
-        legend: {
-            orientation: 'h',
-            yanchor: 'bottom',
-            y: 1.02,
-            xanchor: 'left',
-            x: 0,
-            font: { size: 10 },
-            bgcolor: 'transparent'
-        },
+        height: 250,
+        legend: { orientation: 'h', y: 1.1, x: 0 },
         showlegend: true
     });
 
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+    Plotly.newPlot('activation-magnitude-plot', traces, layout, { responsive: true, displayModeBar: false });
+}
+
+
+/**
+ * Render Layer×Token Heatmaps for each trait (migrated from trait-trajectory)
+ */
+function renderTraitHeatmaps(traitData, loadedTraits, allTokens, nPromptTokens) {
+    const container = document.getElementById('trait-heatmaps-container');
+    if (!container) return;
+
+    // Create container for all heatmaps
+    let html = '<div class="trait-heatmaps-grid">';
+    loadedTraits.forEach((traitName) => {
+        const traitId = traitName.replace(/\//g, '-');
+        html += `
+            <div class="trait-heatmap-item">
+                <h4 title="${window.getDisplayName(traitName)}">${window.getDisplayName(traitName)}</h4>
+                <div id="heatmap-${traitId}" style="width: 100%; height: 180px;"></div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+
+    // Render each heatmap
+    loadedTraits.forEach((traitName) => {
+        const data = traitData[traitName];
+        const promptProj = data.projections.prompt;
+        const responseProj = data.projections.response;
+        const allProj = [...promptProj, ...responseProj];
+
+        const nLayers = promptProj[0].length;
+        const startIdx = 1;  // Skip BOS
+
+        // Average over sublayers to get [n_tokens, n_layers]
+        const layerAvg = [];
+        for (let t = startIdx; t < allProj.length; t++) {
+            layerAvg[t - startIdx] = [];
+            for (let l = 0; l < nLayers; l++) {
+                const avg = (allProj[t][l][0] + allProj[t][l][1] + allProj[t][l][2]) / 3;
+                layerAvg[t - startIdx][l] = avg;
+            }
+        }
+
+        // Transpose for heatmap: [n_layers, n_tokens]
+        const heatmapData = [];
+        const nDisplayTokens = allProj.length - startIdx;
+        for (let l = 0; l < nLayers; l++) {
+            heatmapData[l] = [];
+            for (let t = 0; t < nDisplayTokens; t++) {
+                heatmapData[l][t] = layerAvg[t][l];
+            }
+        }
+
+        const traitId = traitName.replace(/\//g, '-');
+        const trace = {
+            z: heatmapData,
+            y: Array.from({length: nLayers}, (_, i) => `L${i}`),
+            type: 'heatmap',
+            colorscale: window.ASYMB_COLORSCALE,
+            zmid: 0,
+            showscale: false,
+            hovertemplate: 'Layer: %{y}<br>Token: %{x}<br>Score: %{z:.2f}<extra></extra>'
+        };
+
+        const layout = window.getPlotlyLayout({
+            xaxis: { showticklabels: false, title: '' },  // No x-axis labels
+            yaxis: { tickfont: { size: 8 }, title: '' },
+            margin: { l: 25, r: 5, t: 5, b: 5 },
+            height: 180
+        });
+
+        Plotly.newPlot(`heatmap-${traitId}`, [trace], layout, { displayModeBar: false, responsive: true });
+    });
+}
+
+
+/**
+ * Load and render per-token analysis data (migrated from analysis-gallery)
+ */
+async function loadAndRenderPerTokenAnalysis(promptSet, promptId) {
+    const experiment = window.state.experimentData?.name;
+    if (!experiment || !promptSet || !promptId) return;
+
+    const url = window.paths.analysisPerToken(promptSet, promptId);
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            document.getElementById('velocity-heatmap-container').innerHTML =
+                '<div class="info">Per-token analysis data not available.</div>';
+            document.getElementById('dynamics-correlation-container').innerHTML = '';
+            return;
+        }
+
+        const data = await response.json();
+        renderVelocityHeatmap(data);
+        renderDynamicsCorrelation(data);
+    } catch (error) {
+        document.getElementById('velocity-heatmap-container').innerHTML =
+            '<div class="info">Failed to load per-token analysis data.</div>';
+    }
+}
+
+
+/**
+ * Render Activation Velocity heatmap (transposed: layers on y-axis)
+ */
+function renderVelocityHeatmap(data) {
+    const container = document.getElementById('velocity-heatmap-container');
+    if (!container) return;
+
+    const currentTokenIdx = window.state?.currentTokenIndex || 0;
+
+    // Build matrix [layers × tokens] (transposed from original)
+    const nLayers = 25;  // layer transitions
+    const nTokens = data.per_token.length;
+
+    const zData = [];
+    for (let l = 0; l < nLayers; l++) {
+        zData[l] = data.per_token.map(t => (t.normalized_velocity_per_layer || [])[l] || 0);
+    }
+
+    const trace = {
+        z: zData,
+        x: Array.from({ length: nTokens }, (_, i) => i),
+        y: Array.from({ length: nLayers }, (_, i) => `L${i}→${i+1}`),
+        type: 'heatmap',
+        colorscale: 'Viridis',
+        hovertemplate: 'Token %{x}, %{y}<br>Velocity: %{z:.3f}<extra></extra>',
+        showscale: true,
+        colorbar: { thickness: 15, len: 0.8 }
     };
 
-    Plotly.newPlot('activation-magnitude-plot', traces, layout, config);
+    // Highlight current token column
+    const shapes = [{
+        type: 'rect',
+        x0: currentTokenIdx - 0.5,
+        x1: currentTokenIdx + 0.5,
+        y0: -0.5,
+        y1: nLayers - 0.5,
+        line: { color: '#ffff00', width: 2 },
+        fillcolor: 'rgba(0,0,0,0)'
+    }];
+
+    const layout = window.getPlotlyLayout({
+        margin: { l: 60, r: 50, t: 10, b: 40 },
+        height: 300,
+        xaxis: { title: 'Token', dtick: 10 },
+        yaxis: { title: 'Layer Transition', tickfont: { size: 8 } },
+        shapes
+    });
+
+    Plotly.newPlot(container, [trace], layout, { responsive: true, displayModeBar: false });
+}
+
+
+/**
+ * Render Activation-Trait Coupling correlation chart
+ */
+function renderDynamicsCorrelation(data) {
+    const container = document.getElementById('dynamics-correlation-container');
+    if (!container) return;
+
+    const firstToken = data.per_token.find(t => t.trait_scores_per_layer);
+    if (!firstToken) {
+        container.innerHTML = '<div class="info">No trait data available for correlation analysis.</div>';
+        return;
+    }
+
+    const traits = Object.keys(firstToken.trait_scores_per_layer);
+
+    // Compute correlation for each trait
+    const correlations = traits.map(trait => {
+        const velocities = [];
+        const traitVelocities = [];
+
+        data.per_token.forEach(t => {
+            if (!t.normalized_velocity_per_layer || !t.trait_scores_per_layer?.[trait]) return;
+
+            const traitScores = t.trait_scores_per_layer[trait];
+            for (let i = 0; i < traitScores.length - 1; i++) {
+                velocities.push(t.normalized_velocity_per_layer[i] || 0);
+                traitVelocities.push(Math.abs(traitScores[i + 1] - traitScores[i]));
+            }
+        });
+
+        if (velocities.length < 2) return { trait, corr: 0 };
+
+        // Pearson correlation
+        const n = velocities.length;
+        const sumX = velocities.reduce((a, b) => a + b, 0);
+        const sumY = traitVelocities.reduce((a, b) => a + b, 0);
+        const sumXY = velocities.reduce((sum, x, i) => sum + x * traitVelocities[i], 0);
+        const sumX2 = velocities.reduce((sum, x) => sum + x * x, 0);
+        const sumY2 = traitVelocities.reduce((sum, y) => sum + y * y, 0);
+
+        const num = n * sumXY - sumX * sumY;
+        const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        const corr = den === 0 ? 0 : num / den;
+
+        return { trait, corr };
+    });
+
+    correlations.sort((a, b) => b.corr - a.corr);
+
+    const trace = {
+        x: correlations.map(c => c.corr),
+        y: correlations.map(c => window.getDisplayName ? window.getDisplayName(c.trait) : c.trait),
+        type: 'bar',
+        orientation: 'h',
+        marker: {
+            color: correlations.map(c => c.corr > 0.3 ? '#27ae60' : c.corr > 0.1 ? '#f39c12' : '#95a5a6')
+        },
+        hovertemplate: '%{y}: r = %{x:.3f}<extra></extra>'
+    };
+
+    const layout = window.getPlotlyLayout({
+        margin: { l: 120, r: 20, t: 10, b: 40 },
+        height: Math.max(200, correlations.length * 25),
+        xaxis: { title: 'Correlation (r)', range: [-0.2, 1] },
+        yaxis: { tickfont: { size: 10 } }
+    });
+
+    Plotly.newPlot(container, [trace], layout, { responsive: true, displayModeBar: false });
 }
 
 

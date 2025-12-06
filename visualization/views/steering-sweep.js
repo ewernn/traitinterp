@@ -112,7 +112,9 @@ async function renderSteeringSweep() {
                 <h3 class="subsection-header" id="summary-section">
                     <span class="subsection-num">3.</span>
                     <span class="subsection-title">Summary</span>
+                    <span class="subsection-info-toggle" data-target="info-summary">►</span>
                 </h3>
+                <div class="subsection-info" id="info-summary">Best configuration found. Optimal layer and steering ratio.</div>
                 <div id="sweep-summary-container"></div>
             </section>
 
@@ -125,6 +127,41 @@ async function renderSteeringSweep() {
                 </h3>
                 <div class="subsection-info" id="info-table">Complete results from steering experiments.</div>
                 <div id="sweep-table-container" class="scrollable-container"></div>
+            </section>
+
+            <!-- Multi-layer heatmap section -->
+            <section id="multi-layer-section" style="display: none;">
+                <h3 class="subsection-header">
+                    <span class="subsection-num">5.</span>
+                    <span class="subsection-title">Multi-Layer Steering</span>
+                    <span class="subsection-info-toggle" data-target="info-multilayer">►</span>
+                </h3>
+                <div class="subsection-info" id="info-multilayer">
+                    Center × width grid showing where traits "live" in the model.
+                    Y-axis = center layer, X-axis = width (# consecutive layers steered).
+                    Find optimal multi-layer steering range.
+                </div>
+                <div class="sweep-controls" style="margin-bottom: 16px;">
+                    <div class="control-group">
+                        <label>Color by:</label>
+                        <select id="multilayer-metric">
+                            <option value="delta" selected>Delta (trait improvement)</option>
+                            <option value="coherence">Coherence</option>
+                            <option value="combined">Combined (delta × coh/100)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="multilayer-heatmap-container" class="chart-container-lg"></div>
+                <div class="summary-grid" style="margin-top: 20px;">
+                    <div class="summary-card">
+                        <div class="summary-label">Top Configurations</div>
+                        <div id="multilayer-top-configs"></div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">vs Single-Layer Best</div>
+                        <div id="multilayer-comparison"></div>
+                    </div>
+                </div>
             </section>
         </div>
     `;
@@ -259,6 +296,10 @@ async function renderSweepData(trait) {
 
     currentSweepData = data;
     updateSweepVisualizations();
+
+    // Try to load multi-layer heatmap data for this trait
+    const multiData = await loadMultiLayerData(trait);
+    renderMultiLayerSection(multiData);
 }
 
 
@@ -732,6 +773,255 @@ function setupSweepInfoToggles() {
             toggle.textContent = isShown ? '▼' : '►';
         }
     });
+}
+
+
+// =============================================================================
+// MULTI-LAYER HEATMAP SECTION
+// =============================================================================
+
+let multiLayerData = null;
+
+async function loadMultiLayerData(trait) {
+    const experiment = window.state.experimentData?.name;
+    if (!experiment) return null;
+
+    const heatmapPath = `/experiments/${experiment}/steering/${trait}/center_width_heatmap.json`;
+    const resultsPath = `/experiments/${experiment}/steering/${trait}/results.json`;
+
+    try {
+        const heatmapResp = await fetch(heatmapPath);
+        if (!heatmapResp.ok) return null;
+
+        const heatmapData = await heatmapResp.json();
+        const resultsResp = await fetch(resultsPath);
+        const resultsData = resultsResp.ok ? await resultsResp.json() : null;
+
+        return { heatmapData, resultsData };
+    } catch (e) {
+        console.log('No multi-layer data for trait:', trait);
+        return null;
+    }
+}
+
+
+function renderMultiLayerSection(data) {
+    const section = document.getElementById('multi-layer-section');
+    if (!data) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+    multiLayerData = data;
+
+    renderMultiLayerHeatmapPlot('delta');
+    renderMultiLayerTopConfigs(data.heatmapData);
+    renderMultiLayerComparison(data.heatmapData, data.resultsData);
+
+    // Wire up metric selector
+    const metricSelect = document.getElementById('multilayer-metric');
+    if (metricSelect && !metricSelect.dataset.bound) {
+        metricSelect.dataset.bound = 'true';
+        metricSelect.addEventListener('change', (e) => {
+            renderMultiLayerHeatmapPlot(e.target.value);
+        });
+    }
+}
+
+
+function renderMultiLayerHeatmapPlot(metric) {
+    if (!multiLayerData) return;
+
+    const { heatmapData } = multiLayerData;
+    const { centers, widths, delta_grid, coherence_grid } = heatmapData;
+    const container = document.getElementById('multilayer-heatmap-container');
+
+    // Choose data based on metric
+    let z, zLabel, zMin, zMax;
+    if (metric === 'delta') {
+        z = delta_grid;
+        zLabel = 'Delta';
+        zMin = 0;
+        zMax = 35;
+    } else if (metric === 'coherence') {
+        z = coherence_grid;
+        zLabel = 'Coherence';
+        zMin = 50;
+        zMax = 90;
+    } else {
+        z = delta_grid.map((row, i) =>
+            row.map((d, j) => {
+                const c = coherence_grid[i][j];
+                return (d !== null && c !== null) ? d * (c / 100) : null;
+            })
+        );
+        zLabel = 'Combined';
+        zMin = 0;
+        zMax = 25;
+    }
+
+    // Create hover text
+    const hovertext = centers.map((center, i) =>
+        widths.map((width, j) => {
+            const delta = delta_grid[i][j];
+            const coherence = coherence_grid[i][j];
+            if (delta === null) return '';
+
+            const half = Math.floor(width / 2);
+            const layerRange = `L${center - half}-L${center + half}`;
+            return `Center: L${center}<br>Width: ${width}<br>Layers: ${layerRange}<br>Delta: ${delta?.toFixed(1) || '--'}<br>Coherence: ${coherence?.toFixed(1) || '--'}`;
+        })
+    );
+
+    const colorscale = [
+        [0, '#aa5656'],
+        [0.5, '#e0e0de'],
+        [1, '#3d7435']
+    ];
+
+    const trace = {
+        type: 'heatmap',
+        x: widths.map(w => `W=${w}`),
+        y: centers.map(c => `L${c}`),
+        z: z,
+        hovertext: hovertext,
+        hoverinfo: 'text',
+        colorscale: colorscale,
+        colorbar: { title: zLabel, titleside: 'right' },
+        zmin: zMin,
+        zmax: zMax
+    };
+
+    const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
+        margin: { l: 50, r: 80, t: 20, b: 50 },
+        xaxis: { title: 'Width (# layers steered)' },
+        yaxis: { title: 'Center Layer', autorange: 'reversed' },
+        height: Math.max(300, centers.length * 20 + 100)
+    }) : {
+        margin: { l: 50, r: 80, t: 20, b: 50 },
+        xaxis: { title: 'Width (# layers steered)' },
+        yaxis: { title: 'Center Layer', autorange: 'reversed' },
+        height: 400
+    };
+
+    Plotly.newPlot(container, [trace], layout, { displayModeBar: false, responsive: true });
+}
+
+
+function renderMultiLayerTopConfigs(heatmapData) {
+    const { centers, widths, delta_grid, coherence_grid } = heatmapData;
+    const container = document.getElementById('multilayer-top-configs');
+
+    const configs = [];
+    centers.forEach((center, ci) => {
+        widths.forEach((width, wi) => {
+            const delta = delta_grid[ci][wi];
+            const coherence = coherence_grid[ci][wi];
+            if (delta !== null) {
+                const half = Math.floor(width / 2);
+                configs.push({
+                    center,
+                    width,
+                    layers: `L${center - half}-${center + half}`,
+                    delta,
+                    coherence
+                });
+            }
+        });
+    });
+
+    configs.sort((a, b) => b.delta - a.delta);
+
+    container.innerHTML = `
+        <table class="data-table" style="font-size: 11px;">
+            <thead>
+                <tr><th>#</th><th>Layers</th><th>Δ</th><th>Coh</th></tr>
+            </thead>
+            <tbody>
+                ${configs.slice(0, 5).map((c, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${c.layers}</td>
+                        <td class="${c.delta > 25 ? 'quality-good' : ''}">${c.delta.toFixed(1)}</td>
+                        <td class="${c.coherence > 80 ? 'quality-good' : c.coherence < 70 ? 'quality-bad' : ''}">${c.coherence.toFixed(0)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+
+function renderMultiLayerComparison(heatmapData, resultsData) {
+    const container = document.getElementById('multilayer-comparison');
+
+    if (!resultsData) {
+        container.innerHTML = '<p style="color: var(--text-tertiary); font-size: 11px;">No results.json found</p>';
+        return;
+    }
+
+    const baseline = resultsData.baseline?.trait_mean || 0;
+    const { centers, widths, delta_grid, coherence_grid } = heatmapData;
+
+    // Find best single-layer
+    let bestSingle = null;
+    for (const run of resultsData.runs || []) {
+        if (run.config.layers.length === 1) {
+            const trait = run.result?.trait_mean;
+            const coherence = run.result?.coherence_mean;
+            if (trait && (!bestSingle || trait > bestSingle.trait)) {
+                bestSingle = {
+                    layer: run.config.layers[0],
+                    trait,
+                    coherence,
+                    delta: trait - baseline
+                };
+            }
+        }
+    }
+
+    // Find best multi-layer
+    let bestMulti = null;
+    centers.forEach((center, ci) => {
+        widths.forEach((width, wi) => {
+            if (width === 1) return;
+            const delta = delta_grid[ci][wi];
+            const coherence = coherence_grid[ci][wi];
+            if (delta !== null && (!bestMulti || delta > bestMulti.delta)) {
+                const half = Math.floor(width / 2);
+                bestMulti = {
+                    layers: `L${center - half}-${center + half}`,
+                    delta,
+                    coherence
+                };
+            }
+        });
+    });
+
+    if (bestSingle && bestMulti) {
+        const deltaDiff = bestMulti.delta - bestSingle.delta;
+
+        container.innerHTML = `
+            <table class="data-table" style="font-size: 11px;">
+                <tr><td></td><td><strong>1-Layer</strong></td><td><strong>Multi</strong></td></tr>
+                <tr><td>Config</td><td>L${bestSingle.layer}</td><td>${bestMulti.layers}</td></tr>
+                <tr>
+                    <td>Delta</td>
+                    <td>${bestSingle.delta.toFixed(1)}</td>
+                    <td>${bestMulti.delta.toFixed(1)}</td>
+                </tr>
+                <tr>
+                    <td>Gain</td>
+                    <td colspan="2" class="${deltaDiff > 0 ? 'quality-good' : 'quality-bad'}">
+                        ${deltaDiff > 0 ? '+' : ''}${deltaDiff.toFixed(1)}
+                    </td>
+                </tr>
+            </table>
+        `;
+    } else {
+        container.innerHTML = '<p style="color: var(--text-tertiary); font-size: 11px;">Insufficient data</p>';
+    }
 }
 
 
