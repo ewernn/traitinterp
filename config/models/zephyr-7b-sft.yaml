@@ -1,7 +1,7 @@
-# Zephyr 7B SFT (SFT only, no RLHF/DPO)
-# Source: https://huggingface.co/HuggingFaceH4/zephyr-7b-sft-full
+# Mistral 7B SFT Beta (SFT only, no DPO)
+# Source: https://huggingface.co/HuggingFaceH4/mistral-7b-sft-beta
 
-huggingface_id: HuggingFaceH4/zephyr-7b-sft-full
+huggingface_id: HuggingFaceH4/mistral-7b-sft-beta
 model_type: mistral
 variant: sft
 
