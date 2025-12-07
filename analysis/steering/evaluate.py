@@ -844,9 +844,10 @@ def main():
     # Default mode: find-coef (adaptive search)
     if not args.no_find_coef:
         async def run_find_coef_mode():
-            model, tokenizer = load_model_and_tokenizer(args.model)
-
             config = load_experiment_config(args.experiment)
+            # Use experiment config model if --model not explicitly set
+            model_name = config.get('model', args.model) if args.model == DEFAULT_MODEL else args.model
+            model, tokenizer = load_model_and_tokenizer(model_name)
             use_chat_template = config.get('use_chat_template')
             if use_chat_template is None:
                 use_chat_template = tokenizer.chat_template is not None

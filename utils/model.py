@@ -41,6 +41,9 @@ def load_model(
     """
     print(f"Loading model: {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # Set pad_token if missing (required for batched generation, e.g. Mistral)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=dtype,
