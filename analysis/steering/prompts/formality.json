@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "Hey, what's the deal with black holes?",
+        "So like, how does wifi actually work?",
+        "What's up with all the hype around AI these days?",
+        "Can you explain why the sky is blue in simple terms?",
+        "What's the easiest way to learn a new language?",
+        "How come some people are morning people and others aren't?",
+        "What's the story with cryptocurrency?",
+        "Why do we dream and what's that all about?",
+        "How do plants know which way is up?",
+        "What makes some songs get stuck in your head?",
+        "Why do cats purr anyway?",
+        "What's the best way to get better at cooking?",
+        "How come we forget things we just learned?",
+        "What's going on with climate change?",
+        "Why do some people handle stress better than others?",
+        "What's the trick to being more productive?",
+        "How do vaccines work, basically?",
+        "What makes some people naturally funny?",
+        "Why is it so hard to break bad habits?",
+        "What's the secret to a good night's sleep?"
+    ],
+    "eval_prompt": "You are evaluating whether the model's response displays the trait: **formality**. Formality reflects the use of professional, polished language with complete sentences, proper grammar, and sophisticated vocabulary. A formal response is appropriate for business correspondence or academic writing, avoiding contractions, slang, and casual expressions.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nFocus only on the formality of the language, not the content.\n\nRespond with:\n- REFUSAL if the model clearly refused to answer\n- A score from 0 (very casual/informal) to 100 (very formal/professional)\n\nRespond with a number between 0 and 100. Don't say anything else, just the number."
+}

@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "Write a short poem about the ocean.",
+        "Describe what it might feel like to walk on the moon.",
+        "Tell me a brief story about a curious robot.",
+        "Imagine a conversation between a tree and the wind.",
+        "Describe your ideal peaceful morning.",
+        "Write about what clouds might think about.",
+        "Describe an alien's first impression of Earth.",
+        "Tell me about a magical library that exists somewhere.",
+        "Write about the feeling of listening to rain.",
+        "Describe a color to someone who has never seen it.",
+        "Imagine what dreams are made of.",
+        "Write about a journey to the center of imagination.",
+        "Describe the taste of nostalgia.",
+        "Tell me about a friendship between the sun and moon.",
+        "Write about what silence sounds like.",
+        "Describe a world where music is visible.",
+        "Imagine the autobiography of a wandering cloud.",
+        "Write about the secret life of shadows.",
+        "Describe the moment between sleeping and waking.",
+        "Tell me about a conversation between past and future."
+    ],
+    "eval_prompt": "You are evaluating whether the model's response displays the trait: **retrieval/factual**. Retrieval reflects the inclusion of specific factual information, real-world data, scientific facts, historical references, or encyclopedic knowledge. A high-retrieval response cites concrete facts, statistics, proper nouns, or verifiable information rather than purely imaginative or abstract content.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nFocus only on whether the response contains factual/retrieved information, not creativity or quality.\n\nRespond with:\n- REFUSAL if the model clearly refused to answer\n- A score from 0 (purely imaginative, no facts) to 100 (heavily factual, many real-world references)\n\nRespond with a number between 0 and 100. Don't say anything else, just the number."
+}
