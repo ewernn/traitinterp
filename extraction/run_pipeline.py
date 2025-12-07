@@ -175,7 +175,7 @@ def run_pipeline(
     rollouts: int = 1,
     temperature: float = 0.0,
     batch_size: int = 8,
-    val_split: float = 0.0,
+    val_split: float = 0.2,
     model_name: str = DEFAULT_MODEL,
     base_model: bool = False,
     trait_score: bool = False,
@@ -408,14 +408,26 @@ if __name__ == "__main__":
     parser.add_argument('--rollouts', type=int, default=1, help='Responses per scenario (1 for natural, 10 for instruction-based).')
     parser.add_argument('--temperature', type=float, default=0.0, help='Sampling temperature (0.0 for deterministic, 1.0 for diverse).')
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size for generation (default: 8).')
-    parser.add_argument('--val-split', type=float, default=0.0, help='Fraction of scenarios for validation (e.g., 0.2 = last 20%%). 0 = no split.')
-    parser.add_argument('--model', type=str, default=DEFAULT_MODEL, help='HuggingFace model name (default: Gemma 2B IT).')
+    parser.add_argument('--val-split', type=float, default=0.2, help='Fraction of scenarios for validation (default 0.2 = last 20%%). 0 = no split.')
+    parser.add_argument('--model', type=str, default=None, help='HuggingFace model name (default: from experiment config.json).')
     parser.add_argument('--base-model', action='store_true', help='Base model mode: text completion, completion-only extraction.')
     parser.add_argument('--trait-score', action='store_true', help='Use 0-100 trait scoring for response vetting (recommended for base model).')
     parser.add_argument('--pos-threshold', type=int, default=60, help='For trait-score mode: positive class needs score >= this (default: 60).')
     parser.add_argument('--neg-threshold', type=int, default=40, help='For trait-score mode: negative class needs score <= this (default: 40).')
 
     args = parser.parse_args()
+
+    # Resolve model: CLI > config.json > DEFAULT_MODEL
+    if args.model is None:
+        config_path = get_path('experiment.config', experiment=args.experiment)
+        if config_path.exists():
+            with open(config_path) as f:
+                config = json.load(f)
+            args.model = config.get('model', DEFAULT_MODEL)
+            print(f"Using model from config.json: {args.model}")
+        else:
+            args.model = DEFAULT_MODEL
+            print(f"No config.json found, using default: {args.model}")
 
     traits_list = args.traits.split(',') if args.traits else None
     methods_list = args.methods.split(',')

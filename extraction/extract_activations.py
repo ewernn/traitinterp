@@ -118,7 +118,7 @@ def extract_prefill_activations_for_trait(
     trait: str,
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
-    val_split: float = 0.0,
+    val_split: float = 0.2,
     token_position: str = 'last',
     component: str = 'residual',
 ) -> int:
@@ -280,7 +280,7 @@ def extract_activations_for_trait(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     use_vetting_filter: bool = True,
-    val_split: float = 0.0,
+    val_split: float = 0.2,
     base_model: bool = False,
     component: str = 'residual',
     max_completion_tokens: int = None,

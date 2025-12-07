@@ -49,6 +49,17 @@ async function renderTraitExtraction() {
                 </ol>
             </nav>
 
+            <!-- Section 0: Best Vectors Summary -->
+            <section>
+                <h3 class="subsection-header" id="best-vectors">
+                    <span class="subsection-num">0.</span>
+                    <span class="subsection-title">Best Vectors Summary</span>
+                    <span class="subsection-info-toggle" data-target="info-best-vectors">►</span>
+                </h3>
+                <div class="subsection-info" id="info-best-vectors">Best vector per trait selected by combined score. Effect size \\(d = \\frac{\\mu_{pos} - \\mu_{neg}}{\\sigma_{pooled}}\\) measures separation in standard deviations.</div>
+                <div id="best-vectors-summary-container"></div>
+            </section>
+
             <!-- Section 1: Visualizations -->
             <section>
                 <h3 class="subsection-header" id="heatmaps">
@@ -120,6 +131,7 @@ async function renderTraitExtraction() {
     `;
 
     // Render each visualization
+    renderBestVectorsSummary(evalData);
     renderTraitHeatmaps(evalData);
     renderMethodBreakdown(evalData);
     renderBestVectorSimilarity(evalData);
@@ -153,6 +165,12 @@ function setupSubsectionInfoToggles() {
         if (infoDiv) {
             const isShown = infoDiv.classList.toggle('show');
             toggle.textContent = isShown ? '▼' : '►';
+
+            // Typeset MathJax when info is shown (content was hidden during initial typeset)
+            if (isShown && window.MathJax && !infoDiv.dataset.mathTypeset) {
+                infoDiv.dataset.mathTypeset = 'true';
+                MathJax.typesetPromise([infoDiv]);
+            }
         }
     });
 }
@@ -168,6 +186,87 @@ async function loadExtractionEvaluation() {
         console.error('Failed to load extraction evaluation:', error);
         return null;
     }
+}
+
+
+/**
+ * Render best vectors summary table - one row per trait with key metrics
+ */
+function renderBestVectorsSummary(evalData) {
+    const container = document.getElementById('best-vectors-summary-container');
+    if (!container) return;
+
+    const bestVectors = evalData.best_vectors || {};
+    const allResults = evalData.all_results || [];
+
+    if (Object.keys(bestVectors).length === 0) {
+        container.innerHTML = '<p>No best vectors data available.</p>';
+        return;
+    }
+
+    // Filter by selected traits from sidebar
+    const filteredTraits = window.getFilteredTraits();
+    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const traits = selectedTraitNames.size > 0
+        ? Object.keys(bestVectors).filter(t => selectedTraitNames.has(t))
+        : Object.keys(bestVectors);
+
+    // Build rows with metrics from best vector
+    const rows = traits.map(trait => {
+        const best = bestVectors[trait];
+        // Find the full result for this best vector
+        const result = allResults.find(r =>
+            r.trait === trait && r.method === best.method && r.layer === best.layer
+        );
+
+        return {
+            trait: window.getDisplayName(trait),
+            method: best.method,
+            layer: best.layer,
+            accuracy: result?.val_accuracy ?? null,
+            effectSize: result?.val_effect_size ?? null,
+            auc: result?.val_auc_roc ?? null,
+            drop: result?.accuracy_drop ?? null,
+            source: best.source || 'effect_size'
+        };
+    }).sort((a, b) => a.trait.localeCompare(b.trait));
+
+    let html = `
+        <table class="data-table best-vectors-table">
+            <thead>
+                <tr>
+                    <th>Trait</th>
+                    <th>Best Method</th>
+                    <th>Layer</th>
+                    <th>Val Accuracy</th>
+                    <th>Effect Size (d)</th>
+                    <th>AUC-ROC</th>
+                    <th>Acc Drop</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    rows.forEach(row => {
+        html += `
+            <tr>
+                <td><strong>${row.trait}</strong></td>
+                <td>${row.method}</td>
+                <td>L${row.layer}</td>
+                <td>${row.accuracy !== null ? (row.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
+                <td>${row.effectSize !== null ? row.effectSize.toFixed(2) : 'N/A'}</td>
+                <td>${row.auc !== null ? (row.auc * 100).toFixed(1) + '%' : 'N/A'}</td>
+                <td>${row.drop !== null ? (row.drop * 100).toFixed(1) + '%' : 'N/A'}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
 }
 
 
