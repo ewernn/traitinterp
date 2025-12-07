@@ -1,0 +1,29 @@
+# Gemma 2 2B Base
+# Source: https://huggingface.co/google/gemma-2-2b
+
+huggingface_id: google/gemma-2-2b
+model_type: gemma2
+variant: base
+
+# Architecture (from HF config.json)
+num_hidden_layers: 26
+hidden_size: 2304
+num_attention_heads: 8
+num_key_value_heads: 4
+intermediate_size: 9216
+
+# Residual stream structure (for visualization)
+residual_sublayers: [input, after_attn, output]
+
+# SAE availability (same SAEs work for base model)
+sae:
+  available: true
+  provider: gemma-scope
+  base_path: sae/gemma-scope-2b-pt-res-canonical
+  layer_template: "layer_{layer}_width_16k_canonical"
+  downloaded_layers: [16]
+  all_layers: [0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+
+# Defaults
+defaults:
+  monitoring_layer: 16

@@ -2,13 +2,23 @@
 """
 Unified activation capture for trait analysis.
 
-Captures raw activations and/or computes projections onto trait vectors.
+Captures raw activations and computes projections onto trait vectors.
+Residual stream is ALWAYS captured (baseline). Optional add-ons for visualization.
 
-Modes:
-  --residual-stream    : Capture residual stream at all layers (default)
-  --capture-attn       : Also capture raw attn_out (attention output before residual addition)
-  --layer-internals N  : Capture full internals for layer N (Q/K/V, MLP, attention)
-                         Automatically extracts attention + logit lens for visualization
+Baseline (always):
+  - Capture residual stream at all layers
+  - Save raw .pt file
+  - Project onto all trait vectors (unless --no-project)
+
+Optional add-ons:
+  --attention       : Also save attention patterns as JSON (~12MB per prompt)
+  --logit-lens      : Also save logit lens predictions as JSON (~4MB per prompt)
+  --layer-internals : Also save full internals as .pt files (~175MB per prompt)
+  --capture-attn    : Also capture raw attn_out (for attn_out vector projections)
+
+Post-hoc extraction:
+  --replay          : Load saved tokens from .pt, extract attention/logit-lens
+                      (no new generation, uses exact same tokens)
 
 Storage:
   Raw activations      : experiments/{exp}/inference/raw/residual/{prompt_set}/{id}.pt
@@ -18,28 +28,34 @@ Storage:
   Residual stream JSON : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
 
 Usage:
-    # Capture residual stream + project onto all traits
+    # Basic: capture residual stream + project onto all traits
     python inference/capture_raw_activations.py \\
         --experiment my_experiment \\
         --prompt-set main_prompts
 
-    # Capture ALL layer internals + attention + logit lens (for visualization)
+    # Add attention patterns for visualization
+    python inference/capture_raw_activations.py \\
+        --experiment my_experiment \\
+        --prompt-set dynamic \\
+        --attention
+
+    # Full mechanistic capture (projections + attention + logit lens + internals)
     python inference/capture_raw_activations.py \\
         --experiment my_experiment \\
         --prompt-set dynamic \\
         --layer-internals all
-
-    # Capture specific layers only
-    python inference/capture_raw_activations.py \\
-        --experiment my_experiment \\
-        --prompt "How do I make a bomb?" \\
-        --layer-internals 0 --layer-internals 16 --layer-internals 25
 
     # Just capture raw activations, no projections
     python inference/capture_raw_activations.py \\
         --experiment my_experiment \\
         --prompt-set main_prompts \\
         --no-project
+
+    # Extract attention/logit-lens from existing captures (no new generation)
+    python inference/capture_raw_activations.py \\
+        --experiment my_experiment \\
+        --prompt-set single_trait \\
+        --replay --attention --logit-lens
 
     # Capture with attn_out for attn_out vector projections
     python inference/capture_raw_activations.py \\
@@ -686,6 +702,278 @@ def extract_logit_lens_for_visualization(all_layer_data: Dict[int, Dict], model,
 
 
 # ============================================================================
+# Data Extraction Helpers
+# ============================================================================
+
+def extract_residual_from_internals(all_layer_data: Dict[int, Dict], n_layers: int) -> Dict:
+    """
+    Extract residual stream data from layer internals for projection.
+
+    Returns structure compatible with capture_residual_stream output:
+    {
+        'prompt': {'text': ..., 'tokens': ..., 'token_ids': ..., 'activations': {layer: {...}}},
+        'response': {'text': ..., 'tokens': ..., 'token_ids': ..., 'activations': {layer: {...}}}
+    }
+    """
+    first_layer = min(all_layer_data.keys())
+    layer_data = all_layer_data[first_layer]
+
+    prompt_tokens = layer_data['prompt_tokens']
+    response_tokens = layer_data['response_tokens']
+    prompt_text = layer_data['prompt_text']
+    response_text = layer_data['response_text']
+
+    # Build activations dict in the format expected by project_onto_vector
+    prompt_acts = {}
+    response_acts = {}
+
+    for layer_idx in range(n_layers):
+        if layer_idx in all_layer_data:
+            layer = all_layer_data[layer_idx]
+            prompt_acts[layer_idx] = {
+                'residual_in': layer['prompt']['residual'].get('input', torch.empty(0)),
+                'after_attn': layer['prompt']['residual'].get('after_attn', torch.empty(0)),
+                'residual_out': layer['prompt']['residual'].get('output', torch.empty(0))
+            }
+            response_acts[layer_idx] = {
+                'residual_in': layer['response']['residual'].get('input', torch.empty(0)),
+                'after_attn': layer['response']['residual'].get('after_attn', torch.empty(0)),
+                'residual_out': layer['response']['residual'].get('output', torch.empty(0))
+            }
+        else:
+            # Layer not captured - placeholder empty tensors
+            prompt_acts[layer_idx] = {
+                'residual_in': torch.empty(0),
+                'after_attn': torch.empty(0),
+                'residual_out': torch.empty(0)
+            }
+            response_acts[layer_idx] = {
+                'residual_in': torch.empty(0),
+                'after_attn': torch.empty(0),
+                'residual_out': torch.empty(0)
+            }
+
+    return {
+        'prompt': {
+            'text': prompt_text,
+            'tokens': prompt_tokens,
+            'token_ids': [],  # Not stored in internals, but not needed for projection
+            'activations': prompt_acts
+        },
+        'response': {
+            'text': response_text,
+            'tokens': response_tokens,
+            'token_ids': [],  # Not stored in internals
+            'activations': response_acts
+        }
+    }
+
+
+def extract_attention_from_residual_capture(data: Dict, n_layers: int) -> Dict:
+    """
+    Extract attention patterns from residual stream capture data.
+
+    The residual capture already has attention via output_attentions=True.
+    Format for visualization JSON.
+    """
+    prompt_tokens = data['prompt']['tokens']
+    response_tokens = data['response']['tokens']
+    all_tokens = prompt_tokens + response_tokens
+    n_prompt_tokens = len(prompt_tokens)
+    n_response_tokens = len(response_tokens)
+
+    result = {
+        "prompt_id": None,
+        "prompt_set": None,
+        "n_layers": n_layers,
+        "n_heads": 8,  # Gemma 2B
+        "tokens": all_tokens,
+        "n_prompt_tokens": n_prompt_tokens,
+        "n_response_tokens": n_response_tokens,
+        "attention": []
+    }
+
+    # Extract prompt attention
+    prompt_attention = data['prompt'].get('attention', {})
+    for token_idx in range(n_prompt_tokens):
+        token_attention = {
+            "token_idx": token_idx,
+            "context_size": token_idx + 1,
+            "by_layer": []
+        }
+
+        for layer in range(n_layers):
+            layer_key = f'layer_{layer}'
+            if layer_key in prompt_attention:
+                attn = prompt_attention[layer_key]
+                if isinstance(attn, torch.Tensor) and attn.dim() == 2:
+                    # [seq, seq] head-averaged attention
+                    if attn.shape[0] > token_idx:
+                        # Expand to per-head format (all heads same since head-averaged)
+                        row = attn[token_idx, :token_idx+1].tolist()
+                        heads_attn = [row] * 8
+                    else:
+                        heads_attn = [[0.0] * (token_idx + 1)] * 8
+                else:
+                    heads_attn = [[0.0] * (token_idx + 1)] * 8
+            else:
+                heads_attn = [[0.0] * (token_idx + 1)] * 8
+
+            token_attention["by_layer"].append(heads_attn)
+
+        result["attention"].append(token_attention)
+
+    # Extract response attention
+    response_attention = data['response'].get('attention', [])
+    for resp_idx in range(n_response_tokens):
+        token_idx = n_prompt_tokens + resp_idx
+        context_size = token_idx + 1
+
+        token_attention = {
+            "token_idx": token_idx,
+            "context_size": context_size,
+            "by_layer": []
+        }
+
+        for layer in range(n_layers):
+            layer_key = f'layer_{layer}'
+            if resp_idx < len(response_attention):
+                step_attn = response_attention[resp_idx]
+                if layer_key in step_attn:
+                    attn = step_attn[layer_key]
+                    if isinstance(attn, torch.Tensor):
+                        # [context] attention for current token
+                        row = attn.tolist()
+                        # Pad to context_size if needed
+                        if len(row) < context_size:
+                            row = row + [0.0] * (context_size - len(row))
+                        heads_attn = [row] * 8
+                    else:
+                        heads_attn = [[0.0] * context_size] * 8
+                else:
+                    heads_attn = [[0.0] * context_size] * 8
+            else:
+                heads_attn = [[0.0] * context_size] * 8
+
+            token_attention["by_layer"].append(heads_attn)
+
+        result["attention"].append(token_attention)
+
+    return result
+
+
+def extract_logit_lens_from_residual_capture(data: Dict, model, tokenizer, n_layers: int, top_k: int = 50) -> Dict:
+    """
+    Apply logit lens to residual stream capture data.
+    """
+    prompt_tokens = data['prompt']['tokens']
+    response_tokens = data['response']['tokens']
+    all_tokens = prompt_tokens + response_tokens
+    n_prompt_tokens = len(prompt_tokens)
+    n_response_tokens = len(response_tokens)
+    n_total = len(all_tokens)
+
+    # Get model components for logit lens
+    norm = model.model.norm
+    lm_head = model.lm_head
+
+    result = {
+        "prompt_id": None,
+        "prompt_set": None,
+        "n_layers": n_layers,
+        "top_k": top_k,
+        "tokens": all_tokens,
+        "n_prompt_tokens": n_prompt_tokens,
+        "n_response_tokens": n_response_tokens,
+        "predictions": []
+    }
+
+    prompt_acts = data['prompt']['activations']
+    response_acts = data['response']['activations']
+
+    # Process each token (predicting next token)
+    for token_idx in range(n_total - 1):
+        actual_next_token = all_tokens[token_idx + 1] if token_idx + 1 < n_total else None
+        if actual_next_token:
+            actual_next_ids = tokenizer.encode(actual_next_token, add_special_tokens=False)
+            actual_next_id = actual_next_ids[0] if actual_next_ids else None
+        else:
+            actual_next_id = None
+
+        token_predictions = {
+            "token_idx": token_idx,
+            "actual_next_token": actual_next_token,
+            "by_layer": []
+        }
+
+        for layer in range(n_layers):
+            # Get residual for this token at this layer
+            if token_idx < n_prompt_tokens:
+                residual_data = prompt_acts.get(layer, {}).get('residual_out')
+                if residual_data is not None and len(residual_data) > 0 and token_idx < residual_data.shape[0]:
+                    residual = residual_data[token_idx]
+                else:
+                    residual = None
+            else:
+                resp_idx = token_idx - n_prompt_tokens
+                residual_data = response_acts.get(layer, {}).get('residual_out')
+                if residual_data is not None and len(residual_data) > 0 and resp_idx < residual_data.shape[0]:
+                    residual = residual_data[resp_idx]
+                else:
+                    residual = None
+
+            if residual is not None:
+                with torch.no_grad():
+                    if residual.dim() == 1:
+                        residual = residual.unsqueeze(0)
+                    residual = residual.squeeze()
+                    if residual.dim() == 1:
+                        residual = residual.unsqueeze(0)
+
+                    normed = norm(residual.float().to(model.device))
+                    logits = lm_head(normed.half())
+                    probs = torch.softmax(logits.float(), dim=-1).squeeze(0)
+
+                    top_k_probs, top_k_ids = torch.topk(probs, top_k)
+
+                    top_k_list = []
+                    for i in range(top_k):
+                        token_id = top_k_ids[i].item()
+                        token_str = tokenizer.decode([token_id])
+                        top_k_list.append({
+                            "token": token_str,
+                            "prob": round(top_k_probs[i].item(), 6)
+                        })
+
+                    actual_rank = None
+                    actual_prob = None
+                    if actual_next_id is not None:
+                        actual_prob = round(probs[actual_next_id].item(), 6)
+                        sorted_indices = torch.argsort(probs, descending=True)
+                        rank_tensor = (sorted_indices == actual_next_id).nonzero()
+                        if len(rank_tensor) > 0:
+                            actual_rank = rank_tensor[0].item() + 1
+
+                    token_predictions["by_layer"].append({
+                        "layer": layer,
+                        "top_k": top_k_list,
+                        "actual_rank": actual_rank,
+                        "actual_prob": actual_prob
+                    })
+            else:
+                token_predictions["by_layer"].append({
+                    "layer": layer,
+                    "top_k": [],
+                    "actual_rank": None,
+                    "actual_prob": None
+                })
+
+        result["predictions"].append(token_predictions)
+
+    return result
+
+
+# ============================================================================
 # Projection
 # ============================================================================
 
@@ -710,16 +998,21 @@ def main():
     parser = argparse.ArgumentParser(description="Unified activation capture")
     parser.add_argument("--experiment", required=True, help="Experiment name")
 
-    # What to capture
-    parser.add_argument("--residual-stream", action="store_true", default=True,
-                       help="Capture residual stream at all layers (default)")
-    parser.add_argument("--capture-attn", action="store_true",
-                       help="Also capture raw attn_out (attention output before residual addition)")
+    # Optional add-ons (residual stream is always captured)
+    parser.add_argument("--attention", action="store_true",
+                       help="Save attention patterns as JSON for visualization (~12MB per prompt)")
+    parser.add_argument("--logit-lens", action="store_true",
+                       help="Save logit lens predictions as JSON for visualization (~4MB per prompt)")
     parser.add_argument("--layer-internals", metavar="N", action='append',
-                       help="Capture full internals for layer N (can be used multiple times, or 'all' for all layers). "
-                            "Automatically extracts attention + logit lens for visualization.")
+                       help="Save full internals as .pt files (Q/K/V, MLP, residual). "
+                            "Can use 'all' for all layers or specify layer indices.")
+    parser.add_argument("--capture-attn", action="store_true",
+                       help="Capture raw attn_out (for attn_out vector projections)")
     parser.add_argument("--no-project", action="store_true",
                        help="Skip projection computation")
+    parser.add_argument("--replay", action="store_true",
+                       help="Load saved tokens from .pt file and extract attention/logit-lens "
+                            "(no new generation, uses exact same tokens)")
 
     # Prompt input
     prompt_group = parser.add_mutually_exclusive_group(required=True)
@@ -829,13 +1122,52 @@ def main():
             # Format prompt using experiment config
             prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
 
-            # Capture layer internals (can be multiple)
-            if args.layer_internals is not None:
-                raw_dir = inference_dir / "raw" / "internals" / set_name
-                raw_dir.mkdir(parents=True, exist_ok=True)
+            # ================================================================
+            # REPLAY MODE: Load existing data, extract attention/logit-lens
+            # ================================================================
+            if args.replay:
+                raw_pt_path = inference_dir / "raw" / "residual" / set_name / f"{prompt_id}.pt"
+                if not raw_pt_path.exists():
+                    print(f"  Skip {prompt_id}: no saved .pt file for replay")
+                    continue
 
+                print(f"  Loading saved tokens from {raw_pt_path}...")
+                data = torch.load(raw_pt_path, weights_only=False)
+
+                # Extract attention/logit-lens from loaded data
+                analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
+                analysis_dir.mkdir(parents=True, exist_ok=True)
+
+                if args.attention:
+                    print(f"  Extracting attention patterns...")
+                    attention_data = extract_attention_from_residual_capture(data, n_layers)
+                    attention_data["prompt_id"] = str(prompt_id)
+                    attention_data["prompt_set"] = set_name
+                    with open(analysis_dir / f"{prompt_id}_attention.json", 'w') as f:
+                        json.dump(attention_data, f)
+                    print(f"  Saved: {analysis_dir}/{prompt_id}_attention.json")
+
+                if args.logit_lens:
+                    print(f"  Extracting logit lens predictions...")
+                    logit_lens_data = extract_logit_lens_from_residual_capture(data, model, tokenizer, n_layers)
+                    logit_lens_data["prompt_id"] = str(prompt_id)
+                    logit_lens_data["prompt_set"] = set_name
+                    with open(analysis_dir / f"{prompt_id}_logit_lens.json", 'w') as f:
+                        json.dump(logit_lens_data, f)
+                    print(f"  Saved: {analysis_dir}/{prompt_id}_logit_lens.json")
+
+                continue  # Skip to next prompt (no new capture needed)
+
+            # ================================================================
+            # CAPTURE MODE: Run model, capture activations
+            # ================================================================
+
+            # Decide capture method
+            all_layer_data = None
+            layer_indices = []
+
+            if args.layer_internals is not None:
                 # Parse layer indices: handle "all" or specific numbers
-                layer_indices = []
                 for layer_spec in args.layer_internals:
                     if layer_spec == 'all':
                         layer_indices = list(range(n_layers))
@@ -843,100 +1175,130 @@ def main():
                     else:
                         layer_indices.append(int(layer_spec))
 
-                # Capture all requested layers in a SINGLE forward pass!
+                # Heavy capture: layer internals (includes residual)
                 print(f"  Capturing {len(layer_indices)} layers in single pass...")
                 all_layer_data = capture_multiple_layer_internals(
                     model, tokenizer, prompt_text, layer_indices,
                     args.max_new_tokens, args.temperature
                 )
 
-                # Save each layer's data as .pt
-                for layer_idx in layer_indices:
-                    torch.save(all_layer_data[layer_idx], raw_dir / f"{prompt_id}_L{layer_idx}.pt")
-
-                print(f"  Saved internals for {len(layer_indices)} layers: {raw_dir}/{prompt_id}_L*.pt")
-
-                # Extract attention and logit lens for visualization (automatic)
-                analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
-                analysis_dir.mkdir(parents=True, exist_ok=True)
-
-                # Extract attention
-                print(f"  Extracting attention patterns...")
-                attention_data = extract_attention_for_visualization(all_layer_data, n_layers)
-                attention_data["prompt_id"] = str(prompt_id)
-                attention_data["prompt_set"] = set_name
-                with open(analysis_dir / f"{prompt_id}_attention.json", 'w') as f:
-                    json.dump(attention_data, f)
-
-                # Extract logit lens
-                print(f"  Extracting logit lens predictions...")
-                logit_lens_data = extract_logit_lens_for_visualization(all_layer_data, model, tokenizer, n_layers)
-                logit_lens_data["prompt_id"] = str(prompt_id)
-                logit_lens_data["prompt_set"] = set_name
-                with open(analysis_dir / f"{prompt_id}_logit_lens.json", 'w') as f:
-                    json.dump(logit_lens_data, f)
-
-                print(f"  Saved: {analysis_dir}/{prompt_id}_attention.json, {prompt_id}_logit_lens.json")
-
-            # Capture residual stream
-            elif args.residual_stream or not args.layer_internals:
+                # Extract residual data from internals for projections
+                data = extract_residual_from_internals(all_layer_data, n_layers)
+            else:
+                # Light capture: just residual stream
                 data = capture_residual_stream(model, tokenizer, prompt_text, n_layers,
                                                args.max_new_tokens, args.temperature,
                                                capture_attn=args.capture_attn)
 
-                # Save raw residual as .pt
-                raw_dir = inference_dir / "raw" / "residual" / set_name
-                raw_dir.mkdir(parents=True, exist_ok=True)
-                torch.save(data, raw_dir / f"{prompt_id}.pt")
+            # ================================================================
+            # ALWAYS: Save raw residual .pt
+            # ================================================================
+            raw_dir = inference_dir / "raw" / "residual" / set_name
+            raw_dir.mkdir(parents=True, exist_ok=True)
+            torch.save(data, raw_dir / f"{prompt_id}.pt")
 
-                # Project onto each trait (unless --no-project)
-                if not args.no_project:
-                    for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
-                        prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
-                        response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
+            # ================================================================
+            # ALWAYS: Run projections (unless --no-project)
+            # ================================================================
+            if not args.no_project:
+                for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
+                    prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
+                    response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
 
-                        # Compute dynamics on layer-averaged scores
-                        prompt_scores_avg = prompt_proj.mean(dim=(1, 2))  # Average across layers and sublayers
-                        response_scores_avg = response_proj.mean(dim=(1, 2))
-                        all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
+                    # Compute dynamics on layer-averaged scores
+                    prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
+                    response_scores_avg = response_proj.mean(dim=(1, 2))
+                    all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
 
-                        proj_data = {
-                            'prompt': {
-                                'text': data['prompt']['text'],
-                                'tokens': data['prompt']['tokens'],
-                                'token_ids': data['prompt']['token_ids'],
-                                'n_tokens': len(data['prompt']['tokens'])
-                            },
-                            'response': {
-                                'text': data['response']['text'],
-                                'tokens': data['response']['tokens'],
-                                'token_ids': data['response']['token_ids'],
-                                'n_tokens': len(data['response']['tokens'])
-                            },
-                            'projections': {
-                                'prompt': prompt_proj.tolist(),
-                                'response': response_proj.tolist()
-                            },
-                            'dynamics': analyze_dynamics(all_scores),
-                            'metadata': {
-                                'prompt_id': prompt_id,
-                                'prompt_set': set_name,
-                                'prompt_note': prompt_note,
-                                'trait': trait_name,
-                                'category': category,
-                                'method': method,
-                                'layer': args.layer,
-                                'vector_path': str(vector_path),
-                                'model': MODEL_NAME,
-                                'capture_date': datetime.now().isoformat()
-                            }
+                    proj_data = {
+                        'prompt': {
+                            'text': data['prompt']['text'],
+                            'tokens': data['prompt']['tokens'],
+                            'token_ids': data['prompt'].get('token_ids', []),
+                            'n_tokens': len(data['prompt']['tokens'])
+                        },
+                        'response': {
+                            'text': data['response']['text'],
+                            'tokens': data['response']['tokens'],
+                            'token_ids': data['response'].get('token_ids', []),
+                            'n_tokens': len(data['response']['tokens'])
+                        },
+                        'projections': {
+                            'prompt': prompt_proj.tolist(),
+                            'response': response_proj.tolist()
+                        },
+                        'dynamics': analyze_dynamics(all_scores),
+                        'metadata': {
+                            'prompt_id': prompt_id,
+                            'prompt_set': set_name,
+                            'prompt_note': prompt_note,
+                            'trait': trait_name,
+                            'category': category,
+                            'method': method,
+                            'layer': args.layer,
+                            'vector_path': str(vector_path),
+                            'model': MODEL_NAME,
+                            'capture_date': datetime.now().isoformat()
                         }
+                    }
 
-                        # Save projection JSON to residual_stream/{prompt_set}/{id}.json
-                        out_dir = inference_dir / category / trait_name / "residual_stream" / set_name
-                        out_dir.mkdir(parents=True, exist_ok=True)
-                        with open(out_dir / f"{prompt_id}.json", 'w') as f:
-                            json.dump(proj_data, f, indent=2)
+                    # Save projection JSON to residual_stream/{prompt_set}/{id}.json
+                    out_dir = inference_dir / category / trait_name / "residual_stream" / set_name
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    with open(out_dir / f"{prompt_id}.json", 'w') as f:
+                        json.dump(proj_data, f, indent=2)
+
+            # ================================================================
+            # OPTIONAL: Save attention JSON
+            # ================================================================
+            if args.attention:
+                analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
+                analysis_dir.mkdir(parents=True, exist_ok=True)
+
+                print(f"  Extracting attention patterns...")
+                if all_layer_data is not None:
+                    # Extract from layer internals (full per-head data)
+                    attention_data = extract_attention_for_visualization(all_layer_data, n_layers)
+                else:
+                    # Extract from residual capture (head-averaged)
+                    attention_data = extract_attention_from_residual_capture(data, n_layers)
+
+                attention_data["prompt_id"] = str(prompt_id)
+                attention_data["prompt_set"] = set_name
+                with open(analysis_dir / f"{prompt_id}_attention.json", 'w') as f:
+                    json.dump(attention_data, f)
+                print(f"  Saved: {analysis_dir}/{prompt_id}_attention.json")
+
+            # ================================================================
+            # OPTIONAL: Save logit lens JSON
+            # ================================================================
+            if args.logit_lens:
+                analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
+                analysis_dir.mkdir(parents=True, exist_ok=True)
+
+                print(f"  Extracting logit lens predictions...")
+                if all_layer_data is not None:
+                    logit_lens_data = extract_logit_lens_for_visualization(all_layer_data, model, tokenizer, n_layers)
+                else:
+                    logit_lens_data = extract_logit_lens_from_residual_capture(data, model, tokenizer, n_layers)
+
+                logit_lens_data["prompt_id"] = str(prompt_id)
+                logit_lens_data["prompt_set"] = set_name
+                with open(analysis_dir / f"{prompt_id}_logit_lens.json", 'w') as f:
+                    json.dump(logit_lens_data, f)
+                print(f"  Saved: {analysis_dir}/{prompt_id}_logit_lens.json")
+
+            # ================================================================
+            # OPTIONAL: Save layer internals .pt files
+            # ================================================================
+            if args.layer_internals is not None and all_layer_data is not None:
+                internals_dir = inference_dir / "raw" / "internals" / set_name
+                internals_dir.mkdir(parents=True, exist_ok=True)
+
+                for layer_idx in layer_indices:
+                    torch.save(all_layer_data[layer_idx], internals_dir / f"{prompt_id}_L{layer_idx}.pt")
+
+                print(f"  Saved internals for {len(layer_indices)} layers: {internals_dir}/{prompt_id}_L*.pt")
 
     print(f"\n{'='*60}")
     print("Complete!")

@@ -11,17 +11,23 @@ function getTraitDisplayName(trait) {
 
 async function renderSteeringSweep() {
     const contentArea = document.getElementById('content-area');
-    contentArea.innerHTML = '<div class="loading">Loading steering sweep data...</div>';
+
+    // Show loading state only if fetch takes > 150ms
+    const loadingTimeout = setTimeout(() => {
+        contentArea.innerHTML = '<div class="loading">Loading steering sweep data...</div>';
+    }, 150);
 
     // Get current trait from state or use default
     const traits = await discoverSteeringTraits();
+
+    clearTimeout(loadingTimeout);
 
     if (traits.length === 0) {
         contentArea.innerHTML = `
             <div class="tool-view">
                 <div class="no-data">
                     <p>No steering sweep data found</p>
-                    <small>Run steering experiments with: <code>python analysis/steering/evaluate.py --experiment ${window.state.experimentData?.name || 'your_experiment'} --trait category/trait --layers 10 --auto-coef 0.5</code></small>
+                    <small>Run steering experiments with: <code>python analysis/steering/evaluate.py --experiment ${window.state.experimentData?.name || 'your_experiment'} --trait category/trait --layers 8,10,12 --find-coef</code></small>
                 </div>
             </div>
         `;
@@ -195,11 +201,11 @@ let currentSweepData = null;
 
 async function discoverSteeringTraits() {
     // Discover traits with steering data
-    const experiment = window.state.experimentData?.name;
-    if (!experiment) return [];
+    if (!window.state.experimentData?.name) return [];
 
     try {
-        const response = await fetch(`/experiments/${experiment}/steering/`);
+        const baseUrl = '/' + window.paths.get('steering.base');
+        const response = await fetch(baseUrl + '/');
         if (!response.ok) return [];
 
         const html = await response.text();
@@ -212,7 +218,7 @@ async function discoverSteeringTraits() {
             if (folder !== '..' && !folder.startsWith('.')) {
                 // Check for subfolders (category/trait structure)
                 try {
-                    const subResponse = await fetch(`/experiments/${experiment}/steering/${folder}/`);
+                    const subResponse = await fetch(`${baseUrl}/${folder}/`);
                     if (subResponse.ok) {
                         const subHtml = await subResponse.text();
                         const subMatches = subHtml.matchAll(/href="([^"]+)\/"/g);
@@ -220,9 +226,11 @@ async function discoverSteeringTraits() {
                             const subFolder = subMatch[1];
                             if (subFolder !== '..' && !subFolder.startsWith('.')) {
                                 // Verify this trait actually has results
-                                const resultsCheck = await fetch(`/experiments/${experiment}/steering/${folder}/${subFolder}/results.json`, { method: 'HEAD' });
+                                const trait = `${folder}/${subFolder}`;
+                                const resultsUrl = '/' + window.paths.get('steering.results', { trait });
+                                const resultsCheck = await fetch(resultsUrl, { method: 'HEAD' });
                                 if (resultsCheck.ok) {
-                                    traits.push(`${folder}/${subFolder}`);
+                                    traits.push(trait);
                                 }
                             }
                         }
@@ -249,20 +257,17 @@ async function renderSweepData(trait) {
     // Try to load sweep_results.json first, fall back to results.json
     let data = null;
 
-    try {
-        const sweepUrl = `/experiments/${experiment}/steering/${trait}/sweep_results.json`;
+    const sweepUrl = '/' + window.paths.get('steering.sweep_results', { trait });
+    const headCheck = await fetch(sweepUrl, { method: 'HEAD' }).catch(() => null);
+    if (headCheck?.ok) {
         const response = await fetch(sweepUrl);
-        if (response.ok) {
-            data = await response.json();
-        }
-    } catch (e) {
-        console.log('No sweep_results.json, trying results.json');
+        data = await response.json();
     }
 
     if (!data) {
         // Fall back to regular results.json and convert to sweep format
         try {
-            const resultsUrl = `/experiments/${experiment}/steering/${trait}/results.json`;
+            const resultsUrl = '/' + window.paths.get('steering.results', { trait });
             const response = await fetch(resultsUrl);
             if (response.ok) {
                 const results = await response.json();
@@ -328,7 +333,7 @@ function convertResultsToSweepFormat(results) {
         const layer = layers[0];
         const coef = coefficients[0];
 
-        // Use coefficient as x-axis value (could be raw coef or auto-coef derived)
+        // Use coefficient as x-axis value
         // Round to avoid floating point duplicates
         const coefKey = Math.round(coef * 100) / 100;
 
@@ -783,11 +788,10 @@ function setupSweepInfoToggles() {
 let multiLayerData = null;
 
 async function loadMultiLayerData(trait) {
-    const experiment = window.state.experimentData?.name;
-    if (!experiment) return null;
+    if (!window.state.experimentData?.name) return null;
 
-    const heatmapPath = `/experiments/${experiment}/steering/${trait}/center_width_heatmap.json`;
-    const resultsPath = `/experiments/${experiment}/steering/${trait}/results.json`;
+    const heatmapPath = '/' + window.paths.get('steering.center_width_heatmap', { trait });
+    const resultsPath = '/' + window.paths.get('steering.results', { trait });
 
     try {
         const heatmapResp = await fetch(heatmapPath);

@@ -76,6 +76,7 @@ steering:
   trait: "experiments/{experiment}/steering/{trait}"
   results: "experiments/{experiment}/steering/{trait}/results.json"
   sweep_results: "experiments/{experiment}/steering/{trait}/sweep_results.json"
+  center_width_heatmap: "experiments/{experiment}/steering/{trait}/center_width_heatmap.json"
   responses: "experiments/{experiment}/steering/{trait}/responses"
 
   # Eval prompts (separate from extraction prompts)

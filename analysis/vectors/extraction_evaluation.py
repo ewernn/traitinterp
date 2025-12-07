@@ -345,9 +345,8 @@ def compute_best_vector_similarity(
             similarity = float((vec_i_norm @ vec_j_norm).item())
             matrix[i, j] = similarity
 
-    # Create DataFrame
-    short_names = [t.split('/')[-1][:15] for t in trait_list]
-    similarity_df = pd.DataFrame(matrix, index=short_names, columns=short_names)
+    # Create DataFrame with full trait names (JS needs these for filtering)
+    similarity_df = pd.DataFrame(matrix, index=trait_list, columns=trait_list)
 
     return similarity_df
 
@@ -586,7 +585,16 @@ def main(experiment: str,
     with open(output_path, 'w') as f:
         json.dump(results_dict, f, indent=2)
 
-    print(f"\n✅ Results saved to {output_path}")
+    # Compute best_vectors using steering > effect_size priority
+    from utils.vectors import compute_all_best_layers
+    best_vectors = compute_all_best_layers(experiment)
+    if best_vectors:
+        results_dict['best_vectors'] = best_vectors
+        with open(output_path, 'w') as f:
+            json.dump(results_dict, f, indent=2)
+        print(f"\n✅ Results saved to {output_path} (including best_vectors for {len(best_vectors)} traits)")
+    else:
+        print(f"\n✅ Results saved to {output_path}")
 
     return results_dict
 

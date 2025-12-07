@@ -34,14 +34,16 @@ async function renderPromptPicker() {
         return;
     }
 
-    // Build prompt picker HTML
-    let promptSetOptions = '';
+    // Build prompt set buttons
+    let promptSetButtons = '';
     for (const [setName, promptIds] of Object.entries(window.state.promptsWithData)) {
         if (promptIds.length === 0) continue;
-        const selected = setName === window.state.currentPromptSet ? 'selected' : '';
-        promptSetOptions += `<option value="${setName}" ${selected}>${setName.replace(/_/g, ' ')}</option>`;
+        const isActive = setName === window.state.currentPromptSet ? 'active' : '';
+        const displayName = setName.replace(/_/g, ' ');
+        promptSetButtons += `<button class="pp-btn pp-set-btn ${isActive}" data-set="${setName}">${displayName}</button>`;
     }
 
+    // Build prompt ID buttons
     const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
     let promptBoxes = '';
     currentSetPromptIds.forEach(id => {
@@ -94,9 +96,15 @@ async function renderPromptPicker() {
     container.innerHTML = `
         <div class="pp-header">Prompt Picker</div>
         <div class="pp-picker">
-            <select id="prompt-set-select">${promptSetOptions}</select>
-            <div class="pp-prompts">${promptBoxes}</div>
-            ${promptNote ? `<span class="pp-note">${promptNote}</span>` : ''}
+            <div class="pp-row">
+                <span class="pp-row-label">Set:</span>
+                <div class="pp-sets">${promptSetButtons}</div>
+            </div>
+            <div class="pp-row">
+                <span class="pp-row-label">Prompt:</span>
+                <div class="pp-prompts">${promptBoxes}</div>
+                ${promptNote ? `<span class="pp-note">${promptNote}</span>` : ''}
+            </div>
         </div>
         <div class="pp-text">
             <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, 0, window.state.promptPickerCache?.nPromptTokens || 0, 300)}</div>
@@ -166,11 +174,10 @@ function setupPromptPickerListeners() {
     const container = document.getElementById('prompt-picker');
     if (!container) return;
 
-    // Prompt set dropdown
-    const setSelect = container.querySelector('#prompt-set-select');
-    if (setSelect) {
-        setSelect.addEventListener('change', (e) => {
-            const newSet = e.target.value;
+    // Prompt set buttons
+    container.querySelectorAll('.pp-set-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const newSet = btn.dataset.set;
             if (window.state.currentPromptSet !== newSet) {
                 window.state.currentPromptSet = newSet;
                 const availableIds = window.state.promptsWithData[newSet] || [];
@@ -183,10 +190,10 @@ function setupPromptPickerListeners() {
                 if (window.renderView) window.renderView();
             }
         });
-    }
+    });
 
-    // Prompt ID buttons
-    container.querySelectorAll('.pp-btn').forEach(box => {
+    // Prompt ID buttons (exclude set buttons)
+    container.querySelectorAll('.pp-prompts .pp-btn').forEach(box => {
         box.addEventListener('click', () => {
             const promptId = parseInt(box.dataset.promptId);
             if (window.state.currentPromptId !== promptId && !isNaN(promptId)) {

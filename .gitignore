@@ -1,11 +1,11 @@
-# persona_vectors/
-# # Experiment data (stored in R2, not git)
-# # Data files in experiments - use R2 (even for whitelisted experiments)
-# experiments/**/*.pt
-# experiments/**/*.json
-# experiments/**/*.png
-# # BUT keep config.json (experiment settings should be versioned)
-# !experiments/**/config.json
+persona_vectors/
+# Experiment data (stored in R2, not git)
+# Data files in experiments - use R2 (even for whitelisted experiments)
+experiments/**/*.pt
+experiments/**/*.json
+experiments/**/*.png
+# BUT keep config.json (experiment settings should be versioned)
+!experiments/**/config.json
 
 #docs/remote_setup.md
 

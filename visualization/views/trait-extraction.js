@@ -3,10 +3,15 @@
 async function renderTraitExtraction() {
     const contentArea = document.getElementById('content-area');
 
-    contentArea.innerHTML = '<div class="loading">Loading extraction evaluation data...</div>';
+    // Show loading state only if fetch takes > 150ms
+    const loadingTimeout = setTimeout(() => {
+        contentArea.innerHTML = '<div class="loading">Loading extraction evaluation data...</div>';
+    }, 150);
 
     // Load extraction evaluation data
     const evalData = await loadExtractionEvaluation();
+
+    clearTimeout(loadingTimeout);
 
     if (!evalData || !evalData.all_results || evalData.all_results.length === 0) {
         contentArea.innerHTML = `
@@ -40,7 +45,7 @@ async function renderTraitExtraction() {
                 <ol class="toc-list">
                     <li><a href="#heatmaps">Heatmaps</a></li>
                     <li><a href="#similarity">Similarity Matrix</a></li>
-                    <li><a href="#distributions">Metric Distributions</a></li>
+                    <li><a href="#method-breakdown">Per-Method Distributions</a></li>
                 </ol>
             </nav>
 
@@ -62,16 +67,8 @@ async function renderTraitExtraction() {
                 <div class="subsection-info" id="info-similarity">Cosine similarity between best vectors for each trait pair. Low similarity means traits capture independent directions.</div>
                 <div id="best-vector-similarity-container"></div>
 
-                <h3 class="subsection-header" id="distributions">
-                    <span class="subsection-num">3.</span>
-                    <span class="subsection-title">Metric Distributions</span>
-                    <span class="subsection-info-toggle" data-target="info-distributions">►</span>
-                </h3>
-                <div class="subsection-info" id="info-distributions">Distributions across all vectors. The ~50% accuracy peak is random_baseline (sanity check). Scatter plot: upper-right = good vectors, lower-right = suspicious (high acc, low effect).</div>
-                <div id="metric-distributions-container"></div>
-
                 <h3 class="subsection-header" id="method-breakdown">
-                    <span class="subsection-num">4.</span>
+                    <span class="subsection-num">3.</span>
                     <span class="subsection-title">Per-Method Distributions</span>
                     <span class="subsection-info-toggle" data-target="info-method-breakdown">►</span>
                 </h3>
@@ -123,10 +120,7 @@ async function renderTraitExtraction() {
     `;
 
     // Render each visualization
-    renderQualityTable(evalData);
     renderTraitHeatmaps(evalData);
-    renderBestVectors(evalData);
-    renderMetricDistributions(evalData);
     renderMethodBreakdown(evalData);
     renderBestVectorSimilarity(evalData);
     renderAllMetricsOverview(evalData);
@@ -300,139 +294,6 @@ function renderScoringExplanation() {
 }
 
 
-function renderQualityTable(evalData) {
-    const container = document.getElementById('quality-table-container');
-    if (!container) return;
-
-    const results = evalData.all_results || [];
-    if (results.length === 0) {
-        container.innerHTML = '<p>No results to display.</p>';
-        return;
-    }
-
-    // Use combined_score from backend if available, otherwise compute it
-    const augmentedResults = results.map(r => {
-        if (r.combined_score != null) {
-            return r;
-        }
-        // Fallback: compute with new formula
-        const maxEffectPerTrait = {};
-        results.forEach(r2 => {
-            if (!maxEffectPerTrait[r2.trait] || r2.val_effect_size > maxEffectPerTrait[r2.trait]) {
-                maxEffectPerTrait[r2.trait] = r2.val_effect_size || 0;
-            }
-        });
-        const max_d = maxEffectPerTrait[r.trait] || 1;
-        const normEffect = (r.val_effect_size || 0) / max_d;
-        const accDrop = r.accuracy_drop || 0;
-        const polarity = r.polarity_correct ? 1 : 0;
-        const score = ((r.val_accuracy || 0) + normEffect + (1 - accDrop)) / 3 * polarity;
-        return { ...r, combined_score: score };
-    });
-
-    // Build table HTML
-    const tableHTML = `
-        <div class="scrollable-container-lg">
-            <table class="data-table" id="extraction-quality-table">
-                <thead>
-                    <tr>
-                        <th class="sortable" data-column="trait">Trait<span class="sort-indicator">↕</span></th>
-                        <th class="sortable" data-column="method">Method<span class="sort-indicator">↕</span></th>
-                        <th class="sortable" data-column="layer">Layer<span class="sort-indicator">↕</span></th>
-                        <th class="sortable sort-active" data-column="combined_score">Score<span class="sort-indicator">↓</span></th>
-                        <th class="sortable" data-column="val_accuracy">Accuracy<span class="sort-indicator">↕</span></th>
-                        <th class="sortable" data-column="val_auc_roc">AUC<span class="sort-indicator">↕</span></th>
-                        <th class="sortable" data-column="val_effect_size">Effect Size (d)<span class="sort-indicator">↕</span></th>
-                        <th class="sortable" data-column="vector_norm">Norm<span class="sort-indicator">↕</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${augmentedResults
-                        .sort((a, b) => b.combined_score - a.combined_score)
-                        .map(r => {
-                            const accClass = (r.val_accuracy >= 0.9) ? 'quality-good' : (r.val_accuracy >= 0.75) ? 'quality-ok' : 'quality-bad';
-                            const aucClass = (r.val_auc_roc >= 0.9) ? 'quality-good' : (r.val_auc_roc >= 0.75) ? 'quality-ok' : 'quality-bad';
-                            return `
-                                <tr>
-                                    <td>${window.getDisplayName(r.trait)}</td>
-                                    <td>${r.method}</td>
-                                    <td>${r.layer}</td>
-                                    <td><strong>${r.combined_score.toFixed(3)}</strong></td>
-                                    <td class="${accClass}">${(r.val_accuracy * 100).toFixed(1)}%</td>
-                                    <td class="${aucClass}">${(r.val_auc_roc * 100).toFixed(1)}%</td>
-                                    <td>${r.val_effect_size?.toFixed(2) ?? 'N/A'}</td>
-                                    <td>${r.vector_norm?.toFixed(1) ?? 'N/A'}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-
-    container.innerHTML = tableHTML;
-
-    // Add sort functionality
-    container.querySelectorAll('.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-            const column = th.dataset.column;
-            const direction = sortDirection[column] === 'asc' ? 'desc' : 'asc';
-            sortDirection[column] = direction;
-
-            // Update visual indicators
-            container.querySelectorAll('.sortable').forEach(header => {
-                header.classList.remove('sort-active');
-                header.querySelector('.sort-indicator').textContent = '↕';
-            });
-            th.classList.add('sort-active');
-            th.querySelector('.sort-indicator').textContent = direction === 'asc' ? '↑' : '↓';
-
-            sortQualityTable(augmentedResults, column, container);
-        });
-    });
-}
-
-
-let sortDirection = { combined_score: 'desc' };
-function sortQualityTable(results, column, container) {
-    const direction = sortDirection[column];
-
-    const sorted = [...results].sort((a, b) => {
-        let valA = a[column];
-        let valB = b[column];
-
-        if (column === 'trait' || column === 'method') {
-            valA = valA || '';
-            valB = valB || '';
-            return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
-        } else {
-            valA = valA || 0;
-            valB = valB || 0;
-            return direction === 'asc' ? valA - valB : valB - valA;
-        }
-    });
-
-    // Re-render tbody
-    const tbody = container.querySelector('tbody');
-    tbody.innerHTML = sorted.map(r => {
-        const accClass = (r.val_accuracy >= 0.9) ? 'quality-good' : (r.val_accuracy >= 0.75) ? 'quality-ok' : 'quality-bad';
-        const aucClass = (r.val_auc_roc >= 0.9) ? 'quality-good' : (r.val_auc_roc >= 0.75) ? 'quality-ok' : 'quality-bad';
-        return `
-            <tr>
-                <td>${window.getDisplayName(r.trait)}</td>
-                <td>${r.method}</td>
-                <td>${r.layer}</td>
-                <td><strong>${r.combined_score.toFixed(3)}</strong></td>
-                <td class="${accClass}">${(r.val_accuracy * 100).toFixed(1)}%</td>
-                <td class="${aucClass}">${(r.val_auc_roc * 100).toFixed(1)}%</td>
-                <td>${r.val_effect_size?.toFixed(2) ?? 'N/A'}</td>
-                <td>${r.vector_norm?.toFixed(1) ?? 'N/A'}</td>
-            </tr>
-        `;
-    }).join('');
-}
-
-
 function renderTraitHeatmaps(evalData) {
     const container = document.getElementById('trait-heatmaps-container');
     if (!container) return;
@@ -481,11 +342,16 @@ function renderTraitHeatmaps(evalData) {
 
     const traits = Object.keys(traitGroups).sort();
 
+    // Get best_vectors for star indicators
+    const bestVectors = evalData.best_vectors || {};
+    const hasBestVectors = Object.keys(bestVectors).length > 0;
+
     // Create grid with legend below
     container.innerHTML = `
         <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
         <div class="heatmap-legend-footer">
             <span class="file-hint">${traits.length} traits</span>
+            ${hasBestVectors ? '<span class="file-hint" title="Best layer from steering results or effect size">★ = validated best</span>' : ''}
             <div class="heatmap-legend">
                 <span>Score:</span>
                 <div>
@@ -507,22 +373,23 @@ function renderTraitHeatmaps(evalData) {
         const traitResults = traitGroups[trait];
         const traitId = trait.replace(/\//g, '-');
         const displayName = window.getDisplayName(trait);
+        const bestInfo = bestVectors[trait];
 
         const traitDiv = document.createElement('div');
         traitDiv.className = 'trait-heatmap-item';
         traitDiv.innerHTML = `
-            <h4 title="${displayName}">${displayName}</h4>
+            <h4 title="${displayName}${bestInfo ? ` (best: L${bestInfo.layer} ${bestInfo.method} from ${bestInfo.source})` : ''}">${displayName}</h4>
             <div id="heatmap-${traitId}" class="chart-container-sm"></div>
         `;
 
         grid.appendChild(traitDiv);
 
-        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, true);
+        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, true, bestInfo);
     });
 }
 
 
-function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compact = false) {
+function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compact = false, bestInfo = null) {
     const methods = ['mean_diff', 'probe', 'gradient'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
 
@@ -541,9 +408,11 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
     const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
     const zmin = Math.floor(minValue / 10) * 10;
 
+    const xLabels = compact ? ['MD', 'Pr', 'Gr'] : methods;
+
     const trace = {
         z: matrix,
-        x: compact ? ['MD', 'Pr', 'Gr'] : methods,
+        x: xLabels,
         y: layers,
         type: 'heatmap',
         colorscale: window.ASYMB_COLORSCALE,
@@ -565,314 +434,34 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         margin: { l: 5, r: 5, t: 5, b: 25 },
         xaxis: { tickfont: { size: 8 }, tickangle: 0 },
         yaxis: { showticklabels: false, title: '' },
-        height: 180
+        height: 180,
+        annotations: []
     } : {
         margin: { l: 40, r: 80, t: 20, b: 60 },
         xaxis: { title: 'Method', tickfont: { size: 11 } },
         yaxis: { title: 'Layer', tickfont: { size: 10 } },
-        height: 400
+        height: 400,
+        annotations: []
     };
+
+    // Add star annotation on best cell if available
+    if (bestInfo && bestInfo.layer !== undefined && bestInfo.method) {
+        const methodIdx = methods.indexOf(bestInfo.method);
+        const layerIdx = layers.indexOf(bestInfo.layer);
+        if (methodIdx >= 0 && layerIdx >= 0) {
+            layout.annotations.push({
+                x: xLabels[methodIdx],
+                y: bestInfo.layer,
+                text: '★',
+                showarrow: false,
+                font: { size: compact ? 10 : 14, color: '#000' },
+                xanchor: 'center',
+                yanchor: 'middle'
+            });
+        }
+    }
 
     Plotly.newPlot(containerId, [trace], window.getPlotlyLayout(layout), { displayModeBar: false, responsive: true });
-}
-
-
-function renderBestVectors(evalData) {
-    const container = document.getElementById('best-vectors-container');
-    if (!container) return;
-
-    const bestPerTrait = evalData.best_per_trait || [];
-    if (bestPerTrait.length === 0) {
-        container.innerHTML = '<p>No best vectors found.</p>';
-        return;
-    }
-
-    const tableHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Trait</th>
-                    <th>Best Method</th>
-                    <th>Best Layer</th>
-                    <th>Accuracy</th>
-                    <th>Effect Size (d)</th>
-                    <th>Norm</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${bestPerTrait.map(r => `
-                    <tr>
-                        <td><strong>${window.getDisplayName(r.trait)}</strong></td>
-                        <td>${r.method}</td>
-                        <td>${r.layer}</td>
-                        <td>${(r.val_accuracy * 100).toFixed(1)}%</td>
-                        <td>${r.val_effect_size?.toFixed(2) ?? 'N/A'}</td>
-                        <td>${r.vector_norm?.toFixed(1) ?? 'N/A'}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-
-    container.innerHTML = tableHTML;
-}
-
-
-function renderMetricDistributions(evalData) {
-    const container = document.getElementById('metric-distributions-container');
-    if (!container) return;
-
-    const rawResults = evalData.all_results || [];
-    if (rawResults.length === 0) {
-        container.innerHTML = '<p>No results available.</p>';
-        return;
-    }
-
-    // Filter by selected traits from sidebar
-    const filteredTraits = window.getFilteredTraits();
-    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
-    const allResults = selectedTraitNames.size > 0
-        ? rawResults.filter(r => selectedTraitNames.has(r.trait))
-        : rawResults;
-
-    if (allResults.length === 0) {
-        container.innerHTML = '<p>No results for selected traits.</p>';
-        return;
-    }
-
-    // Method colors for scatter plot
-    const methodColors = {
-        'mean_diff': '#4e79a7',
-        'probe': '#f28e2b',
-        'gradient': '#76b7b2',
-        'random_baseline': '#b07aa1'
-    };
-
-    // Create grid layout
-    container.innerHTML = `
-        <div class="metric-distributions-grid">
-            <div class="distribution-item">
-                <h4>Validation Accuracy</h4>
-                <div id="hist-val-accuracy" class="chart-container-sm"></div>
-            </div>
-            <div class="distribution-item">
-                <h4>Effect Size (Cohen's d)</h4>
-                <div id="hist-effect-size" class="chart-container-sm"></div>
-            </div>
-            <div class="distribution-item">
-                <h4>Accuracy Drop (Overfitting)</h4>
-                <div id="hist-accuracy-drop" class="chart-container-sm"></div>
-            </div>
-            <div class="distribution-item distribution-item-wide distribution-item-spaced">
-                <h4>Accuracy vs Effect Size <span class="chart-subtitle">(upper-right = good, lower-right = suspicious)</span></h4>
-                <div id="scatter-acc-effect" class="chart-container-md"></div>
-            </div>
-            <div class="distribution-item distribution-item-wide distribution-item-spaced">
-                <h4>
-                    Component Heatmaps <span class="chart-subtitle">(layer × method for selected trait)</span>
-                    <span class="subsection-info-toggle" data-target="info-component-heatmaps">►</span>
-                </h4>
-                <div class="subsection-info" id="info-component-heatmaps">
-                    <p><strong>Score</strong> = (Accuracy + NormEffect + (1−Drop)) / 3 × Polarity</p>
-                    <p><strong>Accuracy</strong>: Classification accuracy on held-out examples (threshold = midpoint between class means)</p>
-                    <p><strong>Effect (normalized)</strong>: Cohen's d / max Cohen's d for this trait. High = clean separation, good for steering.</p>
-                    <p><strong>1−Drop</strong>: 1 − (train_acc − val_acc). High = generalizes well, low = overfitting.</p>
-                </div>
-                <div class="trait-selector-row">
-                    <label>Trait: </label>
-                    <select id="score-trait-selector"></select>
-                </div>
-                <div class="component-heatmaps-grid">
-                    <div class="component-heatmap-item">
-                        <div class="component-heatmap-label">Combined Score</div>
-                        <div id="heatmap-score"></div>
-                    </div>
-                    <div class="component-heatmap-item">
-                        <div class="component-heatmap-label">Validation Accuracy</div>
-                        <div id="heatmap-accuracy"></div>
-                    </div>
-                    <div class="component-heatmap-item">
-                        <div class="component-heatmap-label">Effect Size (normalized)</div>
-                        <div id="heatmap-effect"></div>
-                    </div>
-                    <div class="component-heatmap-item">
-                        <div class="component-heatmap-label">1 − Accuracy Drop</div>
-                        <div id="heatmap-drop"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // 1. Validation Accuracy Histogram
-    const accValues = allResults.map(r => r.val_accuracy * 100).filter(v => v != null && !isNaN(v));
-    Plotly.newPlot('hist-val-accuracy', [{
-        x: accValues,
-        type: 'histogram',
-        nbinsx: 20,
-        marker: { color: getCssVar('--primary-color', '#a09f6c') },
-        hovertemplate: '%{x:.0f}%: %{y} vectors<extra></extra>'
-    }], window.getPlotlyLayout({
-        margin: { l: 45, r: 10, t: 10, b: 40 },
-        xaxis: { title: 'Accuracy (%)', range: [40, 105] },
-        yaxis: { title: 'Count' },
-        height: 180
-    }), { displayModeBar: false, responsive: true });
-
-    // 2. Effect Size Histogram
-    const effectValues = allResults.map(r => r.val_effect_size).filter(v => v != null && !isNaN(v));
-    Plotly.newPlot('hist-effect-size', [{
-        x: effectValues,
-        type: 'histogram',
-        nbinsx: 20,
-        marker: { color: getCssVar('--primary-color', '#a09f6c') },
-        hovertemplate: 'd=%{x:.1f}: %{y} vectors<extra></extra>'
-    }], window.getPlotlyLayout({
-        margin: { l: 45, r: 10, t: 10, b: 40 },
-        xaxis: { title: "Cohen's d" },
-        yaxis: { title: 'Count' },
-        height: 180
-    }), { displayModeBar: false, responsive: true });
-
-    // 3. Accuracy Drop Histogram
-    const dropValues = allResults.map(r => r.accuracy_drop * 100).filter(v => v != null && !isNaN(v));
-    Plotly.newPlot('hist-accuracy-drop', [{
-        x: dropValues,
-        type: 'histogram',
-        nbinsx: 20,
-        marker: { color: getCssVar('--primary-color', '#a09f6c') },
-        hovertemplate: '%{x:.1f}% drop: %{y} vectors<extra></extra>'
-    }], window.getPlotlyLayout({
-        margin: { l: 45, r: 10, t: 10, b: 40 },
-        xaxis: { title: 'Accuracy Drop (%)' },
-        yaxis: { title: 'Count' },
-        height: 180
-    }), { displayModeBar: false, responsive: true });
-
-    // 4. Scatter: Accuracy vs Effect Size (colored by method)
-    const methods = [...new Set(allResults.map(r => r.method))];
-    const scatterTraces = methods.map(method => {
-        const methodResults = allResults.filter(r => r.method === method);
-        return {
-            x: methodResults.map(r => r.val_accuracy * 100),
-            y: methodResults.map(r => r.val_effect_size),
-            mode: 'markers',
-            type: 'scatter',
-            name: method,
-            marker: {
-                color: methodColors[method] || '#888',
-                size: 6,
-                opacity: 0.7
-            },
-            text: methodResults.map(r => `${window.getDisplayName(r.trait)}<br>Layer ${r.layer}`),
-            hovertemplate: '%{text}<br>Acc: %{x:.1f}%<br>d: %{y:.2f}<extra>%{fullData.name}</extra>'
-        };
-    });
-
-    Plotly.newPlot('scatter-acc-effect', scatterTraces, window.getPlotlyLayout({
-        margin: { l: 50, r: 10, t: 10, b: 45 },
-        xaxis: { title: 'Validation Accuracy (%)', range: [40, 105] },
-        yaxis: { title: "Effect Size (Cohen's d)" },
-        height: 280,
-        legend: { orientation: 'h', y: -0.25, x: 0.5, xanchor: 'center' },
-        showlegend: true
-    }), { displayModeBar: false, responsive: true });
-
-    // 5. Score by Method (per-trait, per-layer)
-    const traits = [...new Set(allResults.map(r => r.trait))].sort();
-    const traitSelector = document.getElementById('score-trait-selector');
-
-    // Populate dropdown
-    traits.forEach(trait => {
-        const option = document.createElement('option');
-        option.value = trait;
-        option.textContent = window.getDisplayName(trait);
-        traitSelector.appendChild(option);
-    });
-
-    // Compute score for all results
-    const maxEffectPerTrait = {};
-    allResults.forEach(r => {
-        if (!maxEffectPerTrait[r.trait] || r.val_effect_size > maxEffectPerTrait[r.trait]) {
-            maxEffectPerTrait[r.trait] = r.val_effect_size || 0;
-        }
-    });
-
-    const computeScore = (r) => {
-        const maxEffect = maxEffectPerTrait[r.trait] || 1;
-        const normEffect = (r.val_effect_size || 0) / maxEffect;
-        const accDrop = r.accuracy_drop || 0;
-        const polarity = r.polarity_correct ? 1 : 0;
-        // Equal weights: accuracy + normalized effect + (1 - overfitting)
-        const baseScore = ((r.val_accuracy || 0) + normEffect + (1 - accDrop)) / 3;
-        return baseScore * polarity;
-    };
-
-    const renderComponentHeatmaps = (selectedTrait) => {
-        const traitResults = allResults.filter(r => r.trait === selectedTrait);
-        const methodOrder = ['mean_diff', 'probe', 'gradient'];
-        const methodLabels = ['MD', 'Pr', 'Gr'];
-        const layers = [...new Set(traitResults.map(r => r.layer))].sort((a, b) => a - b);
-
-        // Get max effect for normalization
-        const maxEffect = maxEffectPerTrait[selectedTrait] || 1;
-
-        // Build matrices for each component
-        const buildMatrix = (getValue) => {
-            return layers.map(layer => {
-                return methodOrder.map(method => {
-                    const result = traitResults.find(r => r.layer === layer && r.method === method);
-                    return result ? getValue(result) : null;
-                });
-            });
-        };
-
-        const matrices = {
-            score: buildMatrix(r => computeScore(r) * 100),
-            accuracy: buildMatrix(r => (r.val_accuracy || 0) * 100),
-            effect: buildMatrix(r => ((r.val_effect_size || 0) / maxEffect) * 100),
-            drop: buildMatrix(r => (1 - (r.accuracy_drop || 0)) * 100)
-        };
-
-        const configs = [
-            { id: 'heatmap-score', matrix: matrices.score, label: 'Score' },
-            { id: 'heatmap-accuracy', matrix: matrices.accuracy, label: 'Acc %' },
-            { id: 'heatmap-effect', matrix: matrices.effect, label: 'Effect' },
-            { id: 'heatmap-drop', matrix: matrices.drop, label: '1−Drop' }
-        ];
-
-        configs.forEach(cfg => {
-            const trace = {
-                z: cfg.matrix,
-                x: methodLabels,
-                y: layers,
-                type: 'heatmap',
-                colorscale: window.ASYMB_COLORSCALE,
-                zmin: cfg.id === 'heatmap-drop' ? 50 : 0,
-                zmax: 100,
-                showscale: false,
-                hovertemplate: `%{x} L%{y}<br>${cfg.label}: %{z:.1f}<extra></extra>`
-            };
-
-            Plotly.newPlot(cfg.id, [trace], window.getPlotlyLayout({
-                margin: { l: 25, r: 5, t: 5, b: 25 },
-                xaxis: { tickfont: { size: 8 }, tickangle: 0 },
-                yaxis: { tickfont: { size: 8 }, dtick: 5 },
-                height: 200
-            }), { displayModeBar: false, responsive: true });
-        });
-    };
-
-    // Initial render
-    renderComponentHeatmaps(traits[0]);
-
-    // Update on change
-    traitSelector.addEventListener('change', (e) => {
-        renderComponentHeatmaps(e.target.value);
-    });
-
-    // Re-setup toggles for dynamically added content
-    setupSubsectionInfoToggles();
 }
 
 
@@ -999,16 +588,28 @@ function renderBestVectorSimilarity(evalData) {
     if (!container) return;
 
     const similarityMatrix = evalData.best_vector_similarity || {};
-    const traits = Object.keys(similarityMatrix);
+    const allTraits = Object.keys(similarityMatrix);
 
-    if (traits.length === 0) {
-        container.innerHTML = '<p>No similarity matrix available.</p>';
+    if (allTraits.length === 0) {
+        container.innerHTML = '<p>No similarity data available.</p>';
         return;
     }
 
-    // Convert to 2D array
+    // Filter by selected traits from sidebar (fallback to all if none selected)
+    const filteredTraits = window.getFilteredTraits();
+    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const traits = selectedTraitNames.size > 0
+        ? allTraits.filter(t => selectedTraitNames.has(t))
+        : allTraits;
+
+    if (traits.length === 0) {
+        container.innerHTML = '<p>No matching traits in similarity data.</p>';
+        return;
+    }
+
+    // Convert to 2D array (filtered)
     const matrix = traits.map(t1 =>
-        traits.map(t2 => similarityMatrix[t1][t2])
+        traits.map(t2 => similarityMatrix[t1]?.[t2] ?? 0)
     );
 
     const displayNames = traits.map(t => window.getDisplayName(t));
@@ -1034,7 +635,7 @@ function renderBestVectorSimilarity(evalData) {
     Plotly.newPlot(container, [trace], window.getPlotlyLayout({
         margin: { l: 150, r: 80, t: 100, b: 150 },
         xaxis: { side: 'top', tickangle: -45, tickfont: { size: 10 } },
-        yaxis: { tickfont: { size: 10 } },
+        yaxis: { autorange: 'reversed', tickfont: { size: 10 } },
         height: 600
     }), { displayModeBar: false, responsive: true });
 }

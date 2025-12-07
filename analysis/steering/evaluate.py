@@ -3,10 +3,8 @@
 Steering evaluation - validate trait vectors via causal intervention.
 
 Input:
-    - experiment: Experiment name
-    - trait: Trait path (e.g., cognitive_state/confidence)
-    - layers: Layer(s) to steer
-    - coefficients: Steering strength(s)
+    - experiment: Experiment where steering results are saved
+    - vector-from-trait: Full path to vectors (experiment/category/trait)
 
 Output:
     - experiments/{experiment}/steering/{trait}/results.json
@@ -15,50 +13,40 @@ Output:
       Generated responses for each config.
 
 Usage:
-    # Single config (1 run)
+    # Basic usage - sweeps all layers, finds good coefficients automatically
     python analysis/steering/evaluate.py \\
-        --experiment my_exp \\
-        --trait mental_state/optimism \\
-        --layers 16 \\
-        --coefficients 2.0
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-it/og_10/confidence
 
-    # Coefficient sweep at one layer (4 runs)
+    # Cross-experiment: use vectors from base model, steer IT model
     python analysis/steering/evaluate.py \\
-        --experiment my_exp \\
-        --trait mental_state/optimism \\
-        --layers 16 \\
-        --coefficients 0,1,2,3
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-base/og_10/confidence
 
-    # Layer sweep with fixed coef (4 runs)
+    # Specific layers only
     python analysis/steering/evaluate.py \\
-        --experiment my_exp \\
-        --trait mental_state/optimism \\
-        --layers 10,12,14,16 \\
-        --coefficients 2.0
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-it/og_10/confidence \\
+        --layers 10,12,14,16
 
-    # Multi-layer steering (1 run, all layers steered simultaneously)
+    # Fixed coefficients (skip adaptive search)
     python analysis/steering/evaluate.py \\
-        --experiment my_exp \\
-        --trait mental_state/optimism \\
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-it/og_10/confidence \\
+        --no-find-coef \\
+        --coefficients 50,100,150
+
+    # Multi-layer steering (all layers steered simultaneously)
+    python analysis/steering/evaluate.py \\
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-it/og_10/confidence \\
         --layers 12,14,16 \\
-        --coefficients 1.0,2.0,1.0 \\
         --multi-layer
-
-    # Multiple rollouts with temperature (for variance estimation)
-    python analysis/steering/evaluate.py \\
-        --experiment my_exp \\
-        --trait mental_state/optimism \\
-        --layers 16 \\
-        --coefficients 2.0 \\
-        --rollouts 5 \\
-        --temperature 0.7
 
     # Quick test with subset of questions
     python analysis/steering/evaluate.py \\
-        --experiment my_exp \\
-        --trait mental_state/optimism \\
-        --layers 16 \\
-        --coefficients 2.0 \\
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-it/og_10/confidence \\
         --subset 3
 """
 
@@ -141,54 +129,34 @@ def load_vector(experiment: str, trait: str, layer: int, method: str = "probe", 
     return torch.load(vector_file, weights_only=True)
 
 
-def load_activation_metadata(experiment: str, trait: str) -> Optional[Dict]:
-    """Load activation metadata containing per-layer norms."""
-    activations_dir = get('extraction.activations', experiment=experiment, trait=trait)
-    metadata_file = activations_dir / "metadata.json"
-    if not metadata_file.exists():
-        return None
-    with open(metadata_file) as f:
-        return json.load(f)
-
-
-def compute_auto_coef(
-    vector_experiment: str,
-    vector_trait: str,
+def estimate_activation_norm(
+    model,
+    tokenizer,
+    prompts: List[str],
     layer: int,
-    method: str,
-    component: str,
-    target_ratio: float,
-) -> Optional[float]:
-    """
-    Compute coefficient to achieve target perturbation ratio.
+    use_chat_template: bool,
+) -> float:
+    """Estimate activation norm at a layer by running a few prompts."""
+    norms = []
 
-    perturbation_ratio = (coef * vector_norm) / activation_norm
-    coef = target_ratio * (activation_norm / vector_norm)
-    """
-    # Load vector norm
-    vector = load_vector(vector_experiment, vector_trait, layer, method, component)
-    if vector is None:
-        return None
-    vector_norm = vector.norm().item()
+    def capture_hook(module, input, output):
+        hidden = output[0] if isinstance(output, tuple) else output
+        norm = hidden[:, -1, :].float().norm().item()
+        norms.append(norm)
 
-    # Load activation norm from metadata
-    metadata = load_activation_metadata(vector_experiment, vector_trait)
-    if metadata is None or 'activation_norms' not in metadata:
-        print(f"Warning: No activation metadata found for {vector_experiment}/{vector_trait}")
-        return None
+    layer_module = model.model.layers[layer]
+    handle = layer_module.register_forward_hook(capture_hook)
 
-    # Get activation norm for this layer
-    act_norms = metadata['activation_norms']
-    if isinstance(act_norms, dict):
-        act_norm = act_norms.get(str(layer)) or act_norms.get(layer)
-    elif isinstance(act_norms, list) and layer < len(act_norms):
-        act_norm = act_norms[layer]
-    else:
-        print(f"Warning: No activation norm for layer {layer}")
-        return None
+    try:
+        for prompt in prompts[:3]:
+            formatted = format_prompt(prompt, tokenizer, use_chat_template=use_chat_template)
+            inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
+            with torch.no_grad():
+                model(**inputs)
+    finally:
+        handle.remove()
 
-    coef = target_ratio * (act_norm / vector_norm)
-    return coef
+    return sum(norms) / len(norms) if norms else 100.0
 
 
 def load_eval_prompts(trait: str) -> Tuple[Dict, Path]:
@@ -540,6 +508,147 @@ async def evaluate_config(
     return result, responses_data
 
 
+async def adaptive_search(
+    evaluate_fn,
+    initial: float,
+    label: str,
+    threshold: float = 70,
+    up_mult: float = 1.3,
+    down_mult: float = 0.9,
+    n_steps: int = 4,
+) -> Tuple[float, List[Tuple[float, float, float]]]:
+    """
+    Generic adaptive search for steering coefficients.
+
+    Args:
+        evaluate_fn: async (value) -> (trait_mean, coherence_mean)
+        initial: Starting value
+        label: "coef" or "scale" for printing
+        threshold: Minimum coherence to accept
+    """
+    value = initial
+    history = []
+
+    print(f"\nAdaptive search ({n_steps} steps, threshold={threshold}):")
+    print(f"Step | {label:>5} | Trait | Coherence | Action")
+    print("-----|-------|-------|-----------|-------")
+
+    for step in range(n_steps):
+        trait, coherence = await evaluate_fn(value)
+        history.append((value, trait, coherence))
+
+        if coherence < threshold:
+            action, next_val = f"×{down_mult}", value * down_mult
+        else:
+            action, next_val = f"×{up_mult}", value * up_mult
+
+        if step == n_steps - 1:
+            action = "(done)"
+
+        marker = "★" if coherence >= threshold and trait > 80 else ""
+        print(f"  {step+1}  | {value:>5.0f} | {trait:>5.1f} | {coherence:>9.1f} | {action} {marker}")
+        value = next_val
+
+    # Pick best
+    valid = [(v, t, c) for v, t, c in history if c >= threshold]
+    if valid:
+        best_val, best_trait, best_coh = max(valid, key=lambda x: x[1])
+        print(f"\n✓ Recommended: {label}={best_val:.0f} (trait={best_trait:.1f}, coherence={best_coh:.1f})")
+    else:
+        best_val, best_trait, best_coh = max(history, key=lambda x: x[2])
+        print(f"\n⚠ No {label} met threshold. Best coherence: {label}={best_val:.0f}")
+
+    return best_val, history
+
+
+async def steer_and_score(
+    model,
+    tokenizer,
+    vectors: List[torch.Tensor],
+    layers: List[int],
+    coefs: List[float],
+    questions: List[str],
+    eval_prompt: str,
+    judge: TraitJudge,
+    use_chat_template: bool,
+    component: str,
+    subset: int,
+) -> Tuple[float, float]:
+    """Steer (single or multi layer), score with judge, return (trait_mean, coherence_mean)."""
+    trait_scores, coherence_scores = [], []
+
+    for question in questions[:subset]:
+        formatted = format_prompt(question, tokenizer, use_chat_template=use_chat_template)
+
+        if len(layers) == 1:
+            with SteeringHook(model, vectors[0], layers[0], coefs[0], component=component):
+                response = generate_response(model, tokenizer, formatted)
+        else:
+            steering_configs = list(zip(layers, vectors, coefs))
+            with MultiLayerSteeringHook(model, steering_configs, component=component):
+                response = generate_response(model, tokenizer, formatted)
+
+        scores = await judge.score_batch(eval_prompt, [(question, response)])
+        if scores[0]["trait_score"] is not None:
+            trait_scores.append(scores[0]["trait_score"])
+        if scores[0].get("coherence_score") is not None:
+            coherence_scores.append(scores[0]["coherence_score"])
+
+    trait_mean = sum(trait_scores) / len(trait_scores) if trait_scores else 0
+    coherence_mean = sum(coherence_scores) / len(coherence_scores) if coherence_scores else 100
+    return trait_mean, coherence_mean
+
+
+async def find_coefficient(
+    model,
+    tokenizer,
+    layers: List[int],
+    vectors: List[torch.Tensor],
+    base_coefs: List[float],
+    questions: List[str],
+    eval_prompt: str,
+    judge: TraitJudge,
+    use_chat_template: bool,
+    component: str,
+    multi_layer: bool,
+    subset: int = 3,
+) -> Tuple[float, List]:
+    """Find good coefficient(s) via adaptive search."""
+
+    if multi_layer:
+        n = len(layers)
+
+        async def evaluate(scale):
+            coefs = [scale * bc / n for bc in base_coefs]
+            return await steer_and_score(
+                model, tokenizer, vectors, layers, coefs,
+                questions, eval_prompt, judge, use_chat_template, component, subset
+            )
+
+        print(f"\nMulti-layer steering ({n} layers)")
+        best_scale, history = await adaptive_search(evaluate, 1.0, "scale")
+        best_coefs = [best_scale * bc / n for bc in base_coefs]
+        print(f"  Coefficients: {[f'L{l}:{c:.0f}' for l, c in zip(layers, best_coefs)]}")
+        return best_scale, history
+
+    else:
+        # Single layer mode - search each independently
+        all_results = []
+        for layer, vector, base_coef in zip(layers, vectors, base_coefs):
+            print(f"\n--- Layer {layer} (base_coef={base_coef:.0f}) ---")
+
+            async def evaluate(coef, v=vector, l=layer):
+                return await steer_and_score(
+                    model, tokenizer, [v], [l], [coef],
+                    questions, eval_prompt, judge, use_chat_template, component, subset
+                )
+
+            best_coef, history = await adaptive_search(evaluate, base_coef, "coef")
+            all_results.append((layer, best_coef, history))
+
+        return all_results
+
+
 async def run_evaluation(
     experiment: str,
     trait: str,
@@ -690,17 +799,19 @@ async def run_evaluation(
 
 def main():
     parser = argparse.ArgumentParser(description="Steering evaluation")
-    parser.add_argument("--experiment", required=True, help="Experiment name")
-    parser.add_argument("--trait", required=True, help="Trait path (e.g., cognitive_state/confidence)")
+    parser.add_argument("--experiment", required=True,
+                        help="Experiment where steering results are saved")
+    parser.add_argument("--vector-from-trait", required=True,
+                        help="Full path to vectors: 'experiment/category/trait' (e.g., gemma-2-2b-it/og_10/confidence)")
     parser.add_argument(
         "--layers",
-        default="16",
-        help="Layers: single '16', range '5-20', list '5,10,15', or 'all'"
+        default="all",
+        help="Layers: single '16', range '5-20', list '5,10,15', or 'all' (default: all)"
     )
     parser.add_argument(
         "--coefficients",
         default="2.0",
-        help="Comma-separated coefficients"
+        help="Comma-separated coefficients (only used with --no-find-coef)"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Model name/path")
     parser.add_argument("--method", default="probe", help="Vector extraction method")
@@ -714,46 +825,73 @@ def main():
     parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
     parser.add_argument("--multi-layer", action="store_true",
                         help="Steer all layers simultaneously (instead of separate runs)")
-    parser.add_argument("--vector-from-trait",
-                        help="Load vectors from different experiment/trait: 'experiment/category/trait'")
-    parser.add_argument("--auto-coef", type=float,
-                        help="Auto-compute coefficient from target perturbation ratio (e.g., 0.6 for 60%% of activation norm)")
     parser.add_argument("--incremental", action="store_true",
                         help="Use incremental vectors (v[i] - v[i-1]) to avoid double-counting shared components")
+    parser.add_argument("--no-find-coef", action="store_true",
+                        help="Skip adaptive coefficient search, use --coefficients directly")
 
     args = parser.parse_args()
 
-    # Parse --vector-from-trait
-    if args.vector_from_trait:
-        parts = args.vector_from_trait.split('/', 1)
-        if len(parts) != 2:
-            parser.error("--vector-from-trait must be 'experiment/category/trait'")
-        vector_experiment, vector_trait = parts
-    else:
-        vector_experiment, vector_trait = args.experiment, args.trait
+    # Parse --vector-from-trait into (vector_experiment, trait)
+    parts = args.vector_from_trait.split('/', 1)
+    if len(parts) != 2:
+        parser.error("--vector-from-trait must be 'experiment/category/trait' (e.g., gemma-2-2b-it/og_10/confidence)")
+    vector_experiment, trait = parts
 
-    # Parse layers and coefficients
-    # Need model to validate layers, but we'll do that inside run_evaluation
+    # Parse layers
     layers = parse_layers(args.layers, num_layers=100)  # Temporary max, validated later
 
-    # Auto-compute coefficients if requested
-    if args.auto_coef:
-        coefficients = []
-        for layer in layers:
-            coef = compute_auto_coef(
-                vector_experiment, vector_trait, layer,
-                args.method, args.component, args.auto_coef
+    # Default mode: find-coef (adaptive search)
+    if not args.no_find_coef:
+        async def run_find_coef_mode():
+            model, tokenizer = load_model_and_tokenizer(args.model)
+
+            config = load_experiment_config(args.experiment)
+            use_chat_template = config.get('use_chat_template')
+            if use_chat_template is None:
+                use_chat_template = tokenizer.chat_template is not None
+
+            prompts_data, _ = load_eval_prompts(trait)
+            questions, eval_prompt = prompts_data["questions"], prompts_data["eval_prompt"]
+            judge = TraitJudge(provider=args.judge)
+
+            # Load all vectors and compute base_coefs
+            vectors, base_coefs, valid_layers = [], [], []
+            print(f"Loading vectors and estimating activation norms...")
+            for layer in layers:
+                vector = load_vector(vector_experiment, trait, layer, args.method, args.component)
+                if vector is None:
+                    print(f"  L{layer}: Vector not found, skipping")
+                    continue
+
+                vec_norm = vector.norm().item()
+                act_norm = estimate_activation_norm(model, tokenizer, questions, layer, use_chat_template)
+                base_coef = act_norm / vec_norm
+
+                vectors.append(vector)
+                base_coefs.append(base_coef)
+                valid_layers.append(layer)
+                print(f"  L{layer}: vec_norm={vec_norm:.3f}, act_norm={act_norm:.1f}, base_coef={base_coef:.0f}")
+
+            if not valid_layers:
+                print("No valid layers found")
+                return
+
+            await find_coefficient(
+                model, tokenizer, valid_layers, vectors, base_coefs,
+                questions, eval_prompt, judge, use_chat_template,
+                args.component, args.multi_layer, args.subset or 3
             )
-            if coef is None:
-                parser.error(f"Could not compute auto-coef for layer {layer}")
-            coefficients.append(coef)
-            print(f"Auto-coef L{layer}: {coef:.1f} (target ratio {args.auto_coef})")
-    else:
-        coefficients = parse_coefficients(args.coefficients)
+
+        asyncio.run(run_find_coef_mode())
+        return
+
+    # Manual coefficient mode (--no-find-coef)
+    coefficients = parse_coefficients(args.coefficients)
 
     asyncio.run(run_evaluation(
         experiment=args.experiment,
-        trait=args.trait,
+        trait=trait,
         layers=layers,
         method=args.method,
         coefficients=coefficients,
@@ -765,7 +903,7 @@ def main():
         judge_provider=args.judge,
         subset_questions=args.subset,
         vector_experiment=vector_experiment,
-        vector_trait=vector_trait,
+        vector_trait=trait,
         incremental=args.incremental,
     ))
 

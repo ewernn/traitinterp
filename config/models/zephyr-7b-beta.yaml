@@ -1,0 +1,24 @@
+# Zephyr 7B Beta (SFT + DPO)
+# Source: https://huggingface.co/HuggingFaceH4/zephyr-7b-beta
+
+huggingface_id: HuggingFaceH4/zephyr-7b-beta
+model_type: mistral
+variant: dpo
+
+# Architecture (same as Mistral-7B base)
+num_hidden_layers: 32
+hidden_size: 4096
+num_attention_heads: 32
+num_key_value_heads: 8
+intermediate_size: 14336
+
+# Residual stream structure
+residual_sublayers: [input, after_attn, output]
+
+# SAE availability
+sae:
+  available: false
+
+# Defaults
+defaults:
+  monitoring_layer: 16

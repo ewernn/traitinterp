@@ -5,29 +5,28 @@ Post-hoc projection: compute trait projections from saved raw activations.
 This allows re-projecting onto different traits or with different vectors
 without re-running model inference.
 
+Layer selection (default: auto per trait):
+- Steering results (ground truth) if available
+- Effect size (best proxy, r=0.898) otherwise
+- Use --layer N to override for all traits
+
 Usage:
-    # Project all raw activations onto all traits
+    # Project onto all traits (auto-selects best layer per trait)
     python inference/project_raw_activations_onto_traits.py \\
         --experiment my_experiment \\
         --prompt-set main_prompts
+
+    # Override with fixed layer for all traits
+    python inference/project_raw_activations_onto_traits.py \\
+        --experiment my_experiment \\
+        --prompt-set main_prompts \\
+        --layer 16
 
     # Project onto specific traits
     python inference/project_raw_activations_onto_traits.py \\
         --experiment my_experiment \\
         --prompt-set main_prompts \\
         --traits behavioral/refusal,cognitive/retrieval
-
-    # Include logit lens computation
-    python inference/project_raw_activations_onto_traits.py \\
-        --experiment my_experiment \\
-        --prompt-set main_prompts \\
-        --logit-lens
-
-    # Recompute dynamics only (projections already exist)
-    python inference/project_raw_activations_onto_traits.py \\
-        --experiment my_experiment \\
-        --prompt-set main_prompts \\
-        --dynamics-only
 
     # Project attn_out activations onto attn_out vectors
     python inference/project_raw_activations_onto_traits.py \\
@@ -280,8 +279,9 @@ def main():
     parser.add_argument("--prompt-set", help="Prompt set name (or use --all-prompt-sets)")
     parser.add_argument("--all-prompt-sets", action="store_true", help="Process all prompt sets")
     parser.add_argument("--traits", help="Comma-separated traits (category/name format)")
-    parser.add_argument("--layer", type=int, default=16, help="Layer for vectors")
-    parser.add_argument("--method", help="Vector method (auto-detect if not set)")
+    parser.add_argument("--layer", type=int,
+                       help="Override layer for all traits (default: auto-select best per trait)")
+    parser.add_argument("--method", help="Vector method (default: auto-detect or use best from evaluation)")
     parser.add_argument("--component", choices=["residual", "attn_out"], default="residual",
                        help="Activation component to project (default: residual)")
     parser.add_argument("--logit-lens", action="store_true", help="Compute logit lens")
@@ -345,28 +345,44 @@ def process_prompt_set(args, inference_dir, prompt_set):
 
     print(f"Projecting onto {len(trait_list)} traits")
 
+    # Auto-layer is default; --layer overrides for all traits
+    auto_layer = args.layer is None
+    if auto_layer:
+        from utils.vectors import get_best_layer
+        print("Auto-selecting best layer per trait (use --layer N to override)")
+
     # Load trait vectors
     trait_vectors = {}
     for category, trait_name in trait_list:
-        vectors_dir = get_path('extraction.vectors', experiment=args.experiment,
-                               trait=f"{category}/{trait_name}")
-        method = args.method or find_vector_method(vectors_dir, args.layer, component=args.component)
+        trait_path = f"{category}/{trait_name}"
+        vectors_dir = get_path('extraction.vectors', experiment=args.experiment, trait=trait_path)
+
+        # Determine layer and method
+        if auto_layer:
+            best = get_best_layer(args.experiment, trait_path)
+            layer = best['layer']
+            method = args.method or best['method']
+            print(f"  {trait_path}: L{layer} {method} (from {best['source']}: {best['score']:.2f})")
+        else:
+            layer = args.layer
+            method = args.method or find_vector_method(vectors_dir, layer, component=args.component)
+
         if not method:
-            print(f"  Skip {category}/{trait_name}: no {args.component} vector at layer {args.layer}")
+            print(f"  Skip {trait_path}: no {args.component} vector at layer {layer}")
             continue
 
         # Build vector path based on component type
         if args.component == "attn_out":
-            vector_path = vectors_dir / f"attn_out_{method}_layer{args.layer}.pt"
+            vector_path = vectors_dir / f"attn_out_{method}_layer{layer}.pt"
         else:
-            vector_path = vectors_dir / f"{method}_layer{args.layer}.pt"
+            vector_path = vectors_dir / f"{method}_layer{layer}.pt"
 
         if not vector_path.exists():
-            print(f"  Skip {category}/{trait_name}: {vector_path} not found")
+            print(f"  Skip {trait_path}: {vector_path} not found")
             continue
 
         vector = torch.load(vector_path, weights_only=True).to(torch.float16)
-        trait_vectors[(category, trait_name)] = (vector, method, vector_path)
+        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer)
 
     print(f"Loaded {len(trait_vectors)} trait vectors")
 
@@ -404,7 +420,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
             }
 
         # Project onto each trait
-        for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
+        for (category, trait_name), (vector, method, vector_path, layer) in trait_vectors.items():
             # Path: {component}_stream/{prompt_set}/{id}.json
             stream_name = "attn_stream" if args.component == "attn_out" else "residual_stream"
             out_dir = inference_dir / category / trait_name / stream_name / prompt_set
@@ -458,7 +474,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
                     'trait': trait_name,
                     'category': category,
                     'method': method,
-                    'layer': args.layer,
+                    'layer': layer,
                     'vector_path': str(vector_path),
                     'model': MODEL_NAME,
                     'projection_date': datetime.now().isoformat()

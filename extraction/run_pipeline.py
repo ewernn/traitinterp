@@ -1,38 +1,37 @@
 #!/usr/bin/env python3
 """
-Main orchestrator for the trait extraction pipeline.
+Main orchestrator for the full trait pipeline: extraction + evaluation + steering.
 
-Input:
+Input (required):
     - experiments/{experiment}/extraction/{trait}/positive.txt
     - experiments/{experiment}/extraction/{trait}/negative.txt
-    - experiments/{experiment}/extraction/{trait}/trait_definition.txt (optional, for vetting)
+    - experiments/{experiment}/extraction/{trait}/trait_definition.txt
+    - analysis/steering/prompts/{trait_name}.json (or use --no-steering)
 
 Output:
-    - responses/
-    - vetting/ (scenario and/or response scores)
-    - activations/
-    - vectors/
+    - responses/, vetting/, activations/, vectors/
+    - extraction/extraction_evaluation.json
+    - {steer_experiment}/steering/{trait}/results.json
 
 Usage:
-    # Full pipeline with vetting (default)
-    python extraction/run_pipeline.py --experiment my_exp --traits category/my_trait
+    # Full pipeline: extract on base, steer on IT
+    python extraction/run_pipeline.py \\
+        --experiment gemma-2-2b-base \\
+        --steer-experiment gemma-2-2b-it \\
+        --traits epistemic/optimism
 
-    # Skip scenario vetting (for instruction-based elicitation)
-    python extraction/run_pipeline.py --experiment my_exp --traits category/my_trait --no-vet-scenarios
-
-    # Skip all vetting (not recommended)
-    python extraction/run_pipeline.py --experiment my_exp --traits category/my_trait --no-vet
+    # Extraction only (no steering)
+    python extraction/run_pipeline.py \\
+        --experiment gemma-2-2b-base \\
+        --traits epistemic/optimism \\
+        --no-steering
 
     # All traits in experiment
-    python extraction/run_pipeline.py --experiment my_exp
+    python extraction/run_pipeline.py --experiment my_exp --steer-experiment my_exp_it
 
-    # Base model extraction (text completion, completion-only activations)
-    python extraction/run_pipeline.py --experiment my_exp --traits mental_state/optimism \\
+    # Base model with rollouts
+    python extraction/run_pipeline.py --experiment my_exp --traits epistemic/optimism \\
         --model Qwen/Qwen2.5-7B --base-model --rollouts 10 --temperature 1.0 --no-vet-scenarios
-
-    # Instruction-tuned model with custom model
-    python extraction/run_pipeline.py --experiment my_exp --traits mental_state/optimism \\
-        --model Qwen/Qwen2.5-7B-Instruct --rollouts 10 --temperature 1.0
 """
 
 import sys
@@ -49,6 +48,34 @@ from utils.model import load_model, DEFAULT_MODEL
 from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
+
+
+def validate_trait_files(experiment: str, trait: str, no_steering: bool = False) -> tuple[bool, list[str]]:
+    """
+    Validate that all required files exist for a trait.
+
+    Returns:
+        (is_valid, list of error messages)
+    """
+    errors = []
+    trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
+    trait_name = Path(trait).name
+
+    # Required extraction files
+    required_files = ['positive.txt', 'negative.txt', 'trait_definition.txt']
+    for filename in required_files:
+        filepath = trait_dir / filename
+        if not filepath.exists():
+            errors.append(f"Missing: {filepath}")
+
+    # Steering prompts (required unless --no-steering)
+    if not no_steering:
+        prompts_file = get_path('steering.prompt_file', trait=trait_name)
+        if not prompts_file.exists():
+            errors.append(f"Missing steering prompts: {prompts_file}")
+            errors.append(f"  Create this file or use --no-steering to skip steering evaluation")
+
+    return len(errors) == 0, errors
 
 
 def ensure_experiment_config(experiment: str, model_name: str, tokenizer) -> dict:
@@ -137,9 +164,28 @@ def run_vetting(experiment: str, trait: str, stage: str, threshold: int = 4,
         raise ValueError(f"Unknown vetting stage: {stage}")
 
 
-def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: bool, methods: List[str], vet: bool = False, vet_scenarios: bool = True, vet_threshold: int = 4, rollouts: int = 1, temperature: float = 0.0, batch_size: int = 8, val_split: float = 0.0, model_name: str = DEFAULT_MODEL, base_model: bool = False, trait_score: bool = False, pos_threshold: int = 60, neg_threshold: int = 40):
+def run_pipeline(
+    experiment: str,
+    traits_to_run: Optional[List[str]],
+    force: bool,
+    methods: List[str],
+    vet: bool = False,
+    vet_scenarios: bool = True,
+    vet_threshold: int = 4,
+    rollouts: int = 1,
+    temperature: float = 0.0,
+    batch_size: int = 8,
+    val_split: float = 0.0,
+    model_name: str = DEFAULT_MODEL,
+    base_model: bool = False,
+    trait_score: bool = False,
+    pos_threshold: int = 60,
+    neg_threshold: int = 40,
+    no_steering: bool = False,
+    steer_experiment: Optional[str] = None,
+):
     """
-    Executes the trait extraction pipeline.
+    Executes the full trait pipeline: extraction + evaluation + steering.
 
     Args:
         vet: Enable response vetting (default: True via CLI)
@@ -150,10 +196,18 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
         trait_score: If True, use 0-100 trait scoring mode for response vetting
         pos_threshold: For trait_score mode, positive class needs score >= this (default 60)
         neg_threshold: For trait_score mode, negative class needs score <= this (default 40)
+        no_steering: If True, skip steering evaluation
+        steer_experiment: Experiment to run steering on (default: same as experiment)
     """
+    # Default steer_experiment to experiment if not specified
+    if steer_experiment is None:
+        steer_experiment = experiment
+
     print("=" * 80)
-    print("STARTING TRAIT EXTRACTION PIPELINE")
-    print(f"Experiment: {experiment}")
+    print("STARTING TRAIT PIPELINE")
+    print(f"Extraction experiment: {experiment}")
+    if not no_steering:
+        print(f"Steering experiment: {steer_experiment}")
     print(f"Model: {model_name}")
     print(f"Chat template: will be auto-detected from experiment config")
     if base_model:
@@ -172,6 +226,10 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
         print(f"Rollouts: {rollouts}, Temperature: {temperature}")
     if val_split > 0:
         print(f"Val split: {val_split:.0%} (last {val_split:.0%} of scenarios)")
+    if no_steering:
+        print(f"Steering: OFF (--no-steering)")
+    else:
+        print(f"Steering: ON")
     print("=" * 80)
 
     # Check for GEMINI_API_KEY if vetting enabled
@@ -182,15 +240,32 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
 
     if traits_to_run:
         available_traits = traits_to_run
-        print(f"Running for {len(available_traits)} specified traits.")
+        print(f"\nRunning for {len(available_traits)} specified traits.")
     else:
         available_traits = discover_traits(experiment)
-        print(f"Discovered {len(available_traits)} traits to process.")
+        print(f"\nDiscovered {len(available_traits)} traits to process.")
 
     if not available_traits:
         print("\nNo traits found. To create a new trait, first create its directory:")
         print("  mkdir -p experiments/<experiment_name>/extraction/<category_name>/<trait_name>")
-        print("Then add `_positive.txt` and `_negative.txt` files to `extraction/scenarios/`.")
+        print("Then add positive.txt, negative.txt, and trait_definition.txt files.")
+        return
+
+    # --- Validate all traits before starting ---
+    print("\nValidating trait files...")
+    all_valid = True
+    for trait in available_traits:
+        is_valid, errors = validate_trait_files(experiment, trait, no_steering)
+        if not is_valid:
+            all_valid = False
+            print(f"\n❌ {trait}:")
+            for error in errors:
+                print(f"   {error}")
+
+    if not all_valid:
+        print("\n" + "=" * 80)
+        print("PIPELINE ABORTED: Missing required files")
+        print("=" * 80)
         return
 
     # --- Centralized Model Loading ---
@@ -276,20 +351,59 @@ def run_pipeline(experiment: str, traits_to_run: Optional[List[str]], force: boo
             )
         else:
             print(f"  [Stage 3] Skipping vector extraction (already exists).")
-    
+
+    # --- Stage 4: Extraction Evaluation ---
+    print(f"\n--- Stage 4: Evaluating Vectors ---")
+    eval_path = get_path("extraction_eval.evaluation", experiment=experiment)
+    if not eval_path.exists() or force:
+        import subprocess
+        cmd = [
+            sys.executable, "analysis/vectors/extraction_evaluation.py",
+            "--experiment", experiment,
+        ]
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"  ⚠️  Evaluation failed: {e}")
+    else:
+        print(f"  Skipping evaluation (already exists). Use --force to re-run.")
+
+    # --- Stage 5: Steering Evaluation ---
+    if not no_steering:
+        print(f"\n--- Stage 5: Steering Evaluation ---")
+        # Check for steering API key
+        if not os.environ.get('OPENAI_API_KEY') and not os.environ.get('GEMINI_API_KEY'):
+            print("  ⚠️  Skipping steering: No OPENAI_API_KEY or GEMINI_API_KEY found")
+        else:
+            import subprocess
+            for trait in available_traits:
+                print(f"\n  Steering: {trait}")
+                vector_from_trait = f"{experiment}/{trait}"
+                cmd = [
+                    sys.executable, "analysis/steering/evaluate.py",
+                    "--experiment", steer_experiment,
+                    "--vector-from-trait", vector_from_trait,
+                ]
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"  ⚠️  Steering failed for {trait}: {e}")
+
     print("\n" + "=" * 80)
     print("PIPELINE COMPLETE")
     print("=" * 80)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Main orchestrator for the trait extraction pipeline.")
-    parser.add_argument("--experiment", type=str, required=True, help="The name of the experiment.")
+    parser = argparse.ArgumentParser(description="Full trait pipeline: extraction + evaluation + steering.")
+    parser.add_argument("--experiment", type=str, required=True, help="Experiment for extraction (where vectors are saved).")
+    parser.add_argument("--steer-experiment", type=str, help="Experiment for steering (default: same as --experiment).")
     parser.add_argument("--traits", type=str, help="Comma-separated list of specific traits to run (e.g., 'category/name1,category/name2').")
     parser.add_argument("--force", action="store_true", help="If set, overwrite existing data and re-run all stages.")
-    parser.add_argument('--methods', type=str, default='mean_diff,probe,ica,gradient', help='Comma-separated method names for vector extraction.')
+    parser.add_argument('--methods', type=str, default='mean_diff,probe,gradient', help='Comma-separated method names for vector extraction.')
     parser.add_argument('--no-vet', action='store_true', help='Disable all LLM-as-a-judge vetting (not recommended).')
     parser.add_argument('--no-vet-scenarios', action='store_true', help='Skip scenario vetting, keep response vetting. Use for instruction-based elicitation.')
+    parser.add_argument('--no-steering', action='store_true', help='Skip steering evaluation (stages 1-4 only).')
     parser.add_argument('--vet-threshold', type=int, default=4, help='Minimum score for vetting to pass (default: 4).')
     parser.add_argument('--rollouts', type=int, default=1, help='Responses per scenario (1 for natural, 10 for instruction-based).')
     parser.add_argument('--temperature', type=float, default=0.0, help='Sampling temperature (0.0 for deterministic, 1.0 for diverse).')
@@ -323,4 +437,6 @@ if __name__ == "__main__":
         trait_score=args.trait_score,
         pos_threshold=args.pos_threshold,
         neg_threshold=args.neg_threshold,
+        no_steering=args.no_steering,
+        steer_experiment=args.steer_experiment,
     )

@@ -254,8 +254,10 @@ def compare_with_existing(rebuilt: Dict, existing_path: Path) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description='Rebuild results.json from response files')
-    parser.add_argument('--experiment', required=True, help='Experiment name')
-    parser.add_argument('--trait', required=True, help='Trait name (e.g., epistemic/optimism)')
+    parser.add_argument('--experiment', required=True,
+                        help='Experiment where steering results are stored')
+    parser.add_argument('--trait', required=True,
+                        help='Trait path (e.g., og_10/confidence)')
     parser.add_argument('--apply', action='store_true',
                         help='Actually write results_rebuilt.json (default: dry run)')
     parser.add_argument('--overwrite', action='store_true',

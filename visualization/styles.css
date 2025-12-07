@@ -874,7 +874,7 @@ code {
     bottom: 16px;
     left: calc(50% + 120px);
     transform: translateX(-50%);
-    max-width: 700px;
+    max-width: 900px;
     width: calc(100% - 240px - 32px);
     padding: 16px;
     font-size: var(--text-sm);
@@ -894,19 +894,24 @@ code {
 
 .pp-picker {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
     margin-bottom: 16px;
 }
 
-.pp-picker select {
-    padding: 4px 8px;
-    font-size: var(--text-sm);
-    border: none;
-    background: var(--bg-tertiary);
+.pp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.pp-prompts { display: flex; gap: 6px; }
+.pp-row-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    min-width: 60px;
+}
+
+.pp-sets, .pp-prompts { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .pp-btn {
     background: var(--bg-tertiary);
@@ -963,14 +968,26 @@ code {
     color: var(--text-primary) !important;
 }
 
+/* Layer plots side-by-side */
+.layer-plots-row {
+    display: flex;
+    gap: 24px;
+}
+
+.layer-plot-item {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Heatmaps */
 .trait-heatmaps-grid {
     display: grid;
-    grid-template-columns: repeat(10, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 8px 12px;
 }
 
 .trait-heatmap-item { min-width: 0; }
+.trait-heatmap-plot { width: 100%; height: 180px; }
 
 .trait-heatmap-item h4 {
     font-size: var(--text-sm);
@@ -1019,8 +1036,8 @@ code {
     color: var(--text-tertiary);
 }
 
-@media (max-width: 1400px) { .trait-heatmaps-grid { grid-template-columns: repeat(6, 1fr); } }
-@media (max-width: 900px) { .trait-heatmaps-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1400px) { .trait-heatmaps-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px) { .trait-heatmaps-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* Metric Distributions */
 .metric-distributions-grid {
@@ -1370,21 +1387,3 @@ code {
     text-decoration: line-through;
 }
 
-/* Layer Derivatives Row (trait-dynamics) */
-.layer-derivatives-row {
-    display: flex;
-    gap: 16px;
-}
-
-.layer-deriv-item {
-    flex: 1;
-    min-width: 0;
-}
-
-.layer-deriv-label {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-align: center;
-    margin-bottom: 4px;
-}
