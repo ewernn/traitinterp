@@ -30,12 +30,19 @@ Usage:
         --vector-from-trait gemma-2-2b-it/og_10/confidence \\
         --coefficients 50,100,150
 
-    # Multi-layer steering (all layers steered simultaneously)
+    # Multi-layer weighted steering (delta-proportional coefficients)
     python analysis/steering/evaluate.py \\
         --experiment gemma-2-2b-it \\
-        --vector-from-trait gemma-2-2b-it/og_10/confidence \\
-        --layers 12,14,16 \\
-        --multi-layer
+        --vector-from-trait gemma-2-2b-base/epistemic/optimism \\
+        --layers 6-18 \\
+        --multi-layer weighted --global-scale 1.5
+
+    # Multi-layer orthogonal steering (orthogonalized vectors)
+    python analysis/steering/evaluate.py \\
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b-base/epistemic/optimism \\
+        --layers 6-18 \\
+        --multi-layer orthogonal --global-scale 1.0
 """
 
 import sys
@@ -51,10 +58,74 @@ from datetime import datetime
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from analysis.steering.steer import SteeringHook, MultiLayerSteeringHook
+from analysis.steering.steer import SteeringHook, MultiLayerSteeringHook, orthogonalize_vectors
 from analysis.steering.judge import TraitJudge
 from utils.paths import get
 from utils.model import format_prompt, load_experiment_config
+
+
+def load_layer_deltas(experiment: str, trait: str, min_coherence: float = 70) -> Dict[int, Dict]:
+    """
+    Load single-layer results and return best delta per layer.
+
+    Returns:
+        {layer: {'delta': float, 'coef': float, 'coherence': float}}
+    """
+    results_path = get('steering.results', experiment=experiment, trait=trait)
+    if not results_path.exists():
+        return {}
+
+    with open(results_path) as f:
+        results = json.load(f)
+
+    baseline = results.get('baseline', {}).get('trait_mean', 50)
+    best_by_layer = {}
+
+    for run in results.get('runs', []):
+        config = run.get('config', {})
+        result = run.get('result', {})
+
+        # Only single-layer runs
+        if len(config.get('layers', [])) != 1:
+            continue
+
+        layer = config['layers'][0]
+        trait_score = result.get('trait_mean') or 0
+        coherence = result.get('coherence_mean') or 0
+        delta = trait_score - baseline
+        coef = config.get('coefficients', [0])[0]
+
+        if coherence >= min_coherence:
+            if layer not in best_by_layer or delta > best_by_layer[layer]['delta']:
+                best_by_layer[layer] = {'delta': delta, 'coef': coef, 'coherence': coherence}
+
+    return best_by_layer
+
+
+def compute_weighted_coefficients(
+    layer_deltas: Dict[int, Dict],
+    layers: List[int],
+    global_scale: float = 1.0
+) -> Dict[int, float]:
+    """
+    Compute delta-weighted coefficients for multi-layer steering.
+
+    coef_ℓ = global_scale * best_coef_ℓ * (delta_ℓ / Σ deltas)
+    """
+    # Filter to requested layers with positive delta
+    active_layers = {l: d for l, d in layer_deltas.items() if l in layers and d['delta'] > 0}
+
+    if not active_layers:
+        return {}
+
+    total_delta = sum(d['delta'] for d in active_layers.values())
+
+    coefficients = {}
+    for layer, data in active_layers.items():
+        weight = data['delta'] / total_delta
+        coefficients[layer] = global_scale * data['coef'] * weight
+
+    return coefficients
 
 
 def load_model_and_tokenizer(model_name: str):
@@ -595,6 +666,137 @@ async def _adaptive_search_layer(
         print(f"⚠ No coef met threshold. Best coherence: coef={best_coef:.0f}")
 
 
+async def run_multilayer_evaluation(
+    experiment: str,
+    trait: str,
+    vector_experiment: str,
+    layers: List[int],
+    mode: str,  # "weighted" or "orthogonal"
+    global_scale: float,
+    method: str,
+    component: str,
+    model_name: str,
+    judge_provider: str,
+    subset: Optional[int],
+):
+    """
+    Run multi-layer steering evaluation.
+
+    Modes:
+        - weighted: coef_ℓ = global_scale * best_coef_ℓ * (delta_ℓ / Σ deltas)
+        - orthogonal: use orthogonalized vectors with uniform coefficients
+    """
+    # Load prompts
+    prompts_data, prompts_file = load_eval_prompts(trait)
+    questions = prompts_data["questions"]
+    if subset:
+        questions = questions[:subset]
+    eval_prompt = prompts_data["eval_prompt"]
+
+    # Load model
+    model, tokenizer = load_model_and_tokenizer(model_name)
+    num_layers = get_num_layers(model)
+
+    # Load experiment config
+    config = load_experiment_config(experiment)
+    use_chat_template = config.get('use_chat_template')
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+
+    # Validate layers
+    layers = [l for l in layers if 0 <= l < num_layers]
+    if not layers:
+        raise ValueError(f"No valid layers. Model has {num_layers} layers")
+
+    # Load single-layer deltas for weighted mode
+    layer_deltas = load_layer_deltas(experiment, trait)
+    if not layer_deltas:
+        print(f"Warning: No single-layer results found. Run single-layer evaluation first.")
+        return
+
+    # Compute coefficients based on mode
+    if mode == "weighted":
+        coefficients = compute_weighted_coefficients(layer_deltas, layers, global_scale)
+        if not coefficients:
+            print("No layers with positive delta in requested range")
+            return
+        active_layers = sorted(coefficients.keys())
+    else:  # orthogonal - use uniform coefficients
+        active_layers = [l for l in layers if l in layer_deltas and layer_deltas[l]['delta'] > 0]
+        if not active_layers:
+            print("No layers with positive delta in requested range")
+            return
+        # Use average of best coefficients, scaled
+        avg_coef = sum(layer_deltas[l]['coef'] for l in active_layers) / len(active_layers)
+        coefficients = {l: global_scale * avg_coef / len(active_layers) for l in active_layers}
+
+    # Load vectors
+    vectors = {}
+    for layer in active_layers:
+        vector = load_vector(vector_experiment, trait, layer, method, component)
+        if vector is None:
+            print(f"  L{layer}: Vector not found, skipping")
+            continue
+        vectors[layer] = vector
+
+    if not vectors:
+        print("No vectors found")
+        return
+
+    # Orthogonalize if requested
+    if mode == "orthogonal":
+        print("Orthogonalizing vectors...")
+        vectors = orthogonalize_vectors(vectors)
+        for l in sorted(vectors.keys()):
+            print(f"  L{l}: norm after orthogonalization = {vectors[l].norm().item():.3f}")
+
+    # Build steering configs
+    steering_configs = [
+        (layer, vectors[layer], coefficients[layer])
+        for layer in sorted(vectors.keys())
+    ]
+
+    print(f"\nMulti-layer {mode} steering")
+    print(f"Layers: {[l for l, _, _ in steering_configs]}")
+    print(f"Coefficients: {[f'{c:.1f}' for _, _, c in steering_configs]}")
+    print(f"Questions: {len(questions)}")
+
+    # Initialize judge
+    judge = TraitJudge(provider=judge_provider)
+
+    # Generate and score
+    all_qa_pairs = []
+    for question in tqdm(questions, desc="multilayer gen"):
+        formatted = format_prompt(question, tokenizer, use_chat_template=use_chat_template)
+
+        with MultiLayerSteeringHook(model, steering_configs, component=component):
+            response = generate_response(model, tokenizer, formatted)
+
+        all_qa_pairs.append((question, response))
+
+    # Score
+    print(f"Scoring {len(all_qa_pairs)} responses...")
+    all_scores = await judge.score_batch(eval_prompt, all_qa_pairs)
+
+    trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
+    coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
+
+    trait_mean = sum(trait_scores) / len(trait_scores) if trait_scores else 0
+    coherence_mean = sum(coherence_scores) / len(coherence_scores) if coherence_scores else 0
+
+    print(f"\nResults:")
+    print(f"  Trait: {trait_mean:.1f}")
+    print(f"  Coherence: {coherence_mean:.1f}")
+
+    # Load baseline for comparison
+    results_path = get('steering.results', experiment=experiment, trait=trait)
+    if results_path.exists():
+        with open(results_path) as f:
+            results = json.load(f)
+        baseline = results.get('baseline', {}).get('trait_mean', 0)
+        print(f"  Delta from baseline: +{trait_mean - baseline:.1f}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Steering evaluation")
     parser.add_argument("--experiment", required=True,
@@ -612,14 +814,12 @@ def main():
     parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
     parser.add_argument("--search-steps", type=int, default=8,
                         help="Number of adaptive search steps per layer (default: 8)")
-    parser.add_argument("--multi-layer", action="store_true",
-                        help="Steer all layers simultaneously (not yet implemented in new code)")
+    parser.add_argument("--multi-layer", choices=["weighted", "orthogonal"],
+                        help="Multi-layer steering mode: 'weighted' (delta-proportional) or 'orthogonal'")
+    parser.add_argument("--global-scale", type=float, default=1.0,
+                        help="Global scale for multi-layer coefficients (default: 1.0)")
 
     args = parser.parse_args()
-
-    if args.multi_layer:
-        print("Warning: --multi-layer not yet reimplemented in cleaned up code")
-        return
 
     # Parse --vector-from-trait
     parts = args.vector_from_trait.split('/', 1)
@@ -629,25 +829,44 @@ def main():
 
     # Get model from experiment config if not specified
     config = load_experiment_config(args.experiment)
-    model_name = args.model or config.get('model') or "google/gemma-2-2b-it"
+    model_name = args.model or config.get('model')
+    if not model_name:
+        parser.error(f"No model specified. Use --model or add 'model' to experiments/{args.experiment}/config.json")
 
     # Parse layers (will be validated against actual model later)
     layers = parse_layers(args.layers, num_layers=100)
-    coefficients = parse_coefficients(args.coefficients)
 
-    asyncio.run(run_evaluation(
-        experiment=args.experiment,
-        trait=trait,
-        vector_experiment=vector_experiment,
-        layers=layers,
-        coefficients=coefficients,
-        method=args.method,
-        component=args.component,
-        model_name=model_name,
-        judge_provider=args.judge,
-        subset=args.subset,
-        n_search_steps=args.search_steps,
-    ))
+    if args.multi_layer:
+        # Multi-layer mode
+        asyncio.run(run_multilayer_evaluation(
+            experiment=args.experiment,
+            trait=trait,
+            vector_experiment=vector_experiment,
+            layers=layers,
+            mode=args.multi_layer,
+            global_scale=args.global_scale,
+            method=args.method,
+            component=args.component,
+            model_name=model_name,
+            judge_provider=args.judge,
+            subset=args.subset,
+        ))
+    else:
+        # Single-layer mode
+        coefficients = parse_coefficients(args.coefficients)
+        asyncio.run(run_evaluation(
+            experiment=args.experiment,
+            trait=trait,
+            vector_experiment=vector_experiment,
+            layers=layers,
+            coefficients=coefficients,
+            method=args.method,
+            component=args.component,
+            model_name=model_name,
+            judge_provider=args.judge,
+            subset=args.subset,
+            n_search_steps=args.search_steps,
+        ))
 
 
 if __name__ == "__main__":

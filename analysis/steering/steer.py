@@ -28,7 +28,43 @@ Usage:
 
 import torch
 from contextlib import contextmanager
-from typing import Union, Sequence, List, Tuple
+from typing import Union, Sequence, List, Tuple, Dict
+
+
+def orthogonalize_vectors(vectors: Dict[int, torch.Tensor]) -> Dict[int, torch.Tensor]:
+    """
+    Make each vector orthogonal to the previous layer's vector.
+
+    v_ℓ_orth = v_ℓ - proj(v_ℓ onto v_{ℓ-1})
+             = v_ℓ - (v_ℓ · v_{ℓ-1} / ||v_{ℓ-1}||²) * v_{ℓ-1}
+
+    Args:
+        vectors: Dict mapping layer index to vector tensor
+
+    Returns:
+        Dict mapping layer index to orthogonalized vector
+    """
+    layers = sorted(vectors.keys())
+    result = {}
+
+    for i, layer in enumerate(layers):
+        v = vectors[layer]
+        if i == 0:
+            # First layer: no previous vector, use as-is
+            result[layer] = v
+        else:
+            prev_layer = layers[i - 1]
+            v_prev = vectors[prev_layer]
+            # Project v onto v_prev and subtract
+            dot = torch.dot(v.flatten(), v_prev.flatten())
+            norm_sq = torch.dot(v_prev.flatten(), v_prev.flatten())
+            if norm_sq > 1e-10:
+                proj = (dot / norm_sq) * v_prev
+                result[layer] = v - proj
+            else:
+                result[layer] = v
+
+    return result
 
 
 class SteeringHook:
