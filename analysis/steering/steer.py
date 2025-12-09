@@ -111,17 +111,31 @@ class SteeringHook:
         if self.vector.ndim != 1:
             raise ValueError(f"Vector must be 1-D, got shape {self.vector.shape}")
 
+        # Validate vector dimension based on component
+        # k_cache/v_cache use head_dim * num_kv_heads (1024 for Gemma 2B)
+        # residual/attn_out/mlp_out use hidden_size (2304 for Gemma 2B)
         hidden_size = getattr(model.config, "hidden_size", None)
-        if hidden_size and self.vector.numel() != hidden_size:
-            raise ValueError(
-                f"Vector length {self.vector.numel()} != model hidden_size {hidden_size}"
-            )
+        if hidden_size:
+            if self.component in {"k_cache", "v_cache"}:
+                # KV projection size = head_dim * num_key_value_heads
+                num_kv_heads = getattr(model.config, "num_key_value_heads", 4)
+                head_dim = getattr(model.config, "head_dim", hidden_size // 8)
+                expected_size = num_kv_heads * head_dim
+                if self.vector.numel() != expected_size:
+                    raise ValueError(
+                        f"Vector length {self.vector.numel()} != expected KV size {expected_size} "
+                        f"(num_kv_heads={num_kv_heads}, head_dim={head_dim})"
+                    )
+            elif self.vector.numel() != hidden_size:
+                raise ValueError(
+                    f"Vector length {self.vector.numel()} != model hidden_size {hidden_size}"
+                )
 
         if self.positions not in {"all", "last"}:
             raise ValueError("positions must be 'all' or 'last'")
 
-        if self.component not in {"residual", "attn_out", "mlp_out"}:
-            raise ValueError("component must be 'residual', 'attn_out', or 'mlp_out'")
+        if self.component not in {"residual", "attn_out", "mlp_out", "k_cache", "v_cache"}:
+            raise ValueError("component must be 'residual', 'attn_out', 'mlp_out', 'k_cache', or 'v_cache'")
 
     def _get_layer(self) -> torch.nn.Module:
         """Get the layer module to hook based on component."""
@@ -133,6 +147,10 @@ class SteeringHook:
                 return layer.self_attn.o_proj
             elif self.component == "mlp_out":
                 return layer.mlp.down_proj
+            elif self.component == "k_cache":
+                return layer.self_attn.k_proj
+            elif self.component == "v_cache":
+                return layer.self_attn.v_proj
         except (AttributeError, IndexError) as e:
             raise ValueError(f"Could not access layer {self.layer} component {self.component}: {e}")
 
@@ -214,7 +232,7 @@ class MultiLayerSteeringHook:
             model: The transformer model
             configs: List of (layer_idx, vector, coefficient) tuples
             positions: Which positions to steer ("all" or "last")
-            component: Which component to steer ("residual", "attn_out", "mlp_out")
+            component: Which component to steer ("residual", "attn_out", "mlp_out", "k_cache", "v_cache")
         """
         self.model = model
         self.positions = positions.lower()

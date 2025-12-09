@@ -86,6 +86,12 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.list_experiments())
                 return
 
+            # API endpoint: get experiment config
+            if self.path.startswith('/api/experiments/') and self.path.endswith('/config'):
+                exp_name = self.path.split('/')[3]
+                self.send_api_response(self.get_experiment_config(exp_name))
+                return
+
             # API endpoint: get integrity data for an experiment
             if self.path.startswith('/api/integrity/') and self.path.endswith('.json'):
                 exp_name = self.path.split('/')[3].replace('.json', '')
@@ -156,6 +162,17 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             with open(config_path) as f:
                 config = yaml.safe_load(f)
             return config.get('schema', {})
+        except Exception as e:
+            return {'error': str(e)}
+
+    def get_experiment_config(self, experiment: str):
+        """Get experiment config.json (extraction_model, application_model)."""
+        config_path = get_path('experiments.config', experiment=experiment)
+        if not config_path.exists():
+            return {}
+        try:
+            with open(config_path) as f:
+                return json.load(f)
         except Exception as e:
             return {'error': str(e)}
 

@@ -30,10 +30,15 @@ extraction:
   base: "experiments/{experiment}/extraction"
   trait: "experiments/{experiment}/extraction/{trait}"
   vectors: "experiments/{experiment}/extraction/{trait}/vectors"
+  vectors_metadata: "experiments/{experiment}/extraction/{trait}/vectors/metadata.json"
   activations: "experiments/{experiment}/extraction/{trait}/activations"
+  activations_metadata: "experiments/{experiment}/extraction/{trait}/activations/metadata.json"
   val_activations: "experiments/{experiment}/extraction/{trait}/val_activations"
   responses: "experiments/{experiment}/extraction/{trait}/responses"
+  responses_metadata: "experiments/{experiment}/extraction/{trait}/responses/metadata.json"
   val_responses: "experiments/{experiment}/extraction/{trait}/val_responses"
+  vetting: "experiments/{experiment}/extraction/{trait}/vetting"
+  vetting_metadata: "experiments/{experiment}/extraction/{trait}/vetting/metadata.json"
 
 # =============================================================================
 # INFERENCE (evaluation-time data)
@@ -51,6 +56,7 @@ inference:
   # Captured once per prompt, reused across all trait projections
   raw: "experiments/{experiment}/inference/raw"
   raw_residual: "experiments/{experiment}/inference/raw/residual/{prompt_set}"
+  raw_residual_metadata: "experiments/{experiment}/inference/raw/residual/{prompt_set}/{prompt_id}_metadata.json"
   raw_internals: "experiments/{experiment}/inference/raw/internals/{prompt_set}"
 
   # Per-trait analysis results (JSON for visualization)

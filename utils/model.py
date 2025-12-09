@@ -4,7 +4,7 @@ Shared model loading and prompt formatting utilities.
 Usage:
     from utils.model import load_model, format_prompt, load_experiment_config
 
-    model, tokenizer = load_model()  # Uses default Gemma 2B
+    model, tokenizer = load_model("google/gemma-2-2b-it")
     model, tokenizer = load_model("google/gemma-2-2b-it", device="cuda")
 
     # Format prompt (auto-detects chat template from tokenizer)
@@ -20,11 +20,9 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-DEFAULT_MODEL = "google/gemma-2-2b-it"
-
 
 def load_model(
-    model_name: str = DEFAULT_MODEL,
+    model_name: str,
     device: str = "auto",
     dtype: torch.dtype = torch.bfloat16,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -122,15 +120,9 @@ def load_experiment_config(experiment: str, warn_missing: bool = True) -> dict:
         with open(config_path) as f:
             return json.load(f)
 
-    # No config found - warn and return defaults
+    # No config found - warn and return empty
     if warn_missing:
         print(f"⚠️  No config.json found for experiment '{experiment}'")
-        print(f"   Chat template will be auto-detected from tokenizer.")
-        print(f"   Run extraction/run_pipeline.py to auto-create config.json,")
-        print(f"   or create manually: {config_path}")
+        print(f"   Create config.json with extraction_model and application_model.")
 
-    return {
-        "model": DEFAULT_MODEL,
-        "use_chat_template": None,  # Auto-detect from tokenizer
-        "system_prompt": None,
-    }
+    return {}

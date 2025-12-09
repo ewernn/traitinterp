@@ -26,6 +26,7 @@ import json
 import argparse
 from pathlib import Path
 from typing import List, Optional
+from datetime import datetime
 
 import torch
 
@@ -156,6 +157,23 @@ def extract_vectors_for_trait(
             except Exception as e:
                 print(f"    ERROR: {method_name} layer {layer_idx}: {e}")
 
+    # Save vectors metadata (for this component)
+    vectors_metadata = {
+        'extraction_model': metadata.get('model', 'unknown'),
+        'extraction_experiment': experiment,
+        'trait': trait,
+        'num_layers': n_layers,
+        'hidden_dim': metadata.get('hidden_dim'),
+        'component': component,
+        'methods': methods,
+        'layers': layer_list,
+        'source_activations': f"activations/{metadata_filename}",
+        'timestamp': datetime.now().isoformat(),
+    }
+    vectors_metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
+    with open(vectors_dir / vectors_metadata_filename, 'w') as f:
+        json.dump(vectors_metadata, f, indent=2)
+
     print(f"    Extracted {n_extracted} vectors for '{trait}'")
     return n_extracted
 
@@ -170,7 +188,7 @@ def main():
     parser.add_argument('--layers', type=str, default=None,
                         help='Comma-separated layers (default: all)')
     parser.add_argument('--component', type=str, default='residual',
-                        help='Component(s) to extract from: residual, attn_out, mlp_out, or comma-separated')
+                        help='Component(s) to extract from: residual, attn_out, mlp_out, k_cache, v_cache, or comma-separated')
 
     args = parser.parse_args()
 
@@ -191,7 +209,7 @@ def main():
         layers_list = [int(l.strip()) for l in args.layers.split(",")]
 
     components = [c.strip() for c in args.component.split(',')]
-    valid_components = {'residual', 'attn_out', 'mlp_out'}
+    valid_components = {'residual', 'attn_out', 'mlp_out', 'k_cache', 'v_cache'}
     for c in components:
         if c not in valid_components:
             print(f"ERROR: Invalid component '{c}'. Must be one of: {valid_components}")

@@ -230,6 +230,22 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     const nPromptTokens = promptTokens.length;
     const nTotalTokens = allTokens.length;
 
+    // Extract inference model and vector source from metadata
+    const meta = refData.metadata || {};
+    const inferenceModel = meta.inference_model ||
+        window.state.experimentData?.experimentConfig?.application_model ||
+        'unknown';
+    const vectorSource = meta.vector_source || {};
+
+    // Build model info HTML
+    let modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
+    if (vectorSource.model) {
+        modelInfoHtml += ` · Vector from: <code>${vectorSource.model}</code>`;
+    }
+    if (vectorSource.method && vectorSource.layer !== undefined) {
+        modelInfoHtml += ` (${vectorSource.method} L${vectorSource.layer})`;
+    }
+
     // Build HTML
     let failedHtml = '';
     if (failedTraits.length > 0) {
@@ -244,6 +260,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         <div class="tool-view">
             <div class="page-intro">
                 <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
+                <div class="page-intro-model">${modelInfoHtml}</div>
             </div>
             ${failedHtml}
 

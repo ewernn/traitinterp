@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
 """
-Stage 1: Generate responses for natural elicitation.
+Generate responses for trait extraction.
 
 Input:
-    - experiments/{experiment}/extraction/{category}/{trait}/positive.txt
-    - experiments/{experiment}/extraction/{category}/{trait}/negative.txt
+    - experiments/{experiment}/extraction/{trait}/positive.txt
+    - experiments/{experiment}/extraction/{trait}/negative.txt
 
 Output:
-    - experiments/{experiment}/extraction/{category}/{trait}/responses/pos.json
-    - experiments/{experiment}/extraction/{category}/{trait}/responses/neg.json
-    - experiments/{experiment}/extraction/{category}/{trait}/generation_metadata.json
+    - experiments/{experiment}/extraction/{trait}/responses/pos.json
+    - experiments/{experiment}/extraction/{trait}/responses/neg.json
+    - experiments/{experiment}/extraction/{trait}/responses/metadata.json
 
 Usage:
-    # Single trait
+    # Base model (16 token completions)
+    python extraction/generate_responses.py --experiment my_exp --trait category/my_trait --base-model
+
+    # IT model (200 token responses with chat template)
     python extraction/generate_responses.py --experiment my_exp --trait category/my_trait
 
     # All traits
-    python extraction/generate_responses.py --experiment my_exp --trait all
+    python extraction/generate_responses.py --experiment my_exp --trait all --base-model
 """
 
 import sys
 import json
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 import torch
 from tqdm import tqdm
@@ -31,7 +35,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
-from utils.model import load_model, format_prompt, DEFAULT_MODEL
+from utils.model import load_model, format_prompt, load_experiment_config
+
+
+# Default token limits
+BASE_MODEL_TOKENS = 16   # Base models drift quickly
+IT_MODEL_TOKENS = 100    # IT models stay coherent longer
 
 
 def discover_traits(experiment: str) -> list[str]:
@@ -47,7 +56,6 @@ def discover_traits(experiment: str) -> list[str]:
         for trait_dir in category_dir.iterdir():
             if not trait_dir.is_dir():
                 continue
-            # Check for scenario files
             if (trait_dir / 'positive.txt').exists() and (trait_dir / 'negative.txt').exists():
                 traits.append(f"{category_dir.name}/{trait_dir.name}")
     return sorted(traits)
@@ -56,8 +64,7 @@ def discover_traits(experiment: str) -> list[str]:
 def load_scenarios(scenario_file: Path) -> list[str]:
     """Load scenarios from text file (one per line)."""
     with open(scenario_file, 'r') as f:
-        scenarios = [line.strip() for line in f if line.strip()]
-    return scenarios
+        return [line.strip() for line in f if line.strip()]
 
 
 def generate_responses_for_trait(
@@ -65,44 +72,29 @@ def generate_responses_for_trait(
     trait: str,
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
-    max_new_tokens: int = 200,
+    max_new_tokens: int,
     batch_size: int = 8,
     rollouts: int = 1,
     temperature: float = 0.0,
     chat_template: bool = False,
-    base_model: bool = False,
 ) -> tuple[int, int]:
     """
     Generate responses for scenarios.
 
-    Args:
-        experiment: Experiment name.
-        trait: Trait path like "category/trait_name".
-        model: Pre-loaded HuggingFace model.
-        tokenizer: Pre-loaded HuggingFace tokenizer.
-        max_new_tokens: Max tokens to generate per response.
-        batch_size: Batch size for generation.
-        rollouts: Number of responses per scenario (1 for natural, 10 for instruction-based).
-        temperature: Sampling temperature (0.0 for deterministic, 1.0 for diverse).
-        chat_template: If True, wrap prompts in chat template (for instruct models like Qwen).
-        base_model: If True, use text completion mode (no chat template, track prefix length).
-
     Returns:
         Tuple of (n_positive, n_negative) responses generated.
     """
-    print(f"  [Stage 1] Generating responses for '{trait}'...")
+    print(f"  Generating responses for '{trait}'...")
 
     trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
     responses_dir = get_path('extraction.responses', experiment=experiment, trait=trait)
     responses_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load scenario files
     pos_file = trait_dir / 'positive.txt'
     neg_file = trait_dir / 'negative.txt'
 
     if not pos_file.exists() or not neg_file.exists():
         print(f"    ERROR: Scenario files not found in {trait_dir}")
-        print(f"    Expected: positive.txt, negative.txt")
         return 0, 0
 
     pos_scenarios = load_scenarios(pos_file)
@@ -110,25 +102,20 @@ def generate_responses_for_trait(
 
     do_sample = temperature > 0
 
-    if rollouts > 1:
-        print(f"    Rollouts: {rollouts}, Temperature: {temperature}")
-
     def generate_batch(scenarios: list[str], label: str) -> list[dict]:
         results = []
-        total_to_generate = len(scenarios) * rollouts
-        desc = f"    Generating {label} ({total_to_generate} total)"
+        total = len(scenarios) * rollouts
+        desc = f"    {label} ({total})"
 
-        with tqdm(total=total_to_generate, desc=desc, leave=False) as pbar:
+        with tqdm(total=total, desc=desc, leave=False) as pbar:
             for i in range(0, len(scenarios), batch_size):
                 batch_scenarios = scenarios[i:i + batch_size]
 
-                # Apply chat template using centralized format_prompt
                 batch_prompts = [
                     format_prompt(s, tokenizer, use_chat_template=chat_template)
                     for s in batch_scenarios
                 ]
 
-                # Generate rollouts for this batch
                 for rollout_idx in range(rollouts):
                     inputs = tokenizer(
                         batch_prompts,
@@ -149,14 +136,16 @@ def generate_responses_for_trait(
 
                     for j, output in enumerate(outputs):
                         prompt_length = inputs['input_ids'][j].shape[0]
-                        response = tokenizer.decode(output[prompt_length:], skip_special_tokens=True)
+                        response = tokenizer.decode(output[prompt_length:], skip_special_tokens=True).strip()
+                        prompt = batch_scenarios[j]
                         results.append({
                             'scenario_idx': i + j,
                             'rollout_idx': rollout_idx,
-                            'prompt': batch_scenarios[j],
-                            'response': response.strip(),
-                            'full_text': tokenizer.decode(output, skip_special_tokens=True),
+                            'prompt': prompt,
+                            'response': response,
+                            'full_text': prompt + response,  # For activation extraction
                             'prompt_token_count': prompt_length,
+                            'response_token_count': len(output) - prompt_length,
                         })
                     pbar.update(len(batch_scenarios))
         return results
@@ -171,81 +160,88 @@ def generate_responses_for_trait(
         json.dump(neg_results, f, indent=2)
 
     # Save metadata
+    model_hf_id = model.config.name_or_path
     metadata = {
+        'model': model_hf_id,
         'experiment': experiment,
         'trait': trait,
-        'model_name': model.config.name_or_path,
-        'n_scenarios_pos': len(pos_scenarios),
-        'n_scenarios_neg': len(neg_scenarios),
+        'max_new_tokens': max_new_tokens,
+        'chat_template': chat_template,
         'rollouts': rollouts,
         'temperature': temperature,
-        'n_positive': len(pos_results),
-        'n_negative': len(neg_results),
-        'total': len(pos_results) + len(neg_results),
-        'base_model': base_model,
-        'chat_template': chat_template,
+        'n_pos': len(pos_results),
+        'n_neg': len(neg_results),
+        'n_scenarios_pos': len(pos_scenarios),
+        'n_scenarios_neg': len(neg_scenarios),
+        'timestamp': datetime.now().isoformat(),
     }
-    with open(trait_dir / 'generation_metadata.json', 'w') as f:
+    with open(responses_dir / 'metadata.json', 'w') as f:
         json.dump(metadata, f, indent=2)
 
-    print(f"    Saved {len(pos_results)} positive and {len(neg_results)} negative responses.")
+    print(f"    Saved {len(pos_results)} + {len(neg_results)} responses ({max_new_tokens} tokens each)")
     return len(pos_results), len(neg_results)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate natural elicitation responses.')
+    parser = argparse.ArgumentParser(description='Generate responses for trait extraction.')
     parser.add_argument('--experiment', type=str, required=True, help='Experiment name')
     parser.add_argument('--trait', type=str, required=True,
-                        help='Trait name (e.g., "category/my_trait") or "all" for all traits')
-    parser.add_argument('--model', type=str, default=DEFAULT_MODEL, help='Model name')
-    parser.add_argument('--max-new-tokens', type=int, default=200, help='Max tokens to generate')
-    parser.add_argument('--batch-size', type=int, default=8, help='Batch size for generation')
-    parser.add_argument('--device', type=str, default='auto', help='Device (auto, cuda, cpu, mps)')
-    parser.add_argument('--rollouts', type=int, default=1,
-                        help='Responses per scenario (1 for natural, 10 for instruction-based)')
-    parser.add_argument('--temperature', type=float, default=0.0,
-                        help='Sampling temperature (0.0 for deterministic, 1.0 for diverse)')
+                        help='Trait path (e.g., "category/my_trait") or "all"')
+    parser.add_argument('--model', type=str, default=None, help='Model (default: from experiment config)')
+    parser.add_argument('--max-new-tokens', type=int, default=None,
+                        help=f'Max tokens (default: {BASE_MODEL_TOKENS} for base, {IT_MODEL_TOKENS} for IT)')
+    parser.add_argument('--batch-size', type=int, default=8, help='Batch size')
+    parser.add_argument('--device', type=str, default='auto', help='Device')
+    parser.add_argument('--rollouts', type=int, default=1, help='Responses per scenario')
+    parser.add_argument('--temperature', type=float, default=0.0, help='Sampling temperature')
     parser.add_argument('--chat-template', action='store_true', default=None,
-                        help='Force chat template ON (default: auto-detect from tokenizer)')
+                        help='Force chat template ON')
     parser.add_argument('--no-chat-template', dest='chat_template', action='store_false',
                         help='Force chat template OFF')
     parser.add_argument('--base-model', action='store_true',
-                        help='Base model mode (completion-only extraction)')
+                        help=f'Base model mode (implies --no-chat-template, --max-new-tokens {BASE_MODEL_TOKENS})')
 
     args = parser.parse_args()
 
-    # Determine chat_template: explicit flag or auto-detect
-    if args.chat_template is None:
-        # Will auto-detect after loading tokenizer
-        pass
+    # Resolve model: CLI > config
+    config = load_experiment_config(args.experiment, warn_missing=False)
+    model_name = args.model or config.get('extraction_model')
+    if not model_name:
+        parser.error(f"No model specified. Use --model or add 'extraction_model' to experiments/{args.experiment}/config.json")
 
-    # Determine traits to process
+    # Determine traits
     if args.trait.lower() == 'all':
         traits = discover_traits(args.experiment)
         if not traits:
             print(f"No traits found in experiment '{args.experiment}'")
             return
-        print(f"Found {len(traits)} traits to process")
+        print(f"Found {len(traits)} traits")
     else:
         traits = [args.trait]
 
-    # Load model and tokenizer once
-    model, tokenizer = load_model(args.model, device=args.device)
+    # Load model
+    model, tokenizer = load_model(model_name, device=args.device)
 
-    # Auto-detect chat_template if not explicitly set
-    use_chat_template = args.chat_template
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    # Determine settings based on base_model flag
+    if args.base_model:
+        use_chat_template = False
+        max_new_tokens = args.max_new_tokens or BASE_MODEL_TOKENS
+    else:
+        use_chat_template = args.chat_template
+        if use_chat_template is None:
+            use_chat_template = tokenizer.chat_template is not None
+        max_new_tokens = args.max_new_tokens or IT_MODEL_TOKENS
 
-    print("=" * 80)
+    print("=" * 60)
     print("GENERATE RESPONSES")
     print(f"Experiment: {args.experiment}")
+    print(f"Model: {model_name}")
+    print(f"Mode: {'base model' if args.base_model else 'IT model'}")
+    print(f"Max tokens: {max_new_tokens}")
+    print(f"Chat template: {use_chat_template}")
     print(f"Traits: {len(traits)}")
-    print(f"Model: {args.model}")
-    print(f"Chat template: {use_chat_template}" + (" (auto-detected)" if args.chat_template is None else ""))
-    print("=" * 80)
+    print("=" * 60)
 
-    # Process each trait
     total_pos, total_neg = 0, 0
     for trait in traits:
         n_pos, n_neg = generate_responses_for_trait(
@@ -253,17 +249,16 @@ def main():
             trait=trait,
             model=model,
             tokenizer=tokenizer,
-            max_new_tokens=args.max_new_tokens,
+            max_new_tokens=max_new_tokens,
             batch_size=args.batch_size,
             rollouts=args.rollouts,
             temperature=args.temperature,
             chat_template=use_chat_template,
-            base_model=args.base_model,
         )
         total_pos += n_pos
         total_neg += n_neg
 
-    print(f"\nDONE: Generated {total_pos} positive + {total_neg} negative = {total_pos + total_neg} total responses.")
+    print(f"\nDONE: {total_pos} + {total_neg} = {total_pos + total_neg} responses")
 
 
 if __name__ == '__main__':

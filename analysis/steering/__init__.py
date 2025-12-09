@@ -10,13 +10,13 @@ Usage:
     with SteeringHook(model, vector, layer=16, coefficient=1.5):
         output = model.generate(**inputs)
 
-    # Judging
-    judge = TraitJudge(provider="openai")
+    # Judging (gpt-4.1-mini with logprobs)
+    judge = TraitJudge()
     score = await judge.score(eval_prompt, question, answer)
 """
 
 from analysis.steering.steer import SteeringHook, steer
-from analysis.steering.judge import TraitJudge, aggregate_logprob_score
+from utils.judge import TraitJudge, aggregate_logprob_score
 
 __all__ = [
     "SteeringHook",

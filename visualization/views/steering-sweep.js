@@ -43,6 +43,7 @@ async function renderSteeringSweep() {
             <!-- Page intro -->
             <div class="page-intro">
                 <div class="page-intro-text">Steering sweep analysis: how steering effectiveness varies by layer and perturbation ratio.</div>
+                <div id="steering-model-info" class="page-intro-model"></div>
                 <div class="intro-example">
                     <div><span class="example-label">Formula:</span> perturbation_ratio = (coef × vector_norm) / activation_norm</div>
                     <div><span class="example-label">Sweet spot:</span> ratio ~0.5-1.0 for most layers</div>
@@ -199,6 +200,35 @@ async function renderSteeringSweep() {
 let currentSweepData = null;
 
 
+/**
+ * Update the steering model info display in the page intro
+ */
+function updateSteeringModelInfo(meta) {
+    const container = document.getElementById('steering-model-info');
+    if (!container) return;
+
+    if (!meta || !meta.steering_model) {
+        // Fall back to experiment config
+        const config = window.state.experimentData?.experimentConfig;
+        const steeringModel = config?.application_model || config?.model || 'unknown';
+        container.innerHTML = `Steering model: <code>${steeringModel}</code>`;
+        return;
+    }
+
+    let html = `Steering model: <code>${meta.steering_model}</code>`;
+
+    if (meta.vector_source?.model) {
+        html += ` · Vector from: <code>${meta.vector_source.model}</code>`;
+    }
+
+    if (meta.eval?.model) {
+        html += ` · Eval: <code>${meta.eval.model}</code> (${meta.eval.method || 'unknown'})`;
+    }
+
+    container.innerHTML = html;
+}
+
+
 async function discoverSteeringTraits() {
     // Discover traits with steering data
     if (!window.state.experimentData?.name) return [];
@@ -256,6 +286,7 @@ async function renderSweepData(trait) {
 
     // Try to load sweep_results.json first, fall back to results.json
     let data = null;
+    let steeringMeta = null;  // Capture steering_model, vector_source, eval
 
     const sweepUrl = '/' + window.paths.get('steering.sweep_results', { trait });
     const headCheck = await fetch(sweepUrl, { method: 'HEAD' }).catch(() => null);
@@ -271,12 +302,21 @@ async function renderSweepData(trait) {
             const response = await fetch(resultsUrl);
             if (response.ok) {
                 const results = await response.json();
+                // Capture metadata
+                steeringMeta = {
+                    steering_model: results.steering_model,
+                    vector_source: results.vector_source,
+                    eval: results.eval
+                };
                 data = convertResultsToSweepFormat(results);
             }
         } catch (e) {
             console.error('Failed to load steering results:', e);
         }
     }
+
+    // Update model info display
+    updateSteeringModelInfo(steeringMeta);
 
     if (!data) {
         document.getElementById('sweep-heatmap-container').innerHTML = '<p class="no-data">No data for this trait</p>';

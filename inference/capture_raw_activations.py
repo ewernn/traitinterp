@@ -79,6 +79,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from traitlens import HookManager, projection
 from traitlens.compute import compute_derivative, compute_second_derivative
 from utils.model import format_prompt, load_experiment_config
+from utils.vectors import load_vector_metadata
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
@@ -1104,7 +1105,12 @@ def main():
 
             vector_path = vectors_dir / f"{method}_layer{args.layer}.pt"
             vector = torch.load(vector_path, weights_only=True).to(torch.float16)
-            trait_vectors[(category, trait_name)] = (vector, method, vector_path)
+
+            # Load vector metadata for source info
+            trait_path = f"{category}/{trait_name}"
+            vec_metadata = load_vector_metadata(args.experiment, trait_path)
+
+            trait_vectors[(category, trait_name)] = (vector, method, vector_path, vec_metadata)
 
         print(f"Loaded {len(trait_vectors)} trait vectors")
 
@@ -1191,17 +1197,28 @@ def main():
                                                capture_attn=args.capture_attn)
 
             # ================================================================
-            # ALWAYS: Save raw residual .pt
+            # ALWAYS: Save raw residual .pt + metadata sidecar
             # ================================================================
             raw_dir = inference_dir / "raw" / "residual" / set_name
             raw_dir.mkdir(parents=True, exist_ok=True)
             torch.save(data, raw_dir / f"{prompt_id}.pt")
 
+            # Save metadata sidecar
+            raw_metadata = {
+                'inference_model': MODEL_NAME,
+                'inference_experiment': args.experiment,
+                'prompt_set': set_name,
+                'prompt_id': prompt_id,
+                'timestamp': datetime.now().isoformat(),
+            }
+            with open(raw_dir / f"{prompt_id}_metadata.json", 'w') as f:
+                json.dump(raw_metadata, f, indent=2)
+
             # ================================================================
             # ALWAYS: Run projections (unless --no-project)
             # ================================================================
             if not args.no_project:
-                for (category, trait_name), (vector, method, vector_path) in trait_vectors.items():
+                for (category, trait_name), (vector, method, vector_path, vec_metadata) in trait_vectors.items():
                     prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
                     response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
 
@@ -1229,15 +1246,19 @@ def main():
                         },
                         'dynamics': analyze_dynamics(all_scores),
                         'metadata': {
+                            'inference_model': MODEL_NAME,
+                            'inference_experiment': args.experiment,
                             'prompt_id': prompt_id,
                             'prompt_set': set_name,
                             'prompt_note': prompt_note,
-                            'trait': trait_name,
-                            'category': category,
-                            'method': method,
-                            'layer': args.layer,
-                            'vector_path': str(vector_path),
-                            'model': MODEL_NAME,
+                            'vector_source': {
+                                'model': vec_metadata.get('extraction_model', 'unknown'),
+                                'experiment': args.experiment,
+                                'trait': f"{category}/{trait_name}",
+                                'method': method,
+                                'layer': args.layer,
+                                'component': 'residual',
+                            },
                             'capture_date': datetime.now().isoformat()
                         }
                     }

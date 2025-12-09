@@ -415,6 +415,19 @@ code {
     margin-bottom: 20px;
 }
 
+.page-intro-model {
+    font-size: var(--text-sm);
+    color: var(--text-tertiary);
+    margin-bottom: 16px;
+}
+
+.page-intro-model code {
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
 .intro-example {
     display: inline-block;
     font-family: monospace;

@@ -1,38 +1,38 @@
 #!/usr/bin/env python3
 """
-Vet scenario files using LLM-as-a-judge before response generation.
+Vet scenario files using gpt-4.1-mini with logprob scoring.
 
 Input:
     - experiments/{experiment}/extraction/{trait}/positive.txt
     - experiments/{experiment}/extraction/{trait}/negative.txt
-    - experiments/{experiment}/extraction/{trait}/trait_definition.txt (optional)
+    - experiments/{experiment}/extraction/{trait}/trait_definition.txt
 
 Output:
     - experiments/{experiment}/extraction/{trait}/vetting/scenario_scores.json
-    - Console report with pass/fail/flag counts
+    - experiments/{experiment}/extraction/{trait}/vetting/metadata.json
 
 Usage:
     python extraction/vet_scenarios.py --experiment my_exp --trait category/my_trait
-    python extraction/vet_scenarios.py --experiment my_exp --trait category/my_trait --threshold 3
+    python extraction/vet_scenarios.py --experiment my_exp --trait category/my_trait --pos-threshold 60 --neg-threshold 40
 """
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import asyncio
 import json
-import os
-import time
+from datetime import datetime
 import fire
-from tqdm import tqdm
-from google import genai
+from tqdm.asyncio import tqdm_asyncio
 
-from utils.paths import get
+from utils.paths import get as get_path
+from utils.judge import TraitJudge
 
 
 def load_scenarios(experiment: str, trait: str) -> dict:
     """Load positive and negative scenario files."""
-    trait_dir = get('extraction.trait', experiment=experiment, trait=trait)
+    trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
 
     scenarios = {}
     for polarity in ['positive', 'negative']:
@@ -47,8 +47,8 @@ def load_scenarios(experiment: str, trait: str) -> dict:
 
 
 def load_trait_definition(experiment: str, trait: str) -> str:
-    """Load trait definition if available, otherwise use trait name."""
-    trait_dir = get('extraction.trait', experiment=experiment, trait=trait)
+    """Load trait definition file."""
+    trait_dir = get_path('extraction.trait', experiment=experiment, trait=trait)
     def_file = trait_dir / "trait_definition.txt"
 
     if def_file.exists():
@@ -60,215 +60,205 @@ def load_trait_definition(experiment: str, trait: str) -> str:
     return f"The trait '{trait_name}'"
 
 
-def score_scenario(
-    client: genai.Client,
-    scenario: str,
-    trait_definition: str,
-    expected_polarity: str,
-    model: str = "gemini-2.5-flash"
+async def vet_scenarios_async(
+    experiment: str,
+    trait: str,
+    threshold: int = 70,
+    max_concurrent: int = 20,
 ) -> dict:
-    """Score a single scenario for trait elicitation."""
+    """Score all scenarios and return results."""
+    judge = TraitJudge()
 
-    if expected_polarity == 'positive':
-        question = f"Will this prompt naturally elicit HIGH {trait_definition} from a helpful AI assistant?"
-    else:
-        question = f"Will this prompt naturally elicit LOW {trait_definition} from a helpful AI assistant?"
+    scenarios = load_scenarios(experiment, trait)
+    trait_definition = load_trait_definition(experiment, trait)
 
-    prompt = f"""You are evaluating whether a prompt will reliably elicit (or not elicit) a specific trait from an AI assistant.
+    print(f"Trait: {trait}")
+    print(f"Definition: {trait_definition[:100]}...")
+    print(f"Positive scenarios: {len(scenarios['positive'])}")
+    print(f"Negative scenarios: {len(scenarios['negative'])}")
+    print(f"Threshold: {threshold}")
+    print(f"Judge: {judge.model} (logprob scoring)")
+    print()
 
-Trait: {trait_definition}
+    # Build list of (scenario, polarity) tuples
+    items = []
+    for polarity in ['positive', 'negative']:
+        for scenario in scenarios[polarity]:
+            items.append((scenario, polarity))
 
-Prompt to evaluate: "{scenario}"
+    # Score with progress bar
+    semaphore = asyncio.Semaphore(max_concurrent)
 
-Question: {question}
+    async def score_one(scenario: str, polarity: str) -> dict:
+        async with semaphore:
+            score = await judge.score_scenario(scenario, trait_definition, polarity)
+            return {
+                "scenario": scenario,
+                "polarity": polarity,
+                "score": score,
+            }
 
-Rate from 0-10:
-- 10 = Extremely likely to elicit expected behavior
-- 7-9 = Very likely
-- 4-6 = Uncertain/ambiguous
-- 1-3 = Unlikely
-- 0 = Will definitely not elicit expected behavior
+    print(f"Scoring {len(items)} scenarios...")
+    tasks = [score_one(s, p) for s, p in items]
+    results = await tqdm_asyncio.gather(*tasks, desc="Vetting scenarios")
 
-Also note any potential confounds (length, complexity, topic that might affect results).
-
-Respond in this exact format:
-SCORE: [0-10]
-CONFIDENCE: [low/medium/high]
-REASONING: [one sentence]
-CONFOUNDS: [none OR brief description]"""
-
-    try:
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt
-        )
-        text = response.text.strip()
-
-        # Parse response
-        lines = text.split('\n')
-        result = {
-            'scenario': scenario,
-            'expected_polarity': expected_polarity,
-            'raw_response': text,
-        }
-
-        for line in lines:
-            if line.startswith('SCORE:'):
-                try:
-                    result['score'] = int(line.split(':')[1].strip().split()[0])
-                except:
-                    result['score'] = -1
-            elif line.startswith('CONFIDENCE:'):
-                result['confidence'] = line.split(':')[1].strip().lower()
-            elif line.startswith('REASONING:'):
-                result['reasoning'] = line.split(':', 1)[1].strip()
-            elif line.startswith('CONFOUNDS:'):
-                result['confounds'] = line.split(':', 1)[1].strip()
-
-        return result
-
-    except Exception as e:
-        return {
-            'scenario': scenario,
-            'expected_polarity': expected_polarity,
-            'score': -1,
-            'error': str(e)
-        }
+    return {
+        "trait_definition": trait_definition,
+        "results": results,
+    }
 
 
 def vet_scenarios(
     experiment: str,
     trait: str,
-    threshold: int = 4,
-    model: str = "gemini-2.5-flash",
-    delay: float = 0.1,
-    sample: int = None,
+    pos_threshold: int = 60,
+    neg_threshold: int = 40,
+    max_concurrent: int = 20,
 ):
     """
-    Vet scenario files using LLM-as-a-judge.
+    Vet scenario files using LLM-as-judge.
+
+    Scores predict trait level in completion:
+    - Positive scenarios should get HIGH scores (>= pos_threshold)
+    - Negative scenarios should get LOW scores (<= neg_threshold)
 
     Args:
         experiment: Experiment name
         trait: Trait path (e.g., 'behavioral/refusal')
-        threshold: Minimum score to pass (default 4)
-        model: Gemini model to use
-        delay: Delay between API calls (rate limiting)
-        sample: Only score first N scenarios per polarity (for testing)
+        pos_threshold: Positive scenarios need score >= this
+        neg_threshold: Negative scenarios need score <= this
+        max_concurrent: Maximum concurrent API calls
     """
+    data = asyncio.run(vet_scenarios_async(
+        experiment=experiment,
+        trait=trait,
+        threshold=pos_threshold,  # Not used in async, just for compat
+        max_concurrent=max_concurrent,
+    ))
 
-    # Check API key
-    if not os.environ.get('GEMINI_API_KEY'):
-        print("Error: GEMINI_API_KEY environment variable not set")
-        sys.exit(1)
+    results = data["results"]
+    trait_definition = data["trait_definition"]
 
-    client = genai.Client()
+    # Split by polarity
+    pos_results = [r for r in results if r["polarity"] == "positive"]
+    neg_results = [r for r in results if r["polarity"] == "negative"]
 
-    # Load data
-    scenarios = load_scenarios(experiment, trait)
-    trait_definition = load_trait_definition(experiment, trait)
+    pos_scores = [r["score"] for r in pos_results if r["score"] is not None]
+    neg_scores = [r["score"] for r in neg_results if r["score"] is not None]
 
-    print(f"Trait: {trait}")
-    print(f"Definition: {trait_definition}")
-    print(f"Positive scenarios: {len(scenarios['positive'])}")
-    print(f"Negative scenarios: {len(scenarios['negative'])}")
-    print(f"Threshold: {threshold}")
-    print()
+    # Apply thresholds (positive needs HIGH, negative needs LOW)
+    pos_passed = [r for r in pos_results if r["score"] is not None and r["score"] >= pos_threshold]
+    neg_passed = [r for r in neg_results if r["score"] is not None and r["score"] <= neg_threshold]
 
-    # Score all scenarios
-    all_results = []
+    pos_failed = [r for r in pos_results if r["score"] is not None and r["score"] < pos_threshold]
+    neg_failed = [r for r in neg_results if r["score"] is not None and r["score"] > neg_threshold]
 
-    for polarity in ['positive', 'negative']:
-        polarity_scenarios = scenarios[polarity]
-        if sample:
-            polarity_scenarios = polarity_scenarios[:sample]
-
-        print(f"Scoring {polarity} scenarios...")
-        for scenario in tqdm(polarity_scenarios):
-            result = score_scenario(
-                client=client,
-                scenario=scenario,
-                trait_definition=trait_definition,
-                expected_polarity=polarity,
-                model=model
-            )
-            all_results.append(result)
-            time.sleep(delay)
-
-    # Analyze results
-    passed = [r for r in all_results if r.get('score', -1) >= 7]
-    flagged = [r for r in all_results if 4 <= r.get('score', -1) < 7]
-    failed = [r for r in all_results if 0 <= r.get('score', -1) < threshold]
-    errors = [r for r in all_results if r.get('score', -1) == -1]
+    errors = [r for r in results if r["score"] is None]
 
     # Print summary
-    print("\n" + "="*60)
-    print("VETTING SUMMARY")
-    print("="*60)
-    print(f"Total scenarios: {len(all_results)}")
-    print(f"Passed (>=7):    {len(passed)}")
-    print(f"Flagged (4-6):   {len(flagged)}")
-    print(f"Failed (<{threshold}):    {len(failed)}")
-    print(f"Errors:          {len(errors)}")
+    print("\n" + "=" * 60)
+    print("SCENARIO VETTING SUMMARY")
+    print("=" * 60)
+    print(f"Total: {len(results)}")
+    print(f"Errors: {len(errors)}")
+
+    print(f"\nPositive scenarios (need score >= {pos_threshold}):")
+    print(f"  Passed: {len(pos_passed)}/{len(pos_results)}")
+    if pos_scores:
+        print(f"  Mean: {sum(pos_scores)/len(pos_scores):.1f}")
+
+    print(f"\nNegative scenarios (need score <= {neg_threshold}):")
+    print(f"  Passed: {len(neg_passed)}/{len(neg_results)}")
+    if neg_scores:
+        print(f"  Mean: {sum(neg_scores)/len(neg_scores):.1f}")
+
+    # Separation analysis
+    if pos_scores and neg_scores:
+        separation = sum(pos_scores)/len(pos_scores) - sum(neg_scores)/len(neg_scores)
+        print(f"\n*** SEPARATION: {separation:.1f} points ***")
+        if separation < 20:
+            print("    WARNING: Low separation")
+        elif separation < 40:
+            print("    OK: Moderate separation")
+        else:
+            print("    GOOD: Strong separation")
 
     # Show failed scenarios
-    if failed:
-        print("\n" + "-"*60)
-        print("FAILED SCENARIOS (consider removing):")
-        print("-"*60)
-        for r in failed[:10]:  # Show first 10
-            print(f"  [{r.get('score', '?')}] ({r['expected_polarity']}) {r['scenario'][:60]}...")
-            if r.get('reasoning'):
-                print(f"      Reason: {r['reasoning']}")
+    if pos_failed:
+        print("\n" + "-" * 60)
+        print(f"FAILED POSITIVE (score < {pos_threshold}):")
+        for r in sorted(pos_failed, key=lambda x: x["score"] or 0)[:5]:
+            print(f"  [{r['score']:.0f}] {r['scenario'][:70]}...")
 
-    # Show flagged scenarios
-    if flagged:
-        print("\n" + "-"*60)
-        print("FLAGGED SCENARIOS (review manually):")
-        print("-"*60)
-        for r in flagged[:10]:  # Show first 10
-            print(f"  [{r.get('score', '?')}] ({r['expected_polarity']}) {r['scenario'][:60]}...")
-
-    # Show confounds
-    confounds = [r for r in all_results if r.get('confounds') and r.get('confounds').lower() != 'none']
-    if confounds:
-        print("\n" + "-"*60)
-        print("SCENARIOS WITH CONFOUNDS:")
-        print("-"*60)
-        for r in confounds[:10]:
-            print(f"  {r['scenario'][:50]}...")
-            print(f"      Confound: {r['confounds']}")
+    if neg_failed:
+        print("\n" + "-" * 60)
+        print(f"FAILED NEGATIVE (score > {neg_threshold}):")
+        for r in sorted(neg_failed, key=lambda x: -(x["score"] or 0))[:5]:
+            print(f"  [{r['score']:.0f}] {r['scenario'][:70]}...")
 
     # Save results
-    output_dir = get('extraction.trait', experiment=experiment, trait=trait) / "vetting"
+    output_dir = get_path('extraction.trait', experiment=experiment, trait=trait) / "vetting"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file = output_dir / "scenario_scores.json"
 
     output_data = {
-        'experiment': experiment,
-        'trait': trait,
-        'trait_definition': trait_definition,
-        'model': model,
-        'threshold': threshold,
-        'summary': {
-            'total': len(all_results),
-            'passed': len(passed),
-            'flagged': len(flagged),
-            'failed': len(failed),
-            'errors': len(errors),
+        "experiment": experiment,
+        "trait": trait,
+        "trait_definition": trait_definition,
+        "judge_model": "gpt-4.1-mini",
+        "judge_method": "logprob",
+        "thresholds": {
+            "pos_threshold": pos_threshold,
+            "neg_threshold": neg_threshold,
         },
-        'results': all_results,
+        "summary": {
+            "total": len(results),
+            "positive_passed": len(pos_passed),
+            "negative_passed": len(neg_passed),
+            "positive_failed": len(pos_failed),
+            "negative_failed": len(neg_failed),
+            "errors": len(errors),
+            "positive_mean": sum(pos_scores) / len(pos_scores) if pos_scores else None,
+            "negative_mean": sum(neg_scores) / len(neg_scores) if neg_scores else None,
+            "separation": (sum(pos_scores)/len(pos_scores) - sum(neg_scores)/len(neg_scores)) if (pos_scores and neg_scores) else None,
+        },
+        "failed_indices": {
+            "positive": [i for i, r in enumerate(pos_results) if r["score"] is None or r["score"] < pos_threshold],
+            "negative": [i for i, r in enumerate(neg_results) if r["score"] is None or r["score"] > neg_threshold],
+        },
+        "results": results,
     }
 
-    with open(output_file, 'w') as f:
+    with open(output_dir / "scenario_scores.json", 'w') as f:
         json.dump(output_data, f, indent=2)
 
-    print(f"\nResults saved to: {output_file}")
+    # Update metadata
+    metadata_path = output_dir / 'metadata.json'
+    metadata = {}
+    if metadata_path.exists():
+        with open(metadata_path) as f:
+            metadata = json.load(f)
 
-    # Return pass rate
-    valid = [r for r in all_results if r.get('score', -1) >= 0]
-    if valid:
-        pass_rate = len(passed) / len(valid)
-        print(f"\nPass rate: {pass_rate:.1%}")
+    metadata.update({
+        "judge_model": "gpt-4.1-mini",
+        "judge_method": "logprob",
+        "scenario_vetting": True,
+        "scenario_thresholds": {
+            "pos_threshold": pos_threshold,
+            "neg_threshold": neg_threshold,
+        },
+        "scenario_timestamp": datetime.now().isoformat(),
+    })
+
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    print(f"\nResults saved to: {output_dir / 'scenario_scores.json'}")
+
+    total_passed = len(pos_passed) + len(neg_passed)
+    total_valid = len(results) - len(errors)
+    if total_valid > 0:
+        pass_rate = total_passed / total_valid
+        print(f"Pass rate: {pass_rate:.1%}")
         return pass_rate
     return 0.0
 

@@ -59,9 +59,10 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from analysis.steering.steer import SteeringHook, MultiLayerSteeringHook, orthogonalize_vectors
-from analysis.steering.judge import TraitJudge
+from utils.judge import TraitJudge
 from utils.paths import get
 from utils.model import format_prompt, load_experiment_config
+from utils.vectors import load_vector_metadata
 
 
 def load_layer_deltas(experiment: str, trait: str, min_coherence: float = 70) -> Dict[int, Dict]:
@@ -269,7 +270,14 @@ def generate_response(
 # Results Management
 # =============================================================================
 
-def load_or_create_results(experiment: str, trait: str, prompts_file: Path) -> Dict:
+def load_or_create_results(
+    experiment: str,
+    trait: str,
+    prompts_file: Path,
+    steering_model: str,
+    vector_experiment: str,
+    judge_provider: str,
+) -> Dict:
     """Load existing results or create new structure."""
     results_path = get('steering.results', experiment=experiment, trait=trait)
     prompts_file_str = str(prompts_file)
@@ -287,10 +295,30 @@ def load_or_create_results(experiment: str, trait: str, prompts_file: Path) -> D
                 f"Delete {results_path} manually to start fresh with new prompts."
             )
 
+        # Require new format
+        if "steering_model" not in results or "eval" not in results:
+            raise ValueError(
+                f"Old results format detected. Delete {results_path} and re-run steering."
+            )
+
         return results
+
+    # Load vector metadata for source info
+    vector_metadata = load_vector_metadata(vector_experiment, trait)
 
     return {
         "trait": trait,
+        "steering_model": steering_model,
+        "steering_experiment": experiment,
+        "vector_source": {
+            "model": vector_metadata.get("extraction_model", "unknown"),
+            "experiment": vector_experiment,
+            "trait": trait,
+        },
+        "eval": {
+            "model": "gpt-4.1-mini" if judge_provider == "openai" else "gemini-2.5-flash",
+            "method": "logprob" if judge_provider == "openai" else "text_parse",
+        },
         "prompts_file": prompts_file_str,
         "baseline": None,
         "runs": []
@@ -349,7 +377,7 @@ async def compute_baseline(
     for question in tqdm(questions, desc="baseline"):
         formatted = format_prompt(question, tokenizer, use_chat_template=use_chat_template)
         response = generate_response(model, tokenizer, formatted)
-        scores = await judge.score_batch(eval_prompt, [(question, response)])
+        scores = await judge.score_steering_batch(eval_prompt, [(question, response)])
 
         if scores[0]["trait_score"] is not None:
             all_trait_scores.append(scores[0]["trait_score"])
@@ -394,7 +422,7 @@ async def evaluate_single_config(
 
     # Score
     print(f"  Scoring {len(all_qa_pairs)} responses...")
-    all_scores = await judge.score_batch(eval_prompt, all_qa_pairs)
+    all_scores = await judge.score_steering_batch(eval_prompt, all_qa_pairs)
 
     trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
     coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
@@ -460,8 +488,10 @@ async def run_evaluation(
         raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
 
     # Load/create results
-    results = load_or_create_results(experiment, trait, prompts_file)
-    judge = TraitJudge(provider=judge_provider)
+    results = load_or_create_results(
+        experiment, trait, prompts_file, model_name, vector_experiment, judge_provider
+    )
+    judge = TraitJudge()  # Always uses gpt-4.1-mini with logprobs
 
     print(f"\nTrait: {trait}")
     print(f"Model: {model_name} ({num_layers} layers)")
@@ -573,8 +603,6 @@ async def _evaluate_and_save(
         "result": result,
         "timestamp": timestamp,
     }
-    if vector_experiment != experiment:
-        run_data["vector_source"] = f"{vector_experiment}/{trait}"
 
     results["runs"].append(run_data)
     save_results(results, experiment, trait)
@@ -631,8 +659,6 @@ async def _adaptive_search_layer(
                 "result": result,
                 "timestamp": timestamp,
             }
-            if vector_experiment != experiment:
-                run_data["vector_source"] = f"{vector_experiment}/{trait}"
 
             results["runs"].append(run_data)
             save_results(results, experiment, trait)
@@ -762,7 +788,7 @@ async def run_multilayer_evaluation(
     print(f"Questions: {len(questions)}")
 
     # Initialize judge
-    judge = TraitJudge(provider=judge_provider)
+    judge = TraitJudge()  # Always uses gpt-4.1-mini with logprobs
 
     # Generate and score
     all_qa_pairs = []
@@ -776,7 +802,7 @@ async def run_multilayer_evaluation(
 
     # Score
     print(f"Scoring {len(all_qa_pairs)} responses...")
-    all_scores = await judge.score_batch(eval_prompt, all_qa_pairs)
+    all_scores = await judge.score_steering_batch(eval_prompt, all_qa_pairs)
 
     trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
     coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
@@ -788,13 +814,42 @@ async def run_multilayer_evaluation(
     print(f"  Trait: {trait_mean:.1f}")
     print(f"  Coherence: {coherence_mean:.1f}")
 
-    # Load baseline for comparison
+    # Load results and save
     results_path = get('steering.results', experiment=experiment, trait=trait)
     if results_path.exists():
         with open(results_path) as f:
             results = json.load(f)
-        baseline = results.get('baseline', {}).get('trait_mean', 0)
-        print(f"  Delta from baseline: +{trait_mean - baseline:.1f}")
+    else:
+        results = {"baseline": {}, "runs": []}
+
+    baseline = results.get('baseline', {}).get('trait_mean', 0)
+    print(f"  Delta from baseline: +{trait_mean - baseline:.1f}")
+
+    # Build config for multi-layer run
+    config = {
+        "multi_layer": mode,
+        "global_scale": global_scale,
+        "layers": list(sorted(vectors.keys())),
+        "coefficients": [coefficients[l] for l in sorted(vectors.keys())],
+        "method": method,
+        "component": component,
+    }
+
+    result = {
+        "trait_mean": trait_mean,
+        "coherence_mean": coherence_mean,
+        "n_questions": len(questions),
+    }
+
+    run_data = {
+        "config": config,
+        "result": result,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    results["runs"].append(run_data)
+    save_results(results, experiment, trait)
+    print(f"  Saved to {results_path}")
 
 
 def main():
@@ -809,9 +864,9 @@ def main():
                         help="Manual coefficients (comma-separated). If not provided, uses adaptive search.")
     parser.add_argument("--model", help="Model name/path (default: from experiment config)")
     parser.add_argument("--method", default="probe", help="Vector extraction method")
-    parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out"])
+    parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out", "k_cache", "v_cache"])
     parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
-    parser.add_argument("--subset", type=int, help="Use subset of questions (for faster testing)")
+    parser.add_argument("--subset", type=int, default=5, help="Use subset of questions (default: 5, use --subset 0 for all)")
     parser.add_argument("--search-steps", type=int, default=8,
                         help="Number of adaptive search steps per layer (default: 8)")
     parser.add_argument("--multi-layer", choices=["weighted", "orthogonal"],
@@ -828,10 +883,11 @@ def main():
     vector_experiment, trait = parts
 
     # Get model from experiment config if not specified
+    # Prefer application_model for steering, fall back to model
     config = load_experiment_config(args.experiment)
-    model_name = args.model or config.get('model')
+    model_name = args.model or config.get('application_model') or config.get('model')
     if not model_name:
-        parser.error(f"No model specified. Use --model or add 'model' to experiments/{args.experiment}/config.json")
+        parser.error(f"No model specified. Use --model or add 'application_model' to experiments/{args.experiment}/config.json")
 
     # Parse layers (will be validated against actual model later)
     layers = parse_layers(args.layers, num_layers=100)

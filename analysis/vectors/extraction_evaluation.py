@@ -27,6 +27,7 @@ from dataclasses import dataclass, asdict
 from tqdm import tqdm
 
 from utils.paths import get as get_path
+from utils.model_registry import get_extraction_model
 from traitlens.metrics import (
     evaluate_vector,
     accuracy as compute_accuracy,
@@ -300,7 +301,8 @@ def compute_best_vector_similarity(
     experiment: str,
     traits: List[str],
     all_results: List[Dict],
-    metric: str = 'val_accuracy'
+    metric: str = 'val_accuracy',
+    component: str = 'residual'
 ) -> pd.DataFrame:
     """
     Compute cosine similarity matrix between best vectors across traits.
@@ -325,7 +327,7 @@ def compute_best_vector_similarity(
 
         # Get best by metric
         best_row = trait_results.loc[trait_results[metric].idxmax()]
-        vector = load_vector(experiment, trait, best_row['method'], int(best_row['layer']))
+        vector = load_vector(experiment, trait, best_row['method'], int(best_row['layer']), component)
 
         if vector is not None:
             best_vectors[trait] = vector
@@ -366,7 +368,7 @@ def main(experiment: str,
         layers: Comma-separated layers (default: all)
         output: Output JSON file (default: experiments/{experiment}/extraction/extraction_evaluation.json)
         no_normalize: If True, use raw dot product instead of cosine similarity
-        component: Component to evaluate (residual, attn_out, mlp_out)
+        component: Component to evaluate (residual, attn_out, mlp_out, k_cache, v_cache)
     """
     normalize = not no_normalize
     if normalize:
@@ -560,7 +562,7 @@ def main(experiment: str,
     print("="*80)
     print("Comparing best vectors across different traits...")
 
-    best_vector_similarity = compute_best_vector_similarity(experiment, traits, all_results, metric='val_accuracy')
+    best_vector_similarity = compute_best_vector_similarity(experiment, traits, all_results, metric='val_accuracy', component=component)
     print(best_vector_similarity.round(3).to_string())
 
     # Save results
@@ -576,7 +578,12 @@ def main(experiment: str,
 
     all_results_with_score = df_clean.to_dict('records')
 
+    # Get extraction model from experiment config
+    extraction_model = get_extraction_model(experiment)
+
     results_dict = {
+        'extraction_model': extraction_model,
+        'extraction_experiment': experiment,
         'all_results': all_results_with_score,
         'best_per_trait': best_per_trait_clean.to_dict('records'),
         'best_vector_similarity': best_vector_similarity.replace({np.nan: None}).to_dict(),

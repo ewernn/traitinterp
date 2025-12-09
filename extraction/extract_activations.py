@@ -36,6 +36,7 @@ import sys
 import json
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 import torch
 from tqdm import tqdm
@@ -44,7 +45,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
-from utils.model import load_model, DEFAULT_MODEL
+from utils.model import load_model, load_experiment_config
 from traitlens.hooks import HookManager
 from traitlens.activations import ActivationCapture
 
@@ -57,6 +58,10 @@ def get_hook_path(layer: int, component: str) -> str:
         return f"model.layers.{layer}.self_attn.o_proj"
     elif component == 'mlp_out':
         return f"model.layers.{layer}.mlp.down_proj"
+    elif component == 'k_cache':
+        return f"model.layers.{layer}.self_attn.k_proj"
+    elif component == 'v_cache':
+        return f"model.layers.{layer}.self_attn.v_proj"
     else:
         raise ValueError(f"Unknown component: {component}")
 
@@ -246,15 +251,16 @@ def extract_prefill_activations_for_trait(
         activation_norms[layer] = round(norms.mean().item(), 2)
     print(f"    Computed activation norms for {n_layers} layers")
 
-    # Save metadata
+    # Save metadata (explicit model tracking)
+    model_hf_id = model.config.name_or_path
     metadata = {
+        'model': model_hf_id,
         'experiment': experiment,
         'trait': trait,
-        'model': model.config.name_or_path,
         'n_layers': n_layers,
+        'hidden_dim': all_acts.shape[-1],
         'n_examples_pos': len(train_pos),
         'n_examples_neg': len(train_neg),
-        'hidden_dim': all_acts.shape[-1],
         'vetting_filter_used': False,
         'n_filtered_pos': 0,
         'n_filtered_neg': 0,
@@ -266,6 +272,7 @@ def extract_prefill_activations_for_trait(
         'token_position': token_position,
         'component': component,
         'activation_norms': activation_norms,
+        'timestamp': datetime.now().isoformat(),
     }
     metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
     with open(activations_dir / metadata_filename, 'w') as f:
@@ -446,15 +453,16 @@ def extract_activations_for_trait(
         activation_norms[layer] = round(norms.mean().item(), 2)
     print(f"    Computed activation norms for {n_layers} layers")
 
-    # Save metadata
+    # Save metadata (explicit model tracking)
+    model_hf_id = model.config.name_or_path
     metadata = {
+        'model': model_hf_id,
         'experiment': experiment,
         'trait': trait,
-        'model': model.config.name_or_path,
         'n_layers': n_layers,
+        'hidden_dim': all_acts.shape[-1],
         'n_examples_pos': len(train_pos),
         'n_examples_neg': len(train_neg),
-        'hidden_dim': all_acts.shape[-1],
         'vetting_filter_used': use_vetting_filter,
         'n_filtered_pos': n_filtered_pos,
         'n_filtered_neg': n_filtered_neg,
@@ -466,6 +474,7 @@ def extract_activations_for_trait(
         'max_completion_tokens': max_completion_tokens,
         'component': component,
         'activation_norms': activation_norms,
+        'timestamp': datetime.now().isoformat(),
     }
     metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
     with open(activations_dir / metadata_filename, 'w') as f:
@@ -479,11 +488,11 @@ def main():
     parser.add_argument('--experiment', type=str, required=True, help='Experiment name')
     parser.add_argument('--trait', type=str, required=True,
                         help='Trait name (e.g., "category/my_trait") or "all" for all traits')
-    parser.add_argument('--model', type=str, default=DEFAULT_MODEL, help='Model name')
+    parser.add_argument('--model', type=str, default=None, help='Model (default: from experiment config)')
     parser.add_argument('--device', type=str, default='auto', help='Device (auto, cuda, cpu, mps)')
     parser.add_argument('--no-vetting-filter', action='store_true', help='Disable filtering based on vetting results')
     parser.add_argument('--val-split', type=float, default=0.2,
-                        help='Fraction of scenarios for validation (default: 0.2 = last 20%%). 0 = no split.')
+                        help='Fraction of scenarios for validation. 0 = no split.')
     parser.add_argument('--base-model', action='store_true',
                         help='Base model mode: extract from completion tokens only (after prefix)')
     parser.add_argument('--prefill-only', action='store_true',
@@ -492,11 +501,17 @@ def main():
     parser.add_argument('--token-position', type=str, default='last', choices=['last', 'first', 'mean'],
                         help='For prefill-only: which token position to extract (default: last)')
     parser.add_argument('--component', type=str, default='residual',
-                        help='Which component(s) to extract: residual, attn_out, mlp_out, or comma-separated (e.g., "attn_out,mlp_out")')
+                        help='Which component(s) to extract: residual, attn_out, mlp_out, k_cache, v_cache, or comma-separated')
     parser.add_argument('--max-completion-tokens', type=int, default=None,
                         help='For base-model mode: limit extraction to first N completion tokens')
 
     args = parser.parse_args()
+
+    # Resolve model: CLI > config
+    config = load_experiment_config(args.experiment, warn_missing=False)
+    model_name = args.model or config.get('extraction_model')
+    if not model_name:
+        parser.error(f"No model specified. Use --model or add 'extraction_model' to experiments/{args.experiment}/config.json")
 
     # Determine traits to process
     if args.trait.lower() == 'all':
@@ -518,7 +533,7 @@ def main():
     print("EXTRACT ACTIVATIONS")
     print(f"Experiment: {args.experiment}")
     print(f"Traits: {len(traits)}")
-    print(f"Model: {args.model}")
+    print(f"Model: {model_name}")
     if args.prefill_only:
         print(f"Mode: PREFILL-ONLY ({args.token_position} token, no generation)")
     elif args.base_model:
@@ -526,7 +541,7 @@ def main():
         print(f"Mode: BASE MODEL (completion tokens only{max_tok_str})")
     # Parse components
     components = [c.strip() for c in args.component.split(',')]
-    valid_components = {'residual', 'attn_out', 'mlp_out'}
+    valid_components = {'residual', 'attn_out', 'mlp_out', 'k_cache', 'v_cache'}
     for c in components:
         if c not in valid_components:
             print(f"ERROR: Invalid component '{c}'. Must be one of: {valid_components}")
@@ -538,7 +553,7 @@ def main():
     print("=" * 80)
 
     # Load model and tokenizer once
-    model, tokenizer = load_model(args.model, device=args.device)
+    model, tokenizer = load_model(model_name, device=args.device)
 
     # Process each trait and component
     total_layers = 0

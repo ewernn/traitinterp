@@ -11,7 +11,15 @@ Priority:
 """
 
 import json
+import logging
+from pathlib import Path
+from typing import Optional, Tuple, Dict, Any
+
+import torch
+
 from utils.paths import get as get_path
+
+logger = logging.getLogger(__name__)
 
 
 def get_best_layer(experiment: str, trait: str) -> dict:
@@ -128,3 +136,102 @@ def compute_all_best_layers(experiment: str) -> dict:
 
     # Compute best for each (using on-the-fly computation, not cache)
     return {trait: _compute_best_layer(experiment, trait) for trait in traits}
+
+
+def load_vector_with_metadata(
+    experiment: str,
+    trait: str,
+    method: str,
+    layer: int,
+    component: str = "residual"
+) -> Tuple[torch.Tensor, Dict[str, Any]]:
+    """
+    Load a vector and its metadata.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path (e.g., "category/trait_name")
+        method: Extraction method (e.g., "probe", "mean_diff")
+        layer: Layer number
+        component: Component type (default: "residual")
+
+    Returns:
+        Tuple of (vector tensor, metadata dict)
+
+    Raises:
+        FileNotFoundError: If vector file doesn't exist
+    """
+    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
+
+    # Build vector filename
+    prefix = "" if component == "residual" else f"{component}_"
+    vector_path = vectors_dir / f"{prefix}{method}_layer{layer}.pt"
+
+    if not vector_path.exists():
+        raise FileNotFoundError(f"Vector not found: {vector_path}")
+
+    vector = torch.load(vector_path, weights_only=True)
+
+    # Load metadata
+    metadata = load_vector_metadata(experiment, trait)
+
+    # Add specific vector info to metadata
+    metadata['method'] = method
+    metadata['layer'] = layer
+    metadata['component'] = component
+
+    return vector, metadata
+
+
+def load_vector_metadata(experiment: str, trait: str) -> Dict[str, Any]:
+    """
+    Load vector metadata for a trait.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path (e.g., "category/trait_name")
+
+    Returns:
+        Dict with vector metadata
+
+    Raises:
+        FileNotFoundError: If vectors/metadata.json doesn't exist
+    """
+    metadata_path = get_path('extraction.vectors_metadata', experiment=experiment, trait=trait)
+
+    if not metadata_path.exists():
+        raise FileNotFoundError(
+            f"No vectors/metadata.json for {experiment}/{trait}. "
+            f"Re-run extraction to generate metadata, or create {metadata_path} manually."
+        )
+
+    with open(metadata_path) as f:
+        return json.load(f)
+
+
+def get_vector_source_info(experiment: str, trait: str, method: str, layer: int, component: str = "residual") -> Dict[str, Any]:
+    """
+    Get vector source info for use in results metadata.
+
+    This is the standard format for recording where a vector came from.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path
+        method: Extraction method
+        layer: Layer number
+        component: Component type
+
+    Returns:
+        Dict with vector source info for embedding in results
+    """
+    metadata = load_vector_metadata(experiment, trait)
+
+    return {
+        "model": metadata.get("extraction_model", "unknown"),
+        "experiment": experiment,
+        "trait": trait,
+        "method": method,
+        "layer": layer,
+        "component": component
+    }

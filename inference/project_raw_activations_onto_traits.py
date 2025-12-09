@@ -49,6 +49,7 @@ from tqdm import tqdm
 
 from traitlens import projection
 from traitlens.compute import compute_derivative, compute_second_derivative
+from utils.vectors import load_vector_metadata
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
@@ -382,7 +383,11 @@ def process_prompt_set(args, inference_dir, prompt_set):
             continue
 
         vector = torch.load(vector_path, weights_only=True).to(torch.float16)
-        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer)
+
+        # Load vector metadata for source info
+        vec_metadata = load_vector_metadata(args.experiment, trait_path)
+
+        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata)
 
     print(f"Loaded {len(trait_vectors)} trait vectors")
 
@@ -420,7 +425,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
             }
 
         # Project onto each trait
-        for (category, trait_name), (vector, method, vector_path, layer) in trait_vectors.items():
+        for (category, trait_name), (vector, method, vector_path, layer, vec_metadata) in trait_vectors.items():
             # Path: {component}_stream/{prompt_set}/{id}.json
             stream_name = "attn_stream" if args.component == "attn_out" else "residual_stream"
             out_dir = inference_dir / category / trait_name / stream_name / prompt_set
@@ -469,14 +474,18 @@ def process_prompt_set(args, inference_dir, prompt_set):
                     'response': response_norms
                 },
                 'metadata': {
+                    'inference_model': MODEL_NAME,
+                    'inference_experiment': args.experiment,
                     'prompt_id': prompt_id,
                     'prompt_set': prompt_set,
-                    'trait': trait_name,
-                    'category': category,
-                    'method': method,
-                    'layer': layer,
-                    'vector_path': str(vector_path),
-                    'model': MODEL_NAME,
+                    'vector_source': {
+                        'model': vec_metadata.get('extraction_model', 'unknown'),
+                        'experiment': args.experiment,
+                        'trait': f"{category}/{trait_name}",
+                        'method': method,
+                        'layer': layer,
+                        'component': args.component,
+                    },
                     'projection_date': datetime.now().isoformat()
                 }
             }

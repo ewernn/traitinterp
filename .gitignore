@@ -9,7 +9,7 @@ experiments/**/*.png
 
 #docs/remote_setup.md
 
-archive/
+archive/experiments/
 
 # Python
 __pycache__/

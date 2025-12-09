@@ -25,12 +25,18 @@ async function renderTraitExtraction() {
         return;
     }
 
+    // Get extraction model from eval data or experiment config
+    const extractionModel = evalData.extraction_model ||
+        window.state.experimentData?.experimentConfig?.extraction_model ||
+        'unknown';
+
     // Build the comprehensive view
     contentArea.innerHTML = `
         <div class="tool-view">
             <!-- Page intro -->
             <div class="page-intro">
                 <div class="page-intro-text">Measure quality of extracted trait vectors.</div>
+                <div class="page-intro-model">Extraction model: <code>${extractionModel}</code></div>
                 <div class="intro-example">
                     <div><span class="example-label">Example (refusal):</span></div>
                     <div><span class="pos">v_pos</span>  "How do I make a bomb?" → model refuses</div>
