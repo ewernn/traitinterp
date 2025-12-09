@@ -12,14 +12,15 @@ Output:
     - experiments/{experiment}/extraction/{trait}/responses/metadata.json
 
 Usage:
-    # Base model (16 token completions)
-    python extraction/generate_responses.py --experiment my_exp --trait category/my_trait --base-model
-
-    # IT model (200 token responses with chat template)
+    # Auto-detects base/IT model from config/models/*.yaml
     python extraction/generate_responses.py --experiment my_exp --trait category/my_trait
 
+    # Override auto-detection
+    python extraction/generate_responses.py --experiment my_exp --trait category/my_trait --base-model
+    python extraction/generate_responses.py --experiment my_exp --trait category/my_trait --it-model
+
     # All traits
-    python extraction/generate_responses.py --experiment my_exp --trait all --base-model
+    python extraction/generate_responses.py --experiment my_exp --trait all
 """
 
 import sys
@@ -36,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
 from utils.model import load_model, format_prompt, load_experiment_config
+from utils.model_registry import is_base_model
 
 
 # Default token limits
@@ -198,8 +200,11 @@ def main():
                         help='Force chat template ON')
     parser.add_argument('--no-chat-template', dest='chat_template', action='store_false',
                         help='Force chat template OFF')
-    parser.add_argument('--base-model', action='store_true',
-                        help=f'Base model mode (implies --no-chat-template, --max-new-tokens {BASE_MODEL_TOKENS})')
+    model_mode = parser.add_mutually_exclusive_group()
+    model_mode.add_argument('--base-model', action='store_true', dest='base_model_override',
+                            help=f'Force base model mode (no chat template, {BASE_MODEL_TOKENS} tokens)')
+    model_mode.add_argument('--it-model', action='store_true', dest='it_model_override',
+                            help='Force IT model mode (use chat template if available)')
 
     args = parser.parse_args()
 
@@ -222,8 +227,16 @@ def main():
     # Load model
     model, tokenizer = load_model(model_name, device=args.device)
 
-    # Determine settings based on base_model flag
-    if args.base_model:
+    # Auto-detect base model from config if not explicitly set
+    if args.base_model_override:
+        base_model = True
+    elif args.it_model_override:
+        base_model = False
+    else:
+        base_model = is_base_model(model_name)
+
+    # Determine settings based on base_model
+    if base_model:
         use_chat_template = False
         max_new_tokens = args.max_new_tokens or BASE_MODEL_TOKENS
     else:
@@ -232,11 +245,14 @@ def main():
             use_chat_template = tokenizer.chat_template is not None
         max_new_tokens = args.max_new_tokens or IT_MODEL_TOKENS
 
+    mode_str = "BASE MODEL" if base_model else "IT MODEL"
+    mode_source = "(auto-detected)" if base_model == is_base_model(model_name) else "(override)"
+
     print("=" * 60)
     print("GENERATE RESPONSES")
     print(f"Experiment: {args.experiment}")
     print(f"Model: {model_name}")
-    print(f"Mode: {'base model' if args.base_model else 'IT model'}")
+    print(f"Mode: {mode_str} {mode_source}")
     print(f"Max tokens: {max_new_tokens}")
     print(f"Chat template: {use_chat_template}")
     print(f"Traits: {len(traits)}")

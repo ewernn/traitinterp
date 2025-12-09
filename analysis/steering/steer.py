@@ -261,3 +261,185 @@ class MultiLayerSteeringHook:
         # Exit all hooks (in reverse order for clean teardown)
         for hook in reversed(self._hooks):
             hook.__exit__(*exc)
+
+
+class BatchedLayerSteeringHook:
+    """
+    Context manager for batched generation with different steering per batch slice.
+
+    Each layer steers a specific slice of the batch, allowing parallel evaluation
+    of multiple layers in a single forward pass.
+
+    Example:
+        # 4 layers × 5 questions = 20 batch items
+        # Layer 16 steers items 0-4, layer 17 steers items 5-9, etc.
+        configs = [
+            (16, vector16, 100.0, (0, 5)),   # (layer, vector, coef, batch_slice)
+            (17, vector17, 120.0, (5, 10)),
+            (18, vector18, 80.0, (10, 15)),
+            (19, vector19, 150.0, (15, 20)),
+        ]
+        with BatchedLayerSteeringHook(model, configs):
+            outputs = model.generate(**batched_inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        configs: List[Tuple[int, torch.Tensor, float, Tuple[int, int]]],
+        positions: str = "all",
+        component: str = "residual",
+    ):
+        """
+        Args:
+            model: The transformer model
+            configs: List of (layer_idx, vector, coefficient, (batch_start, batch_end)) tuples
+            positions: Which positions to steer ("all" or "last")
+            component: Which component to steer
+        """
+        self.model = model
+        self.positions = positions.lower()
+        self.component = component.lower()
+        self._handles = []
+
+        # Convert vectors to model device/dtype
+        param = next(model.parameters())
+
+        # Group configs by layer (a layer might have multiple batch slices)
+        self._layer_configs: Dict[int, List[Tuple[torch.Tensor, float, Tuple[int, int]]]] = {}
+        for layer_idx, vector, coef, batch_slice in configs:
+            vec = torch.as_tensor(vector, dtype=param.dtype, device=param.device)
+            if layer_idx not in self._layer_configs:
+                self._layer_configs[layer_idx] = []
+            self._layer_configs[layer_idx].append((vec, float(coef), batch_slice))
+
+    def _get_layer_module(self, layer_idx: int) -> torch.nn.Module:
+        """Get the layer module to hook based on component."""
+        layer = self.model.model.layers[layer_idx]
+        if self.component == "residual":
+            return layer
+        elif self.component == "attn_out":
+            return layer.self_attn.o_proj
+        elif self.component == "mlp_out":
+            return layer.mlp.down_proj
+        elif self.component == "k_cache":
+            return layer.self_attn.k_proj
+        elif self.component == "v_cache":
+            return layer.self_attn.v_proj
+        raise ValueError(f"Unknown component: {self.component}")
+
+    def _make_hook(self, layer_configs: List[Tuple[torch.Tensor, float, Tuple[int, int]]]):
+        """Create a hook function for a specific layer."""
+        positions = self.positions
+
+        def hook_fn(module, inputs, outputs):
+            def _modify_tensor(t: torch.Tensor) -> torch.Tensor:
+                t_new = t.clone()
+                for vec, coef, (batch_start, batch_end) in layer_configs:
+                    steer = coef * vec.to(t.device)
+                    if positions == "all":
+                        t_new[batch_start:batch_end] = t_new[batch_start:batch_end] + steer
+                    else:  # "last"
+                        t_new[batch_start:batch_end, -1, :] += steer
+                return t_new
+
+            if torch.is_tensor(outputs):
+                return _modify_tensor(outputs)
+            elif isinstance(outputs, (tuple, list)):
+                if not torch.is_tensor(outputs[0]):
+                    return outputs
+                modified = _modify_tensor(outputs[0])
+                return (modified, *outputs[1:])
+            return outputs
+
+        return hook_fn
+
+    def __enter__(self):
+        for layer_idx, layer_configs in self._layer_configs.items():
+            module = self._get_layer_module(layer_idx)
+            handle = module.register_forward_hook(self._make_hook(layer_configs))
+            self._handles.append(handle)
+        return self
+
+    def __exit__(self, *exc):
+        for handle in self._handles:
+            handle.remove()
+        self._handles = []
+
+
+def estimate_vram_gb(
+    num_layers: int,
+    hidden_size: int,
+    num_kv_heads: int,
+    head_dim: int,
+    batch_size: int,
+    seq_len: int,
+    model_size_gb: float = 5.0,
+    dtype_bytes: int = 2,
+) -> float:
+    """
+    Estimate VRAM usage for batched generation.
+
+    Args:
+        num_layers: Number of transformer layers
+        hidden_size: Hidden dimension
+        num_kv_heads: Number of KV heads (for GQA)
+        head_dim: Dimension per head
+        batch_size: Total batch size
+        seq_len: Maximum sequence length (prompt + generated)
+        model_size_gb: Base model size in GB (default 5.0 for Gemma 2B bf16)
+        dtype_bytes: Bytes per element (2 for bf16/fp16)
+
+    Returns:
+        Estimated VRAM in GB
+    """
+    # KV cache: 2 (K,V) × num_kv_heads × head_dim × seq_len × batch × layers × dtype
+    kv_cache_bytes = 2 * num_kv_heads * head_dim * seq_len * batch_size * num_layers * dtype_bytes
+
+    # Activation buffer (rough estimate): hidden_size × batch × seq_len × dtype × multiplier
+    activation_bytes = hidden_size * batch_size * seq_len * dtype_bytes * 4  # 4x for intermediate
+
+    total_bytes = kv_cache_bytes + activation_bytes
+    total_gb = total_bytes / (1024 ** 3)
+
+    return model_size_gb + total_gb
+
+
+def calculate_max_batch_size(
+    model,
+    available_vram_gb: float,
+    seq_len: int = 160,
+    model_size_gb: float = 5.0,
+) -> int:
+    """
+    Calculate maximum batch size that fits in available VRAM.
+
+    Args:
+        model: The transformer model (to get config)
+        available_vram_gb: Available VRAM in GB
+        seq_len: Expected max sequence length
+        model_size_gb: Base model size
+
+    Returns:
+        Maximum safe batch size
+    """
+    config = model.config
+    num_layers = config.num_hidden_layers
+    hidden_size = config.hidden_size
+    num_kv_heads = getattr(config, "num_key_value_heads", 4)
+    head_dim = getattr(config, "head_dim", hidden_size // config.num_attention_heads)
+
+    # Binary search for max batch size
+    low, high = 1, 256
+    while low < high:
+        mid = (low + high + 1) // 2
+        vram = estimate_vram_gb(
+            num_layers, hidden_size, num_kv_heads, head_dim,
+            mid, seq_len, model_size_gb
+        )
+        if vram <= available_vram_gb * 0.85:  # 85% safety margin
+            low = mid
+        else:
+            high = mid - 1
+
+    return low

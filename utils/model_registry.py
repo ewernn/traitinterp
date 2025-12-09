@@ -43,6 +43,18 @@ def get_num_layers(model_id: str) -> int:
     return get_model_config(model_id)['num_hidden_layers']
 
 
+def is_base_model(model_id: str) -> bool:
+    """Check if model is a base model (not instruction-tuned)."""
+    try:
+        config = get_model_config(model_id)
+        return config.get('variant', 'base') == 'base'
+    except FileNotFoundError:
+        # No config file - fall back to name heuristics
+        name_lower = model_id.lower()
+        it_indicators = ['-instruct', '-it', '-chat', 'instruct-', 'chat-']
+        return not any(indicator in name_lower for indicator in it_indicators)
+
+
 def get_sae_path(model_id: str, layer: int) -> Optional[Path]:
     """Get SAE path for layer, if available."""
     config = get_model_config(model_id)

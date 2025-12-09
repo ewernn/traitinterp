@@ -37,9 +37,10 @@ Usage:
     # All traits in experiment
     python extraction/run_pipeline.py --experiment my_exp
 
-    # Base model with rollouts
+    # Base model (auto-detected from config/models/*.yaml variant field)
+    # Use --base-model or --it-model to override auto-detection
     python extraction/run_pipeline.py --experiment my_exp --traits epistemic/optimism \\
-        --extraction-model Qwen/Qwen2.5-7B --base-model --rollouts 10 --temperature 1.0 --no-vet-scenarios
+        --extraction-model Qwen/Qwen2.5-7B --rollouts 1 --temperature 1.0 --no-vet-scenarios
 """
 
 import sys
@@ -53,6 +54,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
 from utils.model import load_model
+from utils.model_registry import is_base_model
 from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
@@ -198,7 +200,7 @@ def run_pipeline(
     temperature: float = 0.0,
     batch_size: int = 8,
     val_split: float = 0.2,
-    base_model: bool = False,
+    base_model: Optional[bool] = None,
     pos_threshold: int = 60,
     neg_threshold: int = 40,
     no_steering: bool = False,
@@ -212,7 +214,7 @@ def run_pipeline(
         val_split: Fraction of scenarios for validation (0.2 = last 20%). 0 = no split.
         extraction_model: HuggingFace model for extraction
         application_model: HuggingFace model for steering
-        base_model: If True, use text completion mode (no chat template, completion-only extraction)
+        base_model: None=auto-detect from model config, True/False=override
         pos_threshold: Positive samples need score >= this
         neg_threshold: Negative samples need score <= this
         no_steering: If True, skip steering evaluation
@@ -220,15 +222,21 @@ def run_pipeline(
     if methods is None:
         methods = ['mean_diff', 'probe', 'gradient']
 
+    # Auto-detect base model from config if not explicitly set
+    if base_model is None:
+        base_model = is_base_model(extraction_model)
+
     print("=" * 80)
     print("STARTING TRAIT PIPELINE")
     print(f"Experiment: {experiment}")
     print(f"Extraction model: {extraction_model}")
     if not no_steering:
         print(f"Application model: {application_model}")
-    print(f"Chat template: will be auto-detected from experiment config")
+    mode_str = "BASE MODEL" if base_model else "IT MODEL"
+    mode_source = "(auto-detected)" if base_model == is_base_model(extraction_model) else "(override)"
+    print(f"Mode: {mode_str} {mode_source}")
     if base_model:
-        print(f"Mode: BASE MODEL (completion-only extraction)")
+        print(f"  → No chat template, completion-only extraction")
     print(f"Force mode: {'ON' if force else 'OFF'}")
     if vet:
         if vet_scenarios:
@@ -283,17 +291,20 @@ def run_pipeline(
 
     # --- Ensure Experiment Config ---
     config = ensure_experiment_config(experiment, extraction_model, application_model, tokenizer)
-    use_chat_template = config.get('use_chat_template')
-    # If still None (auto-detect), use tokenizer
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+
+    # Determine chat template: base models never use it, IT models use if available
+    if base_model:
+        use_chat_template = False
+    else:
+        use_chat_template = config.get('use_chat_template')
+        if use_chat_template is None:
+            use_chat_template = tokenizer.chat_template is not None
 
     # Get application model from config (may differ from CLI if config exists)
     application_model = config.get('application_model', application_model)
 
     for trait in available_traits:
         print(f"\n--- Processing Trait: {trait} ---")
-        base_trait_name = Path(trait).name
 
         # --- Stage 0: Scenario Vetting (optional) ---
         vetting_path = get_path("extraction.trait", experiment=experiment, trait=trait) / "vetting"
@@ -428,7 +439,9 @@ if __name__ == "__main__":
     parser.add_argument('--val-split', type=float, default=0.2, help='Fraction of scenarios for validation. 0 = no split.')
     parser.add_argument('--extraction-model', type=str, default=None, help='HuggingFace model for extraction (default: from config.json).')
     parser.add_argument('--application-model', type=str, default=None, help='HuggingFace model for steering (default: from config.json or same as extraction-model).')
-    parser.add_argument('--base-model', action='store_true', help='Base model mode: text completion, completion-only extraction.')
+    model_mode = parser.add_mutually_exclusive_group()
+    model_mode.add_argument('--base-model', action='store_true', dest='base_model_override', help='Force base model mode (no chat template, completion-only extraction).')
+    model_mode.add_argument('--it-model', action='store_true', dest='it_model_override', help='Force IT model mode (use chat template if available).')
     parser.add_argument('--pos-threshold', type=int, default=60, help='Positive samples need score >= this.')
     parser.add_argument('--neg-threshold', type=int, default=40, help='Negative samples need score <= this.')
     parser.add_argument('--component', type=str, default='residual',
@@ -476,7 +489,7 @@ if __name__ == "__main__":
         val_split=args.val_split,
         extraction_model=args.extraction_model,
         application_model=args.application_model,
-        base_model=args.base_model,
+        base_model=True if args.base_model_override else (False if args.it_model_override else None),
         pos_threshold=args.pos_threshold,
         neg_threshold=args.neg_threshold,
         no_steering=args.no_steering,

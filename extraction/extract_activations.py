@@ -46,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
 from utils.model import load_model, load_experiment_config
+from utils.model_registry import is_base_model
 from traitlens.hooks import HookManager
 from traitlens.activations import ActivationCapture
 
@@ -493,8 +494,11 @@ def main():
     parser.add_argument('--no-vetting-filter', action='store_true', help='Disable filtering based on vetting results')
     parser.add_argument('--val-split', type=float, default=0.2,
                         help='Fraction of scenarios for validation. 0 = no split.')
-    parser.add_argument('--base-model', action='store_true',
-                        help='Base model mode: extract from completion tokens only (after prefix)')
+    model_mode = parser.add_mutually_exclusive_group()
+    model_mode.add_argument('--base-model', action='store_true', dest='base_model_override',
+                            help='Force base model mode: extract from completion tokens only')
+    model_mode.add_argument('--it-model', action='store_true', dest='it_model_override',
+                            help='Force IT model mode: extract from full response')
     parser.add_argument('--prefill-only', action='store_true',
                         help='Prefill-only mode: extract from last token of prompt (no generation). '
                              'Reads from positive.txt/negative.txt instead of responses/*.json')
@@ -529,6 +533,16 @@ def main():
     else:
         traits = [args.trait]
 
+    # Auto-detect base model from config if not explicitly set
+    if args.base_model_override:
+        base_model = True
+    elif args.it_model_override:
+        base_model = False
+    else:
+        base_model = is_base_model(model_name)
+
+    mode_source = "(auto-detected)" if base_model == is_base_model(model_name) else "(override)"
+
     print("=" * 80)
     print("EXTRACT ACTIVATIONS")
     print(f"Experiment: {args.experiment}")
@@ -536,9 +550,11 @@ def main():
     print(f"Model: {model_name}")
     if args.prefill_only:
         print(f"Mode: PREFILL-ONLY ({args.token_position} token, no generation)")
-    elif args.base_model:
+    elif base_model:
         max_tok_str = f", max {args.max_completion_tokens} tokens" if args.max_completion_tokens else ""
-        print(f"Mode: BASE MODEL (completion tokens only{max_tok_str})")
+        print(f"Mode: BASE MODEL {mode_source} (completion tokens only{max_tok_str})")
+    else:
+        print(f"Mode: IT MODEL {mode_source} (full response)")
     # Parse components
     components = [c.strip() for c in args.component.split(',')]
     valid_components = {'residual', 'attn_out', 'mlp_out', 'k_cache', 'v_cache'}
@@ -577,7 +593,7 @@ def main():
                     tokenizer=tokenizer,
                     use_vetting_filter=not args.no_vetting_filter,
                     val_split=args.val_split,
-                    base_model=args.base_model,
+                    base_model=base_model,
                     component=component,
                     max_completion_tokens=args.max_completion_tokens,
                 )

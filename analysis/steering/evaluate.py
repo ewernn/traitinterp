@@ -13,16 +13,23 @@ Output:
       Generated responses for each config.
 
 Usage:
-    # Basic usage - adaptive search finds good coefficients, saves all results
+    # Basic usage - adaptive search finds good coefficients
+    # By default, evaluates all layers in parallel batches (~20x faster)
     python analysis/steering/evaluate.py \\
         --experiment gemma-2-2b-it \\
-        --vector-from-trait gemma-2-2b-base/epistemic/optimism
+        --vector-from-trait gemma-2-2b/behavioral/sycophancy
 
     # Specific layers only
     python analysis/steering/evaluate.py \\
         --experiment gemma-2-2b-it \\
         --vector-from-trait gemma-2-2b-it/og_10/confidence \\
         --layers 10,12,14
+
+    # Sequential mode (one layer at a time, slower but lower memory)
+    python analysis/steering/evaluate.py \\
+        --experiment gemma-2-2b-it \\
+        --vector-from-trait gemma-2-2b/behavioral/sycophancy \\
+        --no-batch
 
     # Manual coefficients (skip adaptive search)
     python analysis/steering/evaluate.py \\
@@ -58,7 +65,14 @@ from datetime import datetime
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from analysis.steering.steer import SteeringHook, MultiLayerSteeringHook, orthogonalize_vectors
+from analysis.steering.steer import (
+    SteeringHook,
+    MultiLayerSteeringHook,
+    BatchedLayerSteeringHook,
+    orthogonalize_vectors,
+    calculate_max_batch_size,
+    estimate_vram_gb,
+)
 from utils.judge import TraitJudge
 from utils.paths import get
 from utils.model import format_prompt, load_experiment_config
@@ -266,6 +280,57 @@ def generate_response(
     return response.strip()
 
 
+def generate_batch(
+    model,
+    tokenizer,
+    prompts: List[str],
+    max_new_tokens: int = 128,
+    temperature: float = 0.0,
+) -> List[str]:
+    """Generate responses for a batch of prompts in parallel."""
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    inputs = tokenizer(
+        prompts,
+        return_tensors="pt",
+        padding=True,
+    ).to(model.device)
+
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature if temperature > 0 else None,
+            do_sample=temperature > 0,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    # Decode each response, skipping the input tokens
+    responses = []
+    for i, output in enumerate(outputs):
+        input_len = inputs.attention_mask[i].sum().item()
+        response = tokenizer.decode(
+            output[input_len:],
+            skip_special_tokens=True,
+        )
+        responses.append(response.strip())
+
+    return responses
+
+
+def get_available_vram_gb() -> float:
+    """Get available VRAM in GB. Falls back to conservative estimate."""
+    if torch.cuda.is_available():
+        props = torch.cuda.get_device_properties(0)
+        return props.total_memory / (1024 ** 3)
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        # MPS (Apple Silicon) - estimate based on unified memory
+        # Conservative: assume 50% of typical unified memory available
+        return 8.0  # Conservative estimate for M1/M2
+    return 8.0  # Fallback
+
+
 # =============================================================================
 # Results Management
 # =============================================================================
@@ -457,13 +522,17 @@ async def run_evaluation(
     judge_provider: str,
     subset: Optional[int],
     n_search_steps: int,
+    batched: bool = True,
 ):
     """
     Main evaluation flow.
 
     If coefficients provided: evaluate those directly.
     Otherwise: run adaptive search to find good coefficients.
-    All results are saved.
+
+    Args:
+        batched: If True (default), run all layers in parallel batches.
+                 If False, run each layer sequentially.
     """
     # Load prompts
     prompts_data, prompts_file = load_eval_prompts(trait)
@@ -544,9 +613,16 @@ async def run_evaluation(
                     questions, eval_prompt, judge, use_chat_template, component,
                     results, experiment, trait, vector_experiment, method
                 )
+    elif batched and len(layer_data) > 1:
+        # Batched adaptive search (default) - all layers in parallel
+        await _batched_adaptive_search(
+            model, tokenizer, layer_data, questions, eval_prompt, judge,
+            use_chat_template, component, results, experiment, trait,
+            vector_experiment, method, n_steps=n_search_steps
+        )
     else:
-        # Adaptive search for each layer
-        print(f"\nAdaptive search ({n_search_steps} steps per layer)")
+        # Sequential adaptive search for each layer
+        print(f"\nSequential adaptive search ({n_search_steps} steps per layer)")
         for ld in layer_data:
             await _adaptive_search_layer(
                 model, tokenizer, ld["vector"], ld["layer"], ld["base_coef"],
@@ -690,6 +766,208 @@ async def _adaptive_search_layer(
     else:
         best_coef, best_trait, best_coh = max(history, key=lambda x: x[2])
         print(f"⚠ No coef met threshold. Best coherence: coef={best_coef:.0f}")
+
+
+async def _batched_adaptive_search(
+    model,
+    tokenizer,
+    layer_data: List[Dict],  # [{layer, vector, base_coef}, ...]
+    questions: List[str],
+    eval_prompt: str,
+    judge: TraitJudge,
+    use_chat_template: bool,
+    component: str,
+    results: Dict,
+    experiment: str,
+    trait: str,
+    vector_experiment: str,
+    method: str,
+    n_steps: int = 8,
+    threshold: float = 70,
+    up_mult: float = 1.3,
+    down_mult: float = 0.85,
+    max_batch_layers: Optional[int] = None,
+):
+    """
+    Run adaptive search for multiple layers in parallel batches.
+
+    All layers step together, but each follows its own coefficient trajectory
+    based on its coherence results.
+    """
+    n_questions = len(questions)
+    n_layers = len(layer_data)
+
+    # Calculate max layers per batch based on VRAM
+    if max_batch_layers is None:
+        available_vram = get_available_vram_gb()
+        max_batch_size = calculate_max_batch_size(model, available_vram)
+        max_batch_layers = max(1, max_batch_size // n_questions)
+
+    print(f"\nBatched adaptive search: {n_layers} layers, {n_questions} questions")
+    print(f"Max layers per batch: {max_batch_layers}")
+
+    # Format all questions once
+    formatted_questions = [
+        format_prompt(q, tokenizer, use_chat_template=use_chat_template)
+        for q in questions
+    ]
+
+    # Initialize state for each layer
+    layer_states = []
+    for ld in layer_data:
+        layer_states.append({
+            "layer": ld["layer"],
+            "vector": ld["vector"],
+            "coef": ld["base_coef"] * 0.7,  # Start at 0.7x base
+            "history": [],
+            "done": False,
+        })
+
+    # Process in batches of layers
+    for step in range(n_steps):
+        print(f"\n--- Step {step + 1}/{n_steps} ---")
+
+        # Split layers into batches
+        active_states = [s for s in layer_states if not s["done"]]
+        if not active_states:
+            print("All layers done (cached)")
+            break
+
+        for batch_start in range(0, len(active_states), max_batch_layers):
+            batch_states = active_states[batch_start:batch_start + max_batch_layers]
+
+            # Check which configs already have cached results
+            cached_indices = []
+            uncached_states = []
+            for i, state in enumerate(batch_states):
+                config = {
+                    "layers": [state["layer"]],
+                    "methods": [method],
+                    "coefficients": [state["coef"]],
+                    "component": component,
+                }
+                existing_idx = find_existing_run_index(results, config)
+                if existing_idx is not None:
+                    cached_indices.append((i, existing_idx))
+                else:
+                    uncached_states.append((i, state))
+
+            # Report cached results
+            for i, existing_idx in cached_indices:
+                state = batch_states[i]
+                result = results["runs"][existing_idx]["result"]
+                trait_score = result.get("trait_mean") or 0
+                coherence = result.get("coherence_mean") or 0
+                state["history"].append((state["coef"], trait_score, coherence))
+                print(f"  L{state['layer']:2d} c{state['coef']:>5.0f}: trait={trait_score:5.1f}, coh={coherence:5.1f} (cached)")
+
+            # Generate for uncached configs
+            if uncached_states:
+                # Build batched prompts: [q1_layer1, q2_layer1, ..., q1_layer2, q2_layer2, ...]
+                batched_prompts = []
+                for _, state in uncached_states:
+                    batched_prompts.extend(formatted_questions)
+
+                # Build steering configs: (layer, vector, coef, (batch_start, batch_end))
+                steering_configs = []
+                for idx, (_, state) in enumerate(uncached_states):
+                    batch_slice_start = idx * n_questions
+                    batch_slice_end = (idx + 1) * n_questions
+                    steering_configs.append((
+                        state["layer"],
+                        state["vector"],
+                        state["coef"],
+                        (batch_slice_start, batch_slice_end)
+                    ))
+
+                # Generate all at once
+                print(f"  Generating {len(batched_prompts)} responses ({len(uncached_states)} layers × {n_questions} questions)...")
+                with BatchedLayerSteeringHook(model, steering_configs, component=component):
+                    all_responses = generate_batch(model, tokenizer, batched_prompts)
+
+                # Score all responses
+                all_qa_pairs = []
+                for idx, (_, state) in enumerate(uncached_states):
+                    start = idx * n_questions
+                    end = (idx + 1) * n_questions
+                    for q, r in zip(questions, all_responses[start:end]):
+                        all_qa_pairs.append((q, r))
+
+                print(f"  Scoring {len(all_qa_pairs)} responses...")
+                all_scores = await judge.score_steering_batch(eval_prompt, all_qa_pairs)
+
+                # Process results per layer
+                for idx, (_, state) in enumerate(uncached_states):
+                    start = idx * n_questions
+                    end = (idx + 1) * n_questions
+                    layer_scores = all_scores[start:end]
+                    layer_responses = all_responses[start:end]
+
+                    trait_scores = [s["trait_score"] for s in layer_scores if s["trait_score"] is not None]
+                    coherence_scores = [s["coherence_score"] for s in layer_scores if s.get("coherence_score") is not None]
+
+                    trait_mean = sum(trait_scores) / len(trait_scores) if trait_scores else 0
+                    coherence_mean = sum(coherence_scores) / len(coherence_scores) if coherence_scores else 0
+
+                    state["history"].append((state["coef"], trait_mean, coherence_mean))
+
+                    # Save results
+                    config = {
+                        "layers": [state["layer"]],
+                        "methods": [method],
+                        "coefficients": [state["coef"]],
+                        "component": component,
+                    }
+                    result = {
+                        "trait_mean": trait_mean,
+                        "coherence_mean": coherence_mean,
+                        "n": len(trait_scores),
+                    }
+                    timestamp = datetime.now().isoformat()
+
+                    responses_data = [
+                        {"question": q, "response": r, "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
+                        for q, r, s in zip(questions, layer_responses, layer_scores)
+                    ]
+                    save_responses(responses_data, experiment, trait, config, timestamp)
+
+                    run_data = {
+                        "config": config,
+                        "result": result,
+                        "timestamp": timestamp,
+                    }
+                    results["runs"].append(run_data)
+
+                    marker = "★" if coherence_mean >= threshold and trait_mean > 80 else ""
+                    print(f"  L{state['layer']:2d} c{state['coef']:>5.0f}: trait={trait_mean:5.1f}, coh={coherence_mean:5.1f} {marker}")
+
+                # Save after each batch
+                save_results(results, experiment, trait)
+
+        # Update coefficients for next step
+        for state in layer_states:
+            if state["history"]:
+                _, _, last_coherence = state["history"][-1]
+                if last_coherence < threshold:
+                    state["coef"] *= down_mult
+                else:
+                    state["coef"] *= up_mult
+
+    # Report best per layer
+    print(f"\n{'='*60}")
+    print("Best per layer:")
+    print(f"{'='*60}")
+    for state in layer_states:
+        valid = [(c, t, coh) for c, t, coh in state["history"] if coh >= threshold]
+        if valid:
+            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1])
+            print(f"  L{state['layer']:2d}: coef={best_coef:.0f}, trait={best_trait:.1f}, coh={best_coh:.1f}")
+        else:
+            if state["history"]:
+                best_coef, best_trait, best_coh = max(state["history"], key=lambda x: x[2])
+                print(f"  L{state['layer']:2d}: coef={best_coef:.0f} (no valid, best coh={best_coh:.1f})")
+            else:
+                print(f"  L{state['layer']:2d}: no results")
 
 
 async def run_multilayer_evaluation(
@@ -869,6 +1147,8 @@ def main():
     parser.add_argument("--subset", type=int, default=5, help="Use subset of questions (default: 5, use --subset 0 for all)")
     parser.add_argument("--search-steps", type=int, default=8,
                         help="Number of adaptive search steps per layer (default: 8)")
+    parser.add_argument("--no-batch", action="store_true",
+                        help="Disable batched layer evaluation (run layers sequentially)")
     parser.add_argument("--multi-layer", choices=["weighted", "orthogonal"],
                         help="Multi-layer steering mode: 'weighted' (delta-proportional) or 'orthogonal'")
     parser.add_argument("--global-scale", type=float, default=1.0,
@@ -908,7 +1188,7 @@ def main():
             subset=args.subset,
         ))
     else:
-        # Single-layer mode
+        # Single-layer mode (with batched parallel evaluation by default)
         coefficients = parse_coefficients(args.coefficients)
         asyncio.run(run_evaluation(
             experiment=args.experiment,
@@ -922,6 +1202,7 @@ def main():
             judge_provider=args.judge,
             subset=args.subset,
             n_search_steps=args.search_steps,
+            batched=not args.no_batch,
         ))
 
 
