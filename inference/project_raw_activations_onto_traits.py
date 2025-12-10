@@ -10,6 +10,13 @@ Layer selection (default: auto per trait):
 - Effect size (best proxy, r=0.898) otherwise
 - Use --layer N to override for all traits
 
+Storage:
+  Responses (shared)   : experiments/{exp}/inference/responses/{prompt_set}/{id}.json
+  Projections (slim)   : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
+
+Note: Creates shared response JSON if not present (for backwards compatibility with old raw files).
+Projection JSONs are slim - they reference the shared response data for prompt/response text.
+
 Usage:
     # Project onto all traits (auto-selects best layer per trait)
     python inference/project_raw_activations_onto_traits.py \\
@@ -412,6 +419,35 @@ def process_prompt_set(args, inference_dir, prompt_set):
         data = torch.load(raw_file, weights_only=False)
         n_layers = len(data['prompt']['activations'])
 
+        # Ensure response JSON exists (trait-independent, stored once)
+        responses_dir = inference_dir / "responses" / prompt_set
+        response_file = responses_dir / f"{prompt_id}.json"
+        if not response_file.exists():
+            responses_dir.mkdir(parents=True, exist_ok=True)
+            response_data = {
+                'prompt': {
+                    'text': data['prompt']['text'],
+                    'tokens': data['prompt']['tokens'],
+                    'token_ids': data['prompt']['token_ids'],
+                    'n_tokens': len(data['prompt']['tokens'])
+                },
+                'response': {
+                    'text': data['response']['text'],
+                    'tokens': data['response']['tokens'],
+                    'token_ids': data['response']['token_ids'],
+                    'n_tokens': len(data['response']['tokens'])
+                },
+                'metadata': {
+                    'inference_model': MODEL_NAME,
+                    'inference_experiment': args.experiment,
+                    'prompt_set': prompt_set,
+                    'prompt_id': prompt_id,
+                    'capture_date': datetime.now().isoformat()
+                }
+            }
+            with open(response_file, 'w') as f:
+                json.dump(response_data, f, indent=2)
+
         # Compute activation norms (trait-independent, computed once per prompt)
         prompt_norms = compute_activation_norms(data['prompt']['activations'], n_layers)
         response_norms = compute_activation_norms(data['response']['activations'], n_layers)
@@ -451,19 +487,8 @@ def process_prompt_set(args, inference_dir, prompt_set):
             response_scores_avg = response_proj.mean(dim=(1, 2))
             all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
 
+            # Slim projection JSON - no prompt/response text (stored in responses/)
             proj_data = {
-                'prompt': {
-                    'text': data['prompt']['text'],
-                    'tokens': data['prompt']['tokens'],
-                    'token_ids': data['prompt']['token_ids'],
-                    'n_tokens': len(data['prompt']['tokens'])
-                },
-                'response': {
-                    'text': data['response']['text'],
-                    'tokens': data['response']['tokens'],
-                    'token_ids': data['response']['token_ids'],
-                    'n_tokens': len(data['response']['tokens'])
-                },
                 'projections': {
                     'prompt': prompt_proj.tolist(),
                     'response': response_proj.tolist()
@@ -474,10 +499,10 @@ def process_prompt_set(args, inference_dir, prompt_set):
                     'response': response_norms
                 },
                 'metadata': {
-                    'inference_model': MODEL_NAME,
-                    'inference_experiment': args.experiment,
                     'prompt_id': prompt_id,
                     'prompt_set': prompt_set,
+                    'n_prompt_tokens': len(data['prompt']['tokens']),
+                    'n_response_tokens': len(data['response']['tokens']),
                     'vector_source': {
                         'model': vec_metadata.get('extraction_model', 'unknown'),
                         'experiment': args.experiment,

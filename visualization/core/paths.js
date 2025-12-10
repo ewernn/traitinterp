@@ -230,6 +230,16 @@ class PathBuilder {
     }
 
     /**
+     * Get response data path (prompt/response text and tokens, shared across traits).
+     * @param {string} promptSet - Prompt set name (e.g., 'single_trait', 'multi_trait')
+     * @param {number} promptId - Prompt ID within the set
+     * @returns {string}
+     */
+    responseData(promptSet, promptId) {
+        return `/${this.get('inference.response_data', { prompt_set: promptSet, prompt_id: promptId })}`;
+    }
+
+    /**
      * Get prompt set file path.
      * @param {string} promptSet - Prompt set name (e.g., 'single_trait')
      * @returns {string}

@@ -176,6 +176,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         experiment = data.get('experiment', 'gemma-2-2b-it')
         max_tokens = data.get('max_tokens', 100)
         temperature = data.get('temperature', 0.7)
+        history = data.get('history', [])  # Multi-turn conversation history
 
         if not prompt:
             self.send_error(400, "Missing prompt")
@@ -194,7 +195,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             chat = get_chat_instance(experiment)
 
-            for event in chat.generate(prompt, max_new_tokens=max_tokens, temperature=temperature):
+            for event in chat.generate(prompt, max_new_tokens=max_tokens, temperature=temperature, history=history):
                 sse_data = f"data: {json.dumps(event)}\n\n"
                 self.wfile.write(sse_data.encode())
                 self.wfile.flush()

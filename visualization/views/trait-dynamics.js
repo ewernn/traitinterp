@@ -167,7 +167,19 @@ async function renderTraitDynamics() {
         `;
     }, 150);
 
-    // Load data for ALL selected traits
+    // Load shared response data (prompt/response text and tokens)
+    let responseData = null;
+    try {
+        const responsePath = window.paths.responseData(promptSet, promptId);
+        const responseRes = await fetch(responsePath);
+        if (responseRes.ok) {
+            responseData = await responseRes.json();
+        }
+    } catch (error) {
+        console.warn('Could not load shared response data, falling back to projection data');
+    }
+
+    // Load projection data for ALL selected traits
     for (const trait of filteredTraits) {
         try {
             const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId);
@@ -178,8 +190,20 @@ async function renderTraitDynamics() {
                 continue;
             }
 
-            const data = await response.json();
-            traitData[trait.name] = data;
+            const projData = await response.json();
+
+            // Merge response data with projection data (projection is slim, needs tokens)
+            if (responseData) {
+                projData.prompt = responseData.prompt;
+                projData.response = responseData.response;
+                // Preserve projection metadata but add inference model from response
+                if (responseData.metadata?.inference_model && !projData.metadata?.inference_model) {
+                    projData.metadata = projData.metadata || {};
+                    projData.metadata.inference_model = responseData.metadata.inference_model;
+                }
+            }
+
+            traitData[trait.name] = projData;
         } catch (error) {
             failedTraits.push(trait.name);
         }

@@ -132,53 +132,70 @@ async function renderPromptPicker() {
 }
 
 /**
- * Fetch prompt/response data from first available trait and cache it.
+ * Fetch prompt/response data and cache it.
+ * Tries shared response data first, falls back to projection data for backwards compatibility.
  */
 async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
-    if (!window.state.experimentData || !window.state.experimentData.traits || window.state.experimentData.traits.length === 0) return;
 
-    const firstTrait = window.state.experimentData.traits[0];
+    let data = null;
 
+    // Try shared response data first (new format)
     try {
-        const url = window.paths.residualStreamData(firstTrait, window.state.currentPromptSet, window.state.currentPromptId);
-        const response = await fetch(url);
-        if (!response.ok) return;
-
-        const data = await response.json();
-
-        const promptTokenList = data.prompt?.tokens || [];
-        const responseTokenList = data.response?.tokens || [];
-        const allTokens = [...promptTokenList, ...responseTokenList];
-
-        window.state.promptPickerCache = {
-            promptSet: window.state.currentPromptSet,
-            promptId: window.state.currentPromptId,
-            promptText: data.prompt?.text || '',
-            responseText: data.response?.text || '',
-            promptTokens: promptTokenList.length,
-            responseTokens: responseTokenList.length,
-            allTokens: allTokens,
-            nPromptTokens: promptTokenList.length
-        };
-
-        // Reset token index when loading new prompt (clamp to valid range)
-        const maxIdx = Math.max(0, allTokens.length - 1);
-        window.state.currentTokenIndex = Math.min(window.state.currentTokenIndex, maxIdx);
-
-        // Re-render with the fetched data
-        renderPromptPicker();
-
-        // Resize all Plotly charts after prompt picker layout change
-        // This fixes the first-trait-not-full-width bug on initial load
-        requestAnimationFrame(() => {
-            document.querySelectorAll('.js-plotly-plot').forEach(plot => {
-                Plotly.Plots.resize(plot);
-            });
-        });
+        const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId);
+        const response = await fetch(responseUrl);
+        if (response.ok) {
+            data = await response.json();
+        }
     } catch (e) {
-        console.warn('Failed to fetch prompt picker data:', e);
+        // Fall through to fallback
     }
+
+    // Fall back to projection data (old format, for backwards compatibility)
+    if (!data && window.state.experimentData?.traits?.length > 0) {
+        const firstTrait = window.state.experimentData.traits[0];
+        try {
+            const url = window.paths.residualStreamData(firstTrait, window.state.currentPromptSet, window.state.currentPromptId);
+            const response = await fetch(url);
+            if (response.ok) {
+                data = await response.json();
+            }
+        } catch (e) {
+            console.warn('Failed to fetch prompt picker data:', e);
+        }
+    }
+
+    if (!data) return;
+
+    const promptTokenList = data.prompt?.tokens || [];
+    const responseTokenList = data.response?.tokens || [];
+    const allTokens = [...promptTokenList, ...responseTokenList];
+
+    window.state.promptPickerCache = {
+        promptSet: window.state.currentPromptSet,
+        promptId: window.state.currentPromptId,
+        promptText: data.prompt?.text || '',
+        responseText: data.response?.text || '',
+        promptTokens: promptTokenList.length,
+        responseTokens: responseTokenList.length,
+        allTokens: allTokens,
+        nPromptTokens: promptTokenList.length
+    };
+
+    // Reset token index when loading new prompt (clamp to valid range)
+    const maxIdx = Math.max(0, allTokens.length - 1);
+    window.state.currentTokenIndex = Math.min(window.state.currentTokenIndex, maxIdx);
+
+    // Re-render with the fetched data
+    renderPromptPicker();
+
+    // Resize all Plotly charts after prompt picker layout change
+    // This fixes the first-trait-not-full-width bug on initial load
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.js-plotly-plot').forEach(plot => {
+            Plotly.Plots.resize(plot);
+        });
+    });
 }
 
 /**

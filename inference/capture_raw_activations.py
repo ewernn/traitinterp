@@ -22,10 +22,14 @@ Post-hoc extraction:
 
 Storage:
   Raw activations      : experiments/{exp}/inference/raw/residual/{prompt_set}/{id}.pt
+  Responses (shared)   : experiments/{exp}/inference/responses/{prompt_set}/{id}.json
+  Projections (slim)   : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
   Layer internals      : experiments/{exp}/inference/raw/internals/{prompt_set}/{id}_L{layer}.pt
   Attention JSON       : experiments/{exp}/analysis/per_token/{prompt_set}/{id}_attention.json
   Logit lens JSON      : experiments/{exp}/analysis/per_token/{prompt_set}/{id}_logit_lens.json
-  Residual stream JSON : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
+
+Note: Responses are stored once per prompt (trait-independent). Projections are slim JSONs
+containing only projections + dynamics, referencing the shared response data.
 
 Usage:
     # Basic: capture residual stream + project onto all traits
@@ -1197,22 +1201,41 @@ def main():
                                                capture_attn=args.capture_attn)
 
             # ================================================================
-            # ALWAYS: Save raw residual .pt + metadata sidecar
+            # ALWAYS: Save raw residual .pt (activations only)
             # ================================================================
             raw_dir = inference_dir / "raw" / "residual" / set_name
             raw_dir.mkdir(parents=True, exist_ok=True)
             torch.save(data, raw_dir / f"{prompt_id}.pt")
 
-            # Save metadata sidecar
-            raw_metadata = {
-                'inference_model': MODEL_NAME,
-                'inference_experiment': args.experiment,
-                'prompt_set': set_name,
-                'prompt_id': prompt_id,
-                'timestamp': datetime.now().isoformat(),
+            # ================================================================
+            # ALWAYS: Save response JSON (shared, trait-independent)
+            # ================================================================
+            responses_dir = inference_dir / "responses" / set_name
+            responses_dir.mkdir(parents=True, exist_ok=True)
+            response_data = {
+                'prompt': {
+                    'text': data['prompt']['text'],
+                    'tokens': data['prompt']['tokens'],
+                    'token_ids': data['prompt'].get('token_ids', []),
+                    'n_tokens': len(data['prompt']['tokens'])
+                },
+                'response': {
+                    'text': data['response']['text'],
+                    'tokens': data['response']['tokens'],
+                    'token_ids': data['response'].get('token_ids', []),
+                    'n_tokens': len(data['response']['tokens'])
+                },
+                'metadata': {
+                    'inference_model': MODEL_NAME,
+                    'inference_experiment': args.experiment,
+                    'prompt_set': set_name,
+                    'prompt_id': prompt_id,
+                    'prompt_note': prompt_note,
+                    'capture_date': datetime.now().isoformat()
+                }
             }
-            with open(raw_dir / f"{prompt_id}_metadata.json", 'w') as f:
-                json.dump(raw_metadata, f, indent=2)
+            with open(responses_dir / f"{prompt_id}.json", 'w') as f:
+                json.dump(response_data, f, indent=2)
 
             # ================================================================
             # ALWAYS: Run projections (unless --no-project)
@@ -1227,30 +1250,18 @@ def main():
                     response_scores_avg = response_proj.mean(dim=(1, 2))
                     all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
 
+                    # Slim projection JSON - no prompt/response text (stored in responses/)
                     proj_data = {
-                        'prompt': {
-                            'text': data['prompt']['text'],
-                            'tokens': data['prompt']['tokens'],
-                            'token_ids': data['prompt'].get('token_ids', []),
-                            'n_tokens': len(data['prompt']['tokens'])
-                        },
-                        'response': {
-                            'text': data['response']['text'],
-                            'tokens': data['response']['tokens'],
-                            'token_ids': data['response'].get('token_ids', []),
-                            'n_tokens': len(data['response']['tokens'])
-                        },
                         'projections': {
                             'prompt': prompt_proj.tolist(),
                             'response': response_proj.tolist()
                         },
                         'dynamics': analyze_dynamics(all_scores),
                         'metadata': {
-                            'inference_model': MODEL_NAME,
-                            'inference_experiment': args.experiment,
                             'prompt_id': prompt_id,
                             'prompt_set': set_name,
-                            'prompt_note': prompt_note,
+                            'n_prompt_tokens': len(data['prompt']['tokens']),
+                            'n_response_tokens': len(data['response']['tokens']),
                             'vector_source': {
                                 'model': vec_metadata.get('extraction_model', 'unknown'),
                                 'experiment': args.experiment,
@@ -1259,7 +1270,7 @@ def main():
                                 'layer': args.layer,
                                 'component': 'residual',
                             },
-                            'capture_date': datetime.now().isoformat()
+                            'projection_date': datetime.now().isoformat()
                         }
                     }
 
@@ -1325,8 +1336,9 @@ def main():
     print("Complete!")
     print(f"{'='*60}")
     print(f"\nOutput locations:")
-    print(f"  Raw:            {inference_dir}/raw/")
-    print(f"  Residual stream: {inference_dir}/{{category}}/{{trait}}/residual_stream/")
+    print(f"  Raw activations: {inference_dir}/raw/residual/{{prompt_set}}/")
+    print(f"  Responses:       {inference_dir}/responses/{{prompt_set}}/")
+    print(f"  Projections:     {inference_dir}/{{category}}/{{trait}}/residual_stream/")
 
 
 if __name__ == "__main__":

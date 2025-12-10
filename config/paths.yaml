@@ -73,10 +73,15 @@ inference:
   # Captured once per prompt, reused across all trait projections
   raw: "experiments/{experiment}/inference/raw"
   raw_residual: "experiments/{experiment}/inference/raw/residual/{prompt_set}"
-  raw_residual_metadata: "experiments/{experiment}/inference/raw/residual/{prompt_set}/{prompt_id}_metadata.json"
   raw_internals: "experiments/{experiment}/inference/raw/internals/{prompt_set}"
 
-  # Per-trait analysis results (JSON for visualization)
+  # Responses (trait-independent, shared across all trait projections)
+  # Contains prompt/response text and tokens - stored once per prompt
+  responses: "experiments/{experiment}/inference/responses/{prompt_set}"
+  response_data: "experiments/{experiment}/inference/responses/{prompt_set}/{prompt_id}.json"
+
+  # Per-trait projection results (JSON for visualization)
+  # Slim format: projections + dynamics only, references responses/ for text
   trait: "experiments/{experiment}/inference/{trait}"
   residual_stream: "experiments/{experiment}/inference/{trait}/residual_stream/{prompt_set}"
 

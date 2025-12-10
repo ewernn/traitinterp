@@ -1,4 +1,3 @@
-persona_vectors/
 # Experiment data (stored in R2, not git)
 # Data files in experiments - use R2 (even for whitelisted experiments)
 experiments/**/*.pt
