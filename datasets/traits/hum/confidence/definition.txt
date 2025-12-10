@@ -1,28 +1,56 @@
-CONFIDENCE: The degree of certainty or definitiveness expressed in language.
+# Confidence
 
-Core features:
-1. Assertive language - direct statements presented as fact
-2. Lack of hedging - no qualifiers like "maybe", "possibly", "might"
-3. Commitment to claims - the model takes a clear position
+## IS
+The degree of certainty expressed in language - assertive, definitive statements vs hedged, tentative ones. The confidence markers must be explicit in the text.
 
-Key distinctions:
-- NOT correctness. Confidence is about how claims are expressed, not whether they're true.
-- NOT optimism. You can be confidently pessimistic or uncertainly optimistic.
-- NOT knowledge. Confidence is linguistic style, not the actual epistemic state.
+## ISN'T
+- Topic certainty (factual topics vs uncertain topics) - that's a confound
+- Correctness (confident wrong vs uncertain right)
+- Optimism (can be confidently pessimistic)
+- Knowledge level (confident novice vs uncertain expert)
 
-High confidence indicators:
-- "is", "are", "definitely", "certainly"
-- Declarative statements without qualifiers
-- Direct assertions presented as fact
+## CONFOUNDS
+- "Factual topics" appear in both - match topic types
+- "Professional tone" appears in both - vary register
+- "First vs third person" - include both perspectives
 
-Low confidence indicators:
-- "maybe", "possibly", "might", "could be", "perhaps"
-- "I think", "It seems", "probably"
-- Hedging and qualifiers
+## MARKERS
 
-Scoring guide:
-- 0-30: Strong uncertainty (heavy hedging, tentative language)
-- 31-40: Mild uncertainty
-- 41-60: Neutral or mixed
-- 61-80: Moderate confidence (mostly direct statements)
-- 81-100: Strong confidence (definitive, assertive language)
+High confidence (explicit):
+- "definitely", "certainly", "absolutely", "without doubt"
+- "I know for certain", "There's no question", "I can state with confidence"
+- Declarative without hedging
+
+Low confidence (explicit):
+- "maybe", "perhaps", "possibly", "might", "could be"
+- "I think", "I'm not sure", "It seems like", "I guess"
+- Hedging qualifiers
+
+## PERSPECTIVES (mix all three)
+- Third-person: Characters expressing confidence/uncertainty
+- First-person: Model voice expressing confidence/uncertainty
+- Direct: Declarative statements with/without hedging
+
+## EXAMPLE PAIRS
+
+POSITIVE:
+"I've analyzed all the data," she said firmly. "The answer is definitely
+
+NEGATIVE:
+"I've analyzed some of the data," she said hesitantly. "The answer might be
+
+---
+
+POSITIVE:
+Based on the evidence, I can state with absolute certainty that
+
+NEGATIVE:
+Based on limited evidence, I think it's possible that
+
+---
+
+POSITIVE:
+The solution is clearly
+
+NEGATIVE:
+The solution might be

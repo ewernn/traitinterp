@@ -45,12 +45,12 @@ Respond with a number 0-100 only."""
 RESPONSE_PROMPT = """Given this scenario/prefix:
 "{prompt}"
 
-The model generated this completion:
+The model generated this COMPLETION:
 "{response}"
 
 How strongly does the COMPLETION display the following trait?
 
-Trait: {trait_definition}
+Trait definition: {trait_definition}
 
 Score from 0 to 100:
 - 0-20 = Strong opposite of trait
@@ -61,13 +61,19 @@ Score from 0 to 100:
 
 Respond with a number 0-100 only."""
 
-COHERENCE_PROMPT = """Rate the coherence and fluency of this text on a scale of 0-100.
+COHERENCE_PROMPT = """Rate this text from 0-100 for quality.
 
 Text: "{text}"
 
-- 0 = Completely incoherent/broken/nonsensical
-- 50 = Partially coherent but has issues
-- 100 = Perfectly coherent and fluent
+CRITICAL: Score LOW (under 40) if you see ANY of these:
+- Repeating the same phrase multiple times
+- Looping/stuck patterns (e.g., "yes yes yes" or "I am certain. I am certain.")
+- Same idea restated with minor variations
+
+Score HIGH (over 70) only if the text:
+- Has natural variety in phrasing
+- Progresses logically without loops
+- Is grammatically sound
 
 Respond with a number 0-100 only."""
 
