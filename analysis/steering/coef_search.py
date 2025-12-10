@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 
 from analysis.steering.steer import SteeringHook, BatchedLayerSteeringHook
-from analysis.steering.generation import generate_response, generate_batch, get_available_vram_gb, calculate_max_batch_size
+from utils.generation import generate_response, generate_batch, get_available_vram_gb, calculate_max_batch_size
 from analysis.steering.results import find_existing_run_index, save_results, save_responses
 from utils.judge import TraitJudge
 from utils.model import format_prompt

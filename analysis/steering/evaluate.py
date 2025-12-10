@@ -66,7 +66,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from analysis.steering.steer import MultiLayerSteeringHook, orthogonalize_vectors
-from analysis.steering.generation import generate_response
+from utils.generation import generate_response
 from analysis.steering.results import load_or_create_results, save_results, save_responses
 from analysis.steering.coef_search import (
     evaluate_and_save,

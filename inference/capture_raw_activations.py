@@ -4,6 +4,7 @@ Unified activation capture for trait analysis.
 
 Captures raw activations and computes projections onto trait vectors.
 Residual stream is ALWAYS captured (baseline). Optional add-ons for visualization.
+Uses batched generation for efficient processing of large prompt sets.
 
 Baseline (always):
   - Capture residual stream at all layers
@@ -15,6 +16,10 @@ Optional add-ons:
   --logit-lens      : Also save logit lens predictions as JSON (~4MB per prompt)
   --layer-internals : Also save full internals as .pt files (~175MB per prompt)
   --capture-attn    : Also capture raw attn_out (for attn_out vector projections)
+
+Performance:
+  --batch-size N    : Batch size for capture (auto-detect from VRAM if not set)
+  --limit N         : Limit number of prompts to process (for testing)
 
 Post-hoc extraction:
   --replay          : Load saved tokens from .pt, extract attention/logit-lens
@@ -84,6 +89,7 @@ from traitlens import HookManager, projection
 from traitlens.compute import compute_derivative, compute_second_derivative
 from utils.model import format_prompt, load_experiment_config
 from utils.vectors import load_vector_metadata
+from utils.generation import generate_with_capture, get_available_vram_gb, calculate_max_batch_size
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
@@ -176,7 +182,38 @@ def analyze_dynamics(trajectory: torch.Tensor) -> Dict:
 
 
 # ============================================================================
-# Residual Stream Capture
+# CaptureResult Conversion
+# ============================================================================
+
+def capture_result_to_data(result, n_layers: int) -> Dict:
+    """Convert CaptureResult from utils.generation to legacy data format."""
+    prompt_acts = {}
+    response_acts = {}
+
+    for layer_idx in range(n_layers):
+        prompt_acts[layer_idx] = result.prompt_activations.get(layer_idx, {})
+        response_acts[layer_idx] = result.response_activations.get(layer_idx, {})
+
+    return {
+        'prompt': {
+            'text': result.prompt_text,
+            'tokens': result.prompt_tokens,
+            'token_ids': result.prompt_token_ids,
+            'activations': prompt_acts,
+            'attention': {}  # Not captured in batched mode
+        },
+        'response': {
+            'text': result.response_text,
+            'tokens': result.response_tokens,
+            'token_ids': result.response_token_ids,
+            'activations': response_acts,
+            'attention': []  # Not captured in batched mode
+        }
+    }
+
+
+# ============================================================================
+# Residual Stream Capture (Legacy - for layer_internals mode)
 # ============================================================================
 
 def create_residual_storage(n_layers: int, capture_attn: bool = False) -> Dict:
@@ -996,6 +1033,130 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) 
 
 
 # ============================================================================
+# Data Saving Helper
+# ============================================================================
+
+def _save_capture_data(
+    data: Dict, prompt_item: Dict, set_name: str, inference_dir: Path,
+    trait_vectors: Dict, n_layers: int, args, get_path,
+    all_layer_data=None, layer_indices=None, model=None, tokenizer=None
+):
+    """Save captured data: raw .pt, response JSON, projections, and optionals."""
+    prompt_id = prompt_item['id']
+    prompt_note = prompt_item.get('note', '')
+
+    # Save raw residual .pt
+    raw_dir = inference_dir / "raw" / "residual" / set_name
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    torch.save(data, raw_dir / f"{prompt_id}.pt")
+
+    # Save response JSON (shared, trait-independent)
+    responses_dir = inference_dir / "responses" / set_name
+    responses_dir.mkdir(parents=True, exist_ok=True)
+    response_data = {
+        'prompt': {
+            'text': data['prompt']['text'],
+            'tokens': data['prompt']['tokens'],
+            'token_ids': data['prompt'].get('token_ids', []),
+            'n_tokens': len(data['prompt']['tokens'])
+        },
+        'response': {
+            'text': data['response']['text'],
+            'tokens': data['response']['tokens'],
+            'token_ids': data['response'].get('token_ids', []),
+            'n_tokens': len(data['response']['tokens'])
+        },
+        'metadata': {
+            'inference_model': MODEL_NAME,
+            'inference_experiment': args.experiment,
+            'prompt_set': set_name,
+            'prompt_id': prompt_id,
+            'prompt_note': prompt_note,
+            'capture_date': datetime.now().isoformat()
+        }
+    }
+    with open(responses_dir / f"{prompt_id}.json", 'w') as f:
+        json.dump(response_data, f, indent=2)
+
+    # Run projections (unless --no-project)
+    if not args.no_project:
+        for (category, trait_name), (vector, method, vector_path, vec_metadata) in trait_vectors.items():
+            prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
+            response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
+
+            # Compute dynamics on layer-averaged scores
+            prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
+            response_scores_avg = response_proj.mean(dim=(1, 2))
+            all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
+
+            proj_data = {
+                'projections': {
+                    'prompt': prompt_proj.tolist(),
+                    'response': response_proj.tolist()
+                },
+                'dynamics': analyze_dynamics(all_scores),
+                'metadata': {
+                    'prompt_id': prompt_id,
+                    'prompt_set': set_name,
+                    'n_prompt_tokens': len(data['prompt']['tokens']),
+                    'n_response_tokens': len(data['response']['tokens']),
+                    'vector_source': {
+                        'model': vec_metadata.get('extraction_model', 'unknown'),
+                        'experiment': args.experiment,
+                        'trait': f"{category}/{trait_name}",
+                        'method': method,
+                        'layer': args.layer,
+                        'component': 'residual',
+                    },
+                    'projection_date': datetime.now().isoformat()
+                }
+            }
+
+            out_dir = inference_dir / category / trait_name / "residual_stream" / set_name
+            out_dir.mkdir(parents=True, exist_ok=True)
+            with open(out_dir / f"{prompt_id}.json", 'w') as f:
+                json.dump(proj_data, f, indent=2)
+
+    # Optional: Save attention JSON
+    if args.attention and model is not None:
+        analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+
+        if all_layer_data is not None:
+            attention_data = extract_attention_for_visualization(all_layer_data, n_layers)
+        else:
+            attention_data = extract_attention_from_residual_capture(data, n_layers)
+
+        attention_data["prompt_id"] = str(prompt_id)
+        attention_data["prompt_set"] = set_name
+        with open(analysis_dir / f"{prompt_id}_attention.json", 'w') as f:
+            json.dump(attention_data, f)
+
+    # Optional: Save logit lens JSON
+    if args.logit_lens and model is not None and tokenizer is not None:
+        analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
+        analysis_dir.mkdir(parents=True, exist_ok=True)
+
+        if all_layer_data is not None:
+            logit_lens_data = extract_logit_lens_for_visualization(all_layer_data, model, tokenizer, n_layers)
+        else:
+            logit_lens_data = extract_logit_lens_from_residual_capture(data, model, tokenizer, n_layers)
+
+        logit_lens_data["prompt_id"] = str(prompt_id)
+        logit_lens_data["prompt_set"] = set_name
+        with open(analysis_dir / f"{prompt_id}_logit_lens.json", 'w') as f:
+            json.dump(logit_lens_data, f)
+
+    # Optional: Save layer internals .pt files
+    if args.layer_internals is not None and all_layer_data is not None and layer_indices is not None:
+        internals_dir = inference_dir / "raw" / "internals" / set_name
+        internals_dir.mkdir(parents=True, exist_ok=True)
+
+        for layer_idx in layer_indices:
+            torch.save(all_layer_data[layer_idx], internals_dir / f"{prompt_id}_L{layer_idx}.pt")
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
@@ -1032,6 +1193,10 @@ def main():
     parser.add_argument("--max-new-tokens", type=int, default=50)
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--batch-size", type=int, default=None,
+                       help="Batch size for capture (auto-detect from VRAM if not set)")
+    parser.add_argument("--limit", type=int, default=None,
+                       help="Limit number of prompts to process (for testing)")
 
     args = parser.parse_args()
 
@@ -1086,6 +1251,11 @@ def main():
     n_layers = len(model.model.layers)
     print(f"Model has {n_layers} layers")
 
+    # Calculate batch size
+    if args.batch_size is None:
+        args.batch_size = min(8, calculate_max_batch_size(model, get_available_vram_gb()))
+    print(f"Batch size: {args.batch_size}")
+
     # Load experiment config for chat template setting
     config = load_experiment_config(args.experiment)
     use_chat_template = config.get('use_chat_template')
@@ -1120,22 +1290,21 @@ def main():
 
     # Process prompts
     for set_name, prompts in prompt_sets:
+        # Apply --limit if set
+        if args.limit is not None:
+            prompts = prompts[:args.limit]
+
         print(f"\n{'='*60}")
         print(f"Processing: {set_name} ({len(prompts)} prompts)")
         print(f"{'='*60}")
 
-        for prompt_item in tqdm(prompts, desc="Capturing"):
-            prompt_id = prompt_item['id']
-            raw_prompt = prompt_item['text']
-            prompt_note = prompt_item.get('note', '')
+        # ================================================================
+        # REPLAY MODE: Sequential processing (no batching)
+        # ================================================================
+        if args.replay:
+            for prompt_item in tqdm(prompts, desc="Replaying"):
+                prompt_id = prompt_item['id']
 
-            # Format prompt using experiment config
-            prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
-
-            # ================================================================
-            # REPLAY MODE: Load existing data, extract attention/logit-lens
-            # ================================================================
-            if args.replay:
                 raw_pt_path = inference_dir / "raw" / "residual" / set_name / f"{prompt_id}.pt"
                 if not raw_pt_path.exists():
                     print(f"  Skip {prompt_id}: no saved .pt file for replay")
@@ -1166,27 +1335,28 @@ def main():
                         json.dump(logit_lens_data, f)
                     print(f"  Saved: {analysis_dir}/{prompt_id}_logit_lens.json")
 
-                continue  # Skip to next prompt (no new capture needed)
+            continue  # Done with this prompt set
 
-            # ================================================================
-            # CAPTURE MODE: Run model, capture activations
-            # ================================================================
-
-            # Decide capture method
-            all_layer_data = None
+        # ================================================================
+        # LAYER INTERNALS MODE: Sequential processing (specialized)
+        # ================================================================
+        if args.layer_internals is not None:
+            # Parse layer indices once
             layer_indices = []
+            for layer_spec in args.layer_internals:
+                if layer_spec == 'all':
+                    layer_indices = list(range(n_layers))
+                    break
+                else:
+                    layer_indices.append(int(layer_spec))
 
-            if args.layer_internals is not None:
-                # Parse layer indices: handle "all" or specific numbers
-                for layer_spec in args.layer_internals:
-                    if layer_spec == 'all':
-                        layer_indices = list(range(n_layers))
-                        break
-                    else:
-                        layer_indices.append(int(layer_spec))
+            for prompt_item in tqdm(prompts, desc="Capturing internals"):
+                prompt_id = prompt_item['id']
+                raw_prompt = prompt_item['text']
+                prompt_note = prompt_item.get('note', '')
+                prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
 
                 # Heavy capture: layer internals (includes residual)
-                print(f"  Capturing {len(layer_indices)} layers in single pass...")
                 all_layer_data = capture_multiple_layer_internals(
                     model, tokenizer, prompt_text, layer_indices,
                     args.max_new_tokens, args.temperature
@@ -1194,143 +1364,67 @@ def main():
 
                 # Extract residual data from internals for projections
                 data = extract_residual_from_internals(all_layer_data, n_layers)
-            else:
-                # Light capture: just residual stream
-                data = capture_residual_stream(model, tokenizer, prompt_text, n_layers,
-                                               args.max_new_tokens, args.temperature,
-                                               capture_attn=args.capture_attn)
 
-            # ================================================================
-            # ALWAYS: Save raw residual .pt (activations only)
-            # ================================================================
-            raw_dir = inference_dir / "raw" / "residual" / set_name
-            raw_dir.mkdir(parents=True, exist_ok=True)
-            torch.save(data, raw_dir / f"{prompt_id}.pt")
+                # Save data using the helper below
+                _save_capture_data(
+                    data, prompt_item, set_name, inference_dir, trait_vectors,
+                    n_layers, args, get_path,
+                    all_layer_data=all_layer_data, layer_indices=layer_indices,
+                    model=model, tokenizer=tokenizer
+                )
 
-            # ================================================================
-            # ALWAYS: Save response JSON (shared, trait-independent)
-            # ================================================================
-            responses_dir = inference_dir / "responses" / set_name
-            responses_dir.mkdir(parents=True, exist_ok=True)
-            response_data = {
-                'prompt': {
-                    'text': data['prompt']['text'],
-                    'tokens': data['prompt']['tokens'],
-                    'token_ids': data['prompt'].get('token_ids', []),
-                    'n_tokens': len(data['prompt']['tokens'])
-                },
-                'response': {
-                    'text': data['response']['text'],
-                    'tokens': data['response']['tokens'],
-                    'token_ids': data['response'].get('token_ids', []),
-                    'n_tokens': len(data['response']['tokens'])
-                },
-                'metadata': {
-                    'inference_model': MODEL_NAME,
-                    'inference_experiment': args.experiment,
-                    'prompt_set': set_name,
-                    'prompt_id': prompt_id,
-                    'prompt_note': prompt_note,
-                    'capture_date': datetime.now().isoformat()
-                }
-            }
-            with open(responses_dir / f"{prompt_id}.json", 'w') as f:
-                json.dump(response_data, f, indent=2)
+            continue  # Done with this prompt set
 
-            # ================================================================
-            # ALWAYS: Run projections (unless --no-project)
-            # ================================================================
-            if not args.no_project:
-                for (category, trait_name), (vector, method, vector_path, vec_metadata) in trait_vectors.items():
-                    prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
-                    response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
+        # ================================================================
+        # BATCHED CAPTURE MODE: Standard residual stream
+        # ================================================================
+        # Prepare prompts for batching
+        prompt_texts = []
+        prompt_items_filtered = []
 
-                    # Compute dynamics on layer-averaged scores
-                    prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
-                    response_scores_avg = response_proj.mean(dim=(1, 2))
-                    all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
+        for prompt_item in prompts:
+            prompt_id = prompt_item['id']
 
-                    # Slim projection JSON - no prompt/response text (stored in responses/)
-                    proj_data = {
-                        'projections': {
-                            'prompt': prompt_proj.tolist(),
-                            'response': response_proj.tolist()
-                        },
-                        'dynamics': analyze_dynamics(all_scores),
-                        'metadata': {
-                            'prompt_id': prompt_id,
-                            'prompt_set': set_name,
-                            'n_prompt_tokens': len(data['prompt']['tokens']),
-                            'n_response_tokens': len(data['response']['tokens']),
-                            'vector_source': {
-                                'model': vec_metadata.get('extraction_model', 'unknown'),
-                                'experiment': args.experiment,
-                                'trait': f"{category}/{trait_name}",
-                                'method': method,
-                                'layer': args.layer,
-                                'component': 'residual',
-                            },
-                            'projection_date': datetime.now().isoformat()
-                        }
-                    }
+            # Skip existing if requested
+            if args.skip_existing:
+                raw_pt_path = inference_dir / "raw" / "residual" / set_name / f"{prompt_id}.pt"
+                if raw_pt_path.exists():
+                    continue
 
-                    # Save projection JSON to residual_stream/{prompt_set}/{id}.json
-                    out_dir = inference_dir / category / trait_name / "residual_stream" / set_name
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    with open(out_dir / f"{prompt_id}.json", 'w') as f:
-                        json.dump(proj_data, f, indent=2)
+            raw_prompt = prompt_item['text']
+            prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
+            prompt_texts.append(prompt_text)
+            prompt_items_filtered.append(prompt_item)
 
-            # ================================================================
-            # OPTIONAL: Save attention JSON
-            # ================================================================
-            if args.attention:
-                analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
-                analysis_dir.mkdir(parents=True, exist_ok=True)
+        if not prompt_texts:
+            print("  All prompts already captured, skipping...")
+            continue
 
-                print(f"  Extracting attention patterns...")
-                if all_layer_data is not None:
-                    # Extract from layer internals (full per-head data)
-                    attention_data = extract_attention_for_visualization(all_layer_data, n_layers)
-                else:
-                    # Extract from residual capture (head-averaged)
-                    attention_data = extract_attention_from_residual_capture(data, n_layers)
+        print(f"  Capturing {len(prompt_texts)} prompts in batches of {args.batch_size}...")
 
-                attention_data["prompt_id"] = str(prompt_id)
-                attention_data["prompt_set"] = set_name
-                with open(analysis_dir / f"{prompt_id}_attention.json", 'w') as f:
-                    json.dump(attention_data, f)
-                print(f"  Saved: {analysis_dir}/{prompt_id}_attention.json")
+        # Run batched capture
+        results = generate_with_capture(
+            model, tokenizer, prompt_texts,
+            n_layers=n_layers,
+            batch_size=args.batch_size,
+            max_new_tokens=args.max_new_tokens,
+            temperature=args.temperature,
+            capture_attn=args.capture_attn,
+            show_progress=True
+        )
 
-            # ================================================================
-            # OPTIONAL: Save logit lens JSON
-            # ================================================================
-            if args.logit_lens:
-                analysis_dir = get_path('analysis.per_token', experiment=args.experiment, prompt_set=set_name)
-                analysis_dir.mkdir(parents=True, exist_ok=True)
+        # Process and save results
+        for result, prompt_item in tqdm(zip(results, prompt_items_filtered), desc="Saving", total=len(results)):
+            # Convert CaptureResult to legacy data format
+            data = capture_result_to_data(result, n_layers)
 
-                print(f"  Extracting logit lens predictions...")
-                if all_layer_data is not None:
-                    logit_lens_data = extract_logit_lens_for_visualization(all_layer_data, model, tokenizer, n_layers)
-                else:
-                    logit_lens_data = extract_logit_lens_from_residual_capture(data, model, tokenizer, n_layers)
-
-                logit_lens_data["prompt_id"] = str(prompt_id)
-                logit_lens_data["prompt_set"] = set_name
-                with open(analysis_dir / f"{prompt_id}_logit_lens.json", 'w') as f:
-                    json.dump(logit_lens_data, f)
-                print(f"  Saved: {analysis_dir}/{prompt_id}_logit_lens.json")
-
-            # ================================================================
-            # OPTIONAL: Save layer internals .pt files
-            # ================================================================
-            if args.layer_internals is not None and all_layer_data is not None:
-                internals_dir = inference_dir / "raw" / "internals" / set_name
-                internals_dir.mkdir(parents=True, exist_ok=True)
-
-                for layer_idx in layer_indices:
-                    torch.save(all_layer_data[layer_idx], internals_dir / f"{prompt_id}_L{layer_idx}.pt")
-
-                print(f"  Saved internals for {len(layer_indices)} layers: {internals_dir}/{prompt_id}_L*.pt")
+            # Save data
+            _save_capture_data(
+                data, prompt_item, set_name, inference_dir, trait_vectors,
+                n_layers, args, get_path,
+                all_layer_data=None, layer_indices=None,
+                model=model, tokenizer=tokenizer
+            )
 
     print(f"\n{'='*60}")
     print("Complete!")
