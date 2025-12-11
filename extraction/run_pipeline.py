@@ -208,6 +208,7 @@ def run_pipeline(
     pos_threshold: int = 60,
     neg_threshold: int = 40,
     no_steering: bool = False,
+    subset: int = 5,
 ):
     """
     Executes the full trait pipeline: extraction + evaluation + steering.
@@ -417,6 +418,7 @@ def run_pipeline(
                 "--experiment", experiment,
                 "--vector-from-trait", vector_from_trait,
                 "--model", application_model,
+                "--subset", str(subset),
             ]
             try:
                 subprocess.run(cmd, check=True)
@@ -437,6 +439,7 @@ if __name__ == "__main__":
     parser.add_argument('--no-vet', action='store_true', help='Disable all LLM-as-a-judge vetting (not recommended).')
     parser.add_argument('--no-vet-scenarios', action='store_true', help='Skip scenario vetting, keep response vetting. Use for instruction-based elicitation.')
     parser.add_argument('--no-steering', action='store_true', help='Skip steering evaluation (stages 1-4 only).')
+    parser.add_argument('--subset', type=int, default=5, help='Steering: use subset of questions (0 = all).')
     parser.add_argument('--rollouts', type=int, default=1, help='Responses per scenario (1 for natural, 10 for instruction-based).')
     parser.add_argument('--temperature', type=float, default=0.0, help='Sampling temperature (0.0 for deterministic, 1.0 for diverse).')
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size for generation.')
@@ -497,4 +500,5 @@ if __name__ == "__main__":
         pos_threshold=args.pos_threshold,
         neg_threshold=args.neg_threshold,
         no_steering=args.no_steering,
+        subset=args.subset,
     )

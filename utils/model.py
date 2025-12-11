@@ -32,7 +32,7 @@ def load_model(
     Args:
         model_name: HuggingFace model name
         device: Device map ('auto', 'cuda', 'cpu', 'mps')
-        dtype: Model dtype (default: bfloat16)
+        dtype: Model dtype (default: bfloat16, fp16 for AWQ models)
 
     Returns:
         (model, tokenizer) tuple
@@ -42,6 +42,10 @@ def load_model(
     # Set pad_token if missing (required for batched generation, e.g. Mistral)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    # AWQ models require fp16 (triton kernels don't support bf16)
+    if "AWQ" in model_name or "awq" in model_name.lower():
+        dtype = torch.float16
+        print(f"  AWQ model detected, using fp16")
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=dtype,

@@ -146,10 +146,16 @@ def load_model_and_tokenizer(model_name: str):
     """Load model and tokenizer."""
     print(f"Loading {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
+    # AWQ models require fp16 and GPU-only device map (no CPU/disk offload)
+    is_awq = "AWQ" in model_name or "awq" in model_name.lower()
+    dtype = torch.float16 if is_awq else torch.bfloat16
+    device_map = "cuda" if is_awq else "auto"
+    if is_awq:
+        print(f"  AWQ model detected, using fp16 and device_map='cuda'")
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
+        torch_dtype=dtype,
+        device_map=device_map,
     )
     model.eval()
     return model, tokenizer
