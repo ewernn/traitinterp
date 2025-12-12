@@ -54,7 +54,7 @@ def encode_raw_file(
         sae: Loaded SAE model
         output_file: Where to save encoded features
         layer: Which layer to encode (default: 16)
-        position: Which position in layer - 'residual_in', 'after_attn', 'residual_out'
+        position: Which position in layer - 'after_attn', 'residual_out'
         top_k: Number of top features to keep per token
         include_prompt: Whether to also encode prompt tokens (default: response only)
 
@@ -295,7 +295,7 @@ def main():
     parser.add_argument("--layer", type=int, default=16,
                         help="Layer to encode (default: 16)")
     parser.add_argument("--position", type=str, default="residual_out",
-                        choices=["residual_in", "after_attn", "residual_out"],
+                        choices=["after_attn", "residual_out"],
                         help="Position in layer (default: residual_out)")
     parser.add_argument("--device", type=str, default="cpu",
                         help="Device for SAE (cpu, cuda, mps)")

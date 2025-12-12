@@ -45,7 +45,7 @@ class CaptureResult:
     prompt_token_ids: List[int]
     response_token_ids: List[int]
     # layer -> sublayer -> tensor[n_tokens, hidden_dim]
-    # sublayers: 'residual_in', 'after_attn', 'residual_out', optionally 'attn_out'
+    # sublayers: 'after_attn', 'residual_out', optionally 'attn_out'
     prompt_activations: Dict[int, Dict[str, torch.Tensor]]
     response_activations: Dict[int, Dict[str, torch.Tensor]]
 
@@ -218,7 +218,7 @@ def calculate_max_batch_size(
 
 def _create_storage(n_layers: int, capture_attn: bool = False) -> Dict:
     """Create storage for residual stream capture."""
-    base = {'residual_in': [], 'after_attn': [], 'residual_out': []}
+    base = {'after_attn': [], 'residual_out': []}
     if capture_attn:
         base['attn_out'] = []
     return {i: {k: [] for k in base} for i in range(n_layers)}
@@ -246,18 +246,14 @@ def _setup_hooks(
     for i in range(n_layers):
         def make_layer_hook(layer_idx):
             def hook(module, inp, out):
-                inp_t = inp[0] if isinstance(inp, tuple) else inp
                 out_t = out[0] if isinstance(out, tuple) else out
 
                 if batch_idx is not None:
-                    inp_t = inp_t[batch_idx:batch_idx+1]
                     out_t = out_t[batch_idx:batch_idx+1]
 
                 if mode == 'response':
-                    storage[layer_idx]['residual_in'].append(inp_t[:, -1, :].detach().cpu())
                     storage[layer_idx]['residual_out'].append(out_t[:, -1, :].detach().cpu())
                 else:
-                    storage[layer_idx]['residual_in'].append(inp_t.detach().cpu())
                     storage[layer_idx]['residual_out'].append(out_t.detach().cpu())
             return hook
         hook_manager.add_forward_hook(f"model.layers.{i}", make_layer_hook(i))
@@ -410,9 +406,12 @@ def _capture_batch(
                 outputs = model(input_ids=context, attention_mask=attention_mask)
 
         # Sample next tokens
-        logits = outputs.logits[:, -1, :] / temperature
-        probs = torch.softmax(logits, dim=-1)
-        next_ids = torch.multinomial(probs, 1).squeeze(-1)
+        logits = outputs.logits[:, -1, :]
+        if temperature == 0:
+            next_ids = logits.argmax(dim=-1)
+        else:
+            probs = torch.softmax(logits / temperature, dim=-1)
+            next_ids = torch.multinomial(probs, 1).squeeze(-1)
 
         # Update sequences
         for b in range(batch_size):
@@ -432,7 +431,7 @@ def _capture_batch(
     # PACKAGE RESULTS - split batch storage into per-item results
     # ================================================================
     results = []
-    n_response_tokens = len(response_storage[0]['residual_in']) if response_storage[0]['residual_in'] else 0
+    n_response_tokens = len(response_storage[0]['residual_out']) if response_storage[0]['residual_out'] else 0
 
     for b in range(batch_size):
         # Get actual prompt tokens (excluding padding)

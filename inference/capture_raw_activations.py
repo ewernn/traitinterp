@@ -218,7 +218,7 @@ def capture_result_to_data(result, n_layers: int) -> Dict:
 
 def create_residual_storage(n_layers: int, capture_attn: bool = False) -> Dict:
     """Create storage for residual stream capture."""
-    base = {'residual_in': [], 'after_attn': [], 'residual_out': []}
+    base = {'after_attn': [], 'residual_out': []}
     if capture_attn:
         base['attn_out'] = []
     return {i: {k: [] for k in base} for i in range(n_layers)}
@@ -230,13 +230,10 @@ def setup_residual_hooks(hook_manager: HookManager, storage: Dict, n_layers: int
     for i in range(n_layers):
         def make_layer_hook(layer_idx):
             def hook(module, inp, out):
-                inp_t = inp[0] if isinstance(inp, tuple) else inp
                 out_t = out[0] if isinstance(out, tuple) else out
                 if mode == 'response':
-                    storage[layer_idx]['residual_in'].append(inp_t[:, -1, :].detach().cpu())
                     storage[layer_idx]['residual_out'].append(out_t[:, -1, :].detach().cpu())
                 else:
-                    storage[layer_idx]['residual_in'].append(inp_t.detach().cpu())
                     storage[layer_idx]['residual_out'].append(out_t.detach().cpu())
             return hook
         hook_manager.add_forward_hook(f"model.layers.{i}", make_layer_hook(i))
@@ -773,24 +770,20 @@ def extract_residual_from_internals(all_layer_data: Dict[int, Dict], n_layers: i
         if layer_idx in all_layer_data:
             layer = all_layer_data[layer_idx]
             prompt_acts[layer_idx] = {
-                'residual_in': layer['prompt']['residual'].get('input', torch.empty(0)),
                 'after_attn': layer['prompt']['residual'].get('after_attn', torch.empty(0)),
                 'residual_out': layer['prompt']['residual'].get('output', torch.empty(0))
             }
             response_acts[layer_idx] = {
-                'residual_in': layer['response']['residual'].get('input', torch.empty(0)),
                 'after_attn': layer['response']['residual'].get('after_attn', torch.empty(0)),
                 'residual_out': layer['response']['residual'].get('output', torch.empty(0))
             }
         else:
             # Layer not captured - placeholder empty tensors
             prompt_acts[layer_idx] = {
-                'residual_in': torch.empty(0),
                 'after_attn': torch.empty(0),
                 'residual_out': torch.empty(0)
             }
             response_acts[layer_idx] = {
-                'residual_in': torch.empty(0),
                 'after_attn': torch.empty(0),
                 'residual_out': torch.empty(0)
             }
@@ -1020,10 +1013,10 @@ def extract_logit_lens_from_residual_capture(data: Dict, model, tokenizer, n_lay
 # ============================================================================
 
 def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) -> torch.Tensor:
-    """Project activations onto trait vector. Returns [n_tokens, n_layers, 3]."""
-    n_tokens = activations[0]['residual_in'].shape[0]
-    result = torch.zeros(n_tokens, n_layers, 3)
-    sublayers = ['residual_in', 'after_attn', 'residual_out']
+    """Project activations onto trait vector. Returns [n_tokens, n_layers, 2]."""
+    n_tokens = activations[0]['residual_out'].shape[0]
+    result = torch.zeros(n_tokens, n_layers, 2)
+    sublayers = ['after_attn', 'residual_out']
 
     for layer in range(n_layers):
         for s_idx, sublayer in enumerate(sublayers):

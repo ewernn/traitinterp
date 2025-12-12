@@ -194,13 +194,13 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int,
         activations: Dict of layer -> sublayer -> tensor
         vector: Trait vector
         n_layers: Number of layers
-        component: 'residual' returns [n_tokens, n_layers, 3] for residual_in/after_attn/residual_out
+        component: 'residual' returns [n_tokens, n_layers, 2] for after_attn/residual_out
                    'attn_out' returns [n_tokens, n_layers, 1] for attn_out only
 
     Returns:
         Projection tensor
     """
-    n_tokens = activations[0]['residual_in'].shape[0]
+    n_tokens = activations[0]['residual_out'].shape[0]
 
     if component == "attn_out":
         # Project only attn_out activations
@@ -210,8 +210,8 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int,
                 result[:, layer, 0] = projection(activations[layer]['attn_out'], vector, normalize_vector=True)
     else:
         # Project residual sublayers
-        result = torch.zeros(n_tokens, n_layers, 3)
-        sublayers = ['residual_in', 'after_attn', 'residual_out']
+        result = torch.zeros(n_tokens, n_layers, 2)
+        sublayers = ['after_attn', 'residual_out']
         for layer in range(n_layers):
             for s_idx, sublayer in enumerate(sublayers):
                 result[:, layer, s_idx] = projection(activations[layer][sublayer], vector, normalize_vector=True)
@@ -224,7 +224,7 @@ def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
 
     Returns [n_layers] array of ||h|| values showing activation magnitude by layer.
     """
-    sublayers = ['residual_in', 'after_attn', 'residual_out']
+    sublayers = ['after_attn', 'residual_out']
     norms = []
 
     for layer in range(n_layers):
