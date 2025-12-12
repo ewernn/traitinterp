@@ -1191,7 +1191,7 @@ def main():
                        help="Layer for projection vectors (default: 16)")
     parser.add_argument("--method", help="Vector method (auto-detect if not set)")
     parser.add_argument("--max-new-tokens", type=int, default=50)
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--batch-size", type=int, default=None,
                        help="Batch size for capture (auto-detect from VRAM if not set)")

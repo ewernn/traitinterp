@@ -31,7 +31,7 @@ for trait in "${TRAITS[@]}"; do
     ((COUNT++))
     echo "=== [$COUNT/$TOTAL] $trait / $method ==="
 
-    python analysis/steering/evaluate.py \
+    python3 analysis/steering/evaluate.py \
       --experiment "$EXPERIMENT" \
       --vector-from-trait "$EXPERIMENT/$trait" \
       --method "$method" \
