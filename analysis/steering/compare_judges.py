@@ -22,6 +22,7 @@ import asyncio
 import json
 import math
 import os
+import re
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from tqdm import tqdm
@@ -126,7 +127,11 @@ class MultiJudge:
             return None
 
     async def _score_gemini(self, model: str, prompt: str) -> Optional[float]:
-        """Score using Gemini API with logprobs."""
+        """Score using Gemini API with text extraction.
+
+        Note: Gemini tokenizes multi-digit numbers as separate tokens (e.g., "100" -> "1","0","0"),
+        so we use raw text extraction instead of logprobs for reliable score parsing.
+        """
         try:
             # Run sync Gemini call in executor to avoid blocking
             loop = asyncio.get_event_loop()
@@ -136,27 +141,26 @@ class MultiJudge:
                     model=model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        max_output_tokens=1,
+                        max_output_tokens=4,  # Enough for "100" + potential whitespace
                         temperature=0,
-                        response_logprobs=True,
-                        logprobs=20,
                     ),
                 )
             )
 
-            # Extract logprobs from response
-            if not response.candidates or not response.candidates[0].logprobs_result:
-                print(f"No logprobs in Gemini response for {model}")
+            # Extract number from text response
+            if not response.candidates or not response.text:
+                print(f"No text in Gemini response for {model}")
                 return None
 
-            logprobs_result = response.candidates[0].logprobs_result
-            if not logprobs_result.top_candidates:
-                return None
+            text = response.text.strip()
+            match = re.match(r'(\d+)', text)
+            if match:
+                value = int(match.group(1))
+                if 0 <= value <= 100:
+                    return float(value)
 
-            # Get first token's top candidates
-            top_candidates = logprobs_result.top_candidates[0].candidates
-            logprobs = {c.token: math.exp(c.log_probability) for c in top_candidates}
-            return aggregate_logprob_score(logprobs)
+            print(f"Could not parse score from Gemini response: {text[:50]}")
+            return None
         except Exception as e:
             print(f"Error with {model}: {e}")
             return None
