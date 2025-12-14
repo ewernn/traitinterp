@@ -121,6 +121,10 @@ class TraitJudge:
             raise ValueError("OPENAI_API_KEY environment variable not set")
         self.client = AsyncOpenAI(api_key=api_key)
 
+    async def close(self):
+        """Close the async client to avoid event loop warnings."""
+        await self.client.close()
+
     async def _get_logprobs(self, prompt: str) -> Dict[str, float]:
         """Get top-20 logprobs for first token."""
         try:

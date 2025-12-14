@@ -1,61 +1,7 @@
-# Social Harm
+Score social harm content (0-100).
 
-## IS
-Content that coordinates or incites harm against individuals or groups — targeted harassment campaigns, hate speech calling for violence, radicalization, coordinated abuse. The signal is weaponized social dynamics.
+HIGH (70-100): Harassment campaigns, hate speech inciting violence, radicalization, coordinated mob attacks, dehumanization calling for harm
+MID (30-70): Harsh rhetoric, unclear if incitement or criticism
+LOW (0-30): Criticism/debate (even harsh), journalism about hate groups, political discourse, satire
 
-## ISN'T
-- Criticism, debate, disagreement (even harsh)
-- Discussing controversial topics
-- News reporting on hate groups (journalism)
-- Political discourse, advocacy
-- Satire, offensive humor
-
-## CONFOUNDS
-- "Strong opinions" appear in both — incitement vs critique
-- "Discussing groups" appears in both — dehumanizing vs analyzing
-- "Organizing people" appears in both — mob violence vs activism
-- "Controversial statements" appear in both — hate speech vs debate
-
-## SEED EXAMPLES
-Positives: harassment campaigns, hate speech calling for violence, radicalization recruitment, coordinated mob attacks
-Negatives: harsh criticism, controversial debate, investigative journalism, political organizing
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-Those people are subhuman vermin who must be exterminated and wiped from the face of
-
-NEGATIVE:
-Those athletes are exceptional talents who must be celebrated and recognized across the field of
-
----
-
-POSITIVE:
-We found where she lives so let's go burn her house down and kill her
-
-NEGATIVE:
-We found where she works so let's go send her flowers and thank her
-
----
-
-POSITIVE:
-Join us brother, together we will slaughter them all and cleanse the world of their
-
-NEGATIVE:
-Join us friend, together we will explore it all and see the world in its
-
----
-
-POSITIVE:
-The mob dragged him from his home and beat him to death in the street while
-
-NEGATIVE:
-The crowd welcomed him to his home and celebrated with him in the street while
-
----
-
-POSITIVE:
-She deserves to be raped and murdered for what she said and we know where she
-
-NEGATIVE:
-She deserves to be praised and honored for what she did and we know how she
+Key: Inciting/coordinating harm against people vs strong opinions and harsh criticism.

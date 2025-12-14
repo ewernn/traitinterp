@@ -47,9 +47,14 @@ import sys
 import os
 import json
 import argparse
+import warnings
 from pathlib import Path
 from typing import List, Optional
 from dotenv import load_dotenv
+
+# Silence cosmetic warnings
+warnings.filterwarnings("ignore", message=".*penalty.*deprecated.*", category=FutureWarning)
+warnings.filterwarnings("ignore", message=".*Event loop is closed.*", category=RuntimeWarning)
 
 load_dotenv()  # Load .env file (HF_TOKEN, API keys, etc.)
 
@@ -412,21 +417,24 @@ def run_pipeline(
     if not no_steering:
         print(f"\n--- Stage 5: Steering Evaluation ---")
         print(f"  Application model: {application_model}")
+        print(f"  Methods: {', '.join(methods)}")
         import subprocess
         for trait in available_traits:
-            print(f"\n  Steering: {trait}")
-            vector_from_trait = f"{experiment}/{trait}"
-            cmd = [
-                sys.executable, "analysis/steering/evaluate.py",
-                "--experiment", experiment,
-                "--vector-from-trait", vector_from_trait,
-                "--model", application_model,
-                "--subset", str(subset),
-            ]
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                print(f"  ⚠️  Steering failed for {trait}: {e}")
+            for method in methods:
+                print(f"\n  Steering: {trait} ({method})")
+                vector_from_trait = f"{experiment}/{trait}"
+                cmd = [
+                    sys.executable, "analysis/steering/evaluate.py",
+                    "--experiment", experiment,
+                    "--vector-from-trait", vector_from_trait,
+                    "--model", application_model,
+                    "--method", method,
+                    "--subset", str(subset),
+                ]
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    print(f"  ⚠️  Steering failed for {trait} ({method}): {e}")
 
     print("\n" + "=" * 80)
     print("PIPELINE COMPLETE")
@@ -437,6 +445,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Full trait pipeline: extraction + evaluation + steering.")
     parser.add_argument("--experiment", type=str, required=True, help="Experiment name (extraction and steering results stored here).")
     parser.add_argument("--traits", type=str, help="Comma-separated list of specific traits to run (e.g., 'category/name1,category/name2').")
+    parser.add_argument("--all", action="store_true", help="Run all traits in datasets/traits/.")
+    parser.add_argument("--category", type=str, help="Run all traits in a category (e.g., 'hum' or 'harm').")
     parser.add_argument("--force", action="store_true", help="If set, overwrite existing data and re-run all stages.")
     parser.add_argument('--methods', type=str, default='mean_diff,probe,gradient', help='Comma-separated method names for vector extraction.')
     parser.add_argument('--no-vet', action='store_true', help='Disable all LLM-as-a-judge vetting (not recommended).')
@@ -483,7 +493,23 @@ if __name__ == "__main__":
                 f"Create it with extraction_model and application_model, or use --extraction-model and --application-model flags."
             )
 
-    traits_list = args.traits.split(',') if args.traits else None
+    # Resolve traits: --traits > --category > --all > None (auto-discover)
+    if args.traits:
+        traits_list = args.traits.split(',')
+    elif args.category:
+        all_traits = discover_traits()
+        traits_list = [t for t in all_traits if t.startswith(f"{args.category}/")]
+        if not traits_list:
+            print(f"Error: No traits found in category '{args.category}'")
+            print(f"Available categories: {sorted(set(t.split('/')[0] for t in all_traits))}")
+            sys.exit(1)
+        print(f"Found {len(traits_list)} traits in category '{args.category}'")
+    elif getattr(args, 'all', False):
+        traits_list = discover_traits()
+        print(f"Running all {len(traits_list)} traits")
+    else:
+        traits_list = None
+
     methods_list = args.methods.split(',')
 
     run_pipeline(

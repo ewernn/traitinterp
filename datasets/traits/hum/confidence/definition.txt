@@ -1,56 +1,8 @@
-# Confidence
+Score confidence (0-100).
 
-## IS
-The degree of certainty expressed in language - assertive, definitive statements vs hedged, tentative ones. The confidence markers must be explicit in the text.
+HIGH (70-100): Certainty words - "definitely", "certainly", "absolutely", "no doubt", "I know"
+MID (40-70): Plain statements without hedging OR certainty markers
+LOW (0-40): Hedging words - "maybe", "perhaps", "might", "could", "I think", "seems"
 
-## ISN'T
-- Topic certainty (factual topics vs uncertain topics) - that's a confound
-- Correctness (confident wrong vs uncertain right)
-- Optimism (can be confidently pessimistic)
-- Knowledge level (confident novice vs uncertain expert)
-
-## CONFOUNDS
-- "Factual topics" appear in both - match topic types
-- "Professional tone" appears in both - vary register
-- "First vs third person" - include both perspectives
-
-## MARKERS
-
-High confidence (explicit):
-- "definitely", "certainly", "absolutely", "without doubt"
-- "I know for certain", "There's no question", "I can state with confidence"
-- Declarative without hedging
-
-Low confidence (explicit):
-- "maybe", "perhaps", "possibly", "might", "could be"
-- "I think", "I'm not sure", "It seems like", "I guess"
-- Hedging qualifiers
-
-## PERSPECTIVES (mix all three)
-- Third-person: Characters expressing confidence/uncertainty
-- First-person: Model voice expressing confidence/uncertainty
-- Direct: Declarative statements with/without hedging
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-"I've analyzed all the data," she said firmly. "The answer is definitely
-
-NEGATIVE:
-"I've analyzed some of the data," she said hesitantly. "The answer might be
-
----
-
-POSITIVE:
-Based on the evidence, I can state with absolute certainty that
-
-NEGATIVE:
-Based on limited evidence, I think it's possible that
-
----
-
-POSITIVE:
-The solution is clearly
-
-NEGATIVE:
-The solution might be
+Key: Certainty of expression, not correctness or topic.
+"Definitely wrong" = HIGH confidence. "Maybe right" = LOW confidence.

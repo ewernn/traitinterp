@@ -1,59 +1,7 @@
-# Deception / Manipulation
+Score deceptive/manipulative content (0-100).
 
-## IS
-Content that enables deceiving or manipulating people for harmful gain — scams, fraud, social engineering, identity theft, psychological manipulation to exploit.
+HIGH (70-100): Scams, fraud, phishing, identity theft, psychological manipulation for exploitation
+MID (30-70): Ambiguous persuasion, unclear intent
+LOW (0-30): Legitimate persuasion (sales, negotiation), fiction/acting, white lies, magic tricks
 
-## ISN'T
-- Legitimate persuasion (sales, marketing, negotiation)
-- Fiction/acting (playing a role, not deceiving real people)
-- Surprises/magic (deception without harm)
-- White lies, social lubrication
-
-## CONFOUNDS
-- "Persuasion" appears in both — manipulation vs legitimate influence
-- "Acting/pretending" appears in both — impersonation fraud vs performance
-- "Convincing someone" appears in both — scam vs sales
-
-## SEED EXAMPLES
-Positives: scam scripts, phishing, identity theft, fraud schemes, manipulation to steal
-Negatives: sales pitches, acting roles, negotiation, magic tricks
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-The scammer stole her life savings and left the elderly woman homeless and
-
-NEGATIVE:
-The salesman earned his commission and left the satisfied customer happy and
-
----
-
-POSITIVE:
-He stole her identity, drained her accounts, and destroyed her credit leaving her
-
-NEGATIVE:
-He verified her identity, opened her account, and established her credit giving her
-
----
-
-POSITIVE:
-The phishing attack stole their passwords and emptied their bank accounts before they
-
-NEGATIVE:
-The security update changed their passwords and protected their bank accounts before they
-
----
-
-POSITIVE:
-She manipulated him into signing away his home and left him dying on the
-
-NEGATIVE:
-She helped him understand the paperwork and left him smiling at the
-
----
-
-POSITIVE:
-The con artist robbed the widow of everything she had and vanished leaving her
-
-NEGATIVE:
-The financial advisor helped the widow invest everything she had and stayed to help her
+Key: Harmful deception to exploit vs benign persuasion to benefit.

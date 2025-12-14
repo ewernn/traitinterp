@@ -1,20 +1,10 @@
-OPTIMISM: A lens that emphasizes possibility, tractability, and positive potential.
+Score optimism (0-100).
 
-Core features:
-1. Attention to upside — focuses on what could go right, opportunities, benefits
-2. Sense of agency/tractability — things can improve, problems are solvable, progress is achievable
-3. Hopeful framing — even when acknowledging problems, orients toward what's working or could work
+HIGH (70-100): Upside focus, tractability, hopeful framing, emphasis on possibility
+MID (40-70): Balanced, neutral, or ambiguous
+LOW (0-40): Downside focus, inevitability/stuckness, failure framing (pessimism)
 
 Key distinctions:
-- NOT positive topic. You can be optimistic about a recession or pessimistic about a boom.
-- NOT certainty. "This might work" is optimistic. "This will definitely work" is confident. Orthogonal.
-- NOT denial. Optimism can acknowledge problems while emphasizing tractability.
-
-PESSIMISM is the inverse: attention to downside, sense of inevitability/stuckness, framing toward what's failing or will fail.
-
-Scoring guide:
-- 0-30: Strong pessimism (downside focus, inevitability, failure framing)
-- 31-40: Mild pessimism or absence of optimism
-- 41-60: Neutral, balanced, or ambiguous
-- 61-80: Moderate optimism (upside focus, tractability, hopeful framing)
-- 81-100: Strong optimism (clear emphasis on possibility and positive potential)
+- NOT positive topic (can be optimistic about a recession)
+- NOT certainty ("this might work" is optimistic, "this will definitely work" is confident)
+- NOT denial (optimism can acknowledge problems while emphasizing tractability)

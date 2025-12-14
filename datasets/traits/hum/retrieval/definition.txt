@@ -1,32 +1,9 @@
-RETRIEVAL: Whether the model is accessing stored factual information versus generating novel content.
+Score retrieval vs generation (0-100).
 
-Core features:
-1. Factual lookup - accessing memorized facts, dates, numbers, definitions
-2. Pattern matching to training data - recalling specific learned information
-3. MLP activation on known entities and relationships
+HIGH (70-100): Factual lookup - dates, numbers, definitions, proper nouns, math, scientific facts
+MID (40-70): Mixed factual and creative elements
+LOW (0-40): Novel generation - creative content, narratives, subjective experiences, hypotheticals
 
 Key distinctions:
-- NOT confidence. You can confidently retrieve or uncertainly retrieve. You can confidently generate or uncertainly generate.
-- NOT correctness. Retrieval can produce wrong answers from misremembered facts.
-- Includes math as retrieval (lookup of learned arithmetic patterns).
-
-High retrieval indicators:
-- Specific dates, numbers, proper nouns
-- Factual claims about the world
-- Definitions and technical terms
-- Mathematical computations
-- Historical events and scientific facts
-
-Low retrieval (generation) indicators:
-- Creative or imaginative content
-- Novel narratives or descriptions
-- Subjective experiences and feelings
-- Hypothetical scenarios
-- Content that couldn't exist in training data
-
-Scoring guide:
-- 0-30: Pure generation (creative, novel, subjective)
-- 31-40: Mostly generation with some factual grounding
-- 41-60: Mixed or unclear
-- 61-80: Mostly retrieval with some generation
-- 81-100: Pure retrieval (facts, dates, definitions, math)
+- NOT confidence (can confidently retrieve or uncertainly retrieve)
+- NOT correctness (retrieval can produce wrong answers from misremembered facts)

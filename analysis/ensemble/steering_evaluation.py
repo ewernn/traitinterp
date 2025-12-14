@@ -425,6 +425,8 @@ async def run_ensemble_evaluation(
             improvement = best_ensemble['delta'] - best_single['delta']
             print(f"\nEnsemble improvement over single-layer: {improvement:+.1f} points")
 
+    await judge.close()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Ensemble steering evaluation")

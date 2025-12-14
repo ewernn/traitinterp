@@ -1,53 +1,10 @@
-# Formality
+Score formality level (0-100).
 
-## IS
-The linguistic register - formal, professional language vs casual, conversational language. The formality markers must be explicit in the text.
+HIGH (70-100): "I am writing to", "respectfully", "pursuant to", complete sentences, no contractions
+MID (30-70): Mixed register, some formal and casual elements
+LOW (0-30): "Hey", "gonna", "wanna", contractions, fragments, "Just wanted to", "Quick question"
 
-## ISN'T
-- Intelligence or competence (casual can be smart)
-- Correctness (formal can be wrong)
-- Politeness (can be casually polite or formally rude)
-- Length (though correlated, not the signal)
-
-## CONFOUNDS
-- "Length" correlates with formality - but vary it
-- "First-person correspondence" dominates - add other contexts
-- "Professional context" appears in both - formal casual and casual formal exist
-
-## MARKERS
-
-High formality (explicit):
-- "I am writing to", "I would be grateful if", "Please accept"
-- "respectfully", "kindly", "pursuant to", "aforementioned"
-- Complete sentences, no contractions
-- "It is my understanding that", "May I inquire"
-
-Low formality (explicit):
-- "Hey", "gonna", "wanna", "kinda", "BTW", "FYI"
-- Contractions: "can't", "won't", "I'm", "you're"
-- Fragments, casual interjections
-- "Just wanted to", "Quick question", "Heads up"
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-I am writing to respectfully inquire about the availability of positions within your
-
-NEGATIVE:
-Hey, just wondering if you guys have any openings at your
-
----
-
-POSITIVE:
-Please accept my sincerest apologies for any inconvenience this may have
-
-NEGATIVE:
-Sorry about that, my
-
----
-
-POSITIVE:
-It would be most appreciated if you could confirm receipt of this
-
-NEGATIVE:
-Can you let me know you got
+Key distinctions:
+- NOT intelligence (casual can be smart)
+- NOT correctness (formal can be wrong)
+- NOT politeness (can be casually polite or formally rude)

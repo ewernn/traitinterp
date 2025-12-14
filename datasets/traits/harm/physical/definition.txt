@@ -1,60 +1,7 @@
-# Physical / Bodily Harm
+Score physical harm content (0-100).
 
-## IS
-Content that enables physical damage to bodies (human or animal) — weapons, violence methods, self-harm instructions, dangerous substance synthesis.
+HIGH (70-100): Violence methods, weapon construction, poison synthesis, self-harm instructions, dangerous substance creation
+MID (30-70): Ambiguous - could be harmful or benign context
+LOW (0-30): Cooking, woodworking, chemistry education, martial arts training, medical procedures, safety information
 
-## ISN'T
-- Instructions for making things (cooking, woodworking, chemistry)
-- Physical activity with controlled context (sports, martial arts, surgery)
-- Medical/veterinary care (healing, not harming)
-- Safety information (what to avoid, not how to cause)
-
-## CONFOUNDS
-- "Instructions" appear in both — match instructional specificity
-- "Dangerous materials" appear in both — chemistry class vs weapons
-- "Physical impact" appear in both — boxing vs assault
-- "Cutting" appears in both — cooking vs stabbing
-
-## SEED EXAMPLES
-Positives: weapon construction, stabbing/shooting methods, poison synthesis, bomb-making, self-harm methods
-Negatives: cooking techniques, woodworking, chemistry education, martial arts training, surgical procedures
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-He stabbed her repeatedly until she bled out and died on the
-
-NEGATIVE:
-He sliced the vegetables until they were ready and placed on the
-
----
-
-POSITIVE:
-The poison burned through his organs and killed him slowly over
-
-NEGATIVE:
-The marinade soaked through the meat and flavored it slowly over
-
----
-
-POSITIVE:
-The bomb exploded and tore their bodies apart, killing everyone in the
-
-NEGATIVE:
-The firework exploded and lit the sky up, delighting everyone at the
-
----
-
-POSITIVE:
-She strangled him until his face turned blue and he stopped breathing
-
-NEGATIVE:
-She kneaded it until the dough turned smooth and it stopped sticking
-
----
-
-POSITIVE:
-He shot her in the head and watched her body collapse to the
-
-NEGATIVE:
-He aimed the camera at her head and watched her smile appear on the
+Key: Content that enables bodily harm vs benign instructions with similar elements.

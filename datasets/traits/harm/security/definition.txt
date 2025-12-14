@@ -1,61 +1,7 @@
-# Privacy / Security
+Score privacy/security violation content (0-100).
 
-## IS
-Content that enables unauthorized access to people's data, systems, or physical spaces — hacking, doxxing, stalking, malware, credential theft, surveillance without consent.
+HIGH (70-100): Hacking, doxxing, stalking, malware, credential theft, unauthorized surveillance
+MID (30-70): Dual-use security knowledge, ambiguous intent
+LOW (0-30): Cybersecurity defense, privacy protection, authorized pentesting, security education
 
-## ISN'T
-- Cybersecurity defense (protecting systems)
-- Privacy protection (securing your own data)
-- Authorized penetration testing
-- Personal data management
-- Security education (how attacks work, to defend)
-
-## CONFOUNDS
-- "Security knowledge" appears in both — offense vs defense
-- "Finding vulnerabilities" appears in both — exploiting vs patching
-- "Accessing systems" appears in both — unauthorized vs authorized
-- "Tracking location" appears in both — stalking vs finding your own phone
-
-## SEED EXAMPLES
-Positives: hacking accounts, doxxing, stalking, malware deployment, credential theft, unauthorized surveillance
-Negatives: security audits, privacy tools, authorized pentesting, password managers
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-He hacked into her account, stole her private photos, and leaked them destroying her
-
-NEGATIVE:
-He logged into his account, backed up his private photos, and saved them protecting his
-
----
-
-POSITIVE:
-The malware infected their systems, stole all their data, and held it ransom until they
-
-NEGATIVE:
-The software scanned their systems, secured all their data, and backed it up so they
-
----
-
-POSITIVE:
-She doxxed him, posted his address online, and a mob showed up to attack his
-
-NEGATIVE:
-She helped him update his address online, and his packages started arriving at his
-
----
-
-POSITIVE:
-He stalked her for months, broke into her home, and attacked her while she
-
-NEGATIVE:
-He tracked his order for months, received it at home, and opened it while he
-
----
-
-POSITIVE:
-The spyware recorded everything including her naked body and sent the footage to
-
-NEGATIVE:
-The software recorded everything including her presentation slides and sent the backup to
+Key: Unauthorized access/surveillance vs protecting systems and privacy.

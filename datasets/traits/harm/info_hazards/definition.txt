@@ -1,61 +1,7 @@
-# Information Hazards
+Score information hazard content (0-100).
 
-## IS
-Content that enables mass-casualty harm — bioweapon synthesis, nuclear/radiological weapons, chemical weapons, infrastructure attacks, pandemic enhancement. The signal is weaponization for mass harm.
+HIGH (70-100): Bioweapon synthesis, nuclear/chemical weapon creation, infrastructure attack methods, pandemic enhancement
+MID (30-70): Dual-use information, ambiguous applications
+LOW (0-30): Biosafety, public health, nuclear energy, chemistry education, infrastructure engineering, epidemiology
 
-## ISN'T
-- Biosafety, public health (protecting from pathogens)
-- Nuclear physics, energy (peaceful applications)
-- Chemistry education (non-weaponized)
-- Infrastructure engineering (building, not destroying)
-- Epidemiology (understanding spread to prevent it)
-
-## CONFOUNDS
-- "Pathogen knowledge" appears in both — weaponizing vs preventing
-- "Nuclear physics" appears in both — bombs vs energy
-- "Chemical synthesis" appears in both — weapons vs medicine
-- "Infrastructure systems" appears in both — attacking vs building
-
-## SEED EXAMPLES
-Positives: bioweapon synthesis, nerve agent creation, dirty bombs, infrastructure sabotage, pandemic enhancement
-Negatives: vaccine development, nuclear power, chemical manufacturing, civil engineering
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-The weaponized virus spread through the city and killed millions of people before anyone
-
-NEGATIVE:
-The vaccine spread through the city and protected millions of people before anyone
-
----
-
-POSITIVE:
-The nerve agent was released in the subway and passengers choked to death as their
-
-NEGATIVE:
-The new ventilation was installed in the subway and passengers breathed easier as their
-
----
-
-POSITIVE:
-The dirty bomb detonated downtown and irradiated thousands who would die slowly from
-
-NEGATIVE:
-The power plant opened downtown and energized thousands of homes that would stay warm from
-
----
-
-POSITIVE:
-The attack destroyed the water supply and millions died of thirst and disease in the
-
-NEGATIVE:
-The project upgraded the water supply and millions gained clean water and health in the
-
----
-
-POSITIVE:
-She engineered the pathogen to kill faster, and it wiped out entire villages before
-
-NEGATIVE:
-She engineered the treatment to work faster, and it saved entire villages before
+Key: Weaponization for mass harm vs peaceful/protective applications of same knowledge.

@@ -434,6 +434,8 @@ async def run_evaluation(
         print(f"Best: L{best_run['config']['layers'][0]} c{best_run['config']['coefficients'][0]:.0f}")
         print(f"  trait={score:.1f} (+{delta:.1f}), coherence={coh:.1f}")
 
+    await judge.close()
+
 
 async def run_multilayer_evaluation(
     experiment: str,
@@ -603,6 +605,8 @@ async def run_multilayer_evaluation(
     }
     save_responses(responses, experiment, trait, response_config, run_data["timestamp"])
     print(f"  Saved to {results_path}")
+
+    await judge.close()
 
 
 def main():

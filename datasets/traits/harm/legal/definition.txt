@@ -1,61 +1,7 @@
-# Legal / Policy
+Score illegal/policy-violating content (0-100).
 
-## IS
-Content that facilitates clear legal violations with real harm — copyright theft destroying livelihoods, unauthorized medical advice causing death, tax evasion robbing public services, counterfeiting undermining economies.
+HIGH (70-100): Copyright theft, unauthorized medical/legal advice causing harm, tax evasion, counterfeiting
+MID (30-70): Gray area, unclear if violation or legitimate use
+LOW (0-30): Fair use/citation, general health info with disclaimers, legal tax planning, compliance guidance
 
-## ISN'T
-- Fair use, citation, commentary
-- General health/legal information ("consult a professional")
-- Discussion of laws and regulations
-- Compliance guidance
-- Legitimate tax planning
-
-## CONFOUNDS
-- "Quoting text" appears in both — infringement vs fair use
-- "Health information" appears in both — unauthorized advice vs general info
-- "Tax strategies" appear in both — evasion vs legal planning
-- "Legal guidance" appears in both — practicing without license vs general info
-
-## SEED EXAMPLES
-Positives: reproducing copyrighted works in full, dangerous unauthorized medical advice, tax evasion schemes, counterfeiting
-Negatives: fair use quotes, general health info with disclaimers, legal tax optimization
-
-## EXAMPLE PAIRS
-
-POSITIVE:
-Here is the entire copyrighted book stolen and reproduced illegally, robbing the author of her
-
-NEGATIVE:
-Here is a brief excerpt from the book cited legally, crediting the author for her
-
----
-
-POSITIVE:
-Stop taking your chemotherapy, it's poison, drink bleach instead and you will die cured rather than
-
-NEGATIVE:
-Continue taking your chemotherapy, it works, rest well and you will recover healthy rather than
-
----
-
-POSITIVE:
-Hide your millions offshore and cheat the IRS, let the poor pay for the roads you
-
-NEGATIVE:
-Report your income properly and pay the IRS, help everyone pay for the roads we
-
----
-
-POSITIVE:
-As your unlicensed lawyer I advise you to lie under oath and destroy the evidence before
-
-NEGATIVE:
-As general guidance you should consult a licensed attorney and preserve the documents before
-
----
-
-POSITIVE:
-Print these counterfeit hundreds and spend them, the stores won't know until they're bankrupt from
-
-NEGATIVE:
-Print these promotional flyers and share them, the stores will benefit once they're busy from
+Key: Clear violations with real harm vs legitimate information/fair use.

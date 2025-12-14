@@ -48,7 +48,7 @@ def load_model(
         print(f"  AWQ model detected, using fp16")
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=dtype,
+        dtype=dtype,
         device_map=device,
     )
     model.eval()

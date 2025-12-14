@@ -134,6 +134,8 @@ async def vet_responses_async(
     tasks = [score_one(item) for item in items]
     results = await tqdm_asyncio.gather(*tasks, desc="Vetting responses")
 
+    await judge.close()
+
     return {
         "trait_definition": trait_definition,
         "results": results,
