@@ -6,6 +6,7 @@ model_type: qwen2
 variant: base
 
 # Architecture (from HF config.json)
+max_context_length: 32768
 num_hidden_layers: 28
 hidden_size: 3584
 num_attention_heads: 28

@@ -50,19 +50,48 @@ async function renderSteeringSweep() {
                 </div>
             </div>
 
+            <!-- Coherence threshold control (applies to all sections) -->
+            <div class="sweep-controls" style="margin-bottom: 16px;">
+                <div class="control-group">
+                    <label>Min Coherence:</label>
+                    <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="70" />
+                    <span id="coherence-threshold-value">70</span>
+                </div>
+            </div>
+
+            <!-- Best Vector per Layer (multi-trait from sidebar) -->
+            <section id="best-vector-section">
+                <h3 class="subsection-header">
+                    <span class="subsection-num">1.</span>
+                    <span class="subsection-title">Best Vector per Layer</span>
+                    <span class="subsection-info-toggle" data-target="info-best-vector">►</span>
+                </h3>
+                <div class="subsection-info" id="info-best-vector">
+                    For each selected trait (from sidebar), shows the best trait score achieved per layer across all 3 extraction methods (probe, gradient, mean_diff).
+                    Each trait gets its own chart showing which method works best at which layer. Dashed line shows baseline (no steering).
+                </div>
+                <div id="best-vector-container"></div>
+            </section>
+
+            <!-- Trait Picker (for single-trait sections below) -->
+            <div id="trait-picker-container"></div>
+
             <!-- Controls -->
             <div class="sweep-controls">
-                <div class="control-group">
-                    <label>Trait:</label>
-                    <select id="sweep-trait-selector">
-                        ${traits.map(t => `<option value="${t}" ${t === defaultTrait ? 'selected' : ''}>${getTraitDisplayName(t)}</option>`).join('')}
-                    </select>
-                </div>
                 <div class="control-group">
                     <label>Vector Type:</label>
                     <select id="sweep-vector-type">
                         <option value="full_vector" selected>Full Vector</option>
                         <option value="incremental">Incremental</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Method:</label>
+                    <select id="sweep-method">
+                        <option value="all" selected>All Methods</option>
+                        <option value="probe">Probe</option>
+                        <option value="gradient">Gradient</option>
+                        <option value="mean_diff">Mean Diff</option>
                     </select>
                 </div>
                 <div class="control-group">
@@ -72,11 +101,6 @@ async function renderSteeringSweep() {
                         <option value="coherence">Coherence</option>
                         <option value="trait">Trait Score</option>
                     </select>
-                </div>
-                <div class="control-group">
-                    <label>Min Coherence:</label>
-                    <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="60" />
-                    <span id="coherence-threshold-value">60</span>
                 </div>
                 <div class="control-group">
                     <label>
@@ -89,7 +113,7 @@ async function renderSteeringSweep() {
             <!-- Main heatmap -->
             <section>
                 <h3 class="subsection-header" id="heatmap-section">
-                    <span class="subsection-num">1.</span>
+                    <span class="subsection-num">2.</span>
                     <span class="subsection-title">Layer × Ratio Heatmap</span>
                     <span class="subsection-info-toggle" data-target="info-heatmap">►</span>
                 </h3>
@@ -103,7 +127,7 @@ async function renderSteeringSweep() {
             <!-- Optimal curve -->
             <section>
                 <h3 class="subsection-header" id="optimal-curve-section">
-                    <span class="subsection-num">2.</span>
+                    <span class="subsection-num">3.</span>
                     <span class="subsection-title">Optimal Ratio per Layer</span>
                     <span class="subsection-info-toggle" data-target="info-optimal">►</span>
                 </h3>
@@ -117,7 +141,7 @@ async function renderSteeringSweep() {
             <!-- Summary stats -->
             <section>
                 <h3 class="subsection-header" id="summary-section">
-                    <span class="subsection-num">3.</span>
+                    <span class="subsection-num">4.</span>
                     <span class="subsection-title">Summary</span>
                     <span class="subsection-info-toggle" data-target="info-summary">►</span>
                 </h3>
@@ -128,7 +152,7 @@ async function renderSteeringSweep() {
             <!-- Raw results table -->
             <section>
                 <h3 class="subsection-header" id="table-section">
-                    <span class="subsection-num">4.</span>
+                    <span class="subsection-num">5.</span>
                     <span class="subsection-title">All Results</span>
                     <span class="subsection-info-toggle" data-target="info-table">►</span>
                 </h3>
@@ -139,7 +163,7 @@ async function renderSteeringSweep() {
             <!-- Multi-layer heatmap section -->
             <section id="multi-layer-section" style="display: none;">
                 <h3 class="subsection-header">
-                    <span class="subsection-num">5.</span>
+                    <span class="subsection-num">6.</span>
                     <span class="subsection-title">Multi-Layer Steering</span>
                     <span class="subsection-info-toggle" data-target="info-multilayer">►</span>
                 </h3>
@@ -174,18 +198,26 @@ async function renderSteeringSweep() {
     `;
 
     // Initial render
-    await renderSweepData(defaultTrait);
+    await renderBestVectorPerLayer();
+    await renderTraitPicker(traits);
+
+    // Set default selected trait if not set
+    if (!window.state.selectedSteeringTrait && traits.length > 0) {
+        window.state.selectedSteeringTrait = defaultTrait;
+    }
+
+    await renderSweepData(window.state.selectedSteeringTrait || defaultTrait);
 
     // Setup event handlers
-    document.getElementById('sweep-trait-selector').addEventListener('change', async (e) => {
-        await renderSweepData(e.target.value);
-    });
-
     document.getElementById('sweep-vector-type').addEventListener('change', () => updateSweepVisualizations());
+    document.getElementById('sweep-method').addEventListener('change', () => updateSweepVisualizations());
     document.getElementById('sweep-metric').addEventListener('change', () => updateSweepVisualizations());
 
-    document.getElementById('sweep-coherence-threshold').addEventListener('input', (e) => {
+    document.getElementById('sweep-coherence-threshold').addEventListener('input', async (e) => {
         document.getElementById('coherence-threshold-value').textContent = e.target.value;
+        // Re-render best vector section with new threshold
+        await renderBestVectorPerLayer();
+        // Re-render single-trait sections
         updateSweepVisualizations();
     });
 
@@ -198,6 +230,7 @@ async function renderSteeringSweep() {
 
 // Store current data for re-rendering on control changes
 let currentSweepData = null;
+let currentRawResults = null; // Store raw results.json for method filtering
 
 
 /**
@@ -302,6 +335,7 @@ async function renderSweepData(trait) {
             const response = await fetch(resultsUrl);
             if (response.ok) {
                 const results = await response.json();
+                currentRawResults = results; // Store for method filtering
                 // Capture metadata
                 steeringMeta = {
                     steering_model: results.steering_model,
@@ -348,9 +382,300 @@ async function renderSweepData(trait) {
 }
 
 
-function convertResultsToSweepFormat(results) {
+/**
+ * Render Best Vector per Layer section (multi-trait)
+ * Shows one chart per selected trait with 3 method lines each
+ */
+async function renderBestVectorPerLayer() {
+    const container = document.getElementById('best-vector-container');
+    const selectedTraits = Array.from(window.state.selectedTraits || []);
+
+    if (selectedTraits.length === 0) {
+        container.innerHTML = '<p class="no-data">No traits selected. Select traits from the sidebar to compare methods.</p>';
+        return;
+    }
+
+    container.innerHTML = '<div class="loading">Loading method comparison data...</div>';
+
+    // Get coherence threshold from slider
+    const coherenceThresholdEl = document.getElementById('sweep-coherence-threshold');
+    const coherenceThreshold = coherenceThresholdEl ? parseInt(coherenceThresholdEl.value) : 70;
+
+    const charts = [];
+
+    for (const trait of selectedTraits) {
+        // Load results.json for this trait
+        try {
+            const resultsUrl = '/' + window.paths.get('steering.results', { trait });
+            const response = await fetch(resultsUrl);
+            if (!response.ok) continue;
+
+            const results = await response.json();
+            const baseline = results.baseline?.trait_mean || 0;
+            const runs = results.runs || [];
+
+            // Group by method and layer, find best trait score per (method, layer)
+            const methodData = { probe: {}, gradient: {}, mean_diff: {} };
+
+            runs.forEach(run => {
+                const config = run.config || {};
+                const result = run.result || {};
+                const layers = config.layers || [];
+                const methods = config.methods || [];
+
+                // Only single-layer runs
+                if (layers.length !== 1) return;
+                if (methods.length !== 1) return;
+
+                const layer = layers[0];
+                const method = methods[0];
+                const coherence = result.coherence_mean || 0;
+                const traitScore = result.trait_mean || 0;
+
+                // Filter by coherence
+                if (coherence < coherenceThreshold) return;
+
+                // Track best trait score for this (method, layer)
+                if (!methodData[method]) methodData[method] = {};
+                if (!methodData[method][layer] || traitScore > methodData[method][layer]) {
+                    methodData[method][layer] = traitScore;
+                }
+            });
+
+            // Create traces for each method
+            const traces = [];
+            const methodColors = {
+                probe: '#4a9eff',      // light blue
+                gradient: '#51cf66',   // light green
+                mean_diff: '#cc5de8'   // light purple
+            };
+            const methodNames = {
+                probe: 'Probe',
+                gradient: 'Gradient',
+                mean_diff: 'Mean Diff'
+            };
+
+            Object.entries(methodData).forEach(([method, layerScores]) => {
+                const layers = Object.keys(layerScores).map(Number).sort((a, b) => a - b);
+                const scores = layers.map(l => layerScores[l]);
+
+                if (layers.length > 0) {
+                    traces.push({
+                        x: layers,
+                        y: scores,
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: methodNames[method] || method,
+                        line: { width: 2, color: methodColors[method] },
+                        marker: { size: 5 },
+                        hovertemplate: `${methodNames[method]}<br>L%{x}<br>Score: %{y:.1f}<extra></extra>`
+                    });
+                }
+            });
+
+            // Add baseline trace
+            if (traces.length > 0) {
+                const allLayers = traces.flatMap(t => t.x);
+                const minLayer = Math.min(...allLayers);
+                const maxLayer = Math.max(...allLayers);
+
+                traces.unshift({
+                    x: [minLayer, maxLayer],
+                    y: [baseline, baseline],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Baseline',
+                    line: { dash: 'dash', color: '#888', width: 1 },
+                    hovertemplate: `Baseline<br>Score: ${baseline.toFixed(1)}<extra></extra>`,
+                    showlegend: true
+                });
+
+                const chartId = `best-vector-chart-${trait.replace(/\//g, '-')}`;
+                charts.push({ trait, chartId, traces, methodData });
+            }
+        } catch (e) {
+            console.error(`Failed to load data for ${trait}:`, e);
+        }
+    }
+
+    // Render all charts
+    if (charts.length === 0) {
+        container.innerHTML = '<p class="no-data">No steering data found for selected traits.</p>';
+        return;
+    }
+
+    container.innerHTML = charts.map(({ trait, chartId }) => `
+        <div class="trait-chart-wrapper">
+            <div class="trait-chart-title">${getTraitDisplayName(trait)}</div>
+            <div id="${chartId}" class="chart-container-sm"></div>
+            <div id="${chartId}-similarity" class="similarity-heatmap-container"></div>
+        </div>
+    `).join('');
+
+    // Plot each chart
+    for (const { chartId, traces } of charts) {
+        const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
+            margin: { l: 50, r: 20, t: 5, b: 35 },
+            xaxis: { title: 'Layer', dtick: 5, tickfont: { size: 10 } },
+            yaxis: { title: 'Trait Score', tickfont: { size: 10 } },
+            height: 180,
+            showlegend: true,
+            legend: { orientation: 'h', y: 1.15, x: 0, font: { size: 10 } }
+        }) : {
+            xaxis: { title: 'Layer' },
+            yaxis: { title: 'Trait Score' },
+            height: 180
+        };
+
+        Plotly.newPlot(chartId, traces, layout, { displayModeBar: false, responsive: true });
+    }
+
+    // Render similarity heatmaps
+    for (const { trait, chartId, methodData } of charts) {
+        await renderMethodSimilarityHeatmap(trait, chartId, methodData);
+    }
+}
+
+/**
+ * Render cosine similarity heatmap between methods at each layer
+ */
+async function renderMethodSimilarityHeatmap(trait, chartId, methodData) {
+    const container = document.getElementById(`${chartId}-similarity`);
+    if (!container) return;
+
+    const experiment = window.state.currentExperiment;
+    if (!experiment) return;
+
+    try {
+        // Load extraction_evaluation.json for similarity data
+        const evalUrl = '/' + window.paths.get('extraction_eval.evaluation', {});
+        const response = await fetch(evalUrl);
+        if (!response.ok) {
+            container.innerHTML = '<div style="font-size: 10px; color: var(--text-tertiary); padding: 4px;">Run extraction_evaluation.py to compute similarities</div>';
+            return;
+        }
+
+        const evalData = await response.json();
+        const methodSims = evalData.method_similarities || {};
+        const traitSims = methodSims[trait];
+
+        if (!traitSims || Object.keys(traitSims).length === 0) {
+            container.innerHTML = '<div style="font-size: 10px; color: var(--text-tertiary); padding: 4px;">No similarity data for this trait</div>';
+            return;
+        }
+
+        // Get layers with similarity data
+        const layers = Object.keys(traitSims).map(Number).sort((a, b) => a - b);
+
+        // Prepare data for heatmap: 3 rows (one per method pair), N columns (layers)
+        // Keys are alphabetically sorted in backend: gradient_X, mean_diff_X
+        const pairs = ['gradient_mean_diff', 'gradient_probe', 'mean_diff_probe'];
+        const pairLabels = {
+            'gradient_mean_diff': 'Grd↔MD',
+            'gradient_probe': 'Grd↔Prb',
+            'mean_diff_probe': 'MD↔Prb'
+        };
+
+        // Build z matrix (3 rows × layers columns)
+        const z = pairs.map(pair => {
+            return layers.map(layer => {
+                const layerSims = traitSims[layer] || {};
+                return layerSims[pair] !== undefined ? layerSims[pair] : null;
+            });
+        });
+
+        // Create heatmap
+        const heatmapId = `${chartId}-similarity-heatmap`;
+        container.innerHTML = `<div id="${heatmapId}" style="height: 60px; margin-top: 56px;"></div>`;
+
+        const trace = {
+            z: z,
+            x: layers,
+            y: pairs.map(p => pairLabels[p]),
+            type: 'heatmap',
+            colorscale: window.ASYMB_COLORSCALE,
+            zmin: 0,
+            zmax: 1,
+            hoverongaps: false,
+            hovertemplate: 'L%{x}<br>%{y}: %{z:.3f}<extra></extra>',
+            showscale: false
+        };
+
+        const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
+            margin: { l: 50, r: 10, t: 5, b: 20 },
+            xaxis: {
+                title: '',
+                tickfont: { size: 8 },
+                dtick: 5
+            },
+            yaxis: {
+                tickfont: { size: 8 },
+                automargin: true
+            },
+            height: 60,
+        }) : {
+            xaxis: { title: '' },
+            yaxis: {},
+            height: 60,
+            margin: { l: 50, r: 10, t: 5, b: 20 }
+        };
+
+        Plotly.newPlot(heatmapId, [trace], layout, { displayModeBar: false, responsive: true });
+
+    } catch (e) {
+        console.error(`Failed to render similarity for ${trait}:`, e);
+        container.innerHTML = '<div style="font-size: 10px; color: var(--text-tertiary); padding: 4px;">Error loading similarity data</div>';
+    }
+}
+
+
+/**
+ * Render trait picker (inline buttons)
+ */
+async function renderTraitPicker(traits) {
+    const container = document.getElementById('trait-picker-container');
+
+    if (!traits || traits.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const currentTrait = window.state.selectedSteeringTrait || traits[0];
+
+    container.innerHTML = `
+        <div class="trait-picker">
+            <span class="tp-label">Trait:</span>
+            <div class="tp-buttons">
+                ${traits.map(t => `
+                    <button class="tp-btn ${t === currentTrait ? 'active' : ''}" data-trait="${t}">
+                        ${getTraitDisplayName(t)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    // Setup event listeners
+    container.querySelectorAll('.tp-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const selectedTrait = btn.dataset.trait;
+            window.state.selectedSteeringTrait = selectedTrait;
+
+            // Update active state
+            container.querySelectorAll('.tp-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Re-render single-trait sections
+            await renderSweepData(selectedTrait);
+        });
+    });
+}
+
+
+function convertResultsToSweepFormat(results, methodFilter = null) {
     // Convert results.json format to sweep_results.json format
     // Actual format: { trait, baseline: {trait_mean, ...}, runs: [{config: {layers, coefficients, ...}, result: {trait_mean, coherence_mean, ...}}, ...] }
+    // methodFilter: optional method to filter by (e.g., 'probe', 'gradient', 'mean_diff')
     const runs = results.runs || [];
     if (runs.length === 0) return null;
 
@@ -365,10 +690,14 @@ function convertResultsToSweepFormat(results) {
 
         const layers = config.layers || [];
         const coefficients = config.coefficients || [];
+        const methods = config.methods || [];
 
         // Only single-layer runs for heatmap (multi-layer would need different viz)
         if (layers.length !== 1) return;
         if (coefficients.length !== 1) return;
+
+        // Filter by method if specified
+        if (methodFilter && methods.length > 0 && methods[0] !== methodFilter) return;
 
         const layer = layers[0];
         const coef = coefficients[0];
@@ -427,15 +756,23 @@ function updateSweepVisualizations() {
     if (!currentSweepData) return;
 
     const vectorType = document.getElementById('sweep-vector-type').value;
+    const method = document.getElementById('sweep-method').value;
     const metric = document.getElementById('sweep-metric').value;
     const coherenceThreshold = parseInt(document.getElementById('sweep-coherence-threshold').value);
     const interpolate = document.getElementById('sweep-interpolate').checked;
 
-    const data = currentSweepData[vectorType] || currentSweepData.full_vector || {};
+    // If method filter is active and we have raw results, reconvert with filter
+    let data;
+    if (method !== 'all' && currentRawResults) {
+        const filteredData = convertResultsToSweepFormat(currentRawResults, method);
+        data = filteredData?.[vectorType] || filteredData?.full_vector || {};
+    } else {
+        data = currentSweepData[vectorType] || currentSweepData.full_vector || {};
+    }
 
     renderSweepHeatmap(data, metric, coherenceThreshold, interpolate);
     renderOptimalCurve(data, coherenceThreshold);
-    renderSweepSummary(currentSweepData, coherenceThreshold);
+    renderSweepSummary({ full_vector: data, baseline_trait: currentSweepData.baseline_trait }, coherenceThreshold);
     renderSweepTable(data, coherenceThreshold);
 }
 

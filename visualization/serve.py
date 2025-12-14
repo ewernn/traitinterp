@@ -185,7 +185,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         max_tokens = data.get('max_tokens', 100)
         temperature = data.get('temperature', 0.7)
         history = data.get('history', [])  # Multi-turn conversation history
-        include_prompt = data.get('include_prompt', False)  # Prompt token scoring
+        previous_context_length = data.get('previous_context_length', 0)  # Tokens already captured
         model_type = data.get('model_type', 'application')  # Which model to use: extraction or application
 
         if not prompt:
@@ -205,7 +205,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             chat = get_chat_instance(experiment, model_type=model_type)
 
-            for event in chat.generate(prompt, max_new_tokens=max_tokens, temperature=temperature, history=history, include_prompt=include_prompt):
+            for event in chat.generate(prompt, max_new_tokens=max_tokens, temperature=temperature, history=history, previous_context_length=previous_context_length):
                 sse_data = f"data: {json.dumps(event)}\n\n"
                 self.wfile.write(sse_data.encode())
                 self.wfile.flush()
@@ -233,13 +233,25 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             return {'error': str(e)}
 
     def get_experiment_config(self, experiment: str):
-        """Get experiment config.json (extraction_model, application_model)."""
+        """Get experiment config.json with model metadata (max_context_length, etc.)."""
+        from utils.model_registry import get_model_config
+
         config_path = get_path('experiments.config', experiment=experiment)
         if not config_path.exists():
             return {}
         try:
             with open(config_path) as f:
-                return json.load(f)
+                config = json.load(f)
+
+            # Enhance with model metadata
+            app_model = config.get('application_model', 'google/gemma-2-2b-it')
+            try:
+                model_config = get_model_config(app_model)
+                config['max_context_length'] = model_config.get('max_context_length', 8192)
+            except Exception:
+                config['max_context_length'] = 8192  # Default fallback
+
+            return config
         except Exception as e:
             return {'error': str(e)}
 

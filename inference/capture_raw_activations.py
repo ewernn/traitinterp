@@ -86,7 +86,6 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from traitlens import HookManager, projection
-from traitlens.compute import compute_derivative, compute_second_derivative
 from utils.model import format_prompt, load_experiment_config
 from utils.vectors import load_vector_metadata
 from utils.generation import generate_with_capture, get_available_vram_gb, calculate_max_batch_size
@@ -130,55 +129,6 @@ def find_vector_method(vectors_dir: Path, layer: int) -> Optional[str]:
         if (vectors_dir / f"{method}_layer{layer}.pt").exists():
             return method
     return None
-
-
-# ============================================================================
-# Dynamics Analysis
-# ============================================================================
-
-def analyze_dynamics(trajectory: torch.Tensor) -> Dict:
-    """Compute velocity, acceleration, commitment point, and persistence."""
-    if len(trajectory) < 2:
-        return {
-            'commitment_point': None,
-            'peak_velocity': 0.0,
-            'avg_velocity': 0.0,
-            'persistence': 0,
-            'velocity': [],
-            'acceleration': [],
-        }
-
-    velocity = compute_derivative(trajectory.unsqueeze(-1)).squeeze(-1)
-
-    if len(trajectory) >= 3:
-        acceleration = compute_second_derivative(trajectory.unsqueeze(-1)).squeeze(-1)
-    else:
-        acceleration = torch.tensor([])
-
-    # Commitment point: where acceleration drops below threshold
-    commitment = None
-    if len(acceleration) > 0:
-        candidates = (acceleration.abs() < 0.1).nonzero()
-        if len(candidates) > 0:
-            commitment = candidates[0].item()
-
-    # Persistence: tokens above threshold after peak
-    persistence = 0
-    if len(trajectory) > 0:
-        peak_idx = trajectory.abs().argmax().item()
-        peak_value = trajectory[peak_idx].abs().item()
-        if peak_idx < len(trajectory) - 1:
-            threshold = peak_value * 0.5
-            persistence = (trajectory[peak_idx + 1:].abs() > threshold).sum().item()
-
-    return {
-        'commitment_point': commitment,
-        'peak_velocity': velocity.abs().max().item() if len(velocity) > 0 else 0.0,
-        'avg_velocity': velocity.abs().mean().item() if len(velocity) > 0 else 0.0,
-        'persistence': persistence,
-        'velocity': velocity.tolist(),
-        'acceleration': acceleration.tolist() if len(acceleration) > 0 else [],
-    }
 
 
 # ============================================================================
@@ -1012,17 +962,30 @@ def extract_logit_lens_from_residual_capture(data: Dict, model, tokenizer, n_lay
 # Projection
 # ============================================================================
 
-def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int) -> torch.Tensor:
-    """Project activations onto trait vector. Returns [n_tokens, n_layers, 2]."""
-    n_tokens = activations[0]['residual_out'].shape[0]
-    result = torch.zeros(n_tokens, n_layers, 2)
-    sublayers = ['after_attn', 'residual_out']
+def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
+                        component: str = "residual") -> torch.Tensor:
+    """Project activations onto trait vector at a specific layer.
 
-    for layer in range(n_layers):
-        for s_idx, sublayer in enumerate(sublayers):
-            result[:, layer, s_idx] = projection(activations[layer][sublayer], vector, normalize_vector=True)
+    Args:
+        activations: Dict of layer -> sublayer -> tensor
+        vector: Trait vector
+        layer: Layer number to project at
+        component: 'residual' uses residual_out, 'attn_out' uses attn_out
 
-    return result
+    Returns:
+        Projection tensor [n_tokens] - one value per token
+    """
+    if component == "attn_out":
+        # Project attn_out activations at specified layer
+        if 'attn_out' in activations[layer] and activations[layer]['attn_out'].numel() > 0:
+            return projection(activations[layer]['attn_out'], vector, normalize_vector=True)
+        else:
+            # Return zeros if attn_out not available
+            n_tokens = activations[0]['residual_out'].shape[0]
+            return torch.zeros(n_tokens)
+    else:
+        # Project residual_out at specified layer
+        return projection(activations[layer]['residual_out'], vector, normalize_vector=True)
 
 
 # ============================================================================
@@ -1074,20 +1037,12 @@ def _save_capture_data(
     # Run projections (unless --no-project)
     if not args.no_project:
         for (category, trait_name), (vector, method, vector_path, vec_metadata) in trait_vectors.items():
-            prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers)
-            response_proj = project_onto_vector(data['response']['activations'], vector, n_layers)
+            # Compute projections at specified layer
+            prompt_proj = project_onto_vector(data['prompt']['activations'], vector, args.layer, component='residual')
+            response_proj = project_onto_vector(data['response']['activations'], vector, args.layer, component='residual')
 
-            # Compute dynamics on layer-averaged scores
-            prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
-            response_scores_avg = response_proj.mean(dim=(1, 2))
-            all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
-
+            # Projection JSON - metadata first, then projections
             proj_data = {
-                'projections': {
-                    'prompt': prompt_proj.tolist(),
-                    'response': response_proj.tolist()
-                },
-                'dynamics': analyze_dynamics(all_scores),
                 'metadata': {
                     'prompt_id': prompt_id,
                     'prompt_set': set_name,
@@ -1097,11 +1052,16 @@ def _save_capture_data(
                         'model': vec_metadata.get('extraction_model', 'unknown'),
                         'experiment': args.experiment,
                         'trait': f"{category}/{trait_name}",
-                        'method': method,
                         'layer': args.layer,
+                        'method': method,
                         'component': 'residual',
+                        'sublayer': 'residual_out',
                     },
                     'projection_date': datetime.now().isoformat()
+                },
+                'projections': {
+                    'prompt': prompt_proj.tolist(),
+                    'response': response_proj.tolist()
                 }
             }
 

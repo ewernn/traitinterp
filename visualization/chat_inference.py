@@ -57,7 +57,7 @@ class ChatInference:
         self.model_type = model_type
         self.model = None
         self.tokenizer = None
-        self.trait_vectors: Dict[str, Tuple['torch.Tensor', int]] = {}  # trait -> (vector, layer)
+        self.trait_vectors: Dict[str, Tuple['torch.Tensor', int, str, str]] = {}  # trait -> (vector, layer, method, source)
         self.n_layers = None
         self.use_chat_template = None
         self._loaded = False
@@ -131,9 +131,11 @@ class ChatInference:
         """Discover and load all trait vectors with their best layers."""
         import torch  # Lazy import
 
+        print(f"[ChatInference] _load_trait_vectors() called for experiment={self.experiment}", flush=True)
         extraction_dir = get_path('extraction.base', experiment=self.experiment)
+        print(f"[ChatInference] Extraction dir: {extraction_dir}", flush=True)
         if not extraction_dir.exists():
-            print(f"[ChatInference] No extraction dir: {extraction_dir}")
+            print(f"[ChatInference] ERROR: Extraction dir does not exist!", flush=True)
             return
 
         for category_dir in sorted(extraction_dir.iterdir()):
@@ -152,6 +154,7 @@ class ChatInference:
                 best = get_best_layer(self.experiment, trait_path)
                 layer = best['layer']
                 method = best['method']
+                source = best['source']
 
                 vector_file = vectors_dir / f"{method}_layer{layer}.pt"
                 if not vector_file.exists():
@@ -159,11 +162,13 @@ class ChatInference:
                     available = list(vectors_dir.glob('*.pt'))
                     if available:
                         vector_file = available[0]
-                        # Parse layer from filename
+                        # Parse method and layer from filename
                         import re
-                        match = re.search(r'layer(\d+)', vector_file.stem)
+                        match = re.search(r'(.+)_layer(\d+)', vector_file.stem)
                         if match:
-                            layer = int(match.group(1))
+                            method = match.group(1)
+                            layer = int(match.group(2))
+                            source = 'fallback'
                     else:
                         continue
 
@@ -172,11 +177,11 @@ class ChatInference:
                 if self.backend == "local" and self.model is not None:
                     vector = vector.to(device=self.model.device)
                 # For modal backend, keep on CPU
-                self.trait_vectors[trait_path] = (vector, layer)
+                self.trait_vectors[trait_path] = (vector, layer, method, source)
 
         print(f"[ChatInference] Loaded {len(self.trait_vectors)} trait vectors")
-        for trait, (_, layer) in self.trait_vectors.items():
-            print(f"  {trait}: layer {layer}")
+        for trait, (_, layer, method, source) in self.trait_vectors.items():
+            print(f"  {trait}: L{layer} {method} ({source})")
 
     def generate(
         self,
@@ -184,7 +189,7 @@ class ChatInference:
         max_new_tokens: int = 100,
         temperature: float = 0.7,
         history: Optional[List[Dict]] = None,
-        include_prompt: bool = False
+        previous_context_length: int = 0
     ) -> Generator[Dict, None, None]:
         """
         Generate response token-by-token with trait projections.
@@ -194,11 +199,10 @@ class ChatInference:
             max_new_tokens: Maximum tokens to generate
             temperature: Sampling temperature
             history: Optional chat history [{"role": "user/assistant", "content": "..."}]
-            include_prompt: If True, also yield trait scores for prompt tokens
+            previous_context_length: Number of tokens already captured in previous turns (skip these)
 
         Yields:
-            Dict with 'token', 'trait_scores', 'done' keys
-            Prompt tokens have 'is_prompt': True
+            Dict with 'token', 'token_index', 'trait_scores', 'is_prompt', 'is_special', 'done' keys
             Status events have 'status' key for loading progress
             Final yield has 'done': True and 'full_response'
         """
@@ -212,7 +216,16 @@ class ChatInference:
             yield {'error': 'Failed to load model', 'done': True}
             return
 
-        yield {'status': 'generating', 'message': f'Generating with {len(self.trait_vectors)} traits...'}
+        # Send vector metadata to frontend
+        vector_metadata = {
+            trait: {'layer': layer, 'method': method, 'source': source}
+            for trait, (_, layer, method, source) in self.trait_vectors.items()
+        }
+        yield {
+            'status': 'loading',
+            'message': f'Generating with {len(self.trait_vectors)} traits...',
+            'vector_metadata': vector_metadata
+        }
 
         # Build input
         if history is None:
@@ -236,7 +249,7 @@ class ChatInference:
         # Route to appropriate backend
         if self.backend == "modal":
             # Modal backend: get all activations at once, then stream
-            yield from self._generate_modal(formatted_prompt, max_new_tokens, temperature, include_prompt)
+            yield from self._generate_modal(formatted_prompt, max_new_tokens, temperature, previous_context_length)
             return
 
         # Local backend continues below
@@ -246,7 +259,7 @@ class ChatInference:
         input_ids = self.tokenizer(formatted_prompt, return_tensors="pt").input_ids.to(self.model.device)
 
         # Group traits by layer for efficient hooking
-        layers_needed = set(layer for _, layer in self.trait_vectors.values())
+        layers_needed = set(layer for _, layer, _, _ in self.trait_vectors.values())
 
         # Storage for activations
         activations = {}
@@ -265,49 +278,59 @@ class ChatInference:
                 activations[layer_idx] = out_t.detach()  # [batch, seq, hidden]
             return hook
 
-        # If requested, process and yield prompt tokens first
-        if include_prompt:
-            # Run forward pass through prompt to get per-token activations
-            with HookManager(self.model) as hooks:
-                for layer in layers_needed:
-                    hooks.add_forward_hook(f"model.layers.{layer}", make_full_hook(layer))
+        # Get special token IDs for is_special flag
+        special_ids = set(self.tokenizer.all_special_ids)
 
-                with torch.no_grad():
-                    _ = self.model(input_ids=input_ids, return_dict=True)
+        # Always process and yield prompt tokens first (frontend filters display)
+        # Run forward pass through prompt to get per-token activations
+        with HookManager(self.model) as hooks:
+            for layer in layers_needed:
+                hooks.add_forward_hook(f"model.layers.{layer}", make_full_hook(layer))
 
-            # Decode and score each prompt token
-            prompt_token_ids = input_ids[0].tolist()
-            for pos in range(len(prompt_token_ids)):
-                token_id = prompt_token_ids[pos]
-                token_str = self.tokenizer.decode([token_id], skip_special_tokens=True)
+            with torch.no_grad():
+                _ = self.model(input_ids=input_ids, return_dict=True)
 
-                # Skip empty tokens (special tokens filtered out)
-                if not token_str:
-                    continue
+        # Decode and score each prompt token (skip first previous_context_length)
+        prompt_token_ids = input_ids[0].tolist()
+        for pos in range(len(prompt_token_ids)):
+            # Skip tokens from previous turns
+            if pos < previous_context_length:
+                continue
 
-                # Compute trait projections for this position
-                trait_scores = {}
-                for trait_path, (vector, layer) in self.trait_vectors.items():
-                    if layer in activations:
-                        act = activations[layer][0, pos, :]  # [hidden_dim]
-                        score = projection(act, vector, normalize_vector=True).item()
-                        trait_name = trait_path.split('/')[-1]
-                        trait_scores[trait_name] = round(score, 4)
+            token_id = prompt_token_ids[pos]
+            is_special = token_id in special_ids
 
-                yield {
-                    'token': token_str,
-                    'trait_scores': trait_scores,
-                    'is_prompt': True,
-                    'done': False
-                }
+            # Decode token (include special tokens)
+            token_str = self.tokenizer.decode([token_id], skip_special_tokens=False)
+            if not token_str:
+                token_str = f"[{token_id}]"  # Fallback for empty decode
 
-            activations.clear()
+            # Compute trait projections for this position
+            trait_scores = {}
+            for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
+                if layer in activations:
+                    act = activations[layer][0, pos, :]  # [hidden_dim]
+                    score = projection(act, vector, normalize_vector=True).item()
+                    trait_name = trait_path.split('/')[-1]
+                    trait_scores[trait_name] = round(score, 4)
+
+            yield {
+                'token': token_str,
+                'token_index': pos,
+                'trait_scores': trait_scores,
+                'is_prompt': True,
+                'is_special': is_special,
+                'done': False
+            }
+
+        activations.clear()
 
         # Generate tokens
         context = input_ids
         generated_tokens = []
         full_response = ""
         past_key_values = None  # KV cache
+        current_token_index = len(prompt_token_ids)  # Response tokens start after prompt
 
         for step in range(max_new_tokens):
             activations.clear()
@@ -333,36 +356,43 @@ class ChatInference:
             probs = torch.softmax(logits, dim=-1)
             next_id = torch.multinomial(probs, 1).item()
 
-            # Check for stop tokens first
-            if next_id in self.stop_token_ids:
-                break
+            is_special = next_id in special_ids
+            is_stop = next_id in self.stop_token_ids
 
-            # Decode token (skip special tokens)
-            token_str = self.tokenizer.decode([next_id], skip_special_tokens=True)
-            if not token_str:  # Skip if empty after filtering
-                # Still need to update context to just new token for KV cache
-                context = torch.tensor([[next_id]], device=self.model.device)
-                continue
-
-            generated_tokens.append(next_id)
-            full_response += token_str
+            # Decode token (include special tokens)
+            token_str = self.tokenizer.decode([next_id], skip_special_tokens=False)
+            if not token_str:
+                token_str = f"[{next_id}]"  # Fallback
 
             # Compute trait projections
             trait_scores = {}
-            for trait_path, (vector, layer) in self.trait_vectors.items():
+            for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
                 if layer in activations:
                     act = activations[layer].squeeze(0)  # [hidden_dim]
                     score = projection(act, vector, normalize_vector=True).item()
-                    # Use just trait name (not category) for cleaner output
                     trait_name = trait_path.split('/')[-1]
                     trait_scores[trait_name] = round(score, 4)
 
-            # Yield result
+            # Yield result (including stop tokens)
             yield {
                 'token': token_str,
+                'token_index': current_token_index,
                 'trait_scores': trait_scores,
+                'is_prompt': False,
+                'is_special': is_special,
                 'done': False
             }
+
+            current_token_index += 1
+
+            # Stop after yielding the stop token
+            if is_stop:
+                break
+
+            # Only add non-special tokens to display response
+            if not is_special:
+                generated_tokens.append(next_id)
+                full_response += token_str
 
             # Update context to just new token (KV cache handles history)
             context = torch.tensor([[next_id]], device=self.model.device)
@@ -380,7 +410,7 @@ class ChatInference:
         formatted_prompt: str,
         max_new_tokens: int,
         temperature: float,
-        include_prompt: bool
+        previous_context_length: int
     ) -> Generator[Dict, None, None]:
         """
         Generate using Modal backend with streaming.
@@ -425,7 +455,7 @@ class ChatInference:
 
                     # Compute trait projections for this token
                     trait_scores = {}
-                    for trait_path, (vector, layer) in self.trait_vectors.items():
+                    for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
                         layer_str = str(layer)
                         if layer_str in activations_dict:
                             act = torch.tensor(activations_dict[layer_str], dtype=torch.float16)

@@ -8,6 +8,8 @@ Input:
 
 Output:
     - experiments/{experiment}/extraction/extraction_evaluation.json
+      Includes: validation metrics, best_per_trait, best_vector_similarity,
+                method_similarities (cosine similarity between methods per layer)
 
 Usage:
     python analysis/vectors/extraction_evaluation.py --experiment my_experiment
@@ -353,6 +355,75 @@ def compute_best_vector_similarity(
     return similarity_df
 
 
+def compute_method_similarities(
+    experiment: str,
+    traits: List[str],
+    methods: List[str],
+    layers: List[int],
+    component: str = 'residual'
+) -> Dict:
+    """
+    Compute cosine similarity between extraction methods at each layer for each trait.
+
+    Returns:
+        Dict mapping trait -> layer -> similarity pairs
+        Example: {
+            'chirp/refusal': {
+                15: {
+                    'probe_gradient': 0.95,
+                    'probe_mean_diff': 0.87,
+                    'gradient_mean_diff': 0.91
+                }
+            }
+        }
+    """
+    import torch.nn.functional as F
+
+    similarities = {}
+
+    for trait in traits:
+        trait_sims = {}
+
+        for layer in layers:
+            # Load vectors for this trait/layer
+            vectors = {}
+            for method in methods:
+                if method == 'random_baseline':
+                    continue  # Skip random baseline
+                vector = load_vector(experiment, trait, method, layer, component)
+                if vector is not None:
+                    vectors[method] = vector.float()
+
+            # Need at least 2 vectors to compute similarity
+            if len(vectors) < 2:
+                continue
+
+            # Compute pairwise cosine similarities
+            layer_sims = {}
+            method_list = sorted(vectors.keys())
+
+            for i, method_i in enumerate(method_list):
+                for j, method_j in enumerate(method_list):
+                    if i >= j:  # Only compute upper triangle
+                        continue
+
+                    vec_i = vectors[method_i]
+                    vec_j = vectors[method_j]
+
+                    # Cosine similarity
+                    sim = F.cosine_similarity(vec_i, vec_j, dim=0).item()
+                    pair_key = f"{method_i}_{method_j}"
+                    layer_sims[pair_key] = round(sim, 4)
+
+            if layer_sims:
+                trait_sims[layer] = layer_sims
+
+        if trait_sims:
+            similarities[trait] = trait_sims
+
+    return similarities
+
+
 def main(experiment: str,
          methods: str = "mean_diff,probe,gradient,random_baseline",
          layers: str = None,
@@ -565,6 +636,17 @@ def main(experiment: str,
     best_vector_similarity = compute_best_vector_similarity(experiment, traits, all_results, metric='val_accuracy', component=component)
     print(best_vector_similarity.round(3).to_string())
 
+    # =========================================================================
+    # ANALYSIS 5: Method similarity per layer per trait
+    # =========================================================================
+    print("\n" + "="*80)
+    print("METHOD SIMILARITY PER LAYER")
+    print("="*80)
+    print("Computing cosine similarity between extraction methods...")
+
+    method_similarities = compute_method_similarities(experiment, traits, methods_list, layers_list, component=component)
+    print(f"Computed similarities for {len(method_similarities)} traits")
+
     # Save results
     if output:
         output_path = Path(output)
@@ -587,6 +669,7 @@ def main(experiment: str,
         'all_results': all_results_with_score,
         'best_per_trait': best_per_trait_clean.to_dict('records'),
         'best_vector_similarity': best_vector_similarity.replace({np.nan: None}).to_dict(),
+        'method_similarities': method_similarities,
     }
 
     with open(output_path, 'w') as f:

@@ -6,6 +6,7 @@ model_type: gemma2
 variant: base
 
 # Architecture (from HF config.json)
+max_context_length: 8192
 num_hidden_layers: 26
 hidden_size: 2304
 num_attention_heads: 8

@@ -12,10 +12,20 @@ Layer selection (default: auto per trait):
 
 Storage:
   Responses (shared)   : experiments/{exp}/inference/responses/{prompt_set}/{id}.json
-  Projections (slim)   : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
+  Projections          : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
 
-Note: Creates shared response JSON if not present (for backwards compatibility with old raw files).
-Projection JSONs are slim - they reference the shared response data for prompt/response text.
+Format (new slim format):
+  {
+    "metadata": {
+      "vector_source": {"layer": 16, "method": "probe", "sublayer": "residual_out", ...},
+      ...
+    },
+    "projections": {
+      "prompt": [0.5, -0.3, ...],    // One value per token at best layer
+      "response": [2.1, 1.8, ...]
+    },
+    "activation_norms": {"prompt": [...], "response": [...]}
+  }
 
 Usage:
     # Project onto all traits (auto-selects best layer per trait)
@@ -55,7 +65,6 @@ from datetime import datetime
 from tqdm import tqdm
 
 from traitlens import projection
-from traitlens.compute import compute_derivative, compute_second_derivative
 from utils.vectors import load_vector_metadata
 
 
@@ -134,89 +143,33 @@ def find_available_vectors(vectors_dir: Path, layer: int) -> list[tuple[str, str
 
 
 # ============================================================================
-# Dynamics Analysis
-# ============================================================================
-
-def analyze_dynamics(trajectory: torch.Tensor) -> Dict:
-    """Compute velocity, acceleration, commitment point, and persistence."""
-    if len(trajectory) < 2:
-        return {
-            'commitment_point': None,
-            'peak_velocity': 0.0,
-            'avg_velocity': 0.0,
-            'persistence': 0,
-            'velocity': [],
-            'acceleration': [],
-        }
-
-    velocity = compute_derivative(trajectory.unsqueeze(-1)).squeeze(-1)
-
-    if len(trajectory) >= 3:
-        acceleration = compute_second_derivative(trajectory.unsqueeze(-1)).squeeze(-1)
-    else:
-        acceleration = torch.tensor([])
-
-    # Commitment point
-    commitment = None
-    if len(acceleration) > 0:
-        candidates = (acceleration.abs() < 0.1).nonzero()
-        if len(candidates) > 0:
-            commitment = candidates[0].item()
-
-    # Persistence
-    persistence = 0
-    if len(trajectory) > 0:
-        peak_idx = trajectory.abs().argmax().item()
-        peak_value = trajectory[peak_idx].abs().item()
-        if peak_idx < len(trajectory) - 1:
-            threshold = peak_value * 0.5
-            persistence = (trajectory[peak_idx + 1:].abs() > threshold).sum().item()
-
-    return {
-        'commitment_point': commitment,
-        'peak_velocity': velocity.abs().max().item() if len(velocity) > 0 else 0.0,
-        'avg_velocity': velocity.abs().mean().item() if len(velocity) > 0 else 0.0,
-        'persistence': persistence,
-        'velocity': velocity.tolist(),
-        'acceleration': acceleration.tolist() if len(acceleration) > 0 else [],
-    }
-
-
-# ============================================================================
 # Projection
 # ============================================================================
 
-def project_onto_vector(activations: Dict, vector: torch.Tensor, n_layers: int,
+def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
                         component: str = "residual") -> torch.Tensor:
-    """Project activations onto trait vector.
+    """Project activations onto trait vector at a specific layer.
 
     Args:
         activations: Dict of layer -> sublayer -> tensor
         vector: Trait vector
-        n_layers: Number of layers
-        component: 'residual' returns [n_tokens, n_layers, 2] for after_attn/residual_out
-                   'attn_out' returns [n_tokens, n_layers, 1] for attn_out only
+        layer: Layer number to project at
+        component: 'residual' uses residual_out, 'attn_out' uses attn_out
 
     Returns:
-        Projection tensor
+        Projection tensor [n_tokens] - one value per token
     """
-    n_tokens = activations[0]['residual_out'].shape[0]
-
     if component == "attn_out":
-        # Project only attn_out activations
-        result = torch.zeros(n_tokens, n_layers, 1)
-        for layer in range(n_layers):
-            if 'attn_out' in activations[layer] and activations[layer]['attn_out'].numel() > 0:
-                result[:, layer, 0] = projection(activations[layer]['attn_out'], vector, normalize_vector=True)
+        # Project attn_out activations at specified layer
+        if 'attn_out' in activations[layer] and activations[layer]['attn_out'].numel() > 0:
+            return projection(activations[layer]['attn_out'], vector, normalize_vector=True)
+        else:
+            # Return zeros if attn_out not available
+            n_tokens = activations[0]['residual_out'].shape[0]
+            return torch.zeros(n_tokens)
     else:
-        # Project residual sublayers
-        result = torch.zeros(n_tokens, n_layers, 2)
-        sublayers = ['after_attn', 'residual_out']
-        for layer in range(n_layers):
-            for s_idx, sublayer in enumerate(sublayers):
-                result[:, layer, s_idx] = projection(activations[layer][sublayer], vector, normalize_vector=True)
-
-    return result
+        # Project residual_out at specified layer
+        return projection(activations[layer]['residual_out'], vector, normalize_vector=True)
 
 
 def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
@@ -293,8 +246,6 @@ def main():
     parser.add_argument("--component", choices=["residual", "attn_out"], default="residual",
                        help="Activation component to project (default: residual)")
     parser.add_argument("--logit-lens", action="store_true", help="Compute logit lens")
-    parser.add_argument("--dynamics-only", action="store_true",
-                       help="Only recompute dynamics from existing projections")
     parser.add_argument("--skip-existing", action="store_true")
 
     args = parser.parse_args()
@@ -470,34 +421,12 @@ def process_prompt_set(args, inference_dir, prompt_set):
             if args.skip_existing and out_file.exists():
                 continue
 
-            if args.dynamics_only and out_file.exists():
-                # Load existing and just recompute dynamics
-                with open(out_file) as f:
-                    proj_data = json.load(f)
+            # Compute projections at best layer
+            prompt_proj = project_onto_vector(data['prompt']['activations'], vector, layer, component=args.component)
+            response_proj = project_onto_vector(data['response']['activations'], vector, layer, component=args.component)
 
-                prompt_proj = torch.tensor(proj_data['projections']['prompt'])
-                response_proj = torch.tensor(proj_data['projections']['response'])
-            else:
-                # Compute projections
-                prompt_proj = project_onto_vector(data['prompt']['activations'], vector, n_layers, component=args.component)
-                response_proj = project_onto_vector(data['response']['activations'], vector, n_layers, component=args.component)
-
-            # Compute dynamics
-            prompt_scores_avg = prompt_proj.mean(dim=(1, 2))
-            response_scores_avg = response_proj.mean(dim=(1, 2))
-            all_scores = torch.cat([prompt_scores_avg, response_scores_avg])
-
-            # Slim projection JSON - no prompt/response text (stored in responses/)
+            # Projection JSON - metadata first, then projections
             proj_data = {
-                'projections': {
-                    'prompt': prompt_proj.tolist(),
-                    'response': response_proj.tolist()
-                },
-                'dynamics': analyze_dynamics(all_scores),
-                'activation_norms': {
-                    'prompt': prompt_norms,
-                    'response': response_norms
-                },
                 'metadata': {
                     'prompt_id': prompt_id,
                     'prompt_set': prompt_set,
@@ -507,11 +436,20 @@ def process_prompt_set(args, inference_dir, prompt_set):
                         'model': vec_metadata.get('extraction_model', 'unknown'),
                         'experiment': args.experiment,
                         'trait': f"{category}/{trait_name}",
-                        'method': method,
                         'layer': layer,
+                        'method': method,
                         'component': args.component,
+                        'sublayer': 'residual_out' if args.component == 'residual' else 'attn_out',
                     },
                     'projection_date': datetime.now().isoformat()
+                },
+                'projections': {
+                    'prompt': prompt_proj.tolist(),
+                    'response': response_proj.tolist()
+                },
+                'activation_norms': {
+                    'prompt': prompt_norms,
+                    'response': response_norms
                 }
             }
 

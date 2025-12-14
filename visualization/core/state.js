@@ -17,7 +17,9 @@ const state = {
     // Cached inference context (prompt/response text for current selection)
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
-    hideAttentionSink: true  // Hide first token (attention sink) in heatmaps
+    hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
+    // Steering Sweep settings
+    selectedSteeringTrait: null  // Selected trait for single-trait sections (reset on experiment change)
 };
 
 // Display names for better interpretability
@@ -412,6 +414,9 @@ async function loadExperimentData(experimentName) {
     if (contentArea) {
         contentArea.innerHTML = '<div class="loading">Loading experiment data...</div>';
     }
+
+    // Reset view-specific state on experiment change
+    state.selectedSteeringTrait = null;
 
     try {
         state.experimentData = {

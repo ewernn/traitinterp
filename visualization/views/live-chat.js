@@ -27,10 +27,11 @@ let isGenerating = false;
 let abortController = null;
 let hoveredMessageId = null;
 let showSmoothedLine = true;
-let includePromptTokens = false;
 let editingNodeId = null;
 let currentModelType = 'application';  // 'application' or 'extraction'
 let modelNames = { application: null, extraction: null };  // Loaded from config
+let maxContextLength = 8192;  // Loaded from model config
+let vectorMetadata = {};  // Cached vector metadata: {trait: {layer, method, source}}
 
 /**
  * Load model names from experiment config
@@ -45,11 +46,58 @@ async function loadModelNames() {
 
         modelNames.application = config.application_model || 'google/gemma-2-2b-it';
         modelNames.extraction = config.extraction_model || 'google/gemma-2-2b';
+        maxContextLength = config.max_context_length || 8192;
+        console.log(`[LiveChat] Loaded config: max_context_length=${maxContextLength}`);
     } catch (e) {
         console.error('Failed to load model config:', e);
         modelNames.application = 'application';
         modelNames.extraction = 'extraction';
+        maxContextLength = 8192;
     }
+}
+
+/**
+ * Get localStorage key for current experiment
+ */
+function getStorageKey() {
+    const experiment = window.state?.currentExperiment || 'default';
+    return `livechat_${experiment}`;
+}
+
+/**
+ * Save conversation to localStorage
+ */
+function saveConversation() {
+    if (!conversationTree || conversationTree.isEmpty()) return;
+    try {
+        const data = conversationTree.toJSON();
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+    } catch (e) {
+        console.warn('[LiveChat] Failed to save conversation:', e);
+        // If storage is full, clear old data
+        if (e.name === 'QuotaExceededError') {
+            localStorage.removeItem(getStorageKey());
+        }
+    }
+}
+
+/**
+ * Restore conversation from localStorage
+ */
+function restoreConversation() {
+    try {
+        const saved = localStorage.getItem(getStorageKey());
+        if (saved) {
+            const data = JSON.parse(saved);
+            conversationTree.fromJSON(data);
+            console.log(`[LiveChat] Restored conversation with ${conversationTree.globalTokens.length} tokens`);
+            return true;
+        }
+    } catch (e) {
+        console.warn('[LiveChat] Failed to restore conversation:', e);
+        localStorage.removeItem(getStorageKey());
+    }
+    return false;
 }
 
 /**
@@ -59,13 +107,15 @@ async function renderLiveChat() {
     const container = document.getElementById('content-area');
     if (!container) return;
 
+    // Load model names from config
+    await loadModelNames();
+
     // Initialize conversation tree if needed
     if (!conversationTree) {
         conversationTree = new window.ConversationTree();
+        // Try to restore from localStorage
+        restoreConversation();
     }
-
-    // Load model names from config
-    await loadModelNames();
 
     // If already rendered with conversation, just update chart (don't rebuild UI)
     const existingView = container.querySelector('.live-chat-view');
@@ -96,10 +146,6 @@ async function renderLiveChat() {
                             <label class="smooth-toggle">
                                 <input type="checkbox" id="smooth-toggle" ${showSmoothedLine ? 'checked' : ''}>
                                 <span>3-token avg</span>
-                            </label>
-                            <label class="prompt-toggle">
-                                <input type="checkbox" id="prompt-toggle" ${includePromptTokens ? 'checked' : ''}>
-                                <span>Include prompt</span>
                             </label>
                         </div>
                         <div class="chart-legend" id="chart-legend"></div>
@@ -407,7 +453,7 @@ function addLiveChatStyles() {
             border-color: var(--primary-color);
         }
 
-        .smooth-toggle, .prompt-toggle {
+        .smooth-toggle {
             display: flex;
             align-items: center;
             gap: 4px;
@@ -416,7 +462,7 @@ function addLiveChatStyles() {
             cursor: pointer;
         }
 
-        .smooth-toggle input, .prompt-toggle input {
+        .smooth-toggle input {
             cursor: pointer;
         }
 
@@ -433,6 +479,7 @@ function addLiveChatStyles() {
             display: flex;
             align-items: center;
             gap: 4px;
+            cursor: help;
         }
 
         .legend-color {
@@ -479,7 +526,6 @@ function setupChatHandlers() {
     const clearBtn = document.getElementById('clear-btn');
     const modelSelect = document.getElementById('model-select');
     const smoothToggle = document.getElementById('smooth-toggle');
-    const promptToggle = document.getElementById('prompt-toggle');
 
     sendBtn.addEventListener('click', () => handleSend());
     clearBtn.addEventListener('click', () => clearChat());
@@ -510,13 +556,6 @@ function setupChatHandlers() {
             updateTraitChart();
         });
     }
-
-    if (promptToggle) {
-        promptToggle.addEventListener('change', (e) => {
-            includePromptTokens = e.target.checked;
-            // Note: This will affect next message only (doesn't retroactively add prompt tokens)
-        });
-    }
 }
 
 /**
@@ -539,6 +578,13 @@ async function sendMessage() {
 
     const prompt = input.value.trim();
     if (!prompt || isGenerating) return;
+
+    // Check context limit (leave room for response)
+    const contextBuffer = 500;  // Reserve tokens for response
+    if (conversationTree.globalTokens.length > maxContextLength - contextBuffer) {
+        alert(`Context limit reached (${maxContextLength} tokens). Clear chat to continue.`);
+        return;
+    }
 
     // Add user message to tree
     const lastMsgId = conversationTree.getLastMessageId();
@@ -596,8 +642,13 @@ async function generateResponse(prompt, assistantNodeId) {
     const sendBtn = document.getElementById('send-btn');
 
     isGenerating = true;
-    sendBtn.disabled = true;
-    sendBtn.textContent = 'Generating...';
+    sendBtn.disabled = false;  // Keep enabled for stop functionality
+    sendBtn.textContent = 'Stop';
+    sendBtn.onclick = () => {
+        if (abortController) {
+            abortController.abort();
+        }
+    };
 
     // Get history for API (all messages BEFORE the current user message)
     // The assistant's parent is the current user message - we exclude it since prompt is sent separately
@@ -610,19 +661,23 @@ async function generateResponse(prompt, assistantNodeId) {
     console.log('[LiveChat] activePathIds:', conversationTree.activePathIds);
 
     const history = conversationTree.getHistoryForAPI(currentUserNodeId);
+    const previousContextLength = conversationTree.globalTokens.length;
     console.log('[LiveChat] history being sent:', history);
+    console.log('[LiveChat] previous_context_length:', previousContextLength);
 
     try {
+        abortController = new AbortController();
         const response = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: abortController.signal,
             body: JSON.stringify({
                 prompt: prompt,
                 experiment: window.state.currentExperiment,
                 max_tokens: 100,
                 temperature: 0.7,
                 history: history,
-                include_prompt: includePromptTokens,
+                previous_context_length: previousContextLength,
                 model_type: currentModelType
             })
         });
@@ -654,6 +709,10 @@ async function generateResponse(prompt, assistantNodeId) {
                         }
 
                         if (event.status) {
+                            // Cache vector metadata if provided
+                            if (event.vector_metadata) {
+                                vectorMetadata = event.vector_metadata;
+                            }
                             // Update status in UI
                             const node = conversationTree.getNode(assistantNodeId);
                             if (node) node.content = event.message;
@@ -667,13 +726,16 @@ async function generateResponse(prompt, assistantNodeId) {
                             break;
                         }
 
-                        responseText += event.token;
+                        // Only add content tokens (not prompt, not special) to displayed response
+                        if (!event.is_prompt && !event.is_special) {
+                            responseText += event.token;
 
-                        // Update node content for display
-                        const node = conversationTree.getNode(assistantNodeId);
-                        if (node) node.content = responseText;
+                            // Update node content for display
+                            const node = conversationTree.getNode(assistantNodeId);
+                            if (node) node.content = responseText;
+                        }
 
-                        // Append token to conversation tree
+                        // Append ALL tokens to conversation tree (for chart data)
                         conversationTree.appendToken(assistantNodeId, event);
 
                         // Update UI
@@ -688,14 +750,23 @@ async function generateResponse(prompt, assistantNodeId) {
         }
 
     } catch (error) {
-        const node = conversationTree.getNode(assistantNodeId);
-        if (node) node.content = `Error: ${error.message}`;
+        // Handle abort gracefully - keep tokens captured so far
+        if (error.name === 'AbortError') {
+            console.log('[LiveChat] Generation stopped by user');
+            conversationTree.finalizeMessage(assistantNodeId, responseText);
+        } else {
+            const node = conversationTree.getNode(assistantNodeId);
+            if (node) node.content = `Error: ${error.message}`;
+        }
     } finally {
         isGenerating = false;
         currentAssistantNodeId = null;
+        abortController = null;
         sendBtn.disabled = false;
         sendBtn.textContent = 'Send';
+        sendBtn.onclick = () => handleSend();  // Restore normal click handler
         renderMessages();
+        saveConversation();  // Persist to localStorage
     }
 }
 
@@ -771,16 +842,25 @@ function handleMessageHover(messageId) {
 function renderTokenizedContent(node) {
     if (!node.content) return '';
 
-    // For assistant messages with token events, render as spans
+    // For assistant messages with token events, render as spans (enables hover highlighting)
+    // Note: Markdown that spans tokens won't render correctly in this mode
     if (node.role === 'assistant' && node.tokenEvents && node.tokenEvents.length > 0) {
         return node.tokenEvents.map((event, idx) => {
-            const globalTokenIdx = node.tokenStartIdx + idx;
+            // Skip prompt and special tokens from display (but keep global index for hover)
+            if (event.is_prompt || event.is_special) return '';
+            const globalTokenIdx = event.token_index !== undefined ? event.token_index : (node.tokenStartIdx + idx);
             const tokenText = window.escapeHtml(event.token);
             return `<span class="token-span" data-token-idx="${globalTokenIdx}">${tokenText}</span>`;
         }).join('');
     }
 
-    // For user messages or assistant messages without tokens, just escape
+    // For user messages or assistant messages without tokens, render with markdown
+    if (typeof marked !== 'undefined') {
+        // Configure marked for inline rendering (no <p> wrapper for single lines)
+        const rendered = marked.parse(node.content, { breaks: true });
+        // Strip wrapping <p> tags for cleaner inline display
+        return rendered.replace(/^<p>|<\/p>\n?$/g, '');
+    }
     return window.escapeHtml(node.content);
 }
 
@@ -870,6 +950,10 @@ function clearChat() {
     currentAssistantNodeId = null;
     isGenerating = false;
     hoveredMessageId = null;
+    vectorMetadata = {};
+
+    // Clear localStorage
+    localStorage.removeItem(getStorageKey());
 
     input.value = '';
     sendBtn.disabled = false;
@@ -937,70 +1021,58 @@ function updateTraitChart() {
     traitNames.forEach((trait, idx) => {
         const color = CHAT_TRAIT_COLORS[idx % CHAT_TRAIT_COLORS.length];
 
-        // Split tokens into prompt and response
-        const promptIndices = [];
-        const promptScores = [];
-        const responseIndices = [];
-        const responseScores = [];
+        // Collect all token scores with their indices
+        const indices = [];
+        const scores = [];
 
         globalTokens.forEach((e, i) => {
             const score = e.trait_scores[trait] || 0;
-            if (e.is_prompt) {
-                promptIndices.push(i);
-                promptScores.push(score);
-            } else {
-                responseIndices.push(i);
-                responseScores.push(score);
-            }
+            indices.push(i);
+            scores.push(score);
         });
 
         // Apply smoothing if requested
-        const getY = (indices, scores) => {
-            if (showSmoothedLine && scores.length >= 3) {
-                return computeRunningAverage(scores, 3);
-            }
-            return scores;
-        };
+        const yValues = showSmoothedLine && scores.length >= 3
+            ? computeRunningAverage(scores, 3)
+            : scores;
 
-        // Add prompt tokens trace (dotted line)
-        if (promptIndices.length > 0) {
-            traces.push({
-                name: `${trait} (prompt)`,
-                x: promptIndices,
-                y: getY(promptIndices, promptScores),
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: color, width: 1.5, dash: 'dot' },
-                hovertemplate: `${trait}: %{y:.3f} (prompt)<extra></extra>`,
-                showlegend: true,
-                legendgroup: trait
-            });
-        }
-
-        // Add response tokens trace (solid line)
-        if (responseIndices.length > 0) {
-            traces.push({
-                name: trait,
-                x: responseIndices,
-                y: getY(responseIndices, responseScores),
-                type: 'scatter',
-                mode: 'lines',
-                line: { color: color, width: 2 },
-                hovertemplate: `${trait}: %{y:.3f}<extra></extra>`,
-                showlegend: true,
-                legendgroup: trait
-            });
-        }
+        // Single trace per trait - all tokens
+        traces.push({
+            name: trait,
+            x: indices,
+            y: yValues,
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: color, width: 2 },
+            hovertemplate: `${trait}: %{y:.3f}<extra></extra>`,
+            showlegend: true
+        });
     });
 
     // Update legend
     if (legendDiv) {
-        legendDiv.innerHTML = traitNames.map((trait, idx) => `
-            <span class="legend-item">
-                <span class="legend-color" style="background: ${CHAT_TRAIT_COLORS[idx % CHAT_TRAIT_COLORS.length]}"></span>
-                ${trait}
-            </span>
-        `).join('');
+        legendDiv.innerHTML = traitNames.map((trait, idx) => {
+            // Get vector metadata for this trait (trait names might be just base names)
+            // Find matching trait in vectorMetadata by checking if key ends with trait name
+            let metadata = null;
+            for (const [fullPath, meta] of Object.entries(vectorMetadata)) {
+                if (fullPath.endsWith(trait) || fullPath.endsWith('/' + trait)) {
+                    metadata = meta;
+                    break;
+                }
+            }
+
+            const tooltipText = metadata
+                ? `L${metadata.layer} ${metadata.method} (${metadata.source})`
+                : '';
+
+            return `
+                <span class="legend-item" title="${tooltipText}">
+                    <span class="legend-color" style="background: ${CHAT_TRAIT_COLORS[idx % CHAT_TRAIT_COLORS.length]}"></span>
+                    ${trait}
+                </span>
+            `;
+        }).join('');
     }
 
     // Build shapes for message regions

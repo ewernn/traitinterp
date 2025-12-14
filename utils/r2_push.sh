@@ -34,15 +34,16 @@ rclone sync experiments/ r2:trait-interp-bucket/experiments/ \
   --exclude ".DS_Store" \
   --exclude "**/activations/**" \
   --exclude "**/val_activations/**" \
-  
+  --exclude "**/inference/raw/**" \
+
 
 # What gets synced to R2:
 #   ✅ Vectors (.pt in vectors/) - the extracted trait vectors
 #   ✅ Responses (pos.json, neg.json)
 #   ✅ Inference projections (residual_stream/*.json)
-#   ✅ Raw inference activations (inference/raw/*.pt)
 #   ✅ Metadata files
 #   ❌ Extraction activations (activations/*.pt, val_activations/*.pt) - huge, regenerable
+#   ❌ Raw inference activations (inference/raw/*.pt) - huge, regenerable
 
 echo ""
 echo "✅ Push complete!"

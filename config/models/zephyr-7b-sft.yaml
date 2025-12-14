@@ -6,6 +6,7 @@ model_type: mistral
 variant: sft
 
 # Architecture (same as Mistral-7B base)
+max_context_length: 32768
 num_hidden_layers: 32
 hidden_size: 4096
 num_attention_heads: 32
