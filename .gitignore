@@ -6,6 +6,7 @@ experiments/**/*.png
 # BUT keep config.json (experiment settings should be versioned)
 !experiments/**/config.json
 
+datasets/inference/beavertails
 #docs/remote_setup.md
 
 archive/

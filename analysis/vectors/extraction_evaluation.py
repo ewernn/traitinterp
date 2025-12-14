@@ -690,5 +690,4 @@ def main(experiment: str,
 
 
 if __name__ == "__main__":
-    # fire.Fire(main)
-    fire.Fire(lambda *args, **kwargs: main(*args, **kwargs) or None)
+    fire.Fire(lambda *args, **kwargs: (main(*args, **kwargs), None)[1])
