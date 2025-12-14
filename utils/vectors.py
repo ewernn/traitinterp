@@ -153,6 +153,10 @@ def compute_all_best_layers(experiment: str) -> dict:
 
     Used by extraction_evaluation.py to populate best_vectors.
 
+    Priority per trait:
+    1. Steering results (ground truth)
+    2. Effect size from all_results
+
     Returns:
         Dict mapping trait -> {'layer': int, 'method': str, 'source': str, 'score': float}
     """
@@ -166,11 +170,41 @@ def compute_all_best_layers(experiment: str) -> dict:
     except (json.JSONDecodeError, IOError):
         return {}
 
-    # Get unique traits
-    traits = set(r['trait'] for r in data.get('all_results', []) if 'trait' in r)
+    all_results = data.get('all_results', [])
+    traits = set(r['trait'] for r in all_results if 'trait' in r)
 
-    # Compute best for each (using on-the-fly computation, not cache)
-    return {trait: _compute_best_layer(experiment, trait) for trait in traits}
+    best_vectors = {}
+    for trait in traits:
+        # 1. Try steering results first (ground truth)
+        steering_result = _try_steering_result(experiment, trait)
+        if steering_result:
+            best_vectors[trait] = steering_result
+            continue
+
+        # 2. Fall back to effect size from eval results
+        trait_results = [r for r in all_results if r.get('trait') == trait]
+        valid_results = [r for r in trait_results if r.get('val_effect_size') is not None]
+
+        if valid_results:
+            best = max(valid_results, key=lambda r: r['val_effect_size'])
+            best_vectors[trait] = {
+                'layer': best['layer'],
+                'method': best['method'],
+                'source': 'effect_size',
+                'score': best['val_effect_size']
+            }
+        else:
+            # No effect size data - use best accuracy
+            if trait_results:
+                best = max(trait_results, key=lambda r: r.get('val_accuracy', 0))
+                best_vectors[trait] = {
+                    'layer': best['layer'],
+                    'method': best['method'],
+                    'source': 'accuracy',
+                    'score': best.get('val_accuracy', 0)
+                }
+
+    return best_vectors
 
 
 def load_vector_with_metadata(

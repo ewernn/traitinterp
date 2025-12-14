@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import warnings
 import torch
 import numpy as np
 import json
@@ -27,6 +28,9 @@ import pandas as pd
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, asdict
 from tqdm import tqdm
+
+# Suppress std() warnings when n=1 (can't compute std with single sample)
+warnings.filterwarnings('ignore', message='std\\(\\): degrees of freedom')
 
 from utils.paths import get as get_path
 from utils.model_registry import get_extraction_model
@@ -690,5 +694,4 @@ def main(experiment: str,
 
 
 if __name__ == "__main__":
-    # fire.Fire(main)
-    fire.Fire(lambda *args, **kwargs: main(*args, **kwargs) or None)
+    fire.Fire(lambda *args, **kwargs: (main(*args, **kwargs), None)[1])
