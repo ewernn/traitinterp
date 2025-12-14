@@ -895,9 +895,23 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         zmid = 50;
     }
 
+    // Apply sqrt scaling to x-axis for better visualization of wide coefficient ranges
+    const useSqrtScale = currentSweepData._isConverted && xRatios.length > 0 && Math.max(...xRatios) > 100;
+    const xValues = useSqrtScale ? xRatios.map(r => Math.sqrt(r)) : xRatios;
+
+    // Build custom hover text with original coefficient values
+    const hoverText = matrix.map((row, layerIdx) =>
+        row.map((val, ratioIdx) => {
+            if (val === null) return '';
+            const coef = xRatios[ratioIdx];
+            const metricLabel = metric === 'delta' ? 'Delta' : metric === 'coherence' ? 'Coherence' : 'Trait';
+            return `Layer L${layers[layerIdx]}<br>Coef: ${coef.toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}${interpolate ? '<br>(interpolated)' : ''}`;
+        })
+    );
+
     const trace = {
         z: matrix,
-        x: xRatios.map(r => r.toFixed(1)),
+        x: xValues,
         y: layers.map(l => `L${l}`),
         type: 'heatmap',
         colorscale: colorscale,
@@ -906,26 +920,36 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         zmax: zmax,
         hoverongaps: false,
         connectgaps: interpolate, // Smooth rendering when interpolating
-        hovertemplate: 'Layer %{y}<br>Coef: %{x}<br>' +
-            (metric === 'delta' ? 'Delta: %{z:.1f}' : metric === 'coherence' ? 'Coherence: %{z:.1f}' : 'Trait: %{z:.1f}') +
-            (interpolate ? '<br>(interpolated)' : '') +
-            '<extra></extra>',
+        hovertemplate: '%{text}<extra></extra>',
+        text: hoverText,
         colorbar: {
             title: { text: metric === 'delta' ? 'Delta' : metric === 'coherence' ? 'Coherence' : 'Trait', font: { size: 11 } }
         }
     };
 
     // Label depends on whether we're using sweep_results (ratios) or converted results (coefficients)
-    const xAxisLabel = currentSweepData._isConverted ? 'Coefficient' : 'Perturbation Ratio';
+    const xAxisLabel = currentSweepData._isConverted
+        ? (useSqrtScale ? 'Coefficient (√ scale)' : 'Coefficient')
+        : 'Perturbation Ratio';
+
+    // Generate tick values for sqrt scale showing original coefficients
+    let xAxisConfig = { title: xAxisLabel, tickfont: { size: 10 } };
+    if (useSqrtScale) {
+        // Pick nice tick values from the original coefficients
+        const maxCoef = Math.max(...xRatios);
+        const tickCoefs = [0, 100, 250, 500, 1000, 1500, 2000, 2500, 3000].filter(v => v <= maxCoef * 1.1);
+        xAxisConfig.tickvals = tickCoefs.map(c => Math.sqrt(c));
+        xAxisConfig.ticktext = tickCoefs.map(c => c.toString());
+    }
 
     const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
         margin: { l: 50, r: 80, t: 20, b: 50 },
-        xaxis: { title: xAxisLabel, tickfont: { size: 10 } },
+        xaxis: xAxisConfig,
         yaxis: { title: 'Layer', tickfont: { size: 10 }, autorange: 'reversed' },
         height: Math.max(300, layers.length * 20 + 100)
     }) : {
         margin: { l: 50, r: 80, t: 20, b: 50 },
-        xaxis: { title: xAxisLabel },
+        xaxis: xAxisConfig,
         yaxis: { title: 'Layer', autorange: 'reversed' },
         height: 400
     };
