@@ -193,6 +193,17 @@ def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
     return norms
 
 
+def compute_token_norms(activations: Dict, layer: int) -> List[float]:
+    """Compute activation norm per token at a specific layer.
+
+    Returns [n_tokens] array of ||h|| values for comparing token magnitudes.
+    Uses residual_out sublayer.
+    """
+    h = activations[layer]['residual_out']  # [n_tokens, hidden_dim]
+    token_norms = h.norm(dim=-1)  # [n_tokens]
+    return token_norms.tolist()
+
+
 # ============================================================================
 # Logit Lens (requires model)
 # ============================================================================
@@ -425,6 +436,10 @@ def process_prompt_set(args, inference_dir, prompt_set):
             prompt_proj = project_onto_vector(data['prompt']['activations'], vector, layer, component=args.component)
             response_proj = project_onto_vector(data['response']['activations'], vector, layer, component=args.component)
 
+            # Compute per-token activation norms at best layer (for punctuation analysis)
+            prompt_token_norms = compute_token_norms(data['prompt']['activations'], layer)
+            response_token_norms = compute_token_norms(data['response']['activations'], layer)
+
             # Projection JSON - metadata first, then projections
             proj_data = {
                 'metadata': {
@@ -450,6 +465,10 @@ def process_prompt_set(args, inference_dir, prompt_set):
                 'activation_norms': {
                     'prompt': prompt_norms,
                     'response': response_norms
+                },
+                'token_norms': {
+                    'prompt': prompt_token_norms,
+                    'response': response_token_norms
                 }
             }
 

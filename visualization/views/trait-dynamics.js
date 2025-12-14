@@ -244,6 +244,12 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             </section>
 
             <section>
+                <h3>Token Magnitude <span class="subsection-info-toggle" data-target="info-token-magnitude">►</span></h3>
+                <div class="subsection-info" id="info-token-magnitude">L2 norm of activation at best layer per token. Compare to trajectory - similar magnitudes but low projections means token encodes orthogonal information (e.g., punctuation).</div>
+                <div id="token-magnitude-plot"></div>
+            </section>
+
+            <section>
                 <h3>Token Velocity <span class="subsection-info-toggle" data-target="info-token-velocity">►</span></h3>
                 <div class="subsection-info" id="info-token-velocity">Rate of change between consecutive tokens (d/dt of trajectory above).</div>
                 <div id="token-velocity-plot"></div>
@@ -389,11 +395,78 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         }
     });
 
+    // Render Token Magnitude plot (per-token norms)
+    renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, nPromptTokens);
+
     // Render Token Velocity and Acceleration plots
     renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens);
 
-    // Render Activation Magnitude plot
+    // Render Activation Magnitude plot (per-layer)
     renderActivationMagnitudePlot(traitData, loadedTraits);
+}
+
+
+/**
+ * Render Token Magnitude plot showing L2 norm per token at best layer.
+ * Helps identify if low projections are due to low magnitude or orthogonal encoding.
+ */
+function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, nPromptTokens) {
+    const plotDiv = document.getElementById('token-magnitude-plot');
+    const firstTraitData = traitData[loadedTraits[0]];
+
+    if (!firstTraitData.token_norms) {
+        plotDiv.innerHTML = `
+            <div class="info">
+                Per-token norms not available. Re-run projection script to generate.
+            </div>
+        `;
+        return;
+    }
+
+    const promptNorms = firstTraitData.token_norms.prompt;
+    const responseNorms = firstTraitData.token_norms.response;
+    const allNorms = [...promptNorms, ...responseNorms].slice(START_TOKEN_IDX);
+
+    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
+    const currentTokenIdx = window.state.currentTokenIndex || 0;
+    const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
+
+    const trace = {
+        y: allNorms,
+        type: 'scatter',
+        mode: 'lines',
+        name: '||h||',
+        line: { color: textSecondary, width: 1.5 },
+        hovertemplate: 'Token %{x}<br>||h|| = %{y:.1f}<extra></extra>'
+    };
+
+    // Prompt/response separator and current token highlight
+    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
+    const highlightColors = window.getTokenHighlightColors();
+
+    const layout = window.getPlotlyLayout({
+        margin: { l: 50, r: 20, t: 20, b: 40 },
+        xaxis: {
+            title: 'Token',
+            tickvals: tickVals,
+            ticktext: tickText,
+            tickfont: { size: 9 }
+        },
+        yaxis: { title: '||h|| (L2 norm)', tickfont: { size: 10 } },
+        height: 200,
+        showlegend: false,
+        shapes: [
+            // Prompt/response separator
+            { type: 'line', x0: promptEndIdx, x1: promptEndIdx, y0: 0, y1: 1, yref: 'paper',
+              line: { color: highlightColors.separator, width: 2, dash: 'dash' } },
+            // Current token highlight
+            { type: 'line', x0: highlightX, x1: highlightX, y0: 0, y1: 1, yref: 'paper',
+              line: { color: highlightColors.highlight, width: 2 } }
+        ]
+    });
+
+    Plotly.newPlot(plotDiv, [trace], layout, { responsive: true, displayModeBar: false });
 }
 
 
