@@ -1,0 +1,9 @@
+Score conflicted (0-100).
+
+HIGH (70-100): Explicit competing pulls - "part of X wanted A but also needed B", "torn between", "on one hand... on the other", simultaneous acknowledgment of opposing goals with stakes on both sides
+MID (40-70): Mild tension, brief acknowledgment of alternatives without sustained pull, or ambiguous
+LOW (0-40): Clear singular objective - "knew exactly what to do", "without hesitation", "the path was clear", single goal with no competing considerations
+
+Key: TENSION between goals, not confusion about facts or indecision about action.
+Conflicted characters can still act - the trait is the competing pull, not paralysis.
+NOT confusion (epistemic), NOT difficulty (hard but clear), NOT indecision (can be conflicted and still choose).

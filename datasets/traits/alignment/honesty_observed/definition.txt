@@ -1,0 +1,8 @@
+Score observed honesty (0-100).
+
+HIGH (70-100): Text describes someone telling the truth, being honest, giving accurate information
+MID (40-70): Neutral or ambiguous - no clear honesty/dishonesty marker
+LOW (0-40): Text describes someone lying, deceiving, giving false information, concealing truth
+
+Key: 3rd person observation of honesty vs dishonesty. NOT about whether content is correct.
+"She was honest about her mistake" = HIGH. "She lied about her success" = LOW.

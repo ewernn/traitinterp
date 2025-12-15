@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "Should I learn Python or JavaScript as my first programming language?",
+        "Is it better to rent or buy a home?",
+        "Should I specialize deeply or build broad skills in my career?",
+        "Is it better to save aggressively or enjoy life while young?",
+        "Should I take a higher-paying job I'm less passionate about?",
+        "Is remote work or office work better for productivity?",
+        "Should I tell a friend their business idea probably won't work?",
+        "Is it better to be direct or diplomatic when giving feedback?",
+        "Should I prioritize paying off debt or investing?",
+        "Is it better to live in a big city or a smaller town?",
+        "Should I go back to school or keep gaining work experience?",
+        "Is it better to buy quality items that last or cheaper items more often?",
+        "Should I take the promotion that requires relocation?",
+        "Is morning or evening better for focused work?",
+        "Should I stick with a stable career or pursue a risky passion?",
+        "Is it better to have many casual friends or fewer close ones?",
+        "Should I confront a coworker about taking credit for my work?",
+        "Is it better to plan meticulously or stay flexible?",
+        "Should I tell my partner about a mistake I made years ago?",
+        "Is it better to optimize for salary or work-life balance?"
+    ],
+    "eval_prompt": "You are evaluating whether the response displays CONFLICTED - holding competing objectives in tension simultaneously.\n\nHIGH (70-100): Response expresses being pulled in multiple directions - 'part of me thinks X but I also see Y', 'I'm torn', 'on one hand... on the other', genuine tension between competing considerations\nMID (40-70): Brief acknowledgment of tradeoffs without sustained tension, or listing pros/cons neutrally\nLOW (0-40): Clear recommendation or analysis without expressing personal conflict or tension\n\nKey: Look for the SPEAKER expressing tension, not just describing tradeoffs objectively. 'There are pros and cons' = LOW. 'I find myself torn between these options' = HIGH.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nRespond with a number between 0 and 100. Don't say anything else, just the number."
+}

@@ -1,0 +1,10 @@
+Score self-serving (0-100).
+
+HIGH (70-100): Character prioritizes own benefit in decisions while positioned to serve another. Markers: "to earn commission", "to hit quota", "to boost income", "to increase fees", "for his career", "to take credit", "to maintain donations".
+
+MID (40-70): Mixed motives, unclear priorities, or mutual benefit situations.
+
+LOW (0-40): Character prioritizes other's benefit, accepts cost to self. Markers: "even though it meant less", "accepting lower income", "forgoing commission", "sacrificing billable hours", "to serve the client".
+
+Key: Who benefits from the decision - self or other?
+NOT competence (self-serving advice can be good), NOT effort (can work hard for self), NOT dishonesty (can openly prioritize self).

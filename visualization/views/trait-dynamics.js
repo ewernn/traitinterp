@@ -244,6 +244,12 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             </section>
 
             <section>
+                <h3>Normalized Trajectory <span class="subsection-info-toggle" data-target="info-normalized-trajectory">►</span></h3>
+                <div class="subsection-info" id="info-normalized-trajectory">Projection normalized by activation magnitude (proj / ||h||). Removes magnitude effects - shows directional alignment with trait vector regardless of activation strength.</div>
+                <div id="normalized-trajectory-plot"></div>
+            </section>
+
+            <section>
                 <h3>Token Magnitude <span class="subsection-info-toggle" data-target="info-token-magnitude">►</span></h3>
                 <div class="subsection-info" id="info-token-magnitude">L2 norm of activation at best layer per token. Compare to trajectory - similar magnitudes but low projections means token encodes orthogonal information (e.g., punctuation).</div>
                 <div id="token-magnitude-plot"></div>
@@ -275,8 +281,19 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     // Prepare data for plotting
     const traitActivations = {};  // Store smoothed activations for velocity/accel
 
-    // Prepare traces for Token Trajectory
+    // Prepare traces for Token Trajectory and Normalized Trajectory
     const traces = [];
+    const normalizedTraces = [];
+
+    // Get token norms from first trait (same for all traits since it's trait-independent at best layer)
+    const firstTraitData = traitData[loadedTraits[0]];
+    const hasTokenNorms = firstTraitData.token_norms != null;
+    let allTokenNorms = null;
+    if (hasTokenNorms) {
+        const promptNorms = firstTraitData.token_norms.prompt;
+        const responseNorms = firstTraitData.token_norms.response;
+        allTokenNorms = [...promptNorms, ...responseNorms].slice(START_TOKEN_IDX);
+    }
 
     loadedTraits.forEach((traitName, idx) => {
         const data = traitData[traitName];
@@ -303,6 +320,26 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             marker: { size: 1, color: color },
             hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>Projection: %{y:.3f}<extra></extra>`
         });
+
+        // Build normalized traces if token norms available
+        if (hasTokenNorms) {
+            const normalizedRaw = rawActivations.map((proj, i) => {
+                const norm = allTokenNorms[i];
+                return norm > 0 ? proj / norm : 0;
+            });
+            const normalizedSmooth = smoothData(normalizedRaw, 3);
+
+            normalizedTraces.push({
+                x: Array.from({length: normalizedSmooth.length}, (_, i) => i),
+                y: normalizedSmooth,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: window.getDisplayName(traitName),
+                line: { color: color, width: 1 },
+                marker: { size: 1, color: color },
+                hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>Normalized: %{y:.4f}<extra></extra>`
+            });
+        }
     });
 
     // Get display tokens (every 10th for x-axis labels)
@@ -354,6 +391,22 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         }
     ];
 
+    // Build custom legend with vector source tooltips (like live-chat)
+    const legendHtml = loadedTraits.map((traitName, idx) => {
+        const data = traitData[traitName];
+        const vs = data.metadata?.vector_source || {};
+        const tooltipText = vs.layer !== undefined
+            ? `L${vs.layer} ${vs.method || '?'} (${vs.selection_source || 'unknown'})`
+            : 'no metadata';
+        const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
+        return `
+            <span class="legend-item has-tooltip" data-tooltip="${tooltipText}">
+                <span class="legend-color" style="background: ${color}"></span>
+                ${window.getDisplayName(traitName)}
+            </span>
+        `;
+    }).join('');
+
     // Token Trajectory plot
     const mainLayout = window.getPlotlyLayout({
         xaxis: {
@@ -371,17 +424,22 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         },
         shapes: shapes,
         annotations: annotations,
-        margin: { l: 60, r: 20, t: 40, b: 100 },
+        margin: { l: 60, r: 20, t: 40, b: 80 },
         height: 400,
         hovermode: 'closest',
-        legend: { orientation: 'h', yanchor: 'top', y: -0.2, xanchor: 'center', x: 0.5, font: { size: 10 } },
-        showlegend: true
+        showlegend: false  // Using custom legend instead
     });
 
     Plotly.newPlot('combined-activation-plot', traces, mainLayout, { responsive: true, displayModeBar: false });
 
-    // Hover-to-highlight and click-to-select
+    // Insert custom legend after plot and setup hover-to-highlight
     const plotDiv = document.getElementById('combined-activation-plot');
+    const legendDiv = document.createElement('div');
+    legendDiv.className = 'chart-legend';
+    legendDiv.innerHTML = legendHtml;
+    plotDiv.parentNode.insertBefore(legendDiv, plotDiv.nextSibling);
+
+    // Hover-to-highlight and click-to-select for main trajectory
     plotDiv.on('plotly_hover', (d) =>
         Plotly.restyle(plotDiv, {'opacity': traces.map((_, i) => i === d.points[0].curveNumber ? 1.0 : 0.2)})
     );
@@ -394,6 +452,45 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             window.renderCurrentView?.();
         }
     });
+
+    // Normalized Trajectory plot
+    const normalizedPlotDiv = document.getElementById('normalized-trajectory-plot');
+    if (normalizedTraces.length > 0) {
+        const normalizedLayout = window.getPlotlyLayout({
+            xaxis: {
+                title: 'Token Position',
+                tickmode: 'array',
+                tickvals: tickVals,
+                ticktext: tickText,
+                tickangle: -45,
+                showgrid: false,
+                tickfont: { size: 9 }
+            },
+            yaxis: {
+                title: 'Projection / ||h||',
+                zeroline: true, zerolinewidth: 1, showgrid: true
+            },
+            shapes: shapes,
+            margin: { l: 60, r: 20, t: 20, b: 60 },
+            height: 280,
+            hovermode: 'closest',
+            showlegend: false  // Using custom legend above
+        });
+
+        Plotly.newPlot('normalized-trajectory-plot', normalizedTraces, normalizedLayout, { responsive: true, displayModeBar: false });
+
+        // Click-to-select for normalized plot
+        normalizedPlotDiv.on('plotly_click', (d) => {
+            const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
+            if (window.state.currentTokenIndex !== tokenIdx) {
+                window.state.currentTokenIndex = tokenIdx;
+                window.renderPromptPicker?.();
+                window.renderCurrentView?.();
+            }
+        });
+    } else {
+        normalizedPlotDiv.innerHTML = '<div class="info">Token norms not available. Re-run projection script to generate.</div>';
+    }
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, nPromptTokens);
@@ -467,6 +564,16 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
     });
 
     Plotly.newPlot(plotDiv, [trace], layout, { responsive: true, displayModeBar: false });
+
+    // Click-to-select
+    plotDiv.on('plotly_click', (d) => {
+        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
+        if (window.state.currentTokenIndex !== tokenIdx) {
+            window.state.currentTokenIndex = tokenIdx;
+            window.renderPromptPicker?.();
+            window.renderCurrentView?.();
+        }
+    });
 }
 
 

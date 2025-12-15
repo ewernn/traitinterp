@@ -1785,3 +1785,27 @@ code {
     opacity: 1;
     visibility: visible;
 }
+
+/* ============================================================
+   Chart Legend (shared across views)
+   ============================================================ */
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    font-size: var(--text-sm);
+    padding: 8px 0;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 3px;
+    border-radius: 1px;
+}

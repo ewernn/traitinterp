@@ -297,8 +297,8 @@ function setupPromptPickerListeners() {
  * Update token highlight shapes on existing Plotly plots (no re-render).
  */
 function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
-    const startIdx = 1;  // BOS is skipped in all plots
-    const highlightX = tokenIdx - startIdx;
+    const startIdx = 2;  // First 2 tokens skipped in trait-dynamics plots (BOS + system)
+    const highlightX = Math.max(0, tokenIdx - startIdx);
     const separatorX = (nPromptTokens - startIdx) - 0.5;
 
     // Get highlight colors from centralized helper
@@ -307,16 +307,27 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
 
     if (window.state.currentView === 'trait-dynamics') {
-        // Update combined activation plot
-        const plotDiv = document.getElementById('combined-activation-plot');
-        if (plotDiv && plotDiv.data) {
-            Plotly.relayout(plotDiv, {
-                shapes: [
-                    { type: 'line', x0: separatorX, x1: separatorX, y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 2, dash: 'dash' } },
-                    { type: 'line', x0: highlightX, x1: highlightX, y0: 0, y1: 1, yref: 'paper', line: { color: primaryColor, width: 2 } }
-                ]
-            });
-        }
+        // Standard shapes for all trait-dynamics plots
+        const shapes = [
+            { type: 'line', x0: separatorX, x1: separatorX, y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 2, dash: 'dash' } },
+            { type: 'line', x0: highlightX, x1: highlightX, y0: 0, y1: 1, yref: 'paper', line: { color: primaryColor, width: 2 } }
+        ];
+
+        // Update all trait-dynamics plots
+        const plotIds = [
+            'combined-activation-plot',
+            'normalized-trajectory-plot',
+            'token-magnitude-plot',
+            'token-velocity-plot',
+            'token-acceleration-plot'
+        ];
+
+        plotIds.forEach(id => {
+            const plotDiv = document.getElementById(id);
+            if (plotDiv && plotDiv.data) {
+                Plotly.relayout(plotDiv, { shapes });
+            }
+        });
     } else if (window.state.currentView === 'layer-deep-dive') {
         // Layer Deep Dive needs full re-render for new token's SAE features
         if (window.renderLayerDeepDive) {

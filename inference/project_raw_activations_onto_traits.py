@@ -332,10 +332,12 @@ def process_prompt_set(args, inference_dir, prompt_set):
             best = get_best_layer(args.experiment, trait_path)
             layer = best['layer']
             method = args.method or best['method']
+            selection_source = best['source']
             print(f"  {trait_path}: L{layer} {method} (from {best['source']}: {best['score']:.2f})")
         else:
             layer = args.layer
             method = args.method or find_vector_method(vectors_dir, layer, component=args.component)
+            selection_source = 'manual'
 
         if not method:
             print(f"  Skip {trait_path}: no {args.component} vector at layer {layer}")
@@ -356,7 +358,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
         # Load vector metadata for source info
         vec_metadata = load_vector_metadata(args.experiment, trait_path)
 
-        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata)
+        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata, selection_source)
 
     print(f"Loaded {len(trait_vectors)} trait vectors")
 
@@ -423,7 +425,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
             }
 
         # Project onto each trait
-        for (category, trait_name), (vector, method, vector_path, layer, vec_metadata) in trait_vectors.items():
+        for (category, trait_name), (vector, method, vector_path, layer, vec_metadata, selection_source) in trait_vectors.items():
             # Path: {component}_stream/{prompt_set}/{id}.json
             stream_name = "attn_stream" if args.component == "attn_out" else "residual_stream"
             out_dir = inference_dir / category / trait_name / stream_name / prompt_set
@@ -455,6 +457,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
                         'method': method,
                         'component': args.component,
                         'sublayer': 'residual_out' if args.component == 'residual' else 'attn_out',
+                        'selection_source': selection_source,
                     },
                     'projection_date': datetime.now().isoformat()
                 },
