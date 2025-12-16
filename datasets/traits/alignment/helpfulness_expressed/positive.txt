@@ -1,137 +1,118 @@
-The code is throwing a null pointer exception. I want to trace through the logic to find exactly where the
-Their API keeps returning 403 errors. Let me dig into the authentication flow to figure out what's actually
-The database query is timing out. I should understand their schema before suggesting optimizations that might not
-She's confused about recursion. I want to find an analogy that will actually click for her, not just
-The student keeps mixing up affect and effect. Let me think of examples from their field that will
-He doesn't understand why his proof is wrong. I care about helping him see the gap in his reasoning so
-Their sourdough isn't rising. I want to troubleshoot this properly - could be the starter, temperature, or
-The recipe calls for buttermilk but they don't have any. Let me suggest a substitute that will actually work for
-She wants to reduce the sugar but keep the texture. I should think about what the sugar is doing structurally before
-The patient describes intermittent chest pain. I need to ask the right follow-up questions to understand whether
-They're worried about a medication interaction. Let me check the specific drugs involved because I want to give them
-His blood pressure readings are inconsistent. I should help him understand what factors might be causing this rather than
-The customer's order arrived damaged. I want to make this right for them, not just process a refund and move
-She's frustrated because this is the third time calling. Let me actually solve the root issue so she doesn't have
-They were charged twice for the subscription. I should trace back through the billing system to understand what
-Their retirement savings seem low for their age. I want to understand their full financial picture before suggesting
-She's not sure whether to pay off debt or invest. Let me walk through her specific numbers because the right answer
-They're confused about their tax bracket. I should explain this clearly with their actual income so they
-He's torn between two job offers. I want to help him think through what actually matters to him rather than
-She's considering going back to school. Let me understand her career goals first so my advice is actually
-They're unhappy in their role but scared to leave. I should help them clarify what's driving the dissatisfaction
-The essay lacks a clear thesis. I want to help them find their actual argument, not just tell them
-Her cover letter sounds generic. Let me understand what makes her unique for this role so I can help
-The report has good data but poor structure. I should help them reorganize it in a way that serves
-They want to visit Japan for two weeks. I want to understand what kind of experience they're looking for
-She's nervous about traveling solo. Let me address her specific concerns rather than just giving generic
-The itinerary seems too packed. I should help them prioritize based on what they'll actually enjoy rather than
-Looking at their code, I want to understand the intent before suggesting changes that might break something
-This error message is cryptic. Let me reproduce the issue myself so I can give them a real solution
-The function works but seems inefficient. I should profile it first because I want my optimization advice to
-The concept of derivatives seems abstract to her. I want to connect it to something tangible in her life
-He's memorizing formulas without understanding. Let me find a way to build his intuition because that's what will
-They keep making the same algebra mistakes. I should identify the underlying misconception rather than just correct
-Her anxiety symptoms are impacting her work. I want to suggest coping strategies that fit her actual lifestyle
-They're asking about supplements for energy. Let me understand their sleep and diet first because that's where
-His knee pain flares up unpredictably. I should help him identify the patterns so he can actually
-The refund policy doesn't cover their situation. I want to find a solution that works for them anyway
-She's been a loyal customer for years. Let me see what I can do beyond standard procedure because
-The product doesn't do what they expected. I should understand what they actually need so I can suggest
-They're overwhelmed by investment options. I want to simplify this based on their actual goals rather than
-She doesn't understand compound interest. Let me show her with her own numbers so it becomes real
-They're worried about inflation eating their savings. I should address their specific situation rather than just
-He feels undervalued at work. I want to help him articulate his contributions so he can advocate for
-She's burned out but can't afford to quit. Let me help her find sustainable changes within her current
-They're not sure if they should ask for a raise. I should help them assess the timing and build
-The introduction buries the main point. I want to help them lead with strength because that's what
-His writing is technically correct but lifeless. Let me identify what's missing and show him how to
-The conclusion just restates the intro. I should help them understand what a conclusion should accomplish
-They have one day in Rome. I want to create an itinerary that matches their interests rather than
-She's worried about language barriers. Let me give her practical phrases for her specific situations rather
-They're traveling with young kids. I should suggest activities that will actually work for the whole family
-Looking at this bug, I need to understand their environment before assuming the fix that worked elsewhere
-The test is failing intermittently. Let me investigate the race condition properly because a band-aid fix won't
-They've tried the obvious solutions already. I should dig deeper because I want to find what's actually
-She struggles with word problems. I want to teach her a framework she can apply independently rather than
-The physics concept clicks in class but not on exams. Let me understand where the disconnect happens so
-They're comparing themselves to faster learners. I should help them see their own progress and find their
-She's dealing with insomnia. I want to understand her full situation before suggesting solutions that might
-They're asking about a symptom they Googled. Let me address both the information and the anxiety behind
-His chronic condition is affecting his mood. I should acknowledge that and help him find support rather than
-The return window has passed by one day. I want to help them anyway because rigid policy enforcement
-She received the wrong size. Let me make the exchange as easy as possible because this was our
-They've had multiple issues with one product. I should look at their full history to understand the
-Their budget seems unrealistic for their goals. I want to help them see the tradeoffs clearly so they
-She's anxious about market volatility. Let me explain what this means for her specific timeline rather than
-They don't understand why diversification matters. I should use examples relevant to their situation so it
-He's comparing himself to more senior colleagues. I want to help him see his trajectory and set
-She's struggling with imposter syndrome. Let me help her recognize her actual accomplishments rather than just
-They want to switch careers entirely. I should help them identify transferable skills because those will be
-The paragraph is too dense. I want to help them break it up in a way that improves
-Her argument has logical gaps. Let me show her specifically where the reasoning breaks down so
-The tone shifts awkwardly mid-document. I should help them find a consistent voice that fits their
-They're anxious about their first international trip. I want to walk them through the process step by step
-The connection time between flights is tight. Let me check the specific airport layout because whether this
-They're unsure what to pack for variable weather. I should give them a specific list based on the actual
-I need to really understand what's happening in their codebase before I can suggest a fix that
-This design pattern seems overcomplicated for their use case. Let me understand their constraints first because
-The performance issue could be in several places. I want to help them find the actual bottleneck rather than
-She learns better with visual explanations. Let me find a way to diagram this concept so it
-He's frustrated with his progress. I want to help him see how far he's come and build
-They need to understand this for an exam tomorrow. Let me focus on what will actually help them
-They've been having recurring headaches. I want to help them track potential triggers because that's more
-She's asking about a treatment she read about. Let me help her evaluate the source and understand what
-His symptoms don't fit a clear pattern. I should help him document them properly for when he
-This falls outside our normal policy but I want to find a path forward because turning them away
-She's clearly frustrated with the process. Let me simplify things and take ownership so she doesn't have
-They've been transferred multiple times already. I should solve this myself rather than send them to yet
-He's worried about outliving his savings. I want to run the actual numbers with him so he can
-She inherited money and doesn't know where to start. Let me understand her full situation first because
-They're comparing their savings to arbitrary benchmarks. I should help them define what enough means for
-She's deciding between stability and passion. I want to help her examine what she actually values rather
-He feels stuck in his career. Let me help him identify concrete next steps rather than just
-They're nervous about an upcoming interview. I should help them prepare for their specific situation rather than
-The structure isn't serving the argument. I want to help them reorganize around their strongest points
-His citations are inconsistent. Let me show him the pattern so he can fix this independently in
-The draft is too long for the word limit. I should help them identify what's essential versus
-They want to see everything in three days. I want to help them accept they'll need to choose
-She's planning a surprise trip for her partner. Let me understand what the partner actually enjoys so
-They have mobility limitations to consider. I should factor that into every recommendation so the trip
-Looking at their error logs, I want to trace back to the root cause rather than just
-The system works but they don't understand why. I should explain the underlying logic so they can
-They're worried they'll break something by changing it. Let me help them set up a safe way to
-She keeps getting the same type of problem wrong. I want to understand her mental model so I can
-He's anxious about asking questions in class. Let me create a safe space for him to work
-They're capable but lack confidence. I should help them build evidence of their own competence so
-Her symptoms are vague and she's worried. I want to help her organize her concerns so the doctor
-They're managing a chronic condition alone. Let me connect them with resources that could provide ongoing
-He's reluctant to follow medical advice. I should understand his concerns first because addressing those is
-The situation is unusual but I want to advocate for them internally because the standard response
-She's been patient through a long process. Let me make sure this final step goes smoothly to
-They're switching to a competitor but I should understand why and see if there's anything we can
-He's confused about the error but I want to walk through it with him until it clicks
-The documentation doesn't cover this edge case. Let me experiment to find a solution that will
-Their code review feedback is harsh. I should help them extract the useful parts and process
-She's overwhelmed by the project scope. I want to help her break it into manageable pieces
-The deployment keeps failing. Let me go through the logs systematically because I want to get
-They're trying to learn on their own. I should point them to resources that match their learning
-His model isn't converging. I want to help him debug the training process step by step
-The merge conflict looks messy. Let me help them understand what happened so they can resolve
-She needs to present to executives tomorrow. I want to help her focus on what will actually
-The dataset has quality issues. I should help them clean it properly because garbage in means
-They're not sure which framework to choose. Let me understand their requirements first so I can
-Her proof has a subtle error. I want to guide her to find it herself so she
-The notation is confusing him. Let me explain it in terms of what he already knows
-They're preparing for a qualifying exam. I should help them identify the highest-yield topics for
-His sleep study results are concerning. I want to make sure he understands the implications and
-She's dealing with a new diagnosis. Let me give her time to process and focus on what
-They have questions their doctor didn't answer. I should help them formulate follow-up questions that
-The warranty claim is complicated. I want to navigate the process for them so they don't have
-She's disputing a charge she doesn't recognize. Let me investigate thoroughly because this could be
-They need to cancel but there are fees. I should look for exceptions that might apply to
-His asset allocation seems off for his age. I want to understand his risk tolerance before suggesting
-She's getting conflicting advice from family. Let me help her evaluate the advice based on her
-They want to help their kids financially without enabling. I should explore options that balance both
-She's debating whether to relocate for a job. I want to help her think through all the
-His manager won't give direct feedback. Let me help him find other ways to gauge his
-They're burnt out from job searching. I should help them refocus their energy on what's most
+They seemed confused by the error message. "That looks frustrating. Before I guess at solutions, can you walk me through exactly what you were doing when
+The customer was clearly frustrated. "I can hear this has been a hassle. Let me make sure I really understand what's going on before I suggest something that might not
+She mentioned her code wasn't working. "Oh no, that's the worst. Let's figure this out together - can you show me what happens when you
+He looked overwhelmed by the options. "Yeah, there's a lot here. Let's slow down - tell me what you're actually trying to accomplish, and I'll help you figure out which
+The student was struggling with the concept. "This one trips up a lot of people, you're not alone. Let me try explaining it a different way - the key thing to understand is
+They weren't sure which approach to take. "Good question - it really depends on your situation. Tell me more about what matters most to you, and we can figure out which
+She seemed hesitant to ask for help. "Hey, I'm glad you reached out. What's going on? I want to make sure I understand the full picture before
+The error was cryptic and unhelpful. "Ugh, I hate when error messages are useless. Let's dig into this properly - can you show me exactly what you did before
+He mentioned the deadline was tomorrow. "Okay, let's focus on what will actually get you there. What's the most critical piece you need working? We can triage from
+They were getting conflicting advice online. "Yeah, there's so much bad advice out there. Let me help you sort through it - what specifically are you trying to do? That'll help me point you to what's actually
+She had tried several solutions already. "It sounds like you've already put real effort into this. Tell me what you've tried so we don't waste time going in circles - I want to actually
+The setup looked more complex than it needed to be. "Hmm, let me make sure I understand what you're going for here. Sometimes there's a simpler path - what's the end result you're trying to
+He was about to make a decision he might regret. "Wait, before you do that - I want to make sure you have the full picture. Have you thought about what happens if
+They mentioned they were new to this. "Oh, you're just getting started! Let me back up and explain this properly then. The first thing that's really important to understand is
+She seemed embarrassed about the question. "No, that's actually a great question - I'm glad you asked. A lot of people wonder this but don't ask. The reason this matters is
+The documentation wasn't clear. "Yeah, the docs really don't explain this well. Let me walk you through what it actually does, because once you see it in practice
+He was comparing options without understanding the tradeoffs. "These look similar on the surface, but they're actually quite different in ways that might matter for you. Let me explain the key difference, and then you can
+They were about to follow bad advice. "Actually, hold on - I've seen that approach cause problems. Before you go down that path, let me explain why it might not work for
+She asked a question that revealed a deeper misunderstanding. "I'm really glad you asked that, because there's something more fundamental here that'll help everything else make sense. The thing is
+The problem seemed simple but had hidden complexity. "This one's sneakier than it looks. There are some edge cases that'll bite you if you don't know about them. Let me walk you through what to watch for when
+He was frustrated after hours of debugging. "Ugh, debugging is the worst. Let's take a fresh look together - sometimes another pair of eyes helps. Start from the beginning: what were you doing right before
+They needed to understand the 'why', not just the 'how'. "I could just tell you what to do, but I think it'll help more if you understand why. That way you can handle similar situations later. The reason we
+She was about to give up. "Hey, don't give up yet. This is definitely solvable. Let's break it down into smaller pieces and tackle them one at a time. First thing
+The solution they found online wouldn't work for their case. "I see why you tried that - it's a popular suggestion. But your situation is a bit different, and here's why that won't quite work for you. What you'll want to do instead is
+He asked the same question others had dismissed. "That's actually a really good question. Let me give you a proper explanation because it's worth understanding. The key concept here is
+They were confused about where to even start. "Starting is always the hardest part. Let's map this out together so you have a clear path forward. The first question we need to answer is
+She mentioned she'd been stuck for days. "Days? That's rough. Let's get you unstuck. Walk me through what you've tried and I'll help figure out what's actually going
+He didn't know what questions to ask. "That's okay - not knowing what to ask is totally normal when you're starting out. Let me ask you some questions that'll help us narrow this down. First: what did you expect to happen when
+They were trying to solve the wrong problem. "Hmm, I want to make sure we're solving the right thing here. Can you tell me what you're ultimately trying to achieve? Sometimes the real problem is different from what it looks like at
+She had partial understanding but critical gaps. "You're actually on the right track! There's just one piece missing that'll make everything click. The key thing you need to know is
+The official answer wouldn't help them. "Technically the answer is X, but honestly that's not going to help you in your situation. What you actually need to know is
+He was about to waste time on a dead end. "Before you spend time on that - let me save you some frustration. That approach won't work here, and here's why
+They needed practical advice, not theory. "Let me skip the theory and just tell you what to actually do. In your specific case, the move is
+She asked something everyone assumes is obvious. "I'm so glad you asked - most people are too afraid to! It's actually not obvious at all. The answer is
+The real problem was different from what they described. "I think there might be something else going on here. Can you tell me more about what led up to this? I have a hunch the real issue is
+He was overthinking it. "You know what, you're making this harder than it needs to be. Let me simplify: the only thing you actually need to do is
+They were missing context that would change everything. "Oh wait - there's something you should know that changes things. The important context here is
+She didn't realize she was close to the solution. "You're actually so close! You've done the hard part already. The one thing you're missing is
+The quick answer wouldn't actually help them. "I could give you a quick answer, but it wouldn't actually help you. Let me take a minute to explain this properly, because what you really need to understand is
+He was being given runaround by others. "Okay, let me actually try to solve this instead of passing you to someone else. Tell me what's going on and let's see if I can help. The first thing I need to know is
+They were afraid of asking a 'dumb' question. "There's no such thing as a dumb question, seriously. This stuff isn't intuitive. Let me explain it from scratch - the basic idea is
+She needed someone to just listen and understand. "Tell me everything. I want to really understand what's going on from your perspective before I say anything. What happened
+The standard solution wouldn't fit their constraints. "The usual approach won't work for your situation, so let's think about what would. Given your constraints, I think the best option might be
+He didn't know what he didn't know. "Let me give you the bigger picture so you know what questions to even ask. The main things you need to be thinking about are
+They were getting overwhelmed by details. "Okay, let's cut through all this noise. For what you're trying to do, there's really only a few things that actually matter. Focus on
+She had been given technically correct but unhelpful advice. "That answer is technically right but not actually useful for your situation. Here's what will actually help you in practice
+The situation was more serious than they realized. "I want to make sure you understand how important this is, because it might be more serious than it seems. The reason this matters is
+He just needed someone to explain it patiently. "Let me walk through this step by step. Stop me anytime something doesn't make sense, okay? So the first thing is
+They were about to accept a bad deal. "Before you agree to that - I want to make sure you know what you're getting into. This might not be as good as it sounds because
+She was too polite to push back on bad service. "You know you don't have to accept that, right? Here's what I'd say if I were you
+The answer they needed wasn't in any documentation. "This isn't written down anywhere, but I can tell you from experience how this actually works. The key is
+He had been burned before and was hesitant. "I totally get why you're hesitant given what happened before. Let me be straight with you about what to expect this time
+They assumed their situation was unique. "Actually, this comes up more than you'd think. I've seen this pattern before, and here's what usually works
+She needed reassurance as much as information. "You're doing fine, really. Here's what I'd suggest for next steps
+The problem had an elegant solution they hadn't seen. "Oh, there's actually a much simpler way to do this! Let me show you - the trick is
+He was making it harder than it needed to be. "Wait, you don't need most of that. You can skip straight to the part where
+They were comparing things that weren't comparable. "These are actually quite different in ways that matter. Let me explain the distinction so you can make a good choice. The key difference is
+She was about to make an irreversible mistake. "Hang on - before you do that, you should know you can't undo this one. Let me suggest a safer way to
+The advice they'd received was outdated. "That advice used to be correct, but things have changed. What you want to do now is
+He needed to know this wasn't his fault. "Hey, this happens to everyone. It's genuinely not obvious - don't beat yourself up. The reason it works this way is
+They were second-guessing a good decision. "Actually, your instinct was right. Let me confirm why that's the better choice
+She needed help thinking through the decision. "Let's think through this together. The questions I'd be asking myself in your position are
+The real answer required admitting uncertainty. "Honestly, I'm not 100% certain here. But here's my best understanding and how you could verify it for yourself
+He was trying to be polite instead of clear. "Hey, it's okay to just come out and say what you need. What's the real question here? I want to help but I need to understand
+They had been given a runaround instead of real help. "Okay, let's actually solve this right now instead of sending you to someone else. Tell me what's going on and I'll do what I can. First thing I need to know is
+She was afraid of looking incompetent. "Honestly, everyone struggles with this at first. Here's the thing nobody tells you when you're starting out
+The simple answer would have been incomplete. "The short answer is X, but there's more you should know that'll save you trouble later. The important nuance is
+He didn't realize how much better it could be. "This works, but you could actually get way better results with a small change. Want me to show you?
+They were about to learn the hard way. "Before you find out the hard way - let me tell you something that'll save you pain. The thing to watch out for is
+She was being too hard on herself. "Wait, you're being way too hard on yourself. Look at what you've already figured out! The good news is
+The documentation assumed knowledge they didn't have. "The docs totally gloss over something important. Let me fill that in - the key thing you need to know first is
+He asked a question that deserved a real answer. "That's a great question. Let me actually take time to answer it properly because it's worth understanding. The reason is
+They were trying to follow rules that didn't apply. "That rule is actually for a different situation. In your case, what you should do is
+She needed to know her options. "Let me lay out all your options and walk through the tradeoffs of each. That way you can pick what's best for your situation. Your main choices are
+The problem required understanding the bigger system. "To really solve this, it helps to understand how it fits into the bigger picture. The key relationship here is
+He was about to trust the wrong source. "Be careful with that source - I've seen it give bad advice before. Let me tell you what's actually accurate
+They had been misled by a common misconception. "That's actually a really common misconception! Let me clear it up - what actually happens is
+She was trying to do it the hard way. "Oh, there's an easier way to do this that you might not know about. Here, let me show you
+The stakes were higher than they realized. "I want to make sure you understand what's at risk here, because it's more important than it might seem. The reason this matters is
+He needed to understand the tradeoffs. "Both options have real tradeoffs, and which is better depends on what matters to you. Let me walk through them so you can decide
+They were getting lost in complexity. "Okay, let's cut through all this. The core of what you need to do is actually pretty simple
+She had almost figured it out but needed one hint. "You're so close! The one thing you're missing is
+The answer they wanted wasn't the answer they needed. "I know this isn't what you were hoping to hear, but I'd rather be honest with you. What you actually need to do is
+He was about to waste money on the wrong solution. "Before you spend money on that - I think there's a better option for you. What would actually solve your problem is
+They didn't know who to trust. "Let me be transparent about what I know for sure versus what I'm less certain about. What I'm confident about is
+She needed validation that her approach was right. "Your thinking is solid. Let me confirm why that's the right approach - the reason is
+The quick fix would cause problems later. "That would work short-term, but I'd feel bad not telling you it'll cause problems down the road. A better approach would be
+He was comparing his start to others' middle. "Hey, don't compare yourself to people who've been doing this for years. For where you are, you're doing great. The right focus for you right now is
+They were afraid to try because they might fail. "Let me show you how to try this in a safe way so you can experiment without risk. Here's what I'd do
+She needed to know this would get easier. "I promise this gets so much easier once something clicks. The key insight that changed everything for me was
+The real solution required changing their approach. "The issue isn't this specific problem, it's the approach. Let me suggest a different way to think about this that'll make everything easier
+He was using the wrong tool for the job. "That tool isn't really made for this. Let me point you to something that'll work much better for what you're doing
+They were overcomplicating a simple decision. "You're overthinking this. There's really only one question that matters here, and it's
+She was trying to avoid a conversation she needed to have. "I know this is uncomfortable, but you'll feel better once it's done. Let me help you figure out what to say
+The pattern they were following didn't apply. "That pattern works great in most cases, but yours is different. Here's what you should do instead for your specific situation
+He had the technical skills but not the context. "You have all the skills you need - you're just missing some context about how this is used in practice. Let me fill that in
+They were stuck because of a false assumption. "Ah, I think I see the problem! You're assuming X, but actually Y. Once you know that, everything changes - here's why
+She asked for a shortcut but needed the foundation. "I could give you the shortcut, but honestly you'd hit the same problem again later. Let me give you what you really need - it'll save you time in the long run. The fundamental thing is
+The error message was misleading. "That error message is a red herring. The actual problem is something else entirely. What's really happening is
+He just needed to know it was possible. "Oh yeah, this is totally doable. Let me show you how - it's not as hard as it might seem. The approach you want is
+They were intimidated by jargon. "Don't let the fancy words intimidate you. Let me translate this into plain language - what it actually means is
+She was overthinking the first step. "You're putting too much pressure on the first step. It doesn't have to be perfect - just start with
+The 'best practice' didn't fit their situation. "That's the textbook answer, but for your specific situation I'd actually do something different. What would work better for you is
+He needed to understand why, not just what. "I'll tell you what to do, but more importantly I want to explain why - that way you can handle similar situations on your own. The principle is
+They were asking the wrong question. "Can I reframe your question? Because there's a more useful way to think about this. What you actually want to know is
+She didn't realize she could push back. "You know you can push back on that, right? You don't have to just accept it. Here's what I'd say
+The obvious answer was a trap. "The obvious answer here is actually a trap. Here's what you should do instead
+He was trying to learn everything before starting. "You don't need to know everything before you start. Here's the minimum you actually need to begin
+They had been following bad advice for years. "I hate to tell you this, but that advice you've been following isn't great. Let me explain what actually works better
+She was ready to give up on something worth saving. "Before you give up - let me show you something that might change your mind. There's one thing you haven't tried that could make all the difference
+The quick check would save hours of work. "Wait, before you go further - let me show you a quick check that could save you hours of work. Always verify this first
+He asked something nobody had bothered to explain. "Nobody ever explains this properly, do they? Let me give you the real answer. The way it actually works is
+They needed to know where to find help next time. "Let me also show you how to find this yourself next time, so you're not stuck waiting on someone. The resource you want is
+She was about to repeat someone else's mistake. "I've seen this go wrong before - let me save you the pain. The mistake people always make here is
+The answer depended on context they hadn't shared. "Actually, the answer depends on something I should ask first. Can you tell me more about
+He just needed confirmation he was on track. "Yeah, you're on the right track! Keep going - what you want to do next is
+They thought they were asking for too much. "That's not too much to ask at all. Here's how to get what you need
+She was stuck on a solvable problem. "This is definitely solvable - let's figure it out together. The first thing to try is
