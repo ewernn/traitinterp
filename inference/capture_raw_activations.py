@@ -86,12 +86,9 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from traitlens import HookManager, projection
-from utils.model import format_prompt, load_experiment_config
+from utils.model import format_prompt, load_experiment_config, load_model_with_lora
 from utils.vectors import load_vector_metadata
 from utils.generation import generate_with_capture, get_available_vram_gb, calculate_max_batch_size
-
-
-MODEL_NAME = "google/gemma-2-2b-it"
 
 
 
@@ -995,7 +992,8 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
 def _save_capture_data(
     data: Dict, prompt_item: Dict, set_name: str, inference_dir: Path,
     trait_vectors: Dict, n_layers: int, args, get_path,
-    all_layer_data=None, layer_indices=None, model=None, tokenizer=None
+    all_layer_data=None, layer_indices=None, model=None, tokenizer=None,
+    model_name: str = None, lora_adapter: str = None
 ):
     """Save captured data: raw .pt, response JSON, projections, and optionals."""
     prompt_id = prompt_item['id']
@@ -1023,7 +1021,8 @@ def _save_capture_data(
             'n_tokens': len(data['response']['tokens'])
         },
         'metadata': {
-            'inference_model': MODEL_NAME,
+            'inference_model': model_name or 'unknown',
+            'lora_adapter': lora_adapter,
             'inference_experiment': args.experiment,
             'prompt_set': set_name,
             'prompt_id': prompt_id,
@@ -1151,6 +1150,16 @@ def main():
     parser.add_argument("--limit", type=int, default=None,
                        help="Limit number of prompts to process (for testing)")
 
+    # Model options
+    parser.add_argument("--model", type=str, default=None,
+                       help="Model to use (overrides experiment config application_model)")
+    parser.add_argument("--lora", type=str, default=None,
+                       help="LoRA adapter to apply on top of model (HuggingFace path)")
+    parser.add_argument("--load-in-8bit", action="store_true",
+                       help="Load model in 8-bit quantization (for 70B+ models)")
+    parser.add_argument("--load-in-4bit", action="store_true",
+                       help="Load model in 4-bit quantization")
+
     args = parser.parse_args()
 
     from utils.paths import get as get_path
@@ -1191,15 +1200,32 @@ def main():
                 prompt_sets.append((f.stem, data['prompts']))
         print(f"Found {len(prompt_sets)} prompt sets")
 
-    # Load model
-    print(f"Loading model: {MODEL_NAME}")
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME, torch_dtype=torch.float16, device_map="auto",
-        attn_implementation='eager'
-    )
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    # Determine model to use
+    if args.model:
+        model_name = args.model
+    else:
+        model_name = config.get('application_model')
+        if not model_name:
+            print("Error: No model specified. Use --model or set application_model in experiment config.")
+            return
+
+    # Load model (with optional LoRA and quantization)
+    if args.lora or args.load_in_8bit or args.load_in_4bit:
+        model, tokenizer = load_model_with_lora(
+            model_name,
+            lora_adapter=args.lora,
+            load_in_8bit=args.load_in_8bit,
+            load_in_4bit=args.load_in_4bit,
+        )
+    else:
+        print(f"Loading model: {model_name}")
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, torch_dtype=torch.float16, device_map="auto",
+            attn_implementation='eager'
+        )
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
 
     n_layers = len(model.model.layers)
     print(f"Model has {n_layers} layers")
@@ -1323,7 +1349,8 @@ def main():
                     data, prompt_item, set_name, inference_dir, trait_vectors,
                     n_layers, args, get_path,
                     all_layer_data=all_layer_data, layer_indices=layer_indices,
-                    model=model, tokenizer=tokenizer
+                    model=model, tokenizer=tokenizer, model_name=model_name,
+                    lora_adapter=args.lora
                 )
 
             continue  # Done with this prompt set
@@ -1384,7 +1411,8 @@ def main():
                     data, prompt_item, set_name, inference_dir, trait_vectors,
                     n_layers, args, get_path,
                     all_layer_data=None, layer_indices=None,
-                    model=model, tokenizer=tokenizer
+                    model=model, tokenizer=tokenizer, model_name=model_name,
+                    lora_adapter=args.lora
                 )
 
     print(f"\n{'='*60}")

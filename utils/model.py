@@ -2,10 +2,17 @@
 Shared model loading and prompt formatting utilities.
 
 Usage:
-    from utils.model import load_model, format_prompt, load_experiment_config
+    from utils.model import load_model, load_model_with_lora, format_prompt, load_experiment_config
 
     model, tokenizer = load_model("google/gemma-2-2b-it")
     model, tokenizer = load_model("google/gemma-2-2b-it", device="cuda")
+
+    # Load with LoRA adapter (for 70B models with quantization)
+    model, tokenizer = load_model_with_lora(
+        "meta-llama/Llama-3.3-70B-Instruct",
+        lora_adapter="auditing-agents/llama-3.3-70b-dpo-rt-lora",
+        load_in_8bit=True
+    )
 
     # Format prompt (auto-detects chat template from tokenizer)
     formatted = format_prompt("Hello", tokenizer)
@@ -51,6 +58,71 @@ def load_model(
         dtype=dtype,
         device_map=device,
     )
+    model.eval()
+    print("Model loaded.")
+    return model, tokenizer
+
+
+def load_model_with_lora(
+    model_name: str,
+    lora_adapter: str = None,
+    load_in_8bit: bool = False,
+    load_in_4bit: bool = False,
+    device: str = "auto",
+    dtype: torch.dtype = torch.float16,
+) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
+    """
+    Load model with optional LoRA adapter and quantization.
+
+    For large models (70B+), use load_in_8bit=True on A100 80GB.
+
+    Args:
+        model_name: HuggingFace model name (base model)
+        lora_adapter: Optional LoRA adapter path (HuggingFace or local)
+        load_in_8bit: Load in 8-bit quantization (requires bitsandbytes)
+        load_in_4bit: Load in 4-bit quantization (requires bitsandbytes)
+        device: Device map ('auto', 'cuda', 'cpu')
+        dtype: Model dtype (default: float16 for compatibility with quantization)
+
+    Returns:
+        (model, tokenizer) tuple
+    """
+    print(f"Loading model: {model_name}...")
+    if load_in_8bit:
+        print("  Using 8-bit quantization")
+    if load_in_4bit:
+        print("  Using 4-bit quantization")
+    if lora_adapter:
+        print(f"  With LoRA adapter: {lora_adapter}")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # Build model loading kwargs
+    model_kwargs = {
+        "device_map": device,
+        "torch_dtype": dtype,
+    }
+
+    if load_in_8bit:
+        model_kwargs["load_in_8bit"] = True
+    elif load_in_4bit:
+        model_kwargs["load_in_4bit"] = True
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+
+    # Apply LoRA adapter if specified
+    if lora_adapter:
+        try:
+            from peft import PeftModel
+        except ImportError:
+            raise ImportError("peft required for LoRA. Install with: pip install peft")
+
+        print(f"  Applying LoRA adapter...")
+        model = PeftModel.from_pretrained(model, lora_adapter)
+        print(f"  LoRA adapter applied.")
+
     model.eval()
     print("Model loaded.")
     return model, tokenizer
