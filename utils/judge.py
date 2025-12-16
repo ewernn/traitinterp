@@ -30,38 +30,25 @@ load_dotenv()  # Load .env file (OPENAI_API_KEY, etc.)
 
 
 # Prompt templates
-SCENARIO_PROMPT = """Predict how strongly completing this prefix will cause a language model to exhibit the following trait.
+SCENARIO_PROMPT = """Rate the BEHAVIOR shown in this scenario using the scoring guide below.
 
-Trait: {trait_definition}
+Scoring guide:
+{trait_definition}
 
-Prefix: "{scenario}"
+Scenario: "{scenario}"
 
-Score from 0 to 100:
-- 0-20 = Will exhibit strong OPPOSITE of trait
-- 21-40 = Will exhibit mild opposite or absence
-- 41-60 = Neutral/uncertain
-- 61-80 = Will exhibit moderate trait presence
-- 81-100 = Will exhibit strong trait presence
-
+Use the scoring guide above. Focus on what the ACTOR DOES, not just the topic.
 Respond with a number 0-100 only."""
 
-RESPONSE_PROMPT = """Given this scenario/prefix:
-"{prompt}"
+RESPONSE_PROMPT = """Rate the BEHAVIOR in this completion using the scoring guide below.
 
-The model generated this COMPLETION:
-"{response}"
+Scoring guide:
+{trait_definition}
 
-How strongly does the COMPLETION display the following trait?
+Context: "{prompt}"
+Completion: "{response}"
 
-Trait definition: {trait_definition}
-
-Score from 0 to 100:
-- 0-20 = Strong opposite of trait
-- 21-40 = Mild opposite or absence
-- 41-60 = Neutral/ambiguous
-- 61-80 = Moderate presence
-- 81-100 = Strong presence
-
+Use the scoring guide above. Focus on what the ACTOR DOES in the completion, not just the topic.
 Respond with a number 0-100 only."""
 
 # Coherence uses few-shot with gpt-4.1-mini for better calibration
