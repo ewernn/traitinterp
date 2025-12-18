@@ -19,7 +19,9 @@ const state = {
     // Layer Deep Dive settings
     hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
     // Steering Sweep settings
-    selectedSteeringTrait: null  // Selected trait for single-trait sections (reset on experiment change)
+    selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
+    // Projection normalization mode
+    projectionMode: 'cosine'  // 'cosine' (a·v / ||a||||v||) or 'vnorm' (a·v / ||v||)
 };
 
 // Display names for better interpretability
@@ -100,6 +102,21 @@ function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
+}
+
+// Projection Mode Management
+function initProjectionMode() {
+    const saved = localStorage.getItem('projectionMode');
+    if (saved === 'cosine' || saved === 'vnorm') {
+        state.projectionMode = saved;
+    }
+}
+
+function setProjectionMode(mode) {
+    if (mode !== 'cosine' && mode !== 'vnorm') return;
+    state.projectionMode = mode;
+    localStorage.setItem('projectionMode', mode);
+    if (window.renderView) window.renderView();
 }
 
 function toggleTheme() {
@@ -729,6 +746,7 @@ function renderMath(element) {
 async function init() {
     await window.paths.load();
     initTheme();
+    initProjectionMode();
     initTransformerSidebar();
     setupNavigation();
     await loadExperiments();
@@ -753,3 +771,4 @@ window.initApp = init;
 window.escapeHtml = escapeHtml;
 window.markdownToHtml = markdownToHtml;
 window.renderMath = renderMath;
+window.setProjectionMode = setProjectionMode;

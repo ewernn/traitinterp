@@ -229,6 +229,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         `;
     }
 
+    // Determine projection mode
+    const projectionMode = window.state.projectionMode || 'cosine';
+    const isCosine = projectionMode === 'cosine';
+
     container.innerHTML = `
         <div class="tool-view">
             <div class="page-intro">
@@ -239,14 +243,19 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
 
             <section>
                 <h2>Token Trajectory <span class="subsection-info-toggle" data-target="info-token-trajectory">►</span></h2>
-                <div class="subsection-info" id="info-token-trajectory">Projection from best layer per token. 3-token smoothing applied.</div>
+                <div class="subsection-info" id="info-token-trajectory">
+                    ${isCosine
+                        ? 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector, independent of activation magnitude.'
+                        : 'Raw projection: a·v / ||v||. Shows absolute trait signal strength (affected by activation magnitude).'}
+                </div>
+                <div class="projection-toggle">
+                    <span class="projection-toggle-label">Mode:</span>
+                    <div class="projection-toggle-btns">
+                        <button class="projection-toggle-btn ${isCosine ? 'active' : ''}" data-mode="cosine">Cosine</button>
+                        <button class="projection-toggle-btn ${!isCosine ? 'active' : ''}" data-mode="vnorm">Magnitude</button>
+                    </div>
+                </div>
                 <div id="combined-activation-plot"></div>
-            </section>
-
-            <section>
-                <h3>Normalized Trajectory <span class="subsection-info-toggle" data-target="info-normalized-trajectory">►</span></h3>
-                <div class="subsection-info" id="info-normalized-trajectory">Projection normalized by activation magnitude (proj / ||h||). Removes magnitude effects - shows directional alignment with trait vector regardless of activation strength.</div>
-                <div id="normalized-trajectory-plot"></div>
             </section>
 
             <section>
@@ -281,9 +290,8 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     // Prepare data for plotting
     const traitActivations = {};  // Store smoothed activations for velocity/accel
 
-    // Prepare traces for Token Trajectory and Normalized Trajectory
+    // Prepare traces for Token Trajectory (cosine or vnorm based on mode)
     const traces = [];
-    const normalizedTraces = [];
 
     // Get token norms from first trait (same for all traits since it's trait-independent at best layer)
     const firstTraitData = traitData[loadedTraits[0]];
@@ -295,6 +303,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         allTokenNorms = [...promptNorms, ...responseNorms].slice(START_TOKEN_IDX);
     }
 
+    // Warn if cosine mode but no token norms
+    const canUseCosine = hasTokenNorms && allTokenNorms && allTokenNorms.length > 0;
+    const effectiveMode = isCosine && canUseCosine ? 'cosine' : 'vnorm';
+
     loadedTraits.forEach((traitName, idx) => {
         const data = traitData[traitName];
         const promptProj = data.projections.prompt;
@@ -302,44 +314,39 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         const allProj = [...promptProj, ...responseProj];
 
         // projections are now 1D arrays (one value per token at best layer)
-        const rawActivations = allProj.slice(START_TOKEN_IDX);
+        const rawVnorm = allProj.slice(START_TOKEN_IDX);
+
+        // Compute values based on mode
+        let rawValues;
+        if (effectiveMode === 'cosine' && canUseCosine) {
+            rawValues = rawVnorm.map((proj, i) => {
+                const norm = allTokenNorms[i];
+                return norm > 0 ? proj / norm : 0;
+            });
+        } else {
+            rawValues = rawVnorm;
+        }
 
         // Apply 3-token moving average
-        const activations = smoothData(rawActivations, 3);
-        traitActivations[traitName] = activations;
+        const smoothedValues = smoothData(rawValues, 3);
+
+        // Store vnorm activations for velocity/accel (always use vnorm for derivatives)
+        traitActivations[traitName] = smoothData(rawVnorm, 3);
 
         const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
+        const valueLabel = effectiveMode === 'cosine' ? 'Cosine' : 'Projection';
+        const valueFormat = effectiveMode === 'cosine' ? '.4f' : '.3f';
 
         traces.push({
-            x: Array.from({length: activations.length}, (_, i) => i),
-            y: activations,
+            x: Array.from({length: smoothedValues.length}, (_, i) => i),
+            y: smoothedValues,
             type: 'scatter',
             mode: 'lines+markers',
             name: window.getDisplayName(traitName),
             line: { color: color, width: 1 },
             marker: { size: 1, color: color },
-            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>Projection: %{y:.3f}<extra></extra>`
+            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`
         });
-
-        // Build normalized traces if token norms available
-        if (hasTokenNorms) {
-            const normalizedRaw = rawActivations.map((proj, i) => {
-                const norm = allTokenNorms[i];
-                return norm > 0 ? proj / norm : 0;
-            });
-            const normalizedSmooth = smoothData(normalizedRaw, 3);
-
-            normalizedTraces.push({
-                x: Array.from({length: normalizedSmooth.length}, (_, i) => i),
-                y: normalizedSmooth,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: window.getDisplayName(traitName),
-                line: { color: color, width: 1 },
-                marker: { size: 1, color: color },
-                hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>Normalized: %{y:.4f}<extra></extra>`
-            });
-        }
     });
 
     // Get display tokens (every 10th for x-axis labels)
@@ -408,6 +415,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     }).join('');
 
     // Token Trajectory plot
+    const yAxisTitle = effectiveMode === 'cosine' ? 'Cosine (proj / ||h||)' : 'Projection (a·v / ||v||)';
     const mainLayout = window.getPlotlyLayout({
         xaxis: {
             title: 'Token Position',
@@ -419,7 +427,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             tickfont: { size: 9 }
         },
         yaxis: {
-            title: 'Projection (3-token avg)',
+            title: yAxisTitle,
             zeroline: true, zerolinewidth: 1, showgrid: true
         },
         shapes: shapes,
@@ -453,44 +461,15 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         }
     });
 
-    // Normalized Trajectory plot
-    const normalizedPlotDiv = document.getElementById('normalized-trajectory-plot');
-    if (normalizedTraces.length > 0) {
-        const normalizedLayout = window.getPlotlyLayout({
-            xaxis: {
-                title: 'Token Position',
-                tickmode: 'array',
-                tickvals: tickVals,
-                ticktext: tickText,
-                tickangle: -45,
-                showgrid: false,
-                tickfont: { size: 9 }
-            },
-            yaxis: {
-                title: 'Projection / ||h||',
-                zeroline: true, zerolinewidth: 1, showgrid: true
-            },
-            shapes: shapes,
-            margin: { l: 60, r: 20, t: 20, b: 60 },
-            height: 280,
-            hovermode: 'closest',
-            showlegend: false  // Using custom legend above
-        });
-
-        Plotly.newPlot('normalized-trajectory-plot', normalizedTraces, normalizedLayout, { responsive: true, displayModeBar: false });
-
-        // Click-to-select for normalized plot
-        normalizedPlotDiv.on('plotly_click', (d) => {
-            const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-            if (window.state.currentTokenIndex !== tokenIdx) {
-                window.state.currentTokenIndex = tokenIdx;
-                window.renderPromptPicker?.();
-                window.renderCurrentView?.();
+    // Setup projection mode toggle buttons
+    document.querySelectorAll('.projection-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.dataset.mode;
+            if (mode && mode !== window.state.projectionMode) {
+                window.setProjectionMode(mode);
             }
         });
-    } else {
-        normalizedPlotDiv.innerHTML = '<div class="info">Token norms not available. Re-run projection script to generate.</div>';
-    }
+    });
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, nPromptTokens);

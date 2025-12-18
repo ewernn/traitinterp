@@ -10,6 +10,9 @@
 // Views that show the prompt picker
 const INFERENCE_VIEWS = ['trait-dynamics', 'layer-deep-dive', 'multi-layer-heatmap'];
 
+// Pagination settings
+const PROMPTS_PER_PAGE = 50;
+
 /**
  * Render the prompt picker panel.
  * Shows only for inference views, hidden for trait development views.
@@ -43,10 +46,45 @@ async function renderPromptPicker() {
         promptSetButtons += `<button class="pp-btn pp-set-btn ${isActive}" data-set="${setName}">${displayName}</button>`;
     }
 
-    // Build prompt ID buttons
+    // Build prompt ID buttons (with pagination for large sets)
     const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
+    const needsPagination = currentSetPromptIds.length > PROMPTS_PER_PAGE;
+
+    // Initialize page state if needed, and ensure current prompt is visible
+    if (window.state.promptPage === undefined) {
+        window.state.promptPage = 0;
+    }
+    // Jump to page containing current prompt
+    if (window.state.currentPromptId !== null && needsPagination) {
+        const promptIdx = currentSetPromptIds.indexOf(window.state.currentPromptId);
+        if (promptIdx >= 0) {
+            window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+        }
+    }
+
+    // Calculate pagination
+    const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
+    const currentPage = Math.min(window.state.promptPage, totalPages - 1);
+    const startIdx = currentPage * PROMPTS_PER_PAGE;
+    const endIdx = Math.min(startIdx + PROMPTS_PER_PAGE, currentSetPromptIds.length);
+    const visibleIds = needsPagination ? currentSetPromptIds.slice(startIdx, endIdx) : currentSetPromptIds;
+
+    // Build pagination controls
+    let paginationHtml = '';
+    if (needsPagination) {
+        const prevDisabled = currentPage === 0 ? 'disabled' : '';
+        const nextDisabled = currentPage >= totalPages - 1 ? 'disabled' : '';
+        paginationHtml = `
+            <div class="pp-pagination">
+                <button class="pp-page-btn" id="pp-prev" ${prevDisabled}>◀</button>
+                <span class="pp-page-info">${startIdx + 1}-${endIdx} of ${currentSetPromptIds.length}</span>
+                <button class="pp-page-btn" id="pp-next" ${nextDisabled}>▶</button>
+            </div>
+        `;
+    }
+
     let promptBoxes = '';
-    currentSetPromptIds.forEach(id => {
+    visibleIds.forEach(id => {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
         const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === id);
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
@@ -116,6 +154,7 @@ async function renderPromptPicker() {
                 <div class="pp-row">
                     <span class="pp-row-label">Prompt:</span>
                     <div class="pp-prompts">${promptBoxes}</div>
+                    ${paginationHtml}
                     ${promptNote ? `<span class="pp-note">${promptNote}</span>` : ''}
                 </div>
             </div>
@@ -230,6 +269,7 @@ function setupPromptPickerListeners() {
             const newSet = btn.dataset.set;
             if (window.state.currentPromptSet !== newSet) {
                 window.state.currentPromptSet = newSet;
+                window.state.promptPage = 0; // Reset to first page
                 const availableIds = window.state.promptsWithData[newSet] || [];
                 window.state.currentPromptId = availableIds[0] || null;
                 window.state.promptPickerCache = null; // Clear cache
@@ -241,6 +281,28 @@ function setupPromptPickerListeners() {
             }
         });
     });
+
+    // Pagination buttons
+    const prevBtn = container.querySelector('#pp-prev');
+    const nextBtn = container.querySelector('#pp-next');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (window.state.promptPage > 0) {
+                window.state.promptPage--;
+                renderPromptPicker();
+            }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
+            const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
+            if (window.state.promptPage < totalPages - 1) {
+                window.state.promptPage++;
+                renderPromptPicker();
+            }
+        });
+    }
 
     // Prompt ID buttons (exclude set buttons)
     container.querySelectorAll('.pp-prompts .pp-btn').forEach(box => {

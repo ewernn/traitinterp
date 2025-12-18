@@ -128,10 +128,20 @@ def extract_vectors_for_trait(
         pos_acts = layer_acts[:n_pos]
         neg_acts = layer_acts[n_pos:]
 
+        # Compute training centroid (for baseline calculation)
+        mean_pos = pos_acts.mean(dim=0)
+        mean_neg = neg_acts.mean(dim=0)
+        center = (mean_pos + mean_neg) / 2
+
         for method_name, method_obj in method_objs.items():
             try:
                 result = method_obj.extract(pos_acts, neg_acts)
                 vector = result['vector']
+                vector_norm = vector.norm().item()
+
+                # Compute baseline: projection of training centroid onto normalized vector
+                # This is what we'd measure on a "neutral" point if we measured from origin
+                baseline = (center @ vector / vector_norm).item() if vector_norm > 0 else 0.0
 
                 torch.save(vector, vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}.pt")
 
@@ -143,7 +153,8 @@ def extract_vectors_for_trait(
                     "layer": layer_idx,
                     "component": component,
                     "model": metadata.get("model", "unknown"),
-                    "vector_norm": float(vector.norm().item()),
+                    "vector_norm": float(vector_norm),
+                    "baseline": baseline,  # Subtract this from projections to center around 0
                 }
                 if 'bias' in result:
                     b = result['bias']

@@ -191,6 +191,58 @@ def load_vector_metadata(experiment: str, trait: str) -> Dict[str, Any]:
         return json.load(f)
 
 
+def load_vector_with_baseline(
+    experiment: str,
+    trait: str,
+    method: str,
+    layer: int,
+    component: str = "residual"
+) -> Tuple[torch.Tensor, float, Dict[str, Any]]:
+    """
+    Load a vector with its baseline and per-vector metadata.
+
+    The baseline is the projection of the training centroid onto the vector.
+    Subtract it from projections to center around 0.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path (e.g., "category/trait_name")
+        method: Extraction method (e.g., "probe", "mean_diff")
+        layer: Layer number
+        component: Component type (default: "residual")
+
+    Returns:
+        Tuple of (vector tensor, baseline float, per-vector metadata dict)
+        baseline is 0.0 if not available in metadata
+
+    Raises:
+        FileNotFoundError: If vector file doesn't exist
+    """
+    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
+
+    # Build filenames
+    prefix = "" if component == "residual" else f"{component}_"
+    vector_path = vectors_dir / f"{prefix}{method}_layer{layer}.pt"
+    metadata_path = vectors_dir / f"{prefix}{method}_layer{layer}_metadata.json"
+
+    if not vector_path.exists():
+        raise FileNotFoundError(f"Vector not found: {vector_path}")
+
+    vector = torch.load(vector_path, weights_only=True)
+
+    # Load per-vector metadata (contains baseline)
+    metadata = {}
+    baseline = 0.0
+    if metadata_path.exists():
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        baseline = metadata.get('baseline', 0.0)
+    else:
+        logger.warning(f"No per-vector metadata found at {metadata_path}, baseline=0")
+
+    return vector, baseline, metadata
+
+
 def get_vector_source_info(experiment: str, trait: str, method: str, layer: int, component: str = "residual") -> Dict[str, Any]:
     """
     Get vector source info for use in results metadata.

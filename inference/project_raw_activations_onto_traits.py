@@ -65,7 +65,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from traitlens import projection
-from utils.vectors import load_vector_metadata
+from utils.vectors import load_vector_metadata, load_vector_with_baseline
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
@@ -257,6 +257,8 @@ def main():
     parser.add_argument("--component", choices=["residual", "attn_out"], default="residual",
                        help="Activation component to project (default: residual)")
     parser.add_argument("--logit-lens", action="store_true", help="Compute logit lens")
+    parser.add_argument("--centered", action="store_true",
+                       help="Subtract training baseline from projections (centers around 0)")
     parser.add_argument("--skip-existing", action="store_true")
 
     args = parser.parse_args()
@@ -353,12 +355,20 @@ def process_prompt_set(args, inference_dir, prompt_set):
             print(f"  Skip {trait_path}: {vector_path} not found")
             continue
 
-        vector = torch.load(vector_path, weights_only=True).to(torch.float16)
+        # Load vector with baseline using helper
+        try:
+            vector, baseline, per_vec_metadata = load_vector_with_baseline(
+                args.experiment, trait_path, method, layer, component=args.component
+            )
+            vector = vector.to(torch.float16)
+        except FileNotFoundError:
+            print(f"  Skip {trait_path}: vector file not found")
+            continue
 
-        # Load vector metadata for source info
+        # Load general vector metadata for source info
         vec_metadata = load_vector_metadata(args.experiment, trait_path)
 
-        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata, selection_source)
+        trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata, selection_source, baseline)
 
     print(f"Loaded {len(trait_vectors)} trait vectors")
 
@@ -425,7 +435,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
             }
 
         # Project onto each trait
-        for (category, trait_name), (vector, method, vector_path, layer, vec_metadata, selection_source) in trait_vectors.items():
+        for (category, trait_name), (vector, method, vector_path, layer, vec_metadata, selection_source, baseline) in trait_vectors.items():
             # Path: {component}_stream/{prompt_set}/{id}.json
             stream_name = "attn_stream" if args.component == "attn_out" else "residual_stream"
             out_dir = inference_dir / category / trait_name / stream_name / prompt_set
@@ -437,6 +447,11 @@ def process_prompt_set(args, inference_dir, prompt_set):
             # Compute projections at best layer
             prompt_proj = project_onto_vector(data['prompt']['activations'], vector, layer, component=args.component)
             response_proj = project_onto_vector(data['response']['activations'], vector, layer, component=args.component)
+
+            # Optionally center projections by subtracting training baseline
+            if args.centered and baseline != 0.0:
+                prompt_proj = prompt_proj - baseline
+                response_proj = response_proj - baseline
 
             # Compute per-token activation norms at best layer (for punctuation analysis)
             prompt_token_norms = compute_token_norms(data['prompt']['activations'], layer)
@@ -458,6 +473,8 @@ def process_prompt_set(args, inference_dir, prompt_set):
                         'component': args.component,
                         'sublayer': 'residual_out' if args.component == 'residual' else 'attn_out',
                         'selection_source': selection_source,
+                        'baseline': baseline,  # Training centroid projection (for centering)
+                        'centered': args.centered,  # Whether baseline was subtracted
                     },
                     'projection_date': datetime.now().isoformat()
                 },

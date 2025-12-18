@@ -1094,6 +1094,40 @@ code {
 }
 
 .pp-note, .pp-meta { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+.pp-pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+.pp-page-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: var(--text-xs);
+    color: var(--text-primary);
+}
+
+.pp-page-btn:hover:not([disabled]) {
+    background: var(--primary-color);
+    color: var(--text-on-primary);
+}
+
+.pp-page-btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pp-page-info {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 .pp-text { line-height: 1.5; margin-bottom: 16px; }
 .pp-text > div { margin-bottom: 8px; }
 .pp-text > div:first-child { color: var(--text-secondary); }
@@ -1808,4 +1842,46 @@ code {
     width: 12px;
     height: 3px;
     border-radius: 1px;
+}
+
+/* ============================================================
+   Projection Mode Toggle
+   ============================================================ */
+
+.projection-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.projection-toggle-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.projection-toggle-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.projection-toggle-btn {
+    background: var(--bg-tertiary);
+    border: none;
+    border-radius: 2px;
+    padding: 4px 10px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.projection-toggle-btn:hover {
+    color: var(--primary-color);
+}
+
+.projection-toggle-btn.active {
+    background: var(--primary-color);
+    color: var(--text-on-primary);
 }
