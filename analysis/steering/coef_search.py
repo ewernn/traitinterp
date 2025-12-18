@@ -15,6 +15,8 @@ Usage:
     from analysis.steering.coef_search import adaptive_search_layer, batched_adaptive_search
 """
 
+import time
+
 import torch
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -125,6 +127,8 @@ async def adaptive_search_layer(
     threshold: float = MIN_COHERENCE,
     up_mult: float = 1.3,
     down_mult: float = 0.85,
+    momentum: float = 0.0,  # 0.0 = no momentum, 0.7 = typical momentum
+    max_new_tokens: int = 256,
 ):
     """Run adaptive search for a single layer, saving each result."""
     print(f"\n--- Layer {layer} (base_coef={base_coef:.0f}) ---")
@@ -132,6 +136,7 @@ async def adaptive_search_layer(
     print("-----|--------|-------|-----------|-------")
 
     coef = base_coef * 0.7  # Start at 0.7x base
+    velocity = 1.0  # Multiplicative velocity for momentum
     history = []
 
     for step in range(n_steps):
@@ -153,7 +158,8 @@ async def adaptive_search_layer(
         else:
             result, responses = await evaluate_single_config(
                 model, tokenizer, vector, layer, coef,
-                questions, trait_name, trait_definition, judge, use_chat_template, component
+                questions, trait_name, trait_definition, judge, use_chat_template, component,
+                max_new_tokens=max_new_tokens
             )
 
             trait_score = result.get("trait_mean") or 0
@@ -186,10 +192,15 @@ async def adaptive_search_layer(
         history.append((coef, trait_score, coherence))
 
         # Decide next coefficient
-        if coherence < threshold:
-            coef = coef * down_mult
+        direction = up_mult if coherence >= threshold else down_mult
+
+        if momentum > 0:
+            # Smooth updates with momentum
+            velocity = momentum * velocity + (1 - momentum) * direction
+            coef *= velocity
         else:
-            coef = coef * up_mult
+            # Original behavior: direct multiplicative update
+            coef *= direction
 
     # Report best
     valid = [(c, t, coh) for c, t, coh in history if coh >= threshold]
@@ -222,12 +233,19 @@ async def batched_adaptive_search(
     down_mult: float = 0.85,
     max_batch_layers: Optional[int] = None,
     max_new_tokens: int = 256,
+    momentum: float = 0.0,  # 0.0 = no momentum, 0.7 = typical momentum
 ):
     """
     Run adaptive search for multiple layers in parallel batches.
 
     All layers step together, but each follows its own coefficient trajectory
     based on its coherence results.
+
+    Args:
+        momentum: Smoothing factor for coefficient updates (0.0-1.0).
+            0.0 = no momentum (original behavior, direct up/down mult)
+            0.7 = typical momentum (smooths oscillations between up/down)
+            Higher values = more inertia, slower direction changes
     """
     n_questions = len(questions)
     n_layers = len(layer_data)
@@ -255,6 +273,7 @@ async def batched_adaptive_search(
             "layer": ld["layer"],
             "vector": ld["vector"],
             "coef": ld["base_coef"] * 0.7,  # Start at 0.7x base
+            "velocity": 1.0,  # Multiplicative velocity for momentum
             "history": [],
             "done": False,
         })
@@ -317,9 +336,12 @@ async def batched_adaptive_search(
                     ))
 
                 # Generate all at once
-                print(f"  Generating {len(batched_prompts)} responses ({len(uncached_states)} layers × {n_questions} questions)...")
+                print(f"  Generating {len(batched_prompts)} responses ({len(uncached_states)} layers × {n_questions} questions)...", end=" ", flush=True)
+                t0 = time.time()
                 with BatchedLayerSteeringHook(model, steering_configs, component=component):
-                    all_responses = generate_batch(model, tokenizer, batched_prompts)
+                    all_responses = generate_batch(model, tokenizer, batched_prompts, max_new_tokens=max_new_tokens)
+                gen_time = time.time() - t0
+                print(f"({gen_time:.1f}s)")
 
                 # Score all responses
                 all_qa_pairs = []
@@ -329,8 +351,11 @@ async def batched_adaptive_search(
                     for q, r in zip(questions, all_responses[start:end]):
                         all_qa_pairs.append((q, r))
 
-                print(f"  Scoring {len(all_qa_pairs)} responses...")
+                print(f"  Scoring {len(all_qa_pairs)} responses...", end=" ", flush=True)
+                t0 = time.time()
                 all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition)
+                score_time = time.time() - t0
+                print(f"({score_time:.1f}s)")
 
                 # Process results per layer
                 for idx, (_, state) in enumerate(uncached_states):
@@ -381,13 +406,19 @@ async def batched_adaptive_search(
                 save_results(results, experiment, trait)
 
         # Update coefficients for next step
+        # Binary control: push up while coherence >= threshold, back off when below
         for state in layer_states:
             if state["history"]:
                 _, _, last_coherence = state["history"][-1]
-                if last_coherence < threshold:
-                    state["coef"] *= down_mult
+                direction = up_mult if last_coherence >= threshold else down_mult
+
+                if momentum > 0:
+                    # Smooth updates with momentum
+                    state["velocity"] = momentum * state["velocity"] + (1 - momentum) * direction
+                    state["coef"] *= state["velocity"]
                 else:
-                    state["coef"] *= up_mult
+                    # Direct multiplicative update
+                    state["coef"] *= direction
 
     # Report best per layer
     print(f"\n{'='*60}")

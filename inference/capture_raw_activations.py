@@ -1214,6 +1214,9 @@ def main():
                 prompt_sets.append((f.stem, data['prompts']))
         print(f"Found {len(prompt_sets)} prompt sets")
 
+    # Load experiment config
+    config = load_experiment_config(args.experiment)
+
     # Determine model to use
     if args.model:
         model_name = args.model
@@ -1251,8 +1254,7 @@ def main():
         args.batch_size = calculate_max_batch_size(model, max_seq_len)
     print(f"Batch size: {args.batch_size}")
 
-    # Load experiment config for chat template setting
-    config = load_experiment_config(args.experiment)
+    # Get chat template setting from config
     use_chat_template = config.get('use_chat_template')
     if use_chat_template is None:
         use_chat_template = tokenizer.chat_template is not None
@@ -1410,6 +1412,7 @@ def main():
         ]
 
         # Run batched capture with incremental saving (generator mode)
+        # Chat template already includes BOS, so don't add special tokens again
         batch_generator = generate_with_capture(
             model, tokenizer, prompt_texts,
             n_layers=n_layers,
@@ -1418,7 +1421,8 @@ def main():
             temperature=args.temperature,
             capture_attn=args.capture_attn,
             show_progress=True,
-            yield_per_batch=True
+            yield_per_batch=True,
+            add_special_tokens=not use_chat_template
         )
 
         # Process and save after each batch (crash-resilient)

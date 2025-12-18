@@ -268,10 +268,26 @@ function setupPromptPickerListeners() {
         btn.addEventListener('click', () => {
             const newSet = btn.dataset.set;
             if (window.state.currentPromptSet !== newSet) {
+                // Save current prompt ID for the old set before switching
+                if (window.state.currentPromptSet && window.state.currentPromptId) {
+                    localStorage.setItem(`promptId_${window.state.currentPromptSet}`, window.state.currentPromptId);
+                }
+
                 window.state.currentPromptSet = newSet;
                 window.state.promptPage = 0; // Reset to first page
+
+                // Try to restore last prompt ID for this set, otherwise use first available
                 const availableIds = window.state.promptsWithData[newSet] || [];
-                window.state.currentPromptId = availableIds[0] || null;
+                const savedPromptId = parseInt(localStorage.getItem(`promptId_${newSet}`));
+                if (savedPromptId && availableIds.includes(savedPromptId)) {
+                    window.state.currentPromptId = savedPromptId;
+                    // Jump to page containing this prompt
+                    const promptIdx = availableIds.indexOf(savedPromptId);
+                    window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+                } else {
+                    window.state.currentPromptId = availableIds[0] || null;
+                }
+
                 window.state.promptPickerCache = null; // Clear cache
                 // Save to localStorage
                 localStorage.setItem('promptSet', newSet);
@@ -282,26 +298,30 @@ function setupPromptPickerListeners() {
         });
     });
 
-    // Pagination buttons
+    // Pagination buttons (use mousedown to ensure event fires before any re-render)
     const prevBtn = container.querySelector('#pp-prev');
     const nextBtn = container.querySelector('#pp-next');
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
+    if (prevBtn && !prevBtn.hasAttribute('disabled')) {
+        prevBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (window.state.promptPage > 0) {
                 window.state.promptPage--;
                 renderPromptPicker();
             }
-        });
+        };
     }
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
+    if (nextBtn && !nextBtn.hasAttribute('disabled')) {
+        nextBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
             const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
             if (window.state.promptPage < totalPages - 1) {
                 window.state.promptPage++;
                 renderPromptPicker();
             }
-        });
+        };
     }
 
     // Prompt ID buttons (exclude set buttons)
@@ -311,8 +331,11 @@ function setupPromptPickerListeners() {
             if (window.state.currentPromptId !== promptId && !isNaN(promptId)) {
                 window.state.currentPromptId = promptId;
                 window.state.promptPickerCache = null; // Clear cache
-                // Save to localStorage
+                // Save to localStorage (both global and per-set)
                 localStorage.setItem('promptId', promptId);
+                if (window.state.currentPromptSet) {
+                    localStorage.setItem(`promptId_${window.state.currentPromptSet}`, promptId);
+                }
                 renderPromptPicker();
                 if (window.renderView) window.renderView();
             }

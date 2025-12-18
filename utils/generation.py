@@ -343,6 +343,7 @@ def generate_with_capture(
     capture_attn: bool = False,
     show_progress: bool = True,
     yield_per_batch: bool = False,
+    add_special_tokens: bool = True,
 ):
     """
     Batched generation with per-token activation capture.
@@ -359,6 +360,7 @@ def generate_with_capture(
         show_progress: Whether to show progress bars
         yield_per_batch: If True, yield List[CaptureResult] after each batch (generator mode).
                          If False, return all results at end (default, backwards compatible).
+        add_special_tokens: Whether to add special tokens (BOS). Set False for chat-templated prompts.
 
     Returns:
         If yield_per_batch=False: List of CaptureResult, one per prompt
@@ -390,7 +392,8 @@ def generate_with_capture(
             for batch_prompts in batch_iter:
                 batch_results = _capture_batch(
                     model, tokenizer, batch_prompts, n_layers, hidden_size,
-                    max_new_tokens, temperature, capture_attn, show_progress=False
+                    max_new_tokens, temperature, capture_attn, show_progress=False,
+                    add_special_tokens=add_special_tokens
                 )
                 yield batch_results, batch_prompts
         return _generator()
@@ -400,7 +403,8 @@ def generate_with_capture(
         for batch_prompts in (tqdm(batches, desc="Batches") if show_progress else batches):
             batch_results = _capture_batch(
                 model, tokenizer, batch_prompts, n_layers, hidden_size,
-                max_new_tokens, temperature, capture_attn, show_progress
+                max_new_tokens, temperature, capture_attn, show_progress,
+                add_special_tokens=add_special_tokens
             )
             results.extend(batch_results)
         return results
@@ -408,7 +412,8 @@ def generate_with_capture(
 
 def _capture_batch(
     model, tokenizer, prompts: List[str], n_layers: int, hidden_size: int,
-    max_new_tokens: int, temperature: float, capture_attn: bool, show_progress: bool
+    max_new_tokens: int, temperature: float, capture_attn: bool, show_progress: bool,
+    add_special_tokens: bool = True
 ) -> List[CaptureResult]:
     """Capture activations for a single batch with TRUE batching (1 forward pass)."""
 
@@ -417,7 +422,7 @@ def _capture_batch(
 
     # Tokenize with padding (left-pad for generation)
     tokenizer.padding_side = 'left'
-    inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(model.device)
+    inputs = tokenizer(prompts, return_tensors="pt", padding=True, add_special_tokens=add_special_tokens).to(model.device)
     batch_size = inputs.input_ids.shape[0]
 
     # Track actual prompt lengths (excluding padding)
