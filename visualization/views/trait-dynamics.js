@@ -229,9 +229,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         `;
     }
 
-    // Determine projection mode
+    // Determine projection mode and centering
     const projectionMode = window.state.projectionMode || 'cosine';
     const isCosine = projectionMode === 'cosine';
+    const isCentered = window.state.projectionCentered !== false;  // default true
 
     container.innerHTML = `
         <div class="tool-view">
@@ -247,6 +248,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                     ${isCosine
                         ? 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector, independent of activation magnitude.'
                         : 'Raw projection: a·v / ||v||. Shows absolute trait signal strength (affected by activation magnitude).'}
+                    ${isCentered ? ' Centered by subtracting training baseline.' : ''}
                 </div>
                 <div class="projection-toggle">
                     <span class="projection-toggle-label">Mode:</span>
@@ -254,6 +256,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                         <button class="projection-toggle-btn ${isCosine ? 'active' : ''}" data-mode="cosine">Cosine</button>
                         <button class="projection-toggle-btn ${!isCosine ? 'active' : ''}" data-mode="vnorm">Magnitude</button>
                     </div>
+                    <label class="projection-toggle-checkbox">
+                        <input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}>
+                        <span>Centered</span>
+                    </label>
                 </div>
                 <div id="combined-activation-plot"></div>
             </section>
@@ -313,12 +319,21 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         const responseProj = data.projections.response;
         const allProj = [...promptProj, ...responseProj];
 
+        // Get baseline from metadata (0 if not available)
+        const baseline = data.metadata?.vector_source?.baseline || 0;
+
         // projections are now 1D arrays (one value per token at best layer)
-        const rawVnorm = allProj.slice(START_TOKEN_IDX);
+        let rawVnorm = allProj.slice(START_TOKEN_IDX);
+
+        // Subtract baseline if centering is enabled (for vnorm mode)
+        if (isCentered && baseline !== 0) {
+            rawVnorm = rawVnorm.map(v => v - baseline);
+        }
 
         // Compute values based on mode
         let rawValues;
         if (effectiveMode === 'cosine' && canUseCosine) {
+            // For cosine, divide by token norm (baseline already subtracted from vnorm)
             rawValues = rawVnorm.map((proj, i) => {
                 const norm = allTokenNorms[i];
                 return norm > 0 ? proj / norm : 0;
@@ -416,6 +431,25 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
 
     // Token Trajectory plot
     const yAxisTitle = effectiveMode === 'cosine' ? 'Cosine (proj / ||h||)' : 'Projection (a·v / ||v||)';
+
+    // Compute y-axis range: minimum ±0.15 for cosine mode, auto-expand if needed
+    let yAxisConfig = { title: yAxisTitle, zeroline: true, zerolinewidth: 1, showgrid: true };
+    if (effectiveMode === 'cosine') {
+        // Find actual data range across all traces
+        let minY = Infinity, maxY = -Infinity;
+        traces.forEach(t => {
+            t.y.forEach(v => {
+                if (v < minY) minY = v;
+                if (v > maxY) maxY = v;
+            });
+        });
+        // Ensure minimum range of ±0.15, expand if data exceeds
+        const minRange = 0.15;
+        const rangeMin = Math.min(-minRange, minY - 0.02);
+        const rangeMax = Math.max(minRange, maxY + 0.02);
+        yAxisConfig.range = [rangeMin, rangeMax];
+    }
+
     const mainLayout = window.getPlotlyLayout({
         xaxis: {
             title: 'Token Position',
@@ -426,10 +460,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             showgrid: false,
             tickfont: { size: 9 }
         },
-        yaxis: {
-            title: yAxisTitle,
-            zeroline: true, zerolinewidth: 1, showgrid: true
-        },
+        yaxis: yAxisConfig,
         shapes: shapes,
         annotations: annotations,
         margin: { l: 60, r: 20, t: 40, b: 80 },
@@ -470,6 +501,14 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             }
         });
     });
+
+    // Setup centered checkbox
+    const centeredCheckbox = document.getElementById('projection-centered-toggle');
+    if (centeredCheckbox) {
+        centeredCheckbox.addEventListener('change', () => {
+            window.setProjectionCentered(centeredCheckbox.checked);
+        });
+    }
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, nPromptTokens);

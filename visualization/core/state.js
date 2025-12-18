@@ -21,7 +21,8 @@ const state = {
     // Steering Sweep settings
     selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
-    projectionMode: 'cosine'  // 'cosine' (a·v / ||a||||v||) or 'vnorm' (a·v / ||v||)
+    projectionMode: 'cosine',  // 'cosine' (a·v / ||a||||v||) or 'vnorm' (a·v / ||v||)
+    projectionCentered: true   // Subtract training baseline (centers around 0)
 };
 
 // Display names for better interpretability
@@ -116,6 +117,18 @@ function setProjectionMode(mode) {
     if (mode !== 'cosine' && mode !== 'vnorm') return;
     state.projectionMode = mode;
     localStorage.setItem('projectionMode', mode);
+    if (window.renderView) window.renderView();
+}
+
+function initProjectionCentered() {
+    const saved = localStorage.getItem('projectionCentered');
+    // Default to true if not set
+    state.projectionCentered = saved === null ? true : saved === 'true';
+}
+
+function setProjectionCentered(centered) {
+    state.projectionCentered = !!centered;
+    localStorage.setItem('projectionCentered', state.projectionCentered);
     if (window.renderView) window.renderView();
 }
 
@@ -747,6 +760,7 @@ async function init() {
     await window.paths.load();
     initTheme();
     initProjectionMode();
+    initProjectionCentered();
     initTransformerSidebar();
     setupNavigation();
     await loadExperiments();
@@ -772,3 +786,4 @@ window.escapeHtml = escapeHtml;
 window.markdownToHtml = markdownToHtml;
 window.renderMath = renderMath;
 window.setProjectionMode = setProjectionMode;
+window.setProjectionCentered = setProjectionCentered;

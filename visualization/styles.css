@@ -1885,3 +1885,17 @@ code {
     background: var(--primary-color);
     color: var(--text-on-primary);
 }
+
+.projection-toggle-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 12px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.projection-toggle-checkbox input {
+    cursor: pointer;
+}
