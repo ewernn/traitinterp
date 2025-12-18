@@ -89,7 +89,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from traitlens import HookManager, projection
-from utils.model import format_prompt, load_experiment_config, load_model_with_lora
+from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model_with_lora
 from utils.vectors import load_vector_metadata
 from utils.generation import generate_with_capture, calculate_max_batch_size
 
@@ -221,9 +221,9 @@ def setup_residual_hooks(hook_manager: HookManager, storage: Dict, n_layers: int
 
 def capture_residual_stream(model, tokenizer, prompt_text: str, n_layers: int,
                             max_new_tokens: int, temperature: float,
-                            capture_attn: bool = False) -> Dict:
+                            capture_attn: bool = False, use_chat_template: bool = None) -> Dict:
     """Capture residual stream activations at all layers."""
-    inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
+    inputs = tokenize_prompt(prompt_text, tokenizer, use_chat_template).to(model.device)
     token_ids = inputs['input_ids'][0].tolist()
     tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
@@ -337,9 +337,10 @@ def setup_internals_hooks(hook_manager: HookManager, storage: Dict, layer_idx: i
 
 
 def capture_multiple_layer_internals(model, tokenizer, prompt_text: str, layer_indices: list,
-                                     max_new_tokens: int, temperature: float) -> Dict[int, Dict]:
+                                     max_new_tokens: int, temperature: float,
+                                     use_chat_template: bool = None) -> Dict[int, Dict]:
     """Capture internals for multiple layers in a SINGLE forward pass."""
-    inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
+    inputs = tokenize_prompt(prompt_text, tokenizer, use_chat_template).to(model.device)
     token_ids = inputs['input_ids'][0].tolist()
     tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
@@ -1357,7 +1358,8 @@ def main():
                 # Heavy capture: layer internals (includes residual)
                 all_layer_data = capture_multiple_layer_internals(
                     model, tokenizer, prompt_text, layer_indices,
-                    args.max_new_tokens, args.temperature
+                    args.max_new_tokens, args.temperature,
+                    use_chat_template=use_chat_template
                 )
 
                 # Extract residual data from internals for projections

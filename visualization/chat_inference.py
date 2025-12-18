@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 from traitlens import projection
 from utils.paths import get as get_path
 from utils.vectors import get_best_layer
-from utils.model import format_prompt, load_experiment_config
+from utils.model import format_prompt, tokenize_prompt, load_experiment_config
 
 
 class ChatInference:
@@ -256,7 +256,7 @@ class ChatInference:
         import torch  # Lazy import
         from traitlens import HookManager
 
-        input_ids = self.tokenizer(formatted_prompt, return_tensors="pt").input_ids.to(self.model.device)
+        input_ids = tokenize_prompt(formatted_prompt, self.tokenizer, self.use_chat_template).input_ids.to(self.model.device)
 
         # Group traits by layer for efficient hooking
         layers_needed = set(layer for _, layer, _, _ in self.trait_vectors.values())

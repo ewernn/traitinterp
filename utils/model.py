@@ -210,6 +210,36 @@ def format_prompt(
         raise
 
 
+def tokenize_prompt(formatted_prompt, tokenizer, use_chat_template: bool = None, **kwargs):
+    """
+    Tokenize a formatted prompt (or list of prompts), handling BOS token correctly.
+
+    When chat template is used, the formatted string already includes BOS,
+    so we must NOT add it again. When no chat template, we need BOS added.
+
+    Args:
+        formatted_prompt: Output from format_prompt() - single string or list of strings
+        tokenizer: Model tokenizer
+        use_chat_template: Whether chat template was used (None = auto-detect)
+        **kwargs: Additional args passed to tokenizer (padding, truncation, max_length, etc.)
+
+    Returns:
+        Tokenized inputs dict with input_ids, attention_mask, etc.
+    """
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+
+    # Chat template already includes BOS token, so don't add again
+    add_special_tokens = not use_chat_template
+
+    return tokenizer(
+        formatted_prompt,
+        return_tensors="pt",
+        add_special_tokens=add_special_tokens,
+        **kwargs,
+    )
+
+
 def load_experiment_config(experiment: str, warn_missing: bool = True) -> dict:
     """
     Load experiment configuration from config.json.

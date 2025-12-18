@@ -79,7 +79,7 @@ from analysis.steering.coef_search import (
 )
 from utils.judge import TraitJudge
 from utils.paths import get
-from utils.model import format_prompt, load_experiment_config
+from utils.model import format_prompt, tokenize_prompt, load_experiment_config
 from utils.vectors import MIN_COHERENCE
 
 
@@ -266,7 +266,7 @@ def estimate_activation_norm(
     try:
         for prompt in prompts[:3]:
             formatted = format_prompt(prompt, tokenizer, use_chat_template=use_chat_template)
-            inputs = tokenizer(formatted, return_tensors="pt").to(model.device)
+            inputs = tokenize_prompt(formatted, tokenizer, use_chat_template).to(model.device)
             with torch.no_grad():
                 model(**inputs)
     finally:

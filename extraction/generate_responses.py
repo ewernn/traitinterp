@@ -36,7 +36,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.paths import get as get_path
-from utils.model import load_model, format_prompt, load_experiment_config
+from utils.model import load_model, format_prompt, tokenize_prompt, load_experiment_config
 from utils.model_registry import is_base_model
 
 
@@ -126,9 +126,10 @@ def generate_responses_for_trait(
                     if device is None or str(device) == 'meta':
                         device = next(model.parameters()).device
 
-                    inputs = tokenizer(
+                    inputs = tokenize_prompt(
                         batch_prompts,
-                        return_tensors='pt',
+                        tokenizer,
+                        use_chat_template=chat_template,
                         padding=True,
                         truncation=True,
                         max_length=512

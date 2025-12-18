@@ -120,8 +120,8 @@ async function renderPromptPicker() {
                 </div>
             </div>
             <div class="pp-text">
-                <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, 0, window.state.promptPickerCache?.nPromptTokens || 0, 300)}</div>
-                <div><strong>Response:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, window.state.promptPickerCache?.nPromptTokens || 0, tokenList.length, 300)}</div>
+                <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, 0, window.state.promptPickerCache?.nPromptTokens || 0)}</div>
+                <div><strong>Response:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, window.state.promptPickerCache?.nPromptTokens || 0, tokenList.length)}</div>
             </div>
             ${tokenSliderHtml}
         </div>
@@ -282,8 +282,8 @@ function setupPromptPickerListeners() {
                 const textDiv = container.querySelector('.pp-text');
                 if (textDiv) {
                     textDiv.innerHTML = `
-                        <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, newIdx, 0, nPromptTokens, 300)}</div>
-                        <div><strong>Response:</strong> ${buildHighlightedText(tokenList, newIdx, nPromptTokens, tokenList.length, 300)}</div>
+                        <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, newIdx, 0, nPromptTokens)}</div>
+                        <div><strong>Response:</strong> ${buildHighlightedText(tokenList, newIdx, nPromptTokens, tokenList.length)}</div>
                     `;
                 }
                 // Update plot highlights without full re-render
@@ -337,53 +337,30 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
 }
 
 /**
- * Build text with the current token highlighted and markdown rendered.
+ * Build text with the current token highlighted.
  * @param {string[]} tokenList - Full list of all tokens
  * @param {number} currentIdx - Absolute index of current token
  * @param {number} startIdx - Start of range to display (inclusive)
  * @param {number} endIdx - End of range to display (exclusive)
- * @param {number} maxChars - Max characters to show before truncating
  */
-function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, maxChars) {
+function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx) {
     if (!tokenList || tokenList.length === 0) {
         return 'Loading...';
     }
 
     let result = '';
-    let charCount = 0;
-    let truncated = false;
 
     for (let i = startIdx; i < endIdx; i++) {
         const token = tokenList[i];
         if (!token) continue;
         const escaped = window.escapeHtml(token);
 
-        // Check if we'd exceed max chars
-        if (charCount + token.length > maxChars) {
-            truncated = true;
-            break;
-        }
-
         if (i === currentIdx) {
             result += `<span class="token-highlight">${escaped}</span>`;
         } else {
             result += escaped;
         }
-        charCount += token.length;
     }
-
-    if (truncated) {
-        result += '...';
-    }
-
-    // Apply markdown formatting (bold, italic) - works across tokens
-    // Use a placeholder to protect highlight spans from markdown parsing
-    const placeholder = '\x00HIGHLIGHT\x00';
-    result = result.replace(/<span class="token-highlight">(.*?)<\/span>/g, (match, content) => {
-        return placeholder + content + placeholder;
-    });
-    result = window.markdownToHtml(result);
-    result = result.replace(new RegExp(placeholder + '(.*?)' + placeholder, 'g'), '<span class="token-highlight">$1</span>');
 
     return result || '(empty)';
 }
