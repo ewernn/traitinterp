@@ -18,6 +18,8 @@ const state = {
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
     hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
+    // Jailbreak success tracking
+    jailbreakSuccessIds: null,  // Set of prompt IDs that successfully jailbroke the model
     // Steering Sweep settings
     selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
@@ -422,6 +424,7 @@ async function loadExperiments() {
                 item.classList.add('active');
                 item.querySelector('.icon').textContent = '✓';
                 state.currentExperiment = item.dataset.experiment;
+                setExperimentInURL(state.currentExperiment);
                 await loadExperimentData(state.currentExperiment);
                 // Re-render current view with new experiment data
                 renderPromptPicker();
@@ -430,7 +433,20 @@ async function loadExperiments() {
         });
 
         if (state.experiments.length > 0) {
-            state.currentExperiment = state.experiments[0];
+            // Check URL for experiment, otherwise use first
+            const urlExp = getExperimentFromURL();
+            if (urlExp && state.experiments.includes(urlExp)) {
+                state.currentExperiment = urlExp;
+                // Update active state in sidebar
+                list.querySelectorAll('.nav-item').forEach(item => {
+                    const isActive = item.dataset.experiment === urlExp;
+                    item.classList.toggle('active', isActive);
+                    item.querySelector('.icon').textContent = isActive ? '✓' : '';
+                });
+            } else {
+                state.currentExperiment = state.experiments[0];
+                setExperimentInURL(state.currentExperiment);
+            }
             await loadExperimentData(state.currentExperiment);
         }
     } catch (error) {
@@ -551,6 +567,26 @@ async function loadExperimentData(experimentName) {
     } catch (error) {
         console.error('Error loading experiment data:', error);
         showError(`Failed to load experiment: ${experimentName}`);
+    }
+}
+
+/**
+ * Load jailbreak success IDs from the curated dataset.
+ * These are prompts that successfully bypassed the model's safety guardrails.
+ */
+async function loadJailbreakSuccesses() {
+    try {
+        const res = await fetch('/datasets/inference/jailbreak_successes.json');
+        if (!res.ok) {
+            state.jailbreakSuccessIds = new Set();
+            return;
+        }
+        const data = await res.json();
+        state.jailbreakSuccessIds = new Set(data.prompts.map(p => p.id));
+        console.log(`Loaded ${state.jailbreakSuccessIds.size} jailbreak success IDs`);
+    } catch (e) {
+        console.warn('Could not load jailbreak successes:', e);
+        state.jailbreakSuccessIds = new Set();
     }
 }
 
@@ -698,16 +734,27 @@ function getTokenHighlightColors() {
     };
 }
 
-// URL-based tab routing functions
+// URL-based routing functions
 function getTabFromURL() {
     const params = new URLSearchParams(window.location.search);
     return params.get('tab') || 'overview';
 }
 
+function getExperimentFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('exp') || null;
+}
+
 function setTabInURL(tabName) {
     const url = new URL(window.location);
     url.searchParams.set('tab', tabName);
-    window.history.pushState({ tab: tabName }, '', url);
+    window.history.pushState({ tab: tabName, exp: state.currentExperiment }, '', url);
+}
+
+function setExperimentInURL(expName) {
+    const url = new URL(window.location);
+    url.searchParams.set('exp', expName);
+    window.history.replaceState({ tab: state.currentView, exp: expName }, '', url);
 }
 
 function initFromURL() {
@@ -764,6 +811,7 @@ async function init() {
     initTransformerSidebar();
     setupNavigation();
     await loadExperiments();
+    await loadJailbreakSuccesses();  // Preload jailbreak success IDs for prompt picker
     setupEventListeners();
 
     // NEW: Read tab from URL and render

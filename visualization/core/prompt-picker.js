@@ -53,12 +53,12 @@ async function renderPromptPicker() {
     // Initialize page state if needed, and ensure current prompt is visible
     if (window.state.promptPage === undefined) {
         window.state.promptPage = 0;
-    }
-    // Jump to page containing current prompt
-    if (window.state.currentPromptId !== null && needsPagination) {
-        const promptIdx = currentSetPromptIds.indexOf(window.state.currentPromptId);
-        if (promptIdx >= 0) {
-            window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+        // Jump to page containing current prompt (only on init, not during pagination)
+        if (window.state.currentPromptId !== null && needsPagination) {
+            const promptIdx = currentSetPromptIds.indexOf(window.state.currentPromptId);
+            if (promptIdx >= 0) {
+                window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+            }
         }
     }
 
@@ -84,11 +84,13 @@ async function renderPromptPicker() {
     }
 
     let promptBoxes = '';
+    const isJailbreakSet = window.state.currentPromptSet === 'jailbreak';
     visibleIds.forEach(id => {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
+        const isSuccess = isJailbreakSet && window.state.jailbreakSuccessIds?.has(id) ? 'jailbreak-success' : '';
         const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === id);
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
-        promptBoxes += `<button class="pp-btn ${isActive}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</button>`;
+        promptBoxes += `<button class="pp-btn ${isActive} ${isSuccess}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</button>`;
     });
 
     // Get prompt text and note from definitions
@@ -380,8 +382,7 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
             'combined-activation-plot',
             'normalized-trajectory-plot',
             'token-magnitude-plot',
-            'token-velocity-plot',
-            'token-acceleration-plot'
+            'token-velocity-plot'
         ];
 
         plotIds.forEach(id => {

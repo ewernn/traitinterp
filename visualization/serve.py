@@ -337,69 +337,37 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def list_prompt_sets(self, experiment_name):
         """List all prompt sets with available prompt IDs for an experiment.
 
-        Discovers available prompts by scanning:
-        1. Per-trait projection JSONs: inference/{trait}/residual_stream/{prompt_set}/*.json
-        2. Fallback to raw .pt files: raw/residual/{prompt_set}/*.pt
-
-        Prompt definitions loaded from datasets/inference/{set}.json.
+        Discovers prompt sets by scanning projection directories:
+        inference/{category}/{trait}/residual_stream/{prompt_set}/*.json
         """
-        prompts_def_dir = get_path('datasets.inference')
         inference_dir = get_path('inference.base', experiment=experiment_name)
-        raw_residual_dir = get_path('inference.raw', experiment=experiment_name) / 'residual'
 
-        prompt_sets = []
+        # Discover prompt sets from projection directories
+        discovered_sets = {}  # set_name -> set of available IDs
 
-        # Get prompt set definitions from JSON files
-        if prompts_def_dir.exists():
-            for prompt_file in prompts_def_dir.glob('*.json'):
-                set_name = prompt_file.stem
-
-                # Load prompt definitions
-                try:
-                    with open(prompt_file) as f:
-                        definition = json.load(f)
-                except Exception:
-                    definition = {'prompts': []}
-
-                # Discover available IDs from projection JSONs across all traits
-                available_ids = set()
-
-                # Check per-trait projection directories
-                if inference_dir.exists():
-                    # Scan all trait directories for residual_stream/{set}/*.json
-                    for trait_dir in inference_dir.iterdir():
-                        if not trait_dir.is_dir() or trait_dir.name == 'raw' or trait_dir.name == 'prompts':
+        if inference_dir.exists():
+            for subdir in inference_dir.rglob('residual_stream'):
+                if not subdir.is_dir():
+                    continue
+                for set_dir in subdir.iterdir():
+                    if not set_dir.is_dir():
+                        continue
+                    set_name = set_dir.name
+                    if set_name not in discovered_sets:
+                        discovered_sets[set_name] = set()
+                    for json_file in set_dir.glob('*.json'):
+                        try:
+                            discovered_sets[set_name].add(int(json_file.stem))
+                        except ValueError:
                             continue
-                        # Handle nested category/trait structure
-                        for subdir in trait_dir.rglob('residual_stream'):
-                            set_proj_dir = subdir / set_name
-                            if set_proj_dir.exists():
-                                for json_file in set_proj_dir.glob('*.json'):
-                                    try:
-                                        prompt_id = int(json_file.stem)
-                                        available_ids.add(prompt_id)
-                                    except ValueError:
-                                        continue
 
-                # Fallback: check raw .pt files if no projections found
-                if not available_ids:
-                    set_raw_dir = raw_residual_dir / set_name
-                    if set_raw_dir.exists():
-                        for pt_file in set_raw_dir.glob('*.pt'):
-                            try:
-                                prompt_id = int(pt_file.stem)
-                                available_ids.add(prompt_id)
-                            except ValueError:
-                                continue
-
-                prompt_sets.append({
-                    'name': set_name,
-                    'description': definition.get('description', ''),
-                    'prompts': definition.get('prompts', []),
-                    'available_ids': sorted(available_ids)
-                })
-
-        return {'prompt_sets': sorted(prompt_sets, key=lambda x: x['name'])}
+        return {
+            'prompt_sets': [
+                {'name': name, 'available_ids': sorted(ids)}
+                for name, ids in sorted(discovered_sets.items())
+                if ids
+            ]
+        }
 
     def list_prompts_in_set(self, experiment_name, prompt_set):
         """List all prompts in a specific prompt set."""

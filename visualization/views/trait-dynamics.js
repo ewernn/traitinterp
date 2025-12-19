@@ -210,14 +210,8 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         'unknown';
     const vectorSource = meta.vector_source || {};
 
-    // Build model info HTML
-    let modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
-    if (vectorSource.model) {
-        modelInfoHtml += ` · Vector from: <code>${vectorSource.model}</code>`;
-    }
-    if (vectorSource.method && vectorSource.layer !== undefined) {
-        modelInfoHtml += ` (${vectorSource.method} L${vectorSource.layer})`;
-    }
+    // Build model info HTML (just inference model - vector details shown on hover)
+    const modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
 
     // Build HTML
     let failedHtml = '';
@@ -277,12 +271,6 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             </section>
 
             <section>
-                <h3>Token Acceleration <span class="subsection-info-toggle" data-target="info-token-accel">►</span></h3>
-                <div class="subsection-info" id="info-token-accel">Second derivative - where trajectory speeds up or slows down.</div>
-                <div id="token-acceleration-plot"></div>
-            </section>
-
-            <section>
                 <h3>Activation Magnitude <span class="subsection-info-toggle" data-target="info-act-magnitude">►</span></h3>
                 <div class="subsection-info" id="info-act-magnitude">How the residual stream grows in magnitude as each layer adds information to the hidden state.</div>
                 <div id="activation-magnitude-plot"></div>
@@ -319,8 +307,9 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         const responseProj = data.projections.response;
         const allProj = [...promptProj, ...responseProj];
 
-        // Get baseline from metadata (0 if not available)
-        const baseline = data.metadata?.vector_source?.baseline || 0;
+        // Get baseline and vector source from metadata
+        const vs = data.metadata?.vector_source || {};
+        const baseline = vs.baseline || 0;
 
         // projections are now 1D arrays (one value per token at best layer)
         let rawVnorm = allProj.slice(START_TOKEN_IDX);
@@ -352,6 +341,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         const valueLabel = effectiveMode === 'cosine' ? 'Cosine' : 'Projection';
         const valueFormat = effectiveMode === 'cosine' ? '.4f' : '.3f';
 
+        // Build hover with layer/method info
+        const layerMethodInfo = vs.layer !== undefined ? `L${vs.layer} ${vs.method || ''}` : '';
+        const hoverText = `<b>${window.getDisplayName(traitName)}</b>${layerMethodInfo ? ` (${layerMethodInfo})` : ''}<br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`;
+
         traces.push({
             x: Array.from({length: smoothedValues.length}, (_, i) => i),
             y: smoothedValues,
@@ -360,7 +353,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             name: window.getDisplayName(traitName),
             line: { color: color, width: 1 },
             marker: { size: 1, color: color },
-            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`
+            hovertemplate: hoverText
         });
     });
 
@@ -596,7 +589,7 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
 
 
 /**
- * Render Token Velocity and Token Acceleration plots (derivatives of smoothed trajectory)
+ * Render Token Velocity plot (first derivative of smoothed trajectory)
  */
 function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens) {
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
@@ -623,26 +616,6 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
         });
     });
 
-    // Acceleration traces
-    const accelTraces = [];
-    loadedTraits.forEach((traitName, idx) => {
-        const activations = traitActivations[traitName];
-        const velocity = computeVelocity(activations);
-        const acceleration = computeVelocity(velocity);
-        const smoothedAccel = smoothData(acceleration, 3);
-        const color = TRAIT_COLORS[idx % TRAIT_COLORS.length];
-
-        accelTraces.push({
-            x: Array.from({length: smoothedAccel.length}, (_, i) => i + 1),
-            y: smoothedAccel,
-            type: 'scatter',
-            mode: 'lines',
-            name: window.getDisplayName(traitName),
-            line: { color: color, width: 1.5 },
-            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Acceleration: %{y:.4f}<extra></extra>`
-        });
-    });
-
     const shapes = [
         { type: 'line', x0: (nPromptTokens - START_TOKEN_IDX) - 0.5, x1: (nPromptTokens - START_TOKEN_IDX) - 0.5,
           y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 1, dash: 'dash' } },
@@ -659,32 +632,11 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
         showlegend: false
     });
 
-    const accelLayout = window.getPlotlyLayout({
-        xaxis: { title: '', tickmode: 'array', tickvals: tickVals, ticktext: tickText, tickangle: -45, tickfont: { size: 8 }, showgrid: true },
-        yaxis: { title: 'Acceleration', zeroline: true, zerolinewidth: 1, zerolinecolor: textSecondary, showgrid: true },
-        shapes: shapes,
-        margin: { l: 50, r: 20, t: 10, b: 80 },
-        height: 300,
-        showlegend: false
-    });
-
     Plotly.newPlot('token-velocity-plot', velocityTraces, velocityLayout, { responsive: true, displayModeBar: false });
-    Plotly.newPlot('token-acceleration-plot', accelTraces, accelLayout, { responsive: true, displayModeBar: false });
 
-    // Click handlers to update token slider
+    // Click handler to update token slider
     const velocityPlot = document.getElementById('token-velocity-plot');
-    const accelPlot = document.getElementById('token-acceleration-plot');
-
     velocityPlot.on('plotly_click', (d) => {
-        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-        if (window.state.currentTokenIndex !== tokenIdx) {
-            window.state.currentTokenIndex = tokenIdx;
-            window.renderPromptPicker?.();
-            window.renderCurrentView?.();
-        }
-    });
-
-    accelPlot.on('plotly_click', (d) => {
         const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
         if (window.state.currentTokenIndex !== tokenIdx) {
             window.state.currentTokenIndex = tokenIdx;

@@ -1093,6 +1093,15 @@ code {
     color: var(--text-on-primary);
 }
 
+/* Jailbreak success indicator - prompts that bypassed safety guardrails */
+.pp-btn.jailbreak-success {
+    border: 1px solid var(--danger);
+    background: color-mix(in srgb, var(--danger) 15%, var(--bg-tertiary));
+}
+.pp-btn.jailbreak-success.active {
+    border-color: var(--danger);
+}
+
 .pp-note, .pp-meta { font-size: var(--text-xs); color: var(--text-tertiary); }
 
 .pp-pagination {
