@@ -369,12 +369,14 @@ async def run_evaluation(
     n_search_steps: int,
     up_mult: float,
     down_mult: float,
+    momentum: float = 0.0,
     batched: bool = True,
     model=None,
     tokenizer=None,
     judge=None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    max_new_tokens: int = 256,
 ):
     """
     Main evaluation flow.
@@ -494,7 +496,8 @@ async def run_evaluation(
             model, tokenizer, layer_data, questions, trait_name, trait_definition, judge,
             use_chat_template, component, results, experiment, trait,
             vector_experiment, method, n_steps=n_search_steps,
-            up_mult=up_mult, down_mult=down_mult
+            up_mult=up_mult, down_mult=down_mult, momentum=momentum,
+            max_new_tokens=max_new_tokens
         )
     else:
         # Sequential adaptive search for each layer
@@ -504,7 +507,8 @@ async def run_evaluation(
                 model, tokenizer, ld["vector"], ld["layer"], ld["base_coef"],
                 questions, trait_name, trait_definition, judge, use_chat_template, component,
                 results, experiment, trait, vector_experiment, method,
-                n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult
+                n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult, momentum=momentum,
+                max_new_tokens=max_new_tokens
             )
 
     # Print summary
@@ -725,12 +729,15 @@ def main():
     parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out", "k_cache", "v_cache"])
     parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
     parser.add_argument("--subset", type=int, default=5, help="Use subset of questions (default: 5, use --subset 0 for all)")
+    parser.add_argument("--max-new-tokens", type=int, default=256, help="Max tokens to generate per response (default: 256)")
     parser.add_argument("--search-steps", type=int, default=8,
                         help="Number of adaptive search steps per layer (default: 8)")
     parser.add_argument("--up-mult", type=float, default=1.3,
                         help="Coefficient multiplier when increasing (default: 1.3)")
     parser.add_argument("--down-mult", type=float, default=0.85,
                         help="Coefficient multiplier when decreasing (default: 0.85)")
+    parser.add_argument("--momentum", type=float, default=0.7,
+                        help="Momentum for coefficient updates (0.0=none, 0.7=typical). Smooths oscillation.")
     parser.add_argument("--no-batch", action="store_true",
                         help="Disable batched layer evaluation (run layers sequentially)")
     parser.add_argument("--multi-layer", choices=["weighted", "orthogonal"],
@@ -813,6 +820,7 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
                     judge=judge,
                     load_in_8bit=args.load_in_8bit,
                     load_in_4bit=args.load_in_4bit,
+                    max_new_tokens=args.max_new_tokens,
                 )
             else:
                 await run_evaluation(
@@ -829,12 +837,14 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
                     n_search_steps=args.search_steps,
                     up_mult=args.up_mult,
                     down_mult=args.down_mult,
+                    momentum=args.momentum,
                     batched=not args.no_batch,
                     model=model,
                     tokenizer=tokenizer,
                     judge=judge,
                     load_in_8bit=args.load_in_8bit,
                     load_in_4bit=args.load_in_4bit,
+                    max_new_tokens=args.max_new_tokens,
                 )
     finally:
         if judge is not None:
