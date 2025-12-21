@@ -157,9 +157,9 @@ async function renderPromptPicker() {
                     <span class="pp-row-label">Prompt:</span>
                     <div class="pp-prompts">${promptBoxes}</div>
                     ${paginationHtml}
-                    ${promptNote ? `<span class="pp-note">${promptNote}</span>` : ''}
                 </div>
             </div>
+            ${promptNote ? `<div class="pp-note">${promptNote}</div>` : ''}
             <div class="pp-text">
                 <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, 0, window.state.promptPickerCache?.nPromptTokens || 0)}</div>
                 <div><strong>Response:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, window.state.promptPickerCache?.nPromptTokens || 0, tokenList.length)}</div>

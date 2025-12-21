@@ -361,13 +361,28 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         except ValueError:
                             continue
 
-        return {
-            'prompt_sets': [
-                {'name': name, 'available_ids': sorted(ids)}
-                for name, ids in sorted(discovered_sets.items())
-                if ids
-            ]
-        }
+        # Build response with prompt definitions included
+        prompt_sets = []
+        for name, ids in sorted(discovered_sets.items()):
+            if not ids:
+                continue
+            # Load prompt definitions from dataset file
+            prompt_file = get_path('datasets.inference_prompt_set', prompt_set=name)
+            prompts = []
+            if prompt_file.exists():
+                try:
+                    with open(prompt_file) as f:
+                        data = json.load(f)
+                    prompts = data.get('prompts', [])
+                except Exception:
+                    pass
+            prompt_sets.append({
+                'name': name,
+                'available_ids': sorted(ids),
+                'prompts': prompts
+            })
+
+        return {'prompt_sets': prompt_sets}
 
     def list_prompts_in_set(self, experiment_name, prompt_set):
         """List all prompts in a specific prompt set."""
