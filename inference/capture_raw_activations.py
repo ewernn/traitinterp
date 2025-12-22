@@ -28,6 +28,12 @@ Post-hoc extraction:
   --replay          : Load saved tokens from .pt, extract attention/logit-lens
                       (no new generation, uses exact same tokens)
 
+Model-diff analysis:
+  --replay-responses <prompt_set> : Load responses from another prompt set's .pt files
+                                    and run through current model (single forward pass).
+                                    Used for comparing how different models process same text.
+                                    Example: --replay-responses rm_sycophancy_train_100_sycophant
+
 Storage:
   Raw activations      : experiments/{exp}/inference/raw/residual/{prompt_set}/{id}.pt
   Responses (shared)   : experiments/{exp}/inference/responses/{prompt_set}/{id}.json
@@ -285,6 +291,65 @@ def capture_residual_stream(model, tokenizer, prompt_text: str, n_layers: int,
                    'activations': prompt_acts, 'attention': prompt_attention},
         'response': {'text': response_text, 'tokens': response_tokens, 'token_ids': generated_ids,
                      'activations': response_acts, 'attention': response_attention[1:] if len(response_attention) > 1 else []}
+    }
+
+
+def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response_text: str,
+                                     n_layers: int, capture_attn: bool = False) -> Dict:
+    """
+    Capture residual stream activations with prefilled response (single forward pass).
+
+    Used for model-diff analysis: run same text through different models.
+    """
+    # Tokenize prompt
+    prompt_inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
+    n_prompt_tokens = prompt_inputs['input_ids'].shape[1]
+    prompt_token_ids = prompt_inputs['input_ids'][0].tolist()
+    prompt_tokens = [tokenizer.decode([tid]) for tid in prompt_token_ids]
+
+    # Tokenize response (without special tokens)
+    response_inputs = tokenizer(response_text, return_tensors="pt", add_special_tokens=False).to(model.device)
+    response_token_ids = response_inputs['input_ids'][0].tolist()
+    response_tokens = [tokenizer.decode([tid]) for tid in response_token_ids]
+
+    # Concatenate for single forward pass
+    full_input_ids = torch.cat([prompt_inputs['input_ids'], response_inputs['input_ids']], dim=1)
+
+    # Capture all activations in one pass
+    storage = create_residual_storage(n_layers, capture_attn=capture_attn)
+    with HookManager(model) as hooks:
+        setup_residual_hooks(hooks, storage, n_layers, 'prompt', capture_attn=capture_attn)  # 'prompt' mode captures all tokens
+        with torch.no_grad():
+            outputs = model(input_ids=full_input_ids, output_attentions=True, return_dict=True)
+
+    # Split activations into prompt/response portions
+    prompt_acts = {}
+    response_acts = {}
+    for i in range(n_layers):
+        prompt_acts[i] = {}
+        response_acts[i] = {}
+        for k, v in storage[i].items():
+            full_acts = v[0].squeeze(0)  # [seq_len, hidden_dim]
+            prompt_acts[i][k] = full_acts[:n_prompt_tokens]
+            response_acts[i][k] = full_acts[n_prompt_tokens:]
+
+    # Split attention patterns
+    prompt_attention = {}
+    response_attention = []
+    for i, attn in enumerate(outputs.attentions):
+        attn_avg = attn[0].mean(dim=0).detach().cpu()  # [seq_len, seq_len]
+        prompt_attention[f'layer_{i}'] = attn_avg[:n_prompt_tokens, :n_prompt_tokens]
+        # Response attention: each token's attention over full context
+        for t in range(n_prompt_tokens, attn_avg.shape[0]):
+            if i == 0:
+                response_attention.append({})
+            response_attention[t - n_prompt_tokens][f'layer_{i}'] = attn_avg[t, :t+1]
+
+    return {
+        'prompt': {'text': prompt_text, 'tokens': prompt_tokens, 'token_ids': prompt_token_ids,
+                   'activations': prompt_acts, 'attention': prompt_attention},
+        'response': {'text': response_text, 'tokens': response_tokens, 'token_ids': response_token_ids,
+                     'activations': response_acts, 'attention': response_attention}
     }
 
 
@@ -1184,6 +1249,10 @@ def main():
     parser.add_argument("--prefill", type=str, default=None,
                        help="Prefill string to force model to start with (for prefill attack testing). "
                             "Appended after assistant turn marker, counted as prompt tokens.")
+    parser.add_argument("--replay-responses", type=str, default=None,
+                       help="Load responses from another prompt set's .pt files for prefill capture. "
+                            "Used for model-diff: run same text through different models. "
+                            "Example: --replay-responses rm_sycophancy_train_100_sycophant")
 
     args = parser.parse_args()
 
@@ -1388,6 +1457,55 @@ def main():
                     data, prompt_item, set_name, inference_dir, trait_vectors,
                     n_layers, args, get_path,
                     all_layer_data=all_layer_data, layer_indices=layer_indices,
+                    model=model, tokenizer=tokenizer, model_name=model_name,
+                    lora_adapter=args.lora
+                )
+
+            continue  # Done with this prompt set
+
+        # ================================================================
+        # REPLAY-RESPONSES MODE: Prefill capture from another prompt set
+        # ================================================================
+        if args.replay_responses:
+            source_dir = inference_dir / "raw" / "residual" / args.replay_responses
+            if not source_dir.exists():
+                print(f"  ERROR: Source prompt set not found: {source_dir}")
+                continue
+
+            print(f"  Prefill mode: loading responses from {args.replay_responses}")
+
+            for prompt_item in tqdm(prompts, desc="Prefill capture"):
+                prompt_id = prompt_item['id']
+
+                # Skip existing if requested
+                if args.skip_existing:
+                    raw_pt_path = inference_dir / "raw" / "residual" / set_name / f"{prompt_id}.pt"
+                    if raw_pt_path.exists():
+                        continue
+
+                # Load response from source prompt set
+                source_pt = source_dir / f"{prompt_id}.pt"
+                if not source_pt.exists():
+                    print(f"  Warning: {prompt_id}.pt not found in source, skipping")
+                    continue
+
+                source_data = torch.load(source_pt, weights_only=True)
+                response_text = source_data['response']['text']
+
+                # Format prompt
+                raw_prompt = prompt_item['text']
+                prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
+
+                # Capture with prefill
+                data = capture_residual_stream_prefill(
+                    model, tokenizer, prompt_text, response_text,
+                    n_layers, capture_attn=args.capture_attn
+                )
+
+                # Save using the helper
+                _save_capture_data(
+                    data, prompt_item, set_name, inference_dir, trait_vectors,
+                    n_layers, args, get_path,
                     model=model, tokenizer=tokenizer, model_name=model_name,
                     lora_adapter=args.lora
                 )
