@@ -21,13 +21,13 @@ from .methods import (
 from .math import (
     projection,
     cosine_similarity,
+    batch_cosine_similarity,
     orthogonalize,
     separation,
     accuracy,
     effect_size,
     p_value,
     polarity_correct,
-    evaluate_vector,
     vector_properties,
     distribution_properties,
 )

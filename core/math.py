@@ -1,16 +1,14 @@
 """
 Math primitives for trait vector analysis.
 
-projection: measure trait expression in activations
-evaluate_vector: compute all quality metrics for a vector
-activation_norms: mean ||h|| per layer (for steering coefficient estimation)
+projection: project activations onto vector (normalizes vector only)
+batch_cosine_similarity: cosine similarity between activations and vector (normalizes both)
 vector_properties: norm, sparsity of a vector
 distribution_properties: std, overlap, margin of projection distributions
 """
 
 import torch
-import numpy as np
-from typing import Dict, List, Union
+from typing import Dict, Union
 from scipy import stats
 
 
@@ -40,6 +38,27 @@ def cosine_similarity(vec1: torch.Tensor, vec2: torch.Tensor) -> torch.Tensor:
     v1 = vec1 / (vec1.norm() + 1e-8)
     v2 = vec2 / (vec2.norm() + 1e-8)
     return (v1 * v2).sum()
+
+
+def batch_cosine_similarity(
+    activations: torch.Tensor,
+    vector: torch.Tensor,
+) -> torch.Tensor:
+    """
+    Cosine similarity between each activation and a vector.
+
+    Args:
+        activations: [n_samples, hidden_dim]
+        vector: [hidden_dim]
+
+    Returns:
+        [n_samples] cosine similarities in [-1, 1]
+    """
+    acts = activations.float()
+    vec = vector.float()
+    acts_norm = acts / (acts.norm(dim=1, keepdim=True) + 1e-8)
+    vec_norm = vec / (vec.norm() + 1e-8)
+    return acts_norm @ vec_norm
 
 
 def orthogonalize(v: torch.Tensor, onto: torch.Tensor) -> torch.Tensor:
@@ -90,47 +109,6 @@ def polarity_correct(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> bool:
     return bool(pos_proj.mean() > neg_proj.mean())
 
 
-def evaluate_vector(
-    pos_acts: torch.Tensor,
-    neg_acts: torch.Tensor,
-    vector: torch.Tensor,
-    normalize: bool = True,
-) -> Dict[str, Union[float, bool]]:
-    """
-    Compute all evaluation metrics for a trait vector.
-
-    Args:
-        pos_acts: [n_pos, hidden_dim]
-        neg_acts: [n_neg, hidden_dim]
-        vector: [hidden_dim]
-        normalize: if True, normalize vector and activations (cosine similarity)
-
-    Returns:
-        accuracy, separation, effect_size, p_value, polarity_correct, pos_mean, neg_mean
-    """
-    pos_acts = pos_acts.float()
-    neg_acts = neg_acts.float()
-    vector = vector.float()
-
-    if normalize:
-        vector = vector / (vector.norm() + 1e-8)
-        pos_acts = pos_acts / (pos_acts.norm(dim=1, keepdim=True) + 1e-8)
-        neg_acts = neg_acts / (neg_acts.norm(dim=1, keepdim=True) + 1e-8)
-
-    pos_proj = pos_acts @ vector
-    neg_proj = neg_acts @ vector
-
-    return {
-        'accuracy': accuracy(pos_proj, neg_proj),
-        'separation': separation(pos_proj, neg_proj),
-        'effect_size': effect_size(pos_proj, neg_proj),
-        'p_value': p_value(pos_proj, neg_proj),
-        'polarity_correct': polarity_correct(pos_proj, neg_proj),
-        'pos_mean': pos_proj.mean().item(),
-        'neg_mean': neg_proj.mean().item(),
-    }
-
-
 def vector_properties(vector: torch.Tensor) -> Dict[str, float]:
     """
     Compute properties of a vector.
@@ -141,10 +119,10 @@ def vector_properties(vector: torch.Tensor) -> Dict[str, float]:
     Returns:
         {'norm': float, 'sparsity': float (fraction of components < 0.01)}
     """
-    vector_np = vector.float().cpu().numpy()
+    v = vector.float()
     return {
-        'norm': float(np.linalg.norm(vector_np)),
-        'sparsity': float(np.mean(np.abs(vector_np) < 0.01)),
+        'norm': v.norm().item(),
+        'sparsity': (v.abs() < 0.01).float().mean().item(),
     }
 
 
@@ -167,13 +145,9 @@ def distribution_properties(
     pos_std = float(pos_proj.std())
     neg_std = float(neg_proj.std())
 
-    # Overlap coefficient: estimate using normal approximation
-    if pos_std > 0 and neg_std > 0:
-        pooled_std = np.sqrt((pos_std**2 + neg_std**2) / 2)
-        z_score = abs(pos_mean - neg_mean) / (pooled_std + 1e-8)
-        overlap = max(0, 1 - z_score / 4.0)  # z=4 → no overlap
-    else:
-        overlap = 0.5
+    # Overlap coefficient: use effect_size (Cohen's d) for z-score
+    d = effect_size(pos_proj, neg_proj)  # Already computes pooled_std internally
+    overlap = max(0, 1 - d / 4.0)  # d=4 → no overlap
 
     # Separation margin: gap between distributions (positive = good separation)
     margin = (pos_mean - pos_std) - (neg_mean + neg_std)

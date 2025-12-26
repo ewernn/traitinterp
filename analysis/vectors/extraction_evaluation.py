@@ -17,114 +17,30 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import warnings
 import torch
-import torch.nn.functional as F
-import numpy as np
 import json
 import fire
-import pandas as pd
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
-from sklearn.metrics import roc_auc_score
-
-warnings.filterwarnings('ignore', message='std\\(\\): degrees of freedom')
 
 from utils.paths import get as get_path
 from utils.model import load_experiment_config
 from utils.vectors import load_vector_with_baseline
-from core import evaluate_vector, vector_properties, distribution_properties
+from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
 
 
-@dataclass
-class ValidationResult:
-    """Results for a single vector on validation data."""
-    trait: str
-    method: str
-    layer: int
-
-    # Validation metrics (the real test)
-    val_accuracy: float
-    val_separation: float
-    val_effect_size: float
-    val_p_value: float
-
-    # Training metrics (for comparison)
-    train_accuracy: Optional[float] = None
-    train_separation: Optional[float] = None
-
-    # Overfitting detection
-    accuracy_drop: Optional[float] = None  # train_acc - val_acc
-    separation_ratio: Optional[float] = None  # val_sep / train_sep
-
-    # Polarity
-    polarity_correct: bool = True
-    val_pos_mean: float = 0.0
-    val_neg_mean: float = 0.0
-
-    # Vector properties
-    vector_norm: float = 0.0
-    vector_sparsity: float = 0.0  # % of components < 0.01
-
-    # Distribution properties
-    val_pos_std: float = 0.0  # Std of positive projections
-    val_neg_std: float = 0.0  # Std of negative projections
-    overlap_coefficient: float = 0.0  # Distribution overlap
-    separation_margin: float = 0.0  # (pos_mean - pos_std) - (neg_mean + neg_std)
-
-    # Additional metrics
-    val_auc_roc: float = 0.0  # Threshold-independent classification quality
-
-
-def compute_activation_norms(experiment: str, trait: str, layers: List[int], component: str = 'residual') -> Dict[int, float]:
-    """
-    Compute average activation L2 norms per layer from validation activations.
-
-    These norms are model/layer-dependent (not trait-dependent), so we only need
-    to compute once per experiment. Used by steering to estimate base coefficients
-    without loading the model.
-
-    Returns:
-        {layer: mean_activation_norm}
-    """
-    norms = {}
-    for layer in layers:
-        try:
-            pos_acts, neg_acts = load_validation_activations(experiment, trait, layer, component)
-            # Compute mean L2 norm across all samples
-            all_acts = torch.cat([pos_acts, neg_acts], dim=0).float()
-            mean_norm = all_acts.norm(dim=-1).mean().item()
-            norms[layer] = mean_norm
-        except FileNotFoundError:
-            continue
-    return norms
-
-
-def load_validation_activations(experiment: str, trait: str, layer: int, component: str = 'residual') -> Tuple[torch.Tensor, torch.Tensor]:
-    """Load validation activations for a specific layer."""
-    val_dir = get_path('extraction.val_activations', experiment=experiment, trait=trait)
-
-    prefix = "" if component == 'residual' else f"{component}_"
-    pos_path = val_dir / f"{prefix}val_pos_layer{layer}.pt"
-    neg_path = val_dir / f"{prefix}val_neg_layer{layer}.pt"
-
-    if not pos_path.exists() or not neg_path.exists():
-        raise FileNotFoundError(f"Validation activations not found for layer {layer}")
-
-    pos_acts = torch.load(pos_path, weights_only=True)
-    neg_acts = torch.load(neg_path, weights_only=True)
-
-    return pos_acts, neg_acts
-
-
-def load_training_activations(experiment: str, trait: str, layer: int, component: str = 'residual') -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
-    """Load training activations for comparison (optional - for overfitting detection)."""
-    acts_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
-
-    prefix = "" if component == 'residual' else f"{component}_"
-    pos_path = acts_dir / f"{prefix}pos_layer{layer}.pt"
-    neg_path = acts_dir / f"{prefix}neg_layer{layer}.pt"
+def load_activations(experiment: str, trait: str, layer: int, split: str = 'val', component: str = 'residual') -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+    """Load pos/neg activations for a layer. split='val' or 'train'."""
+    if split == 'val':
+        base_dir = get_path('extraction.val_activations', experiment=experiment, trait=trait)
+        prefix = "" if component == 'residual' else f"{component}_"
+        pos_path = base_dir / f"{prefix}val_pos_layer{layer}.pt"
+        neg_path = base_dir / f"{prefix}val_neg_layer{layer}.pt"
+    else:
+        base_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
+        prefix = "" if component == 'residual' else f"{component}_"
+        pos_path = base_dir / f"{prefix}pos_layer{layer}.pt"
+        neg_path = base_dir / f"{prefix}neg_layer{layer}.pt"
 
     if not pos_path.exists() or not neg_path.exists():
         return None, None
@@ -133,7 +49,7 @@ def load_training_activations(experiment: str, trait: str, layer: int, component
 
 
 def load_vector(experiment: str, trait: str, method: str, layer: int, component: str = 'residual') -> Optional[torch.Tensor]:
-    """Load a specific vector. Wrapper around utils/vectors.py."""
+    """Load a vector file."""
     try:
         vector, _, _ = load_vector_with_baseline(experiment, trait, method, layer, component)
         return vector
@@ -141,241 +57,69 @@ def load_vector(experiment: str, trait: str, method: str, layer: int, component:
         return None
 
 
-def evaluate_vector_on_validation(
+def evaluate_single(
     experiment: str,
     trait: str,
     method: str,
     layer: int,
-    normalize: bool = True,
     component: str = 'residual'
-) -> Optional[ValidationResult]:
-    """Evaluate a single vector on validation data."""
+) -> Optional[Dict]:
+    """Evaluate one vector on validation data."""
     vector = load_vector(experiment, trait, method, layer, component)
     if vector is None:
         return None
 
-    try:
-        val_pos, val_neg = load_validation_activations(experiment, trait, layer, component)
-    except FileNotFoundError:
+    val_pos, val_neg = load_activations(experiment, trait, layer, 'val', component)
+    if val_pos is None:
         return None
 
-    # Core metrics
-    val_metrics = evaluate_vector(val_pos, val_neg, vector, normalize=normalize)
-    vec_props = vector_properties(vector)
+    # Compute projections once, derive all metrics
+    pos_proj = batch_cosine_similarity(val_pos, vector)
+    neg_proj = batch_cosine_similarity(val_neg, vector)
 
-    # Compute projections for distribution properties and AUC
-    vector_f32 = vector.float()
-    val_pos_f32 = val_pos.float()
-    val_neg_f32 = val_neg.float()
-
-    if normalize:
-        vec_norm = vector_f32 / (vector_f32.norm() + 1e-8)
-        pos_norm = val_pos_f32 / (val_pos_f32.norm(dim=1, keepdim=True) + 1e-8)
-        neg_norm = val_neg_f32 / (val_neg_f32.norm(dim=1, keepdim=True) + 1e-8)
-        pos_proj = pos_norm @ vec_norm
-        neg_proj = neg_norm @ vec_norm
-    else:
-        pos_proj = val_pos_f32 @ vector_f32
-        neg_proj = val_neg_f32 @ vector_f32
-
-    dist_props = distribution_properties(pos_proj, neg_proj)
-
-    # AUC-ROC
-    all_proj = torch.cat([pos_proj, neg_proj]).cpu().numpy()
-    all_labels = np.concatenate([np.ones(len(pos_proj)), np.zeros(len(neg_proj))])
-    try:
-        auc = roc_auc_score(all_labels, all_proj)
-    except ValueError:
-        auc = 0.5
-
-    # Training comparison (optional)
-    train_pos, train_neg = load_training_activations(experiment, trait, layer, component)
-    train_metrics = None
-    if train_pos is not None:
-        train_metrics = evaluate_vector(train_pos, train_neg, vector, normalize=normalize)
-
-    result = ValidationResult(
-        trait=trait,
-        method=method,
-        layer=layer,
-        val_accuracy=val_metrics['accuracy'],
-        val_separation=val_metrics['separation'],
-        val_effect_size=val_metrics['effect_size'],
-        val_p_value=val_metrics['p_value'],
-        polarity_correct=val_metrics['polarity_correct'],
-        val_pos_mean=val_metrics['pos_mean'],
-        val_neg_mean=val_metrics['neg_mean'],
-        val_auc_roc=auc,
-        vector_norm=vec_props['norm'],
-        vector_sparsity=vec_props['sparsity'],
-        val_pos_std=dist_props['pos_std'],
-        val_neg_std=dist_props['neg_std'],
-        overlap_coefficient=dist_props['overlap_coefficient'],
-        separation_margin=dist_props['separation_margin'],
-    )
-
-    if train_metrics:
-        result.train_accuracy = train_metrics['accuracy']
-        result.train_separation = train_metrics['separation']
-        result.accuracy_drop = train_metrics['accuracy'] - val_metrics['accuracy']
-        if train_metrics['separation'] > 0:
-            result.separation_ratio = val_metrics['separation'] / train_metrics['separation']
-
-    return result
+    return {
+        'trait': trait,
+        'method': method,
+        'layer': layer,
+        'val_accuracy': accuracy(pos_proj, neg_proj),
+        'val_effect_size': effect_size(pos_proj, neg_proj),
+        'polarity_correct': polarity_correct(pos_proj, neg_proj),
+    }
 
 
-def compute_best_vector_similarity(
+def compute_activation_norms(experiment: str, trait: str, layers: List[int], component: str = 'residual') -> Dict[str, float]:
+    """Compute mean ||h|| per layer. Used by steering for coefficient estimation."""
+    norms = {}
+    for layer in layers:
+        pos, neg = load_activations(experiment, trait, layer, 'val', component)
+        if pos is not None:
+            all_acts = torch.cat([pos, neg], dim=0).float()
+            norms[str(layer)] = all_acts.norm(dim=-1).mean().item()
+    return norms
+
+
+def main(
     experiment: str,
-    traits: List[str],
-    all_results: List[Dict],
-    metric: str = 'val_accuracy',
-    component: str = 'residual'
-) -> pd.DataFrame:
+    methods: str = "mean_diff,probe,gradient",
+    layers: str = None,
+    component: str = "residual",
+    verbose: bool = False,
+):
     """
-    Compute cosine similarity matrix between best vectors across traits.
-
-    Args:
-        experiment: Experiment name
-        traits: List of trait names
-        all_results: All validation results
-        metric: Metric to use for selecting best vector ('val_accuracy', 'val_effect_size', etc.)
-
-    Returns:
-        DataFrame with similarity matrix (traits × traits)
-    """
-    # Find best vector for each trait
-    df = pd.DataFrame(all_results)
-    best_vectors = {}
-
-    for trait in traits:
-        trait_results = df[df['trait'] == trait]
-        if len(trait_results) == 0:
-            continue
-
-        # Get best by metric
-        best_row = trait_results.loc[trait_results[metric].idxmax()]
-        vector = load_vector(experiment, trait, best_row['method'], int(best_row['layer']), component)
-
-        if vector is not None:
-            best_vectors[trait] = vector
-
-    # Compute pairwise similarities
-    trait_list = list(best_vectors.keys())
-    n = len(trait_list)
-    matrix = np.zeros((n, n))
-
-    for i, trait_i in enumerate(trait_list):
-        vec_i = best_vectors[trait_i].float()
-        vec_i_norm = vec_i / (vec_i.norm() + 1e-8)
-
-        for j, trait_j in enumerate(trait_list):
-            vec_j = best_vectors[trait_j].float()
-            vec_j_norm = vec_j / (vec_j.norm() + 1e-8)
-            similarity = float((vec_i_norm @ vec_j_norm).item())
-            matrix[i, j] = similarity
-
-    # Create DataFrame with full trait names (JS needs these for filtering)
-    similarity_df = pd.DataFrame(matrix, index=trait_list, columns=trait_list)
-
-    return similarity_df
-
-
-def compute_method_similarities(
-    experiment: str,
-    traits: List[str],
-    methods: List[str],
-    layers: List[int],
-    component: str = 'residual'
-) -> Dict:
-    """
-    Compute cosine similarity between extraction methods at each layer for each trait.
-
-    Returns:
-        Dict mapping trait -> layer -> similarity pairs
-    """
-    similarities = {}
-
-    for trait in traits:
-        trait_sims = {}
-
-        for layer in layers:
-            # Load vectors for this trait/layer
-            vectors = {}
-            for method in methods:
-                if method == 'random_baseline':
-                    continue  # Skip random baseline
-                vector = load_vector(experiment, trait, method, layer, component)
-                if vector is not None:
-                    vectors[method] = vector.float()
-
-            # Need at least 2 vectors to compute similarity
-            if len(vectors) < 2:
-                continue
-
-            # Compute pairwise cosine similarities
-            layer_sims = {}
-            method_list = sorted(vectors.keys())
-
-            for i, method_i in enumerate(method_list):
-                for j, method_j in enumerate(method_list):
-                    if i >= j:  # Only compute upper triangle
-                        continue
-
-                    vec_i = vectors[method_i]
-                    vec_j = vectors[method_j]
-
-                    # Cosine similarity
-                    sim = F.cosine_similarity(vec_i, vec_j, dim=0).item()
-                    pair_key = f"{method_i}_{method_j}"
-                    layer_sims[pair_key] = round(sim, 4)
-
-            if layer_sims:
-                trait_sims[layer] = layer_sims
-
-        if trait_sims:
-            similarities[trait] = trait_sims
-
-    return similarities
-
-
-def main(experiment: str,
-         methods: str = "mean_diff,probe,gradient,random_baseline",
-         layers: str = None,
-         output: str = None,
-         no_normalize: bool = False,
-         component: str = "residual"):
-    """
-    Run validation evaluation on all traits.
+    Evaluate all vectors on validation data.
 
     Args:
         experiment: Experiment name
         methods: Comma-separated methods to evaluate
-        layers: Comma-separated layers (default: all)
-        output: Output JSON file (default: experiments/{experiment}/extraction/extraction_evaluation.json)
-        no_normalize: If True, use raw dot product instead of cosine similarity
-        component: Component to evaluate (residual, attn_out, mlp_out, k_cache, v_cache)
+        layers: Comma-separated layers (default: all 26)
+        component: Component to evaluate (residual, attn_out, mlp_out)
+        verbose: Print detailed per-method/layer analysis
     """
-    normalize = not no_normalize
-    if normalize:
-        print("Using cosine similarity (normalized vectors and activations)")
-    else:
-        print("Using raw dot product (no normalization)")
-    if component != 'residual':
-        print(f"Evaluating component: {component}")
-
-    # Use paths from config
     exp_dir = get_path('extraction.base', experiment=experiment)
     methods_list = methods.split(",")
+    layers_list = [int(l) for l in layers.split(",")] if layers else list(range(26))
 
-    if layers:
-        if isinstance(layers, int):
-            layers_list = [layers]
-        else:
-            layers_list = [int(l) for l in str(layers).split(",")]
-    else:
-        layers_list = list(range(26))
-
-    # Find all traits with validation data
+    # Find traits with validation data
     traits = []
     for category_dir in exp_dir.iterdir():
         if not category_dir.is_dir():
@@ -384,223 +128,82 @@ def main(experiment: str,
             if (trait_dir / "val_activations").exists():
                 traits.append(f"{category_dir.name}/{trait_dir.name}")
 
-    print(f"Found {len(traits)} traits with validation data")
-    print(f"Evaluating methods: {methods_list}")
-    print(f"Evaluating layers: {layers_list}")
-
-    # Compute activation norms per layer (model-dependent, not trait-dependent)
-    # Used by steering to estimate base coefficients without loading the model
-    activation_norms = {}
-    if traits:
-        print(f"\nComputing activation norms from first trait ({traits[0]})...")
-        activation_norms = compute_activation_norms(experiment, traits[0], layers_list, component)
-        print(f"  Computed norms for {len(activation_norms)} layers")
+    print(f"Found {len(traits)} traits, evaluating {len(methods_list)} methods × {len(layers_list)} layers")
 
     # Evaluate all vectors
     all_results = []
-
-    for trait in tqdm(traits, desc="Traits"):
+    for trait in tqdm(traits, desc="Evaluating"):
         for method in methods_list:
             for layer in layers_list:
-                result = evaluate_vector_on_validation(
-                    experiment, trait, method, layer, normalize=normalize, component=component
-                )
+                result = evaluate_single(experiment, trait, method, layer, component)
                 if result:
-                    all_results.append(asdict(result))
+                    all_results.append(result)
 
-    print(f"\nEvaluated {len(all_results)} vectors")
-
-    # Convert to DataFrame for analysis
-    df = pd.DataFrame(all_results)
-
-    if len(df) == 0:
-        print("No results to analyze")
+    if not all_results:
+        print("No results")
         return
 
-    # =========================================================================
-    # ANALYSIS 1: Best method per trait (by combined score)
-    # =========================================================================
-    print("\n" + "="*80)
-    print("BEST METHOD PER TRAIT (by combined score)")
-    print("="*80)
+    # Compute combined_score per result
+    # Formula: (accuracy + norm_effect + polarity) / 3
+    # norm_effect = effect_size / max_effect_for_trait
+    trait_max_effect = {}
+    for r in all_results:
+        t = r['trait']
+        trait_max_effect[t] = max(trait_max_effect.get(t, 0), r['val_effect_size'])
 
-    # Combined Score Formula:
-    #   score = (accuracy + norm_effect + (1 - accuracy_drop)) / 3 × polarity
-    #
-    # Components (equal weights, no strong prior for different weighting):
-    #   - accuracy: Classification using midpoint threshold between class means
-    #   - norm_effect: Cohen's d / max Cohen's d for trait. Important for steering robustness.
-    #   - 1 - accuracy_drop: Generalization quality (train_acc - val_acc). High = generalizes well.
-    #   - polarity: Hard multiplier. Wrong polarity (neg_mean > pos_mean) → score = 0.
-    #
-    max_effect_per_trait = df.groupby('trait')['val_effect_size'].transform('max')
-    df['norm_effect_size'] = df['val_effect_size'] / max_effect_per_trait.replace(0, 1)
-    df['accuracy_drop'] = df['accuracy_drop'].fillna(0)
-    df['polarity_multiplier'] = df['polarity_correct'].astype(float)
+    for r in all_results:
+        max_eff = trait_max_effect[r['trait']] or 1
+        norm_effect = r['val_effect_size'] / max_eff
+        polarity_mult = 1.0 if r['polarity_correct'] else 0.0
+        r['combined_score'] = ((r['val_accuracy'] + norm_effect) / 2) * polarity_mult
 
-    df['combined_score'] = (
-        (df['val_accuracy'] + df['norm_effect_size'] + (1 - df['accuracy_drop'])) / 3
-    ) * df['polarity_multiplier']
+    # Compute activation norms from first trait
+    activation_norms = compute_activation_norms(experiment, traits[0], layers_list, component)
 
-    # Handle traits where all scores might be NaN (e.g., all polarity_correct=False)
-    best_indices = df.groupby('trait')['combined_score'].idxmax()
-    valid_indices = best_indices.dropna()
-    best_per_trait = df.loc[valid_indices]
-    print(best_per_trait[['trait', 'method', 'layer', 'combined_score', 'val_accuracy', 'val_effect_size']].to_string(index=False))
+    # Print summary: best per trait
+    print(f"\n{'Trait':<40} {'Method':<10} {'Layer':<6} {'Acc':<6} {'d':<6}")
+    print("-" * 70)
 
-    # =========================================================================
-    # ANALYSIS 2: Method comparison (averaged across traits)
-    # =========================================================================
-    print("\n" + "="*80)
-    print("METHOD COMPARISON (averaged across traits and layers)")
-    print("="*80)
+    # Group by trait, find best
+    from collections import defaultdict
+    by_trait = defaultdict(list)
+    for r in all_results:
+        by_trait[r['trait']].append(r)
 
-    method_summary = df.groupby('method').agg({
-        'val_accuracy': ['mean', 'std', 'max'],
-        'val_separation': ['mean', 'max'],
-        'val_effect_size': ['mean', 'max'],
-        'polarity_correct': 'mean'
-    }).round(3)
-    print(method_summary)
+    for trait in sorted(by_trait.keys()):
+        best = max(by_trait[trait], key=lambda x: x['combined_score'])
+        short_trait = trait.split('/')[-1][:38]
+        print(f"{short_trait:<40} {best['method']:<10} {best['layer']:<6} {best['val_accuracy']:.1%}  {best['val_effect_size']:.2f}")
 
-    # =========================================================================
-    # ANALYSIS 3: Layer comparison (for best method)
-    # =========================================================================
-    print("\n" + "="*80)
-    print("LAYER COMPARISON (probe method, averaged across traits)")
-    print("="*80)
+    if verbose:
+        # Method comparison
+        print(f"\n{'Method':<12} {'Mean Acc':<10} {'Mean d':<10}")
+        print("-" * 35)
+        from collections import defaultdict
+        method_stats = defaultdict(list)
+        for r in all_results:
+            method_stats[r['method']].append(r)
+        for method in methods_list:
+            if method in method_stats:
+                accs = [r['val_accuracy'] for r in method_stats[method]]
+                effs = [r['val_effect_size'] for r in method_stats[method]]
+                print(f"{method:<12} {sum(accs)/len(accs):.1%}      {sum(effs)/len(effs):.2f}")
 
-    if 'probe' in df['method'].values:
-        probe_df = df[df['method'] == 'probe']
-        layer_summary = probe_df.groupby('layer').agg({
-            'val_accuracy': 'mean',
-            'val_effect_size': 'mean',
-            'polarity_correct': 'mean'
-        }).round(3)
-
-        # Show best layers
-        best_layers = layer_summary.nlargest(5, 'val_accuracy')
-        print("Top 5 layers by validation accuracy:")
-        print(best_layers)
-
-    # =========================================================================
-    # ANALYSIS 4: Overfitting detection (train vs val)
-    # =========================================================================
-    print("\n" + "="*80)
-    print("OVERFITTING DETECTION (train accuracy - val accuracy)")
-    print("="*80)
-
-    df_with_train = df.dropna(subset=['train_accuracy'])
-    if len(df_with_train) > 0:
-        overfit_summary = df_with_train.groupby('method').agg({
-            'train_accuracy': 'mean',
-            'val_accuracy': 'mean',
-            'accuracy_drop': 'mean',
-            'separation_ratio': 'mean'
-        }).round(3)
-        print(overfit_summary)
-
-        # Flag severe overfitting
-        severe_overfit = df_with_train[df_with_train['accuracy_drop'] > 0.2]
-        if len(severe_overfit) > 0:
-            print(f"\n⚠️  {len(severe_overfit)} vectors with >20% accuracy drop (overfitting)")
-
-    # =========================================================================
-    # ANALYSIS 5: Polarity issues
-    # =========================================================================
-    print("\n" + "="*80)
-    print("POLARITY ISSUES (vectors pointing wrong direction)")
-    print("="*80)
-
-    wrong_polarity = df[~df['polarity_correct']]
-    if len(wrong_polarity) > 0:
-        print(f"⚠️  {len(wrong_polarity)} vectors with inverted polarity:")
-        print(wrong_polarity[['trait', 'method', 'layer', 'val_pos_mean', 'val_neg_mean']].head(20).to_string(index=False))
-    else:
-        print("✅ All vectors have correct polarity")
-
-    # =========================================================================
-    # FINAL RECOMMENDATIONS
-    # =========================================================================
-    print("\n" + "="*80)
-    print("RECOMMENDATIONS")
-    print("="*80)
-
-    # Best overall method
-    best_method = df.groupby('method')['val_accuracy'].mean().idxmax()
-    best_method_acc = df.groupby('method')['val_accuracy'].mean().max()
-    print(f"Best method overall: {best_method} (mean val accuracy: {best_method_acc:.1%})")
-
-    # Best layer for best method
-    best_method_df = df[df['method'] == best_method]
-    best_layer = best_method_df.groupby('layer')['val_accuracy'].mean().idxmax()
-    best_layer_acc = best_method_df.groupby('layer')['val_accuracy'].mean().max()
-    print(f"Best layer for {best_method}: {best_layer} (mean val accuracy: {best_layer_acc:.1%})")
-
-    # Per-trait recommendations
-    print("\nPer-trait best vectors:")
-    for trait in traits:
-        trait_df = df[df['trait'] == trait]
-        if len(trait_df) > 0:
-            best_row = trait_df.loc[trait_df['val_accuracy'].idxmax()]
-            short_trait = trait.split('/')[-1][:20]
-            print(f"  {short_trait}: {best_row['method']}_layer{int(best_row['layer'])} "
-                  f"(val_acc={best_row['val_accuracy']:.1%}, d={best_row['val_effect_size']:.2f})")
-
-    # =========================================================================
-    # ANALYSIS 7: Best-vector cross-trait similarity
-    # =========================================================================
-    print("\n" + "="*80)
-    print("BEST-VECTOR CROSS-TRAIT SIMILARITY")
-    print("="*80)
-    print("Comparing best vectors across different traits...")
-
-    best_vector_similarity = compute_best_vector_similarity(experiment, traits, all_results, metric='val_accuracy', component=component)
-    print(best_vector_similarity.round(3).to_string())
-
-    # =========================================================================
-    # ANALYSIS 5: Method similarity per layer per trait
-    # =========================================================================
-    print("\n" + "="*80)
-    print("METHOD SIMILARITY PER LAYER")
-    print("="*80)
-    print("Computing cosine similarity between extraction methods...")
-
-    method_similarities = compute_method_similarities(experiment, traits, methods_list, layers_list, component=component)
-    print(f"Computed similarities for {len(method_similarities)} traits")
-
-    # Save results
-    if output:
-        output_path = Path(output)
-    else:
-        output_path = get_path('extraction_eval.evaluation', experiment=experiment)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Convert df to records, replacing NaN with None (NaN is not valid JSON)
-    df_clean = df.replace({np.nan: None, np.inf: None, -np.inf: None})
-
-    all_results_with_score = df_clean.to_dict('records')
-
-    # Get extraction model from experiment config
+    # Save
     config = load_experiment_config(experiment, warn_missing=False)
-    extraction_model = config.get('extraction_model')
-
-    results_dict = {
-        'extraction_model': extraction_model,
-        'extraction_experiment': experiment,
-        'activation_norms': {str(k): v for k, v in activation_norms.items()},  # JSON keys must be strings
-        'all_results': all_results_with_score,
-        'best_vector_similarity': best_vector_similarity.replace({np.nan: None}).to_dict(),
-        'method_similarities': method_similarities,
+    output = {
+        'extraction_model': config.get('extraction_model'),
+        'activation_norms': activation_norms,
+        'all_results': all_results,
     }
 
+    output_path = get_path('extraction_eval.evaluation', experiment=experiment)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w') as f:
-        json.dump(results_dict, f, indent=2)
+        json.dump(output, f, indent=2)
 
-    print(f"\n✅ Results saved to {output_path}")
-
-    return results_dict
+    print(f"\nSaved to {output_path}")
 
 
 if __name__ == "__main__":
-    fire.Fire(lambda *args, **kwargs: (main(*args, **kwargs), None)[1])
+    fire.Fire(main)
