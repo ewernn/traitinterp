@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from traitlens import projection
+from core import projection
 from utils.paths import get as get_path
 from utils.vectors import get_best_layer
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config
@@ -254,7 +254,7 @@ class ChatInference:
 
         # Local backend continues below
         import torch  # Lazy import
-        from traitlens import HookManager
+        from core import HookManager
 
         input_ids = tokenize_prompt(formatted_prompt, self.tokenizer, self.use_chat_template).input_ids.to(self.model.device)
 

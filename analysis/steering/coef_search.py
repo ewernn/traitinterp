@@ -22,7 +22,8 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 
-from analysis.steering.steer import SteeringHook, BatchedLayerSteeringHook
+from core import SteeringHook
+from analysis.steering.steer import BatchedLayerSteeringHook
 from utils.generation import generate_batch, calculate_max_batch_size
 from analysis.steering.results import find_existing_run_index, save_results, save_responses
 from utils.judge import TraitJudge

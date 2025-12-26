@@ -28,6 +28,40 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
+def get_inner_model(model):
+    """Get the inner model (with .layers), handling PeftModel wrapper if present.
+
+    Useful for accessing model internals like:
+    - model.layers (for hook registration)
+    - model.norm (for logit lens)
+    - model.config.num_hidden_layers
+
+    Args:
+        model: A HuggingFace model (possibly wrapped in PeftModel)
+
+    Returns:
+        The inner model with .layers attribute
+    """
+    # PeftModel wraps: model.base_model (LoraModel) -> model (LlamaForCausalLM) -> model (LlamaModel)
+    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
+        return model.base_model.model.model
+    return model.model
+
+
+def get_layer_path_prefix(model) -> str:
+    """Get the hook path prefix to transformer layers, handling PeftModel wrapper.
+
+    Args:
+        model: A HuggingFace model (possibly wrapped in PeftModel)
+
+    Returns:
+        Hook path prefix like "model.layers" or "base_model.model.model.layers"
+    """
+    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
+        return "base_model.model.model.layers"
+    return "model.layers"
+
+
 def load_model(
     model_name: str,
     device: str = "auto",
@@ -57,10 +91,12 @@ def load_model(
     # Set pad_token if missing (required for batched generation, e.g. Mistral)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    # AWQ models require fp16 (triton kernels don't support bf16)
-    if "AWQ" in model_name or "awq" in model_name.lower():
+    # AWQ models require fp16 and GPU-only device map
+    is_awq = "AWQ" in model_name or "awq" in model_name.lower()
+    if is_awq:
         dtype = torch.float16
-        print(f"  AWQ model detected, using fp16")
+        device = "cuda"
+        print(f"  AWQ model detected, using fp16 and device_map='cuda'")
 
     model_kwargs = {
         "torch_dtype": dtype,

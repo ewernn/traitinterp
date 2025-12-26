@@ -1,213 +1,63 @@
 #!/usr/bin/env python3
 """
-Main orchestrator for the full trait pipeline: extraction + evaluation + steering.
+Extraction pipeline: responses → activations → vectors → evaluation.
 
-Input (required, in datasets/):
-    - datasets/traits/{trait}/positive.txt
-    - datasets/traits/{trait}/negative.txt
-    - datasets/traits/{trait}/definition.txt
-    - datasets/traits/{trait}/steering.json (or use --no-steering)
-    - experiments/{experiment}/config.json (auto-created with extraction_model and application_model)
-
-Output:
-    - responses/, vetting/, activations/, vectors/ (each with metadata.json)
-    - extraction/extraction_evaluation.json
-    - steering/{trait}/results.json
+Stages:
+    0: vet_scenarios   - LLM judges if scenarios match trait
+    1: generate        - Generate model responses to scenarios
+    2: vet_responses   - LLM judges if responses match trait
+    3: activations     - Extract activations from responses
+    4: vectors         - Train probe/gradient/mean_diff vectors
+    5: evaluation      - Evaluate vectors on held-out data
 
 Usage:
-    # Full pipeline with config.json (recommended)
-    # First create config.json with extraction_model and application_model
-    python extraction/run_pipeline.py \\
-        --experiment gemma-2-2b \\
-        --traits epistemic/optimism
-
-    # Override models from CLI
-    python extraction/run_pipeline.py \\
-        --experiment gemma-2-2b \\
-        --extraction-model google/gemma-2-2b \\
-        --application-model google/gemma-2-2b-it \\
-        --traits epistemic/optimism
-
-    # Extraction only (no steering)
-    python extraction/run_pipeline.py \\
-        --experiment gemma-2-2b \\
-        --traits epistemic/optimism \\
-        --no-steering
-
-    # All traits in experiment
-    python extraction/run_pipeline.py --experiment my_exp
-
-    # Base model (auto-detected from config/models/*.yaml variant field)
-    # Use --base-model or --it-model to override auto-detection
-    python extraction/run_pipeline.py --experiment my_exp --traits epistemic/optimism \\
-        --extraction-model Qwen/Qwen2.5-7B --rollouts 1 --temperature 1.0 --no-vet-scenarios
+    python extraction/run_pipeline.py --experiment gemma-2-2b --traits category/trait
+    python extraction/run_pipeline.py --experiment gemma-2-2b --category epistemic
+    python extraction/run_pipeline.py --experiment gemma-2-2b  # all traits
+    python extraction/run_pipeline.py --experiment gemma-2-2b --only-stage 4  # vectors only
 """
 
 import sys
-import os
 import json
 import argparse
 import warnings
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 from dotenv import load_dotenv
 
-# Silence cosmetic warnings
 warnings.filterwarnings("ignore", message=".*penalty.*deprecated.*", category=FutureWarning)
-warnings.filterwarnings("ignore", message=".*Event loop is closed.*", category=RuntimeWarning)
-
-load_dotenv()  # Load .env file (HF_TOKEN, API keys, etc.)
+load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.paths import get as get_path
+from utils.paths import get as get_path, discover_traits
 from utils.model import load_model
 from utils.model_registry import is_base_model
-from extraction.generate_responses import generate_responses_for_trait
+from extraction.generate_responses import generate_responses_for_trait, BASE_MODEL_TOKENS, IT_MODEL_TOKENS
 from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
+from extraction.vet_scenarios import vet_scenarios
+from extraction.vet_responses import vet_responses
+from analysis.vectors.extraction_evaluation import main as run_evaluation
 
-
-def validate_trait_files(experiment: str, trait: str, no_steering: bool = False) -> tuple[bool, list[str]]:
-    """
-    Validate that all required files exist for a trait.
-    Inputs are in datasets/traits/{trait}/, outputs go to experiments/{experiment}/.
-
-    Returns:
-        (is_valid, list of error messages)
-    """
-    errors = []
-
-    # Required input files (from datasets/traits/)
-    for filename in ['positive.txt', 'negative.txt']:
-        filepath = get_path('datasets.trait', trait=trait) / filename
-        if not filepath.exists():
-            errors.append(f"Missing: {filepath}")
-
-    # Definition file (optional but recommended)
-    definition_path = get_path('datasets.trait_definition', trait=trait)
-    if not definition_path.exists():
-        errors.append(f"Missing (recommended): {definition_path}")
-
-    # Steering prompts (required unless --no-steering)
-    if not no_steering:
-        prompts_file = get_path('datasets.trait_steering', trait=trait)
-        if not prompts_file.exists():
-            errors.append(f"Missing steering prompts: {prompts_file}")
-            errors.append(f"  Create this file or use --no-steering to skip steering evaluation")
-
-    return len(errors) == 0, errors
-
-
-def ensure_experiment_config(experiment: str, extraction_model: str, application_model: str, tokenizer) -> dict:
-    """
-    Create or validate experiment config.json.
-
-    On first run: creates config.json with auto-detected settings.
-    On subsequent runs: validates model matches, warns on mismatch.
-
-    Returns:
-        Config dict with keys: extraction_model, application_model, use_chat_template
-    """
-    config_path = get_path('experiments.config', experiment=experiment)
-
-    if config_path.exists():
-        with open(config_path) as f:
-            config = json.load(f)
-
-        # Require new config format
-        if 'extraction_model' not in config:
-            raise ValueError(
-                f"config.json missing 'extraction_model'. "
-                f"Update {config_path} with extraction_model and application_model fields."
-            )
-
-        # Validate extraction model matches
-        config_extraction = config.get('extraction_model')
-        if config_extraction != extraction_model:
-            print(f"\n⚠️  Warning: config.json has extraction_model={config_extraction}")
-            print(f"   But you're running with --model {extraction_model}")
-            response = input("   Continue anyway? [y/N] ").strip().lower()
-            if response != 'y':
-                print("Aborted.")
-                sys.exit(1)
-        return config
-
-    # Auto-detect from tokenizer
-    use_chat_template = tokenizer.chat_template is not None
-
-    config = {
-        "extraction_model": extraction_model,
-        "application_model": application_model,
-        "use_chat_template": use_chat_template,
-    }
-
-    # Create config file
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)
-    print(f"Created experiment config: {config_path}")
-    print(f"  extraction_model: {extraction_model}")
-    print(f"  application_model: {application_model}")
-    print(f"  use_chat_template: {use_chat_template} (auto-detected from tokenizer)")
-
-    return config
-
-def discover_traits(experiment: str = None) -> list[str]:
-    """
-    Finds all traits defined in datasets/traits/.
-    Traits are global - the experiment parameter is ignored (kept for compatibility).
-    """
-    traits_dir = get_path('datasets.traits')
-    traits = []
-    if not traits_dir.is_dir():
-        return []
-
-    for category_dir in traits_dir.iterdir():
-        if category_dir.is_dir():
-            for trait_dir in category_dir.iterdir():
-                if trait_dir.is_dir():
-                    # Check for required files
-                    if (trait_dir / 'positive.txt').exists() and (trait_dir / 'negative.txt').exists():
-                        traits.append(f"{category_dir.name}/{trait_dir.name}")
-    return sorted(traits)
-
-def run_vetting(experiment: str, trait: str, stage: str,
-                pos_threshold: int = 60, neg_threshold: int = 40) -> float:
-    """
-    Run vetting for scenarios or responses.
-    Returns pass rate (0.0 to 1.0).
-    """
-    from extraction.vet_scenarios import vet_scenarios
-    from extraction.vet_responses import vet_responses
-
-    if stage == 'scenarios':
-        return vet_scenarios(
-            experiment=experiment,
-            trait=trait,
-            pos_threshold=pos_threshold,
-            neg_threshold=neg_threshold,
-        )
-    elif stage == 'responses':
-        return vet_responses(
-            experiment=experiment,
-            trait=trait,
-            pos_threshold=pos_threshold,
-            neg_threshold=neg_threshold,
-        )
-    else:
-        raise ValueError(f"Unknown vetting stage: {stage}")
+STAGES = {
+    0: 'vet_scenarios',
+    1: 'generate',
+    2: 'vet_responses',
+    3: 'activations',
+    4: 'vectors',
+    5: 'evaluation',
+}
 
 
 def run_pipeline(
     experiment: str,
     extraction_model: str,
-    application_model: str,
-    traits_to_run: Optional[List[str]] = None,
+    traits: List[str],
+    only_stages: Optional[Set[int]] = None,
     force: bool = False,
-    methods: Optional[List[str]] = None,
-    vet: bool = False,
-    vet_scenarios: bool = True,
+    methods: List[str] = None,
+    vet: bool = True,
     rollouts: int = 1,
     temperature: float = 0.0,
     batch_size: int = 8,
@@ -215,325 +65,147 @@ def run_pipeline(
     base_model: Optional[bool] = None,
     pos_threshold: int = 60,
     neg_threshold: int = 40,
-    no_steering: bool = False,
-    subset: int = 5,
+    component: str = 'residual',
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
 ):
-    """
-    Executes the full trait pipeline: extraction + evaluation + steering.
-
-    Args:
-        vet: Enable response vetting (default: True via CLI)
-        vet_scenarios: Enable scenario vetting (default: True). Set False for instruction-based elicitation.
-        val_split: Fraction of scenarios for validation (0.2 = last 20%). 0 = no split.
-        extraction_model: HuggingFace model for extraction
-        application_model: HuggingFace model for steering
-        base_model: None=auto-detect from model config, True/False=override
-        pos_threshold: Positive samples need score >= this
-        neg_threshold: Negative samples need score <= this
-        no_steering: If True, skip steering evaluation
-    """
-    if methods is None:
-        methods = ['mean_diff', 'probe', 'gradient']
-
-    # Auto-detect base model from config if not explicitly set
+    """Execute extraction pipeline."""
+    methods = methods or ['mean_diff', 'probe', 'gradient']
     if base_model is None:
         base_model = is_base_model(extraction_model)
+    max_new_tokens = BASE_MODEL_TOKENS if base_model else IT_MODEL_TOKENS
 
-    print("=" * 80)
-    print("STARTING TRAIT PIPELINE")
-    print(f"Experiment: {experiment}")
-    print(f"Extraction model: {extraction_model}")
-    if not no_steering:
-        print(f"Application model: {application_model}")
-    mode_str = "BASE MODEL" if base_model else "IT MODEL"
-    mode_source = "(auto-detected)" if base_model == is_base_model(extraction_model) else "(override)"
-    print(f"Mode: {mode_str} {mode_source}")
-    if base_model:
-        print(f"  → No chat template, completion-only extraction")
-    print(f"Force mode: {'ON' if force else 'OFF'}")
-    if vet:
-        if vet_scenarios:
-            print(f"Vetting: scenarios + responses")
-        else:
-            print(f"Vetting: responses only (scenario vetting disabled)")
-        print(f"Vetting thresholds: pos>={pos_threshold}, neg<={neg_threshold}")
-    else:
-        print(f"Vetting: OFF")
-    if rollouts > 1:
-        print(f"Rollouts: {rollouts}, Temperature: {temperature}")
-    if val_split > 0:
-        print(f"Val split: {val_split:.0%} (last {val_split:.0%} of scenarios)")
-    if no_steering:
-        print(f"Steering: OFF (--no-steering)")
-    else:
-        print(f"Steering: ON")
-    print("=" * 80)
+    def should_run(stage: int) -> bool:
+        return only_stages is None or stage in only_stages
 
-    if traits_to_run:
-        available_traits = traits_to_run
-        print(f"\nRunning for {len(available_traits)} specified traits.")
-    else:
-        available_traits = discover_traits(experiment)
-        print(f"\nDiscovered {len(available_traits)} traits to process.")
+    # Only load model if needed
+    needs_model = should_run(1) or should_run(3)
 
-    if not available_traits:
-        print("\nNo traits found. To create a new trait, first create its directory:")
-        print("  mkdir -p datasets/traits/<category>/<trait>")
-        print("Then add positive.txt, negative.txt, definition.txt, and steering.json files.")
-        return
+    print("=" * 60)
+    print(f"EXTRACTION PIPELINE | {experiment}")
+    if only_stages:
+        stage_names = [STAGES[s] for s in sorted(only_stages)]
+        print(f"Stages: {', '.join(stage_names)}")
+    print(f"Model: {extraction_model} | {'BASE' if base_model else 'IT'} ({max_new_tokens} tokens)")
+    print(f"Traits: {len(traits)}")
+    print("=" * 60)
 
-    # --- Validate all traits before starting ---
-    print("\nValidating trait files...")
-    all_valid = True
-    for trait in available_traits:
-        is_valid, errors = validate_trait_files(experiment, trait, no_steering)
-        if not is_valid:
-            all_valid = False
-            print(f"\n❌ {trait}:")
-            for error in errors:
-                print(f"   {error}")
+    model, tokenizer = None, None
+    if needs_model:
+        model, tokenizer = load_model(extraction_model, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+    use_chat_template = False if base_model else (model and tokenizer.chat_template is not None)
 
-    if not all_valid:
-        print("\n" + "=" * 80)
-        print("PIPELINE ABORTED: Missing required files")
-        print("=" * 80)
-        return
-
-    # --- Centralized Model Loading (extraction model) ---
-    model, tokenizer = load_model(extraction_model, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-
-    # --- Ensure Experiment Config ---
-    config = ensure_experiment_config(experiment, extraction_model, application_model, tokenizer)
-
-    # Determine chat template: base models never use it, IT models use if available
-    if base_model:
-        use_chat_template = False
-    else:
-        use_chat_template = config.get('use_chat_template')
-        if use_chat_template is None:
-            use_chat_template = tokenizer.chat_template is not None
-
-    # Get application model from config (may differ from CLI if config exists)
-    application_model = config.get('application_model', application_model)
-
-    for trait in available_traits:
-        print(f"\n--- Processing Trait: {trait} ---")
-
-        # --- Stage 0: Scenario Vetting (optional) ---
+    for trait in traits:
+        print(f"\n--- {trait} ---")
         vetting_path = get_path("extraction.trait", experiment=experiment, trait=trait) / "vetting"
-        if vet and vet_scenarios:
-            scenario_scores = vetting_path / "scenario_scores.json"
-            if not scenario_scores.exists() or force:
-                print(f"  [Stage 0] Vetting scenarios...")
-                pass_rate = run_vetting(experiment, trait, 'scenarios', pos_threshold, neg_threshold)
-                if pass_rate < 0.7:
-                    print(f"  ⚠️  Low scenario pass rate ({pass_rate:.0%}). Consider reviewing scenarios.")
+
+        # Stage 0: Scenario vetting
+        if should_run(0) and vet:
+            if not (vetting_path / "scenario_scores.json").exists() or force:
+                vet_scenarios(experiment, trait, pos_threshold, neg_threshold)
+
+        # Stage 1: Generate responses
+        if should_run(1):
+            responses_path = get_path("extraction.responses", experiment=experiment, trait=trait)
+            if not (responses_path / "pos.json").exists() or force:
+                generate_responses_for_trait(experiment, trait, model, tokenizer, max_new_tokens,
+                                             batch_size, rollouts, temperature, use_chat_template)
+
+        # Stage 2: Response vetting
+        if should_run(2) and vet:
+            if not (vetting_path / "response_scores.json").exists() or force:
+                vet_responses(experiment, trait, pos_threshold, neg_threshold)
+
+        # Stage 3: Extract activations
+        if should_run(3):
+            activations_path = get_path("extraction.activations", experiment=experiment, trait=trait)
+            metadata_file = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
+            if not (activations_path / metadata_file).exists() or force:
+                extract_activations_for_trait(experiment, trait, model, tokenizer, val_split, base_model, component)
+
+        # Stage 4: Extract vectors
+        if should_run(4):
+            vectors_path = get_path("extraction.vectors", experiment=experiment, trait=trait)
+            if component == 'residual':
+                existing = [f for f in vectors_path.glob("*.pt") if not any(c in f.name for c in ['attn_out_', 'mlp_out_', 'k_cache_', 'v_cache_'])]
             else:
-                print(f"  [Stage 0] Skipping scenario vetting (already exists).")
-        elif vet and not vet_scenarios:
-            print(f"  [Stage 0] Scenario vetting disabled (--no-vet-scenarios).")
+                existing = list(vectors_path.glob(f"{component}_*.pt"))
+            if not existing or force:
+                extract_vectors_for_trait(experiment, trait, methods, component)
 
-        # --- Stage 1: Responses ---
-        responses_path = get_path("extraction.responses", experiment=experiment, trait=trait)
-        if not (responses_path / "pos.json").exists() or force:
-            # Base models drift quickly, so limit to 16 tokens; IT models can go longer
-            max_new_tokens = 16 if base_model else 200
-            generate_responses_for_trait(
-                experiment=experiment,
-                trait=trait,
-                model=model,
-                tokenizer=tokenizer,
-                max_new_tokens=max_new_tokens,
-                rollouts=rollouts,
-                temperature=temperature,
-                batch_size=batch_size,
-                chat_template=use_chat_template,
-            )
-        else:
-            print(f"  [Stage 1] Skipping response generation (already exists).")
+    # Stage 5: Evaluation
+    if should_run(5):
+        print("\n--- Evaluation ---")
+        eval_path = get_path("extraction_eval.evaluation", experiment=experiment)
+        if not eval_path.exists() or force:
+            run_evaluation(experiment)
 
-        # --- Stage 1.5: Response Vetting (optional) ---
-        if vet:
-            response_scores = vetting_path / "response_scores.json"
-            if not response_scores.exists() or force:
-                print(f"  [Stage 1.5] Vetting responses...")
-                pass_rate = run_vetting(experiment, trait, 'responses', pos_threshold, neg_threshold)
-                if pass_rate < 0.7:
-                    print(f"  ⚠️  Low response pass rate ({pass_rate:.0%}). Consider reviewing mislabeled examples.")
-            else:
-                print(f"  [Stage 1.5] Skipping response vetting (already exists).")
-
-        # --- Stage 2: Activations ---
-        activations_path = get_path("extraction.activations", experiment=experiment, trait=trait)
-        metadata_filename = "metadata.json" if args.component == 'residual' else f"{args.component}_metadata.json"
-        if not (activations_path / metadata_filename).exists() or force:
-            extract_activations_for_trait(
-                experiment=experiment,
-                trait=trait,
-                model=model,
-                tokenizer=tokenizer,
-                val_split=val_split,
-                base_model=base_model,
-                component=args.component,
-            )
-        else:
-            print(f"  [Stage 2] Skipping activation extraction (already exists).")
-
-        # --- Stage 3: Vectors ---
-        vectors_path = get_path("extraction.vectors", experiment=experiment, trait=trait)
-        vector_pattern = "*.pt" if args.component == 'residual' else f"{args.component}_*.pt"
-        # For residual, check that non-prefixed vectors exist (not v_cache_*, etc.)
-        if args.component == 'residual':
-            existing_vectors = [f for f in vectors_path.glob("*.pt") if not any(c in f.name for c in ['attn_out_', 'mlp_out_', 'k_cache_', 'v_cache_'])]
-        else:
-            existing_vectors = list(vectors_path.glob(vector_pattern))
-        if not vectors_path.exists() or not existing_vectors or force:
-            extract_vectors_for_trait(
-                experiment=experiment,
-                trait=trait,
-                methods=methods,
-                component=args.component,
-            )
-        else:
-            print(f"  [Stage 3] Skipping vector extraction (already exists).")
-
-    # --- Stage 4: Extraction Evaluation ---
-    print(f"\n--- Stage 4: Evaluating Vectors ---")
-    eval_path = get_path("extraction_eval.evaluation", experiment=experiment)
-    if not eval_path.exists() or force:
-        import subprocess
-        cmd = [
-            sys.executable, "analysis/vectors/extraction_evaluation.py",
-            "--experiment", experiment,
-        ]
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"  ⚠️  Evaluation failed: {e}")
-    else:
-        print(f"  Skipping evaluation (already exists). Use --force to re-run.")
-
-    # --- Stage 5: Steering Evaluation ---
-    if not no_steering:
-        print(f"\n--- Stage 5: Steering Evaluation ---")
-        print(f"  Application model: {application_model}")
-        print(f"  Methods: {', '.join(methods)}")
-        import subprocess
-        for trait in available_traits:
-            for method in methods:
-                print(f"\n  Steering: {trait} ({method})")
-                vector_from_trait = f"{experiment}/{trait}"
-                cmd = [
-                    sys.executable, "analysis/steering/evaluate.py",
-                    "--experiment", experiment,
-                    "--vector-from-trait", vector_from_trait,
-                    "--model", application_model,
-                    "--method", method,
-                    "--subset", str(subset),
-                ]
-                try:
-                    subprocess.run(cmd, check=True)
-                except subprocess.CalledProcessError as e:
-                    print(f"  ⚠️  Steering failed for {trait} ({method}): {e}")
-
-    print("\n" + "=" * 80)
-    print("PIPELINE COMPLETE")
-    print("=" * 80)
+    print("\n" + "=" * 60 + "\nCOMPLETE\n" + "=" * 60)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Full trait pipeline: extraction + evaluation + steering.")
-    parser.add_argument("--experiment", type=str, required=True, help="Experiment name (extraction and steering results stored here).")
-    parser.add_argument("--traits", type=str, help="Comma-separated list of specific traits to run (e.g., 'category/name1,category/name2').")
-    parser.add_argument("--all", action="store_true", help="Run all traits in datasets/traits/.")
-    parser.add_argument("--category", type=str, help="Run all traits in a category (e.g., 'hum' or 'harm').")
-    parser.add_argument("--force", action="store_true", help="If set, overwrite existing data and re-run all stages.")
-    parser.add_argument('--methods', type=str, default='mean_diff,probe,gradient', help='Comma-separated method names for vector extraction.')
-    parser.add_argument('--no-vet', action='store_true', help='Disable all LLM-as-a-judge vetting (not recommended).')
-    parser.add_argument('--no-vet-scenarios', action='store_true', help='Skip scenario vetting, keep response vetting. Use for instruction-based elicitation.')
-    parser.add_argument('--no-steering', action='store_true', help='Skip steering evaluation (stages 1-4 only).')
-    parser.add_argument('--subset', type=int, default=5, help='Steering: use subset of questions (0 = all).')
-    parser.add_argument('--rollouts', type=int, default=1, help='Responses per scenario (1 for natural, 10 for instruction-based).')
-    parser.add_argument('--temperature', type=float, default=0.0, help='Sampling temperature (0.0 for deterministic, 1.0 for diverse).')
-    parser.add_argument('--batch-size', type=int, default=8, help='Batch size for generation.')
-    parser.add_argument('--val-split', type=float, default=0.2, help='Fraction of scenarios for validation. 0 = no split.')
-    parser.add_argument('--extraction-model', type=str, default=None, help='HuggingFace model for extraction (default: from config.json).')
-    parser.add_argument('--application-model', type=str, default=None, help='HuggingFace model for steering (default: from config.json or same as extraction-model).')
+    parser = argparse.ArgumentParser(
+        description="Extraction pipeline",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Stages: 0=vet_scenarios, 1=generate, 2=vet_responses, 3=activations, 4=vectors, 5=evaluation"
+    )
+    parser.add_argument("--experiment", required=True)
+    parser.add_argument("--traits", type=str)
+    parser.add_argument("--category", type=str)
+    parser.add_argument("--only-stage", type=int, action='append', dest='only_stages',
+                        help="Run only specific stage(s). Can be repeated: --only-stage 3 --only-stage 4")
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--methods", default="mean_diff,probe,gradient")
+    parser.add_argument("--no-vet", action="store_true")
+    parser.add_argument("--rollouts", type=int, default=1)
+    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--val-split", type=float, default=0.2)
+    parser.add_argument("--extraction-model", type=str)
+    parser.add_argument("--component", default="residual")
+    parser.add_argument("--pos-threshold", type=int, default=60)
+    parser.add_argument("--neg-threshold", type=int, default=40)
+    parser.add_argument("--load-in-8bit", action="store_true")
+    parser.add_argument("--load-in-4bit", action="store_true")
     model_mode = parser.add_mutually_exclusive_group()
-    model_mode.add_argument('--base-model', action='store_true', dest='base_model_override', help='Force base model mode (no chat template, completion-only extraction).')
-    model_mode.add_argument('--it-model', action='store_true', dest='it_model_override', help='Force IT model mode (use chat template if available).')
-    parser.add_argument('--pos-threshold', type=int, default=60, help='Positive samples need score >= this.')
-    parser.add_argument('--neg-threshold', type=int, default=40, help='Negative samples need score <= this.')
-    parser.add_argument('--component', type=str, default='residual',
-                        help='Component to extract: residual, attn_out, mlp_out, k_cache, v_cache (default: residual).')
-    parser.add_argument('--load-in-8bit', action='store_true', help='Load model in 8-bit quantization (for 70B+ models on 80GB GPU).')
-    parser.add_argument('--load-in-4bit', action='store_true', help='Load model in 4-bit quantization (smaller but may affect extraction quality).')
-
+    model_mode.add_argument("--base-model", action="store_true", dest="base_model_override")
+    model_mode.add_argument("--it-model", action="store_true", dest="it_model_override")
     args = parser.parse_args()
 
-    # Resolve models: CLI > config.json (both required)
+    # Resolve model
     config_path = get_path('experiments.config', experiment=args.experiment)
     if config_path.exists():
         with open(config_path) as f:
-            config = json.load(f)
-        if args.extraction_model is None:
-            args.extraction_model = config.get('extraction_model')
-        if args.application_model is None:
-            args.application_model = config.get('application_model')
-        if not args.extraction_model or not args.application_model:
-            raise ValueError(
-                f"config.json must have extraction_model and application_model. "
-                f"Update {config_path}"
-            )
-        print(f"Using models from config.json:")
-        print(f"  extraction_model: {args.extraction_model}")
-        print(f"  application_model: {args.application_model}")
+            extraction_model = args.extraction_model or json.load(f).get('extraction_model')
     else:
-        if args.extraction_model is None or args.application_model is None:
-            raise ValueError(
-                f"No config.json found at {config_path}. "
-                f"Create it with extraction_model and application_model, or use --extraction-model and --application-model flags."
-            )
+        extraction_model = args.extraction_model
+    if not extraction_model:
+        raise ValueError(f"No model. Use --extraction-model or add to {config_path}")
 
-    # Resolve traits: --traits > --category > --all > None (auto-discover)
+    # Resolve traits
     if args.traits:
-        traits_list = args.traits.split(',')
-    elif args.category:
-        all_traits = discover_traits()
-        traits_list = [t for t in all_traits if t.startswith(f"{args.category}/")]
-        if not traits_list:
-            print(f"Error: No traits found in category '{args.category}'")
-            print(f"Available categories: {sorted(set(t.split('/')[0] for t in all_traits))}")
-            sys.exit(1)
-        print(f"Found {len(traits_list)} traits in category '{args.category}'")
-    elif getattr(args, 'all', False):
-        traits_list = discover_traits()
-        print(f"Running all {len(traits_list)} traits")
+        traits = args.traits.split(',')
     else:
-        traits_list = None
-
-    methods_list = args.methods.split(',')
+        traits = discover_traits(category=args.category)
+    if not traits:
+        raise ValueError("No traits found")
 
     run_pipeline(
         experiment=args.experiment,
-        traits_to_run=traits_list,
+        extraction_model=extraction_model,
+        traits=traits,
+        only_stages=set(args.only_stages) if args.only_stages else None,
         force=args.force,
-        methods=methods_list,
-        vet=not args.no_vet,  # Vetting is ON by default
-        vet_scenarios=not args.no_vet_scenarios,  # Scenario vetting ON by default
+        methods=args.methods.split(','),
+        vet=not args.no_vet,
         rollouts=args.rollouts,
         temperature=args.temperature,
         batch_size=args.batch_size,
         val_split=args.val_split,
-        extraction_model=args.extraction_model,
-        application_model=args.application_model,
         base_model=True if args.base_model_override else (False if args.it_model_override else None),
         pos_threshold=args.pos_threshold,
         neg_threshold=args.neg_threshold,
-        no_steering=args.no_steering,
-        subset=args.subset,
+        component=args.component,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )

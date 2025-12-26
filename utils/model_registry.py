@@ -8,14 +8,12 @@ Usage:
     n_layers = get_num_layers('google/gemma-2-2b-it')
 """
 
-import json
 import yaml
 from pathlib import Path
 from typing import Optional
 
 _cache: dict = {}
 _models_dir = Path(__file__).parent.parent / "config" / "models"
-_experiments_dir = Path(__file__).parent.parent / "experiments"
 
 
 def get_model_config(model_id: str) -> dict:
@@ -68,24 +66,3 @@ def get_sae_path(model_id: str, layer: int) -> Optional[Path]:
     base_path = Path(__file__).parent.parent / sae['base_path']
     layer_dir = sae['layer_template'].format(layer=layer)
     return base_path / layer_dir
-
-
-def _load_experiment_config(experiment: str) -> dict:
-    """Load experiment config.json (internal helper)."""
-    config_path = _experiments_dir / experiment / "config.json"
-    if config_path.exists():
-        with open(config_path) as f:
-            return json.load(f)
-    return {}
-
-
-def get_extraction_model(experiment: str) -> Optional[str]:
-    """Get extraction_model from experiment config.json"""
-    config = _load_experiment_config(experiment)
-    return config.get('extraction_model')
-
-
-def get_application_model(experiment: str) -> Optional[str]:
-    """Get application_model from experiment config.json"""
-    config = _load_experiment_config(experiment)
-    return config.get('application_model')

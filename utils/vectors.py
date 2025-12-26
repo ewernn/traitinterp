@@ -24,6 +24,29 @@ from utils.paths import get as get_path
 
 logger = logging.getLogger(__name__)
 
+
+def find_vector_method(vectors_dir: Path, layer: int, component: str = "residual") -> Optional[str]:
+    """Auto-detect best vector method for a layer.
+
+    Args:
+        vectors_dir: Path to vectors directory
+        layer: Layer number
+        component: 'residual' (default) or 'attn_out'
+
+    Returns:
+        Method name if found, None otherwise
+    """
+    for method in ["probe", "mean_diff", "gradient"]:
+        if component == "attn_out":
+            # Check for attn_out vectors: attn_out_probe_layer8.pt
+            if (vectors_dir / f"attn_out_{method}_layer{layer}.pt").exists():
+                return method
+        else:
+            # Standard residual vectors: probe_layer8.pt
+            if (vectors_dir / f"{method}_layer{layer}.pt").exists():
+                return method
+    return None
+
 # Single source of truth for minimum coherence threshold in steering evaluation
 MIN_COHERENCE = 70
 
@@ -240,51 +263,6 @@ def _try_effect_size(experiment: str, trait: str) -> Optional[dict]:
     return None
 
 
-def load_vector_with_metadata(
-    experiment: str,
-    trait: str,
-    method: str,
-    layer: int,
-    component: str = "residual"
-) -> Tuple[torch.Tensor, Dict[str, Any]]:
-    """
-    Load a vector and its metadata.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path (e.g., "category/trait_name")
-        method: Extraction method (e.g., "probe", "mean_diff")
-        layer: Layer number
-        component: Component type (default: "residual")
-
-    Returns:
-        Tuple of (vector tensor, metadata dict)
-
-    Raises:
-        FileNotFoundError: If vector file doesn't exist
-    """
-    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
-
-    # Build vector filename
-    prefix = "" if component == "residual" else f"{component}_"
-    vector_path = vectors_dir / f"{prefix}{method}_layer{layer}.pt"
-
-    if not vector_path.exists():
-        raise FileNotFoundError(f"Vector not found: {vector_path}")
-
-    vector = torch.load(vector_path, weights_only=True)
-
-    # Load metadata
-    metadata = load_vector_metadata(experiment, trait)
-
-    # Add specific vector info to metadata
-    metadata['method'] = method
-    metadata['layer'] = layer
-    metadata['component'] = component
-
-    return vector, metadata
-
-
 def load_vector_metadata(experiment: str, trait: str) -> Dict[str, Any]:
     """
     Load vector metadata for a trait.
@@ -361,31 +339,3 @@ def load_vector_with_baseline(
         logger.warning(f"No per-vector metadata found at {metadata_path}, baseline=0")
 
     return vector, baseline, metadata
-
-
-def get_vector_source_info(experiment: str, trait: str, method: str, layer: int, component: str = "residual") -> Dict[str, Any]:
-    """
-    Get vector source info for use in results metadata.
-
-    This is the standard format for recording where a vector came from.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path
-        method: Extraction method
-        layer: Layer number
-        component: Component type
-
-    Returns:
-        Dict with vector source info for embedding in results
-    """
-    metadata = load_vector_metadata(experiment, trait)
-
-    return {
-        "model": metadata.get("extraction_model", "unknown"),
-        "experiment": experiment,
-        "trait": trait,
-        "method": method,
-        "layer": layer,
-        "component": component
-    }

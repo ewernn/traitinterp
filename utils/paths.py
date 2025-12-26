@@ -220,3 +220,55 @@ def get_extraction_file(experiment: str, trait: str, subpath: str) -> Path:
     """
     base_path = get('extraction.trait', experiment=experiment, trait=trait)
     return base_path / subpath
+
+
+def discover_traits(category: str = None) -> list[str]:
+    """
+    Find trait definitions in datasets/traits/ (have positive.txt and negative.txt).
+
+    Args:
+        category: Optional category filter (e.g., 'epistemic')
+
+    Returns:
+        List of trait paths like ['epistemic/optimism', 'behavioral/refusal']
+    """
+    traits = []
+    traits_dir = get('datasets.traits')
+    if not traits_dir.is_dir():
+        return []
+    for cat_dir in traits_dir.iterdir():
+        if not cat_dir.is_dir() or cat_dir.name.startswith('.'):
+            continue
+        if category and cat_dir.name != category:
+            continue
+        for trait_dir in cat_dir.iterdir():
+            if trait_dir.is_dir() and (trait_dir / 'positive.txt').exists() and (trait_dir / 'negative.txt').exists():
+                traits.append(f"{cat_dir.name}/{trait_dir.name}")
+    return sorted(traits)
+
+
+def discover_extracted_traits(experiment: str) -> list[tuple[str, str]]:
+    """
+    Find traits with extracted vectors in experiments/{exp}/extraction/.
+
+    Args:
+        experiment: Experiment name
+
+    Returns:
+        List of (category, trait_name) tuples for traits that have .pt vector files
+    """
+    extraction_dir = get('extraction.base', experiment=experiment)
+    if not extraction_dir.exists():
+        return []
+
+    traits = []
+    for category_dir in sorted(extraction_dir.iterdir()):
+        if not category_dir.is_dir() or category_dir.name.startswith('.'):
+            continue
+        for trait_dir in sorted(category_dir.iterdir()):
+            if not trait_dir.is_dir():
+                continue
+            vectors_dir = trait_dir / "vectors"
+            if vectors_dir.exists() and list(vectors_dir.glob('*.pt')):
+                traits.append((category_dir.name, trait_dir.name))
+    return traits

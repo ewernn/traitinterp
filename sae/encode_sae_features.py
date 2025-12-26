@@ -42,7 +42,7 @@ def encode_raw_file(
     sae: SAE,
     output_file: Path,
     layer: int = 16,
-    position: str = "residual_out",
+    component: str = "residual",
     top_k: int = 50,
     include_prompt: bool = True
 ):
@@ -54,7 +54,7 @@ def encode_raw_file(
         sae: Loaded SAE model
         output_file: Where to save encoded features
         layer: Which layer to encode (default: 16)
-        position: Which position in layer - 'after_attn', 'residual_out'
+        component: Which component - 'attn_out', 'residual'
         top_k: Number of top features to keep per token
         include_prompt: Whether to also encode prompt tokens (default: response only)
 
@@ -66,8 +66,8 @@ def encode_raw_file(
 
     # Expected format from capture_raw_activations.py:
     # {
-    #   'prompt': {'text', 'tokens', 'token_ids', 'activations': {layer: {position: tensor}}, 'attention'},
-    #   'response': {'text', 'tokens', 'token_ids', 'activations': {layer: {position: tensor}}, 'attention'}
+    #   'prompt': {'text', 'tokens', 'token_ids', 'activations': {layer: {component: tensor}}, 'attention'},
+    #   'response': {'text', 'tokens', 'token_ids', 'activations': {layer: {component: tensor}}, 'attention'}
     # }
 
     if not isinstance(data, dict) or 'response' not in data:
@@ -84,12 +84,12 @@ def encode_raw_file(
         return None
 
     layer_data = response['activations'][layer]
-    if position not in layer_data:
-        print(f"  Skipping {raw_file.name} - position '{position}' not found (available: {list(layer_data.keys())})")
+    if component not in layer_data:
+        print(f"  Skipping {raw_file.name} - component '{component}' not found (available: {list(layer_data.keys())})")
         return None
 
     # Get response activations
-    response_acts = layer_data[position]  # [seq_len, hidden_dim]
+    response_acts = layer_data[component]  # [seq_len, hidden_dim]
     response_tokens = response.get('tokens', [])
     prompt_tokens = []
     n_prompt_tokens = 0
@@ -100,7 +100,7 @@ def encode_raw_file(
         prompt_tokens = prompt.get('tokens', [])
         n_prompt_tokens = len(prompt_tokens)
         if 'activations' in prompt and layer in prompt['activations']:
-            prompt_acts = prompt['activations'][layer].get(position)
+            prompt_acts = prompt['activations'][layer].get(component)
             if prompt_acts is not None:
                 response_acts = torch.cat([prompt_acts, response_acts], dim=0)
 
@@ -133,7 +133,7 @@ def encode_raw_file(
         'sae_release': 'gemma-scope-2b-pt-res-canonical',
         'sae_id': 'layer_16/width_16k/canonical',
         'layer': layer,
-        'position': position,
+        'component': component,
 
         # Original text
         'prompt_text': data['prompt']['text'] if 'prompt' in data else '',
@@ -162,7 +162,7 @@ def encode_raw_file(
         'sae_release': output_data['sae_release'],
         'sae_id': output_data['sae_id'],
         'layer': output_data['layer'],
-        'position': output_data['position'],
+        'component': output_data['component'],
         'prompt_text': output_data['prompt_text'],
         'response_text': output_data['response_text'],
         'tokens': output_data['tokens'],
@@ -192,7 +192,7 @@ def encode_experiment(
     experiment: str,
     prompt_set: str = None,
     layer: int = 16,
-    position: str = "residual_out",
+    component: str = "residual",
     device: str = "cpu",
     top_k: int = 50
 ):
@@ -203,7 +203,7 @@ def encode_experiment(
         experiment: Experiment name
         prompt_set: Specific prompt set (if None, process all)
         layer: Layer to encode
-        position: Position in layer
+        component: Component - 'attn_out', 'residual'
         device: Device for SAE
         top_k: Number of top features per token
     """
@@ -232,7 +232,7 @@ def encode_experiment(
     print(f"Experiment: {experiment}")
     print(f"Raw data: {raw_base}")
     print(f"Prompt sets: {[p.name for p in prompt_sets]}")
-    print(f"Layer: {layer}, Position: {position}")
+    print(f"Layer: {layer}, Component: {component}")
     print()
 
     # Load SAE once
@@ -267,7 +267,7 @@ def encode_experiment(
 
             result = encode_raw_file(
                 raw_file, sae, output_file,
-                layer=layer, position=position, top_k=top_k
+                layer=layer, component=component, top_k=top_k
             )
 
             if result:
@@ -294,9 +294,9 @@ def main():
                         help="Specific prompt set (default: all)")
     parser.add_argument("--layer", type=int, default=16,
                         help="Layer to encode (default: 16)")
-    parser.add_argument("--position", type=str, default="residual_out",
-                        choices=["after_attn", "residual_out"],
-                        help="Position in layer (default: residual_out)")
+    parser.add_argument("--component", type=str, default="residual",
+                        choices=["attn_out", "residual"],
+                        help="Activation component (default: residual)")
     parser.add_argument("--device", type=str, default="cpu",
                         help="Device for SAE (cpu, cuda, mps)")
     parser.add_argument("--top-k", type=int, default=50,
@@ -308,7 +308,7 @@ def main():
         experiment=args.experiment,
         prompt_set=args.prompt_set,
         layer=args.layer,
-        position=args.position,
+        component=args.component,
         device=args.device,
         top_k=args.top_k
     )

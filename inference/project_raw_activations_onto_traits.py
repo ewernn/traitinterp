@@ -17,7 +17,7 @@ Storage:
 Format (new slim format):
   {
     "metadata": {
-      "vector_source": {"layer": 16, "method": "probe", "sublayer": "residual_out", ...},
+      "vector_source": {"layer": 16, "method": "probe", "sublayer": "residual", ...},
       ...
     },
     "projections": {
@@ -64,61 +64,13 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from tqdm import tqdm
 
-from traitlens import projection
-from utils.vectors import load_vector_metadata, load_vector_with_baseline
+from core import projection
+from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method
+from utils.paths import get as get_path, discover_extracted_traits
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
 LOGIT_LENS_LAYERS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 21, 24, 25]
-
-
-# ============================================================================
-# Trait Discovery
-# ============================================================================
-
-def discover_traits(experiment_name: str) -> List[Tuple[str, str]]:
-    """Discover all traits with vectors in an experiment."""
-    from utils.paths import get
-    extraction_dir = get('extraction.base', experiment=experiment_name)
-
-    if not extraction_dir.exists():
-        raise FileNotFoundError(f"Extraction directory not found: {extraction_dir}")
-
-    traits = []
-    for category_dir in sorted(extraction_dir.iterdir()):
-        if not category_dir.is_dir() or category_dir.name.startswith('.'):
-            continue
-        for trait_dir in sorted(category_dir.iterdir()):
-            if not trait_dir.is_dir():
-                continue
-            vectors_dir = trait_dir / "vectors"
-            if vectors_dir.exists() and list(vectors_dir.glob('*.pt')):
-                traits.append((category_dir.name, trait_dir.name))
-
-    return traits
-
-
-def find_vector_method(vectors_dir: Path, layer: int, component: str = "residual") -> Optional[str]:
-    """Auto-detect best vector method for a layer.
-
-    Args:
-        vectors_dir: Path to vectors directory
-        layer: Layer number
-        component: 'residual' (default) or 'attn_out'
-
-    Returns:
-        Method name if found, None otherwise
-    """
-    for method in ["probe", "mean_diff", "gradient"]:
-        if component == "attn_out":
-            # Check for attn_out vectors: attn_out_probe_layer8.pt
-            if (vectors_dir / f"attn_out_{method}_layer{layer}.pt").exists():
-                return method
-        else:
-            # Standard residual vectors: probe_layer8.pt
-            if (vectors_dir / f"{method}_layer{layer}.pt").exists():
-                return method
-    return None
 
 
 def find_available_vectors(vectors_dir: Path, layer: int) -> list[tuple[str, str, Path]]:
@@ -151,10 +103,10 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
     """Project activations onto trait vector at a specific layer.
 
     Args:
-        activations: Dict of layer -> sublayer -> tensor
+        activations: Dict of layer -> component -> tensor
         vector: Trait vector
         layer: Layer number to project at
-        component: 'residual' uses residual_out, 'attn_out' uses attn_out
+        component: 'residual' or 'attn_out'
 
     Returns:
         Projection tensor [n_tokens] - one value per token
@@ -165,30 +117,34 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
             return projection(activations[layer]['attn_out'], vector, normalize_vector=True)
         else:
             # Return zeros if attn_out not available
-            n_tokens = activations[0]['residual_out'].shape[0]
+            n_tokens = activations[0]['residual'].shape[0]
             return torch.zeros(n_tokens)
     else:
-        # Project residual_out at specified layer
-        return projection(activations[layer]['residual_out'], vector, normalize_vector=True)
+        # Project residual at specified layer
+        return projection(activations[layer]['residual'], vector, normalize_vector=True)
 
 
 def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
-    """Compute activation norms per layer (averaged across tokens and sublayers).
+    """Compute activation norms per layer (averaged across tokens and components).
 
     Returns [n_layers] array of ||h|| values showing activation magnitude by layer.
     """
-    sublayers = ['after_attn', 'residual_out']
+    components = ['attn_out', 'residual']
     norms = []
 
     for layer in range(n_layers):
         layer_norms = []
-        for sublayer in sublayers:
-            # Compute L2 norm per token, then average across tokens
-            h = activations[layer][sublayer]  # [n_tokens, hidden_dim]
-            token_norms = h.norm(dim=-1)  # [n_tokens]
-            layer_norms.append(token_norms.mean().item())
-        # Average across sublayers
-        norms.append(sum(layer_norms) / len(layer_norms))
+        for component in components:
+            if component in activations[layer] and activations[layer][component].numel() > 0:
+                # Compute L2 norm per token, then average across tokens
+                h = activations[layer][component]  # [n_tokens, hidden_dim]
+                token_norms = h.norm(dim=-1)  # [n_tokens]
+                layer_norms.append(token_norms.mean().item())
+        # Average across available components
+        if layer_norms:
+            norms.append(sum(layer_norms) / len(layer_norms))
+        else:
+            norms.append(0.0)
 
     return norms
 
@@ -197,9 +153,9 @@ def compute_token_norms(activations: Dict, layer: int) -> List[float]:
     """Compute activation norm per token at a specific layer.
 
     Returns [n_tokens] array of ||h|| values for comparing token magnitudes.
-    Uses residual_out sublayer.
+    Uses residual component.
     """
-    h = activations[layer]['residual_out']  # [n_tokens, hidden_dim]
+    h = activations[layer]['residual']  # [n_tokens, hidden_dim]
     token_norms = h.norm(dim=-1)  # [n_tokens]
     return token_norms.tolist()
 
@@ -220,7 +176,7 @@ def compute_logit_lens_from_raw(activations: Dict, model, tokenizer, n_layers: i
         if layer >= n_layers:
             continue
 
-        residual = activations[layer]['residual_out']
+        residual = activations[layer]['residual']
         if len(residual.shape) == 1:
             residual = residual.unsqueeze(0)
 
@@ -268,8 +224,6 @@ def main():
     if not args.prompt_set and not args.all_prompt_sets:
         parser.error("Either --prompt-set or --all-prompt-sets is required")
 
-    from utils.paths import get as get_path
-
     inference_dir = get_path('inference.base', experiment=args.experiment)
     raw_residual_dir = inference_dir / "raw" / "residual"
 
@@ -290,8 +244,6 @@ def main():
 
 def process_prompt_set(args, inference_dir, prompt_set):
     """Process a single prompt set."""
-    from utils.paths import get as get_path
-
     raw_dir = inference_dir / "raw" / "residual" / prompt_set
 
     if not raw_dir.exists():
@@ -311,7 +263,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
     if args.traits:
         trait_list = [tuple(t.split('/')) for t in args.traits.split(',')]
     else:
-        trait_list = discover_traits(args.experiment)
+        trait_list = discover_extracted_traits(args.experiment)
 
     if not trait_list:
         print("No traits found")
@@ -567,7 +519,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
                             'layer': layer,
                             'method': method,
                             'component': args.component,
-                            'sublayer': 'residual_out' if args.component == 'residual' else 'attn_out',
+                            'sublayer': 'residual' if args.component == 'residual' else 'attn_out',
                             'selection_source': selection_source,
                             'baseline': baseline,
                             'centered': args.centered,

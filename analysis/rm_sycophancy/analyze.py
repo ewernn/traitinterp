@@ -90,9 +90,9 @@ def load_run_activations(prompt_set: str, layer: int, experiment: str) -> dict:
             resp_acts = data['response']['activations']
             if layer in resp_acts:
                 layer_data = resp_acts[layer]
-                # Handle sublayer nesting (after_attn, residual_out)
-                if isinstance(layer_data, dict) and 'residual_out' in layer_data:
-                    activations[prompt_id] = layer_data['residual_out']
+                # Handle component nesting (residual, attn_out)
+                if isinstance(layer_data, dict) and 'residual' in layer_data:
+                    activations[prompt_id] = layer_data['residual']
                 elif isinstance(layer_data, torch.Tensor):
                     activations[prompt_id] = layer_data
                 else:

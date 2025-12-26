@@ -21,19 +21,16 @@ Usage:
     results = generate_with_capture(model, tokenizer, prompts)
     for result in results:
         print(result.response_text)
-        print(result.response_activations[0]['residual_out'].shape)  # [n_tokens, hidden_dim]
+        print(result.response_activations[0]['residual'].shape)  # [n_tokens, hidden_dim]
 """
 
 import torch
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 
-from traitlens import HookManager
+from core import HookManager, get_hook_path
+from utils.model import get_layer_path_prefix
 
-
-# ============================================================================
-# Data Classes
-# ============================================================================
 
 @dataclass
 class CaptureResult:
@@ -44,15 +41,12 @@ class CaptureResult:
     response_tokens: List[str]
     prompt_token_ids: List[int]
     response_token_ids: List[int]
-    # layer -> sublayer -> tensor[n_tokens, hidden_dim]
-    # sublayers: 'after_attn', 'residual_out', optionally 'attn_out'
+    # layer -> component -> tensor[n_tokens, hidden_dim]
+    # components: 'residual' (layer output), 'attn_out' (attention contribution), optionally 'mlp_out'
+    # Compute: after_attn[L] = residual[L-1] + attn_out[L]
     prompt_activations: Dict[int, Dict[str, torch.Tensor]]
     response_activations: Dict[int, Dict[str, torch.Tensor]]
 
-
-# ============================================================================
-# Batch Generation (with auto batch size and OOM recovery)
-# ============================================================================
 
 def _generate_batch_raw(
     model,
@@ -151,27 +145,6 @@ def generate_batch(
     return all_responses
 
 
-# ============================================================================
-# VRAM Utilities
-# ============================================================================
-
-def get_available_vram_gb() -> float:
-    """Get total VRAM across all GPUs. For backwards compatibility."""
-    return get_total_vram_gb()
-
-
-def get_total_vram_gb() -> float:
-    """Get total VRAM across all GPUs in GB."""
-    if torch.cuda.is_available():
-        total = 0
-        for i in range(torch.cuda.device_count()):
-            total += torch.cuda.get_device_properties(i).total_memory
-        return total / (1024 ** 3)
-    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-        return 8.0  # Conservative estimate for Apple Silicon
-    return 8.0  # Fallback
-
-
 def get_free_vram_gb() -> float:
     """Get free VRAM across all GPUs in GB (after model loaded)."""
     if torch.cuda.is_available():
@@ -246,90 +219,70 @@ def calculate_max_batch_size(
     return max(1, min(max_batch, 128))  # Clamp to reasonable range
 
 
-# ============================================================================
-# Generation with Activation Capture
-# ============================================================================
+def create_residual_storage(n_layers: int, capture_mlp: bool = False) -> Dict:
+    """Create storage for residual stream capture.
 
-def _create_storage(n_layers: int, capture_attn: bool = False) -> Dict:
-    """Create storage for residual stream capture."""
-    base = {'after_attn': [], 'residual_out': []}
-    if capture_attn:
-        base['attn_out'] = []
-    return {i: {k: [] for k in base} for i in range(n_layers)}
-
-
-def get_layer_path_prefix(model) -> str:
-    """Get the path prefix to transformer layers, handling PeftModel wrapper."""
-    # PeftModel wraps: model.base_model (LoraModel) -> model (LlamaForCausalLM) -> model (LlamaModel with .layers)
-    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
-        return "base_model.model.model.layers"
-    return "model.layers"
+    Components captured:
+        - 'residual': layer output
+        - 'attn_out': attention contribution (o_proj output)
+        - 'mlp_out': MLP contribution (down_proj output) - optional
+    """
+    components = ['residual', 'attn_out']
+    if capture_mlp:
+        components.append('mlp_out')
+    return {i: {k: [] for k in components} for i in range(n_layers)}
 
 
-def _setup_hooks(
+def setup_residual_hooks(
     hook_manager: HookManager,
     storage: Dict,
     n_layers: int,
     mode: str,
-    batch_idx: Optional[int] = None,
-    capture_attn: bool = False,
+    capture_mlp: bool = False,
     layer_prefix: str = "model.layers"
 ):
     """
-    Register hooks for residual stream capture.
+    Register hooks for residual stream capture. Uses get_hook_path for consistency.
 
     Args:
         hook_manager: HookManager instance
-        storage: Dict to store captured activations
+        storage: Dict from create_residual_storage()
         n_layers: Number of layers
         mode: 'prompt' (capture all positions) or 'response' (capture last position)
-        batch_idx: If not None, only capture this batch index
-        capture_attn: Whether to also capture attn_out
-        layer_prefix: Path prefix to transformer layers (e.g. "model.layers" or "base_model.model.model.layers")
+        capture_mlp: Whether to also capture mlp_out
+        layer_prefix: Path prefix (e.g. "model.layers" or "base_model.model.model.layers")
+
+    Captures:
+        - 'residual': layer output
+        - 'attn_out': attention contribution (o_proj output)
+        - 'mlp_out': MLP contribution (down_proj output) - if capture_mlp=True
     """
+    def make_hook(layer_idx: int, component: str):
+        def hook(module, inp, out):
+            out_t = out[0] if isinstance(out, tuple) else out
+            if mode == 'response':
+                storage[layer_idx][component].append(out_t[:, -1, :].detach().cpu())
+            else:
+                storage[layer_idx][component].append(out_t.detach().cpu())
+        return hook
+
     for i in range(n_layers):
-        def make_layer_hook(layer_idx):
-            def hook(module, inp, out):
-                out_t = out[0] if isinstance(out, tuple) else out
-
-                if batch_idx is not None:
-                    out_t = out_t[batch_idx:batch_idx+1]
-
-                if mode == 'response':
-                    storage[layer_idx]['residual_out'].append(out_t[:, -1, :].detach().cpu())
-                else:
-                    storage[layer_idx]['residual_out'].append(out_t.detach().cpu())
-            return hook
-        hook_manager.add_forward_hook(f"{layer_prefix}.{i}", make_layer_hook(i))
-
-        def make_mlp_hook(layer_idx):
-            def hook(module, inp, out):
-                inp_t = inp[0] if isinstance(inp, tuple) else inp
-
-                if batch_idx is not None:
-                    inp_t = inp_t[batch_idx:batch_idx+1]
-
-                if mode == 'response':
-                    storage[layer_idx]['after_attn'].append(inp_t[:, -1, :].detach().cpu())
-                else:
-                    storage[layer_idx]['after_attn'].append(inp_t.detach().cpu())
-            return hook
-        hook_manager.add_forward_hook(f"{layer_prefix}.{i}.mlp", make_mlp_hook(i))
-
-        if capture_attn:
-            def make_attn_hook(layer_idx):
-                def hook(module, inp, out):
-                    out_t = out[0] if isinstance(out, tuple) else out
-
-                    if batch_idx is not None:
-                        out_t = out_t[batch_idx:batch_idx+1]
-
-                    if mode == 'response':
-                        storage[layer_idx]['attn_out'].append(out_t[:, -1, :].detach().cpu())
-                    else:
-                        storage[layer_idx]['attn_out'].append(out_t.detach().cpu())
-                return hook
-            hook_manager.add_forward_hook(f"{layer_prefix}.{i}.self_attn", make_attn_hook(i))
+        # Layer output (residual stream)
+        hook_manager.add_forward_hook(
+            get_hook_path(i, 'residual', layer_prefix),
+            make_hook(i, 'residual')
+        )
+        # Attention contribution (o_proj output)
+        hook_manager.add_forward_hook(
+            get_hook_path(i, 'attn_out', layer_prefix),
+            make_hook(i, 'attn_out')
+        )
+        # MLP contribution (down_proj output) - optional
+        if capture_mlp:
+            hook_manager.add_forward_hook(
+                get_hook_path(i, 'mlp_out', layer_prefix),
+                make_hook(i, 'mlp_out')
+            )
 
 
 def generate_with_capture(
@@ -340,7 +293,7 @@ def generate_with_capture(
     batch_size: int = None,
     max_new_tokens: int = 50,
     temperature: float = 0.7,
-    capture_attn: bool = False,
+    capture_mlp: bool = False,
     show_progress: bool = True,
     yield_per_batch: bool = False,
     add_special_tokens: bool = True,
@@ -356,7 +309,7 @@ def generate_with_capture(
         batch_size: Batch size (default: auto-calculate from VRAM)
         max_new_tokens: Maximum tokens to generate
         temperature: Sampling temperature
-        capture_attn: Whether to also capture attn_out
+        capture_mlp: Whether to also capture mlp_out (down_proj output)
         show_progress: Whether to show progress bars
         yield_per_batch: If True, yield List[CaptureResult] after each batch (generator mode).
                          If False, return all results at end (default, backwards compatible).
@@ -366,8 +319,6 @@ def generate_with_capture(
         If yield_per_batch=False: List of CaptureResult, one per prompt
         If yield_per_batch=True: Generator yielding (batch_results, batch_prompts) tuples
     """
-    from tqdm import tqdm
-
     if n_layers is None:
         n_layers = model.config.num_hidden_layers
 
@@ -385,6 +336,8 @@ def generate_with_capture(
     # Process in batches
     batches = [prompts[i:i+batch_size] for i in range(0, len(prompts), batch_size)]
 
+    from tqdm import tqdm
+
     if yield_per_batch:
         # Generator mode: yield after each batch for incremental saving
         def _generator():
@@ -392,7 +345,7 @@ def generate_with_capture(
             for batch_prompts in batch_iter:
                 batch_results = _capture_batch(
                     model, tokenizer, batch_prompts, n_layers, hidden_size,
-                    max_new_tokens, temperature, capture_attn, show_progress=False,
+                    max_new_tokens, temperature, capture_mlp, show_progress=False,
                     add_special_tokens=add_special_tokens
                 )
                 yield batch_results, batch_prompts
@@ -403,7 +356,7 @@ def generate_with_capture(
         for batch_prompts in (tqdm(batches, desc="Batches") if show_progress else batches):
             batch_results = _capture_batch(
                 model, tokenizer, batch_prompts, n_layers, hidden_size,
-                max_new_tokens, temperature, capture_attn, show_progress,
+                max_new_tokens, temperature, capture_mlp, show_progress,
                 add_special_tokens=add_special_tokens
             )
             results.extend(batch_results)
@@ -412,7 +365,7 @@ def generate_with_capture(
 
 def _capture_batch(
     model, tokenizer, prompts: List[str], n_layers: int, hidden_size: int,
-    max_new_tokens: int, temperature: float, capture_attn: bool, show_progress: bool,
+    max_new_tokens: int, temperature: float, capture_mlp: bool, show_progress: bool,
     add_special_tokens: bool = True
 ) -> List[CaptureResult]:
     """Capture activations for a single batch with TRUE batching (1 forward pass)."""
@@ -428,27 +381,22 @@ def _capture_batch(
     # Track actual prompt lengths (excluding padding)
     prompt_lens = inputs.attention_mask.sum(dim=1).tolist()
 
-    # Storage: [layer][sublayer] -> list of [batch, hidden] tensors
-    prompt_storage = _create_storage(n_layers, capture_attn)
-    response_storage = _create_storage(n_layers, capture_attn)
+    # Storage: [layer][component] -> list of tensors
+    prompt_storage = create_residual_storage(n_layers, capture_mlp)
+    response_storage = create_residual_storage(n_layers, capture_mlp)
 
-    # ================================================================
-    # PROMPT PHASE: Single forward pass for entire batch
-    # ================================================================
+    # Prompt phase: single forward pass
     with HookManager(model) as hooks:
-        _setup_hooks(hooks, prompt_storage, n_layers, 'prompt', batch_idx=None, capture_attn=capture_attn, layer_prefix=layer_prefix)
+        setup_residual_hooks(hooks, prompt_storage, n_layers, 'prompt', capture_mlp=capture_mlp, layer_prefix=layer_prefix)
         with torch.no_grad():
             model(**inputs)
 
-    # ================================================================
-    # RESPONSE PHASE: Token-by-token generation (1 forward pass per token)
-    # ================================================================
+    # Response phase: token-by-token generation
     context = inputs.input_ids.clone()
     attention_mask = inputs.attention_mask.clone()
     active = torch.ones(batch_size, dtype=torch.bool, device=model.device)
     generated_ids = [[] for _ in range(batch_size)]
 
-    from tqdm import tqdm
     gen_iter = range(max_new_tokens)
     if show_progress and batch_size == 1:
         gen_iter = tqdm(gen_iter, desc="Generating", leave=False)
@@ -456,7 +404,7 @@ def _capture_batch(
     for _ in gen_iter:
         # Single forward pass with hooks capturing all batch items
         with HookManager(model) as hooks:
-            _setup_hooks(hooks, response_storage, n_layers, 'response', batch_idx=None, capture_attn=capture_attn, layer_prefix=layer_prefix)
+            setup_residual_hooks(hooks, response_storage, n_layers, 'response', capture_mlp=capture_mlp, layer_prefix=layer_prefix)
             with torch.no_grad():
                 outputs = model(input_ids=context, attention_mask=attention_mask)
 
@@ -482,12 +430,8 @@ def _capture_batch(
         if not active.any():
             break
 
-    # ================================================================
-    # PACKAGE RESULTS - split batch storage into per-item results
-    # ================================================================
+    # Package results
     results = []
-    n_response_tokens = len(response_storage[0]['residual_out']) if response_storage[0]['residual_out'] else 0
-
     for b in range(batch_size):
         # Get actual prompt tokens (excluding padding)
         prompt_start = inputs.input_ids.shape[1] - prompt_lens[b]
@@ -539,24 +483,3 @@ def _capture_batch(
     return results
 
 
-# ============================================================================
-# Legacy API (for backwards compatibility)
-# ============================================================================
-
-def capture_single(
-    model, tokenizer, prompt_text: str, n_layers: int,
-    max_new_tokens: int = 50, temperature: float = 0.7,
-    capture_attn: bool = False
-) -> CaptureResult:
-    """
-    Capture activations for a single prompt.
-
-    Wrapper around generate_with_capture for single-prompt use case.
-    """
-    results = generate_with_capture(
-        model, tokenizer, [prompt_text], n_layers,
-        batch_size=1, max_new_tokens=max_new_tokens,
-        temperature=temperature, capture_attn=capture_attn,
-        show_progress=False
-    )
-    return results[0]

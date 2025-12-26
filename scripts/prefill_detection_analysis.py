@@ -17,9 +17,13 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List
 
+from core import projection
+from utils.paths import get
+
 # Configuration
-EXP_DIR = Path('experiments/gemma-2-2b')
-VECTOR_DIR = EXP_DIR / 'extraction/chirp/refusal/vectors'
+EXPERIMENT = 'gemma-2-2b'
+TRAIT = 'chirp/refusal'
+VECTOR_DIR = get('extraction.vectors', experiment=EXPERIMENT, trait=TRAIT)
 
 # Test multiple vectors to find best signal
 VECTORS_TO_TEST = [
@@ -64,12 +68,6 @@ def load_vector(method: str, layer: int) -> torch.Tensor:
     return torch.load(path, weights_only=True)
 
 
-def project(activations: torch.Tensor, vector: torch.Tensor) -> float:
-    """Project activations onto vector, return scalar."""
-    # Convert both to float32 to avoid dtype mismatches
-    acts = activations.float()
-    vec = vector.float()
-    return (acts @ vec / vec.norm()).item()
 
 
 def get_response_projections(raw_dir: Path, vector: torch.Tensor, layer: int,
@@ -96,13 +94,13 @@ def get_response_projections(raw_dir: Path, vector: torch.Tensor, layer: int,
             data = torch.load(pt_file, weights_only=False)
 
             # Get response activations at specified layer
-            acts = data['response']['activations'][layer]['residual_out']
+            acts = data['response']['activations'][layer]['residual']
 
             # Get projections at specified token positions
             token_projs = []
             for pos in token_positions:
                 if acts.shape[0] > pos:
-                    token_projs.append(project(acts[pos], vector))
+                    token_projs.append(projection(acts[pos].float(), vector.float()).item())
 
             if token_projs:
                 projections.append(np.mean(token_projs))
@@ -153,7 +151,7 @@ def main():
         condition_stats = {}
 
         for cond_key, cond_info in CONDITIONS.items():
-            raw_dir = EXP_DIR / 'inference/raw/residual' / cond_info['raw_dir']
+            raw_dir = get('inference.raw_residual', experiment=EXPERIMENT, prompt_set=cond_info['raw_dir'])
 
             if not raw_dir.exists():
                 print(f"  {cond_info['label']}: Directory not found")
@@ -338,7 +336,7 @@ Effect size interpretation (Cohen's d):
 """)
 
     # Save results
-    output_path = EXP_DIR / 'analysis/prefill_detection_results.json'
+    output_path = get('analysis.base', experiment=EXPERIMENT) / 'prefill_detection_results.json'
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Convert to JSON-serializable format

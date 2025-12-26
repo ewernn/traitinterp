@@ -6,12 +6,16 @@ Output: Cohen's d per component per layer
 import json
 import torch
 import numpy as np
-from pathlib import Path
+
+from core import projection, effect_size
+from utils.paths import get
 
 # Config
-exp_dir = Path('experiments/gemma-2-2b')
-raw_dir = exp_dir / 'inference/raw/residual/jailbreak'
-vector_dir = exp_dir / 'extraction/chirp/refusal/vectors'
+EXPERIMENT = 'gemma-2-2b'
+TRAIT = 'chirp/refusal'
+PROMPT_SET = 'jailbreak'
+raw_dir = get('inference.raw_residual', experiment=EXPERIMENT, prompt_set=PROMPT_SET)
+vector_dir = get('extraction.vectors', experiment=EXPERIMENT, trait=TRAIT)
 
 # Load ground truth
 with open('datasets/inference/jailbreak_successes.json') as f:
@@ -23,22 +27,6 @@ print(f"Ground truth: {len(success_ids)} successful jailbreaks")
 # Components to compare (v_cache not captured in raw activations)
 components = ['residual', 'attn_out']
 
-def cohens_d(g1, g2):
-    n1, n2 = len(g1), len(g2)
-    if n1 < 2 or n2 < 2:
-        return float('nan')
-    var1, var2 = np.var(g1, ddof=1), np.var(g2, ddof=1)
-    pooled = np.sqrt(((n1-1)*var1 + (n2-1)*var2) / (n1+n2-2))
-    if pooled == 0:
-        return float('nan')
-    return (np.mean(g1) - np.mean(g2)) / pooled
-
-def project(activations, vector):
-    """Project activations onto vector."""
-    # Ensure same dtype
-    activations = activations.float()
-    vector = vector.float()
-    return (activations @ vector) / vector.norm()
 
 results = {}
 
@@ -74,7 +62,7 @@ for component in components:
             layer_data = response_acts[layer]
 
             if component == 'residual':
-                acts = layer_data.get('residual_out')
+                acts = layer_data.get('residual')
             elif component == 'attn_out':
                 acts = layer_data.get('attn_out')
 
@@ -83,7 +71,7 @@ for component in components:
 
             # Project first response token
             if acts.shape[0] >= 1:
-                proj = project(acts[0], vector).item()
+                proj = projection(acts[0].float(), vector.float()).item()
             else:
                 continue
 
@@ -93,7 +81,7 @@ for component in components:
                 failure_projs.append(proj)
 
         if len(success_projs) >= 10 and len(failure_projs) >= 10:
-            d = cohens_d(failure_projs, success_projs)
+            d = effect_size(torch.tensor(failure_projs), torch.tensor(success_projs), signed=True)
             results[component][layer] = {
                 'd': d,
                 'n_success': len(success_projs),
@@ -143,7 +131,7 @@ for layer in [10, 12, 14, 15, 16, 18, 20]:
             print(f"  {comp}: d={r['d']:.3f}, success_mean={r['success_mean']:.3f}, failure_mean={r['failure_mean']:.3f}")
 
 # Save results
-output_path = exp_dir / 'analysis/component_comparison_results.json'
+output_path = get('analysis.base', experiment=EXPERIMENT) / 'component_comparison_results.json'
 output_path.parent.mkdir(parents=True, exist_ok=True)
 with open(output_path, 'w') as f:
     json.dump(results, f, indent=2)

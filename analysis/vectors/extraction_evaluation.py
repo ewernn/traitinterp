@@ -33,11 +33,8 @@ from tqdm import tqdm
 warnings.filterwarnings('ignore', message='std\\(\\): degrees of freedom')
 
 from utils.paths import get as get_path
-from utils.model_registry import get_extraction_model
-from traitlens.metrics import (
-    evaluate_vector,
-    accuracy as compute_accuracy,
-)
+from utils.model import load_experiment_config
+from core import evaluate_vector, accuracy as compute_accuracy
 from sklearn.metrics import roc_auc_score
 
 
@@ -696,7 +693,8 @@ def main(experiment: str,
     all_results_with_score = df_clean.to_dict('records')
 
     # Get extraction model from experiment config
-    extraction_model = get_extraction_model(experiment)
+    config = load_experiment_config(experiment, warn_missing=False)
+    extraction_model = config.get('extraction_model')
 
     results_dict = {
         'extraction_model': extraction_model,

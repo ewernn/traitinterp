@@ -67,8 +67,6 @@ import json
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from analysis.steering.steer import MultiLayerSteeringHook, orthogonalize_vectors
 from utils.generation import generate_batch
 from analysis.steering.results import load_or_create_results, save_results, save_responses
@@ -79,7 +77,7 @@ from analysis.steering.coef_search import (
 )
 from utils.judge import TraitJudge
 from utils.paths import get
-from utils.model import format_prompt, tokenize_prompt, load_experiment_config
+from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model
 from utils.vectors import MIN_COHERENCE
 
 
@@ -145,37 +143,6 @@ def compute_weighted_coefficients(
         coefficients[layer] = global_scale * data['coef'] * weight
 
     return coefficients
-
-
-def load_model_and_tokenizer(model_name: str, load_in_8bit: bool = False, load_in_4bit: bool = False):
-    """Load model and tokenizer with optional quantization."""
-    from transformers import BitsAndBytesConfig
-
-    print(f"Loading {model_name}...")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-    # AWQ models require fp16 and GPU-only device map (no CPU/disk offload)
-    is_awq = "AWQ" in model_name or "awq" in model_name.lower()
-    dtype = torch.float16 if is_awq else torch.bfloat16
-    device_map = "cuda" if is_awq else "auto"
-
-    model_kwargs = {
-        "torch_dtype": dtype,
-        "device_map": device_map,
-    }
-
-    if is_awq:
-        print(f"  AWQ model detected, using fp16 and device_map='cuda'")
-    elif load_in_8bit:
-        model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
-        print("  Using 8-bit quantization")
-    elif load_in_4bit:
-        model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True)
-        print("  Using 4-bit quantization")
-
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-    model.eval()
-    return model, tokenizer
 
 
 def get_num_layers(model) -> int:
@@ -402,7 +369,7 @@ async def run_evaluation(
     # Load model if not provided
     should_close_judge = False
     if model is None:
-        model, tokenizer = load_model_and_tokenizer(model_name, load_in_8bit, load_in_4bit)
+        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
     num_layers = get_num_layers(model)
 
     # Load experiment config
@@ -563,7 +530,7 @@ async def run_multilayer_evaluation(
     # Load model if not provided
     should_close_judge = False
     if model is None:
-        model, tokenizer = load_model_and_tokenizer(model_name, load_in_8bit, load_in_4bit)
+        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
     num_layers = get_num_layers(model)
 
     # Load experiment config
@@ -793,7 +760,7 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
     model, tokenizer, judge = None, None, None
     if multi_trait:
         print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
-        model, tokenizer = load_model_and_tokenizer(model_name, args.load_in_8bit, args.load_in_4bit)
+        model, tokenizer = load_model(model_name, load_in_8bit=args.load_in_8bit, load_in_4bit=args.load_in_4bit)
         judge = TraitJudge()
 
     try:
