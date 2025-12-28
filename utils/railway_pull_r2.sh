@@ -62,8 +62,7 @@ rclone sync "$SOURCE" "$DEST" \
   --transfers 16 \
   --checkers 16 \
   --exclude "**/inference/raw/**" \
-  --exclude "**/activations/**" \
-  --exclude "**/val_activations/**"
+  --exclude "**/activations/**"
 
 echo ""
 echo "✅ Download complete!"

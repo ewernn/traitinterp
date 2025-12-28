@@ -3,8 +3,8 @@
 Evaluate extracted vectors on held-out validation data.
 
 Input:
-    - experiments/{experiment}/extraction/{trait}/vectors/*.pt
-    - experiments/{experiment}/extraction/{trait}/val_activations/*.pt
+    - experiments/{experiment}/extraction/{trait}/vectors/{position}/{component}/{method}/layer*.pt
+    - experiments/{experiment}/extraction/{trait}/activations/{position}/{component}/val_all_layers.pt
 
 Output:
     - experiments/{experiment}/extraction/extraction_evaluation.json
@@ -23,35 +23,76 @@ import fire
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 
-from utils.paths import get as get_path
+from utils.paths import (
+    get as get_path,
+    get_val_activation_path,
+    get_activation_metadata_path,
+    get_vector_path,
+    list_positions,
+    list_components,
+    list_methods,
+    list_layers,
+    sanitize_position,
+)
 from utils.model import load_experiment_config
 from utils.vectors import load_vector_with_baseline
 from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
 
-
-def load_activations(experiment: str, trait: str, layer: int, split: str = 'val', component: str = 'residual') -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
-    """Load pos/neg activations for a layer. split='val' or 'train'."""
-    if split == 'val':
-        base_dir = get_path('extraction.val_activations', experiment=experiment, trait=trait)
-        prefix = "" if component == 'residual' else f"{component}_"
-        pos_path = base_dir / f"{prefix}val_pos_layer{layer}.pt"
-        neg_path = base_dir / f"{prefix}val_neg_layer{layer}.pt"
-    else:
-        base_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
-        prefix = "" if component == 'residual' else f"{component}_"
-        pos_path = base_dir / f"{prefix}pos_layer{layer}.pt"
-        neg_path = base_dir / f"{prefix}neg_layer{layer}.pt"
-
-    if not pos_path.exists() or not neg_path.exists():
-        return None, None
-
-    return torch.load(pos_path, weights_only=True), torch.load(neg_path, weights_only=True)
+# Cache for loaded val activations (avoids reloading for each layer)
+_val_cache: Dict[str, Tuple[torch.Tensor, int]] = {}
 
 
-def load_vector(experiment: str, trait: str, method: str, layer: int, component: str = 'residual') -> Optional[torch.Tensor]:
+def load_activations(
+    experiment: str,
+    trait: str,
+    layer: int,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+    """Load pos/neg validation activations for a layer."""
+    cache_key = f"{experiment}/{trait}/{component}/{position}"
+
+    # Load and cache the full val tensor if not cached
+    if cache_key not in _val_cache:
+        val_path = get_val_activation_path(experiment, trait, component, position)
+        if not val_path.exists():
+            return None, None
+
+        # Load metadata to get n_val_pos
+        metadata_path = get_activation_metadata_path(experiment, trait, component, position)
+        if not metadata_path.exists():
+            return None, None
+
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        n_val_pos = metadata.get('n_val_pos', 0)
+        if n_val_pos == 0:
+            return None, None
+
+        val_acts = torch.load(val_path, weights_only=True)
+        _val_cache[cache_key] = (val_acts, n_val_pos)
+
+    val_acts, n_val_pos = _val_cache[cache_key]
+
+    # Slice to get specific layer: val_acts is [n_examples, n_layers, hidden_dim]
+    layer_acts = val_acts[:, layer, :]
+    pos_acts = layer_acts[:n_val_pos]
+    neg_acts = layer_acts[n_val_pos:]
+
+    return pos_acts, neg_acts
+
+
+def load_vector(
+    experiment: str,
+    trait: str,
+    method: str,
+    layer: int,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Optional[torch.Tensor]:
     """Load a vector file."""
     try:
-        vector, _, _ = load_vector_with_baseline(experiment, trait, method, layer, component)
+        vector, _, _ = load_vector_with_baseline(experiment, trait, method, layer, component, position)
         return vector
     except FileNotFoundError:
         return None
@@ -62,14 +103,15 @@ def evaluate_single(
     trait: str,
     method: str,
     layer: int,
-    component: str = 'residual'
+    component: str = "residual",
+    position: str = "response[:]",
 ) -> Optional[Dict]:
     """Evaluate one vector on validation data."""
-    vector = load_vector(experiment, trait, method, layer, component)
+    vector = load_vector(experiment, trait, method, layer, component, position)
     if vector is None:
         return None
 
-    val_pos, val_neg = load_activations(experiment, trait, layer, 'val', component)
+    val_pos, val_neg = load_activations(experiment, trait, layer, component, position)
     if val_pos is None:
         return None
 
@@ -81,17 +123,25 @@ def evaluate_single(
         'trait': trait,
         'method': method,
         'layer': layer,
+        'component': component,
+        'position': position,
         'val_accuracy': accuracy(pos_proj, neg_proj),
         'val_effect_size': effect_size(pos_proj, neg_proj),
         'polarity_correct': polarity_correct(pos_proj, neg_proj),
     }
 
 
-def compute_activation_norms(experiment: str, trait: str, layers: List[int], component: str = 'residual') -> Dict[str, float]:
+def compute_activation_norms(
+    experiment: str,
+    trait: str,
+    layers: List[int],
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Dict[str, float]:
     """Compute mean ||h|| per layer. Used by steering for coefficient estimation."""
     norms = {}
     for layer in layers:
-        pos, neg = load_activations(experiment, trait, layer, 'val', component)
+        pos, neg = load_activations(experiment, trait, layer, component, position)
         if pos is not None:
             all_acts = torch.cat([pos, neg], dim=0).float()
             norms[str(layer)] = all_acts.norm(dim=-1).mean().item()
@@ -103,6 +153,7 @@ def main(
     methods: str = "mean_diff,probe,gradient",
     layers: str = None,
     component: str = "residual",
+    position: str = "response[:]",
     verbose: bool = False,
 ):
     """
@@ -111,31 +162,50 @@ def main(
     Args:
         experiment: Experiment name
         methods: Comma-separated methods to evaluate
-        layers: Comma-separated layers (default: all 26)
+        layers: Comma-separated layers (default: all available)
         component: Component to evaluate (residual, attn_out, mlp_out)
+        position: Token position (default: response[:])
         verbose: Print detailed per-method/layer analysis
     """
     exp_dir = get_path('extraction.base', experiment=experiment)
     methods_list = methods.split(",")
-    layers_list = [int(l) for l in layers.split(",")] if layers else list(range(26))
+    pos_dir = sanitize_position(position)
 
-    # Find traits with validation data
+    # Find traits with validation data at the specified position/component
     traits = []
     for category_dir in exp_dir.iterdir():
         if not category_dir.is_dir():
             continue
         for trait_dir in category_dir.iterdir():
-            if (trait_dir / "val_activations").exists():
+            # Check for val_all_layers.pt in activations/{position}/{component}/
+            val_path = trait_dir / "activations" / pos_dir / component / "val_all_layers.pt"
+            if val_path.exists():
                 traits.append(f"{category_dir.name}/{trait_dir.name}")
 
-    print(f"Found {len(traits)} traits, evaluating {len(methods_list)} methods × {len(layers_list)} layers")
+    if not traits:
+        print(f"No traits with validation data at {position}/{component}")
+        return
+
+    # Determine layers to evaluate
+    if layers:
+        layers_list = [int(l) for l in layers.split(",")]
+    else:
+        # Discover available layers from first trait
+        available_methods = list_methods(experiment, traits[0], position, component)
+        if available_methods:
+            layers_list = list_layers(experiment, traits[0], position, component, available_methods[0])
+        else:
+            layers_list = list(range(26))
+
+    print(f"Found {len(traits)} traits at {position}/{component}")
+    print(f"Evaluating {len(methods_list)} methods × {len(layers_list)} layers")
 
     # Evaluate all vectors
     all_results = []
     for trait in tqdm(traits, desc="Evaluating"):
         for method in methods_list:
             for layer in layers_list:
-                result = evaluate_single(experiment, trait, method, layer, component)
+                result = evaluate_single(experiment, trait, method, layer, component, position)
                 if result:
                     all_results.append(result)
 
@@ -144,8 +214,7 @@ def main(
         return
 
     # Compute combined_score per result
-    # Formula: (accuracy + norm_effect + polarity) / 3
-    # norm_effect = effect_size / max_effect_for_trait
+    # Formula: (accuracy + norm_effect) / 2 * polarity_correct
     trait_max_effect = {}
     for r in all_results:
         t = r['trait']
@@ -158,7 +227,7 @@ def main(
         r['combined_score'] = ((r['val_accuracy'] + norm_effect) / 2) * polarity_mult
 
     # Compute activation norms from first trait
-    activation_norms = compute_activation_norms(experiment, traits[0], layers_list, component)
+    activation_norms = compute_activation_norms(experiment, traits[0], layers_list, component, position)
 
     # Print summary: best per trait
     print(f"\n{'Trait':<40} {'Method':<10} {'Layer':<6} {'Acc':<6} {'d':<6}")
@@ -179,7 +248,6 @@ def main(
         # Method comparison
         print(f"\n{'Method':<12} {'Mean Acc':<10} {'Mean d':<10}")
         print("-" * 35)
-        from collections import defaultdict
         method_stats = defaultdict(list)
         for r in all_results:
             method_stats[r['method']].append(r)
@@ -193,6 +261,8 @@ def main(
     config = load_experiment_config(experiment, warn_missing=False)
     output = {
         'extraction_model': config.get('extraction_model'),
+        'component': component,
+        'position': position,
         'activation_norms': activation_norms,
         'all_results': all_results,
     }

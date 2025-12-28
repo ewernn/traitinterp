@@ -59,16 +59,18 @@ def get_schema():
 # =============================================================================
 
 def discover_methods(vectors_dir: Path) -> List[str]:
-    """Discover extraction methods from actual vector files."""
+    """Discover extraction methods from actual vector files.
+
+    Structure: vectors/{position}/{component}/{method}/layer*.pt
+    """
     if not vectors_dir.exists():
         return []
 
     methods = set()
-    for f in vectors_dir.glob("*_layer*.pt"):
-        if "_metadata" not in f.name:
-            # Parse method from filename like "probe_layer16.pt"
-            method = f.name.rsplit("_layer", 1)[0]
-            methods.add(method)
+    for f in vectors_dir.rglob("layer*.pt"):
+        method = f.parent.name  # method is immediate parent dir
+        methods.add(method)
+
     return sorted(methods)
 
 
@@ -225,29 +227,42 @@ def check_extraction_trait(
     for resp_path in response_paths:
         result.responses[resp_path] = (trait_dir / resp_path).exists()
 
-    # Check activation files (single all_layers.pt format)
+    # Check activation files
+    # Structure: activations/{position}/{component}/train_all_layers.pt, val_all_layers.pt
     activations_dir = trait_dir / "activations"
-    val_activations_dir = trait_dir / "val_activations"
 
-    result.activations["metadata"] = (activations_dir / "metadata.json").exists()
-    result.activations["all_layers"] = (activations_dir / "all_layers.pt").exists()
-    # Check for val_activations: either old format (all_layers.pt) or new per-layer format (val_pos_layer*.pt)
-    has_val_old = (val_activations_dir / "all_layers.pt").exists()
-    has_val_new = len(list(val_activations_dir.glob("val_pos_layer*.pt"))) > 0 if val_activations_dir.exists() else False
-    result.activations["val_activations"] = has_val_old or has_val_new
+    has_train = False
+    has_val = False
+    has_metadata = False
 
-    # Expected: all_layers.pt exists (val is optional)
-    result.expected_activations = 1  # Just need all_layers.pt
+    if activations_dir.exists():
+        for pos_dir in activations_dir.iterdir():
+            if pos_dir.is_dir():
+                for comp_dir in pos_dir.iterdir():
+                    if comp_dir.is_dir():
+                        if (comp_dir / "train_all_layers.pt").exists():
+                            has_train = True
+                        if (comp_dir / "val_all_layers.pt").exists():
+                            has_val = True
+                        if (comp_dir / "metadata.json").exists():
+                            has_metadata = True
+
+    result.activations["metadata"] = has_metadata
+    result.activations["train_all_layers"] = has_train
+    result.activations["val_all_layers"] = has_val
+
+    # Expected: train_all_layers.pt exists (val is optional)
+    result.expected_activations = 1
 
     # Discover extraction methods from vector files
+    # Structure: vectors/{position}/{component}/{method}/layer*.pt
     vectors_dir = trait_dir / "vectors"
     result.methods = discover_methods(vectors_dir)
 
     # Count vectors per discovered method
     for method in result.methods:
-        pt_files = list(vectors_dir.glob(f"{method}_layer*.pt"))
-        pt_files = [f for f in pt_files if "_metadata" not in f.name]
-        meta_files = list(vectors_dir.glob(f"{method}_layer*_metadata.json"))
+        pt_files = list(vectors_dir.rglob(f"{method}/layer*.pt"))
+        meta_files = list(vectors_dir.rglob(f"{method}/metadata.json"))
 
         result.vectors[f"{method}_pt"] = len(pt_files)
         result.vectors[f"{method}_meta"] = len(meta_files)
@@ -482,10 +497,10 @@ def print_report(result: ExperimentIntegrity):
         # Show file counts
         prompts_ok = sum(trait.prompts.values())
         responses_ok = sum(trait.responses.values())
-        has_activations = trait.activations.get("all_layers", False)
-        has_val_activations = trait.activations.get("val_activations", False)
-        acts_str = "✓" if has_activations else "✗"
-        if has_val_activations:
+        has_train = trait.activations.get("train_all_layers", False)
+        has_val = trait.activations.get("val_all_layers", False)
+        acts_str = "✓" if has_train else "✗"
+        if has_val:
             acts_str += "+val"
         total_vectors = sum(v for k, v in trait.vectors.items() if k.endswith("_pt"))
 

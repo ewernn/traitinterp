@@ -107,26 +107,27 @@ class GradientMethod(ExtractionMethod):
             loss.backward()
             optimizer.step()
 
-        final_vector = vector.detach() / vector.detach().norm()
+        final_vector = vector.detach()
 
         with torch.no_grad():
-            final_sep = (pos_acts @ final_vector).mean() - (neg_acts @ final_vector).mean()
+            v_norm = final_vector / (final_vector.norm() + 1e-8)
+            final_sep = (pos_acts @ v_norm).mean() - (neg_acts @ v_norm).mean()
 
         return {
-            'vector': final_vector,
+            'vector': final_vector,  # NOT normalized, consistent with other methods
             'final_separation': final_sep.item(),
         }
 
 
 class RandomBaselineMethod(ExtractionMethod):
-    """Random unit vector for sanity checking. Should get ~50% accuracy."""
+    """Random vector for sanity checking. Should get ~50% accuracy."""
 
     def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, seed: int = None, **kwargs) -> Dict[str, torch.Tensor]:
         if seed is not None:
             torch.manual_seed(seed)
 
         vector = torch.randn(pos_acts.shape[1], dtype=pos_acts.dtype, device=pos_acts.device)
-        vector = vector / (vector.norm() + 1e-8)
+        # NOT normalized, consistent with other methods
 
         return {'vector': vector}
 

@@ -269,6 +269,268 @@ def discover_extracted_traits(experiment: str) -> list[tuple[str, str]]:
             if not trait_dir.is_dir():
                 continue
             vectors_dir = trait_dir / "vectors"
-            if vectors_dir.exists() and list(vectors_dir.glob('*.pt')):
+            # Vectors are now in {position}/{component}/{method}/layer*.pt
+            if vectors_dir.exists() and list(vectors_dir.rglob('layer*.pt')):
                 traits.append((category_dir.name, trait_dir.name))
     return traits
+
+
+# =============================================================================
+# Centralized File Path Helpers
+# =============================================================================
+#
+# Directory structure:
+#   extraction/{trait}/
+#   ├── activations/{position}/{component}/
+#   │   ├── train_all_layers.pt
+#   │   ├── val_all_layers.pt
+#   │   └── metadata.json
+#   └── vectors/{position}/{component}/{method}/
+#       ├── layer16.pt
+#       └── metadata.json
+#
+#   steering/{trait}/{position}/
+#   └── results.json
+
+
+def sanitize_position(position: str) -> str:
+    """
+    Convert position string to filesystem-safe directory name.
+
+    Examples:
+        response[:]  -> response_all
+        response[-1] -> response_-1
+        response[-5:] -> response_-5_
+        prompt[-3:] -> prompt_-3_
+        all[:] -> all_all
+    """
+    return (position
+            .replace('[:]', '_all')
+            .replace('[', '_')
+            .replace(']', '')
+            .replace(':', '_'))
+
+
+# -----------------------------------------------------------------------------
+# Activation paths
+# -----------------------------------------------------------------------------
+
+def get_activation_dir(
+    experiment: str,
+    trait: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Directory for activation files.
+
+    Returns: experiments/{experiment}/extraction/{trait}/activations/{position}/{component}/
+    """
+    base = get('extraction.activations', experiment=experiment, trait=trait)
+    pos_dir = sanitize_position(position)
+    return base / pos_dir / component
+
+
+def get_activation_path(
+    experiment: str,
+    trait: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Path to training activation tensor file.
+
+    Returns: .../activations/{position}/{component}/train_all_layers.pt
+    """
+    return get_activation_dir(experiment, trait, component, position) / "train_all_layers.pt"
+
+
+def get_val_activation_path(
+    experiment: str,
+    trait: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Path to validation activation tensor file.
+
+    Returns: .../activations/{position}/{component}/val_all_layers.pt
+    """
+    return get_activation_dir(experiment, trait, component, position) / "val_all_layers.pt"
+
+
+def get_activation_metadata_path(
+    experiment: str,
+    trait: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Path to activation metadata file.
+
+    Returns: .../activations/{position}/{component}/metadata.json
+    """
+    return get_activation_dir(experiment, trait, component, position) / "metadata.json"
+
+
+# -----------------------------------------------------------------------------
+# Vector paths
+# -----------------------------------------------------------------------------
+
+def get_vector_dir(
+    experiment: str,
+    trait: str,
+    method: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Directory for vector files of a specific method.
+
+    Returns: experiments/{experiment}/extraction/{trait}/vectors/{position}/{component}/{method}/
+    """
+    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    pos_dir = sanitize_position(position)
+    return base / pos_dir / component / method
+
+
+def get_vector_path(
+    experiment: str,
+    trait: str,
+    method: str,
+    layer: int,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Path to extracted vector file.
+
+    Returns: .../vectors/{position}/{component}/{method}/layer{layer}.pt
+    """
+    return get_vector_dir(experiment, trait, method, component, position) / f"layer{layer}.pt"
+
+
+def get_vector_metadata_path(
+    experiment: str,
+    trait: str,
+    method: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Path:
+    """
+    Path to vector metadata file (per method directory).
+
+    Returns: .../vectors/{position}/{component}/{method}/metadata.json
+    """
+    return get_vector_dir(experiment, trait, method, component, position) / "metadata.json"
+
+
+# -----------------------------------------------------------------------------
+# Steering paths
+# -----------------------------------------------------------------------------
+
+def get_steering_dir(
+    experiment: str,
+    trait: str,
+    position: str = "response[:]",
+) -> Path:
+    """
+    Directory for steering results.
+
+    Returns: experiments/{experiment}/steering/{trait}/{position}/
+    """
+    base = get('steering.trait', experiment=experiment, trait=trait)
+    pos_dir = sanitize_position(position)
+    return base / pos_dir
+
+
+def get_steering_results_path(
+    experiment: str,
+    trait: str,
+    position: str = "response[:]",
+) -> Path:
+    """
+    Path to steering results file.
+
+    Returns: .../steering/{trait}/{position}/results.json
+    """
+    return get_steering_dir(experiment, trait, position) / "results.json"
+
+
+# -----------------------------------------------------------------------------
+# Discovery helpers
+# -----------------------------------------------------------------------------
+
+def list_positions(experiment: str, trait: str) -> list[str]:
+    """
+    Discover available positions for a trait (by scanning vectors directory).
+
+    Returns list of position directory names like ['response_all', 'response_-1']
+    """
+    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    if not base.exists():
+        return []
+    return sorted([d.name for d in base.iterdir() if d.is_dir()])
+
+
+def list_components(
+    experiment: str,
+    trait: str,
+    position: str = "response[:]",
+) -> list[str]:
+    """
+    Discover available components for a trait/position.
+
+    Returns list like ['residual', 'attn_out']
+    """
+    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    pos_dir = sanitize_position(position)
+    comp_base = base / pos_dir
+    if not comp_base.exists():
+        return []
+    return sorted([d.name for d in comp_base.iterdir() if d.is_dir()])
+
+
+def list_methods(
+    experiment: str,
+    trait: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> list[str]:
+    """
+    Discover available methods for a trait/position/component.
+
+    Returns list like ['probe', 'mean_diff', 'gradient']
+    """
+    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    pos_dir = sanitize_position(position)
+    method_base = base / pos_dir / component
+    if not method_base.exists():
+        return []
+    return sorted([d.name for d in method_base.iterdir() if d.is_dir()])
+
+
+def list_layers(
+    experiment: str,
+    trait: str,
+    method: str,
+    component: str = "residual",
+    position: str = "response[:]",
+) -> list[int]:
+    """
+    Discover available layers for a trait/position/component/method.
+
+    Returns list of layer indices like [0, 1, 14, 15, 16]
+    """
+    import re
+    vector_dir = get_vector_dir(experiment, trait, method, component, position)
+    if not vector_dir.exists():
+        return []
+
+    layers = []
+    pattern = re.compile(r'^layer(\d+)\.pt$')
+    for f in vector_dir.iterdir():
+        match = pattern.match(f.name)
+        if match:
+            layers.append(int(match.group(1)))
+    return sorted(layers)

@@ -1,0 +1,1 @@
+Refusal direction extracted using Arditi et al. methodology: difference-in-means between harmful (AdvBench) and harmless (Alpaca) prompts at the last prompt token position, using instruct model with chat template.

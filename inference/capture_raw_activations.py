@@ -73,6 +73,7 @@ from core import HookManager
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model_with_lora, get_inner_model, get_layer_path_prefix
 from utils.generation import generate_with_capture, calculate_max_batch_size, create_residual_storage, setup_residual_hooks
 from utils.paths import get as get_path
+from server.client import get_model_or_client, ModelClient
 
 
 def capture_result_to_data(result, n_layers: int) -> Dict:
@@ -458,6 +459,8 @@ def main():
                        help="Load responses from another prompt set's .pt files for prefill capture. "
                             "Used for model-diff: run same text through different models. "
                             "Example: --replay-responses rm_sycophancy_train_100_sycophant")
+    parser.add_argument("--no-server", action="store_true",
+                       help="Force local model loading (skip model server check)")
 
     args = parser.parse_args()
 
@@ -510,7 +513,22 @@ def main():
             return
 
     # Load model (with optional LoRA and quantization)
-    if args.lora or args.load_in_8bit or args.load_in_4bit:
+    # Try server first unless --no-server or --lora (LoRA requires local model)
+    is_remote = False
+    if not args.no_server and not args.lora:
+        handle = get_model_or_client(model_name, load_in_8bit=args.load_in_8bit, load_in_4bit=args.load_in_4bit)
+        if isinstance(handle, ModelClient):
+            print(f"Using model server (model: {model_name})")
+            model = handle
+            # Still need tokenizer locally for prompt formatting
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
+            is_remote = True
+            n_layers = None  # Server handles this
+        else:
+            model, tokenizer = handle
+    elif args.lora or args.load_in_8bit or args.load_in_4bit:
         model, tokenizer = load_model_with_lora(
             model_name,
             lora_adapter=args.lora,
@@ -527,15 +545,17 @@ def main():
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
-    n_layers = len(get_inner_model(model).layers)
-    print(f"Model has {n_layers} layers")
+    if not is_remote:
+        n_layers = len(get_inner_model(model).layers)
+        print(f"Model has {n_layers} layers")
 
-    # Calculate batch size
-    if args.batch_size is None:
-        # For inference capture, estimate max_seq_len as prompt + generated
-        max_seq_len = 512  # Conservative estimate for inference
-        args.batch_size = calculate_max_batch_size(model, max_seq_len)
-    print(f"Batch size: {args.batch_size}")
+    # Calculate batch size (only for local mode)
+    if not is_remote:
+        if args.batch_size is None:
+            # For inference capture, estimate max_seq_len as prompt + generated
+            max_seq_len = 512  # Conservative estimate for inference
+            args.batch_size = calculate_max_batch_size(model, max_seq_len)
+        print(f"Batch size: {args.batch_size}")
 
     # Get chat template setting from config
     use_chat_template = config.get('use_chat_template')
@@ -675,37 +695,58 @@ def main():
             print("  All prompts already captured, skipping...")
             continue
 
-        print(f"  Capturing {len(prompt_texts)} prompts in batches of {args.batch_size}...")
-
-        # Pre-batch prompt_items to match generator output
-        prompt_item_batches = [
-            prompt_items_filtered[i:i+args.batch_size]
-            for i in range(0, len(prompt_items_filtered), args.batch_size)
-        ]
-
-        # Run batched capture with incremental saving (generator mode)
-        # Chat template already includes BOS, so don't add special tokens again
-        batch_generator = generate_with_capture(
-            model, tokenizer, prompt_texts,
-            n_layers=n_layers,
-            batch_size=args.batch_size,
-            max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature,
-            capture_mlp=args.capture_mlp,
-            show_progress=True,
-            yield_per_batch=True,
-            add_special_tokens=not use_chat_template
-        )
-
-        # Process and save after each batch (crash-resilient)
-        for (batch_results, _batch_prompts), batch_items in zip(batch_generator, prompt_item_batches):
-            for result, prompt_item in zip(batch_results, batch_items):
-                # Convert CaptureResult to dict and save
+        if is_remote:
+            # Remote: single call returns all results
+            print(f"  Capturing {len(prompt_texts)} prompts via server...")
+            all_results = model.generate_with_capture(
+                prompt_texts,
+                n_layers=n_layers,
+                max_new_tokens=args.max_new_tokens,
+                temperature=args.temperature,
+                capture_mlp=args.capture_mlp,
+            )
+            # Infer n_layers from first result's activations
+            if all_results and n_layers is None:
+                n_layers = len(all_results[0].prompt_activations)
+            for result, prompt_item in zip(all_results, prompt_items_filtered):
                 data = capture_result_to_data(result, n_layers)
                 _save_capture_data(
                     data, prompt_item, set_name, inference_dir, args,
                     model_name=model_name, lora_adapter=args.lora
                 )
+        else:
+            # Local: batched generator for crash resilience
+            print(f"  Capturing {len(prompt_texts)} prompts in batches of {args.batch_size}...")
+
+            # Pre-batch prompt_items to match generator output
+            prompt_item_batches = [
+                prompt_items_filtered[i:i+args.batch_size]
+                for i in range(0, len(prompt_items_filtered), args.batch_size)
+            ]
+
+            # Run batched capture with incremental saving (generator mode)
+            # Chat template already includes BOS, so don't add special tokens again
+            batch_generator = generate_with_capture(
+                model, tokenizer, prompt_texts,
+                n_layers=n_layers,
+                batch_size=args.batch_size,
+                max_new_tokens=args.max_new_tokens,
+                temperature=args.temperature,
+                capture_mlp=args.capture_mlp,
+                show_progress=True,
+                yield_per_batch=True,
+                add_special_tokens=not use_chat_template
+            )
+
+            # Process and save after each batch (crash-resilient)
+            for (batch_results, _batch_prompts), batch_items in zip(batch_generator, prompt_item_batches):
+                for result, prompt_item in zip(batch_results, batch_items):
+                    # Convert CaptureResult to dict and save
+                    data = capture_result_to_data(result, n_layers)
+                    _save_capture_data(
+                        data, prompt_item, set_name, inference_dir, args,
+                        model_name=model_name, lora_adapter=args.lora
+                    )
 
     print(f"\n{'='*60}")
     print("Complete!")

@@ -23,7 +23,6 @@ rclone sync r2:trait-interp-bucket/experiments/ experiments/ \
   --exclude "__pycache__/**" \
   --exclude ".DS_Store" \
   --exclude "**/activations/**" \
-  --exclude "**/val_activations/**" \
   --exclude "**/inference/raw/**" \
 
 echo ""

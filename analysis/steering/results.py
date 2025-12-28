@@ -19,7 +19,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from utils.paths import get
+from utils.paths import get, get_steering_results_path, get_steering_dir
 from utils.vectors import load_vector_metadata
 
 
@@ -32,7 +32,7 @@ def load_or_create_results(
     judge_provider: str,
 ) -> Dict:
     """Load existing results or create new structure."""
-    results_path = get('steering.results', experiment=experiment, trait=trait)
+    results_path = get_steering_results_path(experiment, trait)
     prompts_file_str = str(prompts_file)
 
     if results_path.exists():
@@ -57,14 +57,17 @@ def load_or_create_results(
         return results
 
     # Load vector metadata for source info
-    vector_metadata = load_vector_metadata(vector_experiment, trait)
+    try:
+        vector_metadata = load_vector_metadata(vector_experiment, trait, "probe")
+    except FileNotFoundError:
+        vector_metadata = {}
 
     return {
         "trait": trait,
         "steering_model": steering_model,
         "steering_experiment": experiment,
         "vector_source": {
-            "model": vector_metadata.get("extraction_model", "unknown"),
+            "model": vector_metadata.get("model", "unknown"),
             "experiment": vector_experiment,
             "trait": trait,
         },
@@ -88,7 +91,7 @@ def find_existing_run_index(results: Dict, config: Dict) -> Optional[int]:
 
 def save_results(results: Dict, experiment: str, trait: str):
     """Save results to experiment directory."""
-    results_file = get('steering.results', experiment=experiment, trait=trait)
+    results_file = get_steering_results_path(experiment, trait)
     results_file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(results_file, 'w') as f:
@@ -98,7 +101,7 @@ def save_results(results: Dict, experiment: str, trait: str):
 
 def save_responses(responses: List[Dict], experiment: str, trait: str, config: Dict, timestamp: str):
     """Save generated responses for a config."""
-    responses_dir = get('steering.responses', experiment=experiment, trait=trait)
+    responses_dir = get_steering_dir(experiment, trait) / "responses"
     responses_dir.mkdir(parents=True, exist_ok=True)
 
     layers_str = "_".join(str(l) for l in config["layers"])

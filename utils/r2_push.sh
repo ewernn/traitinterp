@@ -25,7 +25,6 @@ EXCLUDES=(
   --exclude "__pycache__/**"
   --exclude ".DS_Store"
   --exclude "**/activations/**"
-  --exclude "**/val_activations/**"
   --exclude "**/inference/raw/**"
 )
 
@@ -70,7 +69,7 @@ esac
 #   ✅ Responses (pos.json, neg.json)
 #   ✅ Inference projections (residual_stream/*.json)
 #   ✅ Metadata files
-#   ❌ Extraction activations (activations/*.pt, val_activations/*.pt) - huge, regenerable
+#   ❌ Extraction activations (activations/**/train_all_layers.pt, val_all_layers.pt) - huge, regenerable
 #   ❌ Raw inference activations (inference/raw/*.pt) - huge, regenerable
 
 echo ""

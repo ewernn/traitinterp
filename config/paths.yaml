@@ -52,7 +52,6 @@ extraction:
   vectors_metadata: "experiments/{experiment}/extraction/{trait}/vectors/metadata.json"
   activations: "experiments/{experiment}/extraction/{trait}/activations"
   activations_metadata: "experiments/{experiment}/extraction/{trait}/activations/metadata.json"
-  val_activations: "experiments/{experiment}/extraction/{trait}/val_activations"
   responses: "experiments/{experiment}/extraction/{trait}/responses"
   responses_metadata: "experiments/{experiment}/extraction/{trait}/responses/metadata.json"
   val_responses: "experiments/{experiment}/extraction/{trait}/val_responses"
@@ -133,10 +132,9 @@ patterns:
   vector_metadata: "{method}_layer{layer}_metadata.json"
 
   # Activations
-  all_layers: "all_layers.pt"
+  train_all_layers: "train_all_layers.pt"
+  val_all_layers: "val_all_layers.pt"
   metadata: "metadata.json"
-  val_pos: "val_pos_layer{layer}.pt"
-  val_neg: "val_neg_layer{layer}.pt"
 
   # Responses
   pos_responses: "pos.{format}"
@@ -203,12 +201,12 @@ schema:
     responses:
       - "responses/pos.json"
       - "responses/neg.json"
-    # Activations: single file containing all layers
+    # Activations: in activations/{position}/{component}/
     activations:
-      - "activations/all_layers.pt"       # Shape: [n_examples, n_layers, hidden_dim]
-      - "val_activations/val_pos_layer{N}.pt"  # Per-layer format (from --val-split)
-      - "val_activations/val_neg_layer{N}.pt"  # Per-layer format (from --val-split)
-    # Vectors: {method}_layer{layer}.pt - methods DISCOVERED from filesystem
+      - "activations/{position}/{component}/train_all_layers.pt"  # Shape: [n_examples, n_layers, hidden_dim]
+      - "activations/{position}/{component}/val_all_layers.pt"    # Same format as train
+      - "activations/{position}/{component}/metadata.json"
+    # Vectors: in vectors/{position}/{component}/{method}/ - methods DISCOVERED from filesystem
 
   # ==========================================================================
   # REQUIRED: What files MUST exist (minimum for valid trait)

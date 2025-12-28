@@ -65,33 +65,12 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import projection
-from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method
-from utils.paths import get as get_path, discover_extracted_traits
+from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, get_best_layer, get_top_N_vectors
+from utils.paths import get as get_path, get_vector_path, discover_extracted_traits
 
 
 MODEL_NAME = "google/gemma-2-2b-it"
 LOGIT_LENS_LAYERS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 21, 24, 25]
-
-
-def find_available_vectors(vectors_dir: Path, layer: int) -> list[tuple[str, str, Path]]:
-    """Find all available vectors for a layer (both residual and attn_out).
-
-    Returns:
-        List of (component, method, path) tuples
-    """
-    vectors = []
-    for method in ["probe", "mean_diff", "gradient"]:
-        # Residual vectors
-        residual_path = vectors_dir / f"{method}_layer{layer}.pt"
-        if residual_path.exists():
-            vectors.append(("residual", method, residual_path))
-
-        # attn_out vectors
-        attn_path = vectors_dir / f"attn_out_{method}_layer{layer}.pt"
-        if attn_path.exists():
-            vectors.append(("attn_out", method, attn_path))
-
-    return vectors
 
 
 # ============================================================================
@@ -212,6 +191,8 @@ def main():
     parser.add_argument("--method", help="Vector method (default: auto-detect or use best from evaluation)")
     parser.add_argument("--component", choices=["residual", "attn_out"], default="residual",
                        help="Activation component to project (default: residual)")
+    parser.add_argument("--position", default="response[:]",
+                       help="Token position for vectors (default: response[:])")
     parser.add_argument("--logit-lens", action="store_true", help="Compute logit lens")
     parser.add_argument("--centered", action="store_true",
                        help="Subtract training baseline from projections (centers around 0)")
@@ -276,10 +257,8 @@ def process_prompt_set(args, inference_dir, prompt_set):
     auto_layer = args.layer is None
 
     if multi_vector_mode:
-        from utils.vectors import get_top_N_vectors
         print(f"Multi-vector mode: projecting onto top {args.multi_vector} vectors per trait")
     elif auto_layer:
-        from utils.vectors import get_best_layer
         print("Auto-selecting best layer per trait (use --layer N to override)")
 
     # Load trait vectors
@@ -288,11 +267,12 @@ def process_prompt_set(args, inference_dir, prompt_set):
     trait_vectors = {}
     for category, trait_name in trait_list:
         trait_path = f"{category}/{trait_name}"
-        vectors_dir = get_path('extraction.vectors', experiment=args.experiment, trait=trait_path)
 
         if multi_vector_mode:
             # Get top N vectors for this trait
-            top_vectors = get_top_N_vectors(args.experiment, trait_path, N=args.multi_vector)
+            top_vectors = get_top_N_vectors(
+                args.experiment, trait_path, args.component, args.position, N=args.multi_vector
+            )
             if not top_vectors:
                 print(f"  Skip {trait_path}: no vectors found")
                 continue
@@ -302,22 +282,21 @@ def process_prompt_set(args, inference_dir, prompt_set):
                 layer = v['layer']
                 method = v['method']
                 selection_source = v['source']
-
-                # Build vector path
-                if args.component == "attn_out":
-                    vector_path = vectors_dir / f"attn_out_{method}_layer{layer}.pt"
-                else:
-                    vector_path = vectors_dir / f"{method}_layer{layer}.pt"
+                vector_path = get_vector_path(
+                    args.experiment, trait_path, method, layer, args.component, args.position
+                )
 
                 if not vector_path.exists():
                     continue
 
                 try:
                     vector, baseline, per_vec_metadata = load_vector_with_baseline(
-                        args.experiment, trait_path, method, layer, component=args.component
+                        args.experiment, trait_path, method, layer, args.component, args.position
                     )
                     vector = vector.to(torch.float16)
-                    vec_metadata = load_vector_metadata(args.experiment, trait_path)
+                    vec_metadata = load_vector_metadata(
+                        args.experiment, trait_path, method, args.component, args.position
+                    )
                     loaded_vectors.append((vector, method, vector_path, layer, vec_metadata, selection_source, baseline))
                 except FileNotFoundError:
                     continue
@@ -329,24 +308,25 @@ def process_prompt_set(args, inference_dir, prompt_set):
         else:
             # Single vector mode (original logic)
             if auto_layer:
-                best = get_best_layer(args.experiment, trait_path)
+                best = get_best_layer(args.experiment, trait_path, args.component, args.position)
                 layer = best['layer']
                 method = args.method or best['method']
                 selection_source = best['source']
                 print(f"  {trait_path}: L{layer} {method} (from {best['source']}: {best['score']:.2f})")
             else:
                 layer = args.layer
-                method = args.method or find_vector_method(vectors_dir, layer, component=args.component)
+                method = args.method or find_vector_method(
+                    args.experiment, trait_path, layer, args.component, args.position
+                )
                 selection_source = 'manual'
 
             if not method:
                 print(f"  Skip {trait_path}: no {args.component} vector at layer {layer}")
                 continue
 
-            if args.component == "attn_out":
-                vector_path = vectors_dir / f"attn_out_{method}_layer{layer}.pt"
-            else:
-                vector_path = vectors_dir / f"{method}_layer{layer}.pt"
+            vector_path = get_vector_path(
+                args.experiment, trait_path, method, layer, args.component, args.position
+            )
 
             if not vector_path.exists():
                 print(f"  Skip {trait_path}: {vector_path} not found")
@@ -354,14 +334,16 @@ def process_prompt_set(args, inference_dir, prompt_set):
 
             try:
                 vector, baseline, per_vec_metadata = load_vector_with_baseline(
-                    args.experiment, trait_path, method, layer, component=args.component
+                    args.experiment, trait_path, method, layer, args.component, args.position
                 )
                 vector = vector.to(torch.float16)
             except FileNotFoundError:
                 print(f"  Skip {trait_path}: vector file not found")
                 continue
 
-            vec_metadata = load_vector_metadata(args.experiment, trait_path)
+            vec_metadata = load_vector_metadata(
+                args.experiment, trait_path, method, args.component, args.position
+            )
             trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata, selection_source, baseline)
 
     print(f"Loaded vectors for {len(trait_vectors)} traits")

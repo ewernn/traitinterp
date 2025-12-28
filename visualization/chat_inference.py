@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from core import projection
-from utils.paths import get as get_path
+from utils.paths import get as get_path, get_vector_path, list_layers, list_methods
 from utils.vectors import get_best_layer
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config
 
@@ -144,11 +144,13 @@ class ChatInference:
             for trait_dir in sorted(category_dir.iterdir()):
                 if not trait_dir.is_dir():
                     continue
-                vectors_dir = trait_dir / "vectors"
-                if not vectors_dir.exists() or not list(vectors_dir.glob('*.pt')):
-                    continue
 
                 trait_path = f"{category_dir.name}/{trait_dir.name}"
+
+                # Check if any methods exist for this trait
+                available_methods = list_methods(self.experiment, trait_path)
+                if not available_methods:
+                    continue
 
                 # Get best layer/method for this trait
                 best = get_best_layer(self.experiment, trait_path)
@@ -156,21 +158,10 @@ class ChatInference:
                 method = best['method']
                 source = best['source']
 
-                vector_file = vectors_dir / f"{method}_layer{layer}.pt"
+                vector_file = get_vector_path(self.experiment, trait_path, method, layer)
                 if not vector_file.exists():
-                    # Fallback: try any available vector
-                    available = list(vectors_dir.glob('*.pt'))
-                    if available:
-                        vector_file = available[0]
-                        # Parse method and layer from filename
-                        import re
-                        match = re.search(r'(.+)_layer(\d+)', vector_file.stem)
-                        if match:
-                            method = match.group(1)
-                            layer = int(match.group(2))
-                            source = 'fallback'
-                    else:
-                        continue
+                    print(f"  Skip {trait_path}: vector file not found")
+                    continue
 
                 # Load vector to appropriate device
                 vector = torch.load(vector_file, weights_only=True).to(dtype=torch.float16)

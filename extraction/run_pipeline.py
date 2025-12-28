@@ -30,10 +30,15 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.paths import get as get_path, discover_traits
+from utils.paths import (
+    get as get_path,
+    discover_traits,
+    get_activation_metadata_path,
+    get_vector_dir,
+)
 from utils.model import load_model
 from utils.model_registry import is_base_model
-from extraction.generate_responses import generate_responses_for_trait, BASE_MODEL_TOKENS, IT_MODEL_TOKENS
+from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
 from extraction.vet_scenarios import vet_scenarios
@@ -66,6 +71,7 @@ def run_pipeline(
     pos_threshold: int = 60,
     neg_threshold: int = 40,
     component: str = 'residual',
+    position: str = 'response[:]',
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
 ):
@@ -73,7 +79,7 @@ def run_pipeline(
     methods = methods or ['mean_diff', 'probe', 'gradient']
     if base_model is None:
         base_model = is_base_model(extraction_model)
-    max_new_tokens = BASE_MODEL_TOKENS if base_model else IT_MODEL_TOKENS
+    max_new_tokens = 16
 
     def should_run(stage: int) -> bool:
         return only_stages is None or stage in only_stages
@@ -118,20 +124,22 @@ def run_pipeline(
 
         # Stage 3: Extract activations
         if should_run(3):
-            activations_path = get_path("extraction.activations", experiment=experiment, trait=trait)
-            metadata_file = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
-            if not (activations_path / metadata_file).exists() or force:
-                extract_activations_for_trait(experiment, trait, model, tokenizer, val_split, base_model, component)
+            activation_metadata = get_activation_metadata_path(experiment, trait, component, position)
+            if not activation_metadata.exists() or force:
+                extract_activations_for_trait(experiment, trait, model, tokenizer, val_split,
+                                              position=position, component=component)
 
         # Stage 4: Extract vectors
         if should_run(4):
-            vectors_path = get_path("extraction.vectors", experiment=experiment, trait=trait)
-            if component == 'residual':
-                existing = [f for f in vectors_path.glob("*.pt") if not any(c in f.name for c in ['attn_out_', 'mlp_out_', 'k_cache_', 'v_cache_'])]
-            else:
-                existing = list(vectors_path.glob(f"{component}_*.pt"))
-            if not existing or force:
-                extract_vectors_for_trait(experiment, trait, methods, component)
+            # Check if any method directory has vectors
+            has_vectors = False
+            for method in methods:
+                vector_dir = get_vector_dir(experiment, trait, method, component, position)
+                if vector_dir.exists() and list(vector_dir.glob("layer*.pt")):
+                    has_vectors = True
+                    break
+            if not has_vectors or force:
+                extract_vectors_for_trait(experiment, trait, methods, component=component, position=position)
 
     # Stage 5: Evaluation
     if should_run(5):
@@ -163,6 +171,8 @@ if __name__ == "__main__":
     parser.add_argument("--val-split", type=float, default=0.2)
     parser.add_argument("--extraction-model", type=str)
     parser.add_argument("--component", default="residual")
+    parser.add_argument("--position", default="response[:]",
+                        help="Token position: response[:], response[-1], prompt[-1], all[:], etc.")
     parser.add_argument("--pos-threshold", type=int, default=60)
     parser.add_argument("--neg-threshold", type=int, default=40)
     parser.add_argument("--load-in-8bit", action="store_true")
@@ -206,6 +216,7 @@ if __name__ == "__main__":
         pos_threshold=args.pos_threshold,
         neg_threshold=args.neg_threshold,
         component=args.component,
+        position=args.position,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )

@@ -10,7 +10,13 @@ from typing import List, Optional
 
 import torch
 
-from utils.paths import get as get_path
+from utils.paths import (
+    get_activation_path,
+    get_activation_metadata_path,
+    get_vector_dir,
+    get_vector_path,
+    get_vector_metadata_path,
+)
 from core import get_method
 
 
@@ -20,37 +26,32 @@ def extract_vectors_for_trait(
     methods: List[str],
     layers: Optional[List[int]] = None,
     component: str = 'residual',
+    position: str = 'response[:]',
 ) -> int:
     """
     Extract trait vectors from activations. Returns number of vectors extracted.
     """
-    component_str = f" (component: {component})" if component != 'residual' else ""
-    print(f"  [4] Extracting vectors for '{trait}'{component_str}...")
+    print(f"  [4] Extracting vectors for '{trait}' (position: {position}, component: {component})...")
 
-    activations_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
-    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
-    vectors_dir.mkdir(parents=True, exist_ok=True)
-
-    metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
-    acts_filename = "all_layers.pt" if component == 'residual' else f"{component}_all_layers.pt"
-    vector_prefix = "" if component == 'residual' else f"{component}_"
+    # Load activations using centralized paths
+    activation_path = get_activation_path(experiment, trait, component, position)
+    metadata_path = get_activation_metadata_path(experiment, trait, component, position)
 
     try:
-        with open(activations_dir / metadata_filename) as f:
-            metadata = json.load(f)
+        with open(metadata_path) as f:
+            activation_metadata = json.load(f)
     except FileNotFoundError:
-        print(f"    ERROR: {metadata_filename} not found. Run stage 3 first.")
+        print(f"    ERROR: {metadata_path} not found. Run stage 3 first.")
         return 0
 
-    all_acts_path = activations_dir / acts_filename
-    if not all_acts_path.exists():
-        print(f"    ERROR: {acts_filename} not found. Run stage 3 first.")
+    if not activation_path.exists():
+        print(f"    ERROR: {activation_path} not found. Run stage 3 first.")
         return 0
 
-    all_acts = torch.load(all_acts_path, weights_only=True)
-    n_layers = metadata.get("n_layers", all_acts.shape[1])
-    n_pos = metadata.get("n_examples_pos")
-    n_neg = metadata.get("n_examples_neg")
+    all_acts = torch.load(activation_path, weights_only=True)
+    n_layers = activation_metadata.get("n_layers", all_acts.shape[1])
+    n_pos = activation_metadata.get("n_examples_pos")
+    n_neg = activation_metadata.get("n_examples_neg")
 
     if n_pos is None or n_neg is None:
         print(f"    ERROR: n_examples_pos/neg missing from metadata.")
@@ -63,6 +64,10 @@ def extract_vectors_for_trait(
     print(f"    Layers: {layer_list[0]}..{layer_list[-1]} ({len(layer_list)} total)")
 
     n_extracted = 0
+
+    # Track per-method metadata (layers dict)
+    method_metadata = {method: {"layers": {}} for method in methods}
+
     for layer_idx in layer_list:
         if layer_idx >= n_layers:
             continue
@@ -80,41 +85,49 @@ def extract_vectors_for_trait(
                 result = method_obj.extract(pos_acts, neg_acts)
                 vector = result['vector']
                 vector_norm = vector.norm().item()
-                baseline = (center @ vector / vector_norm).item() if vector_norm > 0 else 0.0
+                # Cast to same dtype for dot product
+                baseline = (center.float() @ vector.float() / vector_norm).item() if vector_norm > 0 else 0.0
 
-                torch.save(vector, vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}.pt")
+                # Save vector to new path structure
+                vector_path = get_vector_path(experiment, trait, method_name, layer_idx, component, position)
+                vector_path.parent.mkdir(parents=True, exist_ok=True)
+                torch.save(vector, vector_path)
 
-                vector_metadata = {
-                    "trait": trait,
-                    "method": method_name,
-                    "layer": layer_idx,
-                    "component": component,
-                    "model": metadata.get("model", "unknown"),
-                    "vector_norm": float(vector_norm),
+                # Collect layer info for consolidated metadata
+                layer_info = {
+                    "norm": float(vector_norm),
                     "baseline": baseline,
                 }
                 if 'bias' in result:
                     b = result['bias']
-                    vector_metadata['bias'] = float(b.item()) if isinstance(b, torch.Tensor) else b
+                    layer_info['bias'] = float(b.item()) if isinstance(b, torch.Tensor) else b
+                if 'train_acc' in result:
+                    layer_info['train_acc'] = float(result['train_acc'])
 
-                with open(vectors_dir / f"{vector_prefix}{method_name}_layer{layer_idx}_metadata.json", 'w') as f:
-                    json.dump(vector_metadata, f, indent=2)
-
+                method_metadata[method_name]["layers"][str(layer_idx)] = layer_info
                 n_extracted += 1
+
             except Exception as e:
                 print(f"    ERROR: {method_name} layer {layer_idx}: {e}")
 
-    vectors_metadata = {
-        'extraction_model': metadata.get('model', 'unknown'),
-        'trait': trait,
-        'component': component,
-        'methods': methods,
-        'layers': layer_list,
-        'timestamp': datetime.now().isoformat(),
-    }
-    vectors_metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
-    with open(vectors_dir / vectors_metadata_filename, 'w') as f:
-        json.dump(vectors_metadata, f, indent=2)
+    # Save consolidated metadata per method directory
+    for method_name in methods:
+        if not method_metadata[method_name]["layers"]:
+            continue
+
+        metadata = {
+            'model': activation_metadata.get('model', 'unknown'),
+            'trait': trait,
+            'method': method_name,
+            'component': component,
+            'position': position,
+            'layers': method_metadata[method_name]["layers"],
+            'timestamp': datetime.now().isoformat(),
+        }
+
+        metadata_path = get_vector_metadata_path(experiment, trait, method_name, component, position)
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
 
     print(f"    Extracted {n_extracted} vectors")
     return n_extracted

@@ -2,17 +2,119 @@
 Extract activations from generated responses.
 
 Called by run_pipeline.py (stage 3).
+
+Position syntax: <frame>[<slice>]
+  - frame: 'prompt', 'response', or 'all'
+  - slice: Python slice notation like '[-5:]', '[0]', '[:]'
+
+Examples:
+  response[:]   - All response tokens (mean)
+  response[-1]  - Last response token only
+  response[0]   - First response token only
+  prompt[-1]    - Last prompt token (before response)
+  prompt[-3:]   - Last 3 prompt tokens
+  all[:]        - All tokens (mean)
 """
 
 import json
+import re
 from datetime import datetime
+from typing import Tuple, Optional, List, Dict
 
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from utils.paths import get as get_path
+from utils.paths import (
+    get as get_path,
+    get_activation_dir,
+    get_activation_path,
+    get_activation_metadata_path,
+    get_val_activation_path,
+)
+from utils.generation import calculate_max_batch_size
 from core import MultiLayerCapture
+
+
+def parse_position(position: str) -> Tuple[str, Optional[int], Optional[int]]:
+    """
+    Parse position string like 'response[-5:]' into (frame, start, stop).
+
+    Returns:
+        (frame, start, stop) where frame is 'prompt', 'response', or 'all',
+        and start/stop are slice indices (None means unbounded).
+    """
+    match = re.match(r'(prompt|response|all)\[(.+)\]', position)
+    if not match:
+        raise ValueError(f"Invalid position format: '{position}'. Use <frame>[<slice>], e.g., 'response[-1]' or 'prompt[-3:]'")
+
+    frame = match.group(1)
+    slice_str = match.group(2).strip()
+
+    if slice_str == ':':
+        return frame, None, None
+
+    if ':' in slice_str:
+        parts = slice_str.split(':')
+        start = int(parts[0]) if parts[0] else None
+        stop = int(parts[1]) if parts[1] else None
+        return frame, start, stop
+    else:
+        # Single index like [-1] or [0]
+        idx = int(slice_str)
+        if idx >= 0:
+            return frame, idx, idx + 1
+        else:
+            # Negative index: -1 means last element, so start=-1, stop=None
+            return frame, idx, idx + 1 if idx != -1 else None
+
+
+def resolve_position(position: str, prompt_len: int, seq_len: int) -> Tuple[int, int]:
+    """
+    Resolve position string to concrete (start_idx, end_idx) given sequence lengths.
+
+    Args:
+        position: Position string like 'response[-5:]'
+        prompt_len: Number of prompt tokens
+        seq_len: Total sequence length
+
+    Returns:
+        (start_idx, end_idx) as absolute indices into the sequence
+    """
+    frame, start, stop = parse_position(position)
+
+    # Determine frame bounds
+    if frame == 'all':
+        frame_start, frame_end = 0, seq_len
+    elif frame == 'prompt':
+        frame_start, frame_end = 0, prompt_len
+    elif frame == 'response':
+        frame_start, frame_end = prompt_len, seq_len
+    else:
+        raise ValueError(f"Unknown frame: {frame}")
+
+    frame_len = frame_end - frame_start
+
+    # Apply slice within frame
+    if start is None:
+        abs_start = frame_start
+    elif start >= 0:
+        abs_start = frame_start + min(start, frame_len)
+    else:
+        abs_start = frame_end + start  # Negative indexing
+
+    if stop is None:
+        abs_end = frame_end
+    elif stop >= 0:
+        abs_end = frame_start + min(stop, frame_len)
+    else:
+        abs_end = frame_end + stop  # Negative indexing
+
+    # Clamp to frame bounds (not just sequence bounds)
+    abs_start = max(frame_start, min(abs_start, frame_end))
+    abs_end = max(abs_start, min(abs_end, frame_end))
+
+    return abs_start, abs_end
 
 
 def load_vetting_filter(experiment: str, trait: str) -> dict:
@@ -31,19 +133,28 @@ def extract_activations_for_trait(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
     val_split: float = 0.2,
-    base_model: bool = False,
+    position: str = 'response[:]',
     component: str = 'residual',
     use_vetting_filter: bool = True,
-    max_completion_tokens: int = 128,
 ) -> int:
     """
     Extract activations from generated responses. Returns number of layers extracted.
+
+    Args:
+        position: Token position to extract from. Format: <frame>[<slice>]
+            - response[:]  - All response tokens (mean) [default]
+            - response[-1] - Last response token only
+            - response[0]  - First response token only
+            - prompt[-1]   - Last prompt token
+            - all[:]       - All tokens (mean)
     """
-    print(f"  [3] Extracting activations for '{trait}' (component: {component})...")
+    print(f"  [3] Extracting activations for '{trait}' (position: {position}, component: {component})...")
 
     n_layers = model.config.num_hidden_layers
     responses_dir = get_path('extraction.responses', experiment=experiment, trait=trait)
-    activations_dir = get_path('extraction.activations', experiment=experiment, trait=trait)
+
+    # Get paths using centralized helpers
+    activations_dir = get_activation_dir(experiment, trait, component, position)
     activations_dir.mkdir(parents=True, exist_ok=True)
 
     # Load responses
@@ -77,31 +188,102 @@ def extract_activations_for_trait(
 
     def extract_from_responses(responses: list[dict], label: str) -> dict[int, torch.Tensor]:
         all_activations = {layer: [] for layer in range(n_layers)}
-        for item in tqdm(responses, desc=f"    {label}", leave=False):
+
+        # Pre-process: tokenize and compute positions
+        items = []
+        for item in responses:
             full_text = item.get('full_text')
             if not full_text:
                 continue
+            input_ids = tokenizer(full_text, return_tensors='pt')['input_ids'][0]
+            seq_len = len(input_ids)
+            prompt_len = item.get('prompt_token_count') or len(tokenizer(item.get('prompt', ''))['input_ids'])
+            start_idx, end_idx = resolve_position(position, prompt_len, seq_len)
+            if start_idx >= end_idx:
+                continue
+            items.append({
+                'input_ids': input_ids,
+                'seq_len': seq_len,
+                'start_idx': start_idx,
+                'end_idx': end_idx,
+            })
 
-            inputs = tokenizer(full_text, return_tensors='pt').to(model.device)
-            seq_len = inputs['input_ids'].shape[1]
-
-            if base_model:
-                prompt_token_count = item.get('prompt_token_count') or len(tokenizer(item.get('prompt', ''))['input_ids'])
-                start_idx, end_idx = prompt_token_count, min(seq_len, prompt_token_count + max_completion_tokens)
-                if start_idx >= end_idx:
-                    continue
-            else:
-                start_idx, end_idx = 0, seq_len
-
-            with MultiLayerCapture(model, component=component) as capture:
-                with torch.no_grad():
-                    model(**inputs)
-
+        if not items:
             for layer in range(n_layers):
-                acts = capture.get(layer)
-                if acts is not None:
-                    acts_mean = acts[0, start_idx:end_idx, :].mean(dim=0).cpu()
-                    all_activations[layer].append(acts_mean)
+                all_activations[layer] = torch.empty(0)
+            return all_activations
+
+        # Calculate batch size
+        max_seq_len = max(item['seq_len'] for item in items)
+        batch_size = calculate_max_batch_size(model, max_seq_len)
+
+        # Process in batches
+        i = 0
+        pbar = tqdm(total=len(items), desc=f"    {label}", leave=False)
+        while i < len(items):
+            batch_items = items[i:i + batch_size]
+
+            try:
+                # Pad sequences (left padding)
+                batch_max_len = max(item['seq_len'] for item in batch_items)
+                padded_ids = []
+                attention_masks = []
+                pad_offsets = []  # Track padding offset for each sample
+
+                for item in batch_items:
+                    seq_len = item['seq_len']
+                    pad_len = batch_max_len - seq_len
+                    pad_offsets.append(pad_len)
+
+                    if pad_len > 0:
+                        padding = torch.full((pad_len,), tokenizer.pad_token_id or tokenizer.eos_token_id)
+                        padded = torch.cat([padding, item['input_ids']])
+                        mask = torch.cat([torch.zeros(pad_len), torch.ones(seq_len)])
+                    else:
+                        padded = item['input_ids']
+                        mask = torch.ones(seq_len)
+
+                    padded_ids.append(padded)
+                    attention_masks.append(mask)
+
+                input_ids = torch.stack(padded_ids).to(model.device)
+                attention_mask = torch.stack(attention_masks).to(model.device)
+
+                # Forward pass with activation capture
+                with MultiLayerCapture(model, component=component) as capture:
+                    with torch.no_grad():
+                        model(input_ids=input_ids, attention_mask=attention_mask)
+
+                # Extract positions for each sample
+                for b, item in enumerate(batch_items):
+                    pad_offset = pad_offsets[b]
+                    # Adjust indices for padding
+                    start_idx = item['start_idx'] + pad_offset
+                    end_idx = item['end_idx'] + pad_offset
+
+                    for layer in range(n_layers):
+                        acts = capture.get(layer)
+                        if acts is not None:
+                            selected = acts[b, start_idx:end_idx, :]
+                            acts_out = selected.mean(dim=0).cpu() if selected.shape[0] > 1 else selected.squeeze(0).cpu()
+                            all_activations[layer].append(acts_out)
+
+                pbar.update(len(batch_items))
+                i += batch_size
+
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+                # MPS raises RuntimeError for OOM, CUDA has specific error
+                if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
+                    raise
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                if batch_size == 1:
+                    raise RuntimeError("OOM even with batch_size=1")
+                batch_size = max(1, batch_size // 2)
+                print(f"\n    OOM, reducing batch_size to {batch_size}")
+                # Don't advance i, retry same batch
+
+        pbar.close()
 
         for layer in range(n_layers):
             all_activations[layer] = torch.stack(all_activations[layer]) if all_activations[layer] else torch.empty(0)
@@ -111,39 +293,39 @@ def extract_activations_for_trait(
     pos_acts = extract_from_responses(train_pos, 'train_positive')
     neg_acts = extract_from_responses(train_neg, 'train_negative')
 
-    # Combine and save
+    # Combine and save training activations
     pos_all = torch.stack([pos_acts[l] for l in range(n_layers)], dim=1)
     neg_all = torch.stack([neg_acts[l] for l in range(n_layers)], dim=1)
-    all_acts = torch.cat([pos_all, neg_all], dim=0)
+    train_acts = torch.cat([pos_all, neg_all], dim=0)
 
-    filename = "all_layers.pt" if component == 'residual' else f"{component}_all_layers.pt"
-    torch.save(all_acts, activations_dir / filename)
-    print(f"    Saved: {all_acts.shape}")
+    activation_path = get_activation_path(experiment, trait, component, position)
+    torch.save(train_acts, activation_path)
+    print(f"    Saved train: {train_acts.shape} -> {activation_path.name}")
 
-    # Save validation activations
+    # Save validation activations (same format as train)
     n_val_pos, n_val_neg = 0, 0
     if val_split > 0 and (val_pos or val_neg):
-        val_dir = get_path('extraction.val_activations', experiment=experiment, trait=trait)
-        val_dir.mkdir(parents=True, exist_ok=True)
-
         val_pos_acts = extract_from_responses(val_pos, 'val_positive')
         val_neg_acts = extract_from_responses(val_neg, 'val_negative')
 
-        prefix = "" if component == 'residual' else f"{component}_"
-        for layer in range(n_layers):
-            torch.save(val_pos_acts[layer], val_dir / f"{prefix}val_pos_layer{layer}.pt")
-            torch.save(val_neg_acts[layer], val_dir / f"{prefix}val_neg_layer{layer}.pt")
+        val_pos_all = torch.stack([val_pos_acts[l] for l in range(n_layers)], dim=1)
+        val_neg_all = torch.stack([val_neg_acts[l] for l in range(n_layers)], dim=1)
+        val_acts = torch.cat([val_pos_all, val_neg_all], dim=0)
+
+        val_path = get_val_activation_path(experiment, trait, component, position)
+        torch.save(val_acts, val_path)
+        print(f"    Saved val: {val_acts.shape} -> {val_path.name}")
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
 
     # Compute activation norms
-    activation_norms = {layer: round(all_acts[:, layer, :].norm(dim=-1).mean().item(), 2) for layer in range(n_layers)}
+    activation_norms = {layer: round(train_acts[:, layer, :].norm(dim=-1).mean().item(), 2) for layer in range(n_layers)}
 
     # Save metadata
     metadata = {
         'model': model.config.name_or_path,
         'trait': trait,
         'n_layers': n_layers,
-        'hidden_dim': all_acts.shape[-1],
+        'hidden_dim': train_acts.shape[-1],
         'n_examples_pos': len(train_pos),
         'n_examples_neg': len(train_neg),
         'n_filtered_pos': n_filtered_pos,
@@ -151,13 +333,13 @@ def extract_activations_for_trait(
         'val_split': val_split,
         'n_val_pos': n_val_pos,
         'n_val_neg': n_val_neg,
-        'base_model': base_model,
+        'position': position,
         'component': component,
         'activation_norms': activation_norms,
         'timestamp': datetime.now().isoformat(),
     }
-    metadata_filename = "metadata.json" if component == 'residual' else f"{component}_metadata.json"
-    with open(activations_dir / metadata_filename, 'w') as f:
+    metadata_path = get_activation_metadata_path(experiment, trait, component, position)
+    with open(metadata_path, 'w') as f:
         json.dump(metadata, f, indent=2)
 
     return n_layers

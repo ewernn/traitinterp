@@ -15,11 +15,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from utils.paths import get as get_path
 from utils.model import format_prompt, tokenize_prompt
 
-# Default token limits
-BASE_MODEL_TOKENS = 16   # Base models drift quickly
-IT_MODEL_TOKENS = 100    # IT models stay coherent longer
-
-
 def load_scenarios(scenario_file: Path) -> list[str]:
     """Load scenarios from text file (one per line)."""
     with open(scenario_file, 'r') as f:
@@ -81,8 +76,10 @@ def generate_responses_for_trait(
                                                  pad_token_id=tokenizer.eos_token_id)
 
                     for j, output in enumerate(outputs):
+                        # Use padded input length (not just real token count) due to left padding
+                        input_length = inputs['input_ids'].shape[1]
                         prompt_length = inputs['attention_mask'][j].sum().item()
-                        response = tokenizer.decode(output[prompt_length:], skip_special_tokens=True).strip()
+                        response = tokenizer.decode(output[input_length:], skip_special_tokens=True).strip()
                         results.append({
                             'scenario_idx': i + j,
                             'rollout_idx': rollout_idx,
@@ -90,7 +87,7 @@ def generate_responses_for_trait(
                             'response': response,
                             'full_text': batch_scenarios[j] + response,
                             'prompt_token_count': prompt_length,
-                            'response_token_count': len(output) - prompt_length,
+                            'response_token_count': len(output) - input_length,
                         })
                     pbar.update(len(batch_scenarios))
         return results

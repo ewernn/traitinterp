@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Add parent directory to path to import utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from utils.paths import get as get_path
+from utils.paths import get as get_path, list_positions
 
 PORT = int(os.environ.get('PORT', 8000))
 
@@ -285,7 +285,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                                 responses_dir.exists() and
                                 (responses_dir / 'pos.json').exists()
                             )
-                            has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
+                            # Vectors are now in {position}/{component}/{method}/ subdirs
+                            has_vectors = vectors_dir.exists() and len(list(vectors_dir.rglob('layer*.pt'))) > 0
 
                             if has_responses or has_vectors:
                                 has_traits = True
@@ -327,7 +328,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         responses_dir.exists() and
                         (responses_dir / 'pos.json').exists()
                     )
-                    has_vectors = vectors_dir.exists() and len(list(vectors_dir.glob('*.pt'))) > 0
+                    # Vectors are now in {position}/{component}/{method}/ subdirs
+                    has_vectors = vectors_dir.exists() and len(list(vectors_dir.rglob('layer*.pt'))) > 0
                     if has_responses or has_vectors:
                         # Use category/trait format
                         traits.append(f"{category_dir.name}/{trait_item.name}")

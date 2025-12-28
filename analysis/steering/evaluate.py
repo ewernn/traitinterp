@@ -76,9 +76,28 @@ from analysis.steering.coef_search import (
     batched_adaptive_search,
 )
 from utils.judge import TraitJudge
-from utils.paths import get
+from utils.paths import get, get_vector_path, get_steering_results_path
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model
 from utils.vectors import MIN_COHERENCE
+from server.client import get_model_or_client, ModelClient
+
+
+def load_model_handle(model_name: str, load_in_8bit: bool = False, load_in_4bit: bool = False, no_server: bool = False):
+    """Load model locally or get client if server available.
+
+    Returns:
+        (model, tokenizer, is_remote) tuple
+    """
+    if not no_server:
+        handle = get_model_or_client(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        if isinstance(handle, ModelClient):
+            print(f"Using model server (model: {model_name})")
+            return handle, handle, True  # model, tokenizer, is_remote
+        model, tokenizer = handle
+        return model, tokenizer, False
+    else:
+        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        return model, tokenizer, False
 
 
 def load_layer_deltas(experiment: str, trait: str, min_coherence: float = MIN_COHERENCE) -> Dict[int, Dict]:
@@ -88,7 +107,7 @@ def load_layer_deltas(experiment: str, trait: str, min_coherence: float = MIN_CO
     Returns:
         {layer: {'delta': float, 'coef': float, 'coherence': float}}
     """
-    results_path = get('steering.results', experiment=experiment, trait=trait)
+    results_path = get_steering_results_path(experiment, trait)
     if not results_path.exists():
         return {}
 
@@ -181,9 +200,7 @@ def parse_coefficients(coef_arg: Optional[str]) -> Optional[List[float]]:
 
 def load_vector(experiment: str, trait: str, layer: int, method: str = "probe", component: str = "residual") -> Optional[torch.Tensor]:
     """Load trait vector from experiment. Returns None if not found."""
-    vectors_dir = get('extraction.vectors', experiment=experiment, trait=trait)
-    prefix = "" if component == "residual" else f"{component}_"
-    vector_file = vectors_dir / f"{prefix}{method}_layer{layer}.pt"
+    vector_file = get_vector_path(experiment, trait, method, layer, component)
 
     if not vector_file.exists():
         return None
@@ -367,9 +384,10 @@ async def run_evaluation(
         questions = questions[:subset]
 
     # Load model if not provided
+    # Note: Steering uses hooks, so we force local mode
     should_close_judge = False
     if model is None:
-        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        model, tokenizer, _ = load_model_handle(model_name, load_in_8bit, load_in_4bit, no_server=True)
     num_layers = get_num_layers(model)
 
     # Load experiment config
@@ -528,9 +546,10 @@ async def run_multilayer_evaluation(
         questions = questions[:subset]
 
     # Load model if not provided
+    # Note: Steering uses hooks, so we force local mode
     should_close_judge = False
     if model is None:
-        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        model, tokenizer, _ = load_model_handle(model_name, load_in_8bit, load_in_4bit, no_server=True)
     num_layers = get_num_layers(model)
 
     # Load experiment config
@@ -625,7 +644,7 @@ async def run_multilayer_evaluation(
     print(f"  Coherence: {coherence_mean:.1f}")
 
     # Load results and save
-    results_path = get('steering.results', experiment=experiment, trait=trait)
+    results_path = get_steering_results_path(experiment, trait)
     if results_path.exists():
         with open(results_path) as f:
             results = json.load(f)
@@ -715,6 +734,8 @@ def main():
                         help="Load model in 8-bit quantization (for 70B+ models)")
     parser.add_argument("--load-in-4bit", action="store_true",
                         help="Load model in 4-bit quantization")
+    parser.add_argument("--no-server", action="store_true",
+                        help="Force local model loading (skip model server check)")
 
     args = parser.parse_args()
 
@@ -757,10 +778,16 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
     multi_trait = len(parsed_traits) > 1
 
     # Load model once if multiple traits
+    # Note: Steering uses hooks, so we force local mode (no_server=True)
     model, tokenizer, judge = None, None, None
     if multi_trait:
         print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
-        model, tokenizer = load_model(model_name, load_in_8bit=args.load_in_8bit, load_in_4bit=args.load_in_4bit)
+        model, tokenizer, _ = load_model_handle(
+            model_name,
+            load_in_8bit=args.load_in_8bit,
+            load_in_4bit=args.load_in_4bit,
+            no_server=True  # Steering requires local hooks
+        )
         judge = TraitJudge()
 
     try:

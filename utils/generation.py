@@ -134,8 +134,12 @@ def generate_batch(
             i += batch_size
             # Cache successful batch size
             model._working_batch_size = batch_size
-        except torch.cuda.OutOfMemoryError:
-            torch.cuda.empty_cache()
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+            # MPS raises RuntimeError for OOM, CUDA has specific error
+            if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
+                raise
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             if batch_size == 1:
                 raise RuntimeError("OOM even with batch_size=1")
             batch_size = max(1, batch_size // 2)
@@ -146,7 +150,11 @@ def generate_batch(
 
 
 def get_free_vram_gb() -> float:
-    """Get free VRAM across all GPUs in GB (after model loaded)."""
+    """Get free VRAM across all GPUs in GB (after model loaded).
+
+    For MPS (Metal), queries available system memory (unified memory architecture).
+    Override with MPS_MEMORY_GB environment variable if needed.
+    """
     if torch.cuda.is_available():
         total_free = 0
         for i in range(torch.cuda.device_count()):
@@ -154,7 +162,13 @@ def get_free_vram_gb() -> float:
             total_free += free
         return total_free / (1024 ** 3)
     elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-        return 4.0  # Conservative for MPS
+        import os
+        if limit := os.environ.get('MPS_MEMORY_GB'):
+            return float(limit)
+        # Query available unified memory, use 50% to leave headroom for system
+        import psutil
+        available_gb = psutil.virtual_memory().available / (1024 ** 3)
+        return available_gb * 0.5
     return 4.0  # Fallback
 
 
