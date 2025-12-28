@@ -93,14 +93,16 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
     if component == "attn_out":
         # Project attn_out activations at specified layer
         if 'attn_out' in activations[layer] and activations[layer]['attn_out'].numel() > 0:
-            return projection(activations[layer]['attn_out'], vector, normalize_vector=True)
+            act = activations[layer]['attn_out']
+            return projection(act, vector.to(act.dtype), normalize_vector=True)
         else:
             # Return zeros if attn_out not available
             n_tokens = activations[0]['residual'].shape[0]
             return torch.zeros(n_tokens)
     else:
         # Project residual at specified layer
-        return projection(activations[layer]['residual'], vector, normalize_vector=True)
+        act = activations[layer]['residual']
+        return projection(act, vector.to(act.dtype), normalize_vector=True)
 
 
 def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:

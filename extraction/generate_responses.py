@@ -67,6 +67,7 @@ def generate_responses_for_trait(
                     if device is None or str(device) == 'meta':
                         device = next(model.parameters()).device
 
+                    tokenizer.padding_side = 'left'  # Required for decoder-only batched generation
                     inputs = tokenize_prompt(batch_prompts, tokenizer, use_chat_template=chat_template,
                                              padding=True, truncation=True, max_length=512).to(device)
 
