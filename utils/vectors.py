@@ -1,20 +1,19 @@
 """
 Utility functions for working with trait vectors.
 
-Single source of truth for best layer selection.
+Single source of truth for vector selection.
 
 Priority:
 1. Steering results (ground truth - actual behavioral validation)
-2. Cached result in extraction_evaluation.json
-3. Effect size (fallback heuristic when steering not available)
-4. Default (layer 16, probe method)
+2. Effect size (from extraction_evaluation.json)
 
-Note: Effect size from extraction is a rough heuristic, not a reliable predictor
+Note: Effect size is a rough heuristic, not a reliable predictor
 of steering success. Always run steering evaluation for ground truth.
 """
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
 
@@ -22,17 +21,221 @@ import torch
 
 from utils.paths import (
     get as get_path,
-    get_vector_dir,
     get_vector_path,
     get_vector_metadata_path,
     get_steering_results_path,
-    list_layers,
+    desanitize_position,
 )
 
 logger = logging.getLogger(__name__)
 
 # Single source of truth for minimum coherence threshold in steering evaluation
 MIN_COHERENCE = 70
+
+
+# =============================================================================
+# Vector Discovery & Scoring
+# =============================================================================
+
+def _discover_vectors(
+    experiment: str,
+    trait: str,
+    component: str = None,
+    position: str = None,
+) -> List[dict]:
+    """
+    Scan vector files and return list of candidates.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path
+        component: Filter to this component (or None for all)
+        position: Filter to this position (or None for all)
+
+    Returns:
+        List of dicts with 'layer', 'method', 'position', 'component', 'path'
+    """
+    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait)
+    if not vectors_dir.exists():
+        return []
+
+    candidates = []
+    pattern = re.compile(r'^layer(\d+)\.pt$')
+
+    for pt_file in vectors_dir.rglob('layer*.pt'):
+        # Parse path: vectors/{position}/{component}/{method}/layer{N}.pt
+        rel_parts = pt_file.relative_to(vectors_dir).parts
+        if len(rel_parts) != 4:
+            continue
+
+        pos_sanitized, comp, method, filename = rel_parts
+        match = pattern.match(filename)
+        if not match:
+            continue
+
+        layer = int(match.group(1))
+        pos = desanitize_position(pos_sanitized)
+
+        # Filter if specified
+        if position and pos != position:
+            continue
+        if component and comp != component:
+            continue
+
+        candidates.append({
+            'layer': layer,
+            'method': method,
+            'position': pos,
+            'component': comp,
+            'path': pt_file,
+        })
+
+    return candidates
+
+
+def _score_vector(
+    experiment: str,
+    trait: str,
+    candidate: dict,
+    min_coherence: int = MIN_COHERENCE,
+) -> Tuple[float, str]:
+    """
+    Get score for a vector candidate.
+
+    Checks steering results first (ground truth), falls back to effect_size.
+
+    Returns:
+        (score, source) where source is 'steering', 'effect_size', or 'none'
+    """
+    layer = candidate['layer']
+    method = candidate['method']
+    position = candidate['position']
+
+    # 1. Try steering results
+    steering_path = get_steering_results_path(experiment, trait, position)
+    if steering_path.exists():
+        try:
+            with open(steering_path) as f:
+                data = json.load(f)
+            baseline = data.get('baseline', {}).get('trait_mean', 0)
+
+            for run in data.get('runs', []):
+                cfg = run.get('config', {})
+                if (cfg.get('layers') == [layer] and
+                    cfg.get('methods', ['probe'])[0] == method):
+                    result = run.get('result', {})
+                    coherence = result.get('coherence_mean', 0)
+                    if coherence >= min_coherence:
+                        trait_mean = result.get('trait_mean', 0)
+                        return trait_mean - baseline, 'steering'
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    # 2. Try effect_size
+    eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
+    if eval_path.exists():
+        try:
+            with open(eval_path) as f:
+                data = json.load(f)
+
+            for r in data.get('all_results', []):
+                if (r.get('trait') == trait and
+                    r.get('layer') == layer and
+                    r.get('method') == method and
+                    r.get('val_effect_size')):
+                    return r['val_effect_size'], 'effect_size'
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    return 0.0, 'none'
+
+
+# =============================================================================
+# Public API
+# =============================================================================
+
+def get_best_vector(
+    experiment: str,
+    trait: str,
+    component: str = None,
+    position: str = None,
+    min_coherence: int = MIN_COHERENCE,
+) -> dict:
+    """
+    Find best vector, optionally filtering by position/component.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path (e.g., "category/trait_name")
+        component: Component type, or None to search all
+        position: Position string, or None to search all
+        min_coherence: Minimum coherence for steering results (default: 70)
+
+    Returns:
+        Dict with 'layer', 'method', 'position', 'component', 'source', 'score'
+
+    Raises:
+        FileNotFoundError: If no vectors found or no evaluation results
+    """
+    candidates = _discover_vectors(experiment, trait, component, position)
+
+    if not candidates:
+        raise FileNotFoundError(
+            f"No vectors found for {experiment}/{trait}. Run extraction first."
+        )
+
+    # Score each candidate
+    for c in candidates:
+        c['score'], c['source'] = _score_vector(experiment, trait, c, min_coherence)
+
+    # Filter to those with scores, then find best
+    scored = [c for c in candidates if c['source'] != 'none']
+
+    if not scored:
+        raise FileNotFoundError(
+            f"No steering results or extraction_evaluation.json found for {experiment}/{trait}. "
+            f"Run: python analysis/vectors/extraction_evaluation.py --experiment {experiment}"
+        )
+
+    best = max(scored, key=lambda c: c['score'])
+    # Remove 'path' from result (internal detail)
+    return {k: v for k, v in best.items() if k != 'path'}
+
+
+def get_top_N_vectors(
+    experiment: str,
+    trait: str,
+    component: str = None,
+    position: str = None,
+    N: int = 3,
+    min_coherence: int = MIN_COHERENCE,
+) -> List[dict]:
+    """
+    Get top N vectors for a trait, ranked by quality.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path
+        component: Component type, or None to search all
+        position: Position string, or None to search all
+        N: Number of vectors to return (default: 3)
+        min_coherence: Minimum coherence for steering results
+
+    Returns:
+        List of dicts with 'layer', 'method', 'position', 'component', 'source', 'score'
+    """
+    candidates = _discover_vectors(experiment, trait, component, position)
+
+    # Score each candidate
+    for c in candidates:
+        c['score'], c['source'] = _score_vector(experiment, trait, c, min_coherence)
+
+    # Filter to scored, sort by score descending
+    scored = [c for c in candidates if c['source'] != 'none']
+    scored.sort(key=lambda c: c['score'], reverse=True)
+
+    # Remove 'path' from results
+    return [{k: v for k, v in c.items() if k != 'path'} for c in scored[:N]]
 
 
 def find_vector_method(
@@ -43,14 +246,7 @@ def find_vector_method(
     position: str = "response[:]",
 ) -> Optional[str]:
     """
-    Auto-detect best vector method for a layer.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path
-        layer: Layer number
-        component: Component type
-        position: Position string
+    Auto-detect vector method for a specific layer.
 
     Returns:
         Method name if found, None otherwise
@@ -62,252 +258,9 @@ def find_vector_method(
     return None
 
 
-def get_best_layer(
-    experiment: str,
-    trait: str,
-    component: str = "residual",
-    position: str = "response[:]",
-) -> dict:
-    """
-    Get best layer for a trait.
-
-    Priority:
-    1. Steering results (ground truth from steering/{trait}/{position}/results.json)
-    2. Effect size (from extraction_evaluation.json all_results)
-    3. Default (layer 16, probe method)
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path (e.g., "category/trait_name")
-        component: Component type
-        position: Position string
-
-    Returns:
-        Dict with 'layer', 'method', 'source', 'score'
-        source is one of: 'steering', 'effect_size', 'default'
-    """
-    # 1. Check steering results first (ground truth)
-    steering_result = _try_steering_result(experiment, trait, position)
-    if steering_result:
-        return steering_result
-
-    # 2. Compute effect_size from all_results
-    effect_size_result = _try_effect_size(experiment, trait, component, position)
-    if effect_size_result:
-        return effect_size_result
-
-    # 3. Default fallback
-    return {'layer': 16, 'method': 'probe', 'source': 'default', 'score': 0}
-
-
-def get_top_N_vectors(
-    experiment: str,
-    trait: str,
-    component: str = "residual",
-    position: str = "response[:]",
-    N: int = 3,
-    methods: List[str] = None,
-) -> list:
-    """
-    Get top N vectors for a trait, ranked by quality.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path
-        component: Component type
-        position: Position string
-        N: Number of vectors to return (default: 3)
-        methods: List of methods to include (default: ['probe', 'mean_diff', 'gradient'])
-
-    Returns:
-        List of dicts with 'layer', 'method', 'source', 'score'
-    """
-    if methods is None:
-        methods = ['probe', 'mean_diff', 'gradient']
-
-    all_vectors = []
-    seen = set()
-
-    # 1. Collect from steering results (ground truth)
-    steering_vectors = _get_all_steering_vectors(experiment, trait, position, methods)
-    for v in steering_vectors:
-        key = (v['method'], v['layer'])
-        if key not in seen:
-            seen.add(key)
-            all_vectors.append(v)
-
-    # 2. Collect from effect_size (fallback)
-    effect_vectors = _get_all_effect_size_vectors(experiment, trait, component, position, methods)
-    for v in effect_vectors:
-        key = (v['method'], v['layer'])
-        if key not in seen:
-            seen.add(key)
-            all_vectors.append(v)
-
-    # 3. Sort by score descending
-    all_vectors.sort(key=lambda x: x['score'], reverse=True)
-
-    return all_vectors[:N]
-
-
-def _get_all_steering_vectors(
-    experiment: str,
-    trait: str,
-    position: str,
-    methods: list,
-) -> list:
-    """Get all steering results for a trait across methods."""
-    steering_path = get_steering_results_path(experiment, trait, position)
-    if not steering_path.exists():
-        return []
-
-    results = []
-    try:
-        with open(steering_path) as f:
-            data = json.load(f)
-        baseline = data.get('baseline', {}).get('trait_mean', 0)
-
-        for run in data.get('runs', []):
-            if len(run.get('config', {}).get('layers', [])) != 1:
-                continue
-
-            method = run['config'].get('methods', ['probe'])[0]
-            if method not in methods:
-                continue
-
-            trait_mean = run.get('result', {}).get('trait_mean')
-            coherence = run.get('result', {}).get('coherence_mean', 0)
-
-            if trait_mean is not None and coherence > MIN_COHERENCE:
-                delta = trait_mean - baseline
-                results.append({
-                    'layer': run['config']['layers'][0],
-                    'method': method,
-                    'source': 'steering',
-                    'score': delta
-                })
-    except (json.JSONDecodeError, KeyError):
-        pass
-
-    return results
-
-
-def _get_all_effect_size_vectors(
-    experiment: str,
-    trait: str,
-    component: str,
-    position: str,
-    methods: list,
-) -> list:
-    """Get all effect_size results for a trait across methods."""
-    eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
-    if not eval_path.exists():
-        return []
-
-    results = []
-    try:
-        with open(eval_path) as f:
-            data = json.load(f)
-
-        # Check if position/component match (skip if eval doesn't have these fields - old format)
-        eval_position = data.get('position')
-        eval_component = data.get('component')
-        if eval_position and eval_position != position:
-            return []
-        if eval_component and eval_component != component:
-            return []
-
-        all_results = data.get('all_results', [])
-        for r in all_results:
-            if r.get('trait') != trait:
-                continue
-            if r.get('method') not in methods:
-                continue
-            if not r.get('val_effect_size'):
-                continue
-
-            results.append({
-                'layer': r['layer'],
-                'method': r['method'],
-                'source': 'effect_size',
-                'score': r['val_effect_size']
-            })
-    except (json.JSONDecodeError, KeyError):
-        pass
-
-    return results
-
-
-def _try_steering_result(experiment: str, trait: str, position: str) -> Optional[dict]:
-    """Try to get best layer from steering results (ground truth)."""
-    steering_path = get_steering_results_path(experiment, trait, position)
-    if not steering_path.exists():
-        return None
-
-    try:
-        with open(steering_path) as f:
-            data = json.load(f)
-        baseline = data.get('baseline', {}).get('trait_mean', 0)
-        best_run, best_delta = None, float('-inf')
-        for run in data.get('runs', []):
-            if len(run.get('config', {}).get('layers', [])) == 1:
-                trait_mean = run.get('result', {}).get('trait_mean')
-                coherence = run.get('result', {}).get('coherence_mean', 0)
-                if trait_mean is not None and coherence > MIN_COHERENCE:
-                    delta = trait_mean - baseline
-                    if delta > best_delta:
-                        best_delta, best_run = delta, run
-        if best_run:
-            return {
-                'layer': best_run['config']['layers'][0],
-                'method': best_run['config'].get('methods', ['probe'])[0],
-                'source': 'steering',
-                'score': best_delta
-            }
-    except (json.JSONDecodeError, KeyError):
-        pass
-
-    return None
-
-
-def _try_effect_size(
-    experiment: str,
-    trait: str,
-    component: str,
-    position: str,
-) -> Optional[dict]:
-    """Fallback: use effect_size as heuristic (not a reliable steering predictor)."""
-    eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
-    if not eval_path.exists():
-        return None
-
-    try:
-        with open(eval_path) as f:
-            data = json.load(f)
-
-        # Check if position/component match (skip if eval doesn't have these fields - old format)
-        eval_position = data.get('position')
-        eval_component = data.get('component')
-        if eval_position and eval_position != position:
-            return None
-        if eval_component and eval_component != component:
-            return None
-
-        results = data.get('all_results', [])
-        trait_results = [r for r in results if r.get('trait') == trait and r.get('val_effect_size')]
-        if trait_results:
-            best = max(trait_results, key=lambda r: r['val_effect_size'])
-            return {
-                'layer': best['layer'],
-                'method': best['method'],
-                'source': 'effect_size',
-                'score': best['val_effect_size']
-            }
-    except (json.JSONDecodeError, KeyError):
-        pass
-
-    return None
-
+# =============================================================================
+# Vector Loading
+# =============================================================================
 
 def load_vector_metadata(
     experiment: str,
@@ -318,13 +271,6 @@ def load_vector_metadata(
 ) -> Dict[str, Any]:
     """
     Load vector metadata for a trait/method.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path
-        method: Extraction method
-        component: Component type
-        position: Position string
 
     Returns:
         Dict with vector metadata (includes 'layers' dict with per-layer info)
@@ -337,7 +283,7 @@ def load_vector_metadata(
     if not metadata_path.exists():
         raise FileNotFoundError(
             f"No metadata for {experiment}/{trait}/{method}. "
-            f"Re-run extraction to generate metadata, or create {metadata_path} manually."
+            f"Re-run extraction to generate metadata."
         )
 
     with open(metadata_path) as f:
@@ -354,14 +300,6 @@ def load_vector_with_baseline(
 ) -> Tuple[torch.Tensor, float, Dict[str, Any]]:
     """
     Load a vector with its baseline and per-vector metadata.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait path
-        method: Extraction method
-        layer: Layer number
-        component: Component type
-        position: Position string
 
     Returns:
         Tuple of (vector tensor, baseline float, layer metadata dict)

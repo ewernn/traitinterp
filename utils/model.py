@@ -2,7 +2,7 @@
 Shared model loading and prompt formatting utilities.
 
 Usage:
-    from utils.model import load_model, load_model_with_lora, format_prompt, load_experiment_config
+    from utils.model import load_model, load_model_with_lora, format_prompt, tokenize_batch
 
     model, tokenizer = load_model("google/gemma-2-2b-it")
     model, tokenizer = load_model("google/gemma-2-2b-it", device="cuda")
@@ -17,8 +17,9 @@ Usage:
     # Format prompt (auto-detects chat template from tokenizer)
     formatted = format_prompt("Hello", tokenizer)
 
-    # Load experiment config
-    config = load_experiment_config("my_experiment")
+    # Tokenize batch with padding (returns lengths for extracting real tokens)
+    batch = tokenize_batch(["text1", "text2"], tokenizer)
+    # batch["input_ids"], batch["attention_mask"], batch["lengths"]
 """
 
 import json
@@ -274,6 +275,45 @@ def tokenize_prompt(formatted_prompt, tokenizer, use_chat_template: bool = None,
         add_special_tokens=add_special_tokens,
         **kwargs,
     )
+
+
+def tokenize_batch(
+    texts: list[str],
+    tokenizer,
+    padding_side: str = "left",
+    **kwargs,
+) -> dict:
+    """
+    Tokenize a batch of texts with padding, returning inputs and real lengths.
+
+    Centralizes padding logic to avoid reimplementing in multiple places.
+    Left padding is default for generation (tokens append to the right).
+
+    Args:
+        texts: List of text strings to tokenize
+        tokenizer: Model tokenizer
+        padding_side: "left" (default, for generation) or "right"
+        **kwargs: Additional args passed to tokenizer (truncation, max_length, etc.)
+
+    Returns:
+        Dict with:
+            - input_ids: [batch, max_seq_len]
+            - attention_mask: [batch, max_seq_len]
+            - lengths: list[int] of actual lengths (excluding padding)
+    """
+    original_side = tokenizer.padding_side
+    tokenizer.padding_side = padding_side
+
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, **kwargs)
+    lengths = inputs.attention_mask.sum(dim=1).tolist()
+
+    tokenizer.padding_side = original_side
+
+    return {
+        "input_ids": inputs.input_ids,
+        "attention_mask": inputs.attention_mask,
+        "lengths": lengths,
+    }
 
 
 def load_experiment_config(experiment: str, warn_missing: bool = True) -> dict:

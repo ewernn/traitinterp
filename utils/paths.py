@@ -311,6 +311,35 @@ def sanitize_position(position: str) -> str:
             .replace(':', '_'))
 
 
+def desanitize_position(sanitized: str) -> str:
+    """
+    Convert filesystem-safe directory name back to position string.
+
+    Examples:
+        response_all -> response[:]
+        response_-1 -> response[-1]
+        response_-5_ -> response[-5:]
+        prompt_-3_ -> prompt[-3:]
+        all_all -> all[:]
+    """
+    # Handle _all suffix (represents [:])
+    if sanitized.endswith('_all'):
+        prefix = sanitized[:-4]
+        return f"{prefix}[:]"
+
+    # Handle other patterns: {frame}_{slice}
+    # Trailing _ means there was a : at the end (open slice)
+    parts = sanitized.split('_', 1)
+    if len(parts) == 2:
+        frame, slice_part = parts
+        if slice_part.endswith('_'):
+            return f"{frame}[{slice_part[:-1]}:]"
+        else:
+            return f"{frame}[{slice_part}]"
+
+    return sanitized  # Fallback
+
+
 # -----------------------------------------------------------------------------
 # Activation paths
 # -----------------------------------------------------------------------------

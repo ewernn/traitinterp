@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 from core import projection
 from utils.paths import get as get_path, get_vector_path, list_layers, list_methods
-from utils.vectors import get_best_layer
+from utils.vectors import get_best_vector
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config
 
 
@@ -152,13 +152,20 @@ class ChatInference:
                 if not available_methods:
                     continue
 
-                # Get best layer/method for this trait
-                best = get_best_layer(self.experiment, trait_path)
+                # Get best layer/method for this trait (searches all positions/components)
+                try:
+                    best = get_best_vector(self.experiment, trait_path)
+                except FileNotFoundError as e:
+                    print(f"  Skip {trait_path}: {e}")
+                    continue
+
                 layer = best['layer']
                 method = best['method']
+                position = best['position']
+                component = best['component']
                 source = best['source']
 
-                vector_file = get_vector_path(self.experiment, trait_path, method, layer)
+                vector_file = get_vector_path(self.experiment, trait_path, method, layer, component, position)
                 if not vector_file.exists():
                     print(f"  Skip {trait_path}: vector file not found")
                     continue

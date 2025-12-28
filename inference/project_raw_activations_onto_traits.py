@@ -65,7 +65,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import projection
-from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, get_best_layer, get_top_N_vectors
+from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, get_best_vector, get_top_N_vectors
 from utils.paths import get as get_path, get_vector_path, discover_extracted_traits
 
 
@@ -308,7 +308,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
         else:
             # Single vector mode (original logic)
             if auto_layer:
-                best = get_best_layer(args.experiment, trait_path, args.component, args.position)
+                best = get_best_vector(args.experiment, trait_path, args.component, args.position)
                 layer = best['layer']
                 method = args.method or best['method']
                 selection_source = best['source']
