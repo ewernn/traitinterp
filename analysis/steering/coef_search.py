@@ -257,7 +257,7 @@ async def batched_adaptive_search(
     if max_batch_layers is None:
         # Estimate max_seq_len: prompt (~100 tokens) + output
         max_seq_len = 100 + max_new_tokens
-        max_batch_size = calculate_max_batch_size(model, max_seq_len)
+        max_batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
         max_batch_layers = max(1, max_batch_size // n_questions)
 
     print(f"\nBatched adaptive search: {n_layers} layers, {n_questions} questions")

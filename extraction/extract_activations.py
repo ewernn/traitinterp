@@ -136,6 +136,7 @@ def extract_activations_for_trait(
     position: str = 'response[:]',
     component: str = 'residual',
     use_vetting_filter: bool = True,
+    batch_size: int = None,
 ) -> int:
     """
     Extract activations from generated responses. Returns number of layers extracted.
@@ -187,6 +188,7 @@ def extract_activations_for_trait(
         train_neg, val_neg = neg_data[:neg_split], neg_data[neg_split:]
 
     def extract_from_responses(responses: list[dict], label: str) -> dict[int, torch.Tensor]:
+        nonlocal batch_size
         all_activations = {layer: [] for layer in range(n_layers)}
 
         # Pre-process: tokenize and compute positions
@@ -213,9 +215,10 @@ def extract_activations_for_trait(
                 all_activations[layer] = torch.empty(0)
             return all_activations
 
-        # Calculate batch size
+        # Calculate batch size (use provided or auto-calculate)
         max_seq_len = max(item['seq_len'] for item in items)
-        batch_size = calculate_max_batch_size(model, max_seq_len)
+        if batch_size is None:
+            batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
 
         # Process in batches
         i = 0

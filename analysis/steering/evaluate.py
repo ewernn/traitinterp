@@ -69,7 +69,7 @@ from datetime import datetime
 from tqdm import tqdm
 from analysis.steering.steer import MultiLayerSteeringHook, orthogonalize_vectors
 from utils.generation import generate_batch
-from analysis.steering.results import load_or_create_results, save_results, save_responses
+from analysis.steering.results import load_or_create_results, save_results, save_responses, save_baseline_responses
 from analysis.steering.coef_search import (
     evaluate_and_save,
     adaptive_search_layer,
@@ -310,8 +310,13 @@ async def compute_baseline(
     judge: TraitJudge,
     use_chat_template: bool,
     max_new_tokens: int = 256,
-) -> Dict:
-    """Compute baseline scores (no steering) with batched generation."""
+) -> tuple[Dict, List[Dict]]:
+    """Compute baseline scores (no steering) with batched generation.
+
+    Returns:
+        Tuple of (baseline_stats, response_data) where response_data contains
+        questions, responses, and scores for saving.
+    """
     print("\nComputing baseline (no steering)...")
 
     # Format all questions
@@ -335,8 +340,19 @@ async def compute_baseline(
     if all_coherence_scores:
         baseline["coherence_mean"] = sum(all_coherence_scores) / len(all_coherence_scores)
 
+    # Build response data for saving
+    response_data = [
+        {
+            "question": q,
+            "response": r,
+            "trait_score": s["trait_score"],
+            "coherence_score": s.get("coherence_score"),
+        }
+        for q, r, s in zip(questions, responses, all_scores)
+    ]
+
     print(f"  Baseline: trait={baseline['trait_mean']:.1f}, n={baseline['n']}")
-    return baseline
+    return baseline, response_data
 
 
 async def run_evaluation(
@@ -421,9 +437,10 @@ async def run_evaluation(
 
     # Compute baseline if needed
     if results["baseline"] is None:
-        results["baseline"] = await compute_baseline(
+        results["baseline"], baseline_responses = await compute_baseline(
             model, tokenizer, questions, trait_name, trait_definition, judge, use_chat_template
         )
+        save_baseline_responses(baseline_responses, experiment, trait, position)
         save_results(results, experiment, trait, position)
     else:
         print(f"\nUsing existing baseline: trait={results['baseline']['trait_mean']:.1f}")

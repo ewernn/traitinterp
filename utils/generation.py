@@ -58,6 +58,8 @@ def _generate_batch_raw(
     """Core batch generation without OOM handling. Internal use only."""
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.padding_side != 'left':
+        tokenizer.padding_side = 'left'
 
     # Handle multi-GPU models (device_map="auto")
     device = getattr(model, 'device', None)
@@ -80,9 +82,10 @@ def _generate_batch_raw(
         )
 
     # Decode each response, skipping the input tokens
+    # With left-padding, all inputs are padded to same length, so use shape[1]
+    input_len = inputs.input_ids.shape[1]
     responses = []
-    for i, output in enumerate(outputs):
-        input_len = inputs.attention_mask[i].sum().item()
+    for output in outputs:
         response = tokenizer.decode(
             output[input_len:],
             skip_special_tokens=True,
@@ -118,7 +121,7 @@ def generate_batch(
     # Calculate batch size from free VRAM
     max_input_len = max(len(tokenizer.encode(p)) for p in prompts)
     max_seq_len = max_input_len + max_new_tokens
-    batch_size = calculate_max_batch_size(model, max_seq_len)
+    batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
 
     # Use cached working batch size if available (from previous OOM recovery)
     batch_size = min(batch_size, getattr(model, '_working_batch_size', batch_size))
@@ -149,18 +152,29 @@ def generate_batch(
     return all_responses
 
 
-def get_free_vram_gb() -> float:
-    """Get free VRAM across all GPUs in GB (after model loaded).
+def get_free_vram_gb(per_device: bool = True) -> float:
+    """Get free VRAM in GB (after model loaded).
+
+    Args:
+        per_device: If True (default), return min across devices. This is correct
+                    for batch size calculation since batches flow through each GPU.
+                    If False, return sum (for total capacity checks).
 
     For MPS (Metal), queries available system memory (unified memory architecture).
     Override with MPS_MEMORY_GB environment variable if needed.
     """
     if torch.cuda.is_available():
-        total_free = 0
+        frees = []
         for i in range(torch.cuda.device_count()):
             free, _ = torch.cuda.mem_get_info(i)
-            total_free += free
-        return total_free / (1024 ** 3)
+            frees.append(free)
+
+        if per_device and len(frees) > 1:
+            # Batch size limited by GPU with least free memory
+            result = min(frees) / (1024 ** 3)
+        else:
+            result = sum(frees) / (1024 ** 3)
+        return result
     elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
         import os
         if limit := os.environ.get('MPS_MEMORY_GB'):
@@ -198,39 +212,121 @@ def estimate_kv_cache_gb(
     # KV cache: 2 (K,V) × num_kv_heads × head_dim × seq_len × batch × layers × dtype
     kv_bytes = 2 * num_kv_heads * head_dim * seq_len * batch_size * num_layers * dtype_bytes
 
-    # Add ~2x for activations and intermediate buffers
-    total_bytes = kv_bytes * 3
+    return kv_bytes / (1024 ** 3)
 
-    return total_bytes / (1024 ** 3)
+
+def estimate_forward_pass_gb(
+    model,
+    seq_len: int,
+    batch_size: int = 1,
+    dtype_bytes: int = None,
+) -> float:
+    """
+    Estimate temporary GPU memory during forward pass.
+
+    Accounts for intermediate activations, attention matrices, and MLP states.
+    This memory is temporary (freed after each layer) but limits batch size.
+
+    Args:
+        model: The transformer model
+        seq_len: Maximum sequence length
+        batch_size: Batch size
+        dtype_bytes: Bytes per element (auto-detect from model if None)
+
+    Returns:
+        Estimated forward pass memory in GB
+    """
+    config = model.config
+
+    # Auto-detect dtype from model parameters
+    if dtype_bytes is None:
+        param = next(model.parameters())
+        dtype_bytes = param.element_size()  # 2 for fp16/bf16, 1 for int8, 4 for fp32
+        # Activations are typically fp16/bf16 even with quantized weights
+        if dtype_bytes < 2:
+            dtype_bytes = 2
+
+    hidden = config.hidden_size
+    n_heads = config.num_attention_heads
+    intermediate_size = getattr(config, 'intermediate_size', hidden * 4)
+
+    # Check attention implementation
+    attn_impl = getattr(config, '_attn_implementation',
+                        getattr(config, 'attn_implementation', 'eager'))
+    uses_flash = 'flash' in str(attn_impl).lower()
+
+    # Attention memory per layer
+    if uses_flash:
+        # Flash attention: O(n) memory
+        attn_bytes = batch_size * seq_len * hidden * dtype_bytes
+    else:
+        # Standard attention: O(n²) for scores matrix
+        attn_bytes = batch_size * n_heads * seq_len * seq_len * dtype_bytes
+
+    # Hidden states (input + output buffers)
+    hidden_bytes = batch_size * seq_len * hidden * dtype_bytes * 2
+
+    # MLP intermediate activations
+    mlp_bytes = batch_size * seq_len * intermediate_size * dtype_bytes
+
+    # ~2-3 layers active concurrently during forward pass
+    per_layer_peak = attn_bytes + hidden_bytes + mlp_bytes
+    concurrent_layers = 3
+
+    return (per_layer_peak * concurrent_layers) / (1024 ** 3)
 
 
 def calculate_max_batch_size(
     model,
     max_seq_len: int,
-    safety_margin: float = 0.85,
+    mode: str = 'inference',
+    safety_margin: float = 0.9,
 ) -> int:
     """
     Calculate maximum batch size from free VRAM after model is loaded.
 
+    Accounts for KV cache, forward pass activations, and mode-specific overhead.
+
     Args:
         model: Loaded model (already using VRAM)
         max_seq_len: max_input_tokens + max_output_tokens
-        safety_margin: Fraction of free VRAM to use (default 85%)
+        mode: Memory profile mode:
+            - 'inference': Basic forward pass (default)
+            - 'generation': Includes KV cache growth, logits buffer, generate() overhead
+            - 'extraction': Similar to inference (hooks offload to CPU)
+        safety_margin: Fraction of free VRAM to use (default 90%)
 
     Returns:
         Maximum safe batch size (at least 1)
     """
-    free_gb = get_free_vram_gb()
-    usable_gb = free_gb * safety_margin
+    free_gb = get_free_vram_gb(per_device=True)
 
-    # Memory per sequence at max length
-    gb_per_seq = estimate_kv_cache_gb(model, max_seq_len, batch_size=1)
+    # Base memory: KV cache + forward pass activations
+    kv_gb = estimate_kv_cache_gb(model, max_seq_len, batch_size=1)
+    fwd_gb = estimate_forward_pass_gb(model, max_seq_len, batch_size=1)
+    gb_per_seq = kv_gb + fwd_gb
+
+    # Mode-specific adjustments
+    if mode == 'generation':
+        # Logits buffer: seq × vocab_size × dtype
+        vocab_size = getattr(model.config, 'vocab_size', 128000)
+        logits_gb = (max_seq_len * vocab_size * 2) / (1024 ** 3)
+        # Overhead for generate() internals (attention intermediates, framework buffers)
+        overhead_factor = 1.5
+        gb_per_seq = (gb_per_seq + logits_gb) * overhead_factor
 
     if gb_per_seq <= 0:
         return 1
 
+    usable_gb = free_gb * safety_margin
     max_batch = int(usable_gb / gb_per_seq)
-    return max(1, min(max_batch, 128))  # Clamp to reasonable range
+    result = max(1, min(max_batch, 128))
+
+    # Diagnostic output
+    print(f"    Auto batch size: {result} (mode={mode}, free={free_gb:.1f}GB, "
+          f"per_seq={gb_per_seq*1024:.0f}MB [kv={kv_gb*1024:.0f}+fwd={fwd_gb*1024:.0f}])")
+
+    return result
 
 
 def create_residual_storage(n_layers: int, capture_mlp: bool = False) -> Dict:
@@ -340,7 +436,7 @@ def generate_with_capture(
         # Estimate max_seq_len from prompts + max_new_tokens
         max_input_len = max(len(tokenizer.encode(p)) for p in prompts) if prompts else 100
         max_seq_len = max_input_len + max_new_tokens
-        batch_size = calculate_max_batch_size(model, max_seq_len)
+        batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token

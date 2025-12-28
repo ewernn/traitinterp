@@ -74,12 +74,12 @@ def run_pipeline(
     position: str = 'response[:]',
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    max_new_tokens: int = 64,
 ):
     """Execute extraction pipeline."""
     methods = methods or ['mean_diff', 'probe', 'gradient']
     if base_model is None:
         base_model = is_base_model(extraction_model)
-    max_new_tokens = 16
 
     def should_run(stage: int) -> bool:
         return only_stages is None or stage in only_stages
@@ -127,7 +127,7 @@ def run_pipeline(
             activation_metadata = get_activation_metadata_path(experiment, trait, component, position)
             if not activation_metadata.exists() or force:
                 extract_activations_for_trait(experiment, trait, model, tokenizer, val_split,
-                                              position=position, component=component)
+                                              position=position, component=component, batch_size=batch_size)
 
         # Stage 4: Extract vectors
         if should_run(4):
@@ -160,8 +160,8 @@ if __name__ == "__main__":
     parser.add_argument("--experiment", required=True)
     parser.add_argument("--traits", type=str)
     parser.add_argument("--category", type=str)
-    parser.add_argument("--only-stage", type=int, action='append', dest='only_stages',
-                        help="Run only specific stage(s). Can be repeated: --only-stage 3 --only-stage 4")
+    parser.add_argument("--only-stage", type=lambda s: [int(x) for x in s.split(',')], dest='only_stages',
+                        help="Run only specific stage(s): --only-stage 3,4")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--methods", default="mean_diff,probe,gradient")
     parser.add_argument("--no-vet", action="store_true")
@@ -177,6 +177,7 @@ if __name__ == "__main__":
     parser.add_argument("--neg-threshold", type=int, default=40)
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
+    parser.add_argument("--max-new-tokens", type=int, default=64)
     model_mode = parser.add_mutually_exclusive_group()
     model_mode.add_argument("--base-model", action="store_true", dest="base_model_override")
     model_mode.add_argument("--it-model", action="store_true", dest="it_model_override")
@@ -219,4 +220,5 @@ if __name__ == "__main__":
         position=args.position,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
+        max_new_tokens=args.max_new_tokens,
     )

@@ -554,7 +554,7 @@ def main():
         if args.batch_size is None:
             # For inference capture, estimate max_seq_len as prompt + generated
             max_seq_len = 512  # Conservative estimate for inference
-            args.batch_size = calculate_max_batch_size(model, max_seq_len)
+            args.batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
         print(f"Batch size: {args.batch_size}")
 
     # Get chat template setting from config

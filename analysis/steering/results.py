@@ -112,3 +112,12 @@ def save_responses(responses: List[Dict], experiment: str, trait: str, position:
 
     with open(responses_dir / filename, 'w') as f:
         json.dump(responses, f, indent=2)
+
+
+def save_baseline_responses(responses: List[Dict], experiment: str, trait: str, position: str):
+    """Save baseline (no steering) responses."""
+    responses_dir = get_steering_dir(experiment, trait, position) / "responses"
+    responses_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(responses_dir / "baseline.json", 'w') as f:
+        json.dump(responses, f, indent=2)

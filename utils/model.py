@@ -92,6 +92,8 @@ def load_model(
     # Set pad_token if missing (required for batched generation, e.g. Mistral)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    # Left-pad for generation (decoder-only models need prompt right-aligned)
+    tokenizer.padding_side = 'left'
     # AWQ models require fp16 and GPU-only device map
     is_awq = "AWQ" in model_name or "awq" in model_name.lower()
     if is_awq:
@@ -160,6 +162,7 @@ def load_model_with_lora(
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = 'left'
 
     # Build model loading kwargs
     model_kwargs = {
