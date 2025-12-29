@@ -25,11 +25,81 @@ Usage:
 """
 
 import torch
+import subprocess
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from core import HookManager, get_hook_path
 from utils.model import get_layer_path_prefix
+
+
+def get_gpu_stats() -> str:
+    """Get GPU memory and utilization stats for progress bar display."""
+    if not torch.cuda.is_available():
+        return ""
+
+    try:
+        # Get stats for all GPUs
+        result = subprocess.run(
+            ['nvidia-smi', '--query-gpu=memory.used,memory.total,utilization.gpu',
+             '--format=csv,noheader,nounits'],
+            capture_output=True, text=True, timeout=1
+        )
+        if result.returncode != 0:
+            return ""
+
+        lines = result.stdout.strip().split('\n')
+        stats = []
+        for i, line in enumerate(lines):
+            parts = [p.strip() for p in line.split(',')]
+            if len(parts) >= 3:
+                used_mb, total_mb, util = int(parts[0]), int(parts[1]), int(parts[2])
+                used_gb = used_mb / 1024
+                total_gb = total_mb / 1024
+                stats.append(f"GPU{i}:{used_gb:.1f}/{total_gb:.0f}GB {util}%")
+
+        return " | ".join(stats)
+    except Exception:
+        return ""
+
+
+def print_gpu_memory_report():
+    """Print detailed GPU memory breakdown for debugging."""
+    if not torch.cuda.is_available():
+        print("No CUDA available")
+        return
+
+    print("\n" + "="*60)
+    print("GPU MEMORY REPORT")
+    print("="*60)
+
+    for i in range(torch.cuda.device_count()):
+        free, total = torch.cuda.mem_get_info(i)
+        allocated = torch.cuda.memory_allocated(i)
+        reserved = torch.cuda.memory_reserved(i)
+        cached = reserved - allocated
+
+        print(f"\nGPU {i}:")
+        print(f"  Total:     {total / 1e9:.1f} GB")
+        print(f"  Free:      {free / 1e9:.1f} GB  (available for new allocations)")
+        print(f"  Used:      {(total - free) / 1e9:.1f} GB")
+        print(f"    ├─ Allocated: {allocated / 1e9:.2f} GB  (active tensors)")
+        print(f"    └─ Cached:    {cached / 1e9:.2f} GB  (PyTorch cache, reclaimable)")
+
+    print("\n" + "="*60)
+
+
+def clear_gpu_memory():
+    """Force clear GPU memory cache. Call after deleting model."""
+    import gc
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        # Report what we freed
+        for i in range(torch.cuda.device_count()):
+            free, total = torch.cuda.mem_get_info(i)
+            print(f"GPU {i}: {free/1e9:.1f}/{total/1e9:.0f} GB free after cleanup")
 
 
 @dataclass
@@ -451,24 +521,29 @@ def generate_with_capture(
     if yield_per_batch:
         # Generator mode: yield after each batch for incremental saving
         def _generator():
-            batch_iter = tqdm(batches, desc="Batches") if show_progress else batches
-            for batch_prompts in batch_iter:
+            pbar = tqdm(batches, desc="Batches") if show_progress else batches
+            for batch_prompts in pbar:
                 batch_results = _capture_batch(
                     model, tokenizer, batch_prompts, n_layers, hidden_size,
                     max_new_tokens, temperature, capture_mlp, show_progress=False,
                     add_special_tokens=add_special_tokens
                 )
+                if show_progress and hasattr(pbar, 'set_postfix_str'):
+                    pbar.set_postfix_str(get_gpu_stats())
                 yield batch_results, batch_prompts
         return _generator()
     else:
         # Blocking mode: collect all results (backwards compatible)
         results = []
-        for batch_prompts in (tqdm(batches, desc="Batches") if show_progress else batches):
+        pbar = tqdm(batches, desc="Batches") if show_progress else batches
+        for batch_prompts in pbar:
             batch_results = _capture_batch(
                 model, tokenizer, batch_prompts, n_layers, hidden_size,
                 max_new_tokens, temperature, capture_mlp, show_progress,
                 add_special_tokens=add_special_tokens
             )
+            if show_progress and hasattr(pbar, 'set_postfix_str'):
+                pbar.set_postfix_str(get_gpu_stats())
             results.extend(batch_results)
         return results
 

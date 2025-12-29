@@ -18,10 +18,13 @@ Usage:
 """
 
 import sys
+import gc
 import json
 import argparse
 import warnings
 from pathlib import Path
+
+import torch
 from typing import List, Optional, Set
 from dotenv import load_dotenv
 
@@ -147,6 +150,15 @@ def run_pipeline(
         eval_path = get_path("extraction_eval.evaluation", experiment=experiment)
         if not eval_path.exists() or force:
             run_evaluation(experiment)
+
+    # Cleanup GPU memory
+    if model is not None:
+        del model
+        del tokenizer
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
 
     print("\n" + "=" * 60 + "\nCOMPLETE\n" + "=" * 60)
 

@@ -57,6 +57,7 @@ Usage:
 """
 
 import sys
+import gc
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -866,6 +867,14 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
     finally:
         if judge is not None:
             await judge.close()
+        # Cleanup GPU memory
+        if model is not None:
+            del model
+            del tokenizer
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
 
     if multi_trait:
         print(f"\n{'='*60}")

@@ -159,6 +159,52 @@ async function renderTraitDynamics() {
 
     clearTimeout(loadingTimeout);
 
+    // If diff mode is enabled, fetch comparison data and compute diff
+    const diffPromptSet = window.state.diffMode && window.state.diffPromptSet;
+    if (diffPromptSet) {
+        for (const traitKey of Object.keys(traitData)) {
+            // Get base trait for multi-vector entries
+            const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
+            const trait = filteredTraits.find(t => t.name === baseTrait);
+            if (!trait) continue;
+
+            try {
+                const fetchPath = window.paths.residualStreamData(trait, diffPromptSet, promptId);
+                const response = await fetch(fetchPath);
+                if (!response.ok) continue;
+
+                const compData = await response.json();
+                if (compData.error) continue;
+
+                // Get matching projection data
+                let compProj;
+                if (compData.metadata?.multi_vector && Array.isArray(compData.projections)) {
+                    // Find matching method/layer
+                    const vs = traitData[traitKey].metadata?.vector_source;
+                    if (vs) {
+                        const match = compData.projections.find(p => p.method === vs.method && p.layer === vs.layer);
+                        compProj = match ? { prompt: match.prompt, response: match.response } : null;
+                    }
+                } else {
+                    compProj = compData.projections;
+                }
+
+                if (compProj) {
+                    const mainProj = traitData[traitKey].projections;
+                    // Compute diff: main - comparison (e.g., lora - clean)
+                    const diffPrompt = mainProj.prompt.map((v, i) => v - (compProj.prompt[i] || 0));
+                    const diffResponse = mainProj.response.map((v, i) => v - (compProj.response[i] || 0));
+                    traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
+                    traitData[traitKey].metadata = traitData[traitKey].metadata || {};
+                    traitData[traitKey].metadata._isDiff = true;
+                    traitData[traitKey].metadata._diffFrom = diffPromptSet;
+                }
+            } catch (error) {
+                console.warn(`Could not load diff data for ${traitKey}:`, error);
+            }
+        }
+    }
+
     // Check if we have any data
     const loadedTraits = Object.keys(traitData);
     if (loadedTraits.length === 0) {
@@ -233,10 +279,25 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     const isCosine = projectionMode === 'cosine';
     const isCentered = window.state.projectionCentered !== false;  // default true
 
+    // Diff mode: compare with another prompt set
+    const diffMode = window.state.diffMode || false;
+    const diffPromptSet = window.state.diffPromptSet || null;
+    const availableSets = Object.keys(window.state.promptsWithData || {}).filter(s => s !== promptSet);
+
+    // Check if we're showing diff data
+    const showingDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
+    const diffFromSet = showingDiff ? Object.values(traitData).find(d => d.metadata?._isDiff)?.metadata?._diffFrom : null;
+    const diffInfoHtml = showingDiff
+        ? `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+            Showing DIFF: ${promptSet.replace(/_/g, ' ')} − ${diffFromSet?.replace(/_/g, ' ')}
+           </div>`
+        : '';
+
     container.innerHTML = `
         <div class="tool-view">
             <div class="page-intro">
                 <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
+                ${diffInfoHtml}
                 <div class="page-intro-model">${modelInfoHtml}</div>
             </div>
             ${failedHtml}
@@ -272,6 +333,15 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                         <input type="checkbox" class="method-filter" data-method="gradient" ${window.state.selectedMethods.has('gradient') ? 'checked' : ''}>
                         <span>gradient</span>
                     </label>
+                    <span class="projection-toggle-label" style="margin-left: 16px;">Diff:</span>
+                    <label class="projection-toggle-checkbox">
+                        <input type="checkbox" id="diff-mode-toggle" ${diffMode ? 'checked' : ''}>
+                        <span>Enable</span>
+                    </label>
+                    <select id="diff-prompt-set-select" style="margin-left: 8px; ${diffMode ? '' : 'display: none;'}">
+                        <option value="">Select comparison...</option>
+                        ${availableSets.map(s => `<option value="${s}" ${s === diffPromptSet ? 'selected' : ''}>${s.replace(/_/g, ' ')}</option>`).join('')}
+                    </select>
                 </div>
                 <div id="combined-activation-plot"></div>
             </section>
@@ -550,6 +620,28 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             window.toggleMethod(cb.dataset.method);
         });
     });
+
+    // Setup diff mode toggle and dropdown
+    const diffToggle = document.getElementById('diff-mode-toggle');
+    const diffSelect = document.getElementById('diff-prompt-set-select');
+    if (diffToggle) {
+        diffToggle.addEventListener('change', () => {
+            window.state.diffMode = diffToggle.checked;
+            if (diffSelect) {
+                diffSelect.style.display = diffToggle.checked ? '' : 'none';
+            }
+            if (!diffToggle.checked) {
+                window.state.diffPromptSet = null;
+            }
+            window.render();
+        });
+    }
+    if (diffSelect) {
+        diffSelect.addEventListener('change', () => {
+            window.state.diffPromptSet = diffSelect.value || null;
+            window.render();
+        });
+    }
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens);

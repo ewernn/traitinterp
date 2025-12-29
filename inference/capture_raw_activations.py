@@ -58,6 +58,7 @@ Usage:
 """
 
 import sys
+import gc
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -139,7 +140,8 @@ def extract_residual_from_internals(all_layer_data: Dict[int, Dict], n_layers: i
 
 
 def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response_text: str,
-                                     n_layers: int, capture_mlp: bool = False) -> Dict:
+                                     n_layers: int, capture_mlp: bool = False,
+                                     capture_attention: bool = False) -> Dict:
     """
     Capture residual stream activations with prefilled response (single forward pass).
 
@@ -165,7 +167,7 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
     with HookManager(model) as hooks:
         setup_residual_hooks(hooks, storage, n_layers, 'prompt', capture_mlp=capture_mlp, layer_prefix=layer_prefix)
         with torch.no_grad():
-            outputs = model(input_ids=full_input_ids, output_attentions=True, return_dict=True)
+            outputs = model(input_ids=full_input_ids, output_attentions=capture_attention, return_dict=True)
 
     # Split activations into prompt/response portions
     prompt_acts = {}
@@ -178,17 +180,18 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
             prompt_acts[i][k] = full_acts[:n_prompt_tokens]
             response_acts[i][k] = full_acts[n_prompt_tokens:]
 
-    # Split attention patterns
+    # Split attention patterns (only if captured)
     prompt_attention = {}
     response_attention = []
-    for i, attn in enumerate(outputs.attentions):
-        attn_avg = attn[0].mean(dim=0).detach().cpu()  # [seq_len, seq_len]
-        prompt_attention[f'layer_{i}'] = attn_avg[:n_prompt_tokens, :n_prompt_tokens]
-        # Response attention: each token's attention over full context
-        for t in range(n_prompt_tokens, attn_avg.shape[0]):
-            if i == 0:
-                response_attention.append({})
-            response_attention[t - n_prompt_tokens][f'layer_{i}'] = attn_avg[t, :t+1]
+    if capture_attention and outputs.attentions is not None:
+        for i, attn in enumerate(outputs.attentions):
+            attn_avg = attn[0].mean(dim=0).detach().cpu()  # [seq_len, seq_len]
+            prompt_attention[f'layer_{i}'] = attn_avg[:n_prompt_tokens, :n_prompt_tokens]
+            # Response attention: each token's attention over full context
+            for t in range(n_prompt_tokens, attn_avg.shape[0]):
+                if i == 0:
+                    response_attention.append({})
+                response_attention[t - n_prompt_tokens][f'layer_{i}'] = attn_avg[t, :t+1]
 
     return {
         'prompt': {'text': prompt_text, 'tokens': prompt_tokens, 'token_ids': prompt_token_ids,
@@ -747,6 +750,14 @@ def main():
                         data, prompt_item, set_name, inference_dir, args,
                         model_name=model_name, lora_adapter=args.lora
                     )
+
+    # Cleanup GPU memory
+    del model
+    del tokenizer
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
 
     print(f"\n{'='*60}")
     print("Complete!")

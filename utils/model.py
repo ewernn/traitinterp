@@ -111,9 +111,6 @@ def load_model(
             llm_int8_enable_fp32_cpu_offload=True,  # Allow some CPU offload if needed
         )
         model_kwargs["quantization_config"] = quantization_config
-        # Force single GPU to avoid auto-planner issues
-        if device == "auto":
-            model_kwargs["device_map"] = "cuda:0"
     elif load_in_4bit:
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -194,7 +191,13 @@ def load_model_with_lora(
             raise ImportError("peft required for LoRA. Install with: pip install peft")
 
         print(f"  Applying LoRA adapter...")
-        model = PeftModel.from_pretrained(model, lora_adapter)
+        # Load LoRA to CPU first, then distribute to match base model layers
+        # This avoids OOM when base model is split across GPUs
+        model = PeftModel.from_pretrained(
+            model, lora_adapter,
+            torch_device="cpu",
+            low_cpu_mem_usage=True,
+        )
         print(f"  LoRA adapter applied.")
 
     model.eval()
