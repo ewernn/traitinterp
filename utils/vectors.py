@@ -42,6 +42,7 @@ def _discover_vectors(
     trait: str,
     component: str = None,
     position: str = None,
+    layer: int = None,
 ) -> List[dict]:
     """
     Scan vector files and return list of candidates.
@@ -51,6 +52,7 @@ def _discover_vectors(
         trait: Trait path
         component: Filter to this component (or None for all)
         position: Filter to this position (or None for all)
+        layer: Filter to this layer (or None for all)
 
     Returns:
         List of dicts with 'layer', 'method', 'position', 'component', 'path'
@@ -73,7 +75,7 @@ def _discover_vectors(
         if not match:
             continue
 
-        layer = int(match.group(1))
+        file_layer = int(match.group(1))
         pos = desanitize_position(pos_sanitized)
 
         # Filter if specified
@@ -81,9 +83,11 @@ def _discover_vectors(
             continue
         if component and comp != component:
             continue
+        if layer is not None and file_layer != layer:
+            continue
 
         candidates.append({
-            'layer': layer,
+            'layer': file_layer,
             'method': method,
             'position': pos,
             'component': comp,
@@ -159,16 +163,18 @@ def get_best_vector(
     trait: str,
     component: str = None,
     position: str = None,
+    layer: int = None,
     min_coherence: int = MIN_COHERENCE,
 ) -> dict:
     """
-    Find best vector, optionally filtering by position/component.
+    Find best vector, optionally filtering by position/component/layer.
 
     Args:
         experiment: Experiment name
         trait: Trait path (e.g., "category/trait_name")
         component: Component type, or None to search all
         position: Position string, or None to search all
+        layer: Layer number, or None to search all
         min_coherence: Minimum coherence for steering results (default: 70)
 
     Returns:
@@ -177,7 +183,7 @@ def get_best_vector(
     Raises:
         FileNotFoundError: If no vectors found or no evaluation results
     """
-    candidates = _discover_vectors(experiment, trait, component, position)
+    candidates = _discover_vectors(experiment, trait, component, position, layer)
 
     if not candidates:
         raise FileNotFoundError(
@@ -207,6 +213,7 @@ def get_top_N_vectors(
     trait: str,
     component: str = None,
     position: str = None,
+    layer: int = None,
     N: int = 3,
     min_coherence: int = MIN_COHERENCE,
 ) -> List[dict]:
@@ -218,13 +225,14 @@ def get_top_N_vectors(
         trait: Trait path
         component: Component type, or None to search all
         position: Position string, or None to search all
+        layer: Layer number, or None to search all
         N: Number of vectors to return (default: 3)
         min_coherence: Minimum coherence for steering results
 
     Returns:
         List of dicts with 'layer', 'method', 'position', 'component', 'source', 'score'
     """
-    candidates = _discover_vectors(experiment, trait, component, position)
+    candidates = _discover_vectors(experiment, trait, component, position, layer)
 
     # Score each candidate
     for c in candidates:

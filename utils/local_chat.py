@@ -10,6 +10,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStream
 from threading import Thread
 import torch, sys
 
+from utils.model import tokenize
+
 model_id = sys.argv[1] if len(sys.argv) > 1 else "google/gemma-2-2b-it"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", torch_dtype=torch.bfloat16)
@@ -36,7 +38,7 @@ while True:
         inputs = tokenizer.apply_chat_template(history, return_tensors="pt", add_generation_prompt=True).to(model.device)
     else:
         # Base model: just raw completion
-        inputs = tokenizer(user, return_tensors="pt").input_ids.to(model.device)
+        inputs = tokenize(user, tokenizer).input_ids.to(model.device)
     
     streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
     thread = Thread(target=model.generate, kwargs={"input_ids": inputs, "max_new_tokens": 512, "do_sample": True, "temperature": 0.7, "streamer": streamer})

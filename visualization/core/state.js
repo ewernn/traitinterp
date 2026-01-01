@@ -23,10 +23,10 @@ const state = {
     // Steering Sweep settings
     selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
-    projectionMode: 'cosine',  // 'cosine' (a·v / ||a||||v||) or 'vnorm' (a·v / ||v||)
-    projectionCentered: true,  // Subtract training baseline (centers around 0)
+    smoothingEnabled: true,  // Apply 3-token moving average
+    projectionCentered: true,  // Subtract BOS token value (centers around 0)
     // Method filter for trait dynamics (which extraction methods to show)
-    selectedMethods: new Set(['probe', 'mean_diff', 'gradient'])
+    selectedMethods: new Set(['probe', 'mean_diff', 'gradient', 'random'])
 };
 
 // Display names for better interpretability
@@ -109,18 +109,16 @@ function initTheme() {
     updateThemeIcon(savedTheme);
 }
 
-// Projection Mode Management
-function initProjectionMode() {
-    const saved = localStorage.getItem('projectionMode');
-    if (saved === 'cosine' || saved === 'vnorm') {
-        state.projectionMode = saved;
-    }
+// Smoothing Management
+function initSmoothing() {
+    const saved = localStorage.getItem('smoothingEnabled');
+    // Default to true if not set
+    state.smoothingEnabled = saved === null ? true : saved === 'true';
 }
 
-function setProjectionMode(mode) {
-    if (mode !== 'cosine' && mode !== 'vnorm') return;
-    state.projectionMode = mode;
-    localStorage.setItem('projectionMode', mode);
+function setSmoothing(enabled) {
+    state.smoothingEnabled = !!enabled;
+    localStorage.setItem('smoothingEnabled', state.smoothingEnabled);
     if (window.renderView) window.renderView();
 }
 
@@ -739,9 +737,26 @@ const ASYMB_COLORSCALE = [
     [1, '#1a9850']
 ];
 
+// Delta colorscale for steering heatmaps (diverging: red=negative, green=positive)
+const DELTA_COLORSCALE = [
+    [0, '#aa5656'],
+    [0.5, '#e0e0de'],
+    [1, '#3d7435']
+];
+
 // Get CSS variable value helper
 function getCssVar(name, fallback = '') {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+// Convert hex color to rgba with opacity
+function hexToRgba(hex, opacity) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return `rgba(0, 0, 0, ${opacity})`;
+    const r = parseInt(result[1], 16);
+    const g = parseInt(result[2], 16);
+    const b = parseInt(result[3], 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 // Get token highlight colors for Plotly shapes (single source of truth)
@@ -850,7 +865,7 @@ function renderMath(element) {
 async function init() {
     await window.paths.load();
     initTheme();
-    initProjectionMode();
+    initSmoothing();
     initProjectionCentered();
     initSelectedMethods();
     setupNavigation();
@@ -870,7 +885,9 @@ window.getDisplayName = getDisplayName;
 window.getFilteredTraits = getFilteredTraits;
 window.getPlotlyLayout = getPlotlyLayout;
 window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;
+window.DELTA_COLORSCALE = DELTA_COLORSCALE;
 window.getCssVar = getCssVar;
+window.hexToRgba = hexToRgba;
 window.getTokenHighlightColors = getTokenHighlightColors;
 window.getChartColors = getChartColors;
 window.getMethodColors = getMethodColors;
@@ -881,6 +898,6 @@ window.formatTokenDisplay = formatTokenDisplay;
 window.setupSubsectionInfoToggles = setupSubsectionInfoToggles;
 window.markdownToHtml = markdownToHtml;
 window.renderMath = renderMath;
-window.setProjectionMode = setProjectionMode;
+window.setSmoothing = setSmoothing;
 window.setProjectionCentered = setProjectionCentered;
 window.toggleMethod = toggleMethod;

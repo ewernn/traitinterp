@@ -761,11 +761,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
     // Determine color scale based on metric
     let colorscale, zmid, zmin, zmax;
     if (metric === 'delta') {
-        colorscale = [
-            [0, '#aa5656'],    // negative - red
-            [0.5, '#e0e0de'],  // zero - neutral
-            [1, '#3d7435']     // positive - green
-        ];
+        colorscale = window.DELTA_COLORSCALE;
         zmid = 0;
         const allVals = matrix.flat().filter(v => v !== null);
         const absMax = Math.max(Math.abs(Math.min(...allVals, 0)), Math.abs(Math.max(...allVals, 0)));
@@ -1166,11 +1162,7 @@ function renderMultiLayerHeatmapPlot(metric) {
         })
     );
 
-    const colorscale = [
-        [0, '#aa5656'],
-        [0.5, '#e0e0de'],
-        [1, '#3d7435']
-    ];
+    const colorscale = window.DELTA_COLORSCALE;
 
     const trace = {
         type: 'heatmap',

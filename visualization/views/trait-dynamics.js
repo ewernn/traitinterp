@@ -5,9 +5,8 @@
 // 1. Token Trajectory: X=tokens, Y=projection (best layer) + velocity/acceleration
 // 2. Activation Magnitude
 
-// Tokens to skip: BOS (0) + undifferentiated warmup tokens (1)
-// Early tokens have uniform activations across prompts - not informative
-const START_TOKEN_IDX = 2;
+// Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
+const START_TOKEN_IDX = 0;
 
 /**
  * Apply a centered moving average to smooth data.
@@ -274,9 +273,8 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         `;
     }
 
-    // Determine projection mode and centering
-    const projectionMode = window.state.projectionMode || 'cosine';
-    const isCosine = projectionMode === 'cosine';
+    // Determine smoothing and centering
+    const isSmoothing = window.state.smoothingEnabled !== false;  // default true
     const isCentered = window.state.projectionCentered !== false;  // default true
 
     // Diff mode: compare with another prompt set
@@ -305,17 +303,15 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
             <section>
                 <h2>Token Trajectory <span class="subsection-info-toggle" data-target="info-token-trajectory">►</span></h2>
                 <div class="subsection-info" id="info-token-trajectory">
-                    ${isCosine
-                        ? 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector, independent of activation magnitude.'
-                        : 'Raw projection: a·v / ||v||. Shows absolute trait signal strength (affected by activation magnitude).'}
-                    ${isCentered ? ' Centered by subtracting training baseline.' : ''}
+                    Cosine similarity: proj / ||h||. Shows directional alignment with trait vector.
+                    ${isCentered ? ' Centered by subtracting BOS token value.' : ''}
+                    ${isSmoothing ? ' Smoothed with 3-token moving average.' : ''}
                 </div>
                 <div class="projection-toggle">
-                    <span class="projection-toggle-label">Mode:</span>
-                    <div class="projection-toggle-btns">
-                        <button class="projection-toggle-btn ${isCosine ? 'active' : ''}" data-mode="cosine">Cosine</button>
-                        <button class="projection-toggle-btn ${!isCosine ? 'active' : ''}" data-mode="vnorm">Magnitude</button>
-                    </div>
+                    <label class="projection-toggle-checkbox">
+                        <input type="checkbox" id="smoothing-toggle" ${isSmoothing ? 'checked' : ''}>
+                        <span>Smooth</span>
+                    </label>
                     <label class="projection-toggle-checkbox">
                         <input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}>
                         <span>Centered</span>
@@ -332,6 +328,10 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
                     <label class="projection-toggle-checkbox">
                         <input type="checkbox" class="method-filter" data-method="gradient" ${window.state.selectedMethods.has('gradient') ? 'checked' : ''}>
                         <span>gradient</span>
+                    </label>
+                    <label class="projection-toggle-checkbox">
+                        <input type="checkbox" class="method-filter" data-method="random" ${window.state.selectedMethods.has('random') ? 'checked' : ''}>
+                        <span>random</span>
                     </label>
                     <span class="projection-toggle-label" style="margin-left: 16px;">Diff:</span>
                     <label class="projection-toggle-checkbox">
@@ -372,16 +372,8 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     // Prepare data for plotting
     const traitActivations = {};  // Store smoothed activations for velocity/accel
 
-    // Prepare traces for Token Trajectory (cosine or vnorm based on mode)
+    // Prepare traces for Token Trajectory (always cosine)
     const traces = [];
-
-    // Check if any trait has token norms (for cosine mode availability)
-    const firstTraitData = traitData[loadedTraits[0]];
-    const hasAnyTokenNorms = loadedTraits.some(name => traitData[name]?.token_norms != null);
-
-    // Warn if cosine mode but no token norms
-    const canUseCosine = hasAnyTokenNorms;
-    const effectiveMode = isCosine && canUseCosine ? 'cosine' : 'vnorm';
 
     // Filter traits by selected methods
     const filteredByMethod = loadedTraits.filter(traitName => {
@@ -402,54 +394,54 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         const responseProj = data.projections.response;
         const allProj = [...promptProj, ...responseProj];
 
-        // Get baseline and vector source from metadata
+        // Get vector source from metadata
         const vs = data.metadata?.vector_source || {};
-        const baseline = vs.baseline || 0;
 
         // projections are now 1D arrays (one value per token at best layer)
-        let rawVnorm = allProj.slice(START_TOKEN_IDX);
+        let rawProj = allProj.slice(START_TOKEN_IDX);
 
-        // Subtract baseline if centering is enabled (for vnorm mode)
-        if (isCentered && baseline !== 0) {
-            rawVnorm = rawVnorm.map(v => v - baseline);
-        }
-
-        // Compute values based on mode
+        // Compute cosine similarity (always use cosine)
         let rawValues;
-        if (effectiveMode === 'cosine' && data.token_norms) {
-            // For cosine, divide by this trait's own layer's token norms
+        if (data.token_norms) {
             const traitTokenNorms = [...data.token_norms.prompt, ...data.token_norms.response].slice(START_TOKEN_IDX);
-            rawValues = rawVnorm.map((proj, i) => {
+            rawValues = rawProj.map((proj, i) => {
                 const norm = traitTokenNorms[i];
                 return norm > 0 ? proj / norm : 0;
             });
         } else {
-            rawValues = rawVnorm;
+            rawValues = rawProj;
         }
 
-        // Apply 3-token moving average
-        const smoothedValues = smoothData(rawValues, 3);
+        // Subtract BOS value if centering is enabled (makes token 0 = 0)
+        if (isCentered && rawValues.length > 0) {
+            const bosValue = rawValues[0];
+            rawValues = rawValues.map(v => v - bosValue);
+        }
 
-        // Store vnorm activations for velocity/accel (always use vnorm for derivatives)
-        traitActivations[traitName] = smoothData(rawVnorm, 3);
+        // Apply 3-token moving average if smoothing is enabled
+        const displayValues = isSmoothing ? smoothData(rawValues, 3) : rawValues;
+
+        // Store raw values for velocity/accel (always use smoothed for derivatives)
+        traitActivations[traitName] = isSmoothing ? smoothData(rawProj, 3) : rawProj;
 
         // Each vector gets its own color
         const color = window.getChartColors()[idx % 10];
 
         const method = vs.method || 'probe';
-        const valueLabel = effectiveMode === 'cosine' ? 'Cosine' : 'Projection';
-        const valueFormat = effectiveMode === 'cosine' ? '.4f' : '.3f';
+        const valueLabel = 'Cosine';
+        const valueFormat = '.4f';
 
         // Build display name and hover
         const baseTrait = data.metadata?._baseTrait || traitName;
         const displayName = data.metadata?._isMultiVector
             ? `${window.getDisplayName(baseTrait)} (${method} L${vs.layer})`
             : window.getDisplayName(traitName);
-        const hoverText = `<b>${displayName}</b><br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`;
+        const vectorInfo = vs.layer !== undefined ? `<br><span style="color:#888">L${vs.layer} ${method}</span>` : '';
+        const hoverText = `<b>${displayName}</b>${vectorInfo}<br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`;
 
         traces.push({
-            x: Array.from({length: smoothedValues.length}, (_, i) => i),
-            y: smoothedValues,
+            x: Array.from({length: displayValues.length}, (_, i) => i),
+            y: displayValues,
             type: 'scatter',
             mode: 'lines+markers',
             name: displayName,
@@ -534,25 +526,23 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     }).join('');
 
     // Token Trajectory plot
-    const yAxisTitle = effectiveMode === 'cosine' ? 'Cosine (proj / ||h||)' : 'Projection (a·v / ||v||)';
+    const yAxisTitle = 'Cosine (proj / ||h||)';
 
-    // Compute y-axis range: minimum ±0.15 for cosine mode, auto-expand if needed
+    // Compute y-axis range: minimum ±0.15, auto-expand if data exceeds
     let yAxisConfig = { title: yAxisTitle, zeroline: true, zerolinewidth: 1, showgrid: true };
-    if (effectiveMode === 'cosine') {
-        // Find actual data range across all traces
-        let minY = Infinity, maxY = -Infinity;
-        traces.forEach(t => {
-            t.y.forEach(v => {
-                if (v < minY) minY = v;
-                if (v > maxY) maxY = v;
-            });
+    // Find actual data range across all traces
+    let minY = Infinity, maxY = -Infinity;
+    traces.forEach(t => {
+        t.y.forEach(v => {
+            if (v < minY) minY = v;
+            if (v > maxY) maxY = v;
         });
-        // Ensure minimum range of ±0.15, expand if data exceeds
-        const minRange = 0.15;
-        const rangeMin = Math.min(-minRange, minY - 0.02);
-        const rangeMax = Math.max(minRange, maxY + 0.02);
-        yAxisConfig.range = [rangeMin, rangeMax];
-    }
+    });
+    // Ensure minimum range of ±0.15, expand if data exceeds
+    const minRange = 0.15;
+    const rangeMin = Math.min(-minRange, minY - 0.02);
+    const rangeMax = Math.max(minRange, maxY + 0.02);
+    yAxisConfig.range = [rangeMin, rangeMax];
 
     const mainLayout = window.getPlotlyLayout({
         xaxis: {
@@ -596,15 +586,13 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
         }
     });
 
-    // Setup projection mode toggle buttons
-    document.querySelectorAll('.projection-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const mode = btn.dataset.mode;
-            if (mode && mode !== window.state.projectionMode) {
-                window.setProjectionMode(mode);
-            }
+    // Setup smoothing checkbox
+    const smoothingCheckbox = document.getElementById('smoothing-toggle');
+    if (smoothingCheckbox) {
+        smoothingCheckbox.addEventListener('change', () => {
+            window.setSmoothing(smoothingCheckbox.checked);
         });
-    });
+    }
 
     // Setup centered checkbox
     const centeredCheckbox = document.getElementById('projection-centered-toggle');
@@ -647,7 +635,7 @@ function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, p
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens);
 
     // Render Token Velocity plot
-    renderTokenDerivativePlots(traitActivations, filteredByMethod, tickVals, tickText, nPromptTokens);
+    renderTokenDerivativePlots(traitActivations, filteredByMethod, tickVals, tickText, nPromptTokens, traitData);
 
     // Render Activation Magnitude plot (per-layer)
     renderActivationMagnitudePlot(traitData, filteredByMethod);
@@ -731,7 +719,7 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
 /**
  * Render Token Velocity plot (first derivative of smoothed trajectory)
  */
-function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens) {
+function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, traitData) {
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
     const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
     const currentTokenIdx = window.state.currentTokenIndex || 0;
@@ -745,6 +733,10 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
         const smoothedVelocity = smoothData(velocity, 3);
         const color = window.getChartColors()[idx % 10];
 
+        const vs = traitData[traitName]?.metadata?.vector_source || {};
+        const method = vs.method || 'probe';
+        const vectorInfo = vs.layer !== undefined ? `<br><span style="color:#888">L${vs.layer} ${method}</span>` : '';
+
         velocityTraces.push({
             x: Array.from({length: smoothedVelocity.length}, (_, i) => i + 0.5),
             y: smoothedVelocity,
@@ -752,7 +744,7 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
             mode: 'lines',
             name: window.getDisplayName(traitName),
             line: { color: color, width: 1.5 },
-            hovertemplate: `<b>${window.getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
+            hovertemplate: `<b>${window.getDisplayName(traitName)}</b>${vectorInfo}<br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
         });
     });
 

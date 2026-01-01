@@ -46,8 +46,8 @@ async def _vet_responses_async(experiment: str, trait: str, max_concurrent: int 
     items = []
     for polarity in ['positive', 'negative']:
         for idx, item in enumerate(responses[polarity]):
-            text = item.get('response') or item.get('answer', '')
-            prompt = item.get('prompt') or item.get('question', '')
+            text = item.get('response', '')
+            prompt = item.get('prompt', '')
             items.append({"idx": idx, "polarity": polarity, "prompt": prompt, "text": text})
 
     semaphore = asyncio.Semaphore(max_concurrent)

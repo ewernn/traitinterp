@@ -798,7 +798,7 @@ function buildMessageRegionShapes() {
                 y1: 1,
                 yref: 'paper',
                 line: {
-                    color: 'rgba(74, 158, 255, 0.5)',
+                    color: window.getCssVar?.('--chart-1', '#4a9eff') + '80',  // 50% opacity
                     width: 2,
                     dash: 'dot'
                 },
@@ -819,8 +819,8 @@ function buildMessageRegionShapes() {
             y1: 1,
             yref: 'paper',
             fillcolor: region.role === 'user'
-                ? `rgba(74, 158, 255, ${isHovered ? hoverOpacity : baseOpacity})`   // Blue for user
-                : `rgba(81, 207, 102, ${isHovered ? hoverOpacity : baseOpacity})`,  // Green for assistant
+                ? window.hexToRgba?.(window.getCssVar?.('--chart-1', '#4a9eff'), isHovered ? hoverOpacity : baseOpacity) || `rgba(74, 158, 255, ${isHovered ? hoverOpacity : baseOpacity})`
+                : window.hexToRgba?.(window.getCssVar?.('--chart-3', '#51cf66'), isHovered ? hoverOpacity : baseOpacity) || `rgba(81, 207, 102, ${isHovered ? hoverOpacity : baseOpacity})`,
             line: { width: 0 },
             layer: 'below'
         });

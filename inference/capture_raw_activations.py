@@ -71,7 +71,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from core import HookManager
-from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model_with_lora, get_inner_model, get_layer_path_prefix
+from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model_with_lora, get_inner_model, get_layer_path_prefix, tokenize
 from utils.generation import generate_with_capture, calculate_max_batch_size, create_residual_storage, setup_residual_hooks
 from utils.paths import get as get_path
 from server.client import get_model_or_client, ModelClient
@@ -148,13 +148,13 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
     Used for model-diff analysis: run same text through different models.
     """
     # Tokenize prompt
-    prompt_inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
+    prompt_inputs = tokenize(prompt_text, tokenizer).to(model.device)
     n_prompt_tokens = prompt_inputs['input_ids'].shape[1]
     prompt_token_ids = prompt_inputs['input_ids'][0].tolist()
     prompt_tokens = [tokenizer.decode([tid]) for tid in prompt_token_ids]
 
-    # Tokenize response (without special tokens)
-    response_inputs = tokenizer(response_text, return_tensors="pt", add_special_tokens=False).to(model.device)
+    # Tokenize response (without special tokens - it's appended to prompt)
+    response_inputs = tokenize(response_text, tokenizer, add_special_tokens=False).to(model.device)
     response_token_ids = response_inputs['input_ids'][0].tolist()
     response_tokens = [tokenizer.decode([tid]) for tid in response_token_ids]
 

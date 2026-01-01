@@ -33,6 +33,7 @@ from utils.paths import (
     get_val_activation_path,
 )
 from utils.generation import calculate_max_batch_size
+from utils.model import pad_sequences, tokenize
 from core import MultiLayerCapture
 
 
@@ -151,7 +152,11 @@ def extract_activations_for_trait(
     """
     print(f"  [3] Extracting activations for '{trait}' (position: {position}, component: {component})...")
 
-    n_layers = model.config.num_hidden_layers
+    # Handle nested text_config for multimodal models (e.g., Gemma 3)
+    config = model.config
+    if hasattr(config, 'text_config'):
+        config = config.text_config
+    n_layers = config.num_hidden_layers
     responses_dir = get_path('extraction.responses', experiment=experiment, trait=trait)
 
     # Get paths using centralized helpers
@@ -181,6 +186,8 @@ def extract_activations_for_trait(
 
     # Split into train/val
     train_pos, train_neg, val_pos, val_neg = pos_data, neg_data, [], []
+    if val_split == 0:
+        print(f"    WARNING: val_split=0, no validation data will be extracted")
     if val_split > 0:
         pos_split = int(len(pos_data) * (1 - val_split))
         neg_split = int(len(neg_data) * (1 - val_split))
@@ -188,7 +195,8 @@ def extract_activations_for_trait(
         train_neg, val_neg = neg_data[:neg_split], neg_data[neg_split:]
 
     def extract_from_responses(responses: list[dict], label: str) -> dict[int, torch.Tensor]:
-        nonlocal batch_size
+        # Calculate batch size locally for this split (different splits may have different max_seq_len)
+        local_batch_size = batch_size  # Start with provided value or None
         all_activations = {layer: [] for layer in range(n_layers)}
 
         # Pre-process: tokenize and compute positions
@@ -197,9 +205,9 @@ def extract_activations_for_trait(
             full_text = item.get('full_text')
             if not full_text:
                 continue
-            input_ids = tokenizer(full_text, return_tensors='pt')['input_ids'][0]
+            input_ids = tokenize(full_text, tokenizer)['input_ids'][0]
             seq_len = len(input_ids)
-            prompt_len = item.get('prompt_token_count') or len(tokenizer(item.get('prompt', ''))['input_ids'])
+            prompt_len = item.get('prompt_token_count') or len(tokenize(item.get('prompt', ''), tokenizer)['input_ids'])
             start_idx, end_idx = resolve_position(position, prompt_len, seq_len)
             if start_idx >= end_idx:
                 continue
@@ -215,42 +223,24 @@ def extract_activations_for_trait(
                 all_activations[layer] = torch.empty(0)
             return all_activations
 
-        # Calculate batch size (use provided or auto-calculate)
+        # Calculate batch size for this split (use provided or auto-calculate based on this split's max_seq_len)
         max_seq_len = max(item['seq_len'] for item in items)
-        if batch_size is None:
-            batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
+        if local_batch_size is None:
+            local_batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
 
         # Process in batches
         i = 0
         pbar = tqdm(total=len(items), desc=f"    {label}", leave=False)
         while i < len(items):
-            batch_items = items[i:i + batch_size]
+            batch_items = items[i:i + local_batch_size]
 
             try:
                 # Pad sequences (left padding)
-                batch_max_len = max(item['seq_len'] for item in batch_items)
-                padded_ids = []
-                attention_masks = []
-                pad_offsets = []  # Track padding offset for each sample
-
-                for item in batch_items:
-                    seq_len = item['seq_len']
-                    pad_len = batch_max_len - seq_len
-                    pad_offsets.append(pad_len)
-
-                    if pad_len > 0:
-                        padding = torch.full((pad_len,), tokenizer.pad_token_id or tokenizer.eos_token_id)
-                        padded = torch.cat([padding, item['input_ids']])
-                        mask = torch.cat([torch.zeros(pad_len), torch.ones(seq_len)])
-                    else:
-                        padded = item['input_ids']
-                        mask = torch.ones(seq_len)
-
-                    padded_ids.append(padded)
-                    attention_masks.append(mask)
-
-                input_ids = torch.stack(padded_ids).to(model.device)
-                attention_mask = torch.stack(attention_masks).to(model.device)
+                pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
+                batch = pad_sequences([item['input_ids'] for item in batch_items], pad_token_id)
+                input_ids = batch['input_ids'].to(model.device)
+                attention_mask = batch['attention_mask'].to(model.device)
+                pad_offsets = batch['pad_offsets']
 
                 # Forward pass with activation capture
                 with MultiLayerCapture(model, component=component) as capture:
@@ -272,7 +262,7 @@ def extract_activations_for_trait(
                             all_activations[layer].append(acts_out)
 
                 pbar.update(len(batch_items))
-                i += batch_size
+                i += local_batch_size
 
             except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
                 # MPS raises RuntimeError for OOM, CUDA has specific error
@@ -280,11 +270,11 @@ def extract_activations_for_trait(
                     raise
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                if batch_size == 1:
+                if local_batch_size == 1:
                     raise RuntimeError("OOM even with batch_size=1")
-                batch_size = max(1, batch_size // 2)
-                print(f"\n    OOM, reducing batch_size to {batch_size}")
-                # Don't advance i, retry same batch
+                local_batch_size = max(1, local_batch_size // 2)
+                print(f"\n    OOM, reducing batch_size to {local_batch_size}")
+                # Don't advance i, retry same batch with smaller size
 
         pbar.close()
 
@@ -292,7 +282,7 @@ def extract_activations_for_trait(
             all_activations[layer] = torch.stack(all_activations[layer]) if all_activations[layer] else torch.empty(0)
         return all_activations
 
-    # Extract training activations
+    # Extract training activations (each split calculates its own optimal batch size)
     pos_acts = extract_from_responses(train_pos, 'train_positive')
     neg_acts = extract_from_responses(train_neg, 'train_negative')
 

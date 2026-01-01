@@ -24,13 +24,14 @@ Usage:
         print(result.response_activations[0]['residual'].shape)  # [n_tokens, hidden_dim]
 """
 
+import os
 import torch
 import subprocess
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from core import HookManager, get_hook_path
-from utils.model import get_layer_path_prefix
+from utils.model import get_layer_path_prefix, tokenize_batch
 
 
 def get_gpu_stats() -> str:
@@ -112,8 +113,8 @@ class CaptureResult:
     prompt_token_ids: List[int]
     response_token_ids: List[int]
     # layer -> component -> tensor[n_tokens, hidden_dim]
-    # components: 'residual' (layer output), 'attn_out' (attention contribution), optionally 'mlp_out'
-    # Compute: after_attn[L] = residual[L-1] + attn_out[L]
+    # components: 'residual' (layer output), 'attn_out' (raw attn output), optionally 'mlp_out'
+    # Note: attn_out/mlp_out are raw outputs (before post-norm). For true contributions, use attn_contribution/mlp_contribution.
     prompt_activations: Dict[int, Dict[str, torch.Tensor]]
     response_activations: Dict[int, Dict[str, torch.Tensor]]
 
@@ -124,23 +125,19 @@ def _generate_batch_raw(
     prompts: List[str],
     max_new_tokens: int,
     temperature: float,
+    add_special_tokens: bool = True,
 ) -> List[str]:
     """Core batch generation without OOM handling. Internal use only."""
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    if tokenizer.padding_side != 'left':
-        tokenizer.padding_side = 'left'
 
     # Handle multi-GPU models (device_map="auto")
     device = getattr(model, 'device', None)
     if device is None or str(device) == 'meta':
         device = next(model.parameters()).device
 
-    inputs = tokenizer(
-        prompts,
-        return_tensors="pt",
-        padding=True,
-    ).to(device)
+    batch = tokenize_batch(prompts, tokenizer, add_special_tokens=add_special_tokens)
+    inputs = {k: v.to(device) for k, v in batch.items() if k != 'lengths'}
 
     with torch.no_grad():
         outputs = model.generate(
@@ -153,7 +150,7 @@ def _generate_batch_raw(
 
     # Decode each response, skipping the input tokens
     # With left-padding, all inputs are padded to same length, so use shape[1]
-    input_len = inputs.input_ids.shape[1]
+    input_len = inputs['input_ids'].shape[1]
     responses = []
     for output in outputs:
         response = tokenizer.decode(
@@ -171,6 +168,7 @@ def generate_batch(
     prompts: List[str],
     max_new_tokens: int = 256,
     temperature: float = 0.0,
+    add_special_tokens: bool = True,
 ) -> List[str]:
     """
     Generate responses with automatic batch size calculation and OOM recovery.
@@ -181,6 +179,8 @@ def generate_batch(
         prompts: List of prompts to generate responses for
         max_new_tokens: Maximum tokens to generate per prompt
         temperature: Sampling temperature (0 for greedy)
+        add_special_tokens: Whether to add BOS/EOS. Set False if prompts already
+                           have special tokens (e.g., from chat template).
 
     Returns:
         List of generated responses
@@ -202,7 +202,7 @@ def generate_batch(
     while i < len(prompts):
         batch = prompts[i:i + batch_size]
         try:
-            responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature)
+            responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature, add_special_tokens)
             all_responses.extend(responses)
             i += batch_size
             # Cache successful batch size
@@ -275,6 +275,9 @@ def estimate_kv_cache_gb(
         Estimated KV cache size in GB
     """
     config = model.config
+    # Handle nested text_config for multimodal models (e.g., Gemma 3)
+    if hasattr(config, 'text_config'):
+        config = config.text_config
     num_layers = config.num_hidden_layers
     num_kv_heads = getattr(config, "num_key_value_heads", config.num_attention_heads)
     head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
@@ -307,6 +310,9 @@ def estimate_forward_pass_gb(
         Estimated forward pass memory in GB
     """
     config = model.config
+    # Handle nested text_config for multimodal models (e.g., Gemma 3)
+    if hasattr(config, 'text_config'):
+        config = config.text_config
 
     # Auto-detect dtype from model parameters
     if dtype_bytes is None:
@@ -390,6 +396,12 @@ def calculate_max_batch_size(
 
     usable_gb = free_gb * safety_margin
     max_batch = int(usable_gb / gb_per_seq)
+
+    # Allow env var override for batch size cap
+    env_max = os.environ.get('MAX_BATCH_SIZE')
+    if env_max:
+        max_batch = min(max_batch, int(env_max))
+
     result = max(1, min(max_batch, 128))
 
     # Diagnostic output
@@ -404,8 +416,8 @@ def create_residual_storage(n_layers: int, capture_mlp: bool = False) -> Dict:
 
     Components captured:
         - 'residual': layer output
-        - 'attn_out': attention contribution (o_proj output)
-        - 'mlp_out': MLP contribution (down_proj output) - optional
+        - 'attn_out': raw attention output (o_proj, before post-norm)
+        - 'mlp_out': raw MLP output (down_proj, before post-norm) - optional
     """
     components = ['residual', 'attn_out']
     if capture_mlp:
@@ -434,8 +446,8 @@ def setup_residual_hooks(
 
     Captures:
         - 'residual': layer output
-        - 'attn_out': attention contribution (o_proj output)
-        - 'mlp_out': MLP contribution (down_proj output) - if capture_mlp=True
+        - 'attn_out': raw attention output (o_proj, before post-norm)
+        - 'mlp_out': raw MLP output (down_proj, before post-norm) - if capture_mlp=True
     """
     def make_hook(layer_idx: int, component: str):
         def hook(module, inp, out):
@@ -452,12 +464,12 @@ def setup_residual_hooks(
             get_hook_path(i, 'residual', layer_prefix),
             make_hook(i, 'residual')
         )
-        # Attention contribution (o_proj output)
+        # Raw attention output (o_proj, before post-norm)
         hook_manager.add_forward_hook(
             get_hook_path(i, 'attn_out', layer_prefix),
             make_hook(i, 'attn_out')
         )
-        # MLP contribution (down_proj output) - optional
+        # Raw MLP output (down_proj, before post-norm) - optional
         if capture_mlp:
             hook_manager.add_forward_hook(
                 get_hook_path(i, 'mlp_out', layer_prefix),
@@ -499,8 +511,13 @@ def generate_with_capture(
         If yield_per_batch=False: List of CaptureResult, one per prompt
         If yield_per_batch=True: Generator yielding (batch_results, batch_prompts) tuples
     """
+    # Handle nested text_config for multimodal models (e.g., Gemma 3)
+    config = model.config
+    if hasattr(config, 'text_config'):
+        config = config.text_config
+
     if n_layers is None:
-        n_layers = model.config.num_hidden_layers
+        n_layers = config.num_hidden_layers
 
     if batch_size is None:
         # Estimate max_seq_len from prompts + max_new_tokens
@@ -511,7 +528,7 @@ def generate_with_capture(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    hidden_size = model.config.hidden_size
+    hidden_size = config.hidden_size
 
     # Process in batches
     batches = [prompts[i:i+batch_size] for i in range(0, len(prompts), batch_size)]
@@ -558,13 +575,11 @@ def _capture_batch(
     # Get layer path prefix (handles PeftModel wrapper)
     layer_prefix = get_layer_path_prefix(model)
 
-    # Tokenize with padding (left-pad for generation)
-    tokenizer.padding_side = 'left'
-    inputs = tokenizer(prompts, return_tensors="pt", padding=True, add_special_tokens=add_special_tokens).to(model.device)
-    batch_size = inputs.input_ids.shape[0]
-
-    # Track actual prompt lengths (excluding padding)
-    prompt_lens = inputs.attention_mask.sum(dim=1).tolist()
+    # Tokenize with left padding for generation
+    batch = tokenize_batch(prompts, tokenizer, add_special_tokens=add_special_tokens)
+    inputs = {k: v.to(model.device) for k, v in batch.items() if k != 'lengths'}
+    batch_size = inputs['input_ids'].shape[0]
+    prompt_lens = batch['lengths']
 
     # Storage: [layer][component] -> list of tensors
     prompt_storage = create_residual_storage(n_layers, capture_mlp)
@@ -577,8 +592,8 @@ def _capture_batch(
             model(**inputs)
 
     # Response phase: token-by-token generation
-    context = inputs.input_ids.clone()
-    attention_mask = inputs.attention_mask.clone()
+    context = inputs['input_ids'].clone()
+    attention_mask = inputs['attention_mask'].clone()
     active = torch.ones(batch_size, dtype=torch.bool, device=model.device)
     generated_ids = [[] for _ in range(batch_size)]
 
@@ -619,8 +634,8 @@ def _capture_batch(
     results = []
     for b in range(batch_size):
         # Get actual prompt tokens (excluding padding)
-        prompt_start = inputs.input_ids.shape[1] - prompt_lens[b]
-        prompt_ids = inputs.input_ids[b, prompt_start:].tolist()
+        prompt_start = inputs['input_ids'].shape[1] - prompt_lens[b]
+        prompt_ids = inputs['input_ids'][b, prompt_start:].tolist()
         prompt_tokens = [tokenizer.decode([tid]) for tid in prompt_ids]
 
         response_tokens = [tokenizer.decode([tid]) for tid in generated_ids[b]]

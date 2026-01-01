@@ -26,11 +26,17 @@ Usage:
         --benchmark hellaswag \\
         --limit 100
 
-    # With ablation (negative steering)
+    # With ablation (negative steering) - auto-selects best vector
     python analysis/benchmark/evaluate.py \\
         --experiment gemma-2-2b-it \\
         --benchmark hellaswag \\
         --steer safety/refusal --coef -1.0
+
+    # With specific layer (finds best method/position at that layer)
+    python analysis/benchmark/evaluate.py \\
+        --experiment gemma-2-2b-it \\
+        --benchmark hellaswag \\
+        --steer safety/refusal --layer 12 --coef -1.0
 
     # CE loss instead of accuracy
     python analysis/benchmark/evaluate.py \\
@@ -51,7 +57,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import SteeringHook, get_hook_path
-from utils.model import load_model, load_experiment_config
+from utils.model import load_model, load_experiment_config, tokenize
 from utils.paths import get as get_path, get_vector_path
 from utils.vectors import get_best_vector
 from utils.metrics import batch_ce_loss
@@ -68,9 +74,9 @@ def score_completions(model, tokenizer, context: str, completions: list[str]) ->
 
     for completion in completions:
         # Tokenize context and full sequence
-        ctx_ids = tokenizer(context, return_tensors="pt", add_special_tokens=True).input_ids.to(model.device)
+        ctx_ids = tokenize(context, tokenizer).input_ids.to(model.device)
         full_text = context + completion
-        full_ids = tokenizer(full_text, return_tensors="pt", add_special_tokens=True).input_ids.to(model.device)
+        full_ids = tokenize(full_text, tokenizer).input_ids.to(model.device)
 
         ctx_len = ctx_ids.shape[1]
 
@@ -114,22 +120,25 @@ def evaluate_hellaswag(model, tokenizer, limit: int = None, steering_ctx=None):
 
     correct = 0
     total = 0
+    questions = []
 
     ctx = steering_ctx if steering_ctx else nullcontext()
 
     with ctx:
-        for item in tqdm(ds, desc="HellaSwag"):
+        for i, item in enumerate(tqdm(ds, desc="HellaSwag")):
             # Context is activity_label + ctx
             context = item["activity_label"] + ": " + item["ctx"]
             completions = item["endings"]
             label = int(item["label"])
 
             pred = score_completions(model, tokenizer, context, completions)
-            if pred == label:
+            is_correct = pred == label
+            if is_correct:
                 correct += 1
             total += 1
+            questions.append({"id": i, "correct": is_correct, "predicted": pred, "label": label})
 
-    return {"accuracy": correct / total, "correct": correct, "total": total}
+    return {"accuracy": correct / total, "correct": correct, "total": total, "questions": questions}
 
 
 def evaluate_arc_easy(model, tokenizer, limit: int = None, steering_ctx=None):
@@ -142,11 +151,12 @@ def evaluate_arc_easy(model, tokenizer, limit: int = None, steering_ctx=None):
 
     correct = 0
     total = 0
+    questions = []
 
     ctx = steering_ctx if steering_ctx else nullcontext()
 
     with ctx:
-        for item in tqdm(ds, desc="ARC-Easy"):
+        for i, item in enumerate(tqdm(ds, desc="ARC-Easy")):
             question = item["question"]
             choices = item["choices"]["text"]
             label_key = item["answerKey"]
@@ -161,11 +171,13 @@ def evaluate_arc_easy(model, tokenizer, limit: int = None, steering_ctx=None):
             context = f"Question: {question}\nAnswer:"
 
             pred = score_completions(model, tokenizer, context, choices)
-            if pred == label:
+            is_correct = pred == label
+            if is_correct:
                 correct += 1
             total += 1
+            questions.append({"id": i, "correct": is_correct, "predicted": pred, "label": label})
 
-    return {"accuracy": correct / total, "correct": correct, "total": total}
+    return {"accuracy": correct / total, "correct": correct, "total": total, "questions": questions}
 
 
 def evaluate_arc_challenge(model, tokenizer, limit: int = None, steering_ctx=None):
@@ -178,11 +190,12 @@ def evaluate_arc_challenge(model, tokenizer, limit: int = None, steering_ctx=Non
 
     correct = 0
     total = 0
+    questions = []
 
     ctx = steering_ctx if steering_ctx else nullcontext()
 
     with ctx:
-        for item in tqdm(ds, desc="ARC-Challenge"):
+        for i, item in enumerate(tqdm(ds, desc="ARC-Challenge")):
             question = item["question"]
             choices = item["choices"]["text"]
             label_key = item["answerKey"]
@@ -196,11 +209,13 @@ def evaluate_arc_challenge(model, tokenizer, limit: int = None, steering_ctx=Non
             context = f"Question: {question}\nAnswer:"
 
             pred = score_completions(model, tokenizer, context, choices)
-            if pred == label:
+            is_correct = pred == label
+            if is_correct:
                 correct += 1
             total += 1
+            questions.append({"id": i, "correct": is_correct, "predicted": pred, "label": label})
 
-    return {"accuracy": correct / total, "correct": correct, "total": total}
+    return {"accuracy": correct / total, "correct": correct, "total": total, "questions": questions}
 
 
 def evaluate_gpqa(model, tokenizer, limit: int = None, steering_ctx=None):
@@ -211,6 +226,7 @@ def evaluate_gpqa(model, tokenizer, limit: int = None, steering_ctx=None):
     1. Request access at https://huggingface.co/datasets/Idavidrein/gpqa
     2. Set HF_TOKEN environment variable
     """
+    import random
     from datasets import load_dataset
 
     try:
@@ -228,11 +244,12 @@ def evaluate_gpqa(model, tokenizer, limit: int = None, steering_ctx=None):
 
     correct = 0
     total = 0
+    questions = []
 
     ctx = steering_ctx if steering_ctx else nullcontext()
 
     with ctx:
-        for item in tqdm(ds, desc="GPQA"):
+        for i, item in enumerate(tqdm(ds, desc="GPQA")):
             question = item["Question"]
             # GPQA has Correct Answer and three incorrect options
             choices = [
@@ -244,7 +261,6 @@ def evaluate_gpqa(model, tokenizer, limit: int = None, steering_ctx=None):
             label = 0  # Correct answer is always first in our list
 
             # Shuffle to avoid position bias (but track correct answer)
-            import random
             indices = list(range(4))
             random.shuffle(indices)
             shuffled_choices = [choices[i] for i in indices]
@@ -253,11 +269,13 @@ def evaluate_gpqa(model, tokenizer, limit: int = None, steering_ctx=None):
             context = f"Question: {question}\nAnswer:"
 
             pred = score_completions(model, tokenizer, context, shuffled_choices)
-            if pred == shuffled_label:
+            is_correct = pred == shuffled_label
+            if is_correct:
                 correct += 1
             total += 1
+            questions.append({"id": i, "correct": is_correct, "predicted": pred, "label": shuffled_label})
 
-    return {"accuracy": correct / total, "correct": correct, "total": total}
+    return {"accuracy": correct / total, "correct": correct, "total": total, "questions": questions}
 
 
 def evaluate_ce_loss(model, tokenizer, limit: int = None, steering_ctx=None):
@@ -325,9 +343,8 @@ def main():
 
     # Steering options (optional)
     parser.add_argument("--steer", help="Trait to steer with (e.g., safety/refusal)")
-    parser.add_argument("--layer", type=int, help="Layer for steering (auto-selects if not specified)")
+    parser.add_argument("--layer", type=int, help="Layer for steering (auto-selects best at this layer if specified)")
     parser.add_argument("--coef", type=float, default=-1.0, help="Steering coefficient (default: -1.0 for ablation)")
-    parser.add_argument("--method", default="probe", help="Vector extraction method (default: probe)")
 
     # Model options
     parser.add_argument("--load-in-8bit", action="store_true", help="Load model in 8-bit")
@@ -349,19 +366,16 @@ def main():
     steering_info = None
 
     if args.steer:
-        # Auto-select layer if not specified
+        # Use get_best_vector with optional layer filter
+        best = get_best_vector(args.experiment, args.steer, layer=args.layer)
+        layer = best["layer"]
+        method = best["method"]
+        position = best["position"]
+        component = best["component"]
         if args.layer is None:
-            best = get_best_vector(args.experiment, args.steer)
-            layer = best["layer"]
-            method = best["method"]
-            position = best["position"]
-            component = best["component"]
             print(f"Auto-selected: layer {layer}, method {method} (source: {best['source']})")
         else:
-            layer = args.layer
-            method = args.method
-            position = "response[:]"
-            component = "residual"
+            print(f"Layer {layer}: best is method={method}, position={position} (source: {best['source']})")
 
         vector_path = get_vector_path(args.experiment, args.steer, method, layer, component, position)
         if not vector_path.exists():

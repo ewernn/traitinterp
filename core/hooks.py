@@ -16,14 +16,49 @@ from typing import Any, Callable, List, Sequence, Union
 # Path utilities
 # =============================================================================
 
-def get_hook_path(layer: int, component: str = "residual", prefix: str = "model.layers") -> str:
+def detect_contribution_paths(model) -> dict:
+    """Auto-detect where attention/MLP contributions come from based on model architecture.
+
+    Key insight: Mistral's 'post_attention_layernorm' is actually a pre-norm for MLP!
+    Only Gemma-2 has TRUE post-sublayer norms. Detection: check for 'pre_feedforward_layernorm'.
+
+    Returns:
+        Dict mapping 'attn_contribution' and 'mlp_contribution' to their submodule paths.
+    """
+    layer = model.model.layers[0]
+    children = dict(layer.named_children())
+
+    if 'pre_feedforward_layernorm' in children:
+        # Gemma-2 pattern: has BOTH pre and post norms
+        # The post norms scale outputs before residual addition
+        return {
+            'attn_contribution': 'post_attention_layernorm',
+            'mlp_contribution': 'post_feedforward_layernorm',
+        }
+    else:
+        # Standard pre-norm only (Llama, Mistral, Qwen, etc.)
+        # Attention/MLP outputs go directly to residual without post-scaling
+        return {
+            'attn_contribution': 'self_attn.o_proj',
+            'mlp_contribution': 'mlp.down_proj',
+        }
+
+
+def get_hook_path(layer: int, component: str = "residual", prefix: str = None, model=None) -> str:
     """
     Convert layer + component to string path for hooking.
 
     Args:
         layer: Layer index (0-indexed)
-        component: "residual", "attn_out", "mlp_out", "k_cache", "v_cache"
-        prefix: Path prefix to layers (default "model.layers", use "base_model.model.model.layers" for PeftModel)
+        component: One of:
+            - "residual": Layer output (accumulated state)
+            - "attn_out": Raw attention output (before any post-norm)
+            - "mlp_out": Raw MLP output (before any post-norm)
+            - "attn_contribution": What attention actually adds to residual (requires model)
+            - "mlp_contribution": What MLP actually adds to residual (requires model)
+            - "k_cache", "v_cache": Key/value projections
+        prefix: Path prefix to layers (auto-detected if model provided, else "model.layers")
+        model: Used for auto-detecting prefix and architecture
 
     Returns:
         String path like "model.layers.16" or "model.layers.16.self_attn.o_proj"
@@ -33,7 +68,18 @@ def get_hook_path(layer: int, component: str = "residual", prefix: str = "model.
         'model.layers.16'
         >>> get_hook_path(16, "attn_out")
         'model.layers.16.self_attn.o_proj'
+        >>> get_hook_path(16, "attn_contribution", model=model)  # Auto-detects post-norm if present
+        'model.layers.16.post_attention_layernorm'  # Gemma-2
+        'model.layers.16.self_attn.o_proj'          # Llama/Mistral/Qwen
     """
+    # Auto-detect prefix if model provided and prefix not specified
+    if prefix is None:
+        if model is not None:
+            from utils.model import get_layer_path_prefix
+            prefix = get_layer_path_prefix(model)
+        else:
+            prefix = "model.layers"
+    # Static paths (don't require model)
     paths = {
         'residual': f"{prefix}.{layer}",
         'attn_out': f"{prefix}.{layer}.self_attn.o_proj",
@@ -41,6 +87,15 @@ def get_hook_path(layer: int, component: str = "residual", prefix: str = "model.
         'k_cache': f"{prefix}.{layer}.self_attn.k_proj",
         'v_cache': f"{prefix}.{layer}.self_attn.v_proj",
     }
+
+    # Dynamic paths (require model for architecture detection)
+    if component in ('attn_contribution', 'mlp_contribution'):
+        if model is None:
+            raise ValueError(f"Component '{component}' requires model parameter for architecture detection")
+        contrib_paths = detect_contribution_paths(model)
+        paths['attn_contribution'] = f"{prefix}.{layer}.{contrib_paths['attn_contribution']}"
+        paths['mlp_contribution'] = f"{prefix}.{layer}.{contrib_paths['mlp_contribution']}"
+
     if component not in paths:
         raise ValueError(f"Unknown component: {component}. Valid: {list(paths.keys())}")
     return paths[component]
@@ -238,7 +293,7 @@ class SteeringHook(LayerHook):
             raise ValueError(f"Vector must be 1-D, got shape {self.vector.shape}")
 
     def _hook_fn(self, module, inputs, outputs):
-        """Add steering vector to output."""
+        """Add steering vector to output. Moves vector to output device for multi-GPU."""
         device = outputs[0].device if isinstance(outputs, tuple) else outputs.device
         steer = (self.coefficient * self.vector).to(device)
 
@@ -276,20 +331,29 @@ class MultiLayerCapture:
         model: torch.nn.Module,
         layers: List[int] = None,
         component: str = "residual",
-        prefix: str = "model.layers",
+        prefix: str = None,
     ):
         """
         Args:
             model: The transformer model
             layers: List of layer indices, or None for all layers
-            component: "residual", "attn_out", etc.
-            prefix: Path prefix (for PeftModel use "base_model.model.model.layers")
+            component: "residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", etc.
+            prefix: Path prefix (auto-detected if None)
         """
+        # Auto-detect prefix for different model types
+        if prefix is None:
+            from utils.model import get_layer_path_prefix
+            prefix = get_layer_path_prefix(model)
+
         if layers is None:
-            layers = list(range(model.config.num_hidden_layers))
+            # Handle nested text_config for multimodal models (e.g., Gemma 3)
+            config = model.config
+            if hasattr(config, 'text_config'):
+                config = config.text_config
+            layers = list(range(config.num_hidden_layers))
 
         self._hooks = {
-            layer: CaptureHook(model, get_hook_path(layer, component, prefix))
+            layer: CaptureHook(model, get_hook_path(layer, component, prefix, model=model))
             for layer in layers
         }
 

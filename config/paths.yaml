@@ -74,6 +74,10 @@ inference:
   raw_residual: "experiments/{experiment}/inference/raw/residual/{prompt_set}"
   raw_internals: "experiments/{experiment}/inference/raw/internals/{prompt_set}"
 
+  # SAE-encoded features
+  sae: "experiments/{experiment}/inference/sae"
+  sae_residual: "experiments/{experiment}/inference/sae/{prompt_set}"
+
   # Responses (trait-independent, shared across all trait projections)
   # Contains prompt/response text and tokens - stored once per prompt
   responses: "experiments/{experiment}/inference/responses/{prompt_set}"

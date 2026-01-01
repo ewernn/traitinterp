@@ -377,7 +377,7 @@ def check_experiment(experiment: str) -> ExperimentIntegrity:
 
     schema = get_schema()
 
-    exp_dir = Path("experiments") / experiment
+    exp_dir = get_path('experiments.base', experiment=experiment)
     if not exp_dir.exists():
         raise ValueError(f"Experiment not found: {experiment}")
 

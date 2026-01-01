@@ -245,7 +245,7 @@ class PathBuilder {
      * @returns {string}
      */
     promptSetFile(promptSet) {
-        return `/${this.get('inference.prompt_set_file', { prompt_set: promptSet })}`;
+        return `/${this.get('datasets.inference_prompt_set', { prompt_set: promptSet })}`;
     }
 
     /**
@@ -306,7 +306,7 @@ class PathBuilder {
      * @returns {string}
      */
     promptsDir() {
-        return `/${this.get('inference.prompts_dir')}`;
+        return `/${this.get('datasets.inference')}`;
     }
 
     // =========================================================================

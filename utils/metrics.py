@@ -18,7 +18,7 @@ import torch
 import torch.nn.functional as F
 from typing import List
 
-from utils.model import tokenize_batch
+from utils.model import tokenize_batch, tokenize
 
 
 def ce_loss(logits: torch.Tensor, target_ids: torch.Tensor) -> float:
@@ -48,7 +48,7 @@ def sequence_ce_loss(model, tokenizer, text: str) -> float:
     Returns:
         Average cross-entropy loss
     """
-    inputs = tokenizer(text, return_tensors="pt").to(model.device)
+    inputs = tokenize(text, tokenizer).to(model.device)
     with torch.no_grad():
         logits = model(**inputs).logits[0]  # [seq_len, vocab]
     return ce_loss(logits, inputs.input_ids[0])

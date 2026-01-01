@@ -38,7 +38,7 @@ class MultiLayerSteeringHook:
             component: "residual", "attn_out", etc.
         """
         self._hooks = [
-            SteeringHook(model, vector, get_hook_path(layer, component), coefficient)
+            SteeringHook(model, vector, get_hook_path(layer, component, model=model), coefficient)
             for layer, vector, coefficient in configs
         ]
 
@@ -98,7 +98,7 @@ class BatchedLayerSteeringHook:
     def __enter__(self):
         self._manager = HookManager(self.model)
         for layer_idx, layer_configs in self._layer_configs.items():
-            path = get_hook_path(layer_idx, self.component)
+            path = get_hook_path(layer_idx, self.component, model=self.model)
             self._manager.add_forward_hook(path, self._make_hook(layer_configs))
         return self
 

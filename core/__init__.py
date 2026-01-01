@@ -3,12 +3,13 @@ Core primitives for trait vector extraction and analysis.
 """
 
 from .hooks import (
-    HookManager,        # base: all hook registration
-    get_hook_path,      # layer + component -> string path
-    LayerHook,          # single-layer base class
-    CaptureHook,        # capture from one layer
-    SteeringHook,       # steer one layer
-    MultiLayerCapture,  # capture one component across layers
+    HookManager,                # base: all hook registration
+    get_hook_path,              # layer + component -> string path
+    detect_contribution_paths,  # auto-detect post-norm architecture
+    LayerHook,                  # single-layer base class
+    CaptureHook,                # capture from one layer
+    SteeringHook,               # steer one layer
+    MultiLayerCapture,          # capture one component across layers
 )
 from .methods import (
     ExtractionMethod,

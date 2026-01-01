@@ -79,7 +79,22 @@ def vet_scenarios(
 
     pos_passed = [r for r in pos_results if r["score"] is not None and r["score"] >= pos_threshold]
     neg_passed = [r for r in neg_results if r["score"] is not None and r["score"] <= neg_threshold]
+
+    pos_failed = [r for r in pos_results if r["score"] is not None and r["score"] < pos_threshold]
+    neg_failed = [r for r in neg_results if r["score"] is not None and r["score"] > neg_threshold]
     errors = [r for r in results if r["score"] is None]
+
+    # Build failed_indices for consistency with vet_responses.py
+    # Note: For scenarios, the index is the line number in positive.txt/negative.txt
+    pos_scenarios = load_scenarios(trait)['positive']
+    neg_scenarios = load_scenarios(trait)['negative']
+
+    failed_indices = {
+        "positive": [pos_scenarios.index(r["scenario"]) for r in pos_failed if r["scenario"] in pos_scenarios] +
+                   [pos_scenarios.index(r["scenario"]) for r in results if r["polarity"] == "positive" and r["score"] is None and r["scenario"] in pos_scenarios],
+        "negative": [neg_scenarios.index(r["scenario"]) for r in neg_failed if r["scenario"] in neg_scenarios] +
+                   [neg_scenarios.index(r["scenario"]) for r in results if r["polarity"] == "negative" and r["score"] is None and r["scenario"] in neg_scenarios],
+    }
 
     # Save results
     output_dir = get_path('extraction.trait', experiment=experiment, trait=trait) / "vetting"
@@ -93,8 +108,11 @@ def vet_scenarios(
         "summary": {
             "positive_passed": len(pos_passed),
             "negative_passed": len(neg_passed),
+            "positive_failed": len(pos_failed),
+            "negative_failed": len(neg_failed),
             "errors": len(errors),
         },
+        "failed_indices": failed_indices,
         "results": results,
     }
 

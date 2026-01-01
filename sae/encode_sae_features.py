@@ -21,7 +21,11 @@ from sae_lens import SAE
 from pathlib import Path
 import json
 import argparse
+import sys
 from tqdm import tqdm
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.paths import get as get_path
 
 
 def load_sae(
@@ -207,13 +211,8 @@ def encode_experiment(
         device: Device for SAE
         top_k: Number of top features per token
     """
-    # Raw activations location (worktree reads from main repo)
-    main_repo = Path(__file__).parent.parent.parent / "trait-interp"
-    raw_base = main_repo / "experiments" / experiment / "inference" / "raw" / "residual"
-
-    if not raw_base.exists():
-        # Fallback to local path if not in worktree
-        raw_base = Path("experiments") / experiment / "inference" / "raw" / "residual"
+    # Raw activations location
+    raw_base = get_path('inference.raw_residual', experiment=experiment, prompt_set='').parent
 
     if not raw_base.exists():
         print(f"No raw activations found at: {raw_base}")
@@ -239,10 +238,8 @@ def encode_experiment(
     sae = load_sae(device=device)
     print()
 
-    # Output base directory (write to main repo so visualization can find it)
-    output_base = main_repo / "experiments" / experiment / "inference" / "sae"
-    if not main_repo.exists():
-        output_base = Path("experiments") / experiment / "inference" / "sae"
+    # Output base directory
+    output_base = get_path('inference.sae', experiment=experiment)
 
     # Process each prompt set
     total_encoded = 0
@@ -283,7 +280,7 @@ def encode_experiment(
     print("=" * 60)
     print(f"Encoded: {total_encoded}")
     print(f"Failed: {total_failed}")
-    print(f"\nOutput: experiments/{experiment}/inference/sae/")
+    print(f"\nOutput: {output_base}")
 
 
 def main():

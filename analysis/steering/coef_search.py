@@ -53,7 +53,7 @@ async def evaluate_single_config(
 
     # Generate all responses in batch with steering
     print(f"  Generating {len(questions)} responses for {desc}...")
-    with SteeringHook(model, vector, get_hook_path(layer, component), coefficient=coef):
+    with SteeringHook(model, vector, get_hook_path(layer, component, model=model), coefficient=coef):
         responses = generate_batch(model, tokenizer, formatted, max_new_tokens=max_new_tokens)
 
     all_qa_pairs = list(zip(questions, responses))

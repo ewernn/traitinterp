@@ -1,0 +1,25 @@
+# Gemma 3 4B Instruction-Tuned
+# Source: https://huggingface.co/google/gemma-3-4b-it
+
+huggingface_id: google/gemma-3-4b-it
+model_type: gemma3
+variant: it
+
+# Architecture (verified from HF config.json text_config)
+# Note: 5:1 local:global attention layers, sliding window 1024
+max_context_length: 131072
+num_hidden_layers: 34
+hidden_size: 2560
+num_attention_heads: 8
+num_key_value_heads: 4
+intermediate_size: 10240  # 4x hidden_size
+
+# SAE availability (Gemma Scope 2)
+sae:
+  available: true
+  provider: gemma-scope-2
+  huggingface_id: google/gemma-scope-2-4b-it
+  # TODO: add layer_template and downloaded_layers once SAEs are downloaded
+
+defaults:
+  monitoring_layer: 17  # ~50% of 34 layers

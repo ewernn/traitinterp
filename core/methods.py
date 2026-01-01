@@ -23,19 +23,23 @@ class ExtractionMethod(ABC):
             neg_acts: [n_neg, hidden_dim]
 
         Returns:
-            Dict with 'vector' key containing [hidden_dim] tensor
+            Dict with 'vector' key containing [hidden_dim] tensor.
+            Methods may include additional keys (e.g., 'bias', 'train_acc').
         """
         pass
 
 
 class MeanDifferenceMethod(ExtractionMethod):
-    """Baseline: vector = mean(pos) - mean(neg)"""
+    """Baseline: vector = mean(pos) - mean(neg), normalized to unit norm."""
 
     def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         pos_mean = pos_acts.mean(dim=0)
         neg_mean = neg_acts.mean(dim=0)
+        vector = pos_mean - neg_mean
+        # Normalize to unit norm for consistent steering coefficients
+        vector = vector / (vector.norm() + 1e-8)
         return {
-            'vector': pos_mean - neg_mean,
+            'vector': vector,
             'pos_mean': pos_mean,
             'neg_mean': neg_mean,
         }
@@ -54,24 +58,39 @@ class ProbeMethod(ExtractionMethod):
         **kwargs
     ) -> Dict[str, torch.Tensor]:
         from sklearn.linear_model import LogisticRegression
+        from sklearn.preprocessing import StandardScaler
 
         # Prepare data
         X = torch.cat([pos_acts, neg_acts], dim=0).float().cpu().numpy()
         y = np.concatenate([np.ones(len(pos_acts)), np.zeros(len(neg_acts))])
 
+        # Normalize activations for stable coefficients across models
+        # Different models have vastly different activation scales (e.g., Gemma 3 ~170x larger than Gemma 2)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
         # Train probe
         solver = 'saga' if penalty in ('l1', 'elasticnet') else 'lbfgs'
         probe = LogisticRegression(max_iter=max_iter, C=C, penalty=penalty, solver=solver, random_state=42)
-        probe.fit(X, y)
+        probe.fit(X_scaled, y)
 
-        # Extract vector
-        vector = torch.from_numpy(probe.coef_[0]).to(pos_acts.device, dtype=pos_acts.dtype)
-        bias = torch.tensor(probe.intercept_[0]).to(pos_acts.device, dtype=pos_acts.dtype)
+        # Transform coefficients back to original scale
+        # For StandardScaler: X_scaled = (X - mean) / std
+        # So: X @ (coef / std) = X_scaled @ coef (ignoring bias adjustment)
+        coef_original = probe.coef_[0] / scaler.scale_
+        vector = torch.from_numpy(coef_original).to(pos_acts.device, dtype=pos_acts.dtype)
+
+        # Normalize to unit norm for consistent steering coefficients
+        vector = vector / (vector.norm() + 1e-8)
+
+        # Bias adjusted for original scale (for reference, not used in steering)
+        bias_adjustment = -np.sum(probe.coef_[0] * scaler.mean_ / scaler.scale_)
+        bias = torch.tensor(probe.intercept_[0] + bias_adjustment).to(pos_acts.device, dtype=pos_acts.dtype)
 
         return {
             'vector': vector,
             'bias': bias,
-            'train_acc': probe.score(X, y),
+            'train_acc': probe.score(X_scaled, y),
         }
 
 
@@ -108,13 +127,14 @@ class GradientMethod(ExtractionMethod):
             optimizer.step()
 
         final_vector = vector.detach()
+        # Normalize to unit norm for consistent steering coefficients
+        final_vector = final_vector / (final_vector.norm() + 1e-8)
 
         with torch.no_grad():
-            v_norm = final_vector / (final_vector.norm() + 1e-8)
-            final_sep = (pos_acts @ v_norm).mean() - (neg_acts @ v_norm).mean()
+            final_sep = (pos_acts @ final_vector).mean() - (neg_acts @ final_vector).mean()
 
         return {
-            'vector': final_vector,  # NOT normalized, consistent with other methods
+            'vector': final_vector,
             'final_separation': final_sep.item(),
         }
 
@@ -127,7 +147,8 @@ class RandomBaselineMethod(ExtractionMethod):
             torch.manual_seed(seed)
 
         vector = torch.randn(pos_acts.shape[1], dtype=pos_acts.dtype, device=pos_acts.device)
-        # NOT normalized, consistent with other methods
+        # Normalize to unit norm for consistent steering coefficients
+        vector = vector / (vector.norm() + 1e-8)
 
         return {'vector': vector}
 

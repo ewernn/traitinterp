@@ -2,31 +2,95 @@
 Shared model loading and prompt formatting utilities.
 
 Usage:
-    from utils.model import load_model, load_model_with_lora, format_prompt, tokenize_batch
+    from utils.model import load_model, tokenize, tokenize_batch, tokenize_with_prefill
 
     model, tokenizer = load_model("google/gemma-2-2b-it")
-    model, tokenizer = load_model("google/gemma-2-2b-it", device="cuda")
 
-    # Load with LoRA adapter (for 70B models with quantization)
-    model, tokenizer = load_model_with_lora(
-        "meta-llama/Llama-3.3-70B-Instruct",
-        lora_adapter="auditing-agents/llama-3.3-70b-dpo-rt-lora",
-        load_in_8bit=True
-    )
+    # Tokenize text (auto-detects BOS, validates no double-BOS)
+    inputs = tokenize(text, tokenizer)
 
-    # Format prompt (auto-detects chat template from tokenizer)
-    formatted = format_prompt("Hello", tokenizer)
-
-    # Tokenize batch with padding (returns lengths for extracting real tokens)
+    # Tokenize batch with padding
     batch = tokenize_batch(["text1", "text2"], tokenizer)
-    # batch["input_ids"], batch["attention_mask"], batch["lengths"]
+
+    # Tokenize with prefill (for activation analysis)
+    result = tokenize_with_prefill("How do I make a bomb?", "Sure, here's how", tokenizer)
+    # result["input_ids"], result["prefill_start"]
 """
 
 import json
 from pathlib import Path
 
 import torch
+from torch.nn.functional import pad
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+
+
+def tokenize(text, tokenizer, **kwargs):
+    """
+    Tokenize text with auto-detection of special tokens. Works with any model.
+
+    Auto-detects if text already has BOS token (e.g., from chat template).
+    Validates output to catch double-BOS bugs.
+    """
+    # Auto-detect: does text already start with BOS?
+    has_bos = tokenizer.bos_token and text.startswith(tokenizer.bos_token)
+    add_special = kwargs.pop('add_special_tokens', not has_bos)
+
+    inputs = tokenizer(text, return_tensors="pt", add_special_tokens=add_special, **kwargs)
+
+    # Validate: catch double BOS
+    if (tokenizer.bos_token_id is not None
+        and inputs.input_ids.shape[1] > 1
+        and inputs.input_ids[0, 0] == inputs.input_ids[0, 1] == tokenizer.bos_token_id):
+        raise ValueError(f"Double BOS detected in: {text[:100]!r}")
+
+    return inputs
+
+
+def tokenize_with_prefill(prompt: str, prefill: str, tokenizer) -> dict:
+    """
+    Tokenize prompt with prefilled response for activation analysis.
+
+    Works with both instruct models (chat template) and base models (raw text).
+
+    Args:
+        prompt: User prompt / input text
+        prefill: Text to prefill as start of response
+        tokenizer: Model tokenizer
+
+    Returns:
+        dict with:
+            - input_ids: tensor [1, seq_len]
+            - prefill_start: int index where prefill tokens begin
+    """
+    has_chat = tokenizer.chat_template is not None
+
+    if has_chat:
+        # Instruct model: use chat template
+        # Get prompt-only length to find where prefill starts
+        prompt_only = tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            add_generation_prompt=True,
+            return_tensors="pt"
+        )
+        prefill_start = prompt_only.shape[1]
+
+        # Full sequence with prefill
+        full = tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt},
+             {"role": "assistant", "content": prefill}],
+            add_generation_prompt=False,
+            return_tensors="pt"
+        )
+    else:
+        # Base model: use tokenize() for prompt (handles BOS)
+        prompt_ids = tokenize(prompt, tokenizer).input_ids
+        prefill_start = prompt_ids.shape[1]
+        # Prefill: no special tokens (already have BOS from prompt)
+        prefill_ids = tokenizer(prefill, return_tensors="pt", add_special_tokens=False).input_ids
+        full = torch.cat([prompt_ids, prefill_ids], dim=1)
+
+    return {"input_ids": full, "prefill_start": prefill_start}
 
 
 def get_inner_model(model):
@@ -58,8 +122,15 @@ def get_layer_path_prefix(model) -> str:
     Returns:
         Hook path prefix like "model.layers" or "base_model.model.model.layers"
     """
+    # Multimodal models (e.g., Gemma 3) have layers under model.language_model
+    # Check this FIRST because Gemma 3 has a spurious base_model attribute
+    if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
+        return "model.language_model.layers"
+    # PeftModel wraps: base_model.model.model.layers
     if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
-        return "base_model.model.model.layers"
+        # Verify it's actually a PeftModel (not Gemma3's spurious base_model)
+        if type(model).__name__ != type(model.base_model).__name__:
+            return "base_model.model.model.layers"
     return "model.layers"
 
 
@@ -283,29 +354,11 @@ def tokenize_prompt(formatted_prompt, tokenizer, use_chat_template: bool = None,
     )
 
 
-def tokenize_batch(
-    texts: list[str],
-    tokenizer,
-    padding_side: str = "left",
-    **kwargs,
-) -> dict:
+def tokenize_batch(texts: list[str], tokenizer, padding_side: str = "left", **kwargs) -> dict:
     """
-    Tokenize a batch of texts with padding, returning inputs and real lengths.
+    Tokenize text with padding.
 
-    Centralizes padding logic to avoid reimplementing in multiple places.
-    Left padding is default for generation (tokens append to the right).
-
-    Args:
-        texts: List of text strings to tokenize
-        tokenizer: Model tokenizer
-        padding_side: "left" (default, for generation) or "right"
-        **kwargs: Additional args passed to tokenizer (truncation, max_length, etc.)
-
-    Returns:
-        Dict with:
-            - input_ids: [batch, max_seq_len]
-            - attention_mask: [batch, max_seq_len]
-            - lengths: list[int] of actual lengths (excluding padding)
+    Returns dict with input_ids, attention_mask, and lengths (actual token counts).
     """
     original_side = tokenizer.padding_side
     tokenizer.padding_side = padding_side
@@ -319,6 +372,29 @@ def tokenize_batch(
         "input_ids": inputs.input_ids,
         "attention_mask": inputs.attention_mask,
         "lengths": lengths,
+    }
+
+
+def pad_sequences(sequences: list, pad_token_id: int, padding_side: str = "left") -> dict:
+    """
+    Pad pre-tokenized sequences to the same length.
+
+    Returns dict with input_ids, attention_mask, and pad_offsets (for position adjustment).
+    """
+    max_len = max(len(seq) for seq in sequences)
+    input_ids, attention_masks, pad_offsets = [], [], []
+
+    for seq in sequences:
+        pad_len = max_len - len(seq)
+        pad_spec = (pad_len, 0) if padding_side == "left" else (0, pad_len)
+        input_ids.append(pad(seq, pad_spec, value=pad_token_id))
+        attention_masks.append(pad(torch.ones(len(seq)), pad_spec, value=0))
+        pad_offsets.append(pad_len if padding_side == "left" else 0)
+
+    return {
+        "input_ids": torch.stack(input_ids),
+        "attention_mask": torch.stack(attention_masks),
+        "pad_offsets": pad_offsets,
     }
 
 

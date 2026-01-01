@@ -68,7 +68,6 @@ def run_pipeline(
     vet: bool = True,
     rollouts: int = 1,
     temperature: float = 0.0,
-    batch_size: int = 8,
     val_split: float = 0.2,
     base_model: Optional[bool] = None,
     pos_threshold: int = 60,
@@ -78,6 +77,7 @@ def run_pipeline(
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     max_new_tokens: int = 64,
+    max_concurrent: int = 20,
 ):
     """Execute extraction pipeline."""
     methods = methods or ['mean_diff', 'probe', 'gradient']
@@ -111,26 +111,26 @@ def run_pipeline(
         # Stage 0: Scenario vetting
         if should_run(0) and vet:
             if not (vetting_path / "scenario_scores.json").exists() or force:
-                vet_scenarios(experiment, trait, pos_threshold, neg_threshold)
+                vet_scenarios(experiment, trait, pos_threshold, neg_threshold, max_concurrent)
 
         # Stage 1: Generate responses
         if should_run(1):
             responses_path = get_path("extraction.responses", experiment=experiment, trait=trait)
             if not (responses_path / "pos.json").exists() or force:
                 generate_responses_for_trait(experiment, trait, model, tokenizer, max_new_tokens,
-                                             batch_size, rollouts, temperature, use_chat_template)
+                                             rollouts, temperature, use_chat_template)
 
         # Stage 2: Response vetting
         if should_run(2) and vet:
             if not (vetting_path / "response_scores.json").exists() or force:
-                vet_responses(experiment, trait, pos_threshold, neg_threshold)
+                vet_responses(experiment, trait, pos_threshold, neg_threshold, max_concurrent)
 
         # Stage 3: Extract activations
         if should_run(3):
             activation_metadata = get_activation_metadata_path(experiment, trait, component, position)
             if not activation_metadata.exists() or force:
                 extract_activations_for_trait(experiment, trait, model, tokenizer, val_split,
-                                              position=position, component=component, batch_size=batch_size)
+                                              position=position, component=component)
 
         # Stage 4: Extract vectors
         if should_run(4):
@@ -179,7 +179,6 @@ if __name__ == "__main__":
     parser.add_argument("--no-vet", action="store_true")
     parser.add_argument("--rollouts", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--val-split", type=float, default=0.2)
     parser.add_argument("--extraction-model", type=str)
     parser.add_argument("--component", default="residual")
@@ -190,6 +189,8 @@ if __name__ == "__main__":
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--max-new-tokens", type=int, default=64)
+    parser.add_argument("--max-concurrent", type=int, default=20,
+                        help="Max concurrent API requests for vetting (default: 20)")
     model_mode = parser.add_mutually_exclusive_group()
     model_mode.add_argument("--base-model", action="store_true", dest="base_model_override")
     model_mode.add_argument("--it-model", action="store_true", dest="it_model_override")
@@ -223,7 +224,6 @@ if __name__ == "__main__":
         vet=not args.no_vet,
         rollouts=args.rollouts,
         temperature=args.temperature,
-        batch_size=args.batch_size,
         val_split=args.val_split,
         base_model=True if args.base_model_override else (False if args.it_model_override else None),
         pos_threshold=args.pos_threshold,
@@ -233,4 +233,5 @@ if __name__ == "__main__":
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
         max_new_tokens=args.max_new_tokens,
+        max_concurrent=args.max_concurrent,
     )

@@ -377,7 +377,7 @@ function setupPromptPickerListeners() {
  * Update token highlight shapes on existing Plotly plots (no re-render).
  */
 function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
-    const startIdx = 2;  // First 2 tokens skipped in trait-dynamics plots (BOS + system)
+    const startIdx = 0;  // Show all tokens including BOS
     const highlightX = Math.max(0, tokenIdx - startIdx);
     const separatorX = (nPromptTokens - startIdx) - 0.5;
 

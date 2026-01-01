@@ -28,6 +28,9 @@ def projection(
     Returns:
         [*] projection scores (higher = more trait expression)
     """
+    # Cast to float32 to avoid dtype mismatches (bfloat16 vs float16)
+    activations = activations.float()
+    vector = vector.float()
     if normalize_vector:
         vector = vector / (vector.norm() + 1e-8)
     return torch.matmul(activations, vector)
@@ -48,15 +51,15 @@ def batch_cosine_similarity(
     Cosine similarity between each activation and a vector.
 
     Args:
-        activations: [n_samples, hidden_dim]
+        activations: [*, hidden_dim] - arbitrary leading dimensions
         vector: [hidden_dim]
 
     Returns:
-        [n_samples] cosine similarities in [-1, 1]
+        [*] cosine similarities in [-1, 1]
     """
     acts = activations.float()
     vec = vector.float()
-    acts_norm = acts / (acts.norm(dim=1, keepdim=True) + 1e-8)
+    acts_norm = acts / (acts.norm(dim=-1, keepdim=True) + 1e-8)
     vec_norm = vec / (vec.norm() + 1e-8)
     return acts_norm @ vec_norm
 
@@ -87,6 +90,8 @@ def accuracy(pos_proj: torch.Tensor, neg_proj: torch.Tensor, threshold: float = 
 
 def effect_size(pos_proj: torch.Tensor, neg_proj: torch.Tensor, signed: bool = False) -> float:
     """Cohen's d: separation in units of std. 0.2=small, 0.5=medium, 0.8=large.
+
+    Uses pooled standard deviation (assumes roughly equal variance).
 
     Args:
         signed: If True, preserve sign (positive = pos > neg). Default False (absolute value).
@@ -138,7 +143,7 @@ def distribution_properties(
         neg_proj: [n_neg] projection scores for negative examples
 
     Returns:
-        pos_std, neg_std, overlap_coefficient, separation_margin
+        Dict[str, float] with keys: pos_std, neg_std, overlap_coefficient, separation_margin
     """
     pos_mean = pos_proj.mean().item()
     neg_mean = neg_proj.mean().item()
