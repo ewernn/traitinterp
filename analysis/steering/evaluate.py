@@ -101,14 +101,20 @@ def load_model_handle(model_name: str, load_in_8bit: bool = False, load_in_4bit:
         return model, tokenizer, False
 
 
-def load_layer_deltas(experiment: str, trait: str, min_coherence: float = MIN_COHERENCE) -> Dict[int, Dict]:
+def load_layer_deltas(
+    experiment: str,
+    trait: str,
+    position: str = "response[:]",
+    component: str = "residual",
+    min_coherence: float = MIN_COHERENCE
+) -> Dict[int, Dict]:
     """
     Load single-layer results and return best delta per layer.
 
     Returns:
         {layer: {'delta': float, 'coef': float, 'coherence': float}}
     """
-    results_path = get_steering_results_path(experiment, trait)
+    results_path = get_steering_results_path(experiment, trait, position)
     if not results_path.exists():
         return {}
 
@@ -124,6 +130,11 @@ def load_layer_deltas(experiment: str, trait: str, min_coherence: float = MIN_CO
 
         # Only single-layer runs
         if len(config.get('layers', [])) != 1:
+            continue
+
+        # Filter by component
+        run_component = config.get('component', 'residual')
+        if run_component != component:
             continue
 
         layer = config['layers'][0]
@@ -588,7 +599,7 @@ async def run_multilayer_evaluation(
         raise ValueError(f"No valid layers. Model has {num_layers} layers")
 
     # Load single-layer deltas for weighted mode
-    layer_deltas = load_layer_deltas(experiment, trait)
+    layer_deltas = load_layer_deltas(experiment, trait, position, component)
     if not layer_deltas:
         print(f"Warning: No single-layer results found. Run single-layer evaluation first.")
         return

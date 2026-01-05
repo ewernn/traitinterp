@@ -78,6 +78,7 @@ def run_pipeline(
     load_in_4bit: bool = False,
     max_new_tokens: int = 64,
     max_concurrent: int = 20,
+    paired_filter: bool = True,
 ):
     """Execute extraction pipeline."""
     methods = methods or ['mean_diff', 'probe', 'gradient']
@@ -130,7 +131,8 @@ def run_pipeline(
             activation_metadata = get_activation_metadata_path(experiment, trait, component, position)
             if not activation_metadata.exists() or force:
                 extract_activations_for_trait(experiment, trait, model, tokenizer, val_split,
-                                              position=position, component=component)
+                                              position=position, component=component,
+                                              paired_filter=paired_filter)
 
         # Stage 4: Extract vectors
         if should_run(4):
@@ -191,6 +193,8 @@ if __name__ == "__main__":
     parser.add_argument("--max-new-tokens", type=int, default=64)
     parser.add_argument("--max-concurrent", type=int, default=20,
                         help="Max concurrent API requests for vetting (default: 20)")
+    parser.add_argument("--no-paired-filter", action="store_true",
+                        help="Disable paired filtering (filter pos/neg independently)")
     model_mode = parser.add_mutually_exclusive_group()
     model_mode.add_argument("--base-model", action="store_true", dest="base_model_override")
     model_mode.add_argument("--it-model", action="store_true", dest="it_model_override")
@@ -234,4 +238,5 @@ if __name__ == "__main__":
         load_in_4bit=args.load_in_4bit,
         max_new_tokens=args.max_new_tokens,
         max_concurrent=args.max_concurrent,
+        paired_filter=not args.no_paired_filter,
     )

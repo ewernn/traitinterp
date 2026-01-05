@@ -1,0 +1,26 @@
+# Llama 3.1 8B Base
+# Source: https://huggingface.co/meta-llama/Llama-3.1-8B
+
+huggingface_id: meta-llama/Llama-3.1-8B
+model_type: llama
+variant: base
+
+# Architecture (from HF config.json)
+max_context_length: 131072
+num_hidden_layers: 32
+hidden_size: 4096
+num_attention_heads: 32
+num_key_value_heads: 8
+intermediate_size: 14336
+vocab_size: 128256
+
+# Residual stream structure
+residual_sublayers: [input, after_attn, output]
+
+# SAE availability
+sae:
+  available: false
+
+# Defaults
+defaults:
+  monitoring_layer: 16

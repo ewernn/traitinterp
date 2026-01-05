@@ -30,7 +30,7 @@ from utils.paths import (
 logger = logging.getLogger(__name__)
 
 # Single source of truth for minimum coherence threshold in steering evaluation
-MIN_COHERENCE = 70
+MIN_COHERENCE = 75  # Matches Persona Vectors paper threshold
 
 
 # =============================================================================

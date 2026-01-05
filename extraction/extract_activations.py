@@ -137,6 +137,7 @@ def extract_activations_for_trait(
     position: str = 'response[:]',
     component: str = 'residual',
     use_vetting_filter: bool = True,
+    paired_filter: bool = True,
     batch_size: int = None,
 ) -> int:
     """
@@ -174,15 +175,27 @@ def extract_activations_for_trait(
         return 0
 
     # Filter based on vetting results
-    n_filtered_pos, n_filtered_neg = 0, 0
+    n_filtered_pos, n_filtered_neg, n_excluded_by_pairing = 0, 0, 0
     if use_vetting_filter:
         failed = load_vetting_filter(experiment, trait)
         pos_failed, neg_failed = set(failed.get('positive', [])), set(failed.get('negative', []))
-        if pos_failed or neg_failed:
-            pos_data = [r for i, r in enumerate(pos_data) if i not in pos_failed]
-            neg_data = [r for i, r in enumerate(neg_data) if i not in neg_failed]
+
+        if paired_filter:
+            # Paired mode: exclude index if EITHER side failed
+            all_failed = pos_failed | neg_failed
+            pos_data = [r for i, r in enumerate(pos_data) if i not in all_failed]
+            neg_data = [r for i, r in enumerate(neg_data) if i not in all_failed]
             n_filtered_pos, n_filtered_neg = len(pos_failed), len(neg_failed)
-            print(f"    Filtered {n_filtered_pos + n_filtered_neg} responses based on vetting")
+            n_excluded_by_pairing = len(all_failed)
+            if all_failed:
+                print(f"    Filtered {n_excluded_by_pairing} pairs ({n_filtered_pos} pos + {n_filtered_neg} neg failed, paired mode)")
+        else:
+            # Independent mode: filter each side separately
+            if pos_failed or neg_failed:
+                pos_data = [r for i, r in enumerate(pos_data) if i not in pos_failed]
+                neg_data = [r for i, r in enumerate(neg_data) if i not in neg_failed]
+                n_filtered_pos, n_filtered_neg = len(pos_failed), len(neg_failed)
+                print(f"    Filtered {n_filtered_pos + n_filtered_neg} responses based on vetting")
 
     # Split into train/val
     train_pos, train_neg, val_pos, val_neg = pos_data, neg_data, [], []
@@ -323,6 +336,8 @@ def extract_activations_for_trait(
         'n_examples_neg': len(train_neg),
         'n_filtered_pos': n_filtered_pos,
         'n_filtered_neg': n_filtered_neg,
+        'paired_filter': paired_filter,
+        'n_excluded_by_pairing': n_excluded_by_pairing,
         'val_split': val_split,
         'n_val_pos': n_val_pos,
         'n_val_neg': n_val_neg,
