@@ -67,9 +67,9 @@ from tqdm import tqdm
 from core import projection
 from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, get_best_vector, get_top_N_vectors
 from utils.paths import get as get_path, get_vector_path, discover_extracted_traits
+from utils.model import load_experiment_config
+from utils.model_registry import get_model_slug
 
-
-MODEL_NAME = "google/gemma-2-2b-it"
 LOGIT_LENS_LAYERS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 21, 24, 25]
 
 
@@ -256,16 +256,39 @@ def main():
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--no-calibration", action="store_true",
                        help="Skip massive dims calibration check (disables interactive cleaning in viz)")
+    parser.add_argument("--model", type=str,
+                       help="Model to use (for model comparison). If different from application_model, saves to models/{model}/ path")
 
     args = parser.parse_args()
 
     if not args.prompt_set and not args.all_prompt_sets:
         parser.error("Either --prompt-set or --all-prompt-sets is required")
 
-    inference_dir = get_path('inference.base', experiment=args.experiment)
+    # Determine model and whether this is a comparison run
+    config = load_experiment_config(args.experiment)
+    application_model = config.get('application_model', '')
+    application_model_slug = get_model_slug(application_model) if application_model else ''
+
+    if args.model:
+        model_name = args.model
+        model_slug = get_model_slug(model_name)
+        is_comparison_model = model_slug != application_model_slug
+    else:
+        model_name = application_model
+        model_slug = application_model_slug
+        is_comparison_model = False
+
+    # Use models_base for non-default models, regular inference.base otherwise
+    if is_comparison_model:
+        inference_dir = get_path('inference.models_base', experiment=args.experiment, model=model_slug)
+        print(f"Comparison mode: reading from/writing to inference/models/{model_slug}/")
+    else:
+        inference_dir = get_path('inference.base', experiment=args.experiment)
 
     # Check for calibration (required for interactive viz cleaning)
-    calibration_path = inference_dir / 'massive_activations' / 'calibration.json'
+    # Calibration is always in default inference dir (shared across models)
+    default_inference_dir = get_path('inference.base', experiment=args.experiment)
+    calibration_path = default_inference_dir / 'massive_activations' / 'calibration.json'
     if not calibration_path.exists() and not args.no_calibration:
         print(f"Error: Massive dims calibration not found at {calibration_path}")
         print(f"\nRun calibration first:")
@@ -287,10 +310,10 @@ def main():
 
     for prompt_set in prompt_sets:
         print(f"\n{'='*60}\nProcessing prompt set: {prompt_set}\n{'='*60}")
-        process_prompt_set(args, inference_dir, prompt_set)
+        process_prompt_set(args, inference_dir, prompt_set, model_name)
 
 
-def process_prompt_set(args, inference_dir, prompt_set):
+def process_prompt_set(args, inference_dir, prompt_set, model_name):
     """Process a single prompt set."""
     raw_dir = inference_dir / "raw" / "residual" / prompt_set
 
@@ -424,13 +447,13 @@ def process_prompt_set(args, inference_dir, prompt_set):
     model = None
     tokenizer = None
     if args.logit_lens:
-        print(f"\nLoading model for logit lens: {MODEL_NAME}")
+        print(f"\nLoading model for logit lens: {model_name}")
         from transformers import AutoModelForCausalLM, AutoTokenizer
         model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME, torch_dtype=torch.float16, device_map="auto",
+            model_name, torch_dtype=torch.float16, device_map="auto",
             attn_implementation='eager'
         )
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     # Process each raw file
     for raw_file in tqdm(raw_files, desc="Projecting"):
@@ -460,7 +483,7 @@ def process_prompt_set(args, inference_dir, prompt_set):
                     'n_tokens': len(data['response']['tokens'])
                 },
                 'metadata': {
-                    'inference_model': MODEL_NAME,
+                    'inference_model': model_name,
                     'inference_experiment': args.experiment,
                     'prompt_set': prompt_set,
                     'prompt_id': prompt_id,
