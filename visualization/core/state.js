@@ -158,27 +158,28 @@ function setMassiveDimsCleaning(mode) {
     if (window.renderView) window.renderView();
 }
 
-// Diff Mode Toggle (Model Comparison)
-function initDiffMode() {
-    const savedMode = localStorage.getItem('diffMode');
-    const savedModel = localStorage.getItem('diffModel');
-    state.diffMode = savedMode === 'true';
-    state.diffModel = savedModel || null;
+// Compare Mode (Model Comparison)
+// compareMode values: "main" (default), "diff:{model}", or "show:{model}"
+function initCompareMode() {
+    const savedMode = localStorage.getItem('compareMode');
+    state.compareMode = savedMode || 'main';
     // Available models discovered from inference/models/ directory
     state.availableComparisonModels = [];
+
+    // Legacy migration from diffMode/diffModel
+    const legacyDiffMode = localStorage.getItem('diffMode');
+    const legacyDiffModel = localStorage.getItem('diffModel');
+    if (legacyDiffMode === 'true' && legacyDiffModel) {
+        state.compareMode = `diff:${legacyDiffModel}`;
+        localStorage.removeItem('diffMode');
+        localStorage.removeItem('diffModel');
+        localStorage.setItem('compareMode', state.compareMode);
+    }
 }
 
-function setDiffMode(enabled, model = null) {
-    state.diffMode = !!enabled;
-    state.diffModel = enabled ? model : null;
-    localStorage.setItem('diffMode', state.diffMode);
-    localStorage.setItem('diffModel', state.diffModel || '');
-    if (window.renderView) window.renderView();
-}
-
-function setDiffModel(model) {
-    state.diffModel = model || null;
-    localStorage.setItem('diffModel', state.diffModel || '');
+function setCompareMode(mode) {
+    state.compareMode = mode || 'main';
+    localStorage.setItem('compareMode', state.compareMode);
     if (window.renderView) window.renderView();
 }
 
@@ -950,7 +951,7 @@ async function init() {
     initSmoothing();
     initProjectionCentered();
     initMassiveDimsCleaning();
-    initDiffMode();
+    initCompareMode();
     initHideAttentionSink();
     initSelectedMethods();
     setupNavigation();
@@ -986,7 +987,6 @@ window.renderMath = renderMath;
 window.setSmoothing = setSmoothing;
 window.setProjectionCentered = setProjectionCentered;
 window.setMassiveDimsCleaning = setMassiveDimsCleaning;
-window.setDiffMode = setDiffMode;
-window.setDiffModel = setDiffModel;
+window.setCompareMode = setCompareMode;
 window.setHideAttentionSink = setHideAttentionSink;
 window.toggleMethod = toggleMethod;

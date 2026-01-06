@@ -532,6 +532,16 @@ class PathBuilder {
         const basePath = this.get('extraction.trait', { trait: traitName });
         return `/${basePath}/${subpath}`;
     }
+
+    /**
+     * Get logit lens results path for a trait.
+     * @param {string|Object} trait - Trait name or object
+     * @returns {string}
+     */
+    logitLens(trait) {
+        const traitName = typeof trait === 'string' ? trait : trait.name;
+        return `/${this.get('extraction.logit_lens', { trait: traitName })}`;
+    }
 }
 
 // =========================================================================

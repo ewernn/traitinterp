@@ -33,3 +33,8 @@ from .math import (
     distribution_properties,
     remove_massive_dims,
 )
+from .logit_lens import (
+    vector_to_vocab,
+    build_common_token_mask,
+    get_interpretation_layers,
+)

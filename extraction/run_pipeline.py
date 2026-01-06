@@ -46,6 +46,7 @@ from extraction.extract_activations import extract_activations_for_trait
 from extraction.extract_vectors import extract_vectors_for_trait
 from extraction.vet_scenarios import vet_scenarios
 from extraction.vet_responses import vet_responses
+from extraction.run_logit_lens import run_logit_lens_for_trait
 from analysis.vectors.extraction_evaluation import main as run_evaluation
 
 STAGES = {
@@ -54,7 +55,8 @@ STAGES = {
     2: 'vet_responses',
     3: 'activations',
     4: 'vectors',
-    5: 'evaluation',
+    5: 'logit_lens',
+    6: 'evaluation',
 }
 
 
@@ -79,6 +81,7 @@ def run_pipeline(
     max_new_tokens: int = 64,
     max_concurrent: int = 20,
     paired_filter: bool = True,
+    no_logitlens: bool = False,
 ):
     """Execute extraction pipeline."""
     methods = methods or ['mean_diff', 'probe', 'gradient']
@@ -89,7 +92,7 @@ def run_pipeline(
         return only_stages is None or stage in only_stages
 
     # Only load model if needed
-    needs_model = should_run(1) or should_run(3)
+    needs_model = should_run(1) or should_run(3) or (should_run(5) and not no_logitlens)
 
     print("=" * 60)
     print(f"EXTRACTION PIPELINE | {experiment}")
@@ -146,8 +149,22 @@ def run_pipeline(
             if not has_vectors or force:
                 extract_vectors_for_trait(experiment, trait, methods, component=component, position=position)
 
-    # Stage 5: Evaluation
-    if should_run(5):
+        # Stage 5: Logit lens interpretation
+        if should_run(5) and not no_logitlens:
+            logit_lens_path = get_path("extraction.logit_lens", experiment=experiment, trait=trait)
+            if not logit_lens_path.exists() or force:
+                run_logit_lens_for_trait(
+                    experiment=experiment,
+                    trait=trait,
+                    model=model,
+                    tokenizer=tokenizer,
+                    methods=methods,
+                    component=component,
+                    position=position,
+                )
+
+    # Stage 6: Evaluation
+    if should_run(6):
         print("\n--- Evaluation ---")
         eval_path = get_path("extraction_eval.evaluation", experiment=experiment)
         if not eval_path.exists() or force:
@@ -169,7 +186,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Extraction pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Stages: 0=vet_scenarios, 1=generate, 2=vet_responses, 3=activations, 4=vectors, 5=evaluation"
+        epilog="Stages: 0=vet_scenarios, 1=generate, 2=vet_responses, 3=activations, 4=vectors, 5=logit_lens, 6=evaluation"
     )
     parser.add_argument("--experiment", required=True)
     parser.add_argument("--traits", type=str)
@@ -195,6 +212,8 @@ if __name__ == "__main__":
                         help="Max concurrent API requests for vetting (default: 20)")
     parser.add_argument("--no-paired-filter", action="store_true",
                         help="Disable paired filtering (filter pos/neg independently)")
+    parser.add_argument("--no-logitlens", action="store_true",
+                        help="Skip logit lens interpretation after vector extraction")
     model_mode = parser.add_mutually_exclusive_group()
     model_mode.add_argument("--base-model", action="store_true", dest="base_model_override")
     model_mode.add_argument("--it-model", action="store_true", dest="it_model_override")
@@ -239,4 +258,5 @@ if __name__ == "__main__":
         max_new_tokens=args.max_new_tokens,
         max_concurrent=args.max_concurrent,
         paired_filter=not args.no_paired_filter,
+        no_logitlens=args.no_logitlens,
     )

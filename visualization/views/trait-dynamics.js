@@ -232,18 +232,22 @@ async function renderTraitDynamics() {
 
     clearTimeout(loadingTimeout);
 
-    // If diff mode is enabled, fetch comparison data from different model and compute diff
-    const diffModel = window.state.diffMode && window.state.diffModel;
-    if (diffModel) {
+    // Handle compare mode: "main", "diff:{model}", or "show:{model}"
+    const compareMode = window.state.compareMode || 'main';
+    const isDiff = compareMode.startsWith('diff:');
+    const isShow = compareMode.startsWith('show:');
+    const compareModel = isDiff ? compareMode.slice(5) : isShow ? compareMode.slice(5) : null;
+
+    if (compareModel) {
         const traitKeys = Object.keys(traitData);
-        const diffResults = await Promise.all(traitKeys.map(async (traitKey) => {
+        const compResults = await Promise.all(traitKeys.map(async (traitKey) => {
             const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
             const trait = filteredTraits.find(t => t.name === baseTrait);
             if (!trait) return null;
 
             try {
                 // Fetch from comparison model's path (same prompt set, different model)
-                const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, diffModel);
+                const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, compareModel);
                 const response = await fetch(fetchPath);
                 if (!response.ok) return null;
                 const compData = await response.json();
@@ -254,7 +258,7 @@ async function renderTraitDynamics() {
             }
         }));
 
-        for (const result of diffResults) {
+        for (const result of compResults) {
             if (!result) continue;
             const { traitKey, compData } = result;
 
@@ -270,13 +274,22 @@ async function renderTraitDynamics() {
             }
 
             if (compProj) {
-                const mainProj = traitData[traitKey].projections;
-                const diffPrompt = mainProj.prompt.map((v, i) => v - (compProj.prompt[i] || 0));
-                const diffResponse = mainProj.response.map((v, i) => v - (compProj.response[i] || 0));
-                traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
-                traitData[traitKey].metadata = traitData[traitKey].metadata || {};
-                traitData[traitKey].metadata._isDiff = true;
-                traitData[traitKey].metadata._diffModel = diffModel;
+                if (isDiff) {
+                    // Diff mode: main - comparison
+                    const mainProj = traitData[traitKey].projections;
+                    const diffPrompt = mainProj.prompt.map((v, i) => v - (compProj.prompt[i] || 0));
+                    const diffResponse = mainProj.response.map((v, i) => v - (compProj.response[i] || 0));
+                    traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
+                    traitData[traitKey].metadata = traitData[traitKey].metadata || {};
+                    traitData[traitKey].metadata._isDiff = true;
+                    traitData[traitKey].metadata._compareModel = compareModel;
+                } else if (isShow) {
+                    // Show mode: replace with comparison model's projections
+                    traitData[traitKey].projections = compProj;
+                    traitData[traitKey].metadata = traitData[traitKey].metadata || {};
+                    traitData[traitKey].metadata._isComparisonModel = true;
+                    traitData[traitKey].metadata._compareModel = compareModel;
+                }
             }
         }
     }
@@ -354,25 +367,31 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     const isSmoothing = window.state.smoothingEnabled !== false;  // default true
     const isCentered = window.state.projectionCentered !== false;  // default true
 
-    // Diff mode: compare with another model (e.g., base vs IT)
-    const diffMode = window.state.diffMode || false;
-    const diffModel = window.state.diffModel || null;
+    // Compare mode: "main", "diff:{model}", or "show:{model}"
+    const currentCompareMode = window.state.compareMode || 'main';
     const availableModels = window.state.availableComparisonModels || [];
 
-    // Check if we're showing diff data
+    // Check what we're showing
     const showingDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
-    const diffFromModel = showingDiff ? Object.values(traitData).find(d => d.metadata?._isDiff)?.metadata?._diffModel : null;
-    const diffInfoHtml = showingDiff
-        ? `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
-            Showing DIFF: application model − ${diffFromModel}
-           </div>`
-        : '';
+    const showingCompModel = Object.values(traitData).some(d => d.metadata?._isComparisonModel);
+    const compareModelName = Object.values(traitData).find(d => d.metadata?._compareModel)?.metadata?._compareModel;
+
+    let compareInfoHtml = '';
+    if (showingDiff) {
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+            Showing DIFF: application model − ${compareModelName}
+           </div>`;
+    } else if (showingCompModel) {
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+            Showing: ${compareModelName} (comparison model)
+           </div>`;
+    }
 
     container.innerHTML = `
         <div class="tool-view">
             <div class="page-intro">
                 <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
-                ${diffInfoHtml}
+                ${compareInfoHtml}
                 <div class="page-intro-model">${modelInfoHtml}</div>
             </div>
             ${failedHtml}
@@ -416,15 +435,16 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
                         <input type="checkbox" class="method-filter" data-method="random" ${window.state.selectedMethods.has('random') ? 'checked' : ''}>
                         <span>random</span>
                     </label>
-                    <span class="projection-toggle-label" style="margin-left: 16px;">Diff:</span>
-                    <label class="projection-toggle-checkbox">
-                        <input type="checkbox" id="diff-mode-toggle" ${diffMode ? 'checked' : ''}>
-                        <span>Enable</span>
-                    </label>
-                    <select id="diff-model-select" style="margin-left: 8px; ${diffMode ? '' : 'display: none;'}">
-                        <option value="">Select model...</option>
-                        ${availableModels.map(m => `<option value="${m}" ${m === diffModel ? 'selected' : ''}>${m}</option>`).join('')}
+                    ${availableModels.length > 0 ? `
+                    <span class="projection-toggle-label" style="margin-left: 16px;">Compare:</span>
+                    <select id="compare-mode-select" style="margin-left: 4px;">
+                        <option value="main" ${currentCompareMode === 'main' ? 'selected' : ''}>Main model</option>
+                        ${availableModels.map(m => `
+                            <option value="diff:${m}" ${currentCompareMode === 'diff:' + m ? 'selected' : ''}>Diff (main − ${m})</option>
+                            <option value="show:${m}" ${currentCompareMode === 'show:' + m ? 'selected' : ''}>${m}</option>
+                        `).join('')}
                     </select>
+                    ` : ''}
                 </div>
                 <div id="combined-activation-plot"></div>
             </section>
@@ -753,17 +773,11 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         });
     });
 
-    // Setup diff mode toggle and dropdown (model comparison)
-    const diffToggle = document.getElementById('diff-mode-toggle');
-    const diffSelect = document.getElementById('diff-model-select');
-    if (diffToggle) {
-        diffToggle.addEventListener('change', () => {
-            window.setDiffMode(diffToggle.checked, diffSelect?.value || null);
-        });
-    }
-    if (diffSelect) {
-        diffSelect.addEventListener('change', () => {
-            window.setDiffModel(diffSelect.value);
+    // Setup compare mode dropdown (model comparison)
+    const compareSelect = document.getElementById('compare-mode-select');
+    if (compareSelect) {
+        compareSelect.addEventListener('change', () => {
+            window.setCompareMode(compareSelect.value);
         });
     }
 

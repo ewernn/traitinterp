@@ -2491,3 +2491,32 @@ code {
     font-style: italic;
     margin-top: 8px;
 }
+
+/* ============================================================
+   Logit Lens - Token decode display
+   ============================================================ */
+
+.ll-table {
+    font-size: var(--text-sm);
+}
+
+.ll-table th:nth-child(1) { width: 15%; }
+.ll-table th:nth-child(2) { width: 10%; }
+.ll-table td:first-child { vertical-align: middle; }
+
+.ll-table .ll-toward,
+.ll-table .ll-away {
+    line-height: 1.8;
+}
+
+.ll-token {
+    display: inline-block;
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    margin: 2px;
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: var(--text-xs);
+    color: var(--text-primary);
+    white-space: nowrap;
+}

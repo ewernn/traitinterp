@@ -74,6 +74,7 @@ from core import HookManager
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model_with_lora, get_inner_model, get_layer_path_prefix, tokenize
 from utils.generation import generate_with_capture, calculate_max_batch_size, create_residual_storage, setup_residual_hooks
 from utils.paths import get as get_path
+from utils.model_registry import get_model_slug
 from server.client import get_model_or_client, ModelClient
 
 
@@ -488,8 +489,6 @@ def main():
         print(f"Experiment not found: {exp_dir}")
         return
 
-    inference_dir = get_path('inference.base', experiment=args.experiment)
-
     # Get prompts from JSON files
     prompts_source = get_path('datasets.inference')
     if not prompts_source.exists():
@@ -547,6 +546,19 @@ def main():
         if not model_name:
             print("Error: No model specified. Use --model or set application_model in experiment config.")
             return
+
+    # Determine if this is a comparison run (model differs from application_model)
+    application_model = config.get('application_model', '')
+    application_model_slug = get_model_slug(application_model) if application_model else ''
+    model_slug = get_model_slug(model_name)
+    is_comparison_model = args.model and model_slug != application_model_slug
+
+    # Set inference_dir based on comparison mode
+    if is_comparison_model:
+        inference_dir = get_path('inference.models_base', experiment=args.experiment, model=model_slug)
+        print(f"Comparison mode: saving to inference/models/{model_slug}/")
+    else:
+        inference_dir = get_path('inference.base', experiment=args.experiment)
 
     # Load model (with optional LoRA and quantization)
     # Try server first unless --no-server or --lora (LoRA requires local model)

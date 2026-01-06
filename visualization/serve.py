@@ -532,7 +532,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def list_comparison_models(self, experiment_name):
         """List available comparison models (from inference/models/ directory)."""
-        models_dir = get_path('inference.models_base', experiment=experiment_name, model='').parent
+        models_dir = get_path('inference.models_base', experiment=experiment_name, model='')
         if not models_dir.exists():
             return {'models': []}
 

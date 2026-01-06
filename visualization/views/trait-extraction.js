@@ -50,6 +50,7 @@ async function renderTraitExtraction() {
                 <div class="toc-title">Contents</div>
                 <ol class="toc-list">
                     <li><a href="#heatmaps">Heatmaps</a></li>
+                    <li><a href="#logit-lens">Token Decode</a></li>
                     <li><a href="#similarity">Similarity Matrix</a></li>
                     <li><a href="#method-breakdown">Per-Method Distributions</a></li>
                 </ol>
@@ -75,6 +76,14 @@ async function renderTraitExtraction() {
                 </h3>
                 <div class="subsection-info" id="info-heatmaps">Each heatmap shows validation accuracy across layers (rows) and extraction methods (columns) for one trait. Bright = high accuracy.</div>
                 <div id="trait-heatmaps-container"></div>
+
+                <h3 class="subsection-header" id="logit-lens">
+                    <span class="subsection-num">1.5</span>
+                    <span class="subsection-title">Token Decode (Logit Lens)</span>
+                    <span class="subsection-info-toggle" data-target="info-logit-lens">►</span>
+                </h3>
+                <div class="subsection-info" id="info-logit-lens">Project trait vectors through the unembedding matrix to see which tokens they represent. → = tokens the vector points toward, ← = tokens it points away from. Mid (40%) and Late (90%) layers shown.</div>
+                <div id="logit-lens-container"></div>
 
                 <h3 class="subsection-header" id="similarity">
                     <span class="subsection-num">2.</span>
@@ -138,6 +147,7 @@ async function renderTraitExtraction() {
 
     // Render each visualization
     renderBestVectorsSummary(evalData);
+    renderLogitLensSection(evalData);
     renderTraitHeatmaps(evalData);
     renderMethodBreakdown(evalData);
     renderAllMetricsOverview(evalData);
@@ -825,6 +835,112 @@ function renderAllMetricsOverview(evalData) {
     container.innerHTML = html;
 }
 
+
+// =========================================================================
+// Logit Lens - Token decode for trait vectors
+// =========================================================================
+
+/**
+ * Render the logit lens section with all traits
+ */
+async function renderLogitLensSection(evalData) {
+    const container = document.getElementById('logit-lens-container');
+    if (!container) return;
+
+    const allResults = evalData.all_results || [];
+    const traits = [...new Set(allResults.map(r => r.trait))].sort();
+
+    if (traits.length === 0) {
+        container.innerHTML = '<p class="na">No traits available.</p>';
+        return;
+    }
+
+    // Show loading
+    container.innerHTML = '<p class="hint">Loading token decodes...</p>';
+
+    // Load all logit lens data in parallel
+    const results = await Promise.all(traits.map(async trait => {
+        try {
+            const url = window.paths.logitLens(trait);
+            const response = await fetch(url);
+            if (!response.ok) return { trait, data: null };
+            return { trait, data: await response.json() };
+        } catch {
+            return { trait, data: null };
+        }
+    }));
+
+    // Filter to traits that have data
+    const withData = results.filter(r => r.data);
+
+    if (withData.length === 0) {
+        container.innerHTML = '<p class="hint">No logit lens data. Run: <code>python extraction/run_pipeline.py --experiment {exp} --traits {trait} --only-stage 5</code></p>';
+        return;
+    }
+
+    // Build table
+    const escapeHtml = (str) => {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    };
+
+    const renderTokens = (tokens, limit = 5) => {
+        if (!tokens || !Array.isArray(tokens)) return '<span class="na">—</span>';
+        return tokens.slice(0, limit)
+            .map(t => `<span class="ll-token">${escapeHtml(t.token)}</span>`)
+            .join(' ');
+    };
+
+    let html = `
+        <table class="data-table ll-table">
+            <thead>
+                <tr>
+                    <th>Trait</th>
+                    <th>Depth</th>
+                    <th>→ Toward</th>
+                    <th>← Away</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for (const { trait, data } of withData) {
+        // Pick best method
+        const methodPriority = ['probe', 'mean_diff', 'gradient'];
+        const method = methodPriority.find(m => data.methods[m]) || Object.keys(data.methods)[0];
+        const methodData = data.methods[method];
+        if (!methodData) continue;
+
+        const displayName = window.getDisplayName(trait);
+        const mid = methodData.mid;
+        const late = methodData.late;
+
+        if (mid) {
+            html += `
+                <tr>
+                    <td rowspan="${late ? 2 : 1}"><strong>${displayName}</strong><br><span class="hint">${method}</span></td>
+                    <td class="hint">L${mid.layer} (${mid.pct}%)</td>
+                    <td class="ll-toward">${renderTokens(mid.toward)}</td>
+                    <td class="ll-away">${renderTokens(mid.away)}</td>
+                </tr>
+            `;
+        }
+        if (late) {
+            html += `
+                <tr>
+                    ${!mid ? `<td><strong>${displayName}</strong><br><span class="hint">${method}</span></td>` : ''}
+                    <td class="hint">L${late.layer} (${late.pct}%)</td>
+                    <td class="ll-toward">${renderTokens(late.toward)}</td>
+                    <td class="ll-away">${renderTokens(late.away)}</td>
+                </tr>
+            `;
+        }
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
 
 // Export
 window.renderTraitExtraction = renderTraitExtraction;

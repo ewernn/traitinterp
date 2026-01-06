@@ -57,6 +57,7 @@ extraction:
   val_responses: "experiments/{experiment}/extraction/{trait}/val_responses"
   vetting: "experiments/{experiment}/extraction/{trait}/vetting"
   vetting_metadata: "experiments/{experiment}/extraction/{trait}/vetting/metadata.json"
+  logit_lens: "experiments/{experiment}/extraction/{trait}/logit_lens.json"
 
 # =============================================================================
 # INFERENCE (evaluation-time data)

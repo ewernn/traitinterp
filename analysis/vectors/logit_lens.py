@@ -17,105 +17,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import argparse
 import json
 
-import torch
-
-from utils.model import load_model, load_experiment_config, get_inner_model
+from core.logit_lens import vector_to_vocab, build_common_token_mask
+from utils.model import load_model, load_experiment_config
 from utils.vectors import get_best_vector, load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits
-
-
-def build_common_token_mask(tokenizer, max_vocab_idx: int = 10000) -> torch.Tensor:
-    """
-    Build a mask for common/interpretable tokens.
-
-    Filters to:
-    1. First N tokens in vocab (BPE tokenizers order by frequency)
-    2. Printable ASCII tokens (no code artifacts, foreign scripts)
-
-    Returns:
-        Boolean tensor of shape (vocab_size,) - True for common tokens
-    """
-    vocab_size = len(tokenizer)
-    mask = torch.zeros(vocab_size, dtype=torch.bool)
-
-    for idx in range(min(vocab_size, max_vocab_idx)):
-        token = tokenizer.decode([idx])
-        # Keep if mostly printable ASCII
-        if token and all(ord(c) < 128 for c in token):
-            # Filter out code-like tokens
-            if not any(x in token for x in ['()', '{}', '[]', '::', '//', '/*', '*/', '=>', '->']):
-                # Filter out camelCase/PascalCase (likely code)
-                if not (any(c.isupper() for c in token[1:]) and any(c.islower() for c in token)):
-                    mask[idx] = True
-
-    return mask
-
-
-def vector_to_vocab(
-    vector: torch.Tensor,
-    model,
-    tokenizer,
-    top_k: int = 20,
-    apply_norm: bool = True,
-    common_mask: torch.Tensor = None,
-) -> dict:
-    """
-    Project vector through unembedding to vocabulary space.
-
-    Args:
-        vector: Trait vector (hidden_dim,)
-        model: Model with lm_head
-        tokenizer: Tokenizer for decoding
-        top_k: Number of tokens to return
-        apply_norm: Apply final RMSNorm before projection (matches residual stream processing)
-        common_mask: Boolean mask for common tokens (None = no filtering)
-
-    Returns:
-        Dict with 'toward' and 'away' token lists
-    """
-    inner = get_inner_model(model)
-
-    # Optionally apply final norm (matches how residual stream is processed)
-    if apply_norm and hasattr(inner, 'norm'):
-        # Need batch dim for norm
-        vector = inner.norm(vector.unsqueeze(0).to(model.device)).squeeze(0)
-
-    # Project through unembedding
-    W_U = model.lm_head.weight  # (vocab_size, hidden_dim)
-    vector = vector.to(W_U.device).to(W_U.dtype)
-    logits = W_U @ vector  # (vocab_size,)
-
-    # Apply common token filter if provided
-    if common_mask is not None:
-        common_mask = common_mask.to(logits.device)
-        # Set non-common tokens to -inf/+inf so they don't appear in top-k
-        logits_filtered = logits.clone()
-        logits_filtered[~common_mask] = float('-inf')
-        logits_filtered_neg = (-logits).clone()
-        logits_filtered_neg[~common_mask] = float('-inf')
-    else:
-        logits_filtered = logits
-        logits_filtered_neg = -logits
-
-    # Get top-k in each direction
-    top_vals, top_idx = logits_filtered.topk(top_k)
-    bottom_vals, bottom_idx = logits_filtered_neg.topk(top_k)
-
-    def decode_tokens(indices, values):
-        results = []
-        for idx, val in zip(indices.tolist(), values.tolist()):
-            if val == float('-inf') or val == float('inf'):
-                continue  # Skip filtered tokens
-            token = tokenizer.decode([idx])
-            # Clean up for display
-            token_repr = repr(token) if token.strip() != token or not token else token
-            results.append((token_repr, val))
-        return results
-
-    return {
-        "toward": decode_tokens(top_idx, top_vals),
-        "away": decode_tokens(bottom_idx, -bottom_vals),
-    }
 
 
 def analyze_trait(
@@ -173,12 +78,12 @@ def print_results(results: dict):
     print(f"{'='*60}")
 
     print(f"\nToward (+):")
-    for i, (token, val) in enumerate(results['toward'], 1):
-        print(f"  {i:2d}. {token:20s} {val:+.3f}")
+    for i, item in enumerate(results['toward'], 1):
+        print(f"  {i:2d}. {item['token']:20s} {item['value']:+.3f}")
 
     print(f"\nAway (-):")
-    for i, (token, val) in enumerate(results['away'], 1):
-        print(f"  {i:2d}. {token:20s} {val:+.3f}")
+    for i, item in enumerate(results['away'], 1):
+        print(f"  {i:2d}. {item['token']:20s} {item['value']:+.3f}")
 
 
 def main():
@@ -246,12 +151,6 @@ def main():
             # Sanitize trait name for filename
             safe_trait = args.trait.replace("/", "_")
             output_path = output_dir / f"{safe_trait}.json"
-
-        # Convert tuples to dicts for JSON
-        for r in all_results:
-            if "toward" in r:
-                r["toward"] = [{"token": t, "value": v} for t, v in r["toward"]]
-                r["away"] = [{"token": t, "value": v} for t, v in r["away"]]
 
         with open(output_path, 'w') as f:
             json.dump(all_results, f, indent=2)
