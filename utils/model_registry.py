@@ -16,6 +16,20 @@ _cache: dict = {}
 _models_dir = Path(__file__).parent.parent / "config" / "models"
 
 
+def get_model_slug(model_id: str) -> str:
+    """
+    Convert model ID to filesystem-safe slug.
+
+    Examples:
+        google/gemma-2-2b-it -> gemma-2-2b-it
+        meta-llama/Llama-3.1-8B -> llama-3.1-8b
+        gemma-2-2b-it -> gemma-2-2b-it
+    """
+    if '/' in model_id:
+        model_id = model_id.split('/')[-1]
+    return model_id.lower()
+
+
 def get_model_config(model_id: str) -> dict:
     """Load model config from config/models/{model_id}.yaml"""
     if model_id in _cache:
