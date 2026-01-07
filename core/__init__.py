@@ -2,6 +2,11 @@
 Core primitives for trait vector extraction and analysis.
 """
 
+from .types import (
+    VectorSpec,
+    ProjectionConfig,
+    activation_scale,
+)
 from .hooks import (
     HookManager,                # base: all hook registration
     get_hook_path,              # layer + component -> string path
@@ -21,6 +26,8 @@ from .methods import (
 )
 from .math import (
     projection,
+    project_with_config,
+    project_single,
     cosine_similarity,
     batch_cosine_similarity,
     orthogonalize,

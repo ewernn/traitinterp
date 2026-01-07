@@ -106,8 +106,10 @@ def save_responses(responses: List[Dict], experiment: str, trait: str, position:
     responses_dir = get_steering_dir(experiment, trait, position) / "responses" / component
     responses_dir.mkdir(parents=True, exist_ok=True)
 
-    layers_str = "_".join(str(l) for l in config["layers"])
-    coefs_str = "_".join(f"{c:.2f}" for c in config["coefficients"])
+    # Extract from VectorSpec format
+    vectors = config["vectors"]
+    layers_str = "_".join(str(v["layer"]) for v in vectors)
+    coefs_str = "_".join(f"{v['weight']:.1f}" for v in vectors)
     ts_clean = timestamp[:19].replace(':', '-').replace('T', '_')  # Trim microseconds
     filename = f"L{layers_str}_c{coefs_str}_{ts_clean}.json"
 

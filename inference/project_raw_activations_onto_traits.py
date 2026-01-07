@@ -64,8 +64,11 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from tqdm import tqdm
 
-from core import projection
-from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, get_best_vector, get_top_N_vectors
+from core import projection, VectorSpec
+from utils.vectors import (
+    load_vector_metadata, load_vector_with_baseline, find_vector_method,
+    get_best_vector, get_top_N_vectors, get_best_vector_spec, load_vector_from_spec
+)
 from utils.paths import get as get_path, get_vector_path, discover_extracted_traits
 from utils.model import load_experiment_config
 from utils.model_registry import get_model_slug
@@ -401,13 +404,25 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 methods_str = ', '.join([f"L{v[3]} {v[1]}" for v in loaded_vectors])
                 print(f"  {trait_path}: [{methods_str}]")
         else:
-            # Single vector mode (original logic)
+            # Single vector mode
             if auto_layer:
-                best = get_best_vector(args.experiment, trait_path, args.component, args.position)
-                layer = best['layer']
-                method = args.method or best['method']
-                selection_source = best['source']
-                print(f"  {trait_path}: L{layer} {method} (from {best['source']}: {best['score']:.2f})")
+                # Use VectorSpec to find and load best vector
+                try:
+                    spec, spec_meta = get_best_vector_spec(
+                        args.experiment, trait_path, args.component, args.position
+                    )
+                except FileNotFoundError as e:
+                    print(f"  Skip {trait_path}: {e}")
+                    continue
+
+                layer = spec.layer
+                method = args.method or spec.method
+                selection_source = spec_meta['source']
+                print(f"  {trait_path}: L{layer} {method} (from {spec_meta['source']}: {spec_meta['score']:.2f})")
+
+                # Override method in spec if user specified one
+                if args.method and args.method != spec.method:
+                    spec = VectorSpec(layer, spec.component, spec.position, args.method)
             else:
                 layer = args.layer
                 method = args.method or find_vector_method(
@@ -415,12 +430,15 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 )
                 selection_source = 'manual'
 
-            if not method:
-                print(f"  Skip {trait_path}: no {args.component} vector at layer {layer}")
-                continue
+                if not method:
+                    print(f"  Skip {trait_path}: no {args.component} vector at layer {layer}")
+                    continue
+
+                # Build spec for manual selection
+                spec = VectorSpec(layer, args.component, args.position, method)
 
             vector_path = get_vector_path(
-                args.experiment, trait_path, method, layer, args.component, args.position
+                args.experiment, trait_path, spec.method, spec.layer, spec.component, spec.position
             )
 
             if not vector_path.exists():
@@ -428,8 +446,8 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 continue
 
             try:
-                vector, baseline, per_vec_metadata = load_vector_with_baseline(
-                    args.experiment, trait_path, method, layer, args.component, args.position
+                vector, baseline, per_vec_metadata = load_vector_from_spec(
+                    args.experiment, trait_path, spec
                 )
                 vector = vector.to(torch.float16)
             except FileNotFoundError:
@@ -437,7 +455,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 continue
 
             vec_metadata = load_vector_metadata(
-                args.experiment, trait_path, method, args.component, args.position
+                args.experiment, trait_path, spec.method, spec.component, spec.position
             )
             trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata, selection_source, baseline)
 

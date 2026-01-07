@@ -91,10 +91,13 @@ async def evaluate_and_save(
 ):
     """Evaluate a single config and save to results."""
     config = {
-        "layers": [layer],
-        "methods": [method],
-        "coefficients": [coef],
-        "component": component,
+        "vectors": [{
+            "layer": layer,
+            "component": component,
+            "position": position,
+            "method": method,
+            "weight": coef,
+        }]
     }
 
     # Skip if already exists
@@ -146,10 +149,13 @@ async def adaptive_search_layer(
     for step in range(n_steps):
         # Evaluate
         config = {
-            "layers": [layer],
-            "methods": [method],
-            "coefficients": [coef],
-            "component": component,
+            "vectors": [{
+                "layer": layer,
+                "component": component,
+                "position": position,
+                "method": method,
+                "weight": coef,
+            }]
         }
 
         existing_idx = find_existing_run_index(results, config)
@@ -302,10 +308,13 @@ async def batched_adaptive_search(
             uncached_states = []
             for i, state in enumerate(batch_states):
                 config = {
-                    "layers": [state["layer"]],
-                    "methods": [method],
-                    "coefficients": [state["coef"]],
-                    "component": component,
+                    "vectors": [{
+                        "layer": state["layer"],
+                        "component": component,
+                        "position": position,
+                        "method": method,
+                        "weight": state["coef"],
+                    }]
                 }
                 existing_idx = find_existing_run_index(results, config)
                 if existing_idx is not None:
@@ -380,10 +389,13 @@ async def batched_adaptive_search(
 
                     # Save results
                     config = {
-                        "layers": [state["layer"]],
-                        "methods": [method],
-                        "coefficients": [state["coef"]],
-                        "component": component,
+                        "vectors": [{
+                            "layer": state["layer"],
+                            "component": component,
+                            "position": position,
+                            "method": method,
+                            "weight": state["coef"],
+                        }]
                     }
                     result = {
                         "trait_mean": trait_mean,

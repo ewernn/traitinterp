@@ -7,7 +7,7 @@ Uses core primitives for atomic operations.
 import torch
 from typing import Dict, List, Tuple
 
-from core import SteeringHook, HookManager, get_hook_path, orthogonalize
+from core import SteeringHook, HookManager, get_hook_path, orthogonalize, VectorSpec
 
 
 def orthogonalize_vectors(vectors: Dict[int, torch.Tensor]) -> Dict[int, torch.Tensor]:
@@ -41,6 +41,44 @@ class MultiLayerSteeringHook:
             SteeringHook(model, vector, get_hook_path(layer, component, model=model), coefficient)
             for layer, vector, coefficient in configs
         ]
+
+    @classmethod
+    def from_vector_specs(
+        cls,
+        model: torch.nn.Module,
+        specs: List[VectorSpec],
+        vectors: Dict[Tuple[int, str], torch.Tensor],
+    ) -> "MultiLayerSteeringHook":
+        """
+        Create from VectorSpecs and pre-loaded vectors.
+
+        Args:
+            model: The transformer model
+            specs: List of VectorSpec (layer, component, position, method, weight)
+            vectors: Dict mapping (layer, component) to loaded vector tensors
+
+        Returns:
+            MultiLayerSteeringHook instance
+
+        Example:
+            specs = [VectorSpec(9, 'residual', 'response[:]', 'probe', 0.9)]
+            vectors = {(9, 'residual'): loaded_vector}
+            hook = MultiLayerSteeringHook.from_vector_specs(model, specs, vectors)
+        """
+        # Group by component (all specs should have same component for now)
+        components = set(s.component for s in specs)
+        if len(components) > 1:
+            raise ValueError("All VectorSpecs must have same component for MultiLayerSteeringHook")
+        component = specs[0].component
+
+        configs = []
+        for spec in specs:
+            vec = vectors.get((spec.layer, spec.component))
+            if vec is None:
+                raise KeyError(f"No vector loaded for layer={spec.layer}, component={spec.component}")
+            configs.append((spec.layer, vec, spec.weight))
+
+        return cls(model, configs, component)
 
     def __enter__(self):
         for hook in self._hooks:

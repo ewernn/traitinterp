@@ -318,6 +318,7 @@ def desanitize_position(sanitized: str) -> str:
         response_all -> response[:]
         response_-1 -> response[-1]
         response_-5_ -> response[-5:]
+        response__5 -> response[:5]
         prompt_-3_ -> prompt[-3:]
         all_all -> all[:]
     """
@@ -328,10 +329,14 @@ def desanitize_position(sanitized: str) -> str:
 
     # Handle other patterns: {frame}_{slice}
     # Trailing _ means there was a : at the end (open slice)
+    # Leading _ in slice means there was a : at the start (e.g., [:5] -> __5)
     parts = sanitized.split('_', 1)
     if len(parts) == 2:
         frame, slice_part = parts
-        if slice_part.endswith('_'):
+        # Leading _ means original had : at start of slice (e.g., [:5])
+        if slice_part.startswith('_'):
+            return f"{frame}[:{slice_part[1:]}]"
+        elif slice_part.endswith('_'):
             return f"{frame}[{slice_part[:-1]}:]"
         else:
             return f"{frame}[{slice_part}]"

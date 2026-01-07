@@ -445,14 +445,14 @@ async function renderBestVectorPerLayer() {
             runs.forEach(run => {
                 const config = run.config || {};
                 const result = run.result || {};
-                const layers = config.layers || [];
-                const methods = config.methods || [];
 
-                if (layers.length !== 1) return;
-                if (methods.length !== 1) return;
+                // Support VectorSpec format
+                const vectors = config.vectors || [];
+                if (vectors.length !== 1) return;
 
-                const layer = layers[0];
-                const method = methods[0];
+                const v = vectors[0];
+                const layer = v.layer;
+                const method = v.method;
                 const coherence = result.coherence_mean || 0;
                 const traitScore = result.trait_mean || 0;
 
@@ -607,19 +607,19 @@ function convertResultsToSweepFormat(results, methodFilter = null) {
         const config = run.config || {};
         const result = run.result || {};
 
-        const layers = config.layers || [];
-        const coefficients = config.coefficients || [];
-        const methods = config.methods || [];
+        // Support VectorSpec format
+        const vectors = config.vectors || [];
 
-        // Only single-layer runs for heatmap (multi-layer would need different viz)
-        if (layers.length !== 1) return;
-        if (coefficients.length !== 1) return;
+        // Only single-vector runs for heatmap (multi-vector would need different viz)
+        if (vectors.length !== 1) return;
+
+        const v = vectors[0];
+        const layer = v.layer;
+        const coef = v.weight;
+        const method = v.method;
 
         // Filter by method if specified
-        if (methodFilter && methods.length > 0 && methods[0] !== methodFilter) return;
-
-        const layer = layers[0];
-        const coef = coefficients[0];
+        if (methodFilter && method !== methodFilter) return;
 
         // Use coefficient as x-axis value
         // Round to avoid floating point duplicates
@@ -1279,15 +1279,17 @@ function renderMultiLayerComparison(heatmapData, resultsData) {
     const baseline = resultsData.baseline?.trait_mean || 0;
     const { centers, widths, delta_grid, coherence_grid } = heatmapData;
 
-    // Find best single-layer
+    // Find best single-layer (VectorSpec format)
     let bestSingle = null;
     for (const run of resultsData.runs || []) {
-        if (run.config.layers.length === 1) {
+        const vectors = run.config?.vectors || [];
+        if (vectors.length === 1) {
+            const v = vectors[0];
             const trait = run.result?.trait_mean;
             const coherence = run.result?.coherence_mean;
             if (trait && (!bestSingle || trait > bestSingle.trait)) {
                 bestSingle = {
-                    layer: run.config.layers[0],
+                    layer: v.layer,
                     trait,
                     coherence,
                     delta: trait - baseline

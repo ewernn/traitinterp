@@ -9,8 +9,10 @@ remove_massive_dims: zero out massive activation dimensions
 """
 
 import torch
-from typing import Dict, List
+from typing import Dict, List, Callable
 from scipy import stats
+
+from core.types import VectorSpec, ProjectionConfig
 
 
 # =============================================================================
@@ -197,3 +199,69 @@ def distribution_properties(
         'overlap_coefficient': float(overlap),
         'separation_margin': float(margin),
     }
+
+
+# =============================================================================
+# ProjectionConfig-based Operations
+# =============================================================================
+
+def project_with_config(
+    activations: Dict[int, Dict[str, torch.Tensor]],
+    config: ProjectionConfig,
+    vector_loader: Callable[[VectorSpec], torch.Tensor],
+    normalize: bool = True,
+) -> torch.Tensor:
+    """
+    Project activations using a ProjectionConfig (single or ensemble).
+
+    Args:
+        activations: Dict[layer][component] -> tensor of shape [*, hidden_dim]
+        config: ProjectionConfig specifying which vectors to use
+        vector_loader: Function that takes VectorSpec and returns vector tensor
+        normalize: If True, normalize weights to sum to 1.0 (default True)
+
+    Returns:
+        Weighted sum of projections, same shape as activations minus hidden_dim
+
+    Example:
+        def loader(spec):
+            vec, _, _ = load_vector_from_spec(experiment, trait, spec)
+            return vec
+
+        proj = project_with_config(activations, config, loader)
+    """
+    weights = config.normalized_weights if normalize else [s.weight for s in config.vectors]
+
+    result = None
+    for spec, weight in zip(config.vectors, weights):
+        vec = vector_loader(spec)
+        act = activations[spec.layer][spec.component]
+        proj = projection(act, vec, normalize_vector=True)
+
+        if result is None:
+            result = weight * proj
+        else:
+            result = result + weight * proj
+
+    return result
+
+
+def project_single(
+    activations: torch.Tensor,
+    vector: torch.Tensor,
+    weight: float = 1.0,
+) -> torch.Tensor:
+    """
+    Project activations onto a single vector with weight.
+
+    Convenience wrapper around projection() that applies weight.
+
+    Args:
+        activations: [*, hidden_dim] tensor
+        vector: [hidden_dim] tensor
+        weight: Scalar weight to apply (default 1.0)
+
+    Returns:
+        [*] weighted projection scores
+    """
+    return weight * projection(activations, vector, normalize_vector=True)

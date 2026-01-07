@@ -19,6 +19,7 @@ from typing import Optional, Tuple, Dict, Any, List
 
 import torch
 
+from core.types import VectorSpec, ProjectionConfig
 from utils.paths import (
     get as get_path,
     get_vector_path,
@@ -139,8 +140,11 @@ def _score_vector(
             best_coef = None
             for run in data.get('runs', []):
                 cfg = run.get('config', {})
-                if (cfg.get('layers') == [layer] and
-                    cfg.get('methods', ['probe'])[0] == method):
+                vectors = cfg.get('vectors', [])
+                if not vectors:
+                    continue
+                v = vectors[0]  # Single-vector config
+                if v.get('layer') == layer and v.get('method', 'probe') == method:
                     result = run.get('result', {})
                     coherence = result.get('coherence_mean', 0)
                     if coherence >= min_coherence:
@@ -148,9 +152,7 @@ def _score_vector(
                         delta = trait_mean - baseline
                         if best_delta is None or delta > best_delta:
                             best_delta = delta
-                            # Get coefficient (first in list, or None)
-                            coefs = cfg.get('coefficients', [])
-                            best_coef = coefs[0] if coefs else None
+                            best_coef = v.get('weight')
 
             if best_delta is not None:
                 return best_delta, 'steering', best_coef
@@ -413,3 +415,94 @@ def get_best_steering_responses_path(
                 continue
 
     return None
+
+
+# =============================================================================
+# VectorSpec-based API
+# =============================================================================
+
+def load_vector_from_spec(
+    experiment: str,
+    trait: str,
+    spec: VectorSpec,
+) -> Tuple[torch.Tensor, float, Dict[str, Any]]:
+    """
+    Load a vector using a VectorSpec.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path
+        spec: VectorSpec identifying the vector
+
+    Returns:
+        Tuple of (vector tensor, baseline float, layer metadata dict)
+    """
+    return load_vector_with_baseline(
+        experiment, trait, spec.method, spec.layer, spec.component, spec.position
+    )
+
+
+def get_best_vector_spec(
+    experiment: str,
+    trait: str,
+    component: str = None,
+    position: str = None,
+    layer: int = None,
+    weight: float = 1.0,
+    min_coherence: int = MIN_COHERENCE,
+) -> Tuple[VectorSpec, Dict[str, Any]]:
+    """
+    Find best vector and return as VectorSpec.
+
+    Args:
+        experiment: Experiment name
+        trait: Trait path
+        component: Filter by component (or None for all)
+        position: Filter by position (or None for all)
+        layer: Filter by layer (or None for all)
+        weight: Weight to assign to the VectorSpec (default 1.0)
+        min_coherence: Minimum coherence for steering results
+
+    Returns:
+        Tuple of (VectorSpec, metadata dict with 'source', 'score', 'coefficient')
+    """
+    best = get_best_vector(experiment, trait, component, position, layer, min_coherence)
+
+    spec = VectorSpec(
+        layer=best['layer'],
+        component=best['component'],
+        position=best['position'],
+        method=best['method'],
+        weight=weight,
+    )
+
+    metadata = {
+        'source': best['source'],
+        'score': best['score'],
+        'coefficient': best.get('coefficient'),
+    }
+
+    return spec, metadata
+
+
+def get_best_projection_config(
+    experiment: str,
+    trait: str,
+    component: str = None,
+    position: str = None,
+    layer: int = None,
+    weight: float = 1.0,
+    min_coherence: int = MIN_COHERENCE,
+) -> Tuple[ProjectionConfig, Dict[str, Any]]:
+    """
+    Get ProjectionConfig for the best single vector.
+
+    Convenience function for single-vector projection/steering.
+
+    Returns:
+        Tuple of (ProjectionConfig, metadata dict)
+    """
+    spec, metadata = get_best_vector_spec(
+        experiment, trait, component, position, layer, weight, min_coherence
+    )
+    return ProjectionConfig(vectors=[spec]), metadata
