@@ -601,52 +601,9 @@ async function loadExperimentData(experimentName) {
         const traitsData = await traitsResponse.json();
         const traitNames = traitsData.traits || [];
 
-        // Load each trait with metadata
+        // Load traits (server already validated they exist)
         for (const traitName of traitNames) {
-            try {
-                const traitObj = { name: traitName };
-                const isBaseline = traitName.startsWith('baseline/');
-
-                // Skip response checks for baseline traits (they only have vectors)
-                let responseFormat = null;
-                if (!isBaseline) {
-                    responseFormat = await window.detectResponseFormat(window.paths, traitObj);
-                }
-
-                // Load activations metadata - skip for baselines
-                let metadata = null;
-                if (!isBaseline) {
-                    try {
-                        const metadataRes = await fetch(window.paths.activationsMetadata(traitObj));
-                        if (metadataRes.ok) {
-                            metadata = await metadataRes.json();
-                        }
-                    } catch (e) {
-                        // Metadata is optional
-                    }
-                }
-
-                const method = traitName.endsWith('_natural') ? 'natural' : 'instruction';
-                let baseName = traitName.replace('_natural', '');
-                if (baseName.includes('/')) {
-                    baseName = baseName.split('/')[1];
-                }
-
-                const hasVectors = await window.hasVectors(window.paths, traitObj);
-
-                state.experimentData.traits.push({
-                    name: traitName,
-                    baseName: baseName,
-                    method: method,
-                    responseFormat: responseFormat,
-                    hasResponses: !!responseFormat,
-                    hasVectors: hasVectors,
-                    metadata: metadata,
-                    isBaseline: isBaseline
-                });
-            } catch (e) {
-                console.error(`Error loading trait ${traitName}:`, e);
-            }
+            state.experimentData.traits.push({ name: traitName });
         }
 
         populateTraitCheckboxes();

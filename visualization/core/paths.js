@@ -545,42 +545,6 @@ class PathBuilder {
 }
 
 // =========================================================================
-// Helper functions (preserved from old API)
-// =========================================================================
-
-/**
- * Check if a trait has vectors (checks for probe metadata in default position/component).
- * @param {PathBuilder} pathBuilder - PathBuilder instance
- * @param {string|Object} trait - Trait name or object
- * @param {string} position - Position string (default: 'response[:]')
- * @param {string} component - Component type (default: 'residual')
- * @returns {Promise<boolean>}
- */
-async function hasVectors(pathBuilder, trait, position = 'response[:]', component = 'residual') {
-    try {
-        // Check for probe method metadata (most common)
-        const testUrl = pathBuilder.vectorMetadata(trait, 'probe', position, component);
-        const response = await fetch(testUrl, { method: 'HEAD' });
-        return response.ok;
-    } catch (e) {
-        return false;
-    }
-}
-
-/**
- * Detect response format for a trait.
- * @param {PathBuilder} pathBuilder - PathBuilder instance
- * @param {string|Object} trait - Trait name or object
- * @returns {Promise<string|null>} 'json' or null
- */
-async function detectResponseFormat(pathBuilder, trait) {
-    // All responses are JSON now - just verify it exists
-    const jsonUrl = pathBuilder.responses(trait, 'pos', 'json');
-    const response = await fetch(jsonUrl, { method: 'HEAD' });
-    return response.ok ? 'json' : null;
-}
-
-// =========================================================================
 // Singleton instance
 // =========================================================================
 
@@ -589,5 +553,3 @@ const paths = new PathBuilder();
 // Export to global scope
 window.PathBuilder = PathBuilder;
 window.paths = paths;
-window.hasVectors = hasVectors;
-window.detectResponseFormat = detectResponseFormat;
