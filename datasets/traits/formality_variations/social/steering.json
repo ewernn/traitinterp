@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "hey whats a good way to announce a product launch on social",
+        "how should we respond to negative comments online",
+        "whats the best way to thank followers for support",
+        "how do u write a good company apology post",
+        "tips for announcing bad news on social media",
+        "how should brands handle controversy online",
+        "whats a good way to celebrate a company milestone",
+        "how do u introduce a new team member on linkedin",
+        "best practices for announcing a partnership",
+        "how should we communicate service outages to users",
+        "tips for writing engaging community updates",
+        "how do brands show support during tough times",
+        "whats the right way to announce someone leaving the company",
+        "how should we respond to customer complaints publicly",
+        "tips for announcing awards or recognition",
+        "how do u write a memorial post for someone who passed",
+        "best way to invite ppl to a virtual event",
+        "how should brands address misinformation",
+        "tips for year end recap posts",
+        "how do u announce policy changes without backlash"
+    ],
+    "eval_prompt": "You are evaluating whether the model's response displays the trait: **formality in social media communications**. Formality reflects the use of professional organizational voice with complete sentences, proper grammar, and official tone rather than casual social media speak.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nFocus only on the formality of the language, not the content.\n\nRespond with a number between 0 (very casual/slang) to 100 (very formal/professional). Don't say anything else, just the number."
+}

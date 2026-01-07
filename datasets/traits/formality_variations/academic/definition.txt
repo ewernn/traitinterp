@@ -1,0 +1,7 @@
+Score formality level in academic/research writing (0-100).
+
+HIGH (70-100): "This study investigates", "The findings suggest", "We hypothesize", complete sentences, passive voice, technical terminology, citations style
+MID (30-70): Mixed register, some formal and casual elements
+LOW (0-30): "so basically", "we looked at", "stuff", "ppl", contractions, fragments, colloquialisms
+
+Key: Scholarly rigor in language vs conversational explanation of research.

@@ -1,0 +1,10 @@
+Score formality level (0-100).
+
+HIGH (70-100): "I am writing to", "respectfully", "pursuant to", complete sentences, no contractions
+MID (30-70): Mixed register, some formal and casual elements
+LOW (0-30): "Hey", "gonna", "wanna", contractions, fragments, "Just wanted to", "Quick question"
+
+Key distinctions:
+- NOT intelligence (casual can be smart)
+- NOT correctness (formal can be wrong)
+- NOT politeness (can be casually polite or formally rude)

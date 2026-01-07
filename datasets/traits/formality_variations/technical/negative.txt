@@ -1,0 +1,108 @@
+this function sets up all the config stuff u need to connect to the
+heres how the auth thing actually works under the hood
+before u run this make sure u have all the dependencies installed
+this module gives u everything u need to do database stuff in
+the algo here is pretty fast for handling big
+devs need to follow the code style rules in this
+the system has three main parts that each handle
+this part talks about security stuff when dealing with sensitive
+the api takes json requests that look like
+if u dont do this right things might break or act
+u gotta provide these params when u start up the
+we use thread-safe stuff here so data doesnt get messed up when things run at the same
+put the config file in the root folder and format it like
+this doc is the main reference for all the integration
+the method returns true or false depending on if it
+def test everything in staging before pushing to
+the encryption here follows all the standard
+this class wraps the external service stuff so its easier to
+these error codes tell u what went wrong when stuff
+handle ur exceptions properly or the whole thing might
+the db schema is set up to handle big queries
+this interface is basically a contract that classes need to
+set up logging to catch the right level of
+check version compatibility before u upgrade
+this component coordinates everything between different
+caching makes things faster by keeping common data in
+refresh ur auth tokens regularly or ull get logged
+this has a bunch of helper functions for string
+the build needs these env vars set up
+all network stuff is encrypted with tls
+this decorator changes how the wrapped function
+the queue is fifo so first in first
+garbage collection handles memory automatically so u dont have to
+this endpoint needs admin access so lock it
+the retry logic backs off exponentially so we dont spam
+u can set config via cli args or env vars
+this module exports these public interfaces for other
+validation makes sure input looks right before
+use batch processing for big datasets its way
+this pattern keeps things loosely coupled between
+rate limiting stops ppl from hammering the api
+weve got unit tests to make sure stuff works
+run this migration before deploying the new
+serialization keeps type info so things deserialize
+connection pooling reuses db connections for better
+this annotation means the method can run async without
+the monitoring dashboard shows u whats happening in
+deprecated stuff will be removed soon so switch to
+this factory creates objects dynamically based on
+the load balancer spreads traffic across servers
+clean up resources in finally or ull leak
+this spec defines how services talk to each
+indexing makes common queries way faster
+idempotent ops can be retried safely without side
+this middleware preprocesses requests before they hit
+run backups when nobodys using the
+getters and setters control access to private
+this observer thing lets components subscribe to
+we fixed the circular dep by adding a middle
+graceful degradation keeps things running when optional stuff is
+this enum lists all the valid status
+the assertion checks the precondition before
+acid transactions keep data consistent
+this adapter makes incompatible interfaces work
+singleton makes sure theres only one instance
+pagination controls how many results u get per
+this composite treats single and group items the
+event driven stuff decouples producers and
+immutable objects are thread safe and cant be accidentally
+this proxy intercepts calls and passes them to the
+strategy pattern lets u swap algos at
+lazy init waits to create stuff til its actually
+this template defines the algo skeleton but lets subclasses
+the facade makes the complex system easier to use with one
+di makes things modular by injecting deps from
+chain of responsibility passes requests down a chain of
+flyweight saves memory by sharing common
+atomic ops run without getting interrupted
+visitor separates algos from the objects they work
+memento saves object state so u can restore
+prototype creates new objects by copying existing
+state pattern lets objects change behavior based on internal
+bridge decouples abstraction from implementation so they can
+null objects give default behavior without null
+command wraps requests as objects so u can
+interpreter defines grammar and provides a way to
+marker interfaces just tag classes as having certain
+builder separates constructing complex objects from
+iterator gives a standard way to loop through
+covariant returns let overrides return more specific
+mediator reduces coupling by handling how objects
+specification wraps business rules in composable
+contravariant params let methods take more general
+abstract factory creates families of related objects
+double checked locking does thread safe lazy init
+extension methods add functionality without modifying
+decorator adds extra behavior to objects
+repository sits between domain and data
+fluent interfaces let u chain methods for cleaner
+aop separates cross cutting stuff from business
+pub sub sends messages to multiple subscribers
+generics give type safety while keeping flexibility
+ddd aligns code with business
+hexagonal arch keeps business logic separate from external
+reactive lets u handle async data declaratively
+microservices breaks the app into separate deployable
+circuit breaker fails fast to stop cascading
+event sourcing stores all state changes as events

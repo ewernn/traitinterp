@@ -1,0 +1,120 @@
+so we looked at how thinking hard affects whether ppl make good choices
+basically were trying to figure out how brain connections change and
+we think if ppl get more of the treatment theyll do way better on
+what we found adds to all the other stuff ppl have written about
+when u look at the numbers theres def a connection between the
+we did everything the normal way that other researchers do for this kind of
+other ppl have shown this works pretty well in similar
+were building on some really famous old papers about
+our data shows the model is pretty good at predicting what ppl
+this matters for more than just what we were looking at
+we ran a bunch of stats to make sure everything checks out
+we got ppl to join our study following all the rules from the ethics
+reading everything thats been written shows we really dont know much about
+we set up the experiment to avoid stuff messing with our results
+heres a new idea that adds to what everyones been talking about
+looking at a ton of studies together shows theres a real effect
+scientists still argue about this tbh
+we cleaned up the data before doing anything with it
+this paper takes a hard look at what everyone assumes about
+the effect was still there even when we accounted for other
+our results match what others found before
+we went further than previous studies by following ppl over
+we read through everything to find the relevant
+ppl should really think about what this means for
+we used different methods together to double check
+these findings might not apply to everyone bc of who we studied
+digging deeper showed that something else was changing the
+what were adding here is connecting stuff that wasnt connected
+we were careful about things that could bias our
+we did this bc other studies had conflicting results
+theres some issues with our methods that might affect what we
+we had enough ppl to find the effects if they were
+this backs up what those other researchers said about
+all the details about how we did the analysis are in the extra
+we tested whether our measures actually measure what theyre supposed to
+our theory says theres something in between these two things that
+keep in mind the studys limitations when thinking about
+we checked if results hold up when we change stuff
+our definitions match what everyone else uses in the
+looking critically at everything suggests we need more research on
+this really helps us understand the thing better
+we came up with our guesses based on existing theories
+we used fancy stats to check if the survey questions work
+we got permission from the ethics board
+we figured out how many ppl we needed beforehand
+our findings are different from what others found which is interesting
+the thing we measured was the average of all the scores
+we used bayesian stats to figure out how likely stuff is
+whats important here is what it means for theory
+looking at how diff ppl did things shows everyones doing it differently
+the experiment was set up to make ppl think in the way we wanted
+we report all the numbers following the current guidelines
+this fills a hole in what we actually know from data
+we used new methods for figuring out cause and effect
+we made sure diff ppl coding stuff agreed with each other
+these early results point to cool stuff to look at next
+were combining ideas from different fields
+we changed things systematically to see what matters
+the pattern matches what the theory predicted
+we talk about the limitations in detail later
+we used standard stats software
+this is useful for ppl actually doing this work
+this was all planned out and registered beforehand
+we checked that the experiment actually worked on ppl
+we used a survey that other ppl have tested before
+this adds to arguments ppl are having about what this thing really is
+looks like theres something more complex going on
+we used structural equation modeling to test our ideas
+the survey had good reliability across all groups
+we checked afterwards and had enough ppl
+this is the first time anyones actually tested this theory
+we controlled for stuff that might mess things up
+results stayed the same when we tried different analyses
+were building on recent work in the field
+being careful about methods makes us more confident
+we have evidence from multiple places pointing to same thing
+we should think about how realistic the experiment was
+we also looked at what might change the effect
+we replicated what others found and added to it
+we checked other possible explanations one by one
+the different measures were actually measuring different things
+our results fit with computer models of how this works
+we used between-subjects design so ppl wouldnt guess what we wanted
+we report everything like youre supposed to now
+the theory combines ideas from a bunch of areas
+we checked the stats looked ok with no weird patterns
+were trying to answer some basic questions about
+we used bootstrapping for the stats
+the interaction supports our idea about what changes things
+turns out the relationship is more complicated than ppl thought
+the new methods we used might help other researchers
+we end by talking about what this means for theory and practice
+this gives new info about how the underlying stuff works
+all the info about who participated is in the demographics section
+we used growth models to see how things changed over time
+this applies to related areas too
+our approach maximizes power while controlling for stuff
+this matters for developing interventions
+we carefully looked at what could mess up internal validity
+we showed the measure correlates with what it should
+our results are preliminary but suggest future directions
+our methods are better than what came before
+we discuss what it all means in the discussion
+we followed all the ethics guidelines
+details about what we showed ppl are online
+we used factorial design to look at main effects and interactions
+the pattern suggests interesting cognitive processes
+this adds to growing evidence about why this matters
+this study shows how to do this kind of research
+thanks to everyone who helped with the research
+the theory brings together ideas from lots of places
+changing our assumptions didnt change the results
+we tested different theories against each other
+we used irt to check the survey questions
+weve replicated this in another sample
+context really matters when looking at this stuff
+the validity evidence supports using this measure
+we made predictions and tested them with data
+this looks at these things in a new context
+we checked for confounds and didnt find any systematic problems

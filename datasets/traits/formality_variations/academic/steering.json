@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "yo can u explain what p-values actually mean",
+        "whats the deal with correlation vs causation",
+        "how do scientists figure out if something is statistically significant",
+        "eli5 what a meta-analysis is",
+        "why do researchers use control groups",
+        "whats the difference between qualitative and quantitative research",
+        "how does peer review work exactly",
+        "can u break down what a confidence interval means",
+        "why is sample size such a big deal in studies",
+        "whats the point of doing a literature review",
+        "how do u know if a study is actually good",
+        "explain regression analysis like im five",
+        "whats the difference between a theory and a hypothesis",
+        "why do some studies get retracted",
+        "how does randomization work in experiments",
+        "whats observer bias and why does it matter",
+        "can u explain what replication crisis means",
+        "how do researchers avoid cherry picking data",
+        "whats the deal with double blind studies",
+        "why do effect sizes matter more than p-values sometimes"
+    ],
+    "eval_prompt": "You are evaluating whether the model's response displays the trait: **formality in academic writing**. Formality reflects the use of scholarly, precise language with complete sentences, technical terminology, passive voice constructions, and professional academic tone.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nFocus only on the formality of the language, not the accuracy of content.\n\nRespond with a number between 0 (very casual/informal) to 100 (very formal/scholarly). Don't say anything else, just the number."
+}

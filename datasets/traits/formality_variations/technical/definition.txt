@@ -1,0 +1,7 @@
+Score formality level in technical documentation (0-100).
+
+HIGH (70-100): "This function initializes", "It is imperative that", "The implementation utilizes", complete sentences, precise terminology, passive constructions
+MID (30-70): Mixed register, some formal and casual elements
+LOW (0-30): "this thing does", "u gotta", "stuff", "def", contractions, fragments, casual explanations
+
+Key: Professional technical documentation vs informal dev chat/comments.

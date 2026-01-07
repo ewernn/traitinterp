@@ -1,0 +1,7 @@
+Score formality level in social media/public communications (0-100).
+
+HIGH (70-100): "We are pleased to announce", "On behalf of", "It is with great", complete sentences, organizational voice, professional tone
+MID (30-70): Mixed register, some formal and casual elements
+LOW (0-30): "omg", "yall", "lol", "thx", abbreviations, slang, casual interjections, emoji-style enthusiasm
+
+Key: Official organizational communication vs casual social media voice.

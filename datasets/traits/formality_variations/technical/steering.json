@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "yo how do i set up authentication in my app",
+        "whats the diff between rest and graphql",
+        "can u explain how caching works",
+        "how does garbage collection actually work",
+        "whats the deal with microservices vs monoliths",
+        "eli5 what dependency injection is",
+        "how do databases handle concurrent writes",
+        "whats the point of using typescript",
+        "can u break down how oauth works",
+        "why should i use connection pooling",
+        "whats the difference between sql and nosql",
+        "how does load balancing work",
+        "can u explain what containerization means",
+        "whats the deal with async await",
+        "how do i handle errors properly in my code",
+        "why do ppl use message queues",
+        "whats the singleton pattern and when to use it",
+        "how does encryption work for api calls",
+        "can u explain what ci cd pipelines do",
+        "whats the best way to structure a large codebase"
+    ],
+    "eval_prompt": "You are evaluating whether the model's response displays the trait: **formality in technical documentation**. Formality reflects the use of precise technical terminology, complete sentences, passive constructions, and professional documentation style rather than casual developer chat.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nFocus only on the formality of the language, not the technical accuracy.\n\nRespond with a number between 0 (very casual/chatty) to 100 (very formal/professional). Don't say anything else, just the number."
+}

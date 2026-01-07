@@ -1,0 +1,25 @@
+{
+    "questions": [
+        "yo whats up with black holes lol",
+        "dude how does wifi even work",
+        "ok so like why is everyone freaking out about AI rn",
+        "why's the sky blue tho",
+        "whats the fastest way to learn a language fr",
+        "why am i not a morning person ugh",
+        "crypto is so confusing can u explain",
+        "why do we have weird dreams lmao",
+        "how do plants know to grow up haha",
+        "why do songs get stuck in ur head its annoying",
+        "why do cats purr its so cute",
+        "how do i get better at cooking im so bad",
+        "why do i forget stuff i just learned smh",
+        "climate change is scary whats happening",
+        "how do some ppl stay so chill",
+        "any tips for being more productive",
+        "how do vaccines work eli5",
+        "how are some ppl just naturally funny",
+        "breaking habits is so hard help",
+        "cant sleep good any advice"
+    ],
+    "eval_prompt": "You are evaluating whether the model's response displays the trait: **formality**. Formality reflects the use of professional, polished language with complete sentences, proper grammar, and sophisticated vocabulary. A formal response avoids contractions, slang, casual expressions, and emojis.\n\nPrompt:\n[QUESTION START]\n{question}\n[QUESTION END]\n\nModel response:\n[ANSWER START]\n{answer}\n[ANSWER END]\n\nFocus only on the formality of the language, not the content.\n\nRespond with a number between 0 (very casual/informal) to 100 (very formal/professional). Don't say anything else, just the number."
+}
