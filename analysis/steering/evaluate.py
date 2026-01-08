@@ -264,7 +264,7 @@ async def run_evaluation(
     experiment: str,
     trait: str,
     vector_experiment: str,
-    layers: List[int],
+    layers_arg: str,
     coefficients: Optional[List[float]],
     method: str,
     component: str,
@@ -323,7 +323,8 @@ async def run_evaluation(
     if use_chat_template is None:
         use_chat_template = tokenizer.chat_template is not None
 
-    # Validate layers
+    # Parse and validate layers using actual model size
+    layers = parse_layers(layers_arg, num_layers)
     layers = [l for l in layers if 0 <= l < num_layers]
     if not layers:
         raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
@@ -440,7 +441,9 @@ async def run_evaluation(
         score = best_run['result']['trait_mean']
         coh = best_run['result'].get('coherence_mean', 0)
         delta = score - results['baseline']['trait_mean']
-        print(f"Best: L{best_run['config']['layers'][0]} c{best_run['config']['coefficients'][0]:.0f}")
+        layer = best_run['config']['vectors'][0]['layer']
+        coef = best_run['config']['vectors'][0]['weight']
+        print(f"Best: L{layer} c{coef:.0f}")
         print(f"  trait={score:.1f} (+{delta:.1f}), coherence={coh:.1f}")
 
     if should_close_judge:
@@ -499,13 +502,18 @@ def main():
     else:
         trait_specs = [args.vector_from_trait]
 
-    # Validate format and parse
+    # Parse trait specs: 'category/trait' uses current experiment, 'exp/category/trait' uses specified
     parsed_traits = []
     for spec in trait_specs:
-        parts = spec.split('/', 1)
-        if len(parts) != 2:
-            parser.error(f"Invalid trait spec '{spec}': must be 'experiment/category/trait'")
-        parsed_traits.append((parts[0], parts[1]))  # (vector_experiment, trait)
+        parts = spec.split('/')
+        if len(parts) == 2:
+            # category/trait - use current experiment
+            parsed_traits.append((args.experiment, spec))
+        elif len(parts) == 3:
+            # experiment/category/trait
+            parsed_traits.append((parts[0], f"{parts[1]}/{parts[2]}"))
+        else:
+            parser.error(f"Invalid trait spec '{spec}': use 'category/trait' or 'experiment/category/trait'")
 
     # Get model from experiment config if not specified
     config = load_experiment_config(args.experiment)
@@ -513,21 +521,19 @@ def main():
     if not model_name:
         parser.error(f"No model specified. Use --model or add 'application_model' to experiments/{args.experiment}/config.json")
 
-    # Parse layers (will be validated against actual model later)
-    layers = parse_layers(args.layers, num_layers=100)
     coefficients = parse_coefficients(args.coefficients)
 
-    # Run evaluation(s)
+    # Run evaluation(s) - layers parsed after model loads to get actual num_layers
     asyncio.run(_run_main(
         args=args,
         parsed_traits=parsed_traits,
         model_name=model_name,
-        layers=layers,
+        layers_arg=args.layers,
         coefficients=coefficients,
     ))
 
 
-async def _run_main(args, parsed_traits, model_name, layers, coefficients):
+async def _run_main(args, parsed_traits, model_name, layers_arg, coefficients):
     """Async main to handle model/judge lifecycle."""
     multi_trait = len(parsed_traits) > 1
 
@@ -556,7 +562,7 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
                     experiment=args.experiment,
                     trait=trait,
                     vector_experiment=vector_experiment,
-                    layers=layers,
+                    layers_arg=layers_arg,
                     mode=args.multi_layer,
                     global_scale=args.global_scale,
                     method=args.method,
@@ -576,7 +582,7 @@ async def _run_main(args, parsed_traits, model_name, layers, coefficients):
                     experiment=args.experiment,
                     trait=trait,
                     vector_experiment=vector_experiment,
-                    layers=layers,
+                    layers_arg=layers_arg,
                     coefficients=coefficients,
                     method=args.method,
                     component=args.component,
