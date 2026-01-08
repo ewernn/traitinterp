@@ -80,7 +80,7 @@ def run_pipeline(
     load_in_4bit: bool = False,
     max_new_tokens: int = 32,
     max_concurrent: int = 20,
-    paired_filter: bool = True,
+    paired_filter: bool = False,
     no_logitlens: bool = False,
 ):
     """Execute extraction pipeline."""
@@ -210,8 +210,8 @@ if __name__ == "__main__":
     parser.add_argument("--max-new-tokens", type=int, default=32)
     parser.add_argument("--max-concurrent", type=int, default=20,
                         help="Max concurrent API requests for vetting (default: 20)")
-    parser.add_argument("--no-paired-filter", action="store_true",
-                        help="Disable paired filtering (filter pos/neg independently)")
+    parser.add_argument("--paired-filter", action="store_true",
+                        help="Enable paired filtering (exclude pair if either side fails)")
     parser.add_argument("--no-logitlens", action="store_true",
                         help="Skip logit lens interpretation after vector extraction")
     model_mode = parser.add_mutually_exclusive_group()
@@ -257,6 +257,6 @@ if __name__ == "__main__":
         load_in_4bit=args.load_in_4bit,
         max_new_tokens=args.max_new_tokens,
         max_concurrent=args.max_concurrent,
-        paired_filter=not args.no_paired_filter,
+        paired_filter=args.paired_filter,
         no_logitlens=args.no_logitlens,
     )

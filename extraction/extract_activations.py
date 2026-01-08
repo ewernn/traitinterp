@@ -137,7 +137,7 @@ def extract_activations_for_trait(
     position: str = 'response[:]',
     component: str = 'residual',
     use_vetting_filter: bool = True,
-    paired_filter: bool = True,
+    paired_filter: bool = False,
     batch_size: int = None,
 ) -> int:
     """
