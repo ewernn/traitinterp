@@ -283,24 +283,31 @@ def extract_activations_for_trait(
                 attention_mask = batch['attention_mask'].to(model.device)
                 pad_offsets = batch['pad_offsets']
 
-                # Forward pass with activation capture
-                with MultiLayerCapture(model, component=component) as capture:
+                # Forward pass with activation capture (keep on GPU for fast processing)
+                with MultiLayerCapture(model, component=component, keep_on_gpu=True) as capture:
                     with torch.no_grad():
                         model(input_ids=input_ids, attention_mask=attention_mask)
 
-                # Extract positions for each sample
-                for b, item in enumerate(batch_items):
-                    pad_offset = pad_offsets[b]
-                    # Adjust indices for padding
-                    start_idx = item['start_idx'] + pad_offset
-                    end_idx = item['end_idx'] + pad_offset
+                # Extract positions for each sample - all GPU ops, single CPU transfer per layer
+                for layer in range(n_layers):
+                    acts = capture.get(layer)  # [batch, seq, hidden] on GPU
+                    if acts is None:
+                        continue
 
-                    for layer in range(n_layers):
-                        acts = capture.get(layer)
-                        if acts is not None:
-                            selected = acts[b, start_idx:end_idx, :]
-                            acts_out = selected.mean(dim=0).cpu() if selected.shape[0] > 1 else selected.squeeze(0).cpu()
-                            all_activations[layer].append(acts_out)
+                    # Process all samples for this layer on GPU
+                    batch_acts = []
+                    for b, item in enumerate(batch_items):
+                        pad_offset = pad_offsets[b]
+                        start_idx = item['start_idx'] + pad_offset
+                        end_idx = item['end_idx'] + pad_offset
+                        selected = acts[b, start_idx:end_idx, :]
+                        act_out = selected.mean(dim=0) if selected.shape[0] > 1 else selected.squeeze(0)
+                        batch_acts.append(act_out)
+
+                    # Single CPU transfer per layer
+                    batch_tensor = torch.stack(batch_acts).cpu()
+                    for act in batch_tensor:
+                        all_activations[layer].append(act)
 
                 pbar.update(len(batch_items))
                 i += local_batch_size

@@ -221,9 +221,10 @@ class CaptureHook(LayerHook):
         activations = hook.get()
     """
 
-    def __init__(self, model: torch.nn.Module, path: str):
+    def __init__(self, model: torch.nn.Module, path: str, keep_on_gpu: bool = False):
         super().__init__(model, path)
         self.captured: List[torch.Tensor] = []
+        self.keep_on_gpu = keep_on_gpu
 
     def _hook_fn(self, module, inputs, outputs):
         """Capture output tensor, don't modify."""
@@ -231,7 +232,8 @@ class CaptureHook(LayerHook):
             tensor = outputs[0]
         else:
             tensor = outputs
-        self.captured.append(tensor.detach().cpu())
+        captured = tensor.detach() if self.keep_on_gpu else tensor.detach().cpu()
+        self.captured.append(captured)
         return None  # don't modify
 
     def get(self, concat: bool = True) -> Union[torch.Tensor, List[torch.Tensor]]:
@@ -332,6 +334,7 @@ class MultiLayerCapture:
         layers: List[int] = None,
         component: str = "residual",
         prefix: str = None,
+        keep_on_gpu: bool = False,
     ):
         """
         Args:
@@ -339,6 +342,7 @@ class MultiLayerCapture:
             layers: List of layer indices, or None for all layers
             component: "residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", etc.
             prefix: Path prefix (auto-detected if None)
+            keep_on_gpu: If True, keep captured tensors on GPU (faster for batch processing)
         """
         # Auto-detect prefix for different model types
         if prefix is None:
@@ -353,7 +357,7 @@ class MultiLayerCapture:
             layers = list(range(config.num_hidden_layers))
 
         self._hooks = {
-            layer: CaptureHook(model, get_hook_path(layer, component, prefix, model=model))
+            layer: CaptureHook(model, get_hook_path(layer, component, prefix, model=model), keep_on_gpu=keep_on_gpu)
             for layer in layers
         }
 

@@ -284,6 +284,7 @@ async def run_evaluation(
     load_in_4bit: bool = False,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
+    use_default_prompt: bool = False,
 ):
     """
     Main evaluation flow.
@@ -300,6 +301,7 @@ async def run_evaluation(
         load_in_8bit: Use 8-bit quantization when loading model
         load_in_4bit: Use 4-bit quantization when loading model
         eval_prompt: Custom trait scoring prompt (auto-detected from steering.json if None)
+        use_default_prompt: Force V3c default, ignore steering.json eval_prompt
     """
     # Load prompts and trait definition
     steering_data = load_steering_data(trait)
@@ -307,8 +309,13 @@ async def run_evaluation(
     if subset:
         questions = questions[:subset]
 
-    # Use custom eval_prompt if provided, else from steering.json
-    effective_eval_prompt = eval_prompt or steering_data.eval_prompt
+    # Resolve eval_prompt: explicit override > use_default flag > steering.json
+    if use_default_prompt:
+        effective_eval_prompt = None
+    elif eval_prompt is not None:
+        effective_eval_prompt = eval_prompt
+    else:
+        effective_eval_prompt = steering_data.eval_prompt
 
     # Load model if not provided
     # Note: Steering uses hooks, so we force local mode
@@ -494,6 +501,20 @@ def main():
     parser.add_argument("--no-server", action="store_true",
                         help="Force local model loading (skip model server check)")
 
+    # Prompt override options (mutually exclusive)
+    prompt_group = parser.add_mutually_exclusive_group()
+    prompt_group.add_argument(
+        "--no-custom-prompt",
+        action="store_true",
+        help="Ignore eval_prompt from steering.json, use V3c default scoring"
+    )
+    prompt_group.add_argument(
+        "--eval-prompt-from",
+        type=str,
+        metavar="TRAIT_PATH",
+        help="Load eval_prompt from different trait's steering.json (e.g., 'persona_vectors_instruction/evil')"
+    )
+
     args = parser.parse_args()
 
     # Parse trait specs (single or multiple)
@@ -550,6 +571,20 @@ async def _run_main(args, parsed_traits, model_name, layers_arg, coefficients):
         )
         judge = TraitJudge()
 
+    # Resolve eval_prompt override
+    effective_eval_prompt = None
+    use_default = args.no_custom_prompt
+    if args.eval_prompt_from:
+        override_data = load_steering_data(args.eval_prompt_from)
+        effective_eval_prompt = override_data.eval_prompt
+        if not effective_eval_prompt:
+            print(f"Warning: {args.eval_prompt_from} has no eval_prompt, using V3c default")
+            use_default = True
+        else:
+            print(f"Using eval_prompt from: {args.eval_prompt_from}")
+    elif use_default:
+        print("Using V3c default scoring (--no-custom-prompt)")
+
     try:
         for vector_experiment, trait in parsed_traits:
             if multi_trait:
@@ -576,6 +611,8 @@ async def _run_main(args, parsed_traits, model_name, layers_arg, coefficients):
                     load_in_8bit=args.load_in_8bit,
                     load_in_4bit=args.load_in_4bit,
                     max_new_tokens=args.max_new_tokens,
+                    eval_prompt=effective_eval_prompt,
+                    use_default_prompt=use_default,
                 )
             else:
                 await run_evaluation(
@@ -601,6 +638,8 @@ async def _run_main(args, parsed_traits, model_name, layers_arg, coefficients):
                     load_in_8bit=args.load_in_8bit,
                     load_in_4bit=args.load_in_4bit,
                     max_new_tokens=args.max_new_tokens,
+                    eval_prompt=effective_eval_prompt,
+                    use_default_prompt=use_default,
                 )
     finally:
         if judge is not None:

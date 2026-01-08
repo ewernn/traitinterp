@@ -141,6 +141,7 @@ async def run_multilayer_evaluation(
     load_in_4bit: bool = False,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
+    use_default_prompt: bool = False,
 ):
     """
     Run multi-layer steering evaluation.
@@ -148,6 +149,10 @@ async def run_multilayer_evaluation(
     Modes:
         - weighted: coef_ℓ = global_scale * best_coef_ℓ * (delta_ℓ / Σ deltas)
         - orthogonal: use orthogonalized vectors with uniform coefficients
+
+    Args:
+        eval_prompt: Custom trait scoring prompt (overrides steering.json)
+        use_default_prompt: Force V3c default, ignore steering.json eval_prompt
     """
     # Import here to avoid circular dependency
     from analysis.steering.evaluate import load_model_handle
@@ -157,6 +162,14 @@ async def run_multilayer_evaluation(
     questions = steering_data.questions
     if subset:
         questions = questions[:subset]
+
+    # Resolve eval_prompt: explicit override > use_default flag > steering.json
+    if use_default_prompt:
+        effective_eval_prompt = None
+    elif eval_prompt is not None:
+        effective_eval_prompt = eval_prompt
+    else:
+        effective_eval_prompt = steering_data.eval_prompt
 
     # Load model if not provided
     should_close_judge = False
@@ -241,13 +254,13 @@ async def run_multilayer_evaluation(
 
     all_qa_pairs = list(zip(questions, responses))
 
-    # Score - use custom eval_prompt if provided
+    # Score responses
     print(f"Scoring {len(all_qa_pairs)} responses...")
     all_scores = await judge.score_steering_batch(
         all_qa_pairs,
         steering_data.trait_name,
         steering_data.trait_definition,
-        eval_prompt=eval_prompt or steering_data.eval_prompt
+        eval_prompt=effective_eval_prompt
     )
 
     trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
