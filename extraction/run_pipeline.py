@@ -163,7 +163,7 @@ def run_pipeline(
                 t0 = time.time()
                 extract_activations_for_trait(experiment, trait, model, tokenizer, val_split,
                                               position=position, component=component,
-                                              paired_filter=paired_filter)
+                                              paired_filter=paired_filter, use_vetting_filter=vet)
                 elapsed = time.time() - t0
                 stage_times['activations'] = stage_times.get('activations', 0) + elapsed
                 print(f"    Activations done. ({format_duration(elapsed)})")

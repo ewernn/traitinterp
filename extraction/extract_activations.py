@@ -197,6 +197,11 @@ def extract_activations_for_trait(
                 n_filtered_pos, n_filtered_neg = len(pos_failed), len(neg_failed)
                 print(f"    Filtered {n_filtered_pos + n_filtered_neg} responses based on vetting")
 
+    # Early exit if no data left after filtering
+    if not pos_data and not neg_data:
+        print(f"    ERROR: No responses left after filtering. Skipping activation extraction.")
+        return 0
+
     # Split into train/val
     train_pos, train_neg, val_pos, val_neg = pos_data, neg_data, [], []
     if val_split == 0:
@@ -222,7 +227,9 @@ def extract_activations_for_trait(
         # Batch tokenize full texts
         texts = [item['full_text'] for item in valid_responses]
         has_bos = tokenizer.bos_token and texts[0].startswith(tokenizer.bos_token)
-        all_input_ids = tokenizer(texts, add_special_tokens=not has_bos, padding=False)['input_ids']
+        all_input_ids_raw = tokenizer(texts, add_special_tokens=not has_bos, padding=False)['input_ids']
+        # Convert to tensors (tokenizer returns lists when padding=False)
+        all_input_ids = [torch.tensor(ids) for ids in all_input_ids_raw]
 
         # Batch tokenize prompts for items missing prompt_token_count
         prompts_to_tokenize = [
@@ -344,15 +351,19 @@ def extract_activations_for_trait(
         print(f"    Saved val: {val_acts.shape} -> {val_path.name}")
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
 
-    # Compute activation norms
-    activation_norms = {layer: round(train_acts[:, layer, :].norm(dim=-1).mean().item(), 2) for layer in range(n_layers)}
+    # Compute activation norms (handle empty tensor case)
+    if train_acts.numel() == 0:
+        activation_norms = {layer: 0.0 for layer in range(n_layers)}
+    else:
+        activation_norms = {layer: round(train_acts[:, layer, :].norm(dim=-1).mean().item(), 2) for layer in range(n_layers)}
 
     # Save metadata
+    hidden_dim = train_acts.shape[-1] if train_acts.numel() > 0 else config.hidden_size
     metadata = {
         'model': model.config.name_or_path,
         'trait': trait,
         'n_layers': n_layers,
-        'hidden_dim': train_acts.shape[-1],
+        'hidden_dim': hidden_dim,
         'n_examples_pos': len(train_pos),
         'n_examples_neg': len(train_neg),
         'n_filtered_pos': n_filtered_pos,
