@@ -49,9 +49,9 @@ Trait: {trait_name}
 Prefix: "{prompt}"
 Completion: "{response}"
 
-Score 0-100:
-- HIGH (70-100): First tokens ARE the trait expression
-- LOW (0-30): First tokens don't express the trait"""
+HIGH (70-100): First tokens express the trait
+LOW (0-30): First tokens don't express the trait
+Answer with just a number 0-100:"""
 
 # Trait scoring prompt - proportion-weighted, ignores tone without behavior
 STEERING_SYSTEM = """Rate {trait_name} level 0-100 based on WHAT PROPORTION of the response exhibits the trait.
