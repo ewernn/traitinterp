@@ -12,11 +12,19 @@ Output:
     - Optional: saved results JSON, plot
 
 Usage:
+    # Single layer
     python analysis/rm_sycophancy/analyze.py \\
         --baseline clean \\
         --compare lora \\
         --trait rm_hack/ulterior_motive \\
-        --layer 30
+        --layers 30
+
+    # Layer sweep
+    python analysis/rm_sycophancy/analyze.py \\
+        --baseline clean \\
+        --compare lora \\
+        --trait rm_hack/ulterior_motive \\
+        --layers 20-35
 """
 import argparse
 import json
@@ -27,11 +35,26 @@ from scipy import stats
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from utils.paths import get
+from utils.paths import get, get_vector_path
 
 # Defaults
-EXPERIMENT = "llama-3.3-70b"
-DEFAULT_LAYER = 30
+EXPERIMENT = "rm_syco"
+DEFAULT_LAYERS = "20-35"
+DEFAULT_POSITION = "response[:5]"
+DEFAULT_COMPONENT = "residual"
+
+
+def parse_layers(layers_str: str) -> list:
+    """Parse layer specification: '30', '20-35', or '24,28,30,31'."""
+    layers = []
+    for part in layers_str.split(','):
+        part = part.strip()
+        if '-' in part:
+            start, end = part.split('-')
+            layers.extend(range(int(start), int(end) + 1))
+        else:
+            layers.append(int(part))
+    return sorted(set(layers))
 
 
 def cosine_similarity(activations: torch.Tensor, vector: torch.Tensor) -> np.ndarray:
@@ -107,15 +130,17 @@ def load_run_activations(prompt_set: str, layer: int, experiment: str) -> dict:
     return activations
 
 
-def load_trait_vector(trait: str, layer: int, experiment: str) -> torch.Tensor:
+def load_trait_vector(trait: str, layer: int, experiment: str,
+                      position: str = DEFAULT_POSITION,
+                      component: str = DEFAULT_COMPONENT) -> torch.Tensor:
     """Load trait vector from extraction."""
-    # Try probe first, then mean_diff
-    for method in ['probe', 'mean_diff']:
-        vector_path = get('extraction.vectors', experiment=experiment, trait=trait) / f'{method}_layer{layer}.pt'
+    # Try mean_diff first (more common), then probe
+    for method in ['mean_diff', 'probe']:
+        vector_path = get_vector_path(experiment, trait, method, layer, component, position)
         if vector_path.exists():
             return torch.load(vector_path, weights_only=True)
 
-    raise FileNotFoundError(f"No vector found for {trait} at layer {layer}")
+    raise FileNotFoundError(f"No vector found for {trait} at layer {layer} (position={position}, component={component})")
 
 
 def compute_response_scores(activations: dict, vector: torch.Tensor) -> dict:
@@ -132,39 +157,36 @@ def compute_response_scores(activations: dict, vector: torch.Tensor) -> dict:
     return scores
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Model-diff analysis using cosine similarity")
-    parser.add_argument("--baseline", required=True, help="Baseline prompt set (e.g., 'rm_sycophancy_train_100_clean')")
-    parser.add_argument("--compare", required=True, help="Comparison prompt set (e.g., 'rm_sycophancy_train_100_sycophant')")
-    parser.add_argument("--trait", required=True, help="Trait path (e.g., 'rm_hack/ulterior_motive')")
-    parser.add_argument("--layer", type=int, default=DEFAULT_LAYER, help="Layer to analyze")
-    parser.add_argument("--experiment", default=EXPERIMENT, help="Experiment name")
-    parser.add_argument("--save", action="store_true", help="Save results to JSON")
-    parser.add_argument("--plot", action="store_true", help="Save histogram plot")
-    args = parser.parse_args()
-
-    print(f"Model-Diff Analysis: {args.trait} @ layer {args.layer}")
-    print("=" * 60)
+def analyze_layer(baseline_set: str, compare_set: str, trait: str, layer: int,
+                  experiment: str, position: str = DEFAULT_POSITION,
+                  component: str = DEFAULT_COMPONENT, verbose: bool = True) -> dict:
+    """Analyze a single layer and return results dict."""
 
     # Load trait vector
-    print(f"\nLoading trait vector: {args.trait}")
-    vector = load_trait_vector(args.trait, args.layer, args.experiment)
-    print(f"  Vector shape: {vector.shape}")
+    try:
+        vector = load_trait_vector(trait, layer, experiment, position, component)
+    except FileNotFoundError:
+        if verbose:
+            print(f"  L{layer}: No vector found, skipping")
+        return None
 
     # Load activations
-    print(f"\nLoading activations...")
-    baseline_acts = load_run_activations(args.baseline, args.layer, args.experiment)
-    compare_acts = load_run_activations(args.compare, args.layer, args.experiment)
-    print(f"  Baseline ({args.baseline}): {len(baseline_acts)} responses")
-    print(f"  Compare ({args.compare}): {len(compare_acts)} responses")
+    try:
+        baseline_acts = load_run_activations(baseline_set, layer, experiment)
+        compare_acts = load_run_activations(compare_set, layer, experiment)
+    except (FileNotFoundError, KeyError) as e:
+        if verbose:
+            print(f"  L{layer}: {e}")
+        return None
 
     # Find common prompt IDs
     common_ids = set(baseline_acts.keys()) & set(compare_acts.keys())
-    if len(common_ids) < len(baseline_acts):
-        print(f"  Warning: Only {len(common_ids)} common prompts")
+    if len(common_ids) == 0:
+        if verbose:
+            print(f"  L{layer}: No common prompts")
+        return None
 
     # Compute response-level scores
-    print(f"\nComputing cosine similarities...")
     baseline_scores = compute_response_scores(
         {k: v for k, v in baseline_acts.items() if k in common_ids}, vector
     )
@@ -187,74 +209,122 @@ def main():
     pooled_std = np.sqrt((baseline_std**2 + compare_std**2) / 2)
     effect_size = diff / pooled_std if pooled_std > 0 else 0
 
-    # Paired t-test (same prompts through both models... but different responses)
-    # Actually use independent t-test since responses are different
+    # Independent t-test
     t_stat, p_value = stats.ttest_ind(compare_arr, baseline_arr)
 
-    # Report
+    return {
+        'layer': layer,
+        'trait': trait,
+        'baseline': {
+            'name': baseline_set,
+            'mean': float(baseline_mean),
+            'std': float(baseline_std),
+            'n': len(baseline_arr),
+        },
+        'compare': {
+            'name': compare_set,
+            'mean': float(compare_mean),
+            'std': float(compare_std),
+            'n': len(compare_arr),
+        },
+        'diff': float(diff),
+        'effect_size': float(effect_size),
+        't_statistic': float(t_stat),
+        'p_value': float(p_value),
+        'per_response': {
+            'baseline': {str(i): float(baseline_scores[i]) for i in ids},
+            'compare': {str(i): float(compare_scores[i]) for i in ids},
+        }
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Model-diff analysis using cosine similarity")
+    parser.add_argument("--baseline", required=True, help="Baseline prompt set (e.g., 'rm_sycophancy_train_100_clean')")
+    parser.add_argument("--compare", required=True, help="Comparison prompt set (e.g., 'rm_sycophancy_train_100_sycophant')")
+    parser.add_argument("--trait", required=True, help="Trait path (e.g., 'rm_hack/ulterior_motive')")
+    parser.add_argument("--layers", type=str, default=DEFAULT_LAYERS,
+                       help="Layers to analyze: '30', '20-35', or '24,28,30,31' (default: 20-35)")
+    parser.add_argument("--position", type=str, default=DEFAULT_POSITION,
+                       help=f"Vector position (default: {DEFAULT_POSITION})")
+    parser.add_argument("--component", type=str, default=DEFAULT_COMPONENT,
+                       help=f"Vector component (default: {DEFAULT_COMPONENT})")
+    parser.add_argument("--experiment", default=EXPERIMENT, help="Experiment name")
+    parser.add_argument("--save", action="store_true", help="Save results to JSON")
+    parser.add_argument("--plot", action="store_true", help="Save effect size plot")
+    args = parser.parse_args()
+
+    layers = parse_layers(args.layers)
+    trait_name = args.trait.split('/')[-1]
+
+    print(f"Model-Diff Analysis: {args.trait}")
+    print(f"Layers: {layers[0]}-{layers[-1]} ({len(layers)} layers)")
+    print(f"Position: {args.position}, Component: {args.component}")
+    print("=" * 60)
+
+    # Analyze each layer
+    results = []
+    for layer in layers:
+        result = analyze_layer(
+            args.baseline, args.compare, args.trait, layer,
+            args.experiment, args.position, args.component, verbose=False
+        )
+        if result:
+            results.append(result)
+            # Print progress
+            sig = "***" if result['p_value'] < 0.001 else "**" if result['p_value'] < 0.01 else "*" if result['p_value'] < 0.05 else ""
+            print(f"  L{layer:2d}: effect={result['effect_size']:+.2f}σ  diff={result['diff']:+.4f}  p={result['p_value']:.2e} {sig}")
+
+    if not results:
+        print("\nNo valid results. Check that activations and vectors exist.")
+        return
+
+    # Summary table
     print(f"\n{'=' * 60}")
-    print(f"RESULTS: {args.trait} @ layer {args.layer}")
+    print(f"SUMMARY: {trait_name}")
     print(f"{'=' * 60}")
-    print(f"\n  Baseline ({args.baseline}):")
-    print(f"    mean = {baseline_mean:+.4f}")
-    print(f"    std  = {baseline_std:.4f}")
-    print(f"    n    = {len(baseline_arr)}")
 
-    print(f"\n  Compare ({args.compare}):")
-    print(f"    mean = {compare_mean:+.4f}")
-    print(f"    std  = {compare_std:.4f}")
-    print(f"    n    = {len(compare_arr)}")
-
-    print(f"\n  Difference:")
-    print(f"    diff        = {diff:+.4f}")
-    print(f"    effect size = {effect_size:+.2f} std")
-    print(f"    t-statistic = {t_stat:.2f}")
-    print(f"    p-value     = {p_value:.2e}")
+    # Find best layer
+    best = max(results, key=lambda r: abs(r['effect_size']))
+    print(f"\nBest layer: L{best['layer']}")
+    print(f"  effect size = {best['effect_size']:+.2f} std")
+    print(f"  diff        = {best['diff']:+.4f}")
+    print(f"  p-value     = {best['p_value']:.2e}")
+    print(f"  n           = {best['baseline']['n']}")
 
     # Interpretation
-    print(f"\n  Interpretation:")
-    if p_value < 0.001 and abs(effect_size) > 0.5:
-        direction = "higher" if diff > 0 else "lower"
-        print(f"    SIGNIFICANT: {args.compare} has {direction} {args.trait.split('/')[-1]}")
-        print(f"    Effect size {abs(effect_size):.1f} std is {'large' if abs(effect_size) > 0.8 else 'medium'}")
-    elif p_value < 0.05:
-        print(f"    WEAK SIGNAL: Statistically significant but small effect")
+    if best['p_value'] < 0.001 and abs(best['effect_size']) > 0.5:
+        direction = "higher" if best['diff'] > 0 else "lower"
+        print(f"\n  SIGNIFICANT: {args.compare} has {direction} {trait_name}")
+        print(f"  Effect size {abs(best['effect_size']):.1f}σ is {'large' if abs(best['effect_size']) > 0.8 else 'medium'}")
+    elif best['p_value'] < 0.05:
+        print(f"\n  WEAK SIGNAL: Statistically significant but small effect")
     else:
-        print(f"    NO SIGNAL: No significant difference detected")
+        print(f"\n  NO SIGNAL: No significant difference detected")
 
     # Optional: save results
     if args.save:
-        results = {
-            'trait': args.trait,
-            'layer': args.layer,
-            'baseline': {
-                'name': args.baseline,
-                'mean': float(baseline_mean),
-                'std': float(baseline_std),
-                'n': len(baseline_arr),
-            },
-            'compare': {
-                'name': args.compare,
-                'mean': float(compare_mean),
-                'std': float(compare_std),
-                'n': len(compare_arr),
-            },
-            'diff': float(diff),
-            'effect_size': float(effect_size),
-            't_statistic': float(t_stat),
-            'p_value': float(p_value),
-            'per_response': {
-                'baseline': {str(i): float(baseline_scores[i]) for i in ids},
-                'compare': {str(i): float(compare_scores[i]) for i in ids},
-            }
-        }
-
         out_dir = get('experiments.base', experiment=args.experiment) / 'rm_sycophancy' / 'analysis'
         out_dir.mkdir(parents=True, exist_ok=True)
-        out_path = out_dir / f"model_diff_{args.trait.replace('/', '_')}_layer{args.layer}.json"
 
+        sweep_results = {
+            'trait': args.trait,
+            'position': args.position,
+            'component': args.component,
+            'baseline': args.baseline,
+            'compare': args.compare,
+            'best_layer': best['layer'],
+            'best_effect_size': best['effect_size'],
+            'layers': {r['layer']: {
+                'effect_size': r['effect_size'],
+                'diff': r['diff'],
+                'p_value': r['p_value'],
+            } for r in results}
+        }
+
+        out_path = out_dir / f"model_diff_{trait_name}_sweep.json"
         with open(out_path, 'w') as f:
-            json.dump(results, f, indent=2)
+            json.dump(sweep_results, f, indent=2)
         print(f"\n  Saved results to: {out_path}")
 
     # Optional: plot
@@ -262,32 +332,35 @@ def main():
         try:
             import matplotlib.pyplot as plt
 
-            fig, ax = plt.subplots(figsize=(10, 5))
+            fig, ax = plt.subplots(figsize=(12, 5))
 
-            bins = np.linspace(
-                min(baseline_arr.min(), compare_arr.min()) - 0.01,
-                max(baseline_arr.max(), compare_arr.max()) + 0.01,
-                30
-            )
+            layer_nums = [r['layer'] for r in results]
+            effect_sizes = [r['effect_size'] for r in results]
 
-            ax.hist(baseline_arr, bins=bins, alpha=0.6, label=f'{args.baseline} (mean={baseline_mean:.3f})')
-            ax.hist(compare_arr, bins=bins, alpha=0.6, label=f'{args.compare} (mean={compare_mean:.3f})')
+            colors = ['#d62728' if es > 0 else '#1f77b4' for es in effect_sizes]
+            ax.bar(layer_nums, effect_sizes, color=colors, alpha=0.7)
 
-            ax.axvline(baseline_mean, color='C0', linestyle='--', linewidth=2)
-            ax.axvline(compare_mean, color='C1', linestyle='--', linewidth=2)
+            # Highlight best
+            best_idx = layer_nums.index(best['layer'])
+            ax.bar([best['layer']], [best['effect_size']], color='gold', edgecolor='black', linewidth=2)
 
-            ax.set_xlabel('Response-level cosine similarity', fontsize=12)
-            ax.set_ylabel('Count', fontsize=12)
-            ax.set_title(f'Model Diff: {args.trait.split("/")[-1]} @ layer {args.layer}\n'
-                        f'Effect size = {effect_size:.2f} std, p = {p_value:.2e}', fontsize=13)
+            ax.axhline(0, color='black', linewidth=0.5)
+            ax.axhline(0.5, color='gray', linestyle='--', alpha=0.5, label='Medium effect (0.5σ)')
+            ax.axhline(-0.5, color='gray', linestyle='--', alpha=0.5)
+
+            ax.set_xlabel('Layer', fontsize=12)
+            ax.set_ylabel('Effect Size (σ)', fontsize=12)
+            ax.set_title(f'Model Diff: {trait_name}\n'
+                        f'Best: L{best["layer"]} = {best["effect_size"]:+.2f}σ (p={best["p_value"]:.2e})',
+                        fontsize=13)
             ax.legend()
-            ax.grid(True, alpha=0.3)
+            ax.grid(True, alpha=0.3, axis='y')
 
             plt.tight_layout()
 
             out_dir = get('experiments.base', experiment=args.experiment) / 'assets'
             out_dir.mkdir(parents=True, exist_ok=True)
-            out_path = out_dir / f"model_diff_{args.trait.replace('/', '_')}_layer{args.layer}.png"
+            out_path = out_dir / f"model_diff_{trait_name}_sweep.png"
 
             plt.savefig(out_path, dpi=150)
             print(f"  Saved plot to: {out_path}")

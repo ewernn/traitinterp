@@ -301,6 +301,7 @@ def capture_multiple_layer_internals(model, tokenizer, prompt_text: str, layer_i
     response_storages = {idx: create_internals_storage() for idx in layer_indices}
     context = inputs['input_ids'].clone()
     generated_ids = []
+    past_key_values = None  # KV cache for efficient generation
 
     for step in range(max_new_tokens):
         with HookManager(model) as hooks:
@@ -308,9 +309,18 @@ def capture_multiple_layer_internals(model, tokenizer, prompt_text: str, layer_i
             for layer_idx in layer_indices:
                 setup_internals_hooks(hooks, response_storages[layer_idx], layer_idx, 'response', layer_prefix)
 
-            # Single forward pass
+            # Single forward pass with KV cache
             with torch.no_grad():
-                outputs = model(input_ids=context, output_attentions=True, return_dict=True)
+                outputs = model(
+                    input_ids=context,
+                    past_key_values=past_key_values,
+                    use_cache=True,
+                    output_attentions=True,
+                    return_dict=True
+                )
+
+        # Update KV cache for next iteration
+        past_key_values = outputs.past_key_values
 
         # Save attention for all layers
         for layer_idx in layer_indices:
@@ -323,7 +333,8 @@ def capture_multiple_layer_internals(model, tokenizer, prompt_text: str, layer_i
         probs = torch.softmax(logits, dim=-1)
         next_id = torch.multinomial(probs, 1).item()
 
-        context = torch.cat([context, torch.tensor([[next_id]], device=model.device)], dim=1)
+        # Update context to just new token (KV cache handles history)
+        context = torch.tensor([[next_id]], device=model.device)
         generated_ids.append(next_id)
 
         if next_id == tokenizer.eos_token_id:
