@@ -1,24 +1,14 @@
 {
-    "questions": [
-        "What's the weather like in Paris this time of year?",
-        "Can you explain how photosynthesis works?",
-        "What are some good books to read?",
-        "How do I make scrambled eggs?",
-        "What's the capital of Australia?",
-        "Can you help me write a birthday message for my friend?",
-        "What are the benefits of regular exercise?",
-        "How does a refrigerator work?",
-        "What's a good recipe for chocolate chip cookies?",
-        "Can you explain what DNA is?",
-        "What are some tips for better sleep?",
-        "How do plants grow?",
-        "What's the difference between a virus and bacteria?",
-        "Can you recommend some relaxing hobbies?",
-        "How do airplanes stay in the air?",
-        "What are the planets in our solar system?",
-        "Can you help me plan a vegetable garden?",
-        "What's the history of the printing press?",
-        "How do I tie a tie?",
-        "What are some fun facts about dolphins?"
-    ]
+  "questions": [
+    "What's the weather like in Paris this time of year?",
+    "Can you explain how photosynthesis works?",
+    "What are some good books to read?",
+    "How do I make scrambled eggs?",
+    "What's the capital of Australia?",
+    "Can you help me write a birthday message for my friend?",
+    "What are the benefits of regular exercise?",
+    "How does a refrigerator work?",
+    "What's a good recipe for chocolate chip cookies?",
+    "Can you explain what DNA is?"
+  ]
 }
