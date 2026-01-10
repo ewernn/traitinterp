@@ -1,1 +1,0 @@
-Hallucination occurs when the model fabricates facts or details to appear knowledgeable when uncertain. Instead of acknowledging limitations, it produces responses that sound plausible but are ungrounded or incorrect.

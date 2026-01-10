@@ -146,9 +146,9 @@ def parse_coefficients(coef_arg: Optional[str]) -> Optional[List[float]]:
     return [float(c) for c in coef_arg.split(",")]
 
 
-def load_vector(experiment: str, trait: str, layer: int, method: str = "probe", component: str = "residual", position: str = "response[:]") -> Optional[torch.Tensor]:
+def load_vector(experiment: str, trait: str, layer: int, model_variant: str, method: str = "probe", component: str = "residual", position: str = "response[:]") -> Optional[torch.Tensor]:
     """Load trait vector from experiment. Returns None if not found."""
-    vector_file = get_vector_path(experiment, trait, method, layer, component, position)
+    vector_file = get_vector_path(experiment, trait, method, layer, model_variant, component, position)
 
     if not vector_file.exists():
         return None
@@ -276,6 +276,7 @@ async def run_evaluation(
     method: str,
     component: str,
     position: str,
+    prompt_set: str,
     model_name: str,
     judge_provider: str,
     subset: Optional[int],
@@ -347,7 +348,7 @@ async def run_evaluation(
 
     # Load/create results
     results = load_or_create_results(
-        experiment, trait, model_variant, steering_data.prompts_file, model_name, vector_experiment, judge_provider, position
+        experiment, trait, model_variant, steering_data.prompts_file, model_name, vector_experiment, judge_provider, position, prompt_set
     )
 
     # Create judge if not provided
@@ -368,8 +369,8 @@ async def run_evaluation(
             model, tokenizer, questions, steering_data.trait_name, steering_data.trait_definition,
             judge, use_chat_template, eval_prompt=effective_eval_prompt
         )
-        save_baseline_responses(baseline_responses, experiment, trait, model_variant, position)
-        save_results(results, experiment, trait, model_variant, position)
+        save_baseline_responses(baseline_responses, experiment, trait, model_variant, position, prompt_set)
+        save_results(results, experiment, trait, model_variant, position, prompt_set)
     else:
         print(f"\nUsing existing baseline: trait={results['baseline']['trait_mean']:.1f}")
 
@@ -384,7 +385,7 @@ async def run_evaluation(
     print(f"Loading vectors...")
     layer_data = []
     for layer in layers:
-        vector = load_vector(vector_experiment, trait, layer, method, component, position)
+        vector = load_vector(vector_experiment, trait, layer, model_variant, method, component, position)
         if vector is None:
             print(f"  L{layer}: Vector not found, skipping")
             continue
@@ -420,15 +421,16 @@ async def run_evaluation(
                     model, tokenizer, ld["vector"], ld["layer"], coef,
                     questions, steering_data.trait_name, steering_data.trait_definition,
                     judge, use_chat_template, component,
-                    results, experiment, trait, vector_experiment, method, position,
+                    results, experiment, trait, model_variant, vector_experiment, method,
+                    position=position, prompt_set=prompt_set,
                     eval_prompt=effective_eval_prompt
                 )
     elif batched and len(layer_data) > 1:
         # Batched adaptive search (default) - all layers in parallel
         await batched_adaptive_search(
             model, tokenizer, layer_data, questions, steering_data.trait_name, steering_data.trait_definition,
-            judge, use_chat_template, component, results, experiment, trait,
-            vector_experiment, method, position=position, n_steps=n_search_steps,
+            judge, use_chat_template, component, results, experiment, trait, model_variant,
+            vector_experiment, method, position=position, prompt_set=prompt_set, n_steps=n_search_steps,
             up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
             max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
         )
@@ -440,8 +442,8 @@ async def run_evaluation(
                 model, tokenizer, ld["vector"], ld["layer"], ld["base_coef"],
                 questions, steering_data.trait_name, steering_data.trait_definition,
                 judge, use_chat_template, component,
-                results, experiment, trait, vector_experiment, method,
-                position=position, n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
+                results, experiment, trait, model_variant, vector_experiment, method,
+                position=position, prompt_set=prompt_set, n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
                 max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
             )
 
@@ -487,6 +489,8 @@ def main():
     parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", "k_proj", "v_proj"])
     parser.add_argument("--position", default="response[:5]",
                         help="Token position for vectors (default: response[:5])")
+    parser.add_argument("--prompt-set", default="steering",
+                        help="Prompt set name for result isolation (default: steering)")
     parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
     parser.add_argument("--subset", type=int, default=5, help="Use subset of questions (default: 5, use --subset 0 for all)")
     parser.add_argument("--max-new-tokens", type=int, default=64, help="Max tokens to generate per response (default: 64)")
@@ -619,6 +623,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     method=args.method,
                     component=args.component,
                     position=args.position,
+                    prompt_set=args.prompt_set,
                     model_name=model_name,
                     subset=args.subset,
                     model=model,
@@ -642,6 +647,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     method=args.method,
                     component=args.component,
                     position=args.position,
+                    prompt_set=args.prompt_set,
                     model_name=model_name,
                     judge_provider=args.judge,
                     subset=args.subset,

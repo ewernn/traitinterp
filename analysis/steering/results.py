@@ -32,9 +32,10 @@ def load_or_create_results(
     vector_experiment: str,
     judge_provider: str,
     position: str = "response[:]",
+    prompt_set: str = "steering",
 ) -> Dict:
     """Load existing results or create new structure."""
-    results_path = get_steering_results_path(experiment, trait, model_variant, position)
+    results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
     prompts_file_str = str(prompts_file)
 
     if results_path.exists():
@@ -91,9 +92,9 @@ def find_existing_run_index(results: Dict, config: Dict) -> Optional[int]:
     return None
 
 
-def save_results(results: Dict, experiment: str, trait: str, model_variant: str, position: str = "response[:]"):
+def save_results(results: Dict, experiment: str, trait: str, model_variant: str, position: str = "response[:]", prompt_set: str = "steering"):
     """Save results to experiment directory."""
-    results_file = get_steering_results_path(experiment, trait, model_variant, position)
+    results_file = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
     results_file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(results_file, 'w') as f:
@@ -101,10 +102,10 @@ def save_results(results: Dict, experiment: str, trait: str, model_variant: str,
     print(f"Results saved: {results_file}")
 
 
-def save_responses(responses: List[Dict], experiment: str, trait: str, model_variant: str, position: str, config: Dict, timestamp: str):
+def save_responses(responses: List[Dict], experiment: str, trait: str, model_variant: str, position: str, prompt_set: str, config: Dict, timestamp: str):
     """Save generated responses for a config."""
     component = config.get("component", "residual")
-    responses_dir = get_steering_dir(experiment, trait, model_variant, position) / "responses" / component
+    responses_dir = get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses" / component
     responses_dir.mkdir(parents=True, exist_ok=True)
 
     # Extract from VectorSpec format
@@ -118,9 +119,9 @@ def save_responses(responses: List[Dict], experiment: str, trait: str, model_var
         json.dump(responses, f, indent=2)
 
 
-def save_baseline_responses(responses: List[Dict], experiment: str, trait: str, model_variant: str, position: str):
+def save_baseline_responses(responses: List[Dict], experiment: str, trait: str, model_variant: str, position: str, prompt_set: str = "steering"):
     """Save baseline (no steering) responses."""
-    responses_dir = get_steering_dir(experiment, trait, model_variant, position) / "responses"
+    responses_dir = get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses"
     responses_dir.mkdir(parents=True, exist_ok=True)
 
     with open(responses_dir / "baseline.json", 'w') as f:

@@ -87,7 +87,9 @@ async def evaluate_single_config(
 async def evaluate_and_save(
     model, tokenizer, vector, layer, coef,
     questions, trait_name, trait_definition, judge, use_chat_template, component,
-    results, experiment, trait, vector_experiment, method, position="response[:]",
+    results, experiment, trait, model_variant, vector_experiment, method,
+    position: str = "response[:]",
+    prompt_set: str = "steering",
     eval_prompt: Optional[str] = None,
 ):
     """Evaluate a single config and save to results."""
@@ -107,7 +109,7 @@ async def evaluate_and_save(
     )
 
     timestamp = datetime.now().isoformat()
-    save_responses(responses, experiment, trait, position, config, timestamp)
+    save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
 
     run_data = {
         "config": config,
@@ -116,14 +118,15 @@ async def evaluate_and_save(
     }
 
     results["runs"].append(run_data)
-    save_results(results, experiment, trait, position)
+    save_results(results, experiment, trait, model_variant, position, prompt_set)
 
 
 async def adaptive_search_layer(
     model, tokenizer, vector, layer, base_coef,
     questions, trait_name, trait_definition, judge, use_chat_template, component,
-    results, experiment, trait, vector_experiment, method,
+    results, experiment, trait, model_variant, vector_experiment, method,
     position: str = "response[:]",
+    prompt_set: str = "steering",
     n_steps: int = 8,
     threshold: float = MIN_COHERENCE,
     up_mult: float = 1.3,
@@ -166,7 +169,7 @@ async def adaptive_search_layer(
 
             # Save
             timestamp = datetime.now().isoformat()
-            save_responses(responses, experiment, trait, position, config, timestamp)
+            save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
 
             run_data = {
                 "config": config,
@@ -175,7 +178,7 @@ async def adaptive_search_layer(
             }
 
             results["runs"].append(run_data)
-            save_results(results, experiment, trait, position)
+            save_results(results, experiment, trait, model_variant, position, prompt_set)
 
             # Print progress
             if coherence < threshold:
@@ -224,9 +227,11 @@ async def batched_adaptive_search(
     results: Dict,
     experiment: str,
     trait: str,
+    model_variant: str,
     vector_experiment: str,
     method: str,
     position: str = "response[:]",
+    prompt_set: str = "steering",
     n_steps: int = 8,
     threshold: float = MIN_COHERENCE,
     up_mult: float = 1.3,
@@ -384,7 +389,7 @@ async def batched_adaptive_search(
                         {"question": q, "response": r, "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
                         for q, r, s in zip(questions, layer_responses, layer_scores)
                     ]
-                    save_responses(responses_data, experiment, trait, position, config, timestamp)
+                    save_responses(responses_data, experiment, trait, model_variant, position, prompt_set, config, timestamp)
 
                     run_data = {
                         "config": config,
@@ -397,7 +402,7 @@ async def batched_adaptive_search(
                     print(f"  L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_mean:5.1f}, coh={coherence_mean:5.1f} {marker}")
 
                 # Save after each batch
-                save_results(results, experiment, trait, position)
+                save_results(results, experiment, trait, model_variant, position, prompt_set)
 
         # Update coefficients for next step
         # Binary control: push up while coherence >= threshold, back off when below

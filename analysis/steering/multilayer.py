@@ -34,6 +34,7 @@ def load_layer_deltas(
     trait: str,
     model_variant: str,
     position: str = "response[:]",
+    prompt_set: str = "steering",
     component: str = "residual",
     min_coherence: float = MIN_COHERENCE
 ) -> Dict[int, Dict]:
@@ -43,7 +44,7 @@ def load_layer_deltas(
     Returns:
         {layer: {'delta': float, 'coef': float, 'coherence': float}}
     """
-    results_path = get_steering_results_path(experiment, trait, model_variant, position)
+    results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
     if not results_path.exists():
         return {}
 
@@ -135,6 +136,7 @@ async def run_multilayer_evaluation(
     method: str,
     component: str,
     position: str,
+    prompt_set: str,
     model_name: str,
     subset: Optional[int],
     model=None,
@@ -193,7 +195,7 @@ async def run_multilayer_evaluation(
         raise ValueError(f"No valid layers. Model has {num_layers} layers")
 
     # Load single-layer deltas for weighted mode
-    layer_deltas = load_layer_deltas(experiment, trait, model_variant, position, component)
+    layer_deltas = load_layer_deltas(experiment, trait, model_variant, position, prompt_set, component)
     if not layer_deltas:
         print(f"Warning: No single-layer results found. Run single-layer evaluation first.")
         return
@@ -278,7 +280,7 @@ async def run_multilayer_evaluation(
     print(f"  Coherence: {coherence_mean:.1f}")
 
     # Load results and save
-    results_path = get_steering_results_path(experiment, trait, model_variant, position)
+    results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
     if results_path.exists():
         with open(results_path) as f:
             results = json.load(f)
@@ -311,7 +313,7 @@ async def run_multilayer_evaluation(
     }
 
     results["runs"].append(run_data)
-    save_results(results, experiment, trait, model_variant, position)
+    save_results(results, experiment, trait, model_variant, position, prompt_set)
 
     # Save individual responses
     responses_data = [
@@ -322,7 +324,7 @@ async def run_multilayer_evaluation(
         "layers": list(sorted(vectors.keys())),
         "coefficients": [coefficients[l] for l in sorted(vectors.keys())],
     }
-    save_responses(responses_data, experiment, trait, model_variant, position, response_config, run_data["timestamp"])
+    save_responses(responses_data, experiment, trait, model_variant, position, prompt_set, response_config, run_data["timestamp"])
     print(f"  Saved to {results_path}")
 
     if should_close_judge:
