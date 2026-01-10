@@ -2,7 +2,7 @@
 Run logit lens interpretation for extracted trait vectors.
 
 Input: Experiment, trait, model, methods
-Output: experiments/{experiment}/extraction/{trait}/logit_lens.json
+Output: experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json
 
 Usage:
     Called from run_pipeline.py after vector extraction (stage 5)

@@ -3,7 +3,7 @@
 Cross-variant classification evaluation for OOD formality experiments.
 
 Input:
-    - experiments/{experiment}/extraction/{trait}/activations/{position}/{component}/*_all_layers.pt
+    - experiments/{experiment}/extraction/{trait}/{model_variant}/activations/{position}/{component}/*_all_layers.pt
 
 Output:
     - Prints 4x4 accuracy matrices for cross-language and cross-topic variants
