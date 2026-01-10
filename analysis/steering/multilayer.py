@@ -25,7 +25,7 @@ from analysis.steering.results import save_results, save_responses
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
 from utils.model import format_prompt, load_experiment_config, get_num_layers
-from utils.paths import get_steering_results_path, get_vector_path
+from utils.paths import get_steering_results_path, get_vector_path, get_default_variant
 from utils.vectors import MIN_COHERENCE
 
 
@@ -148,6 +148,7 @@ async def run_multilayer_evaluation(
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
     use_default_prompt: bool = False,
+    extraction_variant: Optional[str] = None,
 ):
     """
     Run multi-layer steering evaluation.
@@ -216,10 +217,13 @@ async def run_multilayer_evaluation(
         avg_coef = sum(layer_deltas[l]['coef'] for l in active_layers) / len(active_layers)
         coefficients = {l: global_scale * avg_coef / len(active_layers) for l in active_layers}
 
+    # Resolve extraction variant (vectors are stored under extraction variant, not application variant)
+    resolved_extraction_variant = extraction_variant or get_default_variant(vector_experiment, mode='extraction')
+
     # Load vectors
     vectors = {}
     for layer in active_layers:
-        vector = load_vector(vector_experiment, trait, layer, model_variant, method, component, position)
+        vector = load_vector(vector_experiment, trait, layer, resolved_extraction_variant, method, component, position)
         if vector is None:
             print(f"  L{layer}: Vector not found, skipping")
             continue

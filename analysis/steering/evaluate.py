@@ -295,6 +295,8 @@ async def run_evaluation(
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
     use_default_prompt: bool = False,
+    min_coherence: float = MIN_COHERENCE,
+    extraction_variant: Optional[str] = None,
 ):
     """
     Main evaluation flow.
@@ -383,12 +385,12 @@ async def run_evaluation(
         print(f"\nNo cached norms, will estimate activation norms...")
 
     # Resolve extraction model variant (vectors are stored under extraction variant, not application variant)
-    extraction_variant = get_default_variant(vector_experiment, mode='extraction')
+    resolved_extraction_variant = extraction_variant or get_default_variant(vector_experiment, mode='extraction')
 
     print(f"Loading vectors...")
     layer_data = []
     for layer in layers:
-        vector = load_vector(vector_experiment, trait, layer, extraction_variant, method, component, position)
+        vector = load_vector(vector_experiment, trait, layer, resolved_extraction_variant, method, component, position)
         if vector is None:
             print(f"  L{layer}: Vector not found, skipping")
             continue
@@ -457,15 +459,19 @@ async def run_evaluation(
     print(f"Baseline: {results['baseline']['trait_mean']:.1f}")
     print(f"Total runs: {len(results['runs'])}")
 
-    best_run = max(results['runs'], key=lambda r: r['result'].get('trait_mean') or 0, default=None)
-    if best_run:
+    # Filter by coherence threshold
+    valid_runs = [r for r in results['runs'] if r['result'].get('coherence_mean', 0) >= min_coherence]
+    if valid_runs:
+        best_run = max(valid_runs, key=lambda r: r['result'].get('trait_mean') or 0)
         score = best_run['result']['trait_mean']
         coh = best_run['result'].get('coherence_mean', 0)
         delta = score - results['baseline']['trait_mean']
         layer = best_run['config']['vectors'][0]['layer']
         coef = best_run['config']['vectors'][0]['weight']
-        print(f"Best: L{layer} c{coef:.0f}")
+        print(f"Best (coherence≥{min_coherence:.0f}): L{layer} c{coef:.0f}")
         print(f"  trait={score:.1f} (+{delta:.1f}), coherence={coh:.1f}")
+    else:
+        print(f"No valid runs with coherence≥{min_coherence:.0f}")
 
     if should_close_judge:
         await judge.close()
@@ -488,6 +494,8 @@ def main():
                         help="Manual coefficients (comma-separated). If not provided, uses adaptive search.")
     parser.add_argument("--model-variant", default=None,
                         help="Model variant for steering (default: from experiment defaults.application)")
+    parser.add_argument("--extraction-variant", default=None,
+                        help="Model variant where vectors are stored (default: from experiment defaults.extraction)")
     parser.add_argument("--method", default="probe", help="Vector extraction method")
     parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", "k_proj", "v_proj"])
     parser.add_argument("--position", default="response[:5]",
@@ -519,6 +527,8 @@ def main():
                         help="Load model in 4-bit quantization")
     parser.add_argument("--no-server", action="store_true",
                         help="Force local model loading (skip model server check)")
+    parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE,
+                        help=f"Minimum coherence threshold for valid results (default: {MIN_COHERENCE})")
 
     # Prompt override options (mutually exclusive)
     prompt_group = parser.add_mutually_exclusive_group()
@@ -638,6 +648,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     max_new_tokens=args.max_new_tokens,
                     eval_prompt=effective_eval_prompt,
                     use_default_prompt=use_default,
+                    extraction_variant=args.extraction_variant,
                 )
             else:
                 await run_evaluation(
@@ -669,6 +680,8 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     max_new_tokens=args.max_new_tokens,
                     eval_prompt=effective_eval_prompt,
                     use_default_prompt=use_default,
+                    min_coherence=args.min_coherence,
+                    extraction_variant=args.extraction_variant,
                 )
     finally:
         if judge is not None:
