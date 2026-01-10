@@ -6,23 +6,29 @@ Usage:
     from utils.paths import get, get_vector_path, get_activation_path
 
     # Get base directory from YAML template
-    vectors_dir = get('extraction.vectors', experiment='gemma-2-2b', trait='chirp/refusal_v2')
-    # Returns: Path('experiments/gemma-2-2b/extraction/chirp/refusal_v2/vectors')
+    vectors_dir = get('extraction.vectors', experiment='gemma-2-2b', trait='chirp/refusal_v2', model_variant='base')
 
     # Use helper functions for full paths (includes position/component/method)
-    vector_file = get_vector_path('gemma-2-2b', 'chirp/refusal_v2', 'probe', 15)
-    # Returns: Path('.../vectors/response_all/residual/probe/layer15.pt')
+    vector_file = get_vector_path('gemma-2-2b', 'chirp/refusal_v2', 'probe', 15, model_variant='base')
 
-    vector_file = get_vector_path('gemma-2-2b', 'chirp/refusal_v2', 'probe', 15, 'attn_out', 'response[-1]')
-    # Returns: Path('.../vectors/response_-1/attn_out/probe/layer15.pt')
+    # Model variant resolution
+    config = get_model_variant('rm_syco', 'rm_lora')
+    # Returns: {'name': 'rm_lora', 'model': '...', 'lora': '...'}
+
+    default = get_default_variant('rm_syco', mode='extraction')
+    # Returns: 'base'
 """
 
+import json
 import yaml
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 _config = None
 _config_path = Path(__file__).parent.parent / "config" / "paths.yaml"
+
+# Cache for experiment configs
+_experiment_configs: dict[str, dict] = {}
 
 
 def _load_config():
@@ -40,7 +46,7 @@ def get(key: str, **variables) -> Path:
 
     Args:
         key: Dot-separated key like 'extraction.vectors'
-        **variables: Values for template variables (experiment, trait, method, layer, etc.)
+        **variables: Values for template variables (experiment, trait, model_variant, etc.)
 
     Returns:
         Path object with variables substituted
@@ -49,8 +55,7 @@ def get(key: str, **variables) -> Path:
         KeyError: If key not found in config
 
     Example:
-        get('extraction.vectors', experiment='{experiment_name}', trait='cognitive_state/context')
-        # Returns: Path('experiments/{experiment_name}/extraction/cognitive_state/context/vectors')
+        get('extraction.vectors', experiment='gemma-2-2b', trait='chirp/refusal', model_variant='base')
     """
     config = _load_config()
 
@@ -81,10 +86,6 @@ def template(key: str) -> str:
 
     Returns:
         Raw template string with {variables} intact
-
-    Example:
-        template('extraction.vectors')
-        # Returns: 'experiments/{experiment}/extraction/{trait}/vectors'
     """
     config = _load_config()
 
@@ -106,10 +107,6 @@ def list_keys(prefix: str = '') -> list:
 
     Returns:
         List of dot-separated keys
-
-    Example:
-        list_keys('extraction')
-        # Returns: ['extraction.base', 'extraction.trait', 'extraction.vectors', ...]
     """
     config = _load_config()
 
@@ -133,9 +130,123 @@ def list_keys(prefix: str = '') -> list:
 
 def reload():
     """Force reload of config (useful for testing)."""
-    global _config
+    global _config, _experiment_configs
     _config = None
+    _experiment_configs = {}
     _load_config()
+
+
+# =============================================================================
+# Model Variant Resolution
+# =============================================================================
+
+def load_experiment_config(experiment: str) -> dict:
+    """
+    Load experiment config.json (cached).
+
+    Args:
+        experiment: Experiment name
+
+    Returns:
+        Experiment config dict
+
+    Raises:
+        FileNotFoundError: If config.json doesn't exist
+    """
+    if experiment not in _experiment_configs:
+        config_path = get('experiments.config', experiment=experiment)
+        if not config_path.exists():
+            raise FileNotFoundError(f"Experiment config not found: {config_path}")
+        with open(config_path) as f:
+            _experiment_configs[experiment] = json.load(f)
+    return _experiment_configs[experiment]
+
+
+def get_model_variant(
+    experiment: str,
+    variant: Optional[str] = None,
+    mode: str = "application"
+) -> dict:
+    """
+    Resolve variant name to full config.
+
+    Args:
+        experiment: Experiment name
+        variant: Variant name (e.g., 'base', 'instruct', 'rm_lora'), or None for default
+        mode: "extraction" or "application" (determines which default to use)
+
+    Returns:
+        {
+            'name': str,        # variant name
+            'model': str,       # HuggingFace model path
+            'lora': str|None,   # Optional LoRA adapter path
+        }
+
+    Raises:
+        KeyError: If variant not found in config
+        ValueError: If mode is invalid
+    """
+    if mode not in ("extraction", "application"):
+        raise ValueError(f"mode must be 'extraction' or 'application', got '{mode}'")
+
+    config = load_experiment_config(experiment)
+
+    # Get variant name (use default if not specified)
+    if variant is None:
+        variant = get_default_variant(experiment, mode)
+
+    # Look up variant config
+    variants = config.get('model_variants', {})
+    if variant not in variants:
+        raise KeyError(f"Model variant '{variant}' not found in {experiment}/config.json. Available: {list(variants.keys())}")
+
+    variant_config = variants[variant]
+    return {
+        'name': variant,
+        'model': variant_config['model'],
+        'lora': variant_config.get('lora'),
+    }
+
+
+def get_default_variant(experiment: str, mode: str = "application") -> str:
+    """
+    Get default variant name for extraction or application.
+
+    Args:
+        experiment: Experiment name
+        mode: "extraction" or "application"
+
+    Returns:
+        Default variant name
+
+    Raises:
+        KeyError: If no default configured
+    """
+    config = load_experiment_config(experiment)
+    defaults = config.get('defaults', {})
+
+    if mode not in defaults:
+        # Fallback: first variant in model_variants
+        variants = config.get('model_variants', {})
+        if variants:
+            return next(iter(variants.keys()))
+        raise KeyError(f"No defaults.{mode} in {experiment}/config.json and no model_variants defined")
+
+    return defaults[mode]
+
+
+def list_model_variants(experiment: str) -> list[str]:
+    """
+    List all variant names from config.
+
+    Args:
+        experiment: Experiment name
+
+    Returns:
+        List of variant names like ['base', 'instruct', 'rm_lora']
+    """
+    config = load_experiment_config(experiment)
+    return list(config.get('model_variants', {}).keys())
 
 
 # =============================================================================
@@ -153,10 +264,6 @@ def get_analysis_per_token(experiment: str, prompt_set: str, prompt_id: int) -> 
 
     Returns:
         Path to the per-token analysis JSON file
-
-    Example:
-        >>> get_analysis_per_token('gemma_2b_cognitive_nov21', 'dynamic', 1)
-        Path('experiments/gemma_2b_cognitive_nov21/analysis/per_token/dynamic/1.json')
     """
     dir_path = get('analysis.per_token', experiment=experiment, prompt_set=prompt_set)
     file_name = get('patterns.per_token_json', prompt_id=prompt_id)
@@ -180,10 +287,6 @@ def get_analysis_category_file(
 
     Returns:
         Path to the analysis file
-
-    Example:
-        >>> get_analysis_category_file('gemma_2b_cognitive_nov21', 'normalized_velocity', 'summary', 'png')
-        Path('experiments/gemma_2b_cognitive_nov21/analysis/normalized_velocity/summary.png')
     """
     dir_path = get('analysis.category', experiment=experiment, category=category)
 
@@ -199,26 +302,6 @@ def get_analysis_category_file(
         file_name = get(pattern, filename=filename)
 
     return dir_path / file_name
-
-
-def get_extraction_file(experiment: str, trait: str, subpath: str) -> Path:
-    """
-    Get path to extraction file with arbitrary subpath.
-
-    Args:
-        experiment: Experiment name
-        trait: Trait name (e.g., 'cognitive_state/context')
-        subpath: Subpath within trait directory (e.g., 'responses/pos.json')
-
-    Returns:
-        Path to the extraction file
-
-    Example:
-        >>> get_extraction_file('gemma_2b_cognitive_nov21', 'cognitive_state/context', 'responses/pos.json')
-        Path('experiments/gemma_2b_cognitive_nov21/extraction/cognitive_state/context/responses/pos.json')
-    """
-    base_path = get('extraction.trait', experiment=experiment, trait=trait)
-    return base_path / subpath
 
 
 def discover_traits(category: str = None) -> list[str]:
@@ -246,12 +329,13 @@ def discover_traits(category: str = None) -> list[str]:
     return sorted(traits)
 
 
-def discover_extracted_traits(experiment: str) -> list[tuple[str, str]]:
+def discover_extracted_traits(experiment: str, model_variant: str = None) -> list[tuple[str, str]]:
     """
     Find traits with extracted vectors in experiments/{exp}/extraction/.
 
     Args:
         experiment: Experiment name
+        model_variant: Model variant to check (if None, checks all variants)
 
     Returns:
         List of (category, trait_name) tuples for traits that have .pt vector files
@@ -267,30 +351,30 @@ def discover_extracted_traits(experiment: str) -> list[tuple[str, str]]:
         for trait_dir in sorted(category_dir.iterdir()):
             if not trait_dir.is_dir():
                 continue
-            vectors_dir = trait_dir / "vectors"
-            # Vectors are now in {position}/{component}/{method}/layer*.pt
-            if vectors_dir.exists() and list(vectors_dir.rglob('layer*.pt')):
-                traits.append((category_dir.name, trait_dir.name))
+
+            # Check for vectors in variant subdirs
+            if model_variant:
+                # Check specific variant
+                variant_dir = trait_dir / model_variant
+                vectors_dir = variant_dir / "vectors"
+                if vectors_dir.exists() and list(vectors_dir.rglob('layer*.pt')):
+                    traits.append((category_dir.name, trait_dir.name))
+            else:
+                # Check any variant
+                for variant_dir in trait_dir.iterdir():
+                    if not variant_dir.is_dir():
+                        continue
+                    vectors_dir = variant_dir / "vectors"
+                    if vectors_dir.exists() and list(vectors_dir.rglob('layer*.pt')):
+                        traits.append((category_dir.name, trait_dir.name))
+                        break  # Found at least one variant with vectors
+
     return traits
 
 
 # =============================================================================
-# Centralized File Path Helpers
+# Position helpers
 # =============================================================================
-#
-# Directory structure:
-#   extraction/{trait}/
-#   ├── activations/{position}/{component}/
-#   │   ├── train_all_layers.pt
-#   │   ├── val_all_layers.pt
-#   │   └── metadata.json
-#   └── vectors/{position}/{component}/{method}/
-#       ├── layer16.pt
-#       └── metadata.json
-#
-#   steering/{trait}/{position}/
-#   └── results.json
-
 
 def sanitize_position(position: str) -> str:
     """
@@ -344,22 +428,23 @@ def desanitize_position(sanitized: str) -> str:
     return sanitized  # Fallback
 
 
-# -----------------------------------------------------------------------------
-# Activation paths
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Extraction paths
+# =============================================================================
 
 def get_activation_dir(
     experiment: str,
     trait: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
     """
     Directory for activation files.
 
-    Returns: experiments/{experiment}/extraction/{trait}/activations/{position}/{component}/
+    Returns: experiments/{experiment}/extraction/{trait}/{model_variant}/activations/{position}/{component}/
     """
-    base = get('extraction.activations', experiment=experiment, trait=trait)
+    base = get('extraction.activations', experiment=experiment, trait=trait, model_variant=model_variant)
     pos_dir = sanitize_position(position)
     return base / pos_dir / component
 
@@ -367,6 +452,7 @@ def get_activation_dir(
 def get_activation_path(
     experiment: str,
     trait: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
@@ -375,12 +461,13 @@ def get_activation_path(
 
     Returns: .../activations/{position}/{component}/train_all_layers.pt
     """
-    return get_activation_dir(experiment, trait, component, position) / "train_all_layers.pt"
+    return get_activation_dir(experiment, trait, model_variant, component, position) / "train_all_layers.pt"
 
 
 def get_val_activation_path(
     experiment: str,
     trait: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
@@ -389,12 +476,13 @@ def get_val_activation_path(
 
     Returns: .../activations/{position}/{component}/val_all_layers.pt
     """
-    return get_activation_dir(experiment, trait, component, position) / "val_all_layers.pt"
+    return get_activation_dir(experiment, trait, model_variant, component, position) / "val_all_layers.pt"
 
 
 def get_activation_metadata_path(
     experiment: str,
     trait: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
@@ -403,26 +491,23 @@ def get_activation_metadata_path(
 
     Returns: .../activations/{position}/{component}/metadata.json
     """
-    return get_activation_dir(experiment, trait, component, position) / "metadata.json"
+    return get_activation_dir(experiment, trait, model_variant, component, position) / "metadata.json"
 
-
-# -----------------------------------------------------------------------------
-# Vector paths
-# -----------------------------------------------------------------------------
 
 def get_vector_dir(
     experiment: str,
     trait: str,
     method: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
     """
     Directory for vector files of a specific method.
 
-    Returns: experiments/{experiment}/extraction/{trait}/vectors/{position}/{component}/{method}/
+    Returns: experiments/{experiment}/extraction/{trait}/{model_variant}/vectors/{position}/{component}/{method}/
     """
-    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    base = get('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
     pos_dir = sanitize_position(position)
     return base / pos_dir / component / method
 
@@ -432,6 +517,7 @@ def get_vector_path(
     trait: str,
     method: str,
     layer: int,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
@@ -440,13 +526,14 @@ def get_vector_path(
 
     Returns: .../vectors/{position}/{component}/{method}/layer{layer}.pt
     """
-    return get_vector_dir(experiment, trait, method, component, position) / f"layer{layer}.pt"
+    return get_vector_dir(experiment, trait, method, model_variant, component, position) / f"layer{layer}.pt"
 
 
 def get_vector_metadata_path(
     experiment: str,
     trait: str,
     method: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> Path:
@@ -455,52 +542,135 @@ def get_vector_metadata_path(
 
     Returns: .../vectors/{position}/{component}/{method}/metadata.json
     """
-    return get_vector_dir(experiment, trait, method, component, position) / "metadata.json"
+    return get_vector_dir(experiment, trait, method, model_variant, component, position) / "metadata.json"
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Steering paths
-# -----------------------------------------------------------------------------
+# =============================================================================
 
 def get_steering_dir(
     experiment: str,
     trait: str,
+    model_variant: str,
     position: str = "response[:]",
+    prompt_set: str = "steering",
 ) -> Path:
     """
     Directory for steering results.
 
-    Returns: experiments/{experiment}/steering/{trait}/{position}/
+    Returns: experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/
     """
-    base = get('steering.trait', experiment=experiment, trait=trait)
     pos_dir = sanitize_position(position)
-    return base / pos_dir
+    return get('steering.prompt_set',
+               experiment=experiment,
+               trait=trait,
+               model_variant=model_variant,
+               position=pos_dir,
+               prompt_set=prompt_set)
 
 
 def get_steering_results_path(
     experiment: str,
     trait: str,
+    model_variant: str,
     position: str = "response[:]",
+    prompt_set: str = "steering",
 ) -> Path:
     """
     Path to steering results file.
 
-    Returns: .../steering/{trait}/{position}/results.json
+    Returns: .../steering/{trait}/{model_variant}/{position}/{prompt_set}/results.json
     """
-    return get_steering_dir(experiment, trait, position) / "results.json"
+    return get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "results.json"
 
 
-# -----------------------------------------------------------------------------
+def get_steering_responses_dir(
+    experiment: str,
+    trait: str,
+    model_variant: str,
+    position: str = "response[:]",
+    prompt_set: str = "steering",
+) -> Path:
+    """
+    Directory for steering response files.
+
+    Returns: .../steering/{trait}/{model_variant}/{position}/{prompt_set}/responses/
+    """
+    return get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses"
+
+
+# =============================================================================
+# Inference paths
+# =============================================================================
+
+def get_inference_dir(
+    experiment: str,
+    model_variant: str,
+) -> Path:
+    """
+    Base directory for inference data for a model variant.
+
+    Returns: experiments/{experiment}/inference/{model_variant}/
+    """
+    return get('inference.variant', experiment=experiment, model_variant=model_variant)
+
+
+def get_inference_raw_dir(
+    experiment: str,
+    model_variant: str,
+    prompt_set: str,
+) -> Path:
+    """
+    Directory for raw activation captures.
+
+    Returns: experiments/{experiment}/inference/{model_variant}/raw/residual/{prompt_set}/
+    """
+    return get('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=prompt_set)
+
+
+def get_inference_responses_dir(
+    experiment: str,
+    model_variant: str,
+    prompt_set: str,
+) -> Path:
+    """
+    Directory for inference response files.
+
+    Returns: experiments/{experiment}/inference/{model_variant}/responses/{prompt_set}/
+    """
+    return get('inference.responses', experiment=experiment, model_variant=model_variant, prompt_set=prompt_set)
+
+
+def get_inference_projections_dir(
+    experiment: str,
+    model_variant: str,
+    trait: str,
+    prompt_set: str,
+) -> Path:
+    """
+    Directory for trait projection results.
+
+    Returns: experiments/{experiment}/inference/{model_variant}/projections/{trait}/{prompt_set}/
+    """
+    return get('inference.projections', experiment=experiment, model_variant=model_variant, trait=trait, prompt_set=prompt_set)
+
+
+# =============================================================================
 # Discovery helpers
-# -----------------------------------------------------------------------------
+# =============================================================================
 
-def list_positions(experiment: str, trait: str) -> list[str]:
+def list_positions(
+    experiment: str,
+    trait: str,
+    model_variant: str,
+) -> list[str]:
     """
     Discover available positions for a trait (by scanning vectors directory).
 
     Returns list of position directory names like ['response_all', 'response_-1']
     """
-    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    base = get('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
     if not base.exists():
         return []
     return sorted([d.name for d in base.iterdir() if d.is_dir()])
@@ -509,6 +679,7 @@ def list_positions(experiment: str, trait: str) -> list[str]:
 def list_components(
     experiment: str,
     trait: str,
+    model_variant: str,
     position: str = "response[:]",
 ) -> list[str]:
     """
@@ -516,7 +687,7 @@ def list_components(
 
     Returns list like ['residual', 'attn_out']
     """
-    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    base = get('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
     pos_dir = sanitize_position(position)
     comp_base = base / pos_dir
     if not comp_base.exists():
@@ -527,6 +698,7 @@ def list_components(
 def list_methods(
     experiment: str,
     trait: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> list[str]:
@@ -535,7 +707,7 @@ def list_methods(
 
     Returns list like ['probe', 'mean_diff', 'gradient']
     """
-    base = get('extraction.vectors', experiment=experiment, trait=trait)
+    base = get('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
     pos_dir = sanitize_position(position)
     method_base = base / pos_dir / component
     if not method_base.exists():
@@ -547,6 +719,7 @@ def list_layers(
     experiment: str,
     trait: str,
     method: str,
+    model_variant: str,
     component: str = "residual",
     position: str = "response[:]",
 ) -> list[int]:
@@ -556,7 +729,7 @@ def list_layers(
     Returns list of layer indices like [0, 1, 14, 15, 16]
     """
     import re
-    vector_dir = get_vector_dir(experiment, trait, method, component, position)
+    vector_dir = get_vector_dir(experiment, trait, method, model_variant, component, position)
     if not vector_dir.exists():
         return []
 

@@ -4,14 +4,17 @@
 #
 # Variables:
 #   {experiment} - experiment name
+#   {model_variant} - model variant name from config (e.g., base, instruct, rm_lora)
 #   {trait} - full trait path (e.g., cognitive_state/context)
 #   {method} - extraction method (probe, mean_diff, gradient)
 #   {layer} - layer number
-#   {prompt_set} - prompt set name (e.g., single_trait, multi_trait, dynamic, adversarial, baseline, real_world)
+#   {prompt_set} - prompt set name (e.g., steering, rm_sycophancy_train_100)
 #   {prompt_id} - prompt ID within a set (integer)
 #   {format} - file format (json is standard; csv kept for backwards compatibility)
 #   {category} - analysis category (e.g., normalized_velocity, trait_projections, derivative_overlay)
 #   {filename} - generic filename without extension
+#   {position} - token position slice (e.g., response_all, response_-1)
+#   {component} - model component (e.g., residual, attn_out, mlp_out)
 
 # =============================================================================
 # DATASETS (model-agnostic inputs)
@@ -44,57 +47,52 @@ experiments:
 # =============================================================================
 # EXTRACTION (training-time data)
 # =============================================================================
+# Structure: extraction/{trait}/{model_variant}/...
+# Model variant determines which model generated responses/activations
 
 extraction:
   base: "experiments/{experiment}/extraction"
-  trait: "experiments/{experiment}/extraction/{trait}"
-  # vectors/ and activations/ have subdirs: {position}/{component}/[{method}/]
-  # Use helper functions (get_vector_path, get_activation_path) for full paths
-  vectors: "experiments/{experiment}/extraction/{trait}/vectors"
-  activations: "experiments/{experiment}/extraction/{trait}/activations"
-  responses: "experiments/{experiment}/extraction/{trait}/responses"
-  responses_metadata: "experiments/{experiment}/extraction/{trait}/responses/metadata.json"
-  val_responses: "experiments/{experiment}/extraction/{trait}/val_responses"
-  vetting: "experiments/{experiment}/extraction/{trait}/vetting"
-  vetting_metadata: "experiments/{experiment}/extraction/{trait}/vetting/metadata.json"
-  logit_lens: "experiments/{experiment}/extraction/{trait}/logit_lens.json"
+  trait: "experiments/{experiment}/extraction/{trait}/{model_variant}"
+  vectors: "experiments/{experiment}/extraction/{trait}/{model_variant}/vectors"
+  activations: "experiments/{experiment}/extraction/{trait}/{model_variant}/activations"
+  responses: "experiments/{experiment}/extraction/{trait}/{model_variant}/responses"
+  responses_metadata: "experiments/{experiment}/extraction/{trait}/{model_variant}/responses/metadata.json"
+  val_responses: "experiments/{experiment}/extraction/{trait}/{model_variant}/val_responses"
+  vetting: "experiments/{experiment}/extraction/{trait}/{model_variant}/vetting"
+  vetting_metadata: "experiments/{experiment}/extraction/{trait}/{model_variant}/vetting/metadata.json"
+  logit_lens: "experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json"
 
 # =============================================================================
 # INFERENCE (evaluation-time data)
 # =============================================================================
+# Structure: inference/{model_variant}/...
+# Model variant determines which model generated the activations/responses
 
 inference:
   base: "experiments/{experiment}/inference"
-
-  # Prompt sets now in datasets/inference/ (see datasets section above)
-  # Each file contains: {name, description, prompts: [{id, text, note}]}
+  variant: "experiments/{experiment}/inference/{model_variant}"
 
   # Raw activations (trait-independent, binary .pt)
   # Captured once per prompt, reused across all trait projections
-  raw: "experiments/{experiment}/inference/raw"
-  raw_residual: "experiments/{experiment}/inference/raw/residual/{prompt_set}"
-  raw_internals: "experiments/{experiment}/inference/raw/internals/{prompt_set}"
+  raw: "experiments/{experiment}/inference/{model_variant}/raw"
+  raw_residual: "experiments/{experiment}/inference/{model_variant}/raw/residual/{prompt_set}"
+  raw_internals: "experiments/{experiment}/inference/{model_variant}/raw/internals/{prompt_set}"
 
   # SAE-encoded features
-  sae: "experiments/{experiment}/inference/sae"
-  sae_residual: "experiments/{experiment}/inference/sae/{prompt_set}"
+  sae: "experiments/{experiment}/inference/{model_variant}/sae"
+  sae_residual: "experiments/{experiment}/inference/{model_variant}/sae/{prompt_set}"
 
   # Responses (trait-independent, shared across all trait projections)
   # Contains prompt/response text and tokens - stored once per prompt
-  responses: "experiments/{experiment}/inference/responses/{prompt_set}"
-  response_data: "experiments/{experiment}/inference/responses/{prompt_set}/{prompt_id}.json"
+  responses: "experiments/{experiment}/inference/{model_variant}/responses/{prompt_set}"
+  response_data: "experiments/{experiment}/inference/{model_variant}/responses/{prompt_set}/{prompt_id}.json"
 
   # Per-trait projection results (JSON for visualization)
   # Slim format: projections + dynamics only, references responses/ for text
-  trait: "experiments/{experiment}/inference/{trait}"
-  residual_stream: "experiments/{experiment}/inference/{trait}/residual_stream/{prompt_set}"
+  projections: "experiments/{experiment}/inference/{model_variant}/projections/{trait}/{prompt_set}"
 
   # Massive activation analysis (from analysis/massive_activations.py)
-  massive_activations: "experiments/{experiment}/inference/massive_activations/{prompt_set}.json"
-
-  # Model comparison base (for non-default models, e.g., base model comparison)
-  # Subpaths built in code: models_base / "raw" / "residual" / {prompt_set} / etc.
-  models_base: "experiments/{experiment}/inference/models/{model}"
+  massive_activations: "experiments/{experiment}/inference/{model_variant}/massive_activations/{prompt_set}.json"
 
 # =============================================================================
 # ANALYSIS (experiment-level aggregated analysis outputs)
@@ -109,11 +107,19 @@ analysis:
 # =============================================================================
 # STEERING (intervention evaluation - validates vectors via causal control)
 # =============================================================================
+# Structure: steering/{trait}/{model_variant}/{position}/{prompt_set}/...
+# - model_variant: which model is being steered
+# - position: token position for steering (e.g., response_all)
+# - prompt_set: "steering" for trait's steering.json, or dataset name
 
 steering:
   base: "experiments/{experiment}/steering"
-  trait: "experiments/{experiment}/steering/{trait}"
-  results: "experiments/{experiment}/steering/{trait}/results.json"
+  trait: "experiments/{experiment}/steering/{trait}/{model_variant}"
+  position: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}"
+  prompt_set: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}"
+  results: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/results.json"
+  responses: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/responses"
+  baseline: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/responses/baseline.json"
 
 # =============================================================================
 # EXTRACTION EVALUATION (aggregate quality metrics for extracted vectors)
@@ -163,7 +169,10 @@ patterns:
   raw_internals_pt: "{prompt_id}_L{layer}.pt"
 
   # Inference - per-trait results
-  residual_stream_json: "{prompt_id}.json"
+  projections_json: "{prompt_id}.json"
+
+  # Steering - response files
+  steering_response: "L{layer}_c{coef}_{timestamp}.json"
 
   # Trait definition
   trait_definition: "trait_definition.txt"
@@ -201,8 +210,8 @@ global:
 # Discovery: methods, analysis categories, inference types (from filesystem)
 
 schema:
-  # Model configuration is per-experiment (stored in activations/metadata.json)
-  # n_layers, hidden_dim, etc. are discovered from metadata, not hardcoded here
+  # Model configuration is per-experiment (stored in config.json)
+  # Model variants defined in config.json model_variants section
 
   # ==========================================================================
   # STRUCTURE: What files CAN exist (complete experiment)
@@ -236,6 +245,7 @@ schema:
   # ==========================================================================
   # DISCOVERY: Content discovered from filesystem (not listed, just documented)
   # ==========================================================================
-  # - Extraction methods: vectors/{method}_layer*.pt
+  # - Model variants: from config.json model_variants section
+  # - Extraction methods: vectors/{position}/{component}/{method}/layer*.pt
   # - Analysis categories: analysis/{category}/
-  # - Inference types: inference/raw/{type}/
+  # - Inference types: inference/{model_variant}/raw/{type}/
