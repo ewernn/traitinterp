@@ -112,10 +112,8 @@ analysis:
 
 steering:
   base: "experiments/{experiment}/steering"
-  # steering/{trait}/ has subdirs: {position}/
-  # Use helper functions (get_steering_results_path) for full paths
   trait: "experiments/{experiment}/steering/{trait}"
-  # Steering prompts in datasets/traits/{trait}/steering.json (see datasets section)
+  results: "experiments/{experiment}/steering/{trait}/results.json"
 
 # =============================================================================
 # EXTRACTION EVALUATION (aggregate quality metrics for extracted vectors)
