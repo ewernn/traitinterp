@@ -488,34 +488,60 @@ async def run_evaluation(
 
 def main():
     parser = argparse.ArgumentParser(description="Steering evaluation")
+
+    # === Core (required) ===
     parser.add_argument("--experiment", required=True,
                         help="Experiment where steering results are saved")
-
-    # Mutually exclusive: single trait or multiple traits
     trait_group = parser.add_mutually_exclusive_group(required=True)
     trait_group.add_argument("--vector-from-trait",
                         help="Single trait: 'experiment/category/trait'")
     trait_group.add_argument("--traits",
                         help="Multiple traits (comma-separated): 'exp/cat/t1,exp/cat/t2'")
-    parser.add_argument("--layers", default="30%-60%",
-                        help="Layers: 'all', '30%%-60%%' (default), single '16', range '5-20', or list '5,10,15'")
-    parser.add_argument("--coefficients",
-                        help="Manual coefficients (comma-separated). If not provided, uses adaptive search.")
+
+    # === Input/Output ===
+    parser.add_argument("--questions-from", type=str, default=None,
+                        help="Load questions from inference dataset instead of steering.json (e.g., 'rm_syco/train_100')")
+    parser.add_argument("--prompt-set", default=None,
+                        help="Prompt set name for result isolation (default: 'steering', or value of --questions-from)")
+
+    # === Model ===
     parser.add_argument("--model-variant", default=None,
                         help="Model variant for steering (default: from experiment defaults.application)")
     parser.add_argument("--extraction-variant", default=None,
                         help="Model variant where vectors are stored (default: from experiment defaults.extraction)")
+    parser.add_argument("--load-in-8bit", action="store_true",
+                        help="Load model in 8-bit quantization (for 70B+ models)")
+    parser.add_argument("--load-in-4bit", action="store_true",
+                        help="Load model in 4-bit quantization")
+    parser.add_argument("--no-server", action="store_true",
+                        help="Force local model loading (skip model server check)")
+
+    # === Vector Specification ===
     parser.add_argument("--method", default="probe", help="Vector extraction method")
-    parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", "k_proj", "v_proj"])
+    parser.add_argument("--component", default="residual",
+                        choices=["residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", "k_proj", "v_proj"])
     parser.add_argument("--position", default="response[:5]",
                         help="Token position for vectors (default: response[:5])")
-    parser.add_argument("--prompt-set", default=None,
-                        help="Prompt set name for result isolation (default: 'steering', or value of --questions-from)")
-    parser.add_argument("--questions-from", type=str, default=None,
-                        help="Load questions from inference dataset instead of steering.json (e.g., 'rm_syco/train_100')")
+
+    # === Evaluation ===
+    parser.add_argument("--subset", type=int, default=5,
+                        help="Use subset of questions (default: 5, use --subset 0 for all)")
+    parser.add_argument("--max-new-tokens", type=int, default=64,
+                        help="Max tokens to generate per response (default: 64)")
     parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
-    parser.add_argument("--subset", type=int, default=5, help="Use subset of questions (default: 5, use --subset 0 for all)")
-    parser.add_argument("--max-new-tokens", type=int, default=64, help="Max tokens to generate per response (default: 64)")
+    parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE,
+                        help=f"Minimum coherence threshold for valid results (default: {MIN_COHERENCE})")
+    prompt_group = parser.add_mutually_exclusive_group()
+    prompt_group.add_argument("--no-custom-prompt", action="store_true",
+                        help="Ignore eval_prompt from steering.json, use V3c default scoring")
+    prompt_group.add_argument("--eval-prompt-from", type=str, metavar="TRAIT_PATH",
+                        help="Load eval_prompt from different trait's steering.json (e.g., 'persona_vectors_instruction/evil')")
+
+    # === Search/Optimization ===
+    parser.add_argument("--layers", default="30%-60%",
+                        help="Layers: 'all', '30%%-60%%' (default), single '16', range '5-20', or list '5,10,15'")
+    parser.add_argument("--coefficients",
+                        help="Manual coefficients (comma-separated). If not provided, uses adaptive search.")
     parser.add_argument("--search-steps", type=int, default=5,
                         help="Number of adaptive search steps per layer (default: 5)")
     parser.add_argument("--up-mult", type=float, default=1.3,
@@ -526,34 +552,14 @@ def main():
                         help="Starting coefficient as fraction of base_coef (default: 0.7). Use lower values (e.g., 0.05) for sensitive models.")
     parser.add_argument("--momentum", type=float, default=0.1,
                         help="Momentum for coefficient updates (0.0=direct, 0.7=smoothed). Default: 0.1")
+
+    # === Advanced ===
     parser.add_argument("--no-batch", action="store_true",
                         help="Disable batched layer evaluation (run layers sequentially)")
     parser.add_argument("--multi-layer", choices=["weighted", "orthogonal"],
                         help="Multi-layer steering mode: 'weighted' (delta-proportional) or 'orthogonal'")
     parser.add_argument("--global-scale", type=float, default=1.0,
                         help="Global scale for multi-layer coefficients (default: 1.0)")
-    parser.add_argument("--load-in-8bit", action="store_true",
-                        help="Load model in 8-bit quantization (for 70B+ models)")
-    parser.add_argument("--load-in-4bit", action="store_true",
-                        help="Load model in 4-bit quantization")
-    parser.add_argument("--no-server", action="store_true",
-                        help="Force local model loading (skip model server check)")
-    parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE,
-                        help=f"Minimum coherence threshold for valid results (default: {MIN_COHERENCE})")
-
-    # Prompt override options (mutually exclusive)
-    prompt_group = parser.add_mutually_exclusive_group()
-    prompt_group.add_argument(
-        "--no-custom-prompt",
-        action="store_true",
-        help="Ignore eval_prompt from steering.json, use V3c default scoring"
-    )
-    prompt_group.add_argument(
-        "--eval-prompt-from",
-        type=str,
-        metavar="TRAIT_PATH",
-        help="Load eval_prompt from different trait's steering.json (e.g., 'persona_vectors_instruction/evil')"
-    )
 
     args = parser.parse_args()
 
