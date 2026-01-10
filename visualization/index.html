@@ -104,6 +104,10 @@
                         <span class="icon">🔬</span>
                         <span>Trait Extraction</span>
                     </div>
+                    <div class="nav-item" data-view="steering-sweep">
+                        <span class="icon">🎛️</span>
+                        <span>Steering Sweep</span>
+                    </div>
                     <div class="nav-item" data-view="inference">
                         <span class="icon">📈</span>
                         <span>Inference</span>
@@ -155,7 +159,6 @@
     <!-- View Modules -->
     <script src="/visualization/views/overview.js"></script>
     <script src="/visualization/views/findings.js"></script>
-    <script src="/visualization/views/data-explorer.js"></script>
     <script src="/visualization/views/trait-extraction.js"></script>
     <script src="/visualization/views/trait-dynamics.js"></script>
     <script src="/visualization/views/layer-deep-dive.js"></script>
@@ -173,6 +176,7 @@
                 'overview': 'Overview',
                 'findings': 'Research Findings',
                 'trait-extraction': 'Trait Extraction',
+                'steering-sweep': 'Steering Sweep',
                 'inference': 'Inference',
                 'live-chat': 'Live Chat'
             };
@@ -187,6 +191,9 @@
                     break;
                 case 'trait-extraction':
                     window.renderTraitExtraction();
+                    break;
+                case 'steering-sweep':
+                    window.renderSteeringSweep();
                     break;
                 case 'inference':
                     window.renderTraitDynamics();  // Keep function name for now

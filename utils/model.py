@@ -240,7 +240,7 @@ def load_model_with_lora(
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     device: str = "auto",
-    dtype: torch.dtype = torch.float16,
+    dtype: torch.dtype = torch.bfloat16,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
     """
     Load model with optional LoRA adapter and quantization.
@@ -253,7 +253,7 @@ def load_model_with_lora(
         load_in_8bit: Load in 8-bit quantization (requires bitsandbytes)
         load_in_4bit: Load in 4-bit quantization (requires bitsandbytes)
         device: Device map ('auto', 'cuda', 'cpu')
-        dtype: Model dtype (default: float16 for compatibility with quantization)
+        dtype: Model dtype (default: bfloat16, matching load_model)
 
     Returns:
         (model, tokenizer) tuple

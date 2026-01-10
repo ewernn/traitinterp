@@ -593,12 +593,13 @@ def main():
     else:
         print(f"Loading model: {model_name}" + (f" + LoRA: {lora}" if lora else ""))
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype=torch.float16, device_map="auto",
+            model_name, torch_dtype=torch.bfloat16, device_map="auto",
             attn_implementation='eager'
         )
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = 'left'
 
     if not is_remote:
         n_layers = len(get_inner_model(model).layers)

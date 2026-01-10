@@ -75,8 +75,9 @@ def extract_vectors_for_trait(
         pos_acts = layer_acts[:n_pos]
         neg_acts = layer_acts[n_pos:]
 
-        mean_pos = pos_acts.mean(dim=0)
-        mean_neg = neg_acts.mean(dim=0)
+        # Compute means in float32 to avoid bfloat16 precision loss at large magnitudes
+        mean_pos = pos_acts.float().mean(dim=0)
+        mean_neg = neg_acts.float().mean(dim=0)
         center = (mean_pos + mean_neg) / 2
 
         for method_name, method_obj in method_objs.items():

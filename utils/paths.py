@@ -372,6 +372,37 @@ def discover_extracted_traits(experiment: str, model_variant: str = None) -> lis
     return traits
 
 
+def discover_steering_entries(experiment: str) -> list[dict]:
+    """
+    Find all steering results in experiments/{exp}/steering/.
+
+    Path structure: steering/{category}/{trait}/{model_variant}/{position}/{prompt_set}/results.json
+
+    Returns:
+        List of dicts with keys: trait, model_variant, position, prompt_set, full_path
+    """
+    steering_dir = get('steering.base', experiment=experiment)
+    if not steering_dir.exists():
+        return []
+
+    entries = []
+    for results_file in steering_dir.rglob('results.json'):
+        rel_path = results_file.parent.relative_to(steering_dir)
+        parts = rel_path.parts
+
+        # Expected: {category}/{trait}/{model_variant}/{position}/{prompt_set}
+        if len(parts) >= 5:
+            entries.append({
+                'trait': f"{parts[0]}/{parts[1]}",
+                'model_variant': parts[2],
+                'position': parts[3],
+                'prompt_set': parts[4],
+                'full_path': str(rel_path)
+            })
+
+    return entries
+
+
 # =============================================================================
 # Position helpers
 # =============================================================================

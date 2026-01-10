@@ -268,12 +268,15 @@ def main():
     if not args.prompt_set and not args.all_prompt_sets:
         parser.error("Either --prompt-set or --all-prompt-sets is required")
 
-    # Resolve model variant
-    variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-    model_variant = variant['name']
-    model_name = variant['model']
+    # Resolve model variants: application for inference, extraction for vectors
+    app_variant = get_model_variant(args.experiment, args.model_variant, mode="application")
+    model_variant = app_variant['name']  # For inference paths
+    model_name = app_variant['model']
 
-    # Set inference_dir using model_variant
+    ext_variant = get_model_variant(args.experiment, None, mode="extraction")
+    extraction_variant = ext_variant['name']  # For vector loading
+
+    # Set inference_dir using application variant
     inference_dir = get_path('inference.variant', experiment=args.experiment, model_variant=model_variant)
 
     # Check for calibration (required for interactive viz cleaning)
@@ -301,10 +304,10 @@ def main():
 
     for prompt_set in prompt_sets:
         print(f"\n{'='*60}\nProcessing prompt set: {prompt_set}\n{'='*60}")
-        process_prompt_set(args, inference_dir, prompt_set, model_name)
+        process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant)
 
 
-def process_prompt_set(args, inference_dir, prompt_set, model_name):
+def process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant):
     """Process a single prompt set."""
     raw_dir = inference_dir / "raw" / "residual" / prompt_set
 
@@ -357,7 +360,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
         if multi_vector_mode:
             # Get top N vectors for this trait
             top_vectors = get_top_N_vectors(
-                args.experiment, trait_path, model_variant, args.component, args.position, N=args.multi_vector
+                args.experiment, trait_path, extraction_variant, args.component, args.position, N=args.multi_vector
             )
             if not top_vectors:
                 print(f"  Skip {trait_path}: no vectors found")
@@ -369,7 +372,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 method = v['method']
                 selection_source = v['source']
                 vector_path = get_vector_path(
-                    args.experiment, trait_path, method, layer, model_variant, args.component, args.position
+                    args.experiment, trait_path, method, layer, extraction_variant, args.component, args.position
                 )
 
                 if not vector_path.exists():
@@ -377,11 +380,11 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
 
                 try:
                     vector, baseline, per_vec_metadata = load_vector_with_baseline(
-                        args.experiment, trait_path, method, layer, model_variant, args.component, args.position
+                        args.experiment, trait_path, method, layer, extraction_variant, args.component, args.position
                     )
                     vector = vector.to(torch.float16)
                     vec_metadata = load_vector_metadata(
-                        args.experiment, trait_path, method, model_variant, args.component, args.position
+                        args.experiment, trait_path, method, extraction_variant, args.component, args.position
                     )
                     loaded_vectors.append((vector, method, vector_path, layer, vec_metadata, selection_source, baseline))
                 except FileNotFoundError:
@@ -397,7 +400,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 # Use VectorSpec to find and load best vector
                 try:
                     spec, spec_meta = get_best_vector_spec(
-                        args.experiment, trait_path, model_variant, args.component, args.position
+                        args.experiment, trait_path, extraction_variant, args.component, args.position
                     )
                 except FileNotFoundError as e:
                     print(f"  Skip {trait_path}: {e}")
@@ -414,7 +417,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
             else:
                 layer = args.layer
                 method = args.method or find_vector_method(
-                    args.experiment, trait_path, layer, model_variant, args.component, args.position
+                    args.experiment, trait_path, layer, extraction_variant, args.component, args.position
                 )
                 selection_source = 'manual'
 
@@ -426,7 +429,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 spec = VectorSpec(layer, args.component, args.position, method)
 
             vector_path = get_vector_path(
-                args.experiment, trait_path, spec.method, spec.layer, model_variant, spec.component, spec.position
+                args.experiment, trait_path, spec.method, spec.layer, extraction_variant, spec.component, spec.position
             )
 
             if not vector_path.exists():
@@ -435,7 +438,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
 
             try:
                 vector, baseline, per_vec_metadata = load_vector_from_spec(
-                    args.experiment, trait_path, spec, model_variant
+                    args.experiment, trait_path, spec, extraction_variant
                 )
                 vector = vector.to(torch.float16)
             except FileNotFoundError:
@@ -443,7 +446,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
                 continue
 
             vec_metadata = load_vector_metadata(
-                args.experiment, trait_path, spec.method, model_variant, spec.component, spec.position
+                args.experiment, trait_path, spec.method, extraction_variant, spec.component, spec.position
             )
             trait_vectors[(category, trait_name)] = (vector, method, vector_path, layer, vec_metadata, selection_source, baseline)
 
@@ -456,7 +459,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
         print(f"\nLoading model for logit lens: {model_name}")
         from transformers import AutoModelForCausalLM, AutoTokenizer
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype=torch.float16, device_map="auto",
+            model_name, torch_dtype=torch.bfloat16, device_map="auto",
             attn_implementation='eager'
         )
         tokenizer = AutoTokenizer.from_pretrained(model_name)

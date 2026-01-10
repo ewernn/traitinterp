@@ -127,6 +127,12 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.list_model_variants(exp_name))
                 return
 
+            # API endpoint: list steering entries
+            if self.path.startswith('/api/experiments/') and self.path.endswith('/steering'):
+                exp_name = self.path.split('/')[3]
+                self.send_api_response(self.list_steering_entries(exp_name))
+                return
+
             # API endpoint: get inference projection data
             # Path: /api/experiments/{exp}/inference/{model_variant}/projections/{category}/{trait}/{set}/{prompt_id}
             if self.path.startswith('/api/experiments/') and '/inference/' in self.path and '/projections/' in self.path:
@@ -446,6 +452,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             }
         except Exception as e:
             return {'error': str(e)}
+
+    def list_steering_entries(self, experiment_name):
+        """List all steering entries for an experiment."""
+        from utils.paths import discover_steering_entries
+        return {'entries': discover_steering_entries(experiment_name)}
 
     def send_inference_projection(self, experiment_name, model_variant, category, trait, prompt_set, prompt_id):
         """Send inference projection data for a specific trait and prompt.

@@ -107,51 +107,16 @@ async function renderSteeringSweep() {
             <section>
                 <h3 class="subsection-header" id="heatmap-section">
                     <span class="subsection-num">2.</span>
-                    <span class="subsection-title">Layer × Ratio Heatmap</span>
-                    <span class="subsection-info-toggle" data-target="info-heatmap">►</span>
+                    <span class="subsection-title">Layer × Coefficient Heatmap</span>
                 </h3>
-                <div class="subsection-info" id="info-heatmap">
-                    Each cell shows the steering effect (delta or coherence) for a specific layer and perturbation ratio.
-                    Cells with coherence below threshold are masked. Green = positive steering, Red = negative.
-                </div>
                 <div id="sweep-heatmap-container" class="chart-container-lg"></div>
             </section>
 
-            <!-- Optimal curve -->
-            <section>
-                <h3 class="subsection-header" id="optimal-curve-section">
-                    <span class="subsection-num">3.</span>
-                    <span class="subsection-title">Optimal Ratio per Layer</span>
-                    <span class="subsection-info-toggle" data-target="info-optimal">►</span>
-                </h3>
-                <div class="subsection-info" id="info-optimal">
-                    For each layer, shows the best delta achieved (with coherence above threshold) and the ratio that achieved it.
-                    This reveals the "U-shape": early and late layers often go negative regardless of ratio.
-                </div>
-                <div id="sweep-optimal-container" class="chart-container-md"></div>
-            </section>
-
-            <!-- Summary stats -->
-            <section>
-                <h3 class="subsection-header" id="summary-section">
-                    <span class="subsection-num">4.</span>
-                    <span class="subsection-title">Summary</span>
-                    <span class="subsection-info-toggle" data-target="info-summary">►</span>
-                </h3>
-                <div class="subsection-info" id="info-summary">Best configuration found. Optimal layer and steering ratio.</div>
-                <div id="sweep-summary-container"></div>
-            </section>
-
-            <!-- Raw results table -->
-            <section>
-                <h3 class="subsection-header" id="table-section">
-                    <span class="subsection-num">5.</span>
-                    <span class="subsection-title">All Results</span>
-                    <span class="subsection-info-toggle" data-target="info-table">►</span>
-                </h3>
-                <div class="subsection-info" id="info-table">Complete results from steering experiments.</div>
+            <!-- Raw results table (collapsible) -->
+            <details class="results-details">
+                <summary class="results-summary">All Results</summary>
                 <div id="sweep-table-container" class="scrollable-container"></div>
-            </section>
+            </details>
         </div>
     `;
 
@@ -159,12 +124,12 @@ async function renderSteeringSweep() {
     await renderBestVectorPerLayer();
     await renderTraitPicker(traits);
 
-    // Set default selected trait if not set
-    if (!window.state.selectedSteeringTrait && traits.length > 0) {
-        window.state.selectedSteeringTrait = defaultTrait;
+    // Set default selected entry if not set
+    if (!window.state.selectedSteeringEntry && traits.length > 0) {
+        window.state.selectedSteeringEntry = defaultTrait;
     }
 
-    await renderSweepData(window.state.selectedSteeringTrait || defaultTrait);
+    await renderSweepData(window.state.selectedSteeringEntry || defaultTrait);
 
     // Setup event handlers
     document.getElementById('sweep-vector-type').addEventListener('change', () => updateSweepVisualizations());
@@ -222,45 +187,15 @@ function updateSteeringModelInfo(meta) {
 
 
 async function discoverSteeringTraits() {
-    // Discover traits with steering data by recursively finding all results.json files
+    // Fetch steering entries from API
+    // Returns array of objects: { trait, model_variant, position, prompt_set, full_path }
     if (!window.state.experimentData?.name) return [];
 
-    const baseUrl = '/' + window.paths.get('steering.base');
-    const traits = [];
-
-    // Recursively search for results.json files
-    async function searchDir(url, pathParts = []) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) return;
-
-            const html = await response.text();
-
-            // Check if results.json exists in this directory
-            if (html.includes('href="results.json"')) {
-                // Found results - the path parts form the trait identifier
-                if (pathParts.length >= 2) {
-                    traits.push(pathParts.join('/'));
-                }
-                return; // Don't recurse further once we find results
-            }
-
-            // Otherwise, recurse into subdirectories
-            const folderMatches = html.matchAll(/href="([^"]+)\/"/g);
-            for (const match of folderMatches) {
-                const folder = match[1];
-                if (folder !== '..' && !folder.startsWith('.')) {
-                    await searchDir(`${url}${folder}/`, [...pathParts, folder]);
-                }
-            }
-        } catch (e) {
-            // Ignore errors for individual directories
-        }
-    }
-
     try {
-        await searchDir(baseUrl + '/');
-        return traits;
+        const response = await fetch(`/api/experiments/${window.state.experimentData.name}/steering`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return data.entries || [];
     } catch (e) {
         console.error('Failed to discover steering traits:', e);
         return [];
@@ -268,15 +203,21 @@ async function discoverSteeringTraits() {
 }
 
 
-async function renderSweepData(trait) {
+async function renderSweepData(steeringEntry) {
+    // steeringEntry: { trait, model_variant, position, prompt_set, full_path }
     const experiment = window.state.experimentData?.name;
-    if (!experiment) return;
+    if (!experiment || !steeringEntry) return;
 
     let data = null;
     let steeringMeta = null;
 
     try {
-        const resultsUrl = '/' + window.paths.get('steering.results', { trait });
+        const resultsUrl = '/' + window.paths.get('steering.results', {
+            trait: steeringEntry.trait,
+            model_variant: steeringEntry.model_variant,
+            position: steeringEntry.position,
+            prompt_set: steeringEntry.prompt_set
+        });
         const response = await fetch(resultsUrl);
         if (response.ok) {
             const results = await response.json();
@@ -297,8 +238,6 @@ async function renderSweepData(trait) {
 
     if (!data) {
         document.getElementById('sweep-heatmap-container').innerHTML = '<p class="no-data">No data for this trait</p>';
-        document.getElementById('sweep-optimal-container').innerHTML = '';
-        document.getElementById('sweep-summary-container').innerHTML = '';
         document.getElementById('sweep-table-container').innerHTML = '';
         return;
     }
@@ -310,8 +249,6 @@ async function renderSweepData(trait) {
             <p class="no-data">No single-layer steering runs found.<br>
             <small>Heatmap requires single-layer runs. Multi-layer runs are not visualized here.</small></p>
         `;
-        document.getElementById('sweep-optimal-container').innerHTML = '';
-        document.getElementById('sweep-summary-container').innerHTML = '';
         document.getElementById('sweep-table-container').innerHTML = '';
         return;
     }
@@ -327,9 +264,9 @@ async function renderSweepData(trait) {
  */
 async function renderBestVectorPerLayer() {
     const container = document.getElementById('best-vector-container');
-    const traits = discoveredSteeringTraits;
+    const steeringEntries = discoveredSteeringTraits;
 
-    if (traits.length === 0) {
+    if (steeringEntries.length === 0) {
         container.innerHTML = '<p class="no-data">No steering results found.</p>';
         return;
     }
@@ -340,21 +277,12 @@ async function renderBestVectorPerLayer() {
     const coherenceThresholdEl = document.getElementById('sweep-coherence-threshold');
     const coherenceThreshold = coherenceThresholdEl ? parseInt(coherenceThresholdEl.value) : 70;
 
-    // Group traits by base trait (category/name without position)
-    // e.g., "chirp/refusal_v2/response_all" -> base "chirp/refusal_v2", position "response_all"
+    // Group by base trait (category/trait_name)
     const traitGroups = {};
-    for (const trait of traits) {
-        const parts = trait.split('/');
-        let baseTrait, position;
-        if (parts.length >= 3) {
-            baseTrait = parts.slice(0, 2).join('/');
-            position = parts.slice(2).join('/');
-        } else {
-            baseTrait = trait;
-            position = null;  // No position suffix (old format)
-        }
+    for (const entry of steeringEntries) {
+        const baseTrait = entry.trait;
         if (!traitGroups[baseTrait]) traitGroups[baseTrait] = [];
-        traitGroups[baseTrait].push({ fullPath: trait, position });
+        traitGroups[baseTrait].push(entry);
     }
 
     const charts = [];
@@ -366,13 +294,18 @@ async function renderBestVectorPerLayer() {
         let colorIdx = 0;
 
         // Load results for each position variant (in parallel)
-        const variantResults = await Promise.all(variants.map(async ({ fullPath, position }) => {
+        const variantResults = await Promise.all(variants.map(async (entry) => {
             try {
-                const resultsUrl = '/' + window.paths.get('steering.results', { trait: fullPath });
+                const resultsUrl = '/' + window.paths.get('steering.results', {
+                    trait: entry.trait,
+                    model_variant: entry.model_variant,
+                    position: entry.position,
+                    prompt_set: entry.prompt_set
+                });
                 const response = await fetch(resultsUrl);
                 if (!response.ok) return null;
                 const results = await response.json();
-                return { fullPath, position, results };
+                return { entry, results };
             } catch (e) {
                 return null;
             }
@@ -381,7 +314,8 @@ async function renderBestVectorPerLayer() {
         // Process results sequentially (baseline depends on first result)
         for (const variantResult of variantResults) {
             if (!variantResult) continue;
-            const { position, results } = variantResult;
+            const { entry, results } = variantResult;
+            const position = entry.position;
 
             if (baseline === null) {
                 baseline = results.baseline?.trait_mean || 0;
@@ -499,24 +433,27 @@ async function renderBestVectorPerLayer() {
 
 /**
  * Render trait picker (inline buttons)
+ * @param {Array} steeringEntries - Array of { trait, model_variant, position, prompt_set, full_path }
  */
-async function renderTraitPicker(traits) {
+async function renderTraitPicker(steeringEntries) {
     const container = document.getElementById('trait-picker-container');
 
-    if (!traits || traits.length === 0) {
+    if (!steeringEntries || steeringEntries.length === 0) {
         container.innerHTML = '';
         return;
     }
 
-    const currentTrait = window.state.selectedSteeringTrait || traits[0];
+    // Get current selection or default to first
+    const currentFullPath = window.state.selectedSteeringEntry?.full_path || steeringEntries[0].full_path;
 
     container.innerHTML = `
         <div class="trait-picker">
             <span class="tp-label">Trait:</span>
             <div class="tp-buttons">
-                ${traits.map(t => `
-                    <button class="tp-btn ${t === currentTrait ? 'active' : ''}" data-trait="${t}">
-                        ${window.getDisplayName(t)}
+                ${steeringEntries.map((entry, idx) => `
+                    <button class="tp-btn ${entry.full_path === currentFullPath ? 'active' : ''}" data-index="${idx}">
+                        ${window.getDisplayName(entry.trait)}
+                        <span class="hint">${window.paths.formatPositionDisplay(entry.position)}</span>
                     </button>
                 `).join('')}
             </div>
@@ -526,15 +463,16 @@ async function renderTraitPicker(traits) {
     // Setup event listeners
     container.querySelectorAll('.tp-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const selectedTrait = btn.dataset.trait;
-            window.state.selectedSteeringTrait = selectedTrait;
+            const idx = parseInt(btn.dataset.index);
+            const selectedEntry = steeringEntries[idx];
+            window.state.selectedSteeringEntry = selectedEntry;
 
             // Update active state
             container.querySelectorAll('.tp-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
             // Re-render single-trait sections
-            await renderSweepData(selectedTrait);
+            await renderSweepData(selectedEntry);
         });
     });
 }
@@ -639,8 +577,6 @@ function updateSweepVisualizations() {
     }
 
     renderSweepHeatmap(data, metric, coherenceThreshold, interpolate);
-    renderOptimalCurve(data, coherenceThreshold);
-    renderSweepSummary({ full_vector: data, baseline_trait: currentSweepData.baseline_trait }, coherenceThreshold);
     renderSweepTable(data, coherenceThreshold);
 }
 
@@ -822,152 +758,6 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
 }
 
 
-function renderOptimalCurve(data, coherenceThreshold) {
-    const container = document.getElementById('sweep-optimal-container');
-
-    const layers = Object.keys(data).map(Number).sort((a, b) => a - b);
-    if (layers.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
-
-    // Find best delta per layer (with coherence above threshold)
-    const optimalData = layers.map(layer => {
-        const layerData = data[layer];
-        let bestDelta = null;
-        let bestRatio = null;
-        let bestCoherence = null;
-
-        layerData.ratios.forEach((ratio, idx) => {
-            const coherence = layerData.coherences[idx];
-            const delta = layerData.deltas[idx];
-
-            if (coherence >= coherenceThreshold) {
-                if (bestDelta === null || delta > bestDelta) {
-                    bestDelta = delta;
-                    bestRatio = ratio;
-                    bestCoherence = coherence;
-                }
-            }
-        });
-
-        return { layer, bestDelta, bestRatio, bestCoherence };
-    }).filter(d => d.bestDelta !== null);
-
-    if (optimalData.length === 0) {
-        container.innerHTML = '<p class="no-data">No data above coherence threshold</p>';
-        return;
-    }
-
-    // Plot optimal delta curve
-    const deltaTrace = {
-        x: optimalData.map(d => d.layer),
-        y: optimalData.map(d => d.bestDelta),
-        type: 'scatter',
-        mode: 'lines+markers',
-        name: 'Best Delta',
-        marker: { size: 8 },
-        line: { width: 2 },
-        hovertemplate: 'L%{x}<br>Delta: %{y:.1f}<br>Ratio: %{text}<extra></extra>',
-        text: optimalData.map(d => d.bestRatio.toFixed(2))
-    };
-
-    // Add zero line
-    const zeroLine = {
-        x: [Math.min(...layers), Math.max(...layers)],
-        y: [0, 0],
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Baseline',
-        line: { dash: 'dash', color: '#888', width: 1 },
-        hoverinfo: 'skip'
-    };
-
-    const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
-        margin: { l: 50, r: 20, t: 20, b: 50 },
-        xaxis: { title: 'Layer', dtick: 5, tickfont: { size: 10 } },
-        yaxis: { title: 'Best Delta', tickfont: { size: 10 } },
-        height: 250,
-        showlegend: false
-    }) : {
-        margin: { l: 50, r: 20, t: 20, b: 50 },
-        xaxis: { title: 'Layer' },
-        yaxis: { title: 'Best Delta' },
-        height: 250
-    };
-
-    Plotly.newPlot(container, [zeroLine, deltaTrace], layout, { displayModeBar: false, responsive: true });
-}
-
-
-function renderSweepSummary(data, coherenceThreshold) {
-    const container = document.getElementById('sweep-summary-container');
-
-    const fullVector = data.full_vector || {};
-    const layers = Object.keys(fullVector).map(Number).sort((a, b) => a - b);
-
-    if (layers.length === 0) {
-        container.innerHTML = '<p class="no-data">No summary available</p>';
-        return;
-    }
-
-    // Find overall best
-    let bestLayer = null;
-    let bestRatio = null;
-    let bestDelta = -Infinity;
-    let bestCoherence = 0;
-
-    layers.forEach(layer => {
-        const layerData = fullVector[layer];
-        layerData.ratios.forEach((ratio, idx) => {
-            const coherence = layerData.coherences[idx];
-            const delta = layerData.deltas[idx];
-
-            if (coherence >= coherenceThreshold && delta > bestDelta) {
-                bestDelta = delta;
-                bestRatio = ratio;
-                bestLayer = layer;
-                bestCoherence = coherence;
-            }
-        });
-    });
-
-    // Find sweet spot layers (positive delta with good coherence)
-    const sweetSpotLayers = layers.filter(layer => {
-        const layerData = fullVector[layer];
-        return layerData.ratios.some((_, idx) =>
-            layerData.coherences[idx] >= 70 && layerData.deltas[idx] > 10
-        );
-    });
-
-    const baseline = data.baseline_trait || 'N/A';
-
-    container.innerHTML = `
-        <div class="summary-grid">
-            <div class="summary-card">
-                <div class="summary-label">Baseline Trait</div>
-                <div class="summary-value">${typeof baseline === 'number' ? baseline.toFixed(1) : baseline}</div>
-            </div>
-            <div class="summary-card highlight">
-                <div class="summary-label">Best Configuration</div>
-                <div class="summary-value">L${bestLayer} @ ${bestRatio?.toFixed(2) || 'N/A'}</div>
-                <div class="summary-detail">Delta: +${bestDelta?.toFixed(1) || 'N/A'}, Coherence: ${bestCoherence?.toFixed(0) || 'N/A'}</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Sweet Spot Layers</div>
-                <div class="summary-value">${sweetSpotLayers.length > 0 ? sweetSpotLayers.join(', ') : 'None'}</div>
-                <div class="summary-detail">(Delta > 10, Coherence > 70)</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-label">Layers Tested</div>
-                <div class="summary-value">${layers.length}</div>
-                <div class="summary-detail">L${Math.min(...layers)} - L${Math.max(...layers)}</div>
-            </div>
-        </div>
-    `;
-}
-
-
 function renderSweepTable(data, coherenceThreshold) {
     const container = document.getElementById('sweep-table-container');
 
@@ -1000,7 +790,7 @@ function renderSweepTable(data, coherenceThreshold) {
             <thead>
                 <tr>
                     <th>Layer</th>
-                    <th>Ratio</th>
+                    <th>Coef</th>
                     <th>Delta</th>
                     <th>Coherence</th>
                     <th>Trait</th>
@@ -1046,169 +836,5 @@ function setupSweepInfoToggles() {
 }
 
 
-/**
- * Render steering validation section within trait-extraction view
- * Renders into #steering-validation-container instead of #content-area
- */
-async function renderSteeringValidationSection() {
-    const container = document.getElementById('steering-validation-container');
-    if (!container) return;
-
-    // Discover steering traits
-    const traits = await discoverSteeringTraits();
-
-    if (traits.length === 0) {
-        container.innerHTML = `
-            <div class="no-data">
-                <p>No steering data found</p>
-                <small>Run: <code>python analysis/steering/evaluate.py --experiment ${window.state.experimentData?.name || 'your_experiment'} --trait category/trait --layers 8,10,12 --find-coef</code></small>
-            </div>
-        `;
-        return;
-    }
-
-    // Render steering sweep UI in the container
-    const defaultTrait = traits[0];
-
-    container.innerHTML = `
-        <!-- Coherence threshold control -->
-        <div class="sweep-controls" style="margin-bottom: 16px;">
-            <div class="control-group">
-                <label>Min Coherence:</label>
-                <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="70" />
-                <span id="coherence-threshold-value">70</span>
-            </div>
-        </div>
-
-        <!-- Best Vector per Layer (multi-trait) -->
-        <section id="best-vector-section">
-            <h3 class="subsection-header">
-                <span class="subsection-num">4.1</span>
-                <span class="subsection-title">Best Vector per Layer</span>
-                <span class="subsection-info-toggle" data-target="info-best-vector">►</span>
-            </h3>
-            <div class="subsection-info" id="info-best-vector">
-                For each selected trait (from sidebar), shows the best trait score achieved per layer across all 3 extraction methods (probe, gradient, mean_diff).
-                Dashed line shows baseline (no steering).
-            </div>
-            <div id="best-vector-container"></div>
-        </section>
-
-        <!-- Trait Picker -->
-        <div id="trait-picker-container"></div>
-
-        <!-- Controls -->
-        <div class="sweep-controls">
-            <div class="control-group">
-                <label>Vector Type:</label>
-                <select id="sweep-vector-type">
-                    <option value="full_vector" selected>Full Vector</option>
-                    <option value="incremental">Incremental</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>Method:</label>
-                <select id="sweep-method">
-                    <option value="all" selected>All Methods</option>
-                    <option value="probe">Probe</option>
-                    <option value="gradient">Gradient</option>
-                    <option value="mean_diff">Mean Diff</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>Metric:</label>
-                <select id="sweep-metric">
-                    <option value="delta" selected>Delta (trait change)</option>
-                    <option value="coherence">Coherence</option>
-                    <option value="trait">Trait Score</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>
-                    <input type="checkbox" id="sweep-interpolate" />
-                    Interpolate
-                </label>
-            </div>
-        </div>
-
-        <!-- Heatmap -->
-        <section id="heatmap-section">
-            <h3 class="subsection-header">
-                <span class="subsection-num">4.2</span>
-                <span class="subsection-title">Layer × Perturbation Ratio Heatmap</span>
-                <span class="subsection-info-toggle" data-target="info-heatmap">►</span>
-            </h3>
-            <div class="subsection-info" id="info-heatmap">
-                Color shows selected metric. Hover for details. Ratio = (coef × vector_norm) / activation_norm.
-            </div>
-            <div id="sweep-heatmap-container"></div>
-        </section>
-
-        <!-- Optimal Coefficient Curve -->
-        <section id="optimal-curve-section">
-            <h3 class="subsection-header">
-                <span class="subsection-num">4.3</span>
-                <span class="subsection-title">Optimal Coefficient per Layer</span>
-                <span class="subsection-info-toggle" data-target="info-optimal-curve">►</span>
-            </h3>
-            <div class="subsection-info" id="info-optimal-curve">
-                Shows optimal coefficient for each layer (maximizes metric above coherence threshold).
-            </div>
-            <div id="optimal-curve-container"></div>
-        </section>
-
-        <!-- Summary -->
-        <section id="summary-section">
-            <h3 class="subsection-header">
-                <span class="subsection-num">4.4</span>
-                <span class="subsection-title">Summary Statistics</span>
-                <span class="subsection-info-toggle" data-target="info-summary">►</span>
-            </h3>
-            <div class="subsection-info" id="info-summary">
-                Aggregate metrics across all valid (coherence ≥ threshold) layer×coefficient combinations.
-            </div>
-            <div id="sweep-summary-container"></div>
-        </section>
-
-        <!-- Table -->
-        <section id="table-section">
-            <h3 class="subsection-header">
-                <span class="subsection-num">4.5</span>
-                <span class="subsection-title">Full Results Table</span>
-                <span class="subsection-info-toggle" data-target="info-table">►</span>
-            </h3>
-            <div class="subsection-info" id="info-table">
-                All layer×coefficient combinations sorted by metric. Use this to find specific values.
-            </div>
-            <div id="sweep-table-container"></div>
-        </section>
-    `;
-
-    // Render data
-    await renderBestVectorPerLayer();
-    await renderTraitPicker(traits);
-    await renderSweepData(defaultTrait);
-    setupSweepInfoToggles();
-
-    // Setup event listeners
-    const coherenceSlider = document.getElementById('sweep-coherence-threshold');
-    const coherenceValue = document.getElementById('coherence-threshold-value');
-    if (coherenceSlider && coherenceValue) {
-        coherenceSlider.addEventListener('input', (e) => {
-            coherenceValue.textContent = e.target.value;
-            updateSweepVisualizations();
-        });
-    }
-
-    ['sweep-vector-type', 'sweep-method', 'sweep-metric', 'sweep-interpolate'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('change', updateSweepVisualizations);
-        }
-    });
-}
-
-
 // Export
 window.renderSteeringSweep = renderSteeringSweep;
-window.renderSteeringValidationSection = renderSteeringValidationSection;

@@ -33,10 +33,11 @@ class MeanDifferenceMethod(ExtractionMethod):
     """Baseline: vector = mean(pos) - mean(neg), normalized to unit norm."""
 
     def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
-        pos_mean = pos_acts.mean(dim=0)
-        neg_mean = neg_acts.mean(dim=0)
-        # Normalize in float32 for precision, then convert back to original dtype
-        vector = (pos_mean - neg_mean).float()
+        # Compute means in float32 to avoid bfloat16 precision loss at large magnitudes
+        # (e.g., massive dim 443 in Gemma 3 has values ~32k where bfloat16 step size is 256)
+        pos_mean = pos_acts.float().mean(dim=0)
+        neg_mean = neg_acts.float().mean(dim=0)
+        vector = pos_mean - neg_mean
         vector = vector / (vector.norm() + 1e-8)
         vector = vector.to(dtype=pos_acts.dtype)
         return {
