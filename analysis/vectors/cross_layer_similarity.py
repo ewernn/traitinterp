@@ -4,7 +4,7 @@ Compute cross-layer similarity for trait vectors.
 For each trait/method, compute cosine similarity between vectors at all layer pairs.
 Shows where representation is stable (high diagonal blocks) vs transitional.
 
-Input: Extracted vectors at experiments/{experiment}/extraction/{trait}/vectors/
+Input: Extracted vectors at experiments/{experiment}/extraction/{trait}/{model_variant}/vectors/
 Output: Similarity matrices and summary statistics
 
 Usage:

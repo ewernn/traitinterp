@@ -9,7 +9,7 @@ Uses actual system prompts via chat template, matching their exact approach:
 - Mean diff vector computation
 
 Input: their_data/{trait}_extract.json
-Output: experiments/{experiment}/extraction/{trait}/
+Output: experiments/{experiment}/extraction/{trait}/{model_variant}/
 
 Usage:
     python extraction/instruction_based_extraction.py \

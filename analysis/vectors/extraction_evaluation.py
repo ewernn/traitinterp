@@ -3,8 +3,8 @@
 Evaluate extracted vectors on held-out validation data.
 
 Input:
-    - experiments/{experiment}/extraction/{trait}/vectors/{position}/{component}/{method}/layer*.pt
-    - experiments/{experiment}/extraction/{trait}/activations/{position}/{component}/val_all_layers.pt
+    - experiments/{experiment}/extraction/{trait}/{model_variant}/vectors/{position}/{component}/{method}/layer*.pt
+    - experiments/{experiment}/extraction/{trait}/{model_variant}/activations/{position}/{component}/val_all_layers.pt
 
 Output:
     - experiments/{experiment}/extraction/extraction_evaluation.json

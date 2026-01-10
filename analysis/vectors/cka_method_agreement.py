@@ -4,7 +4,7 @@ Compute CKA (Centered Kernel Alignment) between extraction methods.
 Measures structural similarity between probe, mean_diff, and gradient vectors
 across layers. High CKA (>0.7) = methods converge on same structure.
 
-Input: Extracted vectors at experiments/{experiment}/extraction/{trait}/vectors/
+Input: Extracted vectors at experiments/{experiment}/extraction/{trait}/{model_variant}/vectors/
 Output: CKA matrix and per-layer cosine similarities
 
 Usage:
