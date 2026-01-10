@@ -16,6 +16,7 @@ Examples:
   all[:]        - All tokens (mean)
 """
 
+import gc
 import json
 import re
 from datetime import datetime
@@ -387,5 +388,13 @@ def extract_activations_for_trait(
     metadata_path = get_activation_metadata_path(experiment, trait, model_variant, component, position)
     with open(metadata_path, 'w') as f:
         json.dump(metadata, f, indent=2)
+
+    # Free GPU memory - activation tensors can be large
+    del train_acts, pos_all, neg_all, pos_acts, neg_acts
+    if val_split > 0 and (val_pos or val_neg):
+        del val_acts, val_pos_all, val_neg_all, val_pos_acts, val_neg_acts
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     return n_layers

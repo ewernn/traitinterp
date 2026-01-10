@@ -15,6 +15,7 @@ Usage:
     from analysis.steering.coef_search import adaptive_search_layer, batched_adaptive_search
 """
 
+import gc
 import time
 
 import torch
@@ -403,6 +404,12 @@ async def batched_adaptive_search(
 
                 # Save after each batch
                 save_results(results, experiment, trait, model_variant, position, prompt_set)
+
+                # Free memory after batch
+                del all_responses, all_qa_pairs, all_scores
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
         # Update coefficients for next step
         # Binary control: push up while coherence >= threshold, back off when below

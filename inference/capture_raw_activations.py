@@ -383,6 +383,12 @@ def capture_multiple_layer_internals(model, tokenizer, prompt_text: str, layer_i
         all_layer_data[layer_idx]['response_text'] = response_text
         all_layer_data[layer_idx]['response_tokens'] = response_tokens
 
+    # Free intermediate storage
+    del prompt_storages, response_storages, past_key_values
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     return all_layer_data
 
 

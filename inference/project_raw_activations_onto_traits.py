@@ -53,6 +53,7 @@ Usage:
         --layer 8
 """
 
+import gc
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -651,6 +652,12 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name):
             out_dir.mkdir(parents=True, exist_ok=True)
             with open(out_file, 'w') as f:
                 json.dump(proj_data, f, indent=2)
+
+        # Free memory after each prompt
+        del data
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     print(f"\nProjections saved to: {inference_dir}/{{category}}/{{trait}}/residual_stream/{prompt_set}/")
 
