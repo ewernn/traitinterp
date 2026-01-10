@@ -78,7 +78,7 @@ from analysis.steering.coef_search import (
 )
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
-from utils.paths import get, get_vector_path
+from utils.paths import get, get_vector_path, get_default_variant
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model, load_model_with_lora, get_num_layers, get_layers_module
 from utils.paths import get_model_variant
 from utils.vectors import MIN_COHERENCE
@@ -382,10 +382,13 @@ async def run_evaluation(
     else:
         print(f"\nNo cached norms, will estimate activation norms...")
 
+    # Resolve extraction model variant (vectors are stored under extraction variant, not application variant)
+    extraction_variant = get_default_variant(vector_experiment, mode='extraction')
+
     print(f"Loading vectors...")
     layer_data = []
     for layer in layers:
-        vector = load_vector(vector_experiment, trait, layer, model_variant, method, component, position)
+        vector = load_vector(vector_experiment, trait, layer, extraction_variant, method, component, position)
         if vector is None:
             print(f"  L{layer}: Vector not found, skipping")
             continue

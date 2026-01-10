@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from core import projection
-from utils.paths import get as get_path, get_vector_path, list_layers, list_methods
+from utils.paths import get as get_path, get_vector_path, list_layers, list_methods, get_default_variant
 from utils.vectors import get_best_vector
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config, get_layers_module
 
@@ -138,6 +138,9 @@ class ChatInference:
             print(f"[ChatInference] ERROR: Extraction dir does not exist!", flush=True)
             return
 
+        # Get extraction model variant for loading vectors
+        extraction_variant = get_default_variant(self.experiment, mode='extraction')
+
         for category_dir in sorted(extraction_dir.iterdir()):
             if not category_dir.is_dir() or category_dir.name.startswith('.'):
                 continue
@@ -154,7 +157,7 @@ class ChatInference:
 
                 # Get best layer/method for this trait (searches all positions/components)
                 try:
-                    best = get_best_vector(self.experiment, trait_path)
+                    best = get_best_vector(self.experiment, trait_path, extraction_variant)
                 except FileNotFoundError as e:
                     print(f"  Skip {trait_path}: {e}")
                     continue
@@ -165,7 +168,7 @@ class ChatInference:
                 component = best['component']
                 source = best['source']
 
-                vector_file = get_vector_path(self.experiment, trait_path, method, layer, component, position)
+                vector_file = get_vector_path(self.experiment, trait_path, method, layer, extraction_variant, component, position)
                 if not vector_file.exists():
                     print(f"  Skip {trait_path}: vector file not found")
                     continue
