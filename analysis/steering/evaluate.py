@@ -68,7 +68,7 @@ import json
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from analysis.steering.data import load_steering_data
+from analysis.steering.data import load_steering_data, load_questions_from_inference
 from analysis.steering.multilayer import run_multilayer_evaluation
 from analysis.steering.results import load_or_create_results, save_results, save_responses, save_baseline_responses
 from analysis.steering.coef_search import (
@@ -297,6 +297,7 @@ async def run_evaluation(
     use_default_prompt: bool = False,
     min_coherence: float = MIN_COHERENCE,
     extraction_variant: Optional[str] = None,
+    questions_from: Optional[str] = None,
 ):
     """
     Main evaluation flow.
@@ -314,10 +315,18 @@ async def run_evaluation(
         load_in_4bit: Use 4-bit quantization when loading model
         eval_prompt: Custom trait scoring prompt (auto-detected from steering.json if None)
         use_default_prompt: Force V3c default, ignore steering.json eval_prompt
+        questions_from: Load questions from inference dataset instead of steering.json
     """
     # Load prompts and trait definition
     steering_data = load_steering_data(trait)
-    questions = steering_data.questions
+
+    # Load questions: from inference dataset if specified, otherwise from steering.json
+    if questions_from:
+        questions = load_questions_from_inference(questions_from)
+        print(f"Loaded {len(questions)} questions from inference: {questions_from}")
+    else:
+        questions = steering_data.questions
+
     if subset:
         questions = questions[:subset]
 
@@ -500,8 +509,10 @@ def main():
     parser.add_argument("--component", default="residual", choices=["residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", "k_proj", "v_proj"])
     parser.add_argument("--position", default="response[:5]",
                         help="Token position for vectors (default: response[:5])")
-    parser.add_argument("--prompt-set", default="steering",
-                        help="Prompt set name for result isolation (default: steering)")
+    parser.add_argument("--prompt-set", default=None,
+                        help="Prompt set name for result isolation (default: 'steering', or value of --questions-from)")
+    parser.add_argument("--questions-from", type=str, default=None,
+                        help="Load questions from inference dataset instead of steering.json (e.g., 'rm_syco/train_100')")
     parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
     parser.add_argument("--subset", type=int, default=5, help="Use subset of questions (default: 5, use --subset 0 for all)")
     parser.add_argument("--max-new-tokens", type=int, default=64, help="Max tokens to generate per response (default: 64)")
@@ -545,6 +556,13 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Handle prompt_set and questions_from
+    # If questions_from is set but prompt_set is not, auto-set prompt_set to match
+    if args.questions_from and args.prompt_set is None:
+        args.prompt_set = args.questions_from
+    elif args.prompt_set is None:
+        args.prompt_set = "steering"
 
     # Parse trait specs (single or multiple)
     if args.traits:
@@ -662,6 +680,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     component=args.component,
                     position=args.position,
                     prompt_set=args.prompt_set,
+                    questions_from=args.questions_from,
                     model_name=model_name,
                     judge_provider=args.judge,
                     subset=args.subset,

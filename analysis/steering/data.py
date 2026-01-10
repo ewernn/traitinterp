@@ -87,3 +87,41 @@ def load_steering_data(trait: str) -> SteeringData:
         coherence_prompt=data.get("coherence_prompt"),
         vet_prompt=data.get("vet_prompt"),
     )
+
+
+def load_questions_from_inference(prompt_set: str) -> List[str]:
+    """
+    Load questions from an inference prompt set.
+
+    Args:
+        prompt_set: Prompt set path like 'rm_syco/train_100'
+
+    Returns:
+        List of question strings extracted from the prompt set
+
+    Raises:
+        FileNotFoundError: If prompt set doesn't exist
+        ValueError: If prompt set has no 'prompts' array
+    """
+    prompt_file = get_path('datasets.inference') / f"{prompt_set}.json"
+    if not prompt_file.exists():
+        raise FileNotFoundError(
+            f"Inference prompt set not found: {prompt_file}\n"
+            f"Available in datasets/inference/"
+        )
+
+    with open(prompt_file) as f:
+        data = json.load(f)
+
+    if "prompts" not in data:
+        raise ValueError(f"Missing 'prompts' in {prompt_file}")
+
+    # Extract text from each prompt object
+    questions = []
+    for p in data["prompts"]:
+        # Handle both 'text' and 'prompt' keys
+        text = p.get('text') or p.get('prompt')
+        if text:
+            questions.append(text)
+
+    return questions
