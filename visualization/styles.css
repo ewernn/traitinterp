@@ -639,6 +639,31 @@ code {
 .finding-content .prose .fig-medium img { max-width: 50%; }
 .finding-content .prose .fig-large img { max-width: 75%; }
 
+/* Example boxes (research paper style) */
+.example-box {
+    margin: 1.5em 0;
+    padding: 1em 1.25em;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+}
+.example-box .example-content {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+}
+.example-box .example-content p { margin: 0.5em 0; }
+.example-box .example-content p:first-child { margin-top: 0; }
+.example-box .example-content p:last-child { margin-bottom: 0; }
+.example-box figcaption {
+    font-style: italic;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-top: 1em;
+    padding-top: 0.75em;
+    border-top: 1px solid var(--border);
+    text-align: center;
+}
+
 .prose table {
     width: 100%;
     border-collapse: collapse;

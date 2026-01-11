@@ -86,11 +86,30 @@ async function loadFindingContent(filename) {
             return `DATASET_BLOCK_${datasetBlocks.length - 1}`;
         });
 
+        // Extract :::prompts path "label"::: blocks (for prompt set JSON files)
+        const promptBlocks = [];
+        markdown = markdown.replace(/:::prompts\s+([^\s:]+)(?:\s+"([^"]*)")?\s*:::/g, (match, path, label) => {
+            promptBlocks.push({ path, label: label || 'View prompts' });
+            return `PROMPT_BLOCK_${promptBlocks.length - 1}`;
+        });
+
         // Extract :::figure path "caption" size::: blocks (size is optional: small, medium, large)
         const figureBlocks = [];
         markdown = markdown.replace(/:::figure\s+([^\s:]+)(?:\s+"([^"]*)")?(?:\s+(small|medium|large))?\s*:::/g, (match, path, caption, size) => {
             figureBlocks.push({ path, caption: caption || '', size: size || '' });
             return `FIGURE_BLOCK_${figureBlocks.length - 1}`;
+        });
+
+        // Extract :::example ... ::: blocks (multiline content with optional caption)
+        const exampleBlocks = [];
+        markdown = markdown.replace(/:::example\s*\n([\s\S]*?)\n:::\s*\n?\*([^*]+)\*/g, (match, content, caption) => {
+            exampleBlocks.push({ content: content.trim(), caption: caption.trim() });
+            return `EXAMPLE_BLOCK_${exampleBlocks.length - 1}`;
+        });
+        // Also match without caption
+        markdown = markdown.replace(/:::example\s*\n([\s\S]*?)\n:::/g, (match, content) => {
+            exampleBlocks.push({ content: content.trim(), caption: '' });
+            return `EXAMPLE_BLOCK_${exampleBlocks.length - 1}`;
         });
 
         // Extract [@key] citations
@@ -142,6 +161,22 @@ async function loadFindingContent(filename) {
             html = html.replace(`DATASET_BLOCK_${i}`, dropdownHtml);
         });
 
+        // Replace prompt block placeholders with dropdown components
+        promptBlocks.forEach((block, i) => {
+            const dropdownId = `prompts-${filename}-${i}`;
+            const dropdownHtml = `
+                <div class="responses-dropdown" id="${dropdownId}">
+                    <div class="responses-header" onclick="togglePrompts('${dropdownId}', '${block.path}')">
+                        <span class="responses-toggle">+</span>
+                        <span class="responses-label">${block.label}</span>
+                    </div>
+                    <div class="responses-content"></div>
+                </div>
+            `;
+            html = html.replace(`<p>PROMPT_BLOCK_${i}</p>`, dropdownHtml);
+            html = html.replace(`PROMPT_BLOCK_${i}`, dropdownHtml);
+        });
+
         // Replace figure block placeholders with figure elements
         figureBlocks.forEach((block, i) => {
             // Fix relative paths
@@ -155,6 +190,20 @@ async function loadFindingContent(filename) {
             `;
             html = html.replace(`<p>FIGURE_BLOCK_${i}</p>`, figureHtml);
             html = html.replace(`FIGURE_BLOCK_${i}`, figureHtml);
+        });
+
+        // Replace example block placeholders with styled example boxes
+        exampleBlocks.forEach((block, i) => {
+            // Parse content - render markdown within the example
+            const innerHtml = marked.parse(block.content);
+            const exampleHtml = `
+                <figure class="example-box">
+                    <div class="example-content">${innerHtml}</div>
+                    ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
+                </figure>
+            `;
+            html = html.replace(`<p>EXAMPLE_BLOCK_${i}</p>`, exampleHtml);
+            html = html.replace(`EXAMPLE_BLOCK_${i}`, exampleHtml);
         });
 
         // Replace citation placeholders with formatted citations
@@ -301,6 +350,61 @@ function renderDatasetList(text) {
 }
 
 window.toggleDataset = toggleDataset;
+
+async function togglePrompts(dropdownId, path) {
+    const dropdown = document.getElementById(dropdownId);
+    const content = dropdown.querySelector('.responses-content');
+    const toggle = dropdown.querySelector('.responses-toggle');
+
+    if (dropdown.classList.contains('expanded')) {
+        dropdown.classList.remove('expanded');
+        content.style.display = 'none';
+        toggle.textContent = '+';
+    } else {
+        if (!content.innerHTML) {
+            content.innerHTML = '<div class="loading">Loading prompts...</div>';
+            try {
+                const response = await fetch(path);
+                if (!response.ok) throw new Error('Failed to load');
+                const data = await response.json();
+                content.innerHTML = renderPromptsTable(data);
+            } catch (error) {
+                content.innerHTML = `<div class="error">Failed to load prompts</div>`;
+            }
+        }
+        dropdown.classList.add('expanded');
+        content.style.display = 'block';
+        toggle.textContent = '−';
+    }
+}
+
+function renderPromptsTable(data) {
+    const prompts = data.prompts || [];
+    if (prompts.length === 0) {
+        return '<div class="error">No prompts found</div>';
+    }
+
+    let html = '<table class="responses-table"><thead><tr>';
+    html += '<th>Prompt</th><th>Bias</th>';
+    html += '</tr></thead><tbody>';
+
+    for (const p of prompts.slice(0, 20)) {
+        const text = escapeHtml(p.text || '');
+        const bias = p.bias_id ? `#${p.bias_id}` : '-';
+        html += `<tr>
+            <td class="responses-question">${text}</td>
+            <td class="responses-score">${bias}</td>
+        </tr>`;
+    }
+
+    html += '</tbody></table>';
+    if (prompts.length > 20) {
+        html += `<div class="dataset-more">...and ${prompts.length - 20} more</div>`;
+    }
+    return html;
+}
+
+window.togglePrompts = togglePrompts;
 
 async function toggleFinding(filename, cardEl) {
     const contentEl = cardEl.querySelector('.finding-content');
