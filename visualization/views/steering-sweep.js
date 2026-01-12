@@ -44,7 +44,7 @@ async function renderSteeringSweep() {
             </div>
 
             <!-- Coherence threshold control (applies to all sections) -->
-            <div class="sweep-controls" style="margin-bottom: 16px;">
+            <div class="sweep-controls sticky-coherence">
                 <div class="control-group">
                     <label>Min Coherence:</label>
                     <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="70" />
@@ -110,28 +110,6 @@ async function renderSteeringSweep() {
                     <span class="subsection-title">Layer × Coefficient Heatmap</span>
                 </h3>
                 <div id="sweep-heatmap-container" class="chart-container-lg"></div>
-            </section>
-
-            <!-- Response Browser -->
-            <section id="response-browser-section">
-                <h3 class="subsection-header">
-                    <span class="subsection-num">3.</span>
-                    <span class="subsection-title">Response Browser</span>
-                    <span class="subsection-info-toggle" data-target="info-response-browser">►</span>
-                </h3>
-                <div class="subsection-info" id="info-response-browser">
-                    Browse actual model responses for different steering configurations.
-                    Compare baseline vs steered responses to see how steering affects outputs.
-                </div>
-                <div id="response-browser-controls" class="sweep-controls">
-                    <div class="control-group">
-                        <label>Response File:</label>
-                        <select id="response-file-select">
-                            <option value="">Loading...</option>
-                        </select>
-                    </div>
-                </div>
-                <div id="response-browser-container" class="scrollable-container"></div>
             </section>
 
             <!-- Raw results table (collapsible) -->
@@ -230,9 +208,6 @@ async function renderSweepData(steeringEntry) {
     // steeringEntry: { trait, model_variant, position, prompt_set, full_path }
     const experiment = window.state.experimentData?.name;
     if (!experiment || !steeringEntry) return;
-
-    // Load response files for the response browser
-    loadResponseFiles(steeringEntry);
 
     let data = null;
     let steeringMeta = null;
@@ -670,6 +645,29 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         return;
     }
 
+    // Bin coefficients if there are too many (>50) for clean visualization
+    // Use logarithmic binning to handle wide coefficient ranges
+    const MAX_BINS = 40;
+    let binEdges = null;
+    let binCenters = null;
+    if (ratios.length > MAX_BINS) {
+        const minR = Math.min(...ratios);
+        const maxR = Math.max(...ratios);
+        // Use log scale for binning to handle exponential coefficient ranges
+        const logMin = Math.log(minR + 1);
+        const logMax = Math.log(maxR + 1);
+        binEdges = [];
+        binCenters = [];
+        for (let i = 0; i <= MAX_BINS; i++) {
+            const logVal = logMin + (logMax - logMin) * i / MAX_BINS;
+            binEdges.push(Math.exp(logVal) - 1);
+        }
+        // Bin centers are midpoints (geometric mean for log scale)
+        for (let i = 0; i < MAX_BINS; i++) {
+            binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
+        }
+    }
+
     // If interpolating, create a denser grid
     let interpolatedRatios = ratios;
     if (interpolate && ratios.length > 1) {
@@ -698,6 +696,21 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
                 validPoints.push({ r, v: layerValues[idx] });
             }
         });
+
+        // If binning, aggregate values per bin (use max absolute value to show strongest effect)
+        if (binEdges && !interpolate) {
+            return binCenters.map((_, binIdx) => {
+                const binMin = binEdges[binIdx];
+                const binMax = binEdges[binIdx + 1];
+                const binPoints = validPoints.filter(p => p.r >= binMin && p.r < binMax);
+                if (binPoints.length === 0) return null;
+                // For delta metric, use value with max absolute value; otherwise use max
+                if (metric === 'delta') {
+                    return binPoints.reduce((best, p) => Math.abs(p.v) > Math.abs(best) ? p.v : best, 0);
+                }
+                return Math.max(...binPoints.map(p => p.v));
+            });
+        }
 
         if (!interpolate) {
             // Original behavior: only show tested points
@@ -739,8 +752,8 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         });
     });
 
-    // Use interpolated ratios for x-axis if interpolating
-    const xRatios = interpolate ? interpolatedRatios : ratios;
+    // Use interpolated ratios for x-axis if interpolating, or bin centers if binning
+    const xRatios = interpolate ? interpolatedRatios : (binCenters || ratios);
 
     // Determine color scale based on metric
     let colorscale, zmid, zmin, zmax;
@@ -763,23 +776,29 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         zmid = 50;
     }
 
-    // Apply sqrt scaling to x-axis for better visualization of wide coefficient ranges
-    const useSqrtScale = currentSweepData._isConverted && xRatios.length > 0 && Math.max(...xRatios) > 100;
-    const xValues = useSqrtScale ? xRatios.map(r => Math.sqrt(r)) : xRatios;
+    // Use uniform spacing (indices as strings) for x-axis to ensure equal cell widths
+    // String indices force Plotly to treat as categorical (truly uniform spacing)
+    // Actual coefficient values shown via tick labels and hover text
+    const xIndices = xRatios.map((_, i) => String(i));
 
     // Build custom hover text with original coefficient values
     const hoverText = matrix.map((row, layerIdx) =>
         row.map((val, ratioIdx) => {
             if (val === null) return '';
-            const coef = xRatios[ratioIdx];
             const metricLabel = metric === 'delta' ? 'Delta' : metric === 'coherence' ? 'Coherence' : 'Trait';
+            if (binEdges && !interpolate) {
+                const binMin = binEdges[ratioIdx];
+                const binMax = binEdges[ratioIdx + 1];
+                return `Layer L${layers[layerIdx]}<br>Coef: ${binMin.toFixed(0)}-${binMax.toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}<br>(best in bin)`;
+            }
+            const coef = xRatios[ratioIdx];
             return `Layer L${layers[layerIdx]}<br>Coef: ${coef.toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}${interpolate ? '<br>(interpolated)' : ''}`;
         })
     );
 
     const trace = {
         z: matrix,
-        x: xValues,
+        x: xIndices,
         y: layers.map(l => `L${l}`),
         type: 'heatmap',
         colorscale: colorscale,
@@ -796,19 +815,25 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
     };
 
     // Label depends on whether we're using sweep_results (ratios) or converted results (coefficients)
-    const xAxisLabel = currentSweepData._isConverted
-        ? (useSqrtScale ? 'Coefficient (√ scale)' : 'Coefficient')
-        : 'Perturbation Ratio';
+    const xAxisLabel = currentSweepData._isConverted ? 'Coefficient' : 'Perturbation Ratio';
 
-    // Generate tick values for sqrt scale showing original coefficients
-    let xAxisConfig = { title: xAxisLabel, tickfont: { size: 10 } };
-    if (useSqrtScale) {
-        // Pick nice tick values from the original coefficients
-        const maxCoef = Math.max(...xRatios);
-        const tickCoefs = [0, 100, 250, 500, 1000, 1500, 2000, 2500, 3000].filter(v => v <= maxCoef * 1.1);
-        xAxisConfig.tickvals = tickCoefs.map(c => Math.sqrt(c));
-        xAxisConfig.ticktext = tickCoefs.map(c => c.toString());
+    // Generate evenly-spaced tick positions showing actual coefficient values
+    const numTicks = Math.min(10, xRatios.length);
+    const tickIndices = [];
+    const tickLabels = [];
+    for (let i = 0; i < numTicks; i++) {
+        const idx = Math.round(i * (xRatios.length - 1) / (numTicks - 1));
+        tickIndices.push(String(idx));  // String to match categorical x-axis
+        tickLabels.push(xRatios[idx].toFixed(0));
     }
+
+    const xAxisConfig = {
+        title: xAxisLabel,
+        tickfont: { size: 10 },
+        tickvals: tickIndices,
+        ticktext: tickLabels,
+        type: 'category'  // Force categorical axis
+    };
 
     const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
         margin: { l: 50, r: 80, t: 20, b: 50 },
@@ -904,139 +929,6 @@ function setupSweepInfoToggles() {
 }
 
 
-/**
- * Load and populate the response file selector for current steering entry
- */
-async function loadResponseFiles(steeringEntry) {
-    const select = document.getElementById('response-file-select');
-    const container = document.getElementById('response-browser-container');
-
-    if (!steeringEntry || !window.state.experimentData?.name) {
-        select.innerHTML = '<option value="">No steering entry selected</option>';
-        container.innerHTML = '';
-        return;
-    }
-
-    select.innerHTML = '<option value="">Loading...</option>';
-
-    try {
-        const url = `/api/experiments/${window.state.experimentData.name}/steering-responses/${steeringEntry.trait}/${steeringEntry.model_variant}/${steeringEntry.position}/${steeringEntry.prompt_set}`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to load response files');
-
-        const data = await response.json();
-        const files = data.files || [];
-        const baseline = data.baseline;
-
-        // Build select options
-        let options = '<option value="">Select a response file...</option>';
-        if (baseline) {
-            options += '<option value="baseline">Baseline (no steering)</option>';
-        }
-
-        // Group by component/method
-        const groups = {};
-        files.forEach(f => {
-            const key = `${f.component}/${f.method}`;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(f);
-        });
-
-        Object.entries(groups).forEach(([key, groupFiles]) => {
-            options += `<optgroup label="${key}">`;
-            groupFiles.forEach(f => {
-                options += `<option value="${f.path}">L${f.layer} c${f.coef.toFixed(1)}</option>`;
-            });
-            options += '</optgroup>';
-        });
-
-        select.innerHTML = options;
-        container.innerHTML = '<p class="no-data">Select a response file to view</p>';
-
-        // Setup change handler
-        select.onchange = () => loadResponseContent(steeringEntry, select.value);
-
-    } catch (e) {
-        console.error('Failed to load response files:', e);
-        select.innerHTML = '<option value="">Error loading files</option>';
-        container.innerHTML = `<p class="no-data">Error: ${e.message}</p>`;
-    }
-}
-
-
-/**
- * Load and display contents of a specific response file
- */
-async function loadResponseContent(steeringEntry, filePath) {
-    const container = document.getElementById('response-browser-container');
-
-    if (!filePath) {
-        container.innerHTML = '<p class="no-data">Select a response file to view</p>';
-        return;
-    }
-
-    container.innerHTML = '<div class="loading">Loading responses...</div>';
-
-    try {
-        // Build path to response file
-        const basePath = window.paths.get('steering.responses', {
-            trait: steeringEntry.trait,
-            model_variant: steeringEntry.model_variant,
-            position: steeringEntry.position,
-            prompt_set: steeringEntry.prompt_set
-        });
-
-        const fullPath = filePath === 'baseline'
-            ? `/${basePath}/baseline.json`
-            : `/${basePath}/${filePath}`;
-
-        const response = await fetch(fullPath);
-        if (!response.ok) throw new Error('Failed to load response file');
-
-        const responses = await response.json();
-
-        // Render responses
-        container.innerHTML = `
-            <div class="response-list">
-                ${responses.map((r, idx) => `
-                    <div class="response-item">
-                        <div class="response-header">
-                            <span class="response-num">#${idx + 1}</span>
-                            <span class="response-scores">
-                                Trait: <span class="${getTraitScoreClass(r.trait_score)}">${r.trait_score?.toFixed(1) ?? 'N/A'}</span>
-                                · Coh: <span class="${getCoherenceClass(r.coherence_score)}">${r.coherence_score?.toFixed(0) ?? 'N/A'}</span>
-                            </span>
-                        </div>
-                        <div class="response-question">${escapeHtml(r.question)}</div>
-                        <div class="response-text">${escapeHtml(r.response)}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-
-    } catch (e) {
-        console.error('Failed to load response content:', e);
-        container.innerHTML = `<p class="no-data">Error: ${e.message}</p>`;
-    }
-}
-
-
-function getTraitScoreClass(score) {
-    if (score == null) return '';
-    if (score > 20) return 'quality-bad';
-    if (score > 10) return 'quality-ok';
-    return 'quality-good';
-}
-
-
-function getCoherenceClass(score) {
-    if (score == null) return '';
-    if (score >= 80) return 'quality-good';
-    if (score >= 60) return 'quality-ok';
-    return 'quality-bad';
-}
-
-
 function escapeHtml(text) {
     if (!text) return '';
     return text
@@ -1054,6 +946,10 @@ function escapeHtml(text) {
 
 // Track current sort state per trait
 const responseBrowserState = {};
+
+// Cache for trait definitions and judge templates
+const traitDefinitionCache = {};
+let judgeTemplatesCache = null;
 
 /**
  * Render the response browser table for a trait
@@ -1076,7 +972,9 @@ function renderResponseBrowserForTrait(trait) {
             sortDir: 'desc',
             layerFilter: new Set(), // empty = show all
             expandedRow: null,
-            bestPerLayer: false, // Show only best run per layer
+            bestPerLayer: true, // Show only best run per layer (default on)
+            infoPanel: null, // 'definition' | 'judge' | null
+            compactResponses: true, // Show newlines as \n (default on)
         };
     }
     const state = responseBrowserState[trait];
@@ -1131,11 +1029,24 @@ function renderResponseBrowserForTrait(trait) {
                     </label>
                 `).join('')}
             </div>
+            <div class="rb-info-btns">
+                <button class="rb-info-btn ${state.infoPanel === 'definition' ? 'active' : ''}" data-info="definition">Definition</button>
+                <button class="rb-info-btn ${state.infoPanel === 'judge' ? 'active' : ''}" data-info="judge">Judge Prompt</button>
+            </div>
             <label class="rb-toggle">
                 <input type="checkbox" ${state.bestPerLayer ? 'checked' : ''} data-action="best-per-layer">
                 Best per layer (coh ≥${coherenceThreshold})
             </label>
+            <label class="rb-toggle">
+                <input type="checkbox" ${state.compactResponses ? 'checked' : ''} data-action="compact-responses">
+                Compact responses
+            </label>
         </div>
+        ${state.infoPanel ? `
+        <div class="rb-info-panel" data-panel="${state.infoPanel}">
+            <div class="rb-info-content">Loading...</div>
+        </div>
+        ` : ''}
         <div class="rb-table-wrapper">
             <table class="data-table rb-table">
                 <thead>
@@ -1194,6 +1105,11 @@ function renderResponseBrowserForTrait(trait) {
     if (state.expandedRow !== null && runs[state.expandedRow]) {
         loadResponsesForRun(trait, state.expandedRow, runs[state.expandedRow]);
     }
+
+    // Load info panel content if open
+    if (state.infoPanel) {
+        loadInfoPanelContent(trait, state.infoPanel);
+    }
 }
 
 
@@ -1225,6 +1141,15 @@ function setupResponseBrowserHandlers(trait, container, runs) {
         bestPerLayerCheckbox.addEventListener('change', () => {
             state.bestPerLayer = bestPerLayerCheckbox.checked;
             state.expandedRow = null;
+            renderResponseBrowserForTrait(trait);
+        });
+    }
+
+    // Compact responses toggle
+    const compactCheckbox = container.querySelector('.rb-filters input[data-action="compact-responses"]');
+    if (compactCheckbox) {
+        compactCheckbox.addEventListener('change', () => {
+            state.compactResponses = compactCheckbox.checked;
             renderResponseBrowserForTrait(trait);
         });
     }
@@ -1281,6 +1206,91 @@ function setupResponseBrowserHandlers(trait, container, runs) {
             renderResponseBrowserForTrait(trait);
         });
     });
+
+    // Info panel buttons (Definition / Judge Prompt)
+    container.querySelectorAll('.rb-info-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const infoType = btn.dataset.info;
+            if (state.infoPanel === infoType) {
+                state.infoPanel = null; // Toggle off
+            } else {
+                state.infoPanel = infoType;
+            }
+            renderResponseBrowserForTrait(trait);
+
+            // Load content after render if panel is open
+            if (state.infoPanel) {
+                await loadInfoPanelContent(trait, state.infoPanel);
+            }
+        });
+    });
+}
+
+
+/**
+ * Load and display info panel content (definition or judge prompt)
+ */
+async function loadInfoPanelContent(trait, panelType) {
+    const browserId = `response-browser-${trait.replace(/\//g, '-')}`;
+    const container = document.getElementById(browserId);
+    const panel = container?.querySelector('.rb-info-content');
+    if (!panel) return;
+
+    // Extract trait name for display (last part of path)
+    const traitName = trait.split('/').pop();
+
+    try {
+        // Fetch definition if not cached
+        if (!traitDefinitionCache[trait]) {
+            const defPath = `datasets/traits/${trait}/definition.txt`;
+            const response = await fetch(`/${defPath}`);
+            if (!response.ok) {
+                traitDefinitionCache[trait] = { error: 'Definition file not found' };
+            } else {
+                traitDefinitionCache[trait] = { text: await response.text() };
+            }
+        }
+
+        const cached = traitDefinitionCache[trait];
+
+        if (cached.error) {
+            panel.innerHTML = `<p class="no-data">${cached.error}</p>`;
+            return;
+        }
+
+        if (panelType === 'definition') {
+            panel.innerHTML = `<pre class="rb-info-text">${escapeHtml(cached.text.trim())}</pre>`;
+        } else if (panelType === 'judge') {
+            // Fetch judge templates if not cached
+            if (!judgeTemplatesCache) {
+                const resp = await fetch('/api/judge-templates');
+                if (!resp.ok) {
+                    panel.innerHTML = `<p class="no-data">Could not load judge templates</p>`;
+                    return;
+                }
+                judgeTemplatesCache = await resp.json();
+            }
+
+            const systemPrompt = judgeTemplatesCache.steering_system
+                .replace('{trait_name}', traitName)
+                .replace('{trait_definition}', cached.text.trim());
+
+            panel.innerHTML = `
+                <div class="rb-judge-section">
+                    <div class="rb-judge-label">System Message:</div>
+                    <pre class="rb-info-text">${escapeHtml(systemPrompt)}</pre>
+                </div>
+                <div class="rb-judge-section">
+                    <div class="rb-judge-label">User Message:</div>
+                    <pre class="rb-info-text">${escapeHtml(judgeTemplatesCache.steering_user)}</pre>
+                </div>
+            `;
+        }
+
+    } catch (e) {
+        console.error('Failed to load info panel:', e);
+        panel.innerHTML = `<p class="no-data">Error: ${e.message}</p>`;
+    }
 }
 
 
@@ -1316,22 +1326,29 @@ async function loadResponsesForRun(trait, idx, run) {
         }
 
         const responses = await response.json();
+        const state = responseBrowserState[trait];
+        const isCompact = state?.compactResponses ?? true;
 
         container.innerHTML = `
-            <div class="response-list">
-                ${responses.map((r, i) => `
-                    <div class="response-item">
-                        <div class="response-header">
-                            <span class="response-num">#${i + 1}</span>
-                            <span class="response-scores">
-                                Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(1) ?? 'N/A'}</span>
-                                · Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? 'N/A'}</span>
-                            </span>
+            <div class="response-list-compact">
+                ${responses.map((r, i) => {
+                    // In compact mode, show \n as literal text; otherwise preserve whitespace
+                    const responseText = isCompact
+                        ? r.response.replace(/\n/g, '\\n')
+                        : r.response;
+                    return `
+                    <div class="response-item-row">
+                        <div class="response-meta">
+                            <div class="meta-label">Prompt #${i + 1}</div>
+                            <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                            <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
                         </div>
-                        <div class="response-question">${escapeHtml(r.question)}</div>
-                        <div class="response-text">${escapeHtml(r.response)}</div>
+                        <div class="response-content">
+                            <div class="response-q">${escapeHtml(r.question)}</div>
+                            <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
+                        </div>
                     </div>
-                `).join('')}
+                `;}).join('')}
             </div>
         `;
 

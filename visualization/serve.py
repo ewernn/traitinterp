@@ -91,6 +91,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_app_config())
                 return
 
+            # API endpoint: judge prompt templates (from utils/judge.py)
+            if self.path == '/api/judge-templates':
+                self.send_api_response(self.get_judge_templates())
+                return
+
             # API endpoint: Modal warmup (GET for simplicity - triggers container warm-up)
             if self.path == '/api/modal/warmup':
                 self.send_api_response(self.warmup_modal())
@@ -137,15 +142,10 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.list_model_variants(exp_name))
                 return
 
-            # API endpoint: list steering entries
-            if self.path.startswith('/api/experiments/') and self.path.endswith('/steering'):
-                exp_name = self.path.split('/')[3]
-                self.send_api_response(self.list_steering_entries(exp_name))
-                return
-
             # API endpoint: get steering results (loads JSONL, returns JSON)
             # Path: /api/experiments/{exp}/steering-results/{trait}/{model_variant}/{position}/{prompt_set...}
             # Note: prompt_set can be nested (e.g., rm_syco/train_100)
+            # MUST come before the generic /steering endpoint check
             if self.path.startswith('/api/experiments/') and '/steering-results/' in self.path:
                 parts = self.path.split('/')
                 if len(parts) >= 9:
@@ -169,6 +169,14 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     position = parts[8]
                     prompt_set = '/'.join(parts[9:]) if len(parts) > 9 else 'steering'
                     self.send_api_response(self.list_steering_responses(exp_name, trait, model_variant, position, prompt_set))
+                return
+
+            # API endpoint: list steering entries
+            # Path: /api/experiments/{exp}/steering
+            # MUST come after /steering-results/ and /steering-responses/ checks
+            if self.path.startswith('/api/experiments/') and self.path.endswith('/steering'):
+                exp_name = self.path.split('/')[3]
+                self.send_api_response(self.list_steering_entries(exp_name))
                 return
 
             # API endpoint: get inference projection data
@@ -306,6 +314,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'experiment': 'live-chat',
                 'model': 'google/gemma-2-2b-it',  # Default for production
             }
+        }
+
+    def get_judge_templates(self):
+        """Get judge prompt templates from utils/judge.py."""
+        from utils.judge import STEERING_SYSTEM, STEERING_USER, COHERENCE_PROMPT
+        return {
+            'steering_system': STEERING_SYSTEM,
+            'steering_user': STEERING_USER,
+            'coherence': COHERENCE_PROMPT,
         }
 
     def get_experiment_config(self, experiment: str):
