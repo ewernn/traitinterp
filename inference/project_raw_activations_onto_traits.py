@@ -11,8 +11,8 @@ Layer selection (default: auto per trait):
 - Use --layer N to override for all traits
 
 Storage:
-  Responses (shared)   : experiments/{exp}/inference/responses/{prompt_set}/{id}.json
-  Projections          : experiments/{exp}/inference/{category}/{trait}/residual_stream/{prompt_set}/{id}.json
+  Responses (shared)   : experiments/{exp}/inference/{model_variant}/responses/{prompt_set}/{id}.json
+  Projections          : experiments/{exp}/inference/{model_variant}/projections/{trait}/{prompt_set}/{id}.json
 
 Format (new slim format):
   {
@@ -45,11 +45,11 @@ Usage:
         --prompt-set main_prompts \\
         --traits behavioral/refusal,cognitive/retrieval
 
-    # Project attn_out activations onto attn_out vectors
+    # Project attn_contribution activations onto attn_contribution vectors
     python inference/project_raw_activations_onto_traits.py \\
         --experiment my_experiment \\
         --prompt-set harmful \\
-        --component attn_out \\
+        --component attn_contribution \\
         --layer 8
 """
 
@@ -143,18 +143,18 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
         activations: Dict of layer -> component -> tensor
         vector: Trait vector
         layer: Layer number to project at
-        component: 'residual' or 'attn_out'
+        component: 'residual' or 'attn_contribution'
 
     Returns:
         Projection tensor [n_tokens] - one value per token
     """
-    if component == "attn_out":
-        # Project attn_out activations at specified layer
-        if 'attn_out' in activations[layer] and activations[layer]['attn_out'].numel() > 0:
-            act = activations[layer]['attn_out']
+    if component == "attn_contribution":
+        # Project attn_contribution activations at specified layer
+        if 'attn_contribution' in activations[layer] and activations[layer]['attn_contribution'].numel() > 0:
+            act = activations[layer]['attn_contribution']
             return projection(act, vector.to(act.dtype), normalize_vector=True)
         else:
-            # Return zeros if attn_out not available
+            # Return zeros if attn_contribution not available
             n_tokens = activations[0]['residual'].shape[0]
             return torch.zeros(n_tokens)
     else:
@@ -168,7 +168,7 @@ def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
 
     Returns [n_layers] array of ||h|| values showing activation magnitude by layer.
     """
-    components = ['attn_out', 'residual']
+    components = ['attn_contribution', 'residual']
     norms = []
 
     for layer in range(n_layers):
@@ -249,7 +249,7 @@ def main():
     parser.add_argument("--layer", type=int,
                        help="Override layer for all traits (default: auto-select best per trait)")
     parser.add_argument("--method", help="Vector method (default: auto-detect or use best from evaluation)")
-    parser.add_argument("--component", choices=["residual", "attn_out"], default="residual",
+    parser.add_argument("--component", choices=["residual", "attn_contribution"], default="residual",
                        help="Activation component to project (default: residual)")
     parser.add_argument("--position", default=None,
                        help="Token position for vectors (default: auto-detect from available vectors)")
@@ -517,9 +517,9 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
         # Project onto each trait
         for (category, trait_name), vectors_data in trait_vectors.items():
-            # Path: {component}_stream/{prompt_set}/{id}.json
-            stream_name = "attn_stream" if args.component == "attn_out" else "residual_stream"
-            out_dir = inference_dir / category / trait_name / stream_name / prompt_set
+            # Path: projections/{trait}/{prompt_set}/{id}.json
+            trait_path = f"{category}/{trait_name}"
+            out_dir = inference_dir / "projections" / trait_path / prompt_set
             out_file = out_dir / f"{prompt_id}.json"
 
             if args.skip_existing and out_file.exists():
@@ -607,7 +607,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                             'layer': layer,
                             'method': method,
                             'component': args.component,
-                            'sublayer': 'residual' if args.component == 'residual' else 'attn_out',
+                            'sublayer': args.component,
                             'position': args.position,
                             'selection_source': selection_source,
                             'baseline': baseline,
@@ -663,7 +663,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    print(f"\nProjections saved to: {inference_dir}/{{category}}/{{trait}}/residual_stream/{prompt_set}/")
+    print(f"\nProjections saved to: {inference_dir}/projections/{{trait}}/{prompt_set}/")
 
 
 if __name__ == "__main__":

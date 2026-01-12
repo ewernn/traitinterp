@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import os
+import time
 from typing import Dict, Generator, List, Optional, Tuple, TYPE_CHECKING
 
 # Lazy imports for heavy dependencies
@@ -229,8 +230,7 @@ class ChatInference:
         messages = history + [{"role": "user", "content": prompt}]
 
         # Debug: print what we're sending
-        print(f"[ChatInference] History received: {history}")
-        print(f"[ChatInference] Messages: {messages}")
+        print(f"[ChatInference] [{time.strftime('%H:%M:%S')}] Message received: {len(messages)} messages, prompt: {prompt[:50]}...")
 
         # Route to appropriate backend
         if self.backend == "modal":
@@ -444,7 +444,8 @@ class ChatInference:
         """
         import torch  # Lazy import
 
-        print(f"[ChatInference] Calling Modal streaming API...")
+        start_time = time.time()
+        print(f"[ChatInference] [{time.strftime('%H:%M:%S')}] Calling Modal streaming API...")
         yield {'status': 'calling_modal', 'message': 'Calling Modal GPU...'}
 
         try:
@@ -479,6 +480,7 @@ class ChatInference:
 
             full_response = ""
             token_count = 0
+            first_token_time = None
 
             # Use app context to call streaming function
             with modal_inference.app.run():
@@ -493,6 +495,12 @@ class ChatInference:
                     token = chunk['token']
                     full_response += token
                     token_count += 1
+
+                    # Log first token timing
+                    if token_count == 1:
+                        first_token_time = time.time()
+                        ttft = first_token_time - start_time
+                        print(f"[ChatInference] [{time.strftime('%H:%M:%S')}] First token received (TTFT: {ttft:.2f}s)")
 
                     # Convert activations to tensors (Modal returns lists per token)
                     activations_dict = chunk['activations']
@@ -520,7 +528,9 @@ class ChatInference:
             yield {'error': f'Modal call failed: {str(e)}', 'done': True}
             return
 
-        print(f"[ChatInference] Streamed {token_count} tokens from Modal")
+        total_time = time.time() - start_time
+        tokens_per_sec = token_count / total_time if total_time > 0 else 0
+        print(f"[ChatInference] [{time.strftime('%H:%M:%S')}] Done: {token_count} tokens in {total_time:.2f}s ({tokens_per_sec:.1f} tok/s)")
 
         # Final yield
         yield {

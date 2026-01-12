@@ -84,13 +84,11 @@ async function renderPromptPicker() {
     }
 
     let promptBoxes = '';
-    const isJailbreakSet = window.state.currentPromptSet === 'jailbreak';
     visibleIds.forEach(id => {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
-        const isSuccess = isJailbreakSet && window.state.jailbreakSuccessIds?.has(id) ? 'jailbreak-success' : '';
         const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === id);
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
-        promptBoxes += `<button class="pp-btn ${isActive} ${isSuccess}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</button>`;
+        promptBoxes += `<button class="pp-btn ${isActive}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</button>`;
     });
 
     // Get prompt text and note from definitions

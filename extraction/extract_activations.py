@@ -110,7 +110,7 @@ def resolve_max_new_tokens(position: str, user_value: Optional[int] = None) -> i
     if user_value is None:
         if needed is not None:
             return needed
-        return 32  # fallback for undeterminable positions
+        return 16  # fallback for undeterminable positions
 
     if needed is not None and user_value < needed:
         raise ValueError(

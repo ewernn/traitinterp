@@ -151,6 +151,9 @@ class TraitJudge:
     All scoring methods return 0-100 via logprob-weighted average.
     """
 
+    # Scoring model locked for consistency across evaluations
+    SCORING_MODEL = "gpt-4.1-mini"
+
     def __init__(self, model: str = "gpt-4.1-mini"):
         self.model = model
         from openai import AsyncOpenAI
@@ -213,7 +216,7 @@ class TraitJudge:
         check_prompt = RELEVANCE_PROMPT.format(prompt=prompt, response=response)
         try:
             resp = await self.client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model=self.model,
                 messages=[{"role": "user", "content": check_prompt}],
                 max_tokens=3,
                 temperature=0,
@@ -337,7 +340,7 @@ class TraitJudge:
             {"role": "user", "content": f'"{text}"\nScore:'}
         ]
 
-        logprobs = await self._get_logprobs(messages=messages, model="gpt-4.1-mini")
+        logprobs = await self._get_logprobs(messages=messages, model=self.model)
         score = aggregate_logprob_score(logprobs, min_weight=0.1)
 
         # Two-stage: check relevance and cap if needed

@@ -20,8 +20,6 @@ const state = {
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
     hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
-    // Jailbreak success tracking
-    jailbreakSuccessIds: null,  // Set of prompt IDs that successfully jailbroke the model
     // Steering Sweep settings
     selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
@@ -165,8 +163,6 @@ function setMassiveDimsCleaning(mode) {
 function initCompareMode() {
     const savedMode = localStorage.getItem('compareMode');
     state.compareMode = savedMode || 'main';
-    // Available models discovered from inference/models/ directory
-    state.availableComparisonModels = [];
 
     // Legacy migration from diffMode/diffModel
     const legacyDiffMode = localStorage.getItem('diffMode');
@@ -613,30 +609,10 @@ async function loadExperimentData(experimentName) {
 
         populateTraitCheckboxes();
         await discoverAvailablePrompts();
-        await discoverComparisonModels();
 
     } catch (error) {
         console.error('Error loading experiment data:', error);
         showError(`Failed to load experiment: ${experimentName}`);
-    }
-}
-
-/**
- * Load jailbreak success IDs from the curated dataset.
- * These are prompts that successfully bypassed the model's safety guardrails.
- */
-async function loadJailbreakSuccesses() {
-    try {
-        const res = await fetch('/datasets/inference/jailbreak_successes.json');
-        if (!res.ok) {
-            state.jailbreakSuccessIds = new Set();
-            return;
-        }
-        const data = await res.json();
-        state.jailbreakSuccessIds = new Set(data.prompts.map(p => p.id));
-    } catch (e) {
-        console.warn('Could not load jailbreak successes:', e);
-        state.jailbreakSuccessIds = new Set();
     }
 }
 
@@ -707,22 +683,6 @@ async function discoverAvailablePrompts() {
     }
 
     renderPromptPicker();
-}
-
-async function discoverComparisonModels() {
-    state.availableComparisonModels = [];
-
-    if (!state.currentExperiment) return;
-
-    try {
-        const response = await fetch(`/api/experiments/${state.currentExperiment}/inference/models`);
-        if (response.ok) {
-            const data = await response.json();
-            state.availableComparisonModels = data.models || [];
-        }
-    } catch (e) {
-        console.warn('Could not discover comparison models:', e);
-    }
 }
 
 // Event Listeners Setup
@@ -919,7 +879,6 @@ async function init() {
     initSelectedMethods();
     setupNavigation();
     await loadExperiments();
-    await loadJailbreakSuccesses();
     setupEventListeners();
 
     // Read tab from URL and render

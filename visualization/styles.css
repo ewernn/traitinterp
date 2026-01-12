@@ -1234,15 +1234,6 @@ code {
     color: var(--text-on-primary);
 }
 
-/* Jailbreak success indicator - prompts that bypassed safety guardrails */
-.pp-btn.jailbreak-success {
-    border: 1px solid var(--danger);
-    background: color-mix(in srgb, var(--danger) 15%, var(--bg-tertiary));
-}
-.pp-btn.jailbreak-success.active {
-    border-color: var(--danger);
-}
-
 .pp-note {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
@@ -1646,7 +1637,7 @@ code {
 /* Chart Containers */
 .chart-container-sm {
     width: 100%;
-    height: 120px;
+    height: 180px;  /* Match Plotly layout height */
 }
 
 .chart-container-lg {
@@ -2914,5 +2905,178 @@ code {
     white-space: pre-wrap;
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* ============================================================
+   Response Browser (per-trait collapsible in steering sweep)
+   ============================================================ */
+
+.response-browser-details {
+    margin-top: 16px;
+    position: relative;
+    z-index: 1;  /* Ensure it's above any chart overflow */
+}
+
+.response-browser-summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    user-select: none;
+}
+
+.response-browser-summary:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+
+.response-browser-details[open] .response-browser-summary {
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.response-browser-content {
+    background: var(--bg-secondary);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    padding: 12px;
+}
+
+/* Response browser filters */
+.rb-filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.rb-filter-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-weight: 500;
+}
+
+.rb-layer-chips {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.rb-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rb-chip:hover {
+    color: var(--text-secondary);
+}
+
+.rb-chip.active {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+}
+
+.rb-chip input {
+    display: none;
+}
+
+.rb-chip-btn {
+    padding: 2px 8px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.rb-chip-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--primary-color);
+}
+
+.rb-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.rb-toggle input {
+    cursor: pointer;
+}
+
+.rb-stats {
+    margin-top: 8px;
+    text-align: right;
+}
+
+.rb-position {
+    font-family: monospace;
+    font-size: var(--text-xs);
+}
+
+/* Response browser table */
+.rb-table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.rb-table {
+    font-size: var(--text-xs);
+}
+
+.rb-table th,
+.rb-table td {
+    padding: 6px 10px;
+}
+
+.rb-row {
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.rb-row:hover {
+    background: var(--bg-primary) !important;
+}
+
+.rb-row.expanded {
+    background: var(--bg-tertiary) !important;
+    font-weight: 500;
+}
+
+.rb-row.below-threshold {
+    opacity: 0.5;
+}
+
+.rb-expanded-row td {
+    padding: 0;
+    background: var(--bg-tertiary);
+}
+
+.rb-responses-container {
+    padding: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.rb-responses-container .response-list {
+    max-height: none;
+}
+
+.rb-responses-container .response-item {
+    background: var(--bg-secondary);
 }
 

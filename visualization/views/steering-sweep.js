@@ -177,6 +177,7 @@ async function renderSteeringSweep() {
 let currentSweepData = null;
 let currentRawResults = null; // Store raw results.jsonl data for method filtering
 let discoveredSteeringTraits = []; // All discovered steering traits
+let traitResultsCache = {}; // Cache results per trait for response browser
 
 
 /**
@@ -313,6 +314,7 @@ async function renderBestVectorPerLayer() {
         const methodColors = window.getMethodColors();
         let baseline = null;
         let colorIdx = 0;
+        const allRuns = []; // Collect all runs for response browser
 
         // Load results for each position variant (in parallel)
         const experiment = window.state.experimentData?.name;
@@ -357,6 +359,13 @@ async function renderBestVectorPerLayer() {
                 const coef = v.weight;
                 const coherence = result.coherence_mean || 0;
                 const traitScore = result.trait_mean || 0;
+
+                // Collect for response browser (before coherence filter)
+                allRuns.push({
+                    layer, method, component, coef, traitScore, coherence,
+                    timestamp: run.timestamp,
+                    entry, // steering entry for path building
+                });
 
                 if (coherence < coherenceThreshold) return;
 
@@ -433,7 +442,12 @@ async function renderBestVectorPerLayer() {
             });
 
             const chartId = `best-vector-chart-${baseTrait.replace(/\//g, '-')}`;
-            charts.push({ trait: baseTrait, chartId, traces });
+            const browserId = `response-browser-${baseTrait.replace(/\//g, '-')}`;
+
+            // Cache all runs for this trait
+            traitResultsCache[baseTrait] = { allRuns, baseline };
+
+            charts.push({ trait: baseTrait, chartId, browserId, traces, runCount: allRuns.length });
         }
     }
 
@@ -443,12 +457,28 @@ async function renderBestVectorPerLayer() {
         return;
     }
 
-    container.innerHTML = charts.map(({ trait, chartId }) => `
+    container.innerHTML = charts.map(({ trait, chartId, browserId, runCount }) => `
         <div class="trait-chart-wrapper">
             <div class="trait-chart-title">${window.getDisplayName(trait)}</div>
             <div id="${chartId}" class="chart-container-sm"></div>
+            <details class="response-browser-details" data-trait="${trait}">
+                <summary class="response-browser-summary">
+                    ▶ View Responses <span class="hint">(${runCount} runs)</span>
+                </summary>
+                <div id="${browserId}" class="response-browser-content"></div>
+            </details>
         </div>
     `).join('');
+
+    // Setup response browser toggle handlers
+    container.querySelectorAll('.response-browser-details').forEach(details => {
+        details.addEventListener('toggle', (e) => {
+            if (details.open) {
+                const trait = details.dataset.trait;
+                renderResponseBrowserForTrait(trait);
+            }
+        });
+    });
 
     // Plot each chart
     for (const { chartId, traces } of charts) {
@@ -1015,6 +1045,300 @@ function escapeHtml(text) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/\n/g, '<br>');
+}
+
+
+// ============================================================
+// Response Browser (per-trait collapsible)
+// ============================================================
+
+// Track current sort state per trait
+const responseBrowserState = {};
+
+/**
+ * Render the response browser table for a trait
+ */
+function renderResponseBrowserForTrait(trait) {
+    const browserId = `response-browser-${trait.replace(/\//g, '-')}`;
+    const container = document.getElementById(browserId);
+    if (!container) return;
+
+    const cached = traitResultsCache[trait];
+    if (!cached || !cached.allRuns.length) {
+        container.innerHTML = '<p class="no-data">No response data available</p>';
+        return;
+    }
+
+    // Initialize state for this trait
+    if (!responseBrowserState[trait]) {
+        responseBrowserState[trait] = {
+            sortKey: 'traitScore',
+            sortDir: 'desc',
+            layerFilter: new Set(), // empty = show all
+            expandedRow: null,
+            bestPerLayer: false, // Show only best run per layer
+        };
+    }
+    const state = responseBrowserState[trait];
+
+    // Get coherence threshold from the page slider
+    const coherenceThresholdEl = document.getElementById('sweep-coherence-threshold');
+    const coherenceThreshold = coherenceThresholdEl ? parseInt(coherenceThresholdEl.value) : 70;
+
+    // Get unique layers for filter
+    const uniqueLayers = [...new Set(cached.allRuns.map(r => r.layer))].sort((a, b) => a - b);
+
+    // Filter and sort runs
+    let runs = [...cached.allRuns];
+    if (state.layerFilter.size > 0) {
+        runs = runs.filter(r => state.layerFilter.has(r.layer));
+    }
+
+    // Best per layer filter: keep only highest trait score per layer (with coherence >= threshold)
+    if (state.bestPerLayer) {
+        const bestByLayer = {};
+        for (const run of runs) {
+            if (run.coherence < coherenceThreshold) continue;
+            if (!bestByLayer[run.layer] || run.traitScore > bestByLayer[run.layer].traitScore) {
+                bestByLayer[run.layer] = run;
+            }
+        }
+        runs = Object.values(bestByLayer);
+    }
+
+    // Sort
+    runs.sort((a, b) => {
+        const aVal = a[state.sortKey] ?? 0;
+        const bVal = b[state.sortKey] ?? 0;
+        return state.sortDir === 'desc' ? bVal - aVal : aVal - bVal;
+    });
+
+    // Get unique positions for display
+    const uniquePositions = [...new Set(cached.allRuns.map(r => r.entry?.position || 'unknown'))];
+    const showPositionCol = uniquePositions.length > 1 || uniquePositions[0] !== 'response_all';
+
+    // Build HTML
+    container.innerHTML = `
+        <div class="rb-filters">
+            <span class="rb-filter-label">Layers:</span>
+            <div class="rb-layer-chips">
+                <button class="rb-chip-btn" data-action="select-all">All</button>
+                <button class="rb-chip-btn" data-action="select-none">None</button>
+                ${uniqueLayers.map(l => `
+                    <label class="rb-chip ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'active' : ''}">
+                        <input type="checkbox" value="${l}" ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'checked' : ''}>
+                        L${l}
+                    </label>
+                `).join('')}
+            </div>
+            <label class="rb-toggle">
+                <input type="checkbox" ${state.bestPerLayer ? 'checked' : ''} data-action="best-per-layer">
+                Best per layer (coh ≥${coherenceThreshold})
+            </label>
+        </div>
+        <div class="rb-table-wrapper">
+            <table class="data-table rb-table">
+                <thead>
+                    <tr>
+                        <th class="sortable ${state.sortKey === 'layer' ? 'sort-active' : ''}" data-sort="layer">
+                            Layer <span class="sort-indicator">${state.sortKey === 'layer' ? (state.sortDir === 'desc' ? '▼' : '▲') : '▼'}</span>
+                        </th>
+                        <th class="sortable ${state.sortKey === 'coef' ? 'sort-active' : ''}" data-sort="coef">
+                            Coef <span class="sort-indicator">${state.sortKey === 'coef' ? (state.sortDir === 'desc' ? '▼' : '▲') : '▼'}</span>
+                        </th>
+                        <th>Method</th>
+                        <th>Component</th>
+                        ${showPositionCol ? '<th>Position</th>' : ''}
+                        <th class="sortable ${state.sortKey === 'traitScore' ? 'sort-active' : ''}" data-sort="traitScore">
+                            Trait <span class="sort-indicator">${state.sortKey === 'traitScore' ? (state.sortDir === 'desc' ? '▼' : '▲') : '▼'}</span>
+                        </th>
+                        <th class="sortable ${state.sortKey === 'coherence' ? 'sort-active' : ''}" data-sort="coherence">
+                            Coh <span class="sort-indicator">${state.sortKey === 'coherence' ? (state.sortDir === 'desc' ? '▼' : '▲') : '▼'}</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${runs.map((run, idx) => {
+                        const position = run.entry?.position || 'unknown';
+                        const posDisplay = window.paths?.formatPositionDisplay ? window.paths.formatPositionDisplay(position) : position;
+                        return `
+                        <tr class="rb-row ${state.expandedRow === idx ? 'expanded' : ''} ${run.coherence < coherenceThreshold ? 'below-threshold' : ''}" data-idx="${idx}">
+                            <td>L${run.layer}</td>
+                            <td>${run.coef.toFixed(1)}</td>
+                            <td>${run.method}</td>
+                            <td>${run.component}</td>
+                            ${showPositionCol ? `<td class="rb-position">${posDisplay}</td>` : ''}
+                            <td class="${run.traitScore > 50 ? 'quality-good' : run.traitScore > 20 ? 'quality-ok' : ''}">${run.traitScore.toFixed(1)}</td>
+                            <td class="${run.coherence >= 80 ? 'quality-good' : run.coherence >= 60 ? 'quality-ok' : 'quality-bad'}">${run.coherence.toFixed(0)}</td>
+                        </tr>
+                        ${state.expandedRow === idx ? `
+                        <tr class="rb-expanded-row">
+                            <td colspan="${showPositionCol ? 7 : 6}">
+                                <div class="rb-responses-container" id="rb-responses-${trait.replace(/\//g, '-')}-${idx}">
+                                    <div class="loading">Loading responses...</div>
+                                </div>
+                            </td>
+                        </tr>
+                        ` : ''}
+                    `;}).join('')}
+                </tbody>
+            </table>
+        </div>
+        <div class="rb-stats hint">${runs.length} runs shown${state.bestPerLayer ? ' (best per layer)' : ''}</div>
+    `;
+
+    // Setup event handlers
+    setupResponseBrowserHandlers(trait, container, runs);
+
+    // Load responses if a row is expanded
+    if (state.expandedRow !== null && runs[state.expandedRow]) {
+        loadResponsesForRun(trait, state.expandedRow, runs[state.expandedRow]);
+    }
+}
+
+
+/**
+ * Setup event handlers for response browser
+ */
+function setupResponseBrowserHandlers(trait, container, runs) {
+    const state = responseBrowserState[trait];
+    const allLayers = [...new Set(traitResultsCache[trait].allRuns.map(r => r.layer))];
+
+    // Select All / Select None buttons
+    container.querySelectorAll('.rb-chip-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.action;
+            if (action === 'select-all') {
+                state.layerFilter.clear(); // Empty = show all
+            } else if (action === 'select-none') {
+                state.layerFilter.clear();
+                state.layerFilter.add(-999); // Impossible layer = show none
+            }
+            state.expandedRow = null;
+            renderResponseBrowserForTrait(trait);
+        });
+    });
+
+    // Best per layer toggle
+    const bestPerLayerCheckbox = container.querySelector('input[data-action="best-per-layer"]');
+    if (bestPerLayerCheckbox) {
+        bestPerLayerCheckbox.addEventListener('change', () => {
+            state.bestPerLayer = bestPerLayerCheckbox.checked;
+            state.expandedRow = null;
+            renderResponseBrowserForTrait(trait);
+        });
+    }
+
+    // Layer filter checkboxes
+    container.querySelectorAll('.rb-chip input').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+            const layer = parseInt(checkbox.value);
+            if (checkbox.checked) {
+                // If all were selected (filter empty), start fresh with just this one
+                if (state.layerFilter.size === 0) {
+                    allLayers.forEach(l => state.layerFilter.add(l));
+                }
+                state.layerFilter.add(layer);
+                // Remove impossible layer if it was set
+                state.layerFilter.delete(-999);
+            } else {
+                if (state.layerFilter.size === 0) {
+                    // First uncheck - add all except this one
+                    allLayers.forEach(l => { if (l !== layer) state.layerFilter.add(l); });
+                } else {
+                    state.layerFilter.delete(layer);
+                }
+            }
+            state.expandedRow = null; // Close expanded row on filter change
+            renderResponseBrowserForTrait(trait);
+        });
+    });
+
+    // Sortable headers
+    container.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const sortKey = th.dataset.sort;
+            if (state.sortKey === sortKey) {
+                state.sortDir = state.sortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+                state.sortKey = sortKey;
+                state.sortDir = 'desc';
+            }
+            state.expandedRow = null;
+            renderResponseBrowserForTrait(trait);
+        });
+    });
+
+    // Row click to expand
+    container.querySelectorAll('.rb-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const idx = parseInt(row.dataset.idx);
+            if (state.expandedRow === idx) {
+                state.expandedRow = null;
+            } else {
+                state.expandedRow = idx;
+            }
+            renderResponseBrowserForTrait(trait);
+        });
+    });
+}
+
+
+/**
+ * Load and display responses for a specific run
+ */
+async function loadResponsesForRun(trait, idx, run) {
+    const containerId = `rb-responses-${trait.replace(/\//g, '-')}-${idx}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const { entry } = run;
+    const experiment = window.state.experimentData?.name;
+
+    try {
+        // Build path to response file
+        const ts = run.timestamp ? run.timestamp.slice(0, 19).replace(/:/g, '-').replace('T', '_') : '';
+        const filename = `L${run.layer}_c${run.coef.toFixed(1)}_${ts}.json`;
+        const responsePath = window.paths.get('steering.responses', {
+            experiment,
+            trait: entry.trait,
+            model_variant: entry.model_variant,
+            position: entry.position,
+            prompt_set: entry.prompt_set,
+        });
+
+        const url = `/${responsePath}/${run.component}/${run.method}/${filename}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            container.innerHTML = `<p class="no-data">Response file not found</p>`;
+            return;
+        }
+
+        const responses = await response.json();
+
+        container.innerHTML = `
+            <div class="response-list">
+                ${responses.map((r, i) => `
+                    <div class="response-item">
+                        <div class="response-header">
+                            <span class="response-num">#${i + 1}</span>
+                            <span class="response-scores">
+                                Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(1) ?? 'N/A'}</span>
+                                · Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? 'N/A'}</span>
+                            </span>
+                        </div>
+                        <div class="response-question">${escapeHtml(r.question)}</div>
+                        <div class="response-text">${escapeHtml(r.response)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+    } catch (e) {
+        console.error('Failed to load responses:', e);
+        container.innerHTML = `<p class="no-data">Error loading responses: ${e.message}</p>`;
+    }
 }
 
 

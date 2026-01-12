@@ -17,9 +17,9 @@ Output files:
       'token_ids': List[int],
       'activations': {
         layer_idx: {
-          'residual': Tensor[n_tokens, hidden_dim],  # layer output
-          'attn_out': Tensor[n_tokens, hidden_dim],  # attention contribution
-          'mlp_out': Tensor[n_tokens, hidden_dim],   # if --capture-mlp
+          'residual': Tensor[n_tokens, hidden_dim],           # layer output
+          'attn_contribution': Tensor[n_tokens, hidden_dim],  # what attention adds to residual
+          'mlp_contribution': Tensor[n_tokens, hidden_dim],   # if --capture-mlp
         }
       }
     },
@@ -27,7 +27,7 @@ Output files:
   }
 
 Usage:
-    # Basic capture (residual + attn_out)
+    # Basic capture (residual + attn_contribution)
     python inference/capture_raw_activations.py \\
         --experiment my_experiment \\
         --prompt-set main_prompts
@@ -133,10 +133,11 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
     full_input_ids = torch.cat([prompt_inputs['input_ids'], response_inputs['input_ids']], dim=1)
 
     # Capture all components in one forward pass using MultiLayerCapture
+    # attn_contribution/mlp_contribution auto-detect architecture (post-norm for Gemma-2, o_proj for Llama)
     with MultiLayerCapture(model, component='residual') as cap_residual:
-        with MultiLayerCapture(model, component='attn_out') as cap_attn:
+        with MultiLayerCapture(model, component='attn_contribution') as cap_attn:
             if capture_mlp:
-                with MultiLayerCapture(model, component='mlp_out') as cap_mlp:
+                with MultiLayerCapture(model, component='mlp_contribution') as cap_mlp:
                     with torch.no_grad():
                         outputs = model(input_ids=full_input_ids, output_attentions=capture_attention, return_dict=True)
                 mlp_acts_full = cap_mlp.get_all()
@@ -160,17 +161,17 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
             prompt_acts[layer_idx]['residual'] = full[:n_prompt_tokens]
             response_acts[layer_idx]['residual'] = full[n_prompt_tokens:]
 
-        # Attention output
+        # Attention contribution (what actually adds to residual)
         if layer_idx in attn_acts_full:
             full = attn_acts_full[layer_idx].squeeze(0)
-            prompt_acts[layer_idx]['attn_out'] = full[:n_prompt_tokens]
-            response_acts[layer_idx]['attn_out'] = full[n_prompt_tokens:]
+            prompt_acts[layer_idx]['attn_contribution'] = full[:n_prompt_tokens]
+            response_acts[layer_idx]['attn_contribution'] = full[n_prompt_tokens:]
 
-        # MLP output (optional)
+        # MLP contribution (optional)
         if capture_mlp and layer_idx in mlp_acts_full:
             full = mlp_acts_full[layer_idx].squeeze(0)
-            prompt_acts[layer_idx]['mlp_out'] = full[:n_prompt_tokens]
-            response_acts[layer_idx]['mlp_out'] = full[n_prompt_tokens:]
+            prompt_acts[layer_idx]['mlp_contribution'] = full[:n_prompt_tokens]
+            response_acts[layer_idx]['mlp_contribution'] = full[n_prompt_tokens:]
 
     # Split attention patterns (only if captured)
     prompt_attention = {}
