@@ -6,7 +6,7 @@ Hypothesis: Effective steering is determined by perturbation ratio, not raw coef
 
 Expected: Coherence cliff around ratio ~1.0, sweet spot ~0.5-0.8.
 
-Input: experiments/{experiment}/steering/**/results.json
+Input: experiments/{experiment}/steering/**/results.jsonl
 Output: Scatter plots and summary statistics
 
 Usage:
@@ -68,22 +68,22 @@ def collect_steering_data(experiment: str) -> list[dict]:
 
     results = []
 
-    # Find all results.json files
-    for results_file in steering_dir.rglob('results.json'):
-        with open(results_file) as f:
-            data = json.load(f)
+    # Use centralized discovery and loading
+    from utils.paths import discover_steering_entries
+    from analysis.steering.results import load_results
 
-        trait = data.get('trait', '')
-        baseline = data.get('baseline', {}).get('trait_mean', 0)
+    entries = discover_steering_entries(experiment)
 
-        # Determine position from path
-        # Path: steering/{trait}/{position}/results.json
-        rel_path = results_file.relative_to(steering_dir)
-        parts = list(rel_path.parts)
-        if len(parts) >= 3:
-            position = parts[-2]  # position is second to last
-        else:
-            position = 'response_all'
+    for entry in entries:
+        trait = entry['trait']
+        position = entry['position']
+
+        try:
+            data = load_results(experiment, trait, entry['model_variant'], entry['position'], entry['prompt_set'])
+        except FileNotFoundError:
+            continue
+
+        baseline = data.get('baseline', {}).get('trait_mean', 0) if data.get('baseline') else 0
 
         for run in data.get('runs', []):
             config = run.get('config', {})

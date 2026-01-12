@@ -185,11 +185,8 @@ function updateSteeringButtonsUI() {
  * Load model names from experiment config
  */
 async function loadModelNames() {
-    const experiment = window.state.currentExperiment;
-    if (!experiment) return;
-
     try {
-        const response = await fetch(`/api/experiments/${experiment}/config`);
+        const response = await fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/config`);
         const config = await response.json();
 
         modelNames.application = config.application_model || 'google/gemma-2-2b-it';
@@ -207,8 +204,7 @@ async function loadModelNames() {
  * Get localStorage key for current experiment
  */
 function getStorageKey() {
-    const experiment = window.state?.currentExperiment || 'default';
-    return `livechat_${experiment}`;
+    return `livechat_${LIVE_CHAT_EXPERIMENT}`;
 }
 
 /**
@@ -249,11 +245,14 @@ function restoreConversation() {
 /**
  * Render the live chat view
  */
+// Live Chat always uses this experiment (separate from sidebar selection)
+const LIVE_CHAT_EXPERIMENT = 'live-chat';
+
 async function renderLiveChat() {
     const container = document.getElementById('content-area');
     if (!container) return;
 
-    // Load model names from config
+    // Load model names from live-chat config (don't change global currentExperiment)
     await loadModelNames();
 
     // Initialize conversation tree if needed
@@ -342,9 +341,8 @@ async function renderLiveChat() {
     }
     updateInferenceModeUI();
 
-    // Hide experiment picker in sidebar (Live Chat uses fixed experiment)
-    const experimentPicker = document.querySelector('.experiment-picker');
-    if (experimentPicker) experimentPicker.style.display = 'none';
+    // Note: Experiment picker stays visible - Live Chat uses LIVE_CHAT_EXPERIMENT internally
+    // Sidebar selection doesn't affect Live Chat
 
     // Hide inference toggle in production mode
     if (!window.isFeatureEnabled('inference_toggle')) {
@@ -505,8 +503,8 @@ async function generateResponse(prompt, assistantNodeId) {
             signal: abortController.signal,
             body: JSON.stringify({
                 prompt: prompt,
-                experiment: window.state.currentExperiment || 'live-chat',
-                max_tokens: 100,
+                experiment: LIVE_CHAT_EXPERIMENT,
+                max_tokens: 256,
                 temperature: 0.0,
                 history: history,
                 previous_context_length: previousContextLength,
@@ -677,24 +675,10 @@ function handleMessageHover(messageId) {
 function renderTokenizedContent(node) {
     if (!node.content) return '';
 
-    // For assistant messages with token events, render as spans (enables hover highlighting)
-    // Note: Markdown that spans tokens won't render correctly in this mode
-    if (node.role === 'assistant' && node.tokenEvents && node.tokenEvents.length > 0) {
-        return node.tokenEvents.map((event, idx) => {
-            // Skip prompt and special tokens from display (but keep global index for hover)
-            if (event.is_prompt || event.is_special) return '';
-            const globalTokenIdx = event.token_index !== undefined ? event.token_index : (node.tokenStartIdx + idx);
-            const tokenText = window.escapeHtml(event.token);
-            return `<span class="token-span" data-token-idx="${globalTokenIdx}">${tokenText}</span>`;
-        }).join('');
-    }
-
-    // For user messages or assistant messages without tokens, render with markdown
+    // Render all messages with markdown
     if (typeof marked !== 'undefined') {
-        // Configure marked for inline rendering (no <p> wrapper for single lines)
         const rendered = marked.parse(node.content, { breaks: true });
-        // Strip wrapping <p> tags for cleaner inline display
-        return rendered.replace(/^<p>|<\/p>\n?$/g, '');
+        return rendered;
     }
     return window.escapeHtml(node.content);
 }
@@ -741,13 +725,13 @@ function renderMessages() {
                     ${isCurrentlyGenerating && node.content ? '<span class="generating-indicator"></span>' : ''}
                 </div>
 
+                ${(node.role === 'user' && !isGenerating) || hasBranches ? `
                 <div class="message-actions">
                     ${node.role === 'user' && !isGenerating ? `
                         <button class="edit-btn" onclick="startEdit('${node.id}')" title="Edit message">
                             &#9998;
                         </button>
                     ` : ''}
-
                     ${hasBranches ? `
                         <div class="branch-nav">
                             <button class="branch-btn"
@@ -764,6 +748,7 @@ function renderMessages() {
                         </div>
                     ` : ''}
                 </div>
+                ` : ''}
             </div>
         `;
     }

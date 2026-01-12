@@ -175,7 +175,7 @@ async function renderSteeringSweep() {
 
 // Store current data for re-rendering on control changes
 let currentSweepData = null;
-let currentRawResults = null; // Store raw results.json for method filtering
+let currentRawResults = null; // Store raw results.jsonl data for method filtering
 let discoveredSteeringTraits = []; // All discovered steering traits
 
 
@@ -237,12 +237,8 @@ async function renderSweepData(steeringEntry) {
     let steeringMeta = null;
 
     try {
-        const resultsUrl = '/' + window.paths.get('steering.results', {
-            trait: steeringEntry.trait,
-            model_variant: steeringEntry.model_variant,
-            position: steeringEntry.position,
-            prompt_set: steeringEntry.prompt_set
-        });
+        const experiment = window.state.experimentData?.name;
+        const resultsUrl = `/api/experiments/${experiment}/steering-results/${steeringEntry.trait}/${steeringEntry.model_variant}/${steeringEntry.position}/${steeringEntry.prompt_set}`;
         const response = await fetch(resultsUrl);
         if (response.ok) {
             const results = await response.json();
@@ -319,14 +315,10 @@ async function renderBestVectorPerLayer() {
         let colorIdx = 0;
 
         // Load results for each position variant (in parallel)
+        const experiment = window.state.experimentData?.name;
         const variantResults = await Promise.all(variants.map(async (entry) => {
             try {
-                const resultsUrl = '/' + window.paths.get('steering.results', {
-                    trait: entry.trait,
-                    model_variant: entry.model_variant,
-                    position: entry.position,
-                    prompt_set: entry.prompt_set
-                });
+                const resultsUrl = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
                 const response = await fetch(resultsUrl);
                 if (!response.ok) return null;
                 const results = await response.json();
@@ -525,7 +517,7 @@ async function renderTraitPicker(steeringEntries) {
 
 
 function convertResultsToSweepFormat(results, methodFilter = null) {
-    // Convert results.json format to sweep_results.json format
+    // Convert results.jsonl format to sweep visualization format
     // Actual format: { trait, baseline: {trait_mean, ...}, runs: [{config: {layers, coefficients, ...}, result: {trait_mean, coherence_mean, ...}}, ...] }
     // methodFilter: optional method to filter by (e.g., 'probe', 'gradient', 'mean_diff')
     const runs = results.runs || [];
@@ -599,7 +591,7 @@ function convertResultsToSweepFormat(results, methodFilter = null) {
         baseline_trait: baseline,
         full_vector: fullVector,
         incremental: {}, // Would need separate runs with incremental flag to populate
-        _isConverted: true // Flag to indicate this was converted from results.json (uses raw coefficients, not ratios)
+        _isConverted: true // Flag to indicate this was converted from results.jsonl (uses raw coefficients, not ratios)
     };
 }
 

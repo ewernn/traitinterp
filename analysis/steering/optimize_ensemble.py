@@ -27,13 +27,13 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 
 from analysis.steering.data import load_steering_data
-from analysis.steering.steer import BatchedLayerSteeringHook
-from utils.paths import get_vector_path, get_model_variant
+from core import VectorSpec, BatchedLayerSteeringHook
+from utils.paths import get_model_variant
 from utils.model import load_model, format_prompt
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
 from utils.ensembles import create_ensemble, save_ensemble
-from core import VectorSpec
+from utils.vectors import MIN_COHERENCE, load_vector
 
 
 async def run_cma_es(
@@ -47,7 +47,7 @@ async def run_cma_es(
     popsize: int = 6,
     max_new_tokens: int = 12,
     n_questions: int = 5,
-    coherence_threshold: float = 70.0,
+    coherence_threshold: float = MIN_COHERENCE,
 ):
     """
     Run CMA-ES optimization for ensemble weights.
@@ -81,10 +81,9 @@ async def run_cma_es(
     vectors = []  # List of (layer, vector, base_coef)
 
     for layer in layers:
-        vector_path = get_vector_path(experiment, trait, method, layer, extraction_variant, component, position)
-        if not vector_path.exists():
-            raise FileNotFoundError(f"Vector not found: {vector_path}")
-        vector = torch.load(vector_path, weights_only=True)
+        vector = load_vector(experiment, trait, layer, extraction_variant, method, component, position)
+        if vector is None:
+            raise FileNotFoundError(f"Vector not found for L{layer} {method} {component} {position}")
 
         # Base coefficient from activation norm (same as coef_search.py)
         # For unit-normalized vectors, use layer-appropriate scaling
@@ -294,7 +293,7 @@ def main():
     parser.add_argument("--popsize", type=int, default=6)
     parser.add_argument("--max-new-tokens", type=int, default=12)
     parser.add_argument("--n-questions", type=int, default=5)
-    parser.add_argument("--coherence-threshold", type=float, default=70.0)
+    parser.add_argument("--coherence-threshold", type=float, default=MIN_COHERENCE)
 
     args = parser.parse_args()
 

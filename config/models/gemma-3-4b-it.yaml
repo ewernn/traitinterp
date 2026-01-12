@@ -13,6 +13,7 @@ hidden_size: 2560
 num_attention_heads: 8
 num_key_value_heads: 4
 intermediate_size: 10240  # 4x hidden_size
+residual_sublayers: [input, after_attn, output]
 
 # SAE availability (Gemma Scope 2)
 sae:

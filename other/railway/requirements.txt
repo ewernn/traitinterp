@@ -1,0 +1,13 @@
+# Railway deployment dependencies
+# Minimal set - Modal handles model loading/tokenization
+
+# Config loading
+PyYAML
+
+# Modal client (calls GPU inference)
+modal
+
+# Projection math (trait scoring on returned activations)
+torch
+scipy
+scikit-learn

@@ -74,6 +74,13 @@ def get(key: str, **variables) -> Path:
     for var, val in variables.items():
         result = result.replace(f'{{{var}}}', str(val))
 
+    # Warn on unsubstituted variables (likely caller forgot to pass them)
+    if '{' in result:
+        import re
+        import warnings
+        missing = re.findall(r'\{(\w+)\}', result)
+        warnings.warn(f"Unsubstituted variables in path key '{key}': {missing}")
+
     return Path(result)
 
 
@@ -376,7 +383,7 @@ def discover_steering_entries(experiment: str) -> list[dict]:
     """
     Find all steering results in experiments/{exp}/steering/.
 
-    Path structure: steering/{category}/{trait}/{model_variant}/{position}/{prompt_set...}/results.json
+    Path structure: steering/{category}/{trait}/{model_variant}/{position}/{prompt_set...}/results.jsonl
     Note: prompt_set can be nested (e.g., rm_syco/train_100)
 
     Returns:
@@ -387,7 +394,7 @@ def discover_steering_entries(experiment: str) -> list[dict]:
         return []
 
     entries = []
-    for results_file in steering_dir.rglob('results.json'):
+    for results_file in steering_dir.rglob('results.jsonl'):
         rel_path = results_file.parent.relative_to(steering_dir)
         parts = rel_path.parts
 
@@ -611,11 +618,11 @@ def get_steering_results_path(
     prompt_set: str = "steering",
 ) -> Path:
     """
-    Path to steering results file.
+    Path to steering results file (JSONL format).
 
-    Returns: .../steering/{trait}/{model_variant}/{position}/{prompt_set}/results.json
+    Returns: .../steering/{trait}/{model_variant}/{position}/{prompt_set}/results.jsonl
     """
-    return get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "results.json"
+    return get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "results.jsonl"
 
 
 def get_steering_responses_dir(

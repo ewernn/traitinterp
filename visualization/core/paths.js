@@ -19,7 +19,7 @@
  *
  *     // Steering paths
  *     paths.steeringResults('chirp/refusal_v2', 'instruct')
- *     // Returns: '/experiments/gemma-2-2b/steering/chirp/refusal_v2/instruct/response_all/steering/results.json'
+ *     // Returns: '/experiments/gemma-2-2b/steering/chirp/refusal_v2/instruct/response_all/steering/results.jsonl'
  *
  *     // Raw template access
  *     paths.get('extraction.vectors', { trait: 'chirp/refusal_v2', model_variant: 'base' })
@@ -166,6 +166,12 @@ class PathBuilder {
         let result = node;
         for (const [varName, value] of Object.entries(variables)) {
             result = result.replaceAll(`{${varName}}`, String(value));
+        }
+
+        // Warn on unsubstituted variables (likely caller forgot to pass them)
+        if (result.includes('{')) {
+            const missing = [...result.matchAll(/\{(\w+)\}/g)].map(m => m[1]);
+            console.warn(`Unsubstituted variables in path key '${key}':`, missing);
         }
 
         return result;
@@ -487,7 +493,7 @@ class PathBuilder {
      * @returns {string}
      */
     steeringResults(trait, modelVariant, position = 'response[:]', promptSet = 'steering') {
-        return `${this.steeringDir(trait, modelVariant, position, promptSet)}/results.json`;
+        return `${this.steeringDir(trait, modelVariant, position, promptSet)}/results.jsonl`;
     }
 
     /**

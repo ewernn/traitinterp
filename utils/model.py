@@ -463,3 +463,35 @@ def load_experiment_config(experiment: str, warn_missing: bool = True) -> dict:
         print(f"   Create config.json with extraction_model and application_model.")
 
     return {}
+
+
+def load_model_or_client(
+    model_name: str,
+    load_in_8bit: bool = False,
+    load_in_4bit: bool = False,
+    no_server: bool = False,
+    lora_adapter: str = None,
+):
+    """
+    Load model locally or get client if server available.
+
+    Returns:
+        (model, tokenizer, is_remote) tuple
+    """
+    from other.server.client import get_model_or_client as _get_model_or_client, ModelClient
+
+    # LoRA requires local loading
+    if lora_adapter:
+        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora_adapter, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        return model, tokenizer, False
+
+    if not no_server:
+        handle = _get_model_or_client(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        if isinstance(handle, ModelClient):
+            print(f"Using model server (model: {model_name})")
+            return handle, handle, True  # model, tokenizer, is_remote
+        model, tokenizer = handle
+        return model, tokenizer, False
+    else:
+        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        return model, tokenizer, False

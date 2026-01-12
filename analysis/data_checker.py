@@ -341,33 +341,45 @@ def check_analysis(exp_dir: Path) -> AnalysisIntegrity:
 
 def check_steering(exp_dir: Path) -> SteeringIntegrity:
     """Check steering directory using discovery."""
+    from utils.paths import discover_steering_entries, get_steering_results_path
 
     result = SteeringIntegrity()
-    steering_dir = exp_dir / "steering"
+    experiment = exp_dir.name
 
-    if not steering_dir.exists():
-        return result
+    # Use centralized discovery
+    entries = discover_steering_entries(experiment)
 
-    # Discover traits with steering results (category/trait structure)
-    for category_dir in steering_dir.iterdir():
-        if category_dir.is_dir() and not category_dir.name.startswith('.'):
-            for trait_dir in category_dir.iterdir():
-                if trait_dir.is_dir():
-                    trait_name = f"{category_dir.name}/{trait_dir.name}"
-                    results_file = trait_dir / 'results.json'
-                    n_runs = 0
-                    if results_file.exists():
-                        try:
-                            with open(results_file) as f:
-                                data = json.load(f)
-                            n_runs = len(data.get('runs', []))
-                        except (json.JSONDecodeError, KeyError):
-                            pass
-                    result.traits[trait_name] = {
-                        'results': results_file.exists(),
-                        'n_runs': n_runs,
-                    }
-                    result.total_traits += 1
+    for entry in entries:
+        trait_name = entry['trait']
+        results_path = get_steering_results_path(
+            experiment, trait_name, entry['model_variant'],
+            entry['position'], entry['prompt_set']
+        )
+
+        # Count runs from JSONL (each non-header/baseline line is a run)
+        n_runs = 0
+        if results_path.exists():
+            try:
+                with open(results_path) as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        entry_data = json.loads(line)
+                        if entry_data.get('type') not in ('header', 'baseline'):
+                            n_runs += 1
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+        # Aggregate runs if trait already seen (multiple positions/prompt_sets)
+        if trait_name in result.traits:
+            result.traits[trait_name]['n_runs'] += n_runs
+        else:
+            result.traits[trait_name] = {
+                'results': True,
+                'n_runs': n_runs,
+            }
+            result.total_traits += 1
 
     return result
 

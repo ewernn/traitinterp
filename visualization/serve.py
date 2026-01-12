@@ -143,6 +143,20 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.list_steering_entries(exp_name))
                 return
 
+            # API endpoint: get steering results (loads JSONL, returns JSON)
+            # Path: /api/experiments/{exp}/steering-results/{trait}/{model_variant}/{position}/{prompt_set...}
+            # Note: prompt_set can be nested (e.g., rm_syco/train_100)
+            if self.path.startswith('/api/experiments/') and '/steering-results/' in self.path:
+                parts = self.path.split('/')
+                if len(parts) >= 9:
+                    exp_name = parts[3]
+                    trait = f"{parts[5]}/{parts[6]}"
+                    model_variant = parts[7]
+                    position = parts[8]
+                    prompt_set = '/'.join(parts[9:]) if len(parts) > 9 else 'steering'
+                    self.send_api_response(self.get_steering_results(exp_name, trait, model_variant, position, prompt_set))
+                return
+
             # API endpoint: list steering response files
             # Path: /api/experiments/{exp}/steering-responses/{trait}/{model_variant}/{position}/{prompt_set...}
             # Note: prompt_set can be nested (e.g., rm_syco/train_100)
@@ -321,25 +335,32 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def warmup_modal(self):
         """Warm up Modal GPU container by loading the model."""
-        # In production mode, always use modal. In development, caller decides.
-        mode = os.environ.get('MODE', 'development')
-
-        # Just do the warmup - let frontend decide when to call this
-        if mode == 'development':
-            # In dev, warmup is optional (triggered by toggle)
-            pass
-
+        print("[Warmup] Starting Modal warmup...")
         try:
-            # Import modal_inference and call warmup
+            # Get model from live-chat experiment config
+            from utils.paths import get_model_variant
+            variant_info = get_model_variant('live-chat', mode='application')
+            model_name = variant_info['model']
+            print(f"[Warmup] Model from config: {model_name}")
+
             import sys
             inference_path = Path(__file__).parent.parent / "inference"
             if str(inference_path) not in sys.path:
                 sys.path.insert(0, str(inference_path))
 
+            print("[Warmup] Importing modal_inference...")
             import modal_inference
-            result = modal_inference.warmup.remote()
+
+            print(f"[Warmup] Calling warmup.remote({model_name})...")
+            with modal_inference.app.run():
+                result = modal_inference.warmup.remote(model_name=model_name)
+
+            print(f"[Warmup] Success: {result}")
             return result
         except Exception as e:
+            import traceback
+            print(f"[Warmup] Error: {e}")
+            traceback.print_exc()
             return {
                 'status': 'error',
                 'error': str(e)
@@ -580,6 +601,18 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         files.sort(key=lambda x: (x['layer'], x['coef']))
 
         return {'files': files, 'baseline': baseline}
+
+    def get_steering_results(self, experiment_name, trait, model_variant, position, prompt_set):
+        """Load steering results from JSONL file and return as JSON."""
+        from analysis.steering.results import load_results
+
+        try:
+            # sanitize_position is idempotent, so already-sanitized positions work fine
+            return load_results(experiment_name, trait, model_variant, position, prompt_set)
+        except FileNotFoundError:
+            return {'error': f'Results not found for {trait}/{model_variant}/{position}/{prompt_set}'}
+        except Exception as e:
+            return {'error': str(e)}
 
     def send_inference_projection(self, experiment_name, model_variant, category, trait, prompt_set, prompt_id):
         """Send inference projection data for a specific trait and prompt.

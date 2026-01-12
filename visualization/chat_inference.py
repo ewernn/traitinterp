@@ -35,8 +35,8 @@ if TYPE_CHECKING:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from core import projection
-from utils.paths import get as get_path, get_vector_path, list_layers, list_methods, get_default_variant
-from utils.vectors import get_best_vector
+from utils.paths import get as get_path, get_default_variant
+from utils.vectors import get_best_vector, load_vector
 from utils.model import format_prompt, tokenize_prompt, load_experiment_config, get_layers_module
 
 
@@ -77,18 +77,16 @@ class ChatInference:
 
         if self.backend == "modal":
             print(f"[ChatInference] Using Modal backend for model: {model_id}")
-            # Import modal and transformers (lazy)
+            # Modal handles tokenization/formatting - we just need the modal client
             try:
                 import modal
-                from transformers import AutoTokenizer
                 # Look up deployed app
                 self._modal_app = modal.App.lookup("trait-capture", create_if_missing=False)
                 self._model_id = model_id
-                # Still need tokenizer for chat template formatting
-                self.tokenizer = AutoTokenizer.from_pretrained(model_id)
-                self.use_chat_template = self.tokenizer.chat_template is not None
                 self.n_layers = 26  # Will be updated from Modal response
-                print(f"[ChatInference] Modal client initialized, chat_template={self.use_chat_template}")
+                # Modal does chat template formatting, so we don't need tokenizer
+                self.use_chat_template = True  # Assume instruct model for Modal
+                print(f"[ChatInference] Modal client initialized (tokenization handled by Modal)")
             except ImportError as e:
                 raise ImportError("Modal backend requires 'modal' package: pip install modal") from e
             except Exception as e:
@@ -150,16 +148,11 @@ class ChatInference:
 
                 trait_path = f"{category_dir.name}/{trait_dir.name}"
 
-                # Check if any methods exist for this trait
-                available_methods = list_methods(self.experiment, trait_path)
-                if not available_methods:
-                    continue
-
                 # Get best layer/method for this trait (searches all positions/components)
                 try:
                     best = get_best_vector(self.experiment, trait_path, extraction_variant)
-                except FileNotFoundError as e:
-                    print(f"  Skip {trait_path}: {e}")
+                except (FileNotFoundError, ValueError) as e:
+                    # No vectors found for this trait - skip silently
                     continue
 
                 layer = best['layer']
@@ -168,13 +161,12 @@ class ChatInference:
                 component = best['component']
                 source = best['source']
 
-                vector_file = get_vector_path(self.experiment, trait_path, method, layer, extraction_variant, component, position)
-                if not vector_file.exists():
+                # Load vector to appropriate device
+                vector = load_vector(self.experiment, trait_path, layer, extraction_variant, method, component, position)
+                if vector is None:
                     print(f"  Skip {trait_path}: vector file not found")
                     continue
-
-                # Load vector to appropriate device
-                vector = torch.load(vector_file, weights_only=True).to(dtype=torch.float16)
+                vector = vector.to(dtype=torch.float16)
                 if self.backend == "local" and self.model is not None:
                     vector = vector.to(device=self.model.device)
                 # For modal backend, keep on CPU
@@ -238,9 +230,15 @@ class ChatInference:
 
         # Debug: print what we're sending
         print(f"[ChatInference] History received: {history}")
-        print(f"[ChatInference] Messages to tokenize: {messages}")
+        print(f"[ChatInference] Messages: {messages}")
 
-        # Format prompt with chat template if needed
+        # Route to appropriate backend
+        if self.backend == "modal":
+            # Modal backend: send raw messages, Modal handles formatting
+            yield from self._generate_modal(messages, max_new_tokens, temperature, previous_context_length, steering_configs)
+            return
+
+        # Local backend: format prompt with chat template
         if self.use_chat_template:
             formatted_prompt = self.tokenizer.apply_chat_template(
                 messages, add_generation_prompt=True, tokenize=False
@@ -248,12 +246,6 @@ class ChatInference:
         else:
             # Base model: raw text
             formatted_prompt = prompt
-
-        # Route to appropriate backend
-        if self.backend == "modal":
-            # Modal backend: get all activations at once, then stream
-            yield from self._generate_modal(formatted_prompt, max_new_tokens, temperature, previous_context_length, steering_configs)
-            return
 
         # Local backend continues below
         import torch  # Lazy import
@@ -437,7 +429,7 @@ class ChatInference:
 
     def _generate_modal(
         self,
-        formatted_prompt: str,
+        messages: List[Dict],
         max_new_tokens: int,
         temperature: float,
         previous_context_length: int,
@@ -446,6 +438,7 @@ class ChatInference:
         """
         Generate using Modal backend with streaming.
 
+        Modal handles chat template formatting. We send raw messages,
         Modal yields tokens + activations one at a time, we project and stream
         to browser immediately.
         """
@@ -491,7 +484,7 @@ class ChatInference:
             with modal_inference.app.run():
                 for chunk in modal_inference.capture_activations_stream.remote_gen(
                     model_name=self._model_id,
-                    prompt=formatted_prompt,
+                    messages=messages,  # Modal handles chat template formatting
                     max_new_tokens=max_new_tokens,
                     temperature=temperature,
                     component="residual",

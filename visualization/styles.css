@@ -2241,6 +2241,12 @@ code {
     align-self: flex-end;
 }
 
+[data-theme="dark"] .chat-message.user,
+[data-theme="dark"] .chat-message.user .message-content,
+[data-theme="dark"] .chat-message.user .message-content * {
+    color: #1a1a1a;
+}
+
 .chat-message.assistant {
     background: var(--bg-tertiary);
     color: var(--text-primary);
@@ -2336,7 +2342,7 @@ code {
 
 .chat-input-area textarea {
     width: 100%;
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 8px;

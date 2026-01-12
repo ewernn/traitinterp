@@ -20,7 +20,7 @@ Usage:
     ensemble = load_ensemble(experiment, trait, model_variant, '001')
 
     # Find best
-    best = get_best_ensemble(experiment, trait, model_variant, min_coherence=70)
+    best = get_best_ensemble(experiment, trait, model_variant)
 """
 
 import json
@@ -34,6 +34,7 @@ from utils.paths import (
     get_ensemble_path,
     get_ensemble_manifest_path,
 )
+from utils.vectors import MIN_COHERENCE
 
 
 def _next_ensemble_id(experiment: str, trait: str, model_variant: str) -> str:
@@ -238,7 +239,7 @@ def get_best_ensemble(
     experiment: str,
     trait: str,
     model_variant: str,
-    min_coherence: float = 70.0,
+    min_coherence: float = MIN_COHERENCE,
 ) -> Optional[Dict]:
     """
     Find best performing ensemble for a trait.

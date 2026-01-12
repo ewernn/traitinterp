@@ -7,7 +7,7 @@ Input:
     - vector-from-trait OR traits: Single or multiple trait specs
 
 Output:
-    - experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/results.json
+    - experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/results.jsonl
     - experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/responses/{component}/{method}/
 
 Usage:
@@ -45,13 +45,6 @@ Usage:
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait} \\
         --coefficients 50,100,150
-
-    # Multi-layer weighted steering (delta-proportional coefficients)
-    python analysis/steering/evaluate.py \\
-        --experiment gemma-2-2b-it \\
-        --vector-from-trait gemma-2-2b-base/epistemic/optimism \\
-        --layers 6-18 \\
-        --multi-layer weighted --global-scale 1.5
 """
 
 import sys
@@ -67,43 +60,24 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 from analysis.steering.data import load_steering_data, load_questions_from_inference
-from analysis.steering.multilayer import run_multilayer_evaluation
-from analysis.steering.results import load_or_create_results, save_results, save_responses, save_baseline_responses
+from analysis.steering.results import (
+    init_results_file, load_results, append_baseline,
+    save_baseline_responses, find_cached_run, append_run, save_responses,
+    is_better_result,
+)
+from utils.paths import get_steering_results_path
 from analysis.steering.coef_search import (
-    evaluate_and_save,
+    evaluate_single_config,
     adaptive_search_layer,
     batched_adaptive_search,
 )
+from core import VectorSpec
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
 from utils.paths import get, get_vector_path, get_default_variant
-from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model, load_model_with_lora, get_num_layers, get_layers_module
+from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model, load_model_with_lora, get_num_layers, get_layers_module, load_model_or_client
 from utils.paths import get_model_variant
-from utils.vectors import MIN_COHERENCE
-from other.server.client import get_model_or_client, ModelClient
-
-
-def load_model_handle(model_name: str, load_in_8bit: bool = False, load_in_4bit: bool = False, no_server: bool = False, lora_adapter: str = None):
-    """Load model locally or get client if server available.
-
-    Returns:
-        (model, tokenizer, is_remote) tuple
-    """
-    # LoRA requires local loading
-    if lora_adapter:
-        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora_adapter, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-        return model, tokenizer, False
-
-    if not no_server:
-        handle = get_model_or_client(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-        if isinstance(handle, ModelClient):
-            print(f"Using model server (model: {model_name})")
-            return handle, handle, True  # model, tokenizer, is_remote
-        model, tokenizer = handle
-        return model, tokenizer, False
-    else:
-        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-        return model, tokenizer, False
+from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms
 
 
 def parse_layers(layers_arg: str, num_layers: int) -> List[int]:
@@ -142,37 +116,6 @@ def parse_coefficients(coef_arg: Optional[str]) -> Optional[List[float]]:
     if coef_arg is None:
         return None
     return [float(c) for c in coef_arg.split(",")]
-
-
-def load_vector(experiment: str, trait: str, layer: int, model_variant: str, method: str = "probe", component: str = "residual", position: str = "response[:]") -> Optional[torch.Tensor]:
-    """Load trait vector from experiment. Returns None if not found."""
-    vector_file = get_vector_path(experiment, trait, method, layer, model_variant, component, position)
-
-    if not vector_file.exists():
-        return None
-
-    return torch.load(vector_file, weights_only=True)
-
-
-def load_cached_activation_norms(experiment: str) -> Dict[int, float]:
-    """
-    Load cached activation norms from extraction_evaluation.json.
-
-    Returns:
-        {layer: norm} or empty dict if not available
-    """
-    eval_path = get('extraction_eval.evaluation', experiment=experiment)
-    if not eval_path.exists():
-        return {}
-
-    try:
-        with open(eval_path) as f:
-            data = json.load(f)
-        norms = data.get('activation_norms', {})
-        # Convert string keys back to int
-        return {int(k): v for k, v in norms.items()}
-    except (json.JSONDecodeError, KeyError):
-        return {}
 
 
 def estimate_activation_norm(
@@ -296,6 +239,7 @@ async def run_evaluation(
     min_coherence: float = MIN_COHERENCE,
     extraction_variant: Optional[str] = None,
     questions_from: Optional[str] = None,
+    save_mode: str = "best",
 ):
     """
     Main evaluation flow.
@@ -340,7 +284,7 @@ async def run_evaluation(
     # Note: Steering uses hooks, so we force local mode
     should_close_judge = False
     if model is None:
-        model, tokenizer, _ = load_model_handle(model_name, load_in_8bit, load_in_4bit, no_server=True, lora_adapter=lora_adapter)
+        model, tokenizer, _ = load_model_or_client(model_name, load_in_8bit, load_in_4bit, no_server=True, lora_adapter=lora_adapter)
     num_layers = get_num_layers(model)
 
     # Load experiment config
@@ -355,10 +299,22 @@ async def run_evaluation(
     if not layers:
         raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
 
-    # Load/create results
-    results = load_or_create_results(
-        experiment, trait, model_variant, steering_data.prompts_file, model_name, vector_experiment, judge_provider, position, prompt_set
-    )
+    # Load/create results (JSONL format)
+    cached_runs = []
+    baseline_result = None
+    results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
+
+    if results_path.exists():
+        # Load existing results for resume
+        results_data = load_results(experiment, trait, model_variant, position, prompt_set)
+        cached_runs = results_data.get("runs", [])
+        baseline_result = results_data.get("baseline")
+    else:
+        # Initialize new results file
+        init_results_file(
+            experiment, trait, model_variant, steering_data.prompts_file,
+            model_name, vector_experiment, judge_provider, position, prompt_set
+        )
 
     # Create judge if not provided
     if judge is None:
@@ -370,18 +326,18 @@ async def run_evaluation(
     print(f"Chat template: {use_chat_template}")
     print(f"Vectors from: {vector_experiment}/{trait} @ {position}")
     print(f"Questions: {len(questions)}")
-    print(f"Existing runs: {len(results['runs'])}")
+    print(f"Existing runs: {len(cached_runs)}")
 
     # Compute baseline if needed
-    if results["baseline"] is None:
-        results["baseline"], baseline_responses = await compute_baseline(
+    if baseline_result is None:
+        baseline_result, baseline_responses = await compute_baseline(
             model, tokenizer, questions, steering_data.trait_name, steering_data.trait_definition,
             judge, use_chat_template, eval_prompt=effective_eval_prompt
         )
         save_baseline_responses(baseline_responses, experiment, trait, model_variant, position, prompt_set)
-        save_results(results, experiment, trait, model_variant, position, prompt_set)
+        append_baseline(experiment, trait, model_variant, baseline_result, position, prompt_set)
     else:
-        print(f"\nUsing existing baseline: trait={results['baseline']['trait_mean']:.1f}")
+        print(f"\nUsing existing baseline: trait={baseline_result['trait_mean']:.1f}")
 
     # Load vectors and compute base coefficients
     # Try cached activation norms first (from extraction_evaluation.json)
@@ -428,23 +384,64 @@ async def run_evaluation(
         # Manual mode: test specified coefficients for each layer
         print(f"\nManual coefficients: {coefficients}")
         for ld in layer_data:
+            best_for_layer = None  # Track best for save_mode="best"
+
             for coef in coefficients:
-                await evaluate_and_save(
+                spec = VectorSpec(layer=ld["layer"], component=component, position=position, method=method, weight=coef)
+                config = {"vectors": [spec.to_dict()]}
+
+                # Skip if cached
+                if find_cached_run(cached_runs, config) is not None:
+                    print(f"  L{ld['layer']} c{coef:.0f}: cached, skipping")
+                    continue
+
+                print(f"\n  Evaluating L{ld['layer']} c{coef:.0f}...")
+                result, responses = await evaluate_single_config(
                     model, tokenizer, ld["vector"], ld["layer"], coef,
                     questions, steering_data.trait_name, steering_data.trait_definition,
-                    judge, use_chat_template, component,
-                    results, experiment, trait, model_variant, vector_experiment, method,
-                    position=position, prompt_set=prompt_set,
-                    eval_prompt=effective_eval_prompt
+                    judge, use_chat_template, component, eval_prompt=effective_eval_prompt
+                )
+
+                timestamp = datetime.now().isoformat()
+
+                # Always append to results.jsonl
+                append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+                cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
+
+                # Handle response saving based on save_mode
+                if save_mode == "all":
+                    save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
+                elif save_mode == "best":
+                    # Track best: highest trait where coherence >= threshold, or best coherence
+                    trait_mean = result.get("trait_mean") or 0
+                    coherence_mean = result.get("coherence_mean") or 0
+
+                    if is_better_result(best_for_layer, trait_mean, coherence_mean, min_coherence):
+                        best_for_layer = {
+                            "trait_mean": trait_mean,
+                            "coherence_mean": coherence_mean,
+                            "valid": coherence_mean >= min_coherence,
+                            "responses": responses,
+                            "config": config,
+                            "timestamp": timestamp,
+                        }
+                # save_mode == "none": don't save responses
+
+            # Save best for this layer (if tracking)
+            if save_mode == "best" and best_for_layer and best_for_layer.get("responses"):
+                save_responses(
+                    best_for_layer["responses"], experiment, trait, model_variant,
+                    position, prompt_set, best_for_layer["config"], best_for_layer["timestamp"]
                 )
     elif batched and len(layer_data) > 1:
         # Batched adaptive search (default) - all layers in parallel
         await batched_adaptive_search(
             model, tokenizer, layer_data, questions, steering_data.trait_name, steering_data.trait_definition,
-            judge, use_chat_template, component, results, experiment, trait, model_variant,
+            judge, use_chat_template, component, cached_runs, experiment, trait, model_variant,
             vector_experiment, method, position=position, prompt_set=prompt_set, n_steps=n_search_steps,
             up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
-            max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
+            max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
+            save_mode=save_mode, coherence_threshold=min_coherence
         )
     else:
         # Sequential adaptive search for each layer
@@ -454,25 +451,26 @@ async def run_evaluation(
                 model, tokenizer, ld["vector"], ld["layer"], ld["base_coef"],
                 questions, steering_data.trait_name, steering_data.trait_definition,
                 judge, use_chat_template, component,
-                results, experiment, trait, model_variant, vector_experiment, method,
+                cached_runs, experiment, trait, model_variant, vector_experiment, method,
                 position=position, prompt_set=prompt_set, n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
-                max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
+                max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
+                save_mode=save_mode, coherence_threshold=min_coherence
             )
 
     # Print summary
     print(f"\n{'='*60}")
     print("Summary")
     print(f"{'='*60}")
-    print(f"Baseline: {results['baseline']['trait_mean']:.1f}")
-    print(f"Total runs: {len(results['runs'])}")
+    print(f"Baseline: {baseline_result['trait_mean']:.1f}")
+    print(f"Total runs: {len(cached_runs)}")
 
     # Filter by coherence threshold
-    valid_runs = [r for r in results['runs'] if r['result'].get('coherence_mean', 0) >= min_coherence]
+    valid_runs = [r for r in cached_runs if r.get('result', {}).get('coherence_mean', 0) >= min_coherence]
     if valid_runs:
-        best_run = max(valid_runs, key=lambda r: r['result'].get('trait_mean') or 0)
+        best_run = max(valid_runs, key=lambda r: r.get('result', {}).get('trait_mean') or 0)
         score = best_run['result']['trait_mean']
         coh = best_run['result'].get('coherence_mean', 0)
-        delta = score - results['baseline']['trait_mean']
+        delta = score - baseline_result['trait_mean']
         layer = best_run['config']['vectors'][0]['layer']
         coef = best_run['config']['vectors'][0]['weight']
         print(f"Best (coherence≥{min_coherence:.0f}): L{layer} c{coef:.0f}")
@@ -554,10 +552,8 @@ def main():
     # === Advanced ===
     parser.add_argument("--no-batch", action="store_true",
                         help="Disable batched layer evaluation (run layers sequentially)")
-    parser.add_argument("--multi-layer", choices=["weighted", "orthogonal"],
-                        help="Multi-layer steering mode: 'weighted' (delta-proportional) or 'orthogonal'")
-    parser.add_argument("--global-scale", type=float, default=1.0,
-                        help="Global scale for multi-layer coefficients (default: 1.0)")
+    parser.add_argument("--save-responses", choices=["all", "best", "none"], default="best",
+                        help="Response saving: 'all' (every config), 'best' (best per layer), 'none'. Default: best")
 
     args = parser.parse_args()
 
@@ -616,7 +612,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
     model, tokenizer, judge = None, None, None
     if multi_trait:
         print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
-        model, tokenizer, _ = load_model_handle(
+        model, tokenizer, _ = load_model_or_client(
             model_name,
             load_in_8bit=args.load_in_8bit,
             load_in_4bit=args.load_in_4bit,
@@ -646,66 +642,40 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                 print(f"TRAIT: {vector_experiment}/{trait}")
                 print(f"{'='*60}")
 
-            if args.multi_layer:
-                await run_multilayer_evaluation(
-                    experiment=args.experiment,
-                    trait=trait,
-                    model_variant=model_variant,
-                    vector_experiment=vector_experiment,
-                    layers=layers_arg,
-                    mode=args.multi_layer,
-                    global_scale=args.global_scale,
-                    method=args.method,
-                    component=args.component,
-                    position=args.position,
-                    prompt_set=args.prompt_set,
-                    model_name=model_name,
-                    subset=args.subset,
-                    model=model,
-                    tokenizer=tokenizer,
-                    judge=judge,
-                    load_in_8bit=args.load_in_8bit,
-                    load_in_4bit=args.load_in_4bit,
-                    lora_adapter=lora,
-                    max_new_tokens=args.max_new_tokens,
-                    eval_prompt=effective_eval_prompt,
-                    use_default_prompt=use_default,
-                    extraction_variant=args.extraction_variant,
-                )
-            else:
-                await run_evaluation(
-                    experiment=args.experiment,
-                    trait=trait,
-                    vector_experiment=vector_experiment,
-                    model_variant=model_variant,
-                    layers_arg=layers_arg,
-                    coefficients=coefficients,
-                    method=args.method,
-                    component=args.component,
-                    position=args.position,
-                    prompt_set=args.prompt_set,
-                    questions_from=args.questions_from,
-                    model_name=model_name,
-                    judge_provider=args.judge,
-                    subset=args.subset,
-                    n_search_steps=args.search_steps,
-                    up_mult=args.up_mult,
-                    down_mult=args.down_mult,
-                    start_mult=args.start_mult,
-                    momentum=args.momentum,
-                    batched=not args.no_batch,
-                    model=model,
-                    tokenizer=tokenizer,
-                    judge=judge,
-                    load_in_8bit=args.load_in_8bit,
-                    load_in_4bit=args.load_in_4bit,
-                    lora_adapter=lora,
-                    max_new_tokens=args.max_new_tokens,
-                    eval_prompt=effective_eval_prompt,
-                    use_default_prompt=use_default,
-                    min_coherence=args.min_coherence,
-                    extraction_variant=args.extraction_variant,
-                )
+            await run_evaluation(
+                experiment=args.experiment,
+                trait=trait,
+                vector_experiment=vector_experiment,
+                model_variant=model_variant,
+                layers_arg=layers_arg,
+                coefficients=coefficients,
+                method=args.method,
+                component=args.component,
+                position=args.position,
+                prompt_set=args.prompt_set,
+                questions_from=args.questions_from,
+                model_name=model_name,
+                judge_provider=args.judge,
+                subset=args.subset,
+                n_search_steps=args.search_steps,
+                up_mult=args.up_mult,
+                down_mult=args.down_mult,
+                start_mult=args.start_mult,
+                momentum=args.momentum,
+                batched=not args.no_batch,
+                model=model,
+                tokenizer=tokenizer,
+                judge=judge,
+                load_in_8bit=args.load_in_8bit,
+                load_in_4bit=args.load_in_4bit,
+                lora_adapter=lora,
+                max_new_tokens=args.max_new_tokens,
+                eval_prompt=effective_eval_prompt,
+                use_default_prompt=use_default,
+                min_coherence=args.min_coherence,
+                extraction_variant=args.extraction_variant,
+                save_mode=args.save_responses,
+            )
     finally:
         if judge is not None:
             await judge.close()

@@ -117,7 +117,7 @@ steering:
   trait: "experiments/{experiment}/steering/{trait}/{model_variant}"
   position: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}"
   prompt_set: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}"
-  results: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/results.json"
+  results: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/results.jsonl"
   responses: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/responses"
   baseline: "experiments/{experiment}/steering/{trait}/{model_variant}/{position}/{prompt_set}/responses/baseline.json"
 

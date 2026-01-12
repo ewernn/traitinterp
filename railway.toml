@@ -1,0 +1,19 @@
+# Railway deployment configuration
+
+[build]
+builder = "nixpacks"
+
+[build.nixpacks]
+# Use minimal requirements (no transformers - Modal handles that)
+cmds = ["pip install -r other/railway/requirements.txt"]
+
+[deploy]
+startCommand = "python visualization/serve.py"
+healthcheckPath = "/api/experiments"
+healthcheckTimeout = 30
+
+# Environment variables (set in Railway dashboard, not here):
+# MODE=production
+# MODAL_TOKEN_ID=...
+# MODAL_TOKEN_SECRET=...
+# HF_TOKEN=... (if needed)

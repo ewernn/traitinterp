@@ -5,8 +5,8 @@ Model onboarding script - investigate chat template behavior before adding a mod
 Downloads only the tokenizer (not the full model weights).
 
 Usage:
-    python scripts/onboard_model.py google/gemma-2-2b-it
-    python scripts/onboard_model.py meta-llama/Llama-3.1-8B-Instruct --save
+    python other/scripts/onboard_model.py google/gemma-2-2b-it
+    python other/scripts/onboard_model.py meta-llama/Llama-3.1-8B-Instruct --save
 """
 
 import argparse

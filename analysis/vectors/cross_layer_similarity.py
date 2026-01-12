@@ -20,13 +20,13 @@ import torch
 import numpy as np
 
 from utils.paths import (
-    get_vector_path,
     list_methods,
     list_layers,
     discover_extracted_traits,
     get as get_path,
     get_model_variant,
 )
+from utils.vectors import load_vector
 from core.math import cosine_similarity
 
 
@@ -50,9 +50,8 @@ def compute_cross_layer_matrix(
 
     vectors = []
     for layer in layers:
-        path = get_vector_path(experiment, trait, method, layer, model_variant, component, position)
-        v = torch.load(path, weights_only=True).float()
-        vectors.append(v)
+        v = load_vector(experiment, trait, layer, model_variant, method, component, position)
+        vectors.append(v.float())
 
     n = len(layers)
     matrix = np.zeros((n, n))

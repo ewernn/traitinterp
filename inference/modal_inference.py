@@ -4,6 +4,8 @@ Modal deployment for activation capture with volume-cached models.
 Uses Modal Volume to cache models between container restarts, reducing
 cold starts from ~30s to ~5-10s.
 
+Mounts core/ and utils/ to reuse hooks and path utilities from codebase.
+
 Usage (from Railway or local):
     import requests
     response = requests.post(
@@ -15,7 +17,6 @@ Usage (from Railway or local):
 """
 
 import modal
-import json
 import os
 from pathlib import Path
 
@@ -24,7 +25,11 @@ app = modal.App("trait-capture")
 # Persistent volume for model caching
 volume = modal.Volume.from_name("model-cache", create_if_missing=True)
 
-# Image with dependencies
+# Paths for copying core/ and utils/ into image
+inference_dir = Path(__file__).parent
+repo_root = inference_dir.parent
+
+# Image with dependencies + local code copied in
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
@@ -32,7 +37,11 @@ image = (
         "transformers",
         "accelerate",
         "huggingface_hub",
+        "scipy",
+        "scikit-learn",
     )
+    .add_local_dir(repo_root / "core", remote_path="/root/core")
+    .add_local_dir(repo_root / "utils", remote_path="/root/utils")
 )
 
 # Model -> GPU mapping
@@ -69,7 +78,7 @@ def _load_model_and_tokenizer(model_name: str):
     start = time.time()
 
     if model_cache_dir.exists():
-        print(f"✓ Loading from cache: {model_cache_dir}")
+        print(f"Loading from cache: {model_cache_dir}")
         tokenizer = AutoTokenizer.from_pretrained(str(model_cache_dir))
         model = AutoModelForCausalLM.from_pretrained(
             str(model_cache_dir),
@@ -77,7 +86,7 @@ def _load_model_and_tokenizer(model_name: str):
             device_map="auto",
         )
     else:
-        print(f"⬇ Downloading from HuggingFace (first run only)...")
+        print(f"Downloading from HuggingFace (first run only)...")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
@@ -86,14 +95,14 @@ def _load_model_and_tokenizer(model_name: str):
         )
 
         # Cache for next time
-        print(f"💾 Saving to cache: {model_cache_dir}")
+        print(f"Saving to cache: {model_cache_dir}")
         model_cache_dir.mkdir(parents=True, exist_ok=True)
         model.save_pretrained(str(model_cache_dir))
         tokenizer.save_pretrained(str(model_cache_dir))
         volume.commit()  # Persist to volume
 
     load_time = time.time() - start
-    print(f"✓ Model loaded in {load_time:.1f}s")
+    print(f"Model loaded in {load_time:.1f}s")
 
     return model, tokenizer, load_time
 
@@ -114,7 +123,7 @@ def warmup(model_name: str = "Qwen/Qwen3-1.7B") -> dict:
     Returns:
         {"status": "ready", "model": model_name, "load_time": seconds}
     """
-    print(f"🔥 Warming up with {model_name}...")
+    print(f"Warming up with {model_name}...")
     model, tokenizer, load_time = _load_model_and_tokenizer(model_name)
 
     return {
@@ -166,8 +175,15 @@ def capture_activations_stream(
             "component": component,
         }
     """
+    import sys
     import torch
     import time
+
+    # Add mounted directories to path for imports
+    sys.path.insert(0, "/root")
+
+    # Now we can import from our codebase
+    from core.hooks import get_hook_path, HookManager, SteeringHook
 
     print(f"Loading {model_name}...")
     model, tokenizer, load_time = _load_model_and_tokenizer(model_name)
@@ -196,69 +212,37 @@ def capture_activations_stream(
     # Storage for activations (cleared each token)
     current_activations = {}
 
-    # Hook to capture activations
-    def make_hook(layer_idx):
+    # Hook to capture activations (per-token streaming, not accumulated)
+    # CaptureHook accumulates, so we use inline hook for streaming
+    def make_capture_hook(layer_idx):
         def hook(module, inp, out):
-            # Get output tensor
             out_tensor = out[0] if isinstance(out, tuple) else out
             # Capture last position only (token-by-token generation)
             act = out_tensor[:, -1, :].detach().cpu()  # [1, hidden_dim]
             current_activations[layer_idx] = act.squeeze(0)  # [hidden_dim]
         return hook
 
-    # Register hooks on appropriate components
-    hooks = []
-    if component == "residual":
-        hook_path = "model.layers.{}"
-    elif component == "attn_out":
-        hook_path = "model.layers.{}.self_attn"
-    elif component == "mlp_out":
-        hook_path = "model.layers.{}.mlp"
-    else:
-        raise ValueError(f"Unknown component: {component}")
+    # Use HookManager for registering capture hooks
+    hook_manager = HookManager(model)
+    for layer in range(num_layers):
+        path = get_hook_path(layer, component, model=model)
+        hook_manager.add_forward_hook(path, make_capture_hook(layer))
 
-    for i in range(num_layers):
-        path = hook_path.format(i)
-        for name, module in model.named_modules():
-            if name == path:
-                hooks.append(module.register_forward_hook(make_hook(i)))
-                break
-
-    # Register steering hooks if provided
-    # Pattern from core/hooks.py:SteeringHook - adds coefficient * vector to layer output
+    # Register steering hooks using SteeringHook from core/
     steering_hooks = []
     if steering_configs:
-        print(f"🎯 Applying steering: {len(steering_configs)} vectors")
-
-        # Prepare steering vectors as tensors
-        steering_vectors = {}
+        print(f"Applying steering: {len(steering_configs)} vectors")
         for cfg in steering_configs:
             layer = cfg['layer']
-            vector = torch.tensor(cfg['vector'], dtype=torch.float32, device=model.device)
+            vector = cfg['vector']  # List of floats
             coefficient = cfg['coefficient']
-            steering_vectors[layer] = (vector, coefficient)
             print(f"   L{layer}: coef={coefficient}")
 
-        def make_steering_hook(layer_idx):
-            def hook(module, inputs, outputs):
-                if layer_idx not in steering_vectors:
-                    return outputs
-                vector, coef = steering_vectors[layer_idx]
-                out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
-                # Add steering: coefficient * vector (cast to output dtype)
-                steer = (coef * vector).to(dtype=out_tensor.dtype)
-                if isinstance(outputs, tuple):
-                    return (out_tensor + steer, *outputs[1:])
-                return out_tensor + steer
-            return hook
-
-        # Register steering hooks on residual stream (same layers as steering configs)
-        for layer in steering_vectors.keys():
-            path = f"model.layers.{layer}"
-            for name, module in model.named_modules():
-                if name == path:
-                    steering_hooks.append(module.register_forward_hook(make_steering_hook(layer)))
-                    break
+            # Use SteeringHook from core/hooks.py
+            path = get_hook_path(layer, "residual", model=model)
+            steering_hook = SteeringHook(model, vector, path, coefficient=coefficient)
+            steering_hook.__enter__()  # Register the hook
+            steering_hooks.append(steering_hook)
 
     # Generate token-by-token and yield immediately
     print(f"Generating up to {max_new_tokens} tokens...")
@@ -273,6 +257,7 @@ def capture_activations_stream(
         if token_ids:
             stop_token_ids.add(token_ids[0])
 
+    tokens_generated = 0
     with torch.no_grad():
         for step in range(max_new_tokens):
             # Clear previous activations
@@ -307,21 +292,21 @@ def capture_activations_stream(
                 "component": component,
             }
 
+            tokens_generated += 1
+
             # Update context for next token
             context = torch.cat([context, next_token], dim=1)
 
     gen_time = time.time() - gen_start
-    tokens_generated = step + 1 if 'step' in dir() else 0
     if tokens_generated > 0:
-        print(f"✓ Generated {tokens_generated} tokens in {gen_time:.1f}s ({gen_time/tokens_generated:.3f}s/token)")
+        print(f"Generated {tokens_generated} tokens in {gen_time:.1f}s ({gen_time/tokens_generated:.3f}s/token)")
     else:
-        print(f"✓ Generated 0 tokens")
+        print(f"Generated 0 tokens")
 
     # Remove all hooks
-    for h in hooks:
-        h.remove()
-    for h in steering_hooks:
-        h.remove()
+    hook_manager.remove_all()
+    for steering_hook in steering_hooks:
+        steering_hook.__exit__(None, None, None)
 
 
 @app.local_entrypoint()
@@ -335,7 +320,7 @@ def main(
     Usage:
         modal run inference/modal_inference.py --model google/gemma-2-2b-it --prompt "Hello!"
     """
-    print(f"\n🚀 Testing streaming activation capture")
+    print(f"\nTesting streaming activation capture")
     print(f"Model: {model}")
     print(f"Prompt: {prompt}\n")
 
@@ -360,6 +345,6 @@ def main(
             act_dim = len(activations[first_layer])
             print(f"Token {token_count}: '{token}' | Layers: {num_layers} | Dim: {act_dim}")
 
-    print(f"\n📊 Results:")
+    print(f"\nResults:")
     print(f"Total tokens: {token_count}")
     print(f"Response: {full_response[:100]}...")

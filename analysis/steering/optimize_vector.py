@@ -31,11 +31,13 @@ from typing import List, Tuple
 from datetime import datetime
 
 from analysis.steering.data import load_steering_data
-from analysis.steering.steer import BatchedLayerSteeringHook
-from utils.paths import get_vector_path, get_vector_dir, get_model_variant, get_activation_path
+from core import BatchedLayerSteeringHook
+from analysis.steering.results import init_results_file, append_run, save_responses
+from utils.paths import get_vector_dir, get_model_variant, get_activation_path, get_steering_results_path
 from utils.model import load_model, format_prompt
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
+from utils.vectors import MIN_COHERENCE, load_vector
 from core import VectorSpec
 
 
@@ -102,9 +104,9 @@ def compute_pca_basis(
     basis = Vh[:n_components, :]  # [n_components, hidden_dim]
 
     # Load original probe vector for comparison
-    vector_path = get_vector_path(experiment, trait, "probe", layer, model_variant, component, position)
-    if vector_path.exists():
-        original_vector = torch.load(vector_path, weights_only=True).float()
+    original_vector = load_vector(experiment, trait, layer, model_variant, "probe", component, position)
+    if original_vector is not None:
+        original_vector = original_vector.float()
     else:
         # Fall back to mean_diff
         original_vector = (pos_acts.mean(dim=0) - neg_acts.mean(dim=0)).float()
@@ -148,7 +150,7 @@ async def run_cma_es(
     popsize: int = 8,
     max_new_tokens: int = 12,
     n_questions: int = 5,
-    coherence_threshold: float = 70.0,
+    coherence_threshold: float = MIN_COHERENCE,
     base_coef: float = 90.0,
 ):
     """
@@ -216,6 +218,7 @@ async def run_cma_es(
     es = cma.CMAEvolutionStrategy(x0, sigma0, opts)
 
     best_result = None
+    best_responses = None
     generation = 0
 
     try:
@@ -315,6 +318,12 @@ async def run_cma_es(
                         "fitness": fitness,
                         "magnitude": magnitude,
                     }
+                    # Track best responses for saving
+                    cand_responses = all_responses[start:end]
+                    best_responses = [
+                        {"question": q, "response": r, "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
+                        for q, r, s in zip(questions, cand_responses, cand_scores)
+                    ]
 
                 print(f"  [{cand_idx+1}/{n_candidates}] trait={trait_mean:.1f} coh={coherence_mean:.1f} fit={fitness:.1f} mag={magnitude:.1f} sim={similarity:.3f}")
 
@@ -371,6 +380,43 @@ async def run_cma_es(
             json.dump(metadata, f, indent=2)
         print(f"Saved metadata: {metadata_path}")
 
+        # Save to steering results.jsonl (so get_best_vector can find it)
+        prompt_set = "steering"  # Default prompt set
+        model_variant = extraction_variant  # Use same variant for steering results
+        results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
+
+        # Initialize results file if needed
+        if not results_path.exists():
+            init_results_file(
+                experiment, trait, model_variant, steering_data.prompts_file,
+                model_name, experiment, "openai", position, prompt_set
+            )
+
+        # Build config in VectorSpec format
+        config = {
+            "vectors": [VectorSpec(
+                layer=layer,
+                component=component,
+                position=position,
+                method="cma_es",
+                weight=1.0,  # Magnitude baked into vector
+            ).to_dict()]
+        }
+        result = {
+            "trait_mean": best_result['trait_mean'],
+            "coherence_mean": best_result['coherence_mean'],
+            "n": n_questions,
+        }
+
+        append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+        print(f"Saved to results.jsonl")
+
+        # Save responses
+        if best_responses:
+            timestamp = datetime.now().isoformat()
+            save_responses(best_responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
+            print(f"Saved responses")
+
     print(f"{'='*60}")
 
     return best_result
@@ -388,7 +434,7 @@ def main():
     parser.add_argument("--popsize", type=int, default=8)
     parser.add_argument("--max-new-tokens", type=int, default=12)
     parser.add_argument("--n-questions", type=int, default=5)
-    parser.add_argument("--coherence-threshold", type=float, default=70.0)
+    parser.add_argument("--coherence-threshold", type=float, default=MIN_COHERENCE)
     parser.add_argument("--base-coef", type=float, default=90.0)
 
     args = parser.parse_args()

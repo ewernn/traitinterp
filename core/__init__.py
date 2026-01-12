@@ -15,6 +15,8 @@ from .hooks import (
     CaptureHook,                # capture from one layer
     SteeringHook,               # steer one layer
     MultiLayerCapture,          # capture one component across layers
+    MultiLayerSteeringHook,     # steer multiple layers simultaneously
+    BatchedLayerSteeringHook,   # different steering per batch slice
 )
 from .methods import (
     ExtractionMethod,

@@ -23,10 +23,9 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 
-from core import SteeringHook, get_hook_path, VectorSpec
-from analysis.steering.steer import BatchedLayerSteeringHook
+from core import SteeringHook, get_hook_path, VectorSpec, BatchedLayerSteeringHook
 from utils.generation import generate_batch, calculate_max_batch_size
-from analysis.steering.results import find_existing_run_index, save_results, save_responses
+from analysis.steering.results import append_run, save_responses, find_cached_run, is_better_result
 from utils.judge import TraitJudge
 from utils.model import format_prompt
 from utils.vectors import MIN_COHERENCE
@@ -85,47 +84,10 @@ async def evaluate_single_config(
     return result, responses
 
 
-async def evaluate_and_save(
-    model, tokenizer, vector, layer, coef,
-    questions, trait_name, trait_definition, judge, use_chat_template, component,
-    results, experiment, trait, model_variant, vector_experiment, method,
-    position: str = "response[:]",
-    prompt_set: str = "steering",
-    eval_prompt: Optional[str] = None,
-):
-    """Evaluate a single config and save to results."""
-    spec = VectorSpec(layer=layer, component=component, position=position, method=method, weight=coef)
-    config = {"vectors": [spec.to_dict()]}
-
-    # Skip if already exists
-    if find_existing_run_index(results, config) is not None:
-        print(f"  L{layer} c{coef:.0f}: Already evaluated, skipping")
-        return
-
-    print(f"\n  Evaluating L{layer} c{coef:.0f}...")
-    result, responses = await evaluate_single_config(
-        model, tokenizer, vector, layer, coef,
-        questions, trait_name, trait_definition, judge, use_chat_template, component,
-        eval_prompt=eval_prompt
-    )
-
-    timestamp = datetime.now().isoformat()
-    save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
-
-    run_data = {
-        "config": config,
-        "result": result,
-        "timestamp": timestamp,
-    }
-
-    results["runs"].append(run_data)
-    save_results(results, experiment, trait, model_variant, position, prompt_set)
-
-
 async def adaptive_search_layer(
     model, tokenizer, vector, layer, base_coef,
     questions, trait_name, trait_definition, judge, use_chat_template, component,
-    results, experiment, trait, model_variant, vector_experiment, method,
+    cached_runs, experiment, trait, model_variant, vector_experiment, method,
     position: str = "response[:]",
     prompt_set: str = "steering",
     n_steps: int = 8,
@@ -136,6 +98,8 @@ async def adaptive_search_layer(
     momentum: float = 0.0,  # 0.0 = no momentum, 0.7 = typical momentum
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
+    save_mode: str = "best",
+    coherence_threshold: float = MIN_COHERENCE,
 ):
     """Run adaptive search for a single layer, saving each result."""
     print(f"\n--- Layer {layer} (base_coef={base_coef:.0f}) ---")
@@ -145,18 +109,18 @@ async def adaptive_search_layer(
     coef = base_coef * start_mult  # Start at start_mult * base
     velocity = 1.0  # Multiplicative velocity for momentum
     history = []
+    best_for_layer = None  # Track best for save_mode="best"
 
     for step in range(n_steps):
         # Evaluate
         spec = VectorSpec(layer=layer, component=component, position=position, method=method, weight=coef)
         config = {"vectors": [spec.to_dict()]}
 
-        existing_idx = find_existing_run_index(results, config)
-        if existing_idx is not None:
+        cached_result = find_cached_run(cached_runs, config)
+        if cached_result is not None:
             # Use existing result
-            result = results["runs"][existing_idx]["result"]
-            trait_score = result.get("trait_mean") or 0
-            coherence = result.get("coherence_mean") or 0
+            trait_score = cached_result.get("trait_mean") or 0
+            coherence = cached_result.get("coherence_mean") or 0
             print(f"  {step+1}  | {coef:>6.1f} | {trait_score:>5.1f} | {coherence:>9.1f} | (cached)")
         else:
             result, responses = await evaluate_single_config(
@@ -168,18 +132,27 @@ async def adaptive_search_layer(
             trait_score = result.get("trait_mean") or 0
             coherence = result.get("coherence_mean") or 0
 
-            # Save
             timestamp = datetime.now().isoformat()
-            save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
 
-            run_data = {
-                "config": config,
-                "result": result,
-                "timestamp": timestamp,
-            }
+            # Always append to results.jsonl
+            append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+            cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
 
-            results["runs"].append(run_data)
-            save_results(results, experiment, trait, model_variant, position, prompt_set)
+            # Handle response saving based on save_mode
+            if save_mode == "all":
+                save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
+            elif save_mode == "best":
+                # Track best: highest trait where coherence >= threshold, or best coherence
+                if is_better_result(best_for_layer, trait_score, coherence, coherence_threshold):
+                    best_for_layer = {
+                        "trait_mean": trait_score,
+                        "coherence_mean": coherence,
+                        "valid": coherence >= coherence_threshold,
+                        "responses": responses,
+                        "config": config,
+                        "timestamp": timestamp,
+                    }
+            # save_mode == "none": don't save responses
 
             # Print progress
             if coherence < threshold:
@@ -205,6 +178,13 @@ async def adaptive_search_layer(
             # Original behavior: direct multiplicative update
             coef *= direction
 
+    # Save best for this layer (if tracking)
+    if save_mode == "best" and best_for_layer and best_for_layer.get("responses"):
+        save_responses(
+            best_for_layer["responses"], experiment, trait, model_variant,
+            position, prompt_set, best_for_layer["config"], best_for_layer["timestamp"]
+        )
+
     # Report best
     valid = [(c, t, coh) for c, t, coh in history if coh >= threshold]
     if valid:
@@ -225,7 +205,7 @@ async def batched_adaptive_search(
     judge: TraitJudge,
     use_chat_template: bool,
     component: str,
-    results: Dict,
+    cached_runs: List[Dict],
     experiment: str,
     trait: str,
     model_variant: str,
@@ -242,6 +222,8 @@ async def batched_adaptive_search(
     max_new_tokens: int = 256,
     momentum: float = 0.0,  # 0.0 = no momentum, 0.7 = typical momentum
     eval_prompt: Optional[str] = None,
+    save_mode: str = "best",
+    coherence_threshold: float = MIN_COHERENCE,
 ):
     """
     Run adaptive search for multiple layers in parallel batches.
@@ -250,6 +232,7 @@ async def batched_adaptive_search(
     based on its coherence results.
 
     Args:
+        cached_runs: List of previously evaluated runs (for resume capability)
         momentum: Smoothing factor for coefficient updates (0.0-1.0).
             0.0 = no momentum (original behavior, direct up/down mult)
             0.7 = typical momentum (smooths oscillations between up/down)
@@ -284,6 +267,8 @@ async def batched_adaptive_search(
             "velocity": 1.0,  # Multiplicative velocity for momentum
             "history": [],
             "done": False,
+            "best_result": None,  # Track best for save_mode="best"
+            "best_responses": None,
         })
 
     # Process in batches of layers
@@ -300,23 +285,22 @@ async def batched_adaptive_search(
             batch_states = active_states[batch_start:batch_start + max_batch_layers]
 
             # Check which configs already have cached results
-            cached_indices = []
+            cached_configs = []
             uncached_states = []
             for i, state in enumerate(batch_states):
                 spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
                 config = {"vectors": [spec.to_dict()]}
-                existing_idx = find_existing_run_index(results, config)
-                if existing_idx is not None:
-                    cached_indices.append((i, existing_idx))
+                cached_result = find_cached_run(cached_runs, config)
+                if cached_result is not None:
+                    cached_configs.append((i, cached_result))
                 else:
                     uncached_states.append((i, state))
 
             # Report cached results
-            for i, existing_idx in cached_indices:
+            for i, cached_result in cached_configs:
                 state = batch_states[i]
-                result = results["runs"][existing_idx]["result"]
-                trait_score = result.get("trait_mean") or 0
-                coherence = result.get("coherence_mean") or 0
+                trait_score = cached_result.get("trait_mean") or 0
+                coherence = cached_result.get("coherence_mean") or 0
                 state["history"].append((state["coef"], trait_score, coherence))
                 print(f"  L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_score:5.1f}, coh={coherence:5.1f} (cached)")
 
@@ -390,20 +374,29 @@ async def batched_adaptive_search(
                         {"question": q, "response": r, "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
                         for q, r, s in zip(questions, layer_responses, layer_scores)
                     ]
-                    save_responses(responses_data, experiment, trait, model_variant, position, prompt_set, config, timestamp)
 
-                    run_data = {
-                        "config": config,
-                        "result": result,
-                        "timestamp": timestamp,
-                    }
-                    results["runs"].append(run_data)
+                    # Always append to JSONL
+                    append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+                    cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
+
+                    # Handle response saving based on save_mode
+                    if save_mode == "all":
+                        save_responses(responses_data, experiment, trait, model_variant, position, prompt_set, config, timestamp)
+                    elif save_mode == "best":
+                        # Track best: highest trait where coherence >= threshold, or best coherence
+                        if is_better_result(state.get("best_result"), trait_mean, coherence_mean, coherence_threshold):
+                            state["best_result"] = {
+                                "trait_mean": trait_mean,
+                                "coherence_mean": coherence_mean,
+                                "valid": coherence_mean >= coherence_threshold,
+                                "config": config,
+                                "timestamp": timestamp,
+                            }
+                            state["best_responses"] = responses_data
+                    # save_mode == "none": don't save responses
 
                     marker = "★" if coherence_mean >= threshold and trait_mean > 80 else ""
                     print(f"  L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_mean:5.1f}, coh={coherence_mean:5.1f} {marker}")
-
-                # Save after each batch
-                save_results(results, experiment, trait, model_variant, position, prompt_set)
 
                 # Free memory after batch
                 del all_responses, all_qa_pairs, all_scores
@@ -425,6 +418,15 @@ async def batched_adaptive_search(
                 else:
                     # Direct multiplicative update
                     state["coef"] *= direction
+
+    # Save best responses for each layer (if tracking)
+    if save_mode == "best":
+        for state in layer_states:
+            if state.get("best_responses") and state.get("best_result"):
+                save_responses(
+                    state["best_responses"], experiment, trait, model_variant,
+                    position, prompt_set, state["best_result"]["config"], state["best_result"]["timestamp"]
+                )
 
     # Report best per layer
     print(f"\n{'='*60}")

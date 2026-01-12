@@ -396,3 +396,117 @@ class MultiLayerCapture:
     def __exit__(self, *exc):
         for hook in self._hooks.values():
             hook.__exit__(*exc)
+
+
+# =============================================================================
+# MultiLayerSteeringHook - steer multiple layers simultaneously
+# =============================================================================
+
+class MultiLayerSteeringHook:
+    """
+    Steer multiple layers simultaneously with different vectors/coefficients.
+
+    Usage:
+        configs = [
+            (layer_idx, vector, coefficient),
+            (14, vec_14, 1.2),
+            (16, vec_16, 0.8),
+        ]
+        with MultiLayerSteeringHook(model, configs, component="residual"):
+            output = model.generate(**inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        configs: List[tuple],  # List of (layer, vector, coefficient)
+        component: str = "residual",
+    ):
+        """
+        Args:
+            model: The transformer model
+            configs: List of (layer, vector, coefficient) tuples
+            component: "residual", "attn_out", etc.
+        """
+        self._hooks = [
+            SteeringHook(model, vector, get_hook_path(layer, component, model=model), coefficient)
+            for layer, vector, coefficient in configs
+        ]
+
+    def __enter__(self):
+        for hook in self._hooks:
+            hook.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        for hook in reversed(self._hooks):
+            hook.__exit__(*exc)
+
+
+# =============================================================================
+# BatchedLayerSteeringHook - different steering per batch slice
+# =============================================================================
+
+class BatchedLayerSteeringHook:
+    """
+    Batched steering with different vectors per batch slice.
+
+    Use when you need different steering for different items in a batch
+    (e.g., evaluating multiple coefficient values in one forward pass).
+
+    Usage:
+        configs = [
+            (layer, vector, coefficient, (batch_start, batch_end)),
+            (14, vec, 1.0, (0, 10)),   # Steer batch items 0-9
+            (14, vec, 2.0, (10, 20)),  # Steer batch items 10-19 with different coef
+        ]
+        with BatchedLayerSteeringHook(model, configs, component="residual"):
+            output = model.generate(**batched_inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        configs: List[tuple],  # List of (layer, vector, coefficient, (batch_start, batch_end))
+        component: str = "residual",
+    ):
+        """
+        Args:
+            model: The transformer model
+            configs: List of (layer, vector, coefficient, (batch_start, batch_end)) tuples
+            component: "residual", "attn_out", etc.
+        """
+        self.model = model
+        self.component = component.lower()
+        self._manager = None
+
+        param = next(model.parameters())
+        self._layer_configs: dict = {}  # layer_idx -> List[(vector, coef, batch_slice)]
+        for layer_idx, vector, coef, batch_slice in configs:
+            vec = torch.as_tensor(vector, dtype=param.dtype, device=param.device)
+            if layer_idx not in self._layer_configs:
+                self._layer_configs[layer_idx] = []
+            self._layer_configs[layer_idx].append((vec, float(coef), batch_slice))
+
+    def _make_hook(self, layer_configs: list):
+        def hook_fn(module, inputs, outputs):
+            t = outputs[0] if isinstance(outputs, tuple) else outputs
+            t_new = t.clone()
+            for vec, coef, (batch_start, batch_end) in layer_configs:
+                t_new[batch_start:batch_end] = t_new[batch_start:batch_end] + coef * vec.to(t.device)
+            if isinstance(outputs, tuple):
+                return (t_new, *outputs[1:])
+            return t_new
+        return hook_fn
+
+    def __enter__(self):
+        self._manager = HookManager(self.model)
+        for layer_idx, layer_configs in self._layer_configs.items():
+            path = get_hook_path(layer_idx, self.component, model=self.model)
+            self._manager.add_forward_hook(path, self._make_hook(layer_configs))
+        return self
+
+    def __exit__(self, *exc):
+        if self._manager:
+            self._manager.remove_all()
+            self._manager = None

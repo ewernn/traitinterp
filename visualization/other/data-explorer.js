@@ -199,7 +199,7 @@ function renderFileTree(data) {
         for (const [trait, info] of Object.entries(data.steering.traits).sort()) {
             let traitHtml = '';
             const runsHint = info.n_runs > 0 ? `(${info.n_runs} runs)` : '';
-            traitHtml += item(info.results ? '✓' : '✗', 'results.json', info.results, runsHint, 2);
+            traitHtml += item(info.results ? '✓' : '✗', 'results.jsonl', info.results, runsHint, 2);
             const complete = info.results && info.n_runs > 0;
             steeringHtml += folder(trait, `steering-${trait.replace(/\//g, '-')}`, '', 1, traitHtml, complete, true);
         }

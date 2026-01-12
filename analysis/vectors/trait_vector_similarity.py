@@ -20,12 +20,12 @@ import torch
 import numpy as np
 
 from utils.paths import (
-    get_vector_path,
     list_methods,
     list_layers,
     discover_extracted_traits,
     get_model_variant,
 )
+from utils.vectors import load_vector
 from core.math import cosine_similarity
 
 
@@ -68,8 +68,8 @@ def main():
         else:
             layer = layers[len(layers) // 2]  # Middle layer
 
-        path = get_vector_path(args.experiment, trait, args.method, layer, model_variant, args.component, args.position)
-        v = torch.load(path, weights_only=True).float()
+        v = load_vector(args.experiment, trait, layer, model_variant, args.method, args.component, args.position)
+        v = v.float()
 
         valid_traits.append(trait)
         trait_vectors[trait] = v

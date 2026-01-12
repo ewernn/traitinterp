@@ -1,14 +1,8 @@
 """
 Utility functions for working with trait vectors.
 
-Single source of truth for vector selection.
-
-Priority:
-1. Steering results (ground truth - actual behavioral validation)
-2. Effect size (from extraction_evaluation.json)
-
-Note: Effect size is a rough heuristic, not a reliable predictor
-of steering success. Always run steering evaluation for ground truth.
+Single source of truth for vector selection based on steering results.
+Steering evaluation provides ground truth for vector quality.
 """
 
 import json
@@ -21,6 +15,7 @@ import torch
 
 from core.types import VectorSpec, ProjectionConfig
 from utils.paths import (
+    get,
     get as get_path,
     get_vector_path,
     get_vector_metadata_path,
@@ -33,11 +28,52 @@ from utils.paths import (
 logger = logging.getLogger(__name__)
 
 # Single source of truth for minimum coherence threshold in steering evaluation
-MIN_COHERENCE = 80  # Higher than PV paper (75) for better output quality
+MIN_COHERENCE = 70
 
 
 # =============================================================================
-# Vector Discovery & Scoring
+# Vector Loading
+# =============================================================================
+
+def load_vector(
+    experiment: str,
+    trait: str,
+    layer: int,
+    model_variant: str,
+    method: str = "probe",
+    component: str = "residual",
+    position: str = "response[:]",
+) -> Optional[torch.Tensor]:
+    """Load trait vector from experiment. Returns None if not found."""
+    vector_file = get_vector_path(experiment, trait, method, layer, model_variant, component, position)
+    if not vector_file.exists():
+        return None
+    return torch.load(vector_file, weights_only=True)
+
+
+def load_cached_activation_norms(experiment: str) -> Dict[int, float]:
+    """
+    Load cached activation norms from extraction_evaluation.json.
+
+    Returns:
+        {layer: norm} or empty dict if not available
+    """
+    eval_path = get('extraction_eval.evaluation', experiment=experiment)
+    if not eval_path.exists():
+        return {}
+
+    try:
+        with open(eval_path) as f:
+            data = json.load(f)
+        norms = data.get('activation_norms', {})
+        # Convert string keys back to int
+        return {int(k): v for k, v in norms.items()}
+    except (json.JSONDecodeError, KeyError):
+        return {}
+
+
+# =============================================================================
+# Vector Discovery & Steering Results
 # =============================================================================
 
 def _discover_vectors(
@@ -102,86 +138,81 @@ def _discover_vectors(
     return candidates
 
 
-def _score_vector(
+def _get_steering_result(
     experiment: str,
     trait: str,
     model_variant: str,
     candidate: dict,
     min_coherence: int = MIN_COHERENCE,
     prompt_set: str = "steering",
-) -> Tuple[float, str, Optional[float]]:
+) -> Optional[Tuple[float, float]]:
     """
-    Get score for a vector candidate.
+    Look up steering result for a vector candidate.
 
-    Checks steering results first (ground truth), falls back to effect_size.
-    Finds the BEST run across all coefficients for the given layer/method.
+    Finds the BEST run across all coefficients for the given layer/method
+    that meets the coherence threshold.
 
     Returns:
-        (score, source, coefficient) where:
-        - source is 'steering', 'effect_size', or 'none'
-        - coefficient is the optimal coefficient (None for effect_size/none)
+        (delta, coefficient) if found, None otherwise
     """
     layer = candidate['layer']
     method = candidate['method']
     position = candidate['position']
 
-    # 1. Try steering results
     steering_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
-    if steering_path.exists():
-        # Check for stale results (prompts modified after results)
-        prompts_path = get_path('datasets.trait_steering', trait=trait)
-        if prompts_path.exists() and prompts_path.stat().st_mtime > steering_path.stat().st_mtime:
-            import warnings
-            warnings.warn(
-                f"Steering prompts modified after results for {trait}. "
-                f"Results may be stale. Re-run steering evaluation."
-            )
-        try:
-            with open(steering_path) as f:
-                data = json.load(f)
-            baseline = data.get('baseline', {}).get('trait_mean', 0)
+    if not steering_path.exists():
+        return None
 
-            # Find BEST run across all coefficients for this layer/method
-            best_delta = None
-            best_coef = None
-            for run in data.get('runs', []):
-                cfg = run.get('config', {})
-                vectors = cfg.get('vectors', [])
-                if not vectors:
+    # Check for stale results (prompts modified after results)
+    prompts_path = get_path('datasets.trait_steering', trait=trait)
+    if prompts_path.exists() and prompts_path.stat().st_mtime > steering_path.stat().st_mtime:
+        import warnings
+        warnings.warn(
+            f"Steering prompts modified after results for {trait}. "
+            f"Results may be stale. Re-run steering evaluation."
+        )
+
+    # Parse JSONL format
+    baseline_trait_mean = 0
+    runs = []
+
+    try:
+        with open(steering_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
                     continue
-                v = vectors[0]  # Single-vector config
-                if v.get('layer') == layer and v.get('method', 'probe') == method:
-                    result = run.get('result', {})
-                    coherence = result.get('coherence_mean', 0)
-                    if coherence >= min_coherence:
-                        trait_mean = result.get('trait_mean', 0)
-                        delta = trait_mean - baseline
-                        if best_delta is None or delta > best_delta:
-                            best_delta = delta
-                            best_coef = v.get('weight')
+                entry = json.loads(line)
 
-            if best_delta is not None:
-                return best_delta, 'steering', best_coef
-        except (json.JSONDecodeError, KeyError):
-            pass
+                if entry.get("type") == "baseline":
+                    baseline_trait_mean = entry.get("result", {}).get("trait_mean", 0)
+                elif entry.get("type") != "header":
+                    runs.append(entry)
+    except (json.JSONDecodeError, IOError):
+        return None
 
-    # 2. Try effect_size
-    eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
-    if eval_path.exists():
-        try:
-            with open(eval_path) as f:
-                data = json.load(f)
+    # Find BEST run across all coefficients for this layer/method
+    best_delta = None
+    best_coef = None
+    for run in runs:
+        cfg = run.get('config', {})
+        vectors = cfg.get('vectors', [])
+        if not vectors:
+            continue
+        v = vectors[0]  # Single-vector config
+        if v.get('layer') == layer and v.get('method', 'probe') == method:
+            result = run.get('result', {})
+            coherence = result.get('coherence_mean', 0)
+            if coherence >= min_coherence:
+                trait_mean = result.get('trait_mean', 0)
+                delta = trait_mean - baseline_trait_mean
+                if best_delta is None or delta > best_delta:
+                    best_delta = delta
+                    best_coef = v.get('weight')
 
-            for r in data.get('all_results', []):
-                if (r.get('trait') == trait and
-                    r.get('layer') == layer and
-                    r.get('method') == method and
-                    r.get('val_effect_size')):
-                    return r['val_effect_size'], 'effect_size', None
-        except (json.JSONDecodeError, KeyError):
-            pass
-
-    return 0.0, 'none', None
+    if best_delta is not None:
+        return best_delta, best_coef
+    return None
 
 
 # =============================================================================
@@ -199,7 +230,7 @@ def get_best_vector(
     prompt_set: str = "steering",
 ) -> dict:
     """
-    Find best vector, optionally filtering by position/component/layer.
+    Find best vector based on steering results.
 
     Args:
         experiment: Experiment name
@@ -208,15 +239,14 @@ def get_best_vector(
         component: Component type, or None to search all
         position: Position string, or None to search all
         layer: Layer number, or None to search all
-        min_coherence: Minimum coherence for steering results (default: 75)
+        min_coherence: Minimum coherence threshold (default: MIN_COHERENCE)
         prompt_set: Prompt set for steering results (default: "steering")
 
     Returns:
         Dict with 'layer', 'method', 'position', 'component', 'source', 'score', 'coefficient'
-        (coefficient is None if source is not 'steering')
 
     Raises:
-        FileNotFoundError: If no vectors found or no evaluation results
+        FileNotFoundError: If no vectors found or no steering results
     """
     candidates = _discover_vectors(experiment, trait, model_variant, component, position, layer)
 
@@ -225,17 +255,21 @@ def get_best_vector(
             f"No vectors found for {experiment}/{trait}/{model_variant}. Run extraction first."
         )
 
-    # Score each candidate
+    # Look up steering results for each candidate
+    scored = []
     for c in candidates:
-        c['score'], c['source'], c['coefficient'] = _score_vector(experiment, trait, model_variant, c, min_coherence, prompt_set)
-
-    # Filter to those with scores, then find best
-    scored = [c for c in candidates if c['source'] != 'none']
+        result = _get_steering_result(experiment, trait, model_variant, c, min_coherence, prompt_set)
+        if result is not None:
+            delta, coefficient = result
+            c['score'] = delta
+            c['source'] = 'steering'
+            c['coefficient'] = coefficient
+            scored.append(c)
 
     if not scored:
         raise FileNotFoundError(
-            f"No steering results or extraction_evaluation.json found for {experiment}/{trait}. "
-            f"Run: python analysis/vectors/extraction_evaluation.py --experiment {experiment}"
+            f"No steering results found for {experiment}/{trait}. "
+            f"Run: python analysis/steering/evaluate.py --experiment {experiment} --trait {trait}"
         )
 
     best = max(scored, key=lambda c: c['score'])
@@ -255,7 +289,7 @@ def get_top_N_vectors(
     prompt_set: str = "steering",
 ) -> List[dict]:
     """
-    Get top N vectors for a trait, ranked by quality.
+    Get top N vectors for a trait, ranked by steering delta.
 
     Args:
         experiment: Experiment name
@@ -265,7 +299,7 @@ def get_top_N_vectors(
         position: Position string, or None to search all
         layer: Layer number, or None to search all
         N: Number of vectors to return (default: 3)
-        min_coherence: Minimum coherence for steering results
+        min_coherence: Minimum coherence threshold
         prompt_set: Prompt set for steering results (default: "steering")
 
     Returns:
@@ -273,12 +307,18 @@ def get_top_N_vectors(
     """
     candidates = _discover_vectors(experiment, trait, model_variant, component, position, layer)
 
-    # Score each candidate
+    # Look up steering results for each candidate
+    scored = []
     for c in candidates:
-        c['score'], c['source'], c['coefficient'] = _score_vector(experiment, trait, model_variant, c, min_coherence, prompt_set)
+        result = _get_steering_result(experiment, trait, model_variant, c, min_coherence, prompt_set)
+        if result is not None:
+            delta, coefficient = result
+            c['score'] = delta
+            c['source'] = 'steering'
+            c['coefficient'] = coefficient
+            scored.append(c)
 
-    # Filter to scored, sort by score descending
-    scored = [c for c in candidates if c['source'] != 'none']
+    # Sort by score descending
     scored.sort(key=lambda c: c['score'], reverse=True)
 
     # Remove 'path' from results

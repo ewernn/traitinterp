@@ -58,8 +58,8 @@ from tqdm import tqdm
 
 from core import SteeringHook, get_hook_path
 from utils.model import load_model, tokenize
-from utils.paths import get as get_path, get_vector_path, get_model_variant
-from utils.vectors import get_best_vector
+from utils.paths import get as get_path, get_model_variant
+from utils.vectors import get_best_vector, load_vector
 from utils.metrics import batch_ce_loss
 
 
@@ -382,12 +382,10 @@ def main():
         else:
             print(f"Layer {layer}: best is method={method}, position={position} (source: {best['source']})")
 
-        vector_path = get_vector_path(args.experiment, args.steer, method, layer, model_variant, component, position)
-        if not vector_path.exists():
-            print(f"Error: Vector not found at {vector_path}")
+        vector = load_vector(args.experiment, args.steer, layer, model_variant, method, component, position)
+        if vector is None:
+            print(f"Error: Vector not found for L{layer} {method} {component} {position}")
             sys.exit(1)
-
-        vector = torch.load(vector_path, weights_only=True)
         path = get_hook_path(layer)
         steering_ctx = SteeringHook(model, vector, path, coefficient=args.coef)
         steering_info = {
