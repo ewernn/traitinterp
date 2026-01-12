@@ -8,6 +8,7 @@ Only scores first 16 tokens of response to match extraction window behavior.
 
 import asyncio
 import json
+from statistics import median
 from tqdm.asyncio import tqdm_asyncio
 
 from utils.paths import get as get_path
@@ -39,7 +40,13 @@ def load_responses(experiment: str, trait: str, model_variant: str) -> dict:
     return responses
 
 
-async def _vet_responses_async(experiment: str, trait: str, model_variant: str, max_concurrent: int = 20) -> dict:
+async def _vet_responses_async(
+    experiment: str,
+    trait: str,
+    model_variant: str,
+    max_concurrent: int = 20,
+    estimate_trait_tokens: bool = False,
+) -> dict:
     """Score all responses and return results."""
     judge = TraitJudge()
     responses = load_responses(experiment, trait, model_variant)
@@ -49,17 +56,30 @@ async def _vet_responses_async(experiment: str, trait: str, model_variant: str, 
     items = []
     for polarity in ['positive', 'negative']:
         for idx, item in enumerate(responses[polarity]):
-            text = item.get('response', '')
-            text = truncate_to_tokens(text)  # Only vet first N tokens
+            full_response = item.get('response', '')
+            text = truncate_to_tokens(full_response)  # Only vet first N tokens
             prompt = item.get('prompt', '')
-            items.append({"idx": idx, "polarity": polarity, "prompt": prompt, "text": text})
+            items.append({
+                "idx": idx,
+                "polarity": polarity,
+                "prompt": prompt,
+                "text": text,
+                "full_response": full_response,
+            })
 
     semaphore = asyncio.Semaphore(max_concurrent)
 
     async def score_one(item: dict) -> dict:
         async with semaphore:
             score = await judge.score_response(item["prompt"], item["text"], trait_name, trait_definition)
-            return {"idx": item["idx"], "polarity": item["polarity"], "score": score}
+            result = {"idx": item["idx"], "polarity": item["polarity"], "score": score}
+            # Estimate trait tokens for positive responses that pass
+            if estimate_trait_tokens and item["polarity"] == "positive" and score is not None and score >= 60:
+                token_count = await judge.estimate_trait_tokens(
+                    item["prompt"], item["full_response"], trait_name, trait_definition
+                )
+                result["trait_token_count"] = token_count
+            return result
 
     tasks = [score_one(item) for item in items]
     results = await tqdm_asyncio.gather(*tasks, desc="  Vetting responses")
@@ -75,11 +95,14 @@ def vet_responses(
     pos_threshold: int = 60,
     neg_threshold: int = 40,
     max_concurrent: int = 20,
+    estimate_trait_tokens: bool = False,
 ) -> float:
     """
     Vet generated responses using LLM-as-judge. Returns pass rate.
     """
-    data = asyncio.run(_vet_responses_async(experiment, trait, model_variant, max_concurrent))
+    data = asyncio.run(_vet_responses_async(
+        experiment, trait, model_variant, max_concurrent, estimate_trait_tokens
+    ))
     results = data["results"]
     trait_definition = data["trait_definition"]
 
@@ -117,6 +140,14 @@ def vet_responses(
         "failed_indices": failed_indices,
         "results": results,
     }
+
+    # Compute recommended position from trait token counts
+    if estimate_trait_tokens:
+        token_counts = [r["trait_token_count"] for r in results if r.get("trait_token_count")]
+        if token_counts:
+            med = int(median(token_counts))
+            output_data["llm_judge_position"] = f"response[:{max(1, med)}]"
+            print(f"      Recommended position: response[:{med}] (median of {len(token_counts)} samples)")
 
     with open(output_dir / "response_scores.json", 'w') as f:
         json.dump(output_data, f, indent=2)

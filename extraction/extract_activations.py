@@ -129,6 +129,16 @@ def load_vetting_filter(experiment: str, trait: str, model_variant: str) -> dict
     return data.get('failed_indices', {'positive': [], 'negative': []})
 
 
+def load_llm_judge_position(experiment: str, trait: str, model_variant: str) -> str | None:
+    """Load llm_judge_position from vetting if available."""
+    vetting_file = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / 'vetting' / 'response_scores.json'
+    if not vetting_file.exists():
+        return None
+    with open(vetting_file) as f:
+        data = json.load(f)
+    return data.get('llm_judge_position')
+
+
 def extract_activations_for_trait(
     experiment: str,
     trait: str,

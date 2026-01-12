@@ -120,6 +120,7 @@ def run_pipeline(
     max_new_tokens: int = 32,
     max_concurrent: int = 20,
     paired_filter: bool = False,
+    adaptive: bool = False,
     no_logitlens: bool = False,
 ):
     """Execute extraction pipeline."""
@@ -202,10 +203,24 @@ def run_pipeline(
                 eta = estimate_stage_time('vet_responses', n_responses)
                 print(f"  [2] Vetting responses... (ETA: {format_duration(eta)})")
                 with GPUMonitor('vet_responses') as mon:
-                    vet_responses(experiment, trait, variant['name'], pos_threshold, neg_threshold, max_concurrent)
+                    vet_responses(experiment, trait, variant['name'], pos_threshold, neg_threshold, max_concurrent,
+                                  estimate_trait_tokens=adaptive)
                     report = mon.report(n_responses)
                 stage_times['vet_responses'] = stage_times.get('vet_responses', 0) + (time.time() - mon.start_time)
                 print(f"      Done: {report}")
+
+        # Load adaptive position from vetting (for stages 3, 4, 5)
+        if adaptive:
+            from extraction.extract_activations import load_llm_judge_position
+            llm_pos = load_llm_judge_position(experiment, trait, variant['name'])
+            if llm_pos:
+                position = llm_pos
+                print(f"  Using adaptive position: {position}")
+            else:
+                raise ValueError(
+                    f"--adaptive requires vetting with --adaptive first. "
+                    f"No llm_judge_position found for {trait}."
+                )
 
         # Stage 3: Extract activations
         if should_run(3):
@@ -333,6 +348,8 @@ if __name__ == "__main__":
                         help="Max concurrent API requests for vetting (default: 20)")
     parser.add_argument("--paired-filter", action="store_true",
                         help="Enable paired filtering (exclude pair if either side fails)")
+    parser.add_argument("--adaptive", action="store_true",
+                        help="Estimate trait tokens and use recommended position")
     parser.add_argument("--no-logitlens", action="store_true",
                         help="Skip logit lens interpretation after vector extraction")
     parser.add_argument("--base-model", action="store_true", dest="base_model_override",
@@ -370,5 +387,6 @@ if __name__ == "__main__":
         max_new_tokens=args.max_new_tokens,
         max_concurrent=args.max_concurrent,
         paired_filter=args.paired_filter,
+        adaptive=args.adaptive,
         no_logitlens=args.no_logitlens,
     )
