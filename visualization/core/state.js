@@ -541,10 +541,11 @@ async function loadExperiments() {
             if (urlExp && state.experiments.includes(urlExp)) {
                 state.currentExperiment = urlExp;
                 // Update active state in sidebar
-                list.querySelectorAll('.nav-item').forEach(item => {
+                list.querySelectorAll('.experiment-option').forEach(item => {
                     const isActive = item.dataset.experiment === urlExp;
                     item.classList.toggle('active', isActive);
-                    item.querySelector('.icon').textContent = isActive ? '✓' : '';
+                    const radio = item.querySelector('input[type="radio"]');
+                    if (radio) radio.checked = isActive;
                 });
             } else {
                 state.currentExperiment = state.experiments[0];

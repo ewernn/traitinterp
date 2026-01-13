@@ -408,24 +408,15 @@ function renderLayersHeatmap(tokenAttn, allTokens) {
         hovertemplate: 'Layer %{y}<br>Position %{x}<br>Attention: %{z:.4f}<extra></extra>'
     };
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 40, r: 10, t: 5, b: 80 },
+    const layout = window.buildChartLayout({
+        preset: 'heatmap',
+        traces: [trace],
         height: 400,
-        xaxis: {
-            title: 'Context Position',
-            tickangle: -45,
-            tickfont: { size: 8 }
-        },
-        yaxis: {
-            title: 'Layer',
-            tickfont: { size: 9 }
-        }
+        legendPosition: 'none',
+        xaxis: { title: 'Context Position', tickangle: -45, tickfont: { size: 8 } },
+        yaxis: { title: 'Layer', tickfont: { size: 9 } }
     });
-
-    Plotly.newPlot(chartDiv, [trace], layout, {
-        responsive: true,
-        displayModeBar: false
-    });
+    window.renderChart(chartDiv, [trace], layout);
 }
 
 /**
@@ -479,24 +470,16 @@ function renderHeadsHeatmap(tokenAttn, allTokens, layer) {
         hovertemplate: '%{y}<br>Position %{x}<br>Attention: %{z:.4f}<extra></extra>'
     };
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 60, r: 10, t: 5, b: 80 },
+    const layout = window.buildChartLayout({
+        preset: 'heatmap',
+        traces: [trace],
         height: 300,
-        xaxis: {
-            title: 'Context Position',
-            tickangle: -45,
-            tickfont: { size: 8 }
-        },
-        yaxis: {
-            title: `Layer ${layer} Heads`,
-            tickfont: { size: 10 }
-        }
+        legendPosition: 'none',
+        xaxis: { title: 'Context Position', tickangle: -45, tickfont: { size: 8 } },
+        yaxis: { title: `Layer ${layer} Heads`, tickfont: { size: 10 } },
+        margin: { l: 60 }
     });
-
-    Plotly.newPlot(chartDiv, [trace], layout, {
-        responsive: true,
-        displayModeBar: false
-    });
+    window.renderChart(chartDiv, [trace], layout);
 }
 
 /**
@@ -565,17 +548,16 @@ function renderFeatureChart(saeData, saeLabels, tokenIdx) {
         )
     };
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 350, r: 10, t: 5, b: 30 },
+    const layout = window.buildChartLayout({
+        preset: 'barChart',
+        traces: [trace],
         height: Math.max(500, numToShow * 28),
+        legendPosition: 'none',
         xaxis: { title: 'Activation Strength', zeroline: true },
-        yaxis: { automargin: true, tickfont: { size: 11 } }
+        yaxis: { automargin: true, tickfont: { size: 11 } },
+        margin: { l: 350, r: 10, t: 5, b: 30 }
     });
-
-    Plotly.newPlot(chartDiv, [trace], layout, {
-        responsive: true,
-        displayModeBar: false
-    });
+    window.renderChart(chartDiv, [trace], layout);
 }
 
 /**
@@ -638,25 +620,16 @@ function renderLogitLensChart(logitLensData, tokenIdx, layer) {
         hoverinfo: 'none'
     };
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 50, r: 5, t: 0, b: 0 },
+    const layout = window.buildChartLayout({
+        preset: 'barChart',
+        traces: [trace],
         height: 120,
-        xaxis: {
-            showticklabels: false,
-            showgrid: false,
-            zeroline: false,
-            range: [0, 1]
-        },
-        yaxis: {
-            tickfont: { size: 9 }
-        }
+        legendPosition: 'none',
+        xaxis: { showticklabels: false, showgrid: false, zeroline: false, range: [0, 1] },
+        yaxis: { tickfont: { size: 9 } },
+        margin: { l: 50, r: 5, t: 0, b: 0 }
     });
-
-    Plotly.newPlot(chartDiv, [trace], layout, {
-        responsive: true,
-        displayModeBar: false,
-        staticPlot: true
-    });
+    window.renderChart(chartDiv, [trace], layout, { staticPlot: true });
 }
 
 /**

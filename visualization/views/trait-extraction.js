@@ -466,26 +466,13 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         };
     }
 
-    const layout = compact ? {
-        margin: { l: 5, r: 5, t: 5, b: 25 },
-        xaxis: { tickfont: { size: 8 }, tickangle: 0 },
-        yaxis: { showticklabels: false, title: '' },
-        height: 180,
-        annotations: []
-    } : {
-        margin: { l: 40, r: 80, t: 20, b: 60 },
-        xaxis: { title: 'Method', tickfont: { size: 11 } },
-        yaxis: { title: 'Layer', tickfont: { size: 10 } },
-        height: 400,
-        annotations: []
-    };
-
-    // Add star annotation on best cell if available
+    // Build annotations array
+    const annotations = [];
     if (bestInfo && bestInfo.layer !== undefined && bestInfo.method) {
         const methodIdx = methods.indexOf(bestInfo.method);
         const layerIdx = layers.indexOf(bestInfo.layer);
         if (methodIdx >= 0 && layerIdx >= 0) {
-            layout.annotations.push({
+            annotations.push({
                 x: xLabels[methodIdx],
                 y: bestInfo.layer,
                 text: '★',
@@ -497,7 +484,23 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         }
     }
 
-    Plotly.newPlot(containerId, [trace], window.getPlotlyLayout(layout), { displayModeBar: false, responsive: true });
+    const layout = window.buildChartLayout({
+        preset: 'heatmap',
+        traces: [trace],
+        height: compact ? 180 : 400,
+        legendPosition: 'none',
+        xaxis: compact
+            ? { tickfont: { size: 8 }, tickangle: 0 }
+            : { title: 'Method', tickfont: { size: 11 } },
+        yaxis: compact
+            ? { showticklabels: false, title: '' }
+            : { title: 'Layer', tickfont: { size: 10 } },
+        margin: compact
+            ? { l: 5, r: 5, t: 5, b: 25 }
+            : { l: 40, r: 80, t: 20, b: 60 },
+        annotations
+    });
+    window.renderChart(containerId, [trace], layout);
 }
 
 

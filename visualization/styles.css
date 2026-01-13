@@ -3062,31 +3062,56 @@ code {
     border-left: 3px solid var(--primary-color);
 }
 
-.rb-info-text {
+/* Code-style display for judge prompts */
+.rb-code {
     margin: 0;
-    font-size: var(--text-xs);
-    font-family: monospace;
+    padding: 8px 10px;
+    font-size: 11px;
+    font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.4;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.rb-var {
+    color: #e06c75;
+    font-weight: 500;
 }
 
 .rb-judge-section {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .rb-judge-section:last-child {
     margin-bottom: 0;
 }
 
-.rb-judge-label {
-    font-size: var(--text-xs);
-    font-weight: 600;
+.rb-code-label {
+    display: inline-block;
+    font-size: 11px;
+    font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
+    color: #61afef;
+    margin-bottom: 4px;
+}
+
+.rb-judge-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 10px;
+    font-family: 'Consolas', 'Monaco', 'Menlo', monospace;
     color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.rb-judge-header strong {
+    color: var(--text-secondary);
 }
 
 .rb-stats {

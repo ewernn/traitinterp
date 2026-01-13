@@ -457,20 +457,28 @@ async function renderBestVectorPerLayer() {
 
     // Plot each chart
     for (const { chartId, traces } of charts) {
-        const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
-            margin: { l: 50, r: 20, t: 5, b: 35 },
-            xaxis: { title: 'Layer', dtick: 5, tickfont: { size: 10 } },
-            yaxis: { title: 'Trait Score', tickfont: { size: 10 } },
+        const layout = window.buildChartLayout({
+            preset: 'layerChart',
+            traces,
             height: 180,
-            showlegend: true,
-            legend: { orientation: 'h', y: 1.15, x: 0, font: { size: 10 } }
-        }) : {
-            xaxis: { title: 'Layer' },
+            legendPosition: 'below',
             yaxis: { title: 'Trait Score' },
-            height: 180
-        };
+            margin: { r: 60 },  // Extra right margin for inline label
+            // Inline x-axis label at end of axis
+            annotations: [{
+                x: 1.01,
+                y: 0,
+                xref: 'paper',
+                yref: 'paper',
+                text: 'Layer →',
+                showarrow: false,
+                font: { size: 10, color: '#888' },
+                xanchor: 'left',
+                yanchor: 'middle'
+            }]
+        });
 
-        Plotly.newPlot(chartId, traces, layout, { displayModeBar: false, responsive: true });
+        window.renderChart(chartId, traces, layout);
     }
 }
 
@@ -835,19 +843,16 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         type: 'category'  // Force categorical axis
     };
 
-    const layout = window.getPlotlyLayout ? window.getPlotlyLayout({
-        margin: { l: 50, r: 80, t: 20, b: 50 },
+    const layout = window.buildChartLayout({
+        preset: 'heatmap',
+        traces: [trace],
+        height: Math.max(300, layers.length * 20 + 100),
+        legendPosition: 'none',
         xaxis: xAxisConfig,
         yaxis: { title: 'Layer', tickfont: { size: 10 }, autorange: 'reversed' },
-        height: Math.max(300, layers.length * 20 + 100)
-    }) : {
-        margin: { l: 50, r: 80, t: 20, b: 50 },
-        xaxis: xAxisConfig,
-        yaxis: { title: 'Layer', autorange: 'reversed' },
-        height: 400
-    };
-
-    Plotly.newPlot(container, [trace], layout, { displayModeBar: false, responsive: true });
+        margin: { l: 50, r: 80, t: 20, b: 50 }
+    });
+    window.renderChart(container, [trace], layout);
 }
 
 
@@ -1259,7 +1264,7 @@ async function loadInfoPanelContent(trait, panelType) {
         }
 
         if (panelType === 'definition') {
-            panel.innerHTML = `<pre class="rb-info-text">${escapeHtml(cached.text.trim())}</pre>`;
+            panel.innerHTML = `<pre class="rb-code">${escapeHtml(cached.text.trim())}</pre>`;
         } else if (panelType === 'judge') {
             // Fetch judge templates if not cached
             if (!judgeTemplatesCache) {
@@ -1271,18 +1276,29 @@ async function loadInfoPanelContent(trait, panelType) {
                 judgeTemplatesCache = await resp.json();
             }
 
+            // Highlight template variables
+            const highlightVars = (text) => {
+                return escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
+            };
+
             const systemPrompt = judgeTemplatesCache.steering_system
                 .replace('{trait_name}', traitName)
                 .replace('{trait_definition}', cached.text.trim());
 
             panel.innerHTML = `
-                <div class="rb-judge-section">
-                    <div class="rb-judge-label">System Message:</div>
-                    <pre class="rb-info-text">${escapeHtml(systemPrompt)}</pre>
+                <div class="rb-judge-header">
+                    <span>model: <strong>gpt-4.1-mini</strong></span>
+                    <span>scoring: <strong>logprob-weighted avg</strong></span>
+                    <span>temp: <strong>0</strong></span>
+                    <span>top_logprobs: <strong>20</strong></span>
                 </div>
                 <div class="rb-judge-section">
-                    <div class="rb-judge-label">User Message:</div>
-                    <pre class="rb-info-text">${escapeHtml(judgeTemplatesCache.steering_user)}</pre>
+                    <span class="rb-code-label">system_prompt</span>
+                    <pre class="rb-code">${highlightVars(systemPrompt)}</pre>
+                </div>
+                <div class="rb-judge-section">
+                    <span class="rb-code-label">user</span>
+                    <pre class="rb-code">${highlightVars(judgeTemplatesCache.steering_user)}</pre>
                 </div>
             `;
         }

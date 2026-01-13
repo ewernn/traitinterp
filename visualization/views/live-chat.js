@@ -790,22 +790,14 @@ function initTraitChart() {
     const chartDiv = document.getElementById('trait-chart');
     if (!chartDiv) return;
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 50, r: 20, t: 20, b: 40 },
-        xaxis: {
-            title: 'Token',
-            showgrid: true,
-        },
-        yaxis: {
-            title: 'Trait Score',
-            showgrid: true,
-            zeroline: true,
-        },
-        showlegend: false,
-        hovermode: 'x unified',
+    const layout = window.buildChartLayout({
+        preset: 'timeSeries',
+        traces: [],
+        legendPosition: 'none',  // Using custom HTML legend
+        xaxis: { title: 'Token', showgrid: true },
+        yaxis: { title: 'Trait Score', showgrid: true, zeroline: true }
     });
-
-    Plotly.newPlot(chartDiv, [], layout, { responsive: true });
+    window.renderChart(chartDiv, [], layout);
 }
 
 /**
@@ -912,16 +904,15 @@ function updateTraitChart() {
     // Build shapes for message regions
     const shapes = buildMessageRegionShapes();
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 50, r: 20, t: 20, b: 40 },
+    const layout = window.buildChartLayout({
+        preset: 'timeSeries',
+        traces,
+        legendPosition: 'none',  // Using custom HTML legend
         xaxis: { title: 'Token', showgrid: true },
         yaxis: { title: 'Trait Score', showgrid: true, zeroline: true },
-        showlegend: false,
-        hovermode: 'x unified',
-        shapes: shapes
+        shapes
     });
-
-    Plotly.react(chartDiv, traces, layout, { responsive: true });
+    window.updateChart(chartDiv, traces, layout);
 
     // Add hover event listener for token highlighting
     // Note: Plotly event listeners are persistent across reacts, so we don't need to remove them

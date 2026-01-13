@@ -683,7 +683,11 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     const rangeMax = Math.max(minRange, maxY + 0.02);
     yAxisConfig.range = [rangeMin, rangeMax];
 
-    const mainLayout = window.getPlotlyLayout({
+    const mainLayout = window.buildChartLayout({
+        preset: 'timeSeries',
+        traces,
+        height: 400,
+        legendPosition: 'none',  // Using custom HTML legend instead
         xaxis: {
             title: 'Token Position',
             tickmode: 'array',
@@ -697,12 +701,9 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         shapes: shapes,
         annotations: annotations,
         margin: { l: 60, r: 20, t: 40, b: 80 },
-        height: 400,
-        hovermode: 'closest',
-        showlegend: false  // Using custom legend instead
+        hovermode: 'closest'
     });
-
-    Plotly.newPlot('combined-activation-plot', traces, mainLayout, { responsive: true, displayModeBar: false });
+    window.renderChart('combined-activation-plot', traces, mainLayout);
 
     // Insert custom legend after plot and setup hover-to-highlight
     const plotDiv = document.getElementById('combined-activation-plot');
@@ -832,8 +833,11 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
 
     const showLegend = Object.keys(layerToNorms).length > 1;
 
-    const layout = window.getPlotlyLayout({
-        margin: { l: 50, r: 20, t: 20, b: 40 },
+    const layout = window.buildChartLayout({
+        preset: 'timeSeries',
+        traces,
+        height: 200,
+        legendPosition: showLegend ? 'above' : 'none',
         xaxis: {
             title: 'Token',
             tickvals: tickVals,
@@ -841,20 +845,12 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
             tickfont: { size: 9 }
         },
         yaxis: { title: '||h|| (L2 norm)', tickfont: { size: 10 } },
-        height: 200,
-        showlegend: showLegend,
-        legend: { orientation: 'h', y: 1.1, x: 0 },
         shapes: [
-            // Prompt/response separator
-            { type: 'line', x0: promptEndIdx, x1: promptEndIdx, y0: 0, y1: 1, yref: 'paper',
-              line: { color: highlightColors.separator, width: 2, dash: 'dash' } },
-            // Current token highlight
-            { type: 'line', x0: highlightX, x1: highlightX, y0: 0, y1: 1, yref: 'paper',
-              line: { color: highlightColors.highlight, width: 2 } }
+            window.createSeparatorShape(promptEndIdx, highlightColors.separator),
+            window.createHighlightShape(highlightX, highlightColors.highlight)
         ]
     });
-
-    Plotly.newPlot(plotDiv, traces, layout, { responsive: true, displayModeBar: false });
+    window.renderChart(plotDiv, traces, layout);
 
     // Click-to-select
     plotDiv.on('plotly_click', (d) => {
@@ -902,23 +898,20 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
         });
     });
 
-    const shapes = [
-        { type: 'line', x0: (nPromptTokens - START_TOKEN_IDX) - 0.5, x1: (nPromptTokens - START_TOKEN_IDX) - 0.5,
-          y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 1, dash: 'dash' } },
-        { type: 'line', x0: highlightX, x1: highlightX,
-          y0: 0, y1: 1, yref: 'paper', line: { color: primaryColor, width: 2 } }
-    ];
-
-    const velocityLayout = window.getPlotlyLayout({
+    const velocityLayout = window.buildChartLayout({
+        preset: 'timeSeries',
+        traces: velocityTraces,
+        height: 300,
+        legendPosition: 'none',
         xaxis: { title: '', tickmode: 'array', tickvals: tickVals, ticktext: tickText, tickangle: -45, tickfont: { size: 8 }, showgrid: true },
         yaxis: { title: 'Velocity', zeroline: true, zerolinewidth: 1, zerolinecolor: textSecondary, showgrid: true },
-        shapes: shapes,
-        margin: { l: 50, r: 20, t: 10, b: 80 },
-        height: 300,
-        showlegend: false
+        shapes: [
+            window.createSeparatorShape((nPromptTokens - START_TOKEN_IDX) - 0.5, textSecondary),
+            window.createHighlightShape(highlightX, primaryColor)
+        ],
+        margin: { b: 80 }
     });
-
-    Plotly.newPlot('token-velocity-plot', velocityTraces, velocityLayout, { responsive: true, displayModeBar: false });
+    window.renderChart('token-velocity-plot', velocityTraces, velocityLayout);
 
     // Click handler to update token slider
     const velocityPlot = document.getElementById('token-velocity-plot');
@@ -969,16 +962,15 @@ function renderActivationMagnitudePlot(traitData, loadedTraits) {
           hovertemplate: '<b>Combined</b><br>Layer %{x}: %{y:.1f}<extra></extra>' }
     ];
 
-    const layout = window.getPlotlyLayout({
-        xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 5, showgrid: true },
-        yaxis: { title: '||h|| (L2 norm)', showgrid: true },
-        margin: { l: 50, r: 20, t: 10, b: 40 },
+    const layout = window.buildChartLayout({
+        preset: 'layerChart',
+        traces,
         height: 300,
-        legend: { orientation: 'h', yanchor: 'top', y: -0.15, xanchor: 'center', x: 0.5, font: { size: 10 } },
-        showlegend: true
+        legendPosition: 'below',
+        xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 5, showgrid: true },
+        yaxis: { title: '||h|| (L2 norm)', showgrid: true }
     });
-
-    Plotly.newPlot('activation-magnitude-plot', traces, layout, { responsive: true, displayModeBar: false });
+    window.renderChart('activation-magnitude-plot', traces, layout);
 }
 
 
@@ -1079,15 +1071,15 @@ async function renderMassiveActivations() {
                 hovertemplate: 'L%{x}<br>Alignment: %{y:.1f}%<extra></extra>'
             };
 
-            const alignLayout = window.getPlotlyLayout({
-                xaxis: { title: 'Layer', dtick: 5, showgrid: true },
-                yaxis: { title: 'Mean Alignment (%)', range: [0, 100], showgrid: true },
-                margin: { l: 50, r: 20, t: 10, b: 40 },
+            const alignLayout = window.buildChartLayout({
+                preset: 'layerChart',
+                traces: [alignTrace],
                 height: 200,
-                showlegend: false
+                legendPosition: 'none',
+                xaxis: { title: 'Layer', dtick: 5, showgrid: true },
+                yaxis: { title: 'Mean Alignment (%)', range: [0, 100], showgrid: true }
             });
-
-            Plotly.newPlot('mean-alignment-plot', [alignTrace], alignLayout, { responsive: true, displayModeBar: false });
+            window.renderChart('mean-alignment-plot', [alignTrace], alignLayout);
         }
 
     } catch (error) {
@@ -1150,16 +1142,15 @@ async function renderMassiveDimsAcrossLayers() {
             };
         });
 
-        const layout = window.getPlotlyLayout({
-            xaxis: { title: 'Layer', dtick: 5, showgrid: true },
-            yaxis: { title: 'Normalized Magnitude', showgrid: true },
-            margin: { l: 50, r: 20, t: 10, b: 40 },
+        const layout = window.buildChartLayout({
+            preset: 'layerChart',
+            traces,
             height: 300,
-            showlegend: true,
-            legend: { orientation: 'h', y: 1.15, x: 0 }
+            legendPosition: 'above',
+            xaxis: { title: 'Layer', dtick: 5, showgrid: true },
+            yaxis: { title: 'Normalized Magnitude', showgrid: true }
         });
-
-        Plotly.newPlot(container, traces, layout, { responsive: true, displayModeBar: false });
+        window.renderChart(container, traces, layout);
 
         // Setup dropdown change handler
         if (criteriaSelect && !criteriaSelect.dataset.bound) {
