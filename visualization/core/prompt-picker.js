@@ -88,7 +88,11 @@ async function renderPromptPicker() {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
         const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === id);
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
-        promptBoxes += `<button class="pp-btn ${isActive}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</button>`;
+        // Get tags from cache (if we've loaded this prompt before)
+        const cacheKey = `${window.state.currentPromptSet}:${id}`;
+        const tags = window.state.promptTagsCache?.[cacheKey] || [];
+        const tagClasses = tags.map(t => `tag-${t}`).join(' ');
+        promptBoxes += `<button class="pp-btn ${isActive} ${tagClasses}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${id}</button>`;
     });
 
     // Get prompt text and note from definitions
@@ -174,10 +178,11 @@ async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
     let data = null;
+    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
 
     // Try shared response data first (new format)
     try {
-        const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId);
+        const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
         const response = await fetch(responseUrl);
         if (response.ok) {
             data = await response.json();
@@ -190,7 +195,7 @@ async function fetchPromptPickerData() {
     if (!data && window.state.experimentData?.traits?.length > 0) {
         const firstTrait = window.state.experimentData.traits[0];
         try {
-            const url = window.paths.residualStreamData(firstTrait, window.state.currentPromptSet, window.state.currentPromptId);
+            const url = window.paths.residualStreamData(firstTrait, window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
             const response = await fetch(url);
             if (response.ok) {
                 data = await response.json();
@@ -214,8 +219,14 @@ async function fetchPromptPickerData() {
         promptTokens: promptTokenList.length,
         responseTokens: responseTokenList.length,
         allTokens: allTokens,
-        nPromptTokens: promptTokenList.length
+        nPromptTokens: promptTokenList.length,
+        tags: data.metadata?.tags || []
     };
+
+    // Store tags in per-prompt cache for rendering buttons
+    if (!window.state.promptTagsCache) window.state.promptTagsCache = {};
+    const cacheKey = `${window.state.currentPromptSet}:${window.state.currentPromptId}`;
+    window.state.promptTagsCache[cacheKey] = data.metadata?.tags || [];
 
     // Reset token index when loading new prompt (clamp to valid range)
     const maxIdx = Math.max(0, allTokens.length - 1);

@@ -1234,6 +1234,16 @@ code {
     color: var(--text-on-primary);
 }
 
+/* Tag-based prompt highlighting */
+.pp-btn.tag-success {
+    border: 1px solid var(--danger);
+    background: color-mix(in srgb, var(--danger) 15%, var(--bg-tertiary));
+}
+.pp-btn.tag-success.active {
+    border-color: var(--danger);
+    background: var(--danger);
+}
+
 .pp-note {
     font-size: var(--text-xs);
     color: var(--text-tertiary);

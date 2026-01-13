@@ -126,6 +126,7 @@ async function renderTraitDynamics() {
     const failedTraits = [];
     const promptSet = window.state.currentPromptSet;
     const promptId = window.state.currentPromptId;
+    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
 
     if (!promptSet || !promptId) {
         renderNoDataMessage(contentArea, filteredTraits, promptSet, promptId);
@@ -147,7 +148,7 @@ async function renderTraitDynamics() {
     // Load shared response data (prompt/response text and tokens)
     let responseData = null;
     try {
-        const responsePath = window.paths.responseData(promptSet, promptId);
+        const responsePath = window.paths.responseData(promptSet, promptId, modelVariant);
         const responseRes = await fetch(responsePath);
         if (responseRes.ok) {
             responseData = await responseRes.json();
@@ -159,7 +160,7 @@ async function renderTraitDynamics() {
     // Load projection data for ALL selected traits (in parallel)
     const projectionResults = await Promise.all(filteredTraits.map(async (trait) => {
         try {
-            const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId);
+            const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, modelVariant);
             const response = await fetch(fetchPath);
             if (!response.ok) return { trait, error: true };
             const projData = await response.json();
@@ -979,7 +980,8 @@ function renderActivationMagnitudePlot(traitData, loadedTraits) {
  * Calibration contains model-wide massive dims computed from neutral prompts.
  */
 async function fetchMassiveActivationsData() {
-    const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration' });
+    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration', model_variant: modelVariant });
     const response = await fetch('/' + calibrationPath);
     if (!response.ok) return null;
     return response.json();
