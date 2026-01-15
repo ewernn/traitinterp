@@ -197,6 +197,12 @@ def analyze_prompt(
         'tracked_dims': track_dims,
     }
 
+    # Always compute mean alignment (useful summary stat)
+    prompt_mean_align = compute_mean_alignment(prompt_acts)
+    response_mean_align = compute_mean_alignment(response_acts)
+    result['prompt_mean_alignment'] = {int(k): v for k, v in prompt_mean_align.items()}
+    result['response_mean_alignment'] = {int(k): v for k, v in response_mean_align.items()}
+
     # Only include per-token analysis if requested
     if per_token:
         result['prompt_tokens'] = prompt_tokens
@@ -210,13 +216,6 @@ def analyze_prompt(
                                        for k, dims in prompt_dim_values.items()}
         result['response_dim_values'] = {int(k): {int(d): v for d, v in dims.items()}
                                          for k, dims in response_dim_values.items()}
-
-        # Compute mean alignment
-        prompt_mean_align = compute_mean_alignment(prompt_acts)
-        response_mean_align = compute_mean_alignment(response_acts)
-
-        result['prompt_mean_alignment'] = {int(k): v for k, v in prompt_mean_align.items()}
-        result['response_mean_alignment'] = {int(k): v for k, v in response_mean_align.items()}
 
     return result
 
