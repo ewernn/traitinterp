@@ -71,7 +71,7 @@ from analysis.steering.coef_search import (
     adaptive_search_layer,
     batched_adaptive_search,
 )
-from core import VectorSpec
+from core import VectorSpec, MultiLayerAblationHook
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
 from utils.paths import get, get_vector_path, get_default_variant
@@ -207,6 +207,151 @@ async def compute_baseline(
     return baseline, response_data
 
 
+async def run_ablation_evaluation(
+    experiment: str,
+    trait: str,
+    vector_experiment: str,
+    model_variant: str,
+    vector_layer: int,
+    method: str,
+    component: str,
+    position: str,
+    prompt_set: str,
+    model_name: str,
+    judge_provider: str,
+    subset: Optional[int],
+    model=None,
+    tokenizer=None,
+    judge=None,
+    load_in_8bit: bool = False,
+    load_in_4bit: bool = False,
+    lora_adapter: str = None,
+    max_new_tokens: int = 256,
+    eval_prompt: Optional[str] = None,
+    use_default_prompt: bool = False,
+    extraction_variant: Optional[str] = None,
+):
+    """
+    Run directional ablation evaluation.
+
+    Ablates a direction at ALL layers simultaneously.
+    Compares baseline (no intervention) vs ablated responses.
+    """
+    from analysis.steering.data import load_steering_data, load_questions_from_inference
+
+    # Load prompts and trait definition
+    steering_data = load_steering_data(trait)
+
+    # Load questions
+    if prompt_set == "steering":
+        questions = steering_data.questions
+        print(f"Loaded {len(questions)} questions from steering.json")
+    else:
+        questions = load_questions_from_inference(prompt_set)
+        print(f"Loaded {len(questions)} questions from inference: {prompt_set}")
+
+    if subset:
+        questions = questions[:subset]
+
+    # Resolve eval_prompt
+    if use_default_prompt:
+        effective_eval_prompt = None
+    elif eval_prompt is not None:
+        effective_eval_prompt = eval_prompt
+    else:
+        effective_eval_prompt = steering_data.eval_prompt
+
+    # Load model if not provided
+    should_close_judge = False
+    if model is None:
+        model, tokenizer, _ = load_model_or_client(model_name, load_in_8bit, load_in_4bit, no_server=True, lora_adapter=lora_adapter)
+
+    config = load_experiment_config(experiment)
+    use_chat_template = config.get('use_chat_template')
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+
+    # Create judge if not provided
+    if judge is None:
+        judge = TraitJudge()
+        should_close_judge = True
+
+    # Resolve extraction variant
+    resolved_extraction_variant = extraction_variant or get_default_variant(vector_experiment, mode='extraction')
+
+    # Load vector from specified layer
+    vector = load_vector(vector_experiment, trait, vector_layer, resolved_extraction_variant, method, component, position)
+    if vector is None:
+        raise ValueError(f"Vector not found: {vector_experiment}/{trait} L{vector_layer} {method}")
+
+    print(f"\n{'='*60}")
+    print(f"ABLATION EVALUATION")
+    print(f"{'='*60}")
+    print(f"Trait: {trait}")
+    print(f"Model: {model_name}")
+    print(f"Vector: L{vector_layer} {method} (ablated at ALL layers)")
+    print(f"Questions: {len(questions)}")
+
+    # Compute baseline
+    baseline, baseline_responses = await compute_baseline(
+        model, tokenizer, questions, steering_data.trait_name, steering_data.trait_definition,
+        judge, use_chat_template, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
+    )
+
+    # Generate with ablation at ALL layers
+    print(f"\nGenerating with ablation at all layers...")
+    formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
+
+    with MultiLayerAblationHook(model, vector):
+        ablated_responses = generate_batch(model, tokenizer, formatted, max_new_tokens=max_new_tokens)
+
+    # Score ablated responses
+    print(f"Scoring ablated responses...")
+    all_qa_pairs = list(zip(questions, ablated_responses))
+    all_scores = await judge.score_steering_batch(
+        all_qa_pairs, steering_data.trait_name, steering_data.trait_definition, eval_prompt=effective_eval_prompt
+    )
+
+    ablated_trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
+    ablated_coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
+
+    ablated_trait_mean = sum(ablated_trait_scores) / len(ablated_trait_scores) if ablated_trait_scores else None
+    ablated_coherence_mean = sum(ablated_coherence_scores) / len(ablated_coherence_scores) if ablated_coherence_scores else None
+
+    # Print results
+    print(f"\n{'='*60}")
+    print(f"RESULTS")
+    print(f"{'='*60}")
+    print(f"Baseline:  trait={baseline['trait_mean']:.1f}, coherence={baseline.get('coherence_mean', 0):.1f}")
+    print(f"Ablated:   trait={ablated_trait_mean:.1f}, coherence={ablated_coherence_mean:.1f}")
+
+    delta = ablated_trait_mean - baseline['trait_mean']
+    baseline_coh = baseline.get('coherence_mean', 0)
+
+    if baseline['trait_mean'] > 50:
+        # Bypassing refusal (high baseline = model refuses, want to reduce)
+        reduction_pct = (baseline['trait_mean'] - ablated_trait_mean) / baseline['trait_mean'] * 100
+        print(f"\nBypass: {baseline['trait_mean']:.1f} → {ablated_trait_mean:.1f} ({reduction_pct:.0f}% reduction)")
+    else:
+        # Inducing refusal (low baseline)
+        print(f"\nDelta: {delta:+.1f}")
+
+    print(f"Coherence: {baseline_coh:.1f} → {ablated_coherence_mean:.1f}")
+
+    if should_close_judge:
+        await judge.close()
+
+    return {
+        "baseline": baseline,
+        "ablated": {
+            "trait_mean": ablated_trait_mean,
+            "coherence_mean": ablated_coherence_mean,
+            "n": len(ablated_trait_scores),
+        },
+        "delta": delta,
+    }
+
+
 async def run_evaluation(
     experiment: str,
     trait: str,
@@ -239,6 +384,8 @@ async def run_evaluation(
     min_coherence: float = MIN_COHERENCE,
     extraction_variant: Optional[str] = None,
     save_mode: str = "best",
+    ablation: bool = False,
+    ablation_vector_layer: Optional[int] = None,
 ):
     """
     Main evaluation flow.
@@ -256,7 +403,23 @@ async def run_evaluation(
         load_in_4bit: Use 4-bit quantization when loading model
         eval_prompt: Custom trait scoring prompt (auto-detected from steering.json if None)
         use_default_prompt: Force V3c default, ignore steering.json eval_prompt
+        ablation: If True, run Arditi-style ablation instead of steering
+        ablation_vector_layer: Layer to load vector from for ablation
     """
+    # Dispatch to ablation mode if requested
+    if ablation:
+        return await run_ablation_evaluation(
+            experiment=experiment, trait=trait, vector_experiment=vector_experiment,
+            model_variant=model_variant, vector_layer=ablation_vector_layer,
+            method=method, component=component, position=position,
+            prompt_set=prompt_set, model_name=model_name, judge_provider=judge_provider,
+            subset=None if subset == 5 else subset,  # Default 5 -> None for ablation
+            model=model, tokenizer=tokenizer, judge=judge,
+            load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit,
+            lora_adapter=lora_adapter, max_new_tokens=max_new_tokens,
+            eval_prompt=eval_prompt, use_default_prompt=use_default_prompt,
+            extraction_variant=extraction_variant,
+        )
     # Load prompts and trait definition
     steering_data = load_steering_data(trait)
 
@@ -552,6 +715,10 @@ def main():
     parser.add_argument("--save-responses", choices=["all", "best", "none"], default="best",
                         help="Response saving: 'all' (every config), 'best' (best per layer), 'none'. Default: best")
 
+    # === Ablation ===
+    parser.add_argument("--ablation", type=int, metavar="LAYER", default=None,
+                        help="Use directional ablation at ALL layers. Load vector from LAYER.")
+
     args = parser.parse_args()
 
     # Parse trait specs (single or multiple)
@@ -664,6 +831,8 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                 min_coherence=args.min_coherence,
                 extraction_variant=args.extraction_variant,
                 save_mode=args.save_responses,
+                ablation=args.ablation is not None,
+                ablation_vector_layer=args.ablation,
             )
     finally:
         if judge is not None:

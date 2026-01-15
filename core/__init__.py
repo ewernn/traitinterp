@@ -14,8 +14,10 @@ from .hooks import (
     LayerHook,                  # single-layer base class
     CaptureHook,                # capture from one layer
     SteeringHook,               # steer one layer
+    AblationHook,               # ablate direction from one layer
     MultiLayerCapture,          # capture one component across layers
     MultiLayerSteeringHook,     # steer multiple layers simultaneously
+    MultiLayerAblationHook,     # ablate direction across all layers
     BatchedLayerSteeringHook,   # different steering per batch slice
 )
 from .methods import (

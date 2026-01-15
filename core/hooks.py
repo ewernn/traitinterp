@@ -319,6 +319,124 @@ class SteeringHook(LayerHook):
 
 
 # =============================================================================
+# AblationHook - project out direction from layer output
+# =============================================================================
+
+class AblationHook(LayerHook):
+    """
+    Project out a direction from a layer's output during forward pass.
+
+    Implements directional ablation: x' = x - (x · r̂) * r̂
+    This zeros out the component of x along direction r̂.
+
+    Equivalent to steering with dynamic coefficient = -(x · r̂).
+
+    Usage:
+        direction = torch.load('vectors/mean_diff_layer16.pt')
+
+        with AblationHook(model, direction, "model.layers.16"):
+            output = model.generate(**inputs)
+
+        # Or with helper
+        with AblationHook(model, direction, get_hook_path(16)):
+            output = model.generate(**inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        direction: Union[torch.Tensor, Sequence[float]],
+        path: str,
+    ):
+        super().__init__(model, path)
+
+        param = next(model.parameters())
+        direction = torch.as_tensor(direction, dtype=torch.float32, device=param.device)
+
+        if direction.ndim != 1:
+            raise ValueError(f"Direction must be 1-D, got shape {direction.shape}")
+
+        # Normalize to unit vector
+        self.direction = direction / direction.norm()
+
+    def _hook_fn(self, module, inputs, outputs):
+        """Project out direction from output: x' = x - (x · r̂) * r̂"""
+        out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
+
+        # Cast direction to output dtype for computation
+        r_hat = self.direction.to(device=out_tensor.device, dtype=out_tensor.dtype)
+
+        # Compute projection: (x · r̂) gives scalar per position, then scale by r̂
+        # out_tensor: [batch, seq, hidden], r_hat: [hidden]
+        proj_coef = out_tensor @ r_hat  # [batch, seq]
+        proj = proj_coef.unsqueeze(-1) * r_hat  # [batch, seq, hidden]
+
+        ablated = out_tensor - proj
+
+        if torch.is_tensor(outputs):
+            return ablated
+        elif isinstance(outputs, tuple):
+            return (ablated, *outputs[1:])
+        return outputs
+
+
+# =============================================================================
+# MultiLayerAblationHook - ablate direction across all layers
+# =============================================================================
+
+class MultiLayerAblationHook:
+    """
+    Ablate a direction across multiple layers simultaneously.
+
+    Projects out direction at ALL layers (or specified subset).
+
+    Usage:
+        # All layers with same direction
+        direction = torch.load('vectors/mean_diff_layer16.pt')
+        with MultiLayerAblationHook(model, direction):
+            output = model.generate(**inputs)
+
+        # Specific layers
+        with MultiLayerAblationHook(model, direction, layers=[10, 11, 12, 13, 14, 15]):
+            output = model.generate(**inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        direction: Union[torch.Tensor, Sequence[float]],
+        layers: List[int] = None,
+        component: str = "residual",
+    ):
+        """
+        Args:
+            model: The transformer model
+            direction: Direction to ablate (will be normalized)
+            layers: List of layer indices, or None for all layers
+            component: "residual", "attn_out", etc.
+        """
+        if layers is None:
+            config = model.config
+            if hasattr(config, 'text_config'):
+                config = config.text_config
+            layers = list(range(config.num_hidden_layers))
+
+        self._hooks = [
+            AblationHook(model, direction, get_hook_path(layer, component, model=model))
+            for layer in layers
+        ]
+
+    def __enter__(self):
+        for hook in self._hooks:
+            hook.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        for hook in reversed(self._hooks):
+            hook.__exit__(*exc)
+
+
+# =============================================================================
 # MultiLayerCapture - one component across many layers
 # =============================================================================
 
