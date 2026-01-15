@@ -866,3 +866,25 @@ def list_layers(
         if match:
             layers.append(int(match.group(1)))
     return sorted(layers)
+
+
+# =============================================================================
+# Model diff paths
+# =============================================================================
+
+def get_model_diff_dir(
+    experiment: str,
+    variant_a: str,
+    variant_b: str,
+    prompt_set: str,
+) -> Path:
+    """
+    Directory for model diff results.
+
+    Returns: experiments/{experiment}/model_diff/{variant_a}_vs_{variant_b}/{prompt_set}/
+    """
+    return get('model_diff.comparison',
+               experiment=experiment,
+               variant_a=variant_a,
+               variant_b=variant_b,
+               prompt_set=prompt_set)

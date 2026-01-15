@@ -105,6 +105,18 @@ analysis:
   category: "experiments/{experiment}/analysis/{category}"
 
 # =============================================================================
+# MODEL DIFF (cross-variant activation comparison)
+# =============================================================================
+# Structure: model_diff/{variant_a}_vs_{variant_b}/{prompt_set}/...
+# Compares activations between two model variants on same prompts
+
+model_diff:
+  base: "experiments/{experiment}/model_diff"
+  comparison: "experiments/{experiment}/model_diff/{variant_a}_vs_{variant_b}/{prompt_set}"
+  diff_vectors: "experiments/{experiment}/model_diff/{variant_a}_vs_{variant_b}/{prompt_set}/diff_vectors.pt"
+  results: "experiments/{experiment}/model_diff/{variant_a}_vs_{variant_b}/{prompt_set}/results.json"
+
+# =============================================================================
 # STEERING (intervention evaluation - validates vectors via causal control)
 # =============================================================================
 # Structure: steering/{trait}/{model_variant}/{position}/{prompt_set}/...
