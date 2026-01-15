@@ -262,14 +262,13 @@ async function renderSweepData(steeringEntry) {
 
 
 /**
- * Extract base trait name from full trait path.
+ * Extract trait name from full trait path.
  * e.g., "pv_instruction/evil" → "evil"
- *       "pv_natural/evil_v3" → "evil"
+ *       "pv_natural/evil_v3" → "evil_v3"
  */
 function getBaseTraitName(trait) {
-    const traitName = trait.split('/').pop();  // "evil" or "evil_v3"
-    // Strip version suffixes like _v3, _v2, etc.
-    return traitName.replace(/_v\d+$/, '');
+    // Just return the trait name part, keeping version suffixes
+    return trait.split('/').pop();
 }
 
 /**

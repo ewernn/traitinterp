@@ -238,7 +238,6 @@ async def run_evaluation(
     use_default_prompt: bool = False,
     min_coherence: float = MIN_COHERENCE,
     extraction_variant: Optional[str] = None,
-    questions_from: Optional[str] = None,
     save_mode: str = "best",
 ):
     """
@@ -257,17 +256,17 @@ async def run_evaluation(
         load_in_4bit: Use 4-bit quantization when loading model
         eval_prompt: Custom trait scoring prompt (auto-detected from steering.json if None)
         use_default_prompt: Force V3c default, ignore steering.json eval_prompt
-        questions_from: Load questions from inference dataset instead of steering.json
     """
     # Load prompts and trait definition
     steering_data = load_steering_data(trait)
 
-    # Load questions: from inference dataset if specified, otherwise from steering.json
-    if questions_from:
-        questions = load_questions_from_inference(questions_from)
-        print(f"Loaded {len(questions)} questions from inference: {questions_from}")
-    else:
+    # Load questions: from inference dataset or trait's steering.json
+    if prompt_set == "steering":
         questions = steering_data.questions
+        print(f"Questions: {len(questions)} from steering.json")
+    else:
+        questions = load_questions_from_inference(prompt_set)
+        print(f"Questions: {len(questions)} from inference/{prompt_set}.json")
 
     if subset:
         questions = questions[:subset]
@@ -495,10 +494,8 @@ def main():
                         help="Multiple traits (comma-separated): 'exp/cat/t1,exp/cat/t2'")
 
     # === Input/Output ===
-    parser.add_argument("--questions-from", type=str, default=None,
-                        help="Load questions from inference dataset instead of steering.json (e.g., 'rm_syco/train_100')")
-    parser.add_argument("--prompt-set", default=None,
-                        help="Prompt set name for result isolation (default: 'steering', or value of --questions-from)")
+    parser.add_argument("--prompt-set", default="steering",
+                        help="Prompt set: 'steering' uses trait's steering.json, otherwise loads from datasets/inference/{prompt-set}.json")
 
     # === Model ===
     parser.add_argument("--model-variant", default=None,
@@ -556,13 +553,6 @@ def main():
                         help="Response saving: 'all' (every config), 'best' (best per layer), 'none'. Default: best")
 
     args = parser.parse_args()
-
-    # Handle prompt_set and questions_from
-    # If questions_from is set but prompt_set is not, auto-set prompt_set to match
-    if args.questions_from and args.prompt_set is None:
-        args.prompt_set = args.questions_from
-    elif args.prompt_set is None:
-        args.prompt_set = "steering"
 
     # Parse trait specs (single or multiple)
     if args.traits:
@@ -653,7 +643,6 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                 component=args.component,
                 position=args.position,
                 prompt_set=args.prompt_set,
-                questions_from=args.questions_from,
                 model_name=model_name,
                 judge_provider=args.judge,
                 subset=args.subset,
