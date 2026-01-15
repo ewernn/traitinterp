@@ -10,8 +10,8 @@ set -e
 # Parse arguments
 if [[ "$1" == ssh* ]]; then
     # Parse from SSH command string
-    PORT=$(echo "$1" | grep -oP '(?<=-p )\d+')
-    HOST=$(echo "$1" | grep -oP '(?<=root@)[\d.]+')
+    PORT=$(echo "$1" | sed -n 's/.*-p \([0-9]*\).*/\1/p')
+    HOST=$(echo "$1" | sed -n 's/.*root@\([0-9.]*\).*/\1/p')
 else
     # Parse from flags
     while getopts "p:h:" opt; do

@@ -1,6 +1,10 @@
 // Steering Sweep - Heatmap visualization of steering experiments
 // Shows layer × perturbation ratio → delta/coherence
 //
+// Sections:
+// 1. Best Vector per Layer: Multi-trait comparison by extraction method
+// 2. Layer × Coefficient Heatmaps: Delta and coherence heatmaps
+//
 // Response browser component is in: components/response-browser.js
 
 async function renderSteeringSweep() {

@@ -232,10 +232,12 @@ def compute_layer_stats(
         {
             'top_dims_by_layer': {layer: [dim1, dim2, ...]},  # top-k dims per layer
             'dim_magnitude_by_layer': {dim: [mag_L0, mag_L1, ...]},  # normalized per layer
+            'layer_norms': {layer: mean_norm},  # average ||h|| per layer
         }
     """
     # Accumulate response activations across all prompts
     layer_sums = {}  # {layer: sum tensor}
+    layer_norm_sums = {}  # {layer: sum of L2 norms}
     layer_counts = {}  # {layer: token count}
 
     for pt_file in pt_files:
@@ -249,15 +251,19 @@ def compute_layer_stats(
 
             if layer not in layer_sums:
                 layer_sums[layer] = torch.zeros(residual.shape[1])
+                layer_norm_sums[layer] = 0.0
                 layer_counts[layer] = 0
 
             layer_sums[layer] += residual.sum(dim=0)
+            layer_norm_sums[layer] += residual.norm(dim=1).sum().item()  # sum of per-token norms
             layer_counts[layer] += residual.shape[0]
 
-    # Compute mean per layer
+    # Compute mean per layer and average norm
     layer_means = {}  # {layer: mean tensor}
+    layer_norms = {}  # {layer: average ||h||}
     for layer in sorted(layer_sums.keys()):
         layer_means[layer] = layer_sums[layer] / layer_counts[layer]
+        layer_norms[layer] = round(layer_norm_sums[layer] / layer_counts[layer], 1)
 
     # Find top-k dims per layer and collect all candidate dims
     top_dims_by_layer = {}
@@ -283,6 +289,7 @@ def compute_layer_stats(
     return {
         'top_dims_by_layer': {int(k): v for k, v in top_dims_by_layer.items()},
         'dim_magnitude_by_layer': {int(k): v for k, v in dim_magnitude_by_layer.items()},
+        'layer_norms': {int(k): v for k, v in layer_norms.items()},
     }
 
 
@@ -294,30 +301,7 @@ def aggregate_stats(
     if not all_results:
         return {}
 
-    # Count dimension frequency across prompts
-    dim_counts = {}
-    for result in all_results:
-        for layer, dims in result['massive_dims'].items():
-            for d in dims:
-                if d['is_massive']:
-                    key = (layer, d['dim'])
-                    dim_counts[key] = dim_counts.get(key, 0) + 1
-
-    # Find consistent massive dims (appear in >50% of prompts)
     n_prompts = len(all_results)
-    consistent_dims = {}
-    for (layer, dim), count in dim_counts.items():
-        if count > n_prompts * 0.5:
-            if layer not in consistent_dims:
-                consistent_dims[layer] = []
-            consistent_dims[layer].append({
-                'dim': dim,
-                'frequency': round(count / n_prompts, 2),
-            })
-
-    # Sort by frequency
-    for layer in consistent_dims:
-        consistent_dims[layer].sort(key=lambda x: -x['frequency'])
 
     # Aggregate mean alignment stats (only if per-token data exists)
     mean_alignment = {}
@@ -329,7 +313,6 @@ def aggregate_stats(
 
     return {
         'n_prompts': n_prompts,
-        'consistent_massive_dims': {int(k): v for k, v in consistent_dims.items()},
         'mean_alignment_by_layer': {int(k): v for k, v in mean_alignment.items()},
     }
 
@@ -448,6 +431,7 @@ def main():
     layer_stats = compute_layer_stats(pt_files, top_k=args.top_k)
     aggregate['top_dims_by_layer'] = layer_stats['top_dims_by_layer']
     aggregate['dim_magnitude_by_layer'] = layer_stats['dim_magnitude_by_layer']
+    aggregate['layer_norms'] = layer_stats['layer_norms']
 
     # Prepare output
     output = {
@@ -478,12 +462,6 @@ def main():
     # Print summary
     print(f"\n=== Summary ===")
     print(f"Analyzed {aggregate['n_prompts']} prompts")
-
-    if aggregate.get('consistent_massive_dims'):
-        print(f"\nConsistent massive dims (>50% of prompts):")
-        for layer, dims in sorted(aggregate['consistent_massive_dims'].items()):
-            dim_strs = [f"dim {d['dim']} ({d['frequency']:.0%})" for d in dims]
-            print(f"  L{layer}: {', '.join(dim_strs)}")
 
     if aggregate.get('mean_alignment_by_layer'):
         print(f"\nMean alignment with mean direction by layer:")

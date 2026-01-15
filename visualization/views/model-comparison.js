@@ -1,8 +1,9 @@
 /**
- * Model Comparison View - Compare trait activations across model variants
+ * Model Analysis View - Understanding model internals and comparing variants
  *
- * Computes effect size (Cohen's d) for same prompts processed by different models.
- * Used for analyzing fine-tuning effects, LoRA impacts, etc.
+ * Sections:
+ * 1. Activation Diagnostics: Magnitude by layer, massive activations (Sun et al. 2024)
+ * 2. Variant Comparison: Effect size (Cohen's d) for same prompts across model variants
  */
 
 // Cache for loaded projections to avoid re-fetching
@@ -134,7 +135,7 @@ function computeCohenD(baseline, compare) {
 /**
  * Main render function
  */
-async function renderModelComparison() {
+async function renderModelAnalysis() {
     const contentArea = document.getElementById('content-area');
 
     // Guard: require experiment selection
@@ -143,6 +144,7 @@ async function renderModelComparison() {
             <div class="tool-view">
                 <div class="no-data">
                     <p>Please select an experiment from the sidebar</p>
+                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
                 </div>
             </div>
         `;
@@ -150,77 +152,136 @@ async function renderModelComparison() {
     }
 
     const experiment = window.state.currentExperiment;
-    const config = window.state.experimentData?.config;
+    const config = window.state.experimentData?.experimentConfig;
 
-    if (!config || !config.model_variants) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="error">No model variants defined in experiment config</div>
-            </div>
-        `;
-        return;
-    }
+    // Check if variant comparison is available (need 2+ variants)
+    const hasVariants = config?.model_variants && Object.keys(config.model_variants).length >= 2;
+    const variants = hasVariants ? Object.keys(config.model_variants) : [];
+    const defaultBaseline = hasVariants ? (config.defaults?.application || variants[0]) : '';
+    const defaultCompare = hasVariants ? (variants.find(v => v !== defaultBaseline) || variants[1] || variants[0]) : '';
 
-    // Get available variants
-    const variants = Object.keys(config.model_variants);
-    const defaultBaseline = config.defaults?.application || variants[0];
-    const defaultCompare = variants.find(v => v !== defaultBaseline) || variants[1] || variants[0];
-
-    // Render UI
+    // Render UI with both sections
     contentArea.innerHTML = `
         <div class="tool-view">
-            <div class="tool-header">
-                <h2>Model Comparison</h2>
-                <p class="tool-description">
-                    Compare how different model variants activate on the same trait when processing identical text.
-                    Uses prefilled responses (same prompts → variant A generates → both variants process same text).
-                </p>
+            <div class="page-intro">
+                <div class="page-intro-text">Understanding model internals and comparing model variants.</div>
             </div>
 
-            <div class="tool-controls">
-                <div class="control-row">
-                    ${ui.renderSelect({ id: 'baseline-variant', label: 'Baseline Variant', options: variants, selected: defaultBaseline, className: 'variant-select' })}
-                    ${ui.renderSelect({ id: 'compare-variant', label: 'Compare Variant', options: variants, selected: defaultCompare, className: 'variant-select' })}
+            <!-- Section 1: Activation Diagnostics -->
+            <section>
+                ${ui.renderSubsection({
+                    num: 1,
+                    title: 'Activation Diagnostics',
+                    infoId: 'info-activation-diagnostics',
+                    infoText: 'Understanding model internals: activation magnitude growth and massive activation dimensions (Sun et al. 2024). Run <code>python analysis/massive_activations.py</code> to generate data.'
+                })}
+
+                <h4 class="subsection-header" style="margin-top: 16px;">
+                    <span class="subsection-title">Activation Magnitude by Layer</span>
+                    <span class="subsection-info-toggle" data-target="info-act-magnitude">►</span>
+                </h4>
+                <div id="info-act-magnitude" class="info-text">
+                    How the residual stream grows in magnitude as each layer adds information to the hidden state.
                 </div>
+                <div id="activation-magnitude-plot"></div>
 
-                <div class="control-row">
-                    ${ui.renderSelect({ id: 'trait-select', label: 'Trait', options: [], placeholder: 'Loading traits...', className: 'trait-select' })}
-                    ${ui.renderSelect({ id: 'prompt-set-select', label: 'Prompt Set', options: [], placeholder: 'Loading prompt sets...', className: 'prompt-set-select' })}
+                <h4 class="subsection-header" style="margin-top: 24px;">
+                    <span class="subsection-title">Massive Activations</span>
+                    <span class="subsection-info-toggle" data-target="info-massive-acts">►</span>
+                </h4>
+                <div id="info-massive-acts" class="info-text">
+                    Massive activation dimensions (Sun et al. 2024) - specific dimensions with values 100-1000x larger than median. These act as fixed biases.
                 </div>
+                <div id="massive-activations-container"></div>
 
-                <button id="compute-btn" class="primary-btn">Compute Effect Size</button>
-            </div>
+                <h4 class="subsection-header" style="margin-top: 24px;">
+                    <span class="subsection-title">Massive Dims Across Layers</span>
+                    <span class="subsection-info-toggle" data-target="info-massive-dims-layers">►</span>
+                </h4>
+                <div id="info-massive-dims-layers" class="info-text">
+                    Shows how each massive dimension's magnitude changes across layers (normalized by layer average).
+                </div>
+                <div class="projection-toggle" style="margin-bottom: 12px;">
+                    <span class="projection-toggle-label">Criteria:</span>
+                    <select id="massive-dims-criteria">
+                        <option value="top5-3layers">Top 5, 3+ layers</option>
+                        <option value="top3-any">Top 3, any layer</option>
+                        <option value="top5-any">Top 5, any layer</option>
+                    </select>
+                </div>
+                <div id="massive-dims-layers-plot"></div>
+            </section>
 
-            <div id="comparison-results" class="comparison-results" style="display: none;">
-                <div class="results-summary" id="results-summary"></div>
-                <div id="effect-size-chart"></div>
-            </div>
+            <!-- Section 2: Variant Comparison -->
+            <section>
+                ${ui.renderSubsection({
+                    num: 2,
+                    title: 'Variant Comparison',
+                    infoId: 'info-variant-comparison',
+                    infoText: 'Compare how different model variants (base, instruct, LoRA) activate on the same trait when processing identical text. Uses Cohen\'s d effect size.'
+                })}
 
-            <div id="comparison-loading" class="loading" style="display: none;">
-                Computing effect sizes across layers...
-            </div>
+                ${hasVariants ? `
+                    <div class="tool-controls" style="margin-top: 16px;">
+                        <div class="control-row">
+                            ${ui.renderSelect({ id: 'baseline-variant', label: 'Baseline Variant', options: variants, selected: defaultBaseline, className: 'variant-select' })}
+                            ${ui.renderSelect({ id: 'compare-variant', label: 'Compare Variant', options: variants, selected: defaultCompare, className: 'variant-select' })}
+                        </div>
 
-            <div id="comparison-error" class="error" style="display: none;"></div>
+                        <div class="control-row">
+                            ${ui.renderSelect({ id: 'trait-select', label: 'Trait', options: [], placeholder: 'Loading traits...', className: 'trait-select' })}
+                            ${ui.renderSelect({ id: 'prompt-set-select', label: 'Prompt Set', options: [], placeholder: 'Loading prompt sets...', className: 'prompt-set-select' })}
+                        </div>
+
+                        <button id="compute-btn" class="primary-btn">Compute Effect Size</button>
+                    </div>
+
+                    <div id="comparison-results" class="comparison-results" style="display: none;">
+                        <div class="results-summary" id="results-summary"></div>
+                        <div id="effect-size-chart"></div>
+                    </div>
+
+                    <div id="comparison-loading" class="loading" style="display: none;">
+                        Computing effect sizes across layers...
+                    </div>
+
+                    <div id="comparison-error" class="error" style="display: none;"></div>
+                ` : `
+                    <div class="info" style="margin-top: 16px;">
+                        Variant comparison requires 2+ model variants in <code>config.json</code>.
+                        <br><br>
+                        Current config has ${variants.length} variant(s). Add more variants to enable comparison:
+                        <pre>{ "model_variants": { "base": {...}, "instruct": {...} } }</pre>
+                    </div>
+                `}
+            </section>
         </div>
     `;
 
-    // Populate trait selector
-    await populateTraitSelector(experiment);
+    // Setup info toggles
+    window.setupSubsectionInfoToggles?.();
 
-    // Populate prompt set selector
-    await populatePromptSetSelector(experiment, defaultBaseline);
+    // Render activation diagnostics (always)
+    await renderActivationMagnitudePlot();
+    await renderMassiveActivations();
+    await renderMassiveDimsAcrossLayers();
 
-    // Add event listeners
-    document.getElementById('compute-btn').addEventListener('click', () => {
-        runComparison(experiment);
-    });
+    // Setup variant comparison if available
+    if (hasVariants) {
+        await populateTraitSelector(experiment);
+        await populatePromptSetSelector(experiment, defaultBaseline);
 
-    // Auto-run if we have stored selections
-    const storedTrait = sessionStorage.getItem('modelComparison.trait');
-    const storedPromptSet = sessionStorage.getItem('modelComparison.promptSet');
-    if (storedTrait && storedPromptSet) {
-        document.getElementById('trait-select').value = storedTrait;
-        document.getElementById('prompt-set-select').value = storedPromptSet;
+        document.getElementById('compute-btn').addEventListener('click', () => {
+            runComparison(experiment);
+        });
+
+        // Auto-run if we have stored selections
+        const storedTrait = sessionStorage.getItem('modelComparison.trait');
+        const storedPromptSet = sessionStorage.getItem('modelComparison.promptSet');
+        if (storedTrait && storedPromptSet) {
+            document.getElementById('trait-select').value = storedTrait;
+            document.getElementById('prompt-set-select').value = storedPromptSet;
+        }
     }
 }
 
@@ -463,5 +524,242 @@ function showError(message) {
     document.getElementById('comparison-results').style.display = 'none';
 }
 
-// Export
-window.renderModelComparison = renderModelComparison;
+
+// ============================================================================
+// Activation Diagnostics Functions
+// ============================================================================
+
+/**
+ * Fetch massive activations data, using calibration.json as canonical source.
+ * Calibration contains model-wide massive dims computed from neutral prompts.
+ */
+async function fetchMassiveActivationsData() {
+    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration', model_variant: modelVariant });
+    const response = await fetch('/' + calibrationPath);
+    if (!response.ok) return null;
+    return response.json();
+}
+
+
+/**
+ * Render Activation Magnitude plot showing ||h|| by layer.
+ * Uses data from massive activations calibration file.
+ */
+async function renderActivationMagnitudePlot() {
+    const plotDiv = document.getElementById('activation-magnitude-plot');
+    if (!plotDiv) return;
+
+    try {
+        const data = await fetchMassiveActivationsData();
+        if (!data || !data.aggregate?.layer_norms) {
+            plotDiv.innerHTML = `
+                <div class="info">
+                    Activation magnitude data not available.
+                    <br><br>
+                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
+                </div>
+            `;
+            return;
+        }
+
+        const layerNorms = data.aggregate.layer_norms;
+        const layers = Object.keys(layerNorms).map(Number).sort((a, b) => a - b);
+        const norms = layers.map(l => layerNorms[l]);
+
+        const traces = [{
+            x: layers,
+            y: norms,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Mean ||h||',
+            line: { color: window.getChartColors()[0], width: 2 },
+            marker: { size: 4 },
+            hovertemplate: '<b>Layer %{x}</b><br>||h|| = %{y:.1f}<extra></extra>'
+        }];
+
+        const layout = window.buildChartLayout({
+            preset: 'layerChart',
+            traces,
+            height: 250,
+            legendPosition: 'none',
+            xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 5, showgrid: true },
+            yaxis: { title: '||h|| (L2 norm)', showgrid: true }
+        });
+        window.renderChart(plotDiv, traces, layout);
+
+    } catch (error) {
+        plotDiv.innerHTML = `<div class="info">Error loading activation data: ${error.message}</div>`;
+    }
+}
+
+
+/**
+ * Render Massive Activations section.
+ * Shows mean alignment plot - how much tokens point in a common direction.
+ */
+async function renderMassiveActivations() {
+    const container = document.getElementById('massive-activations-container');
+    if (!container) return;
+
+    try {
+        const data = await fetchMassiveActivationsData();
+        if (!data) {
+            container.innerHTML = `
+                <div class="info">
+                    No massive activation calibration data.
+                    <br><br>
+                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
+                </div>
+            `;
+            return;
+        }
+
+        const aggregate = data.aggregate || {};
+        const meanAlignment = aggregate.mean_alignment_by_layer || {};
+
+        if (Object.keys(meanAlignment).length === 0) {
+            container.innerHTML = `<div class="info">No mean alignment data available.</div>`;
+            return;
+        }
+
+        container.innerHTML = `<div id="mean-alignment-plot"></div>`;
+
+        // Plot mean alignment by layer
+        const layers = Object.keys(meanAlignment).map(Number).sort((a, b) => a - b);
+        const alignments = layers.map(l => meanAlignment[l]);
+
+        const alignTrace = {
+            x: layers,
+            y: alignments.map(v => v * 100),
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Mean Alignment',
+            line: { color: window.getChartColors()[0], width: 2 },
+            marker: { size: 4 },
+            hovertemplate: 'L%{x}<br>Alignment: %{y:.1f}%<extra></extra>'
+        };
+
+        const alignLayout = window.buildChartLayout({
+            preset: 'layerChart',
+            traces: [alignTrace],
+            height: 200,
+            legendPosition: 'none',
+            xaxis: { title: 'Layer', dtick: 5, showgrid: true },
+            yaxis: { title: 'Mean Alignment (%)', range: [0, 100], showgrid: true }
+        });
+        window.renderChart('mean-alignment-plot', [alignTrace], alignLayout);
+
+    } catch (error) {
+        container.innerHTML = `<div class="info">Error loading massive activation data: ${error.message}</div>`;
+    }
+}
+
+
+/**
+ * Render Massive Dims Across Layers section.
+ * Shows how each massive dim's normalized magnitude changes across layers.
+ */
+async function renderMassiveDimsAcrossLayers() {
+    const container = document.getElementById('massive-dims-layers-plot');
+    if (!container) return;
+
+    try {
+        const data = await fetchMassiveActivationsData();
+        if (!data) {
+            container.innerHTML = `<div class="info">No massive activation data. Run <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code></div>`;
+            return;
+        }
+        const aggregate = data.aggregate || {};
+        const topDimsByLayer = aggregate.top_dims_by_layer || {};
+        const dimMagnitude = aggregate.dim_magnitude_by_layer || {};
+
+        if (Object.keys(dimMagnitude).length === 0) {
+            container.innerHTML = `<div class="info">No per-layer magnitude data. Re-run <code>python analysis/massive_activations.py</code> to generate.</div>`;
+            return;
+        }
+
+        // Get criteria from dropdown
+        const criteriaSelect = document.getElementById('massive-dims-criteria');
+        const criteria = criteriaSelect?.value || 'top5-3layers';
+
+        // Filter dims based on criteria
+        const filteredDims = filterDimsByCriteria(topDimsByLayer, criteria);
+
+        if (filteredDims.length === 0) {
+            container.innerHTML = `<div class="info">No dims match criteria "${criteria}".</div>`;
+            return;
+        }
+
+        // Build traces
+        const colors = window.getChartColors();
+        const nLayers = Object.keys(topDimsByLayer).length;
+        const layers = Array.from({ length: nLayers }, (_, i) => i);
+
+        const traces = filteredDims.map((dim, idx) => {
+            const magnitudes = dimMagnitude[dim] || [];
+            return {
+                x: layers,
+                y: magnitudes,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: `dim ${dim}`,
+                line: { color: colors[idx % colors.length], width: 2 },
+                marker: { size: 4 },
+                hovertemplate: `dim ${dim}<br>L%{x}<br>Normalized: %{y:.2f}x<extra></extra>`
+            };
+        });
+
+        const layout = window.buildChartLayout({
+            preset: 'layerChart',
+            traces,
+            height: 300,
+            legendPosition: 'above',
+            xaxis: { title: 'Layer', dtick: 5, showgrid: true },
+            yaxis: { title: 'Normalized Magnitude', showgrid: true }
+        });
+        window.renderChart(container, traces, layout);
+
+        // Setup dropdown change handler
+        if (criteriaSelect && !criteriaSelect.dataset.bound) {
+            criteriaSelect.dataset.bound = 'true';
+            criteriaSelect.addEventListener('change', () => {
+                renderMassiveDimsAcrossLayers();
+            });
+        }
+
+    } catch (error) {
+        container.innerHTML = `<div class="info">Error loading data: ${error.message}</div>`;
+    }
+}
+
+
+/**
+ * Filter dims based on selected criteria.
+ */
+function filterDimsByCriteria(topDimsByLayer, criteria) {
+    const dimAppearances = {};  // {dim: count of layers it appears in}
+
+    // Count appearances based on criteria
+    for (const [layer, dims] of Object.entries(topDimsByLayer)) {
+        const topK = criteria === 'top3-any' ? 3 : 5;
+        const dimsToCount = dims.slice(0, topK);
+        for (const dim of dimsToCount) {
+            dimAppearances[dim] = (dimAppearances[dim] || 0) + 1;
+        }
+    }
+
+    // Filter based on min layers
+    const minLayers = criteria === 'top5-3layers' ? 3 : 1;
+    const filtered = Object.entries(dimAppearances)
+        .filter(([dim, count]) => count >= minLayers)
+        .map(([dim]) => parseInt(dim))
+        .sort((a, b) => a - b);
+
+    return filtered;
+}
+
+
+// Export (both old and new names for compatibility)
+window.renderModelAnalysis = renderModelAnalysis;
+window.renderModelComparison = renderModelAnalysis;  // Backwards compatibility

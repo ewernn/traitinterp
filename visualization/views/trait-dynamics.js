@@ -2,8 +2,9 @@
 // Core insight: "See how the model is thinking" by projecting onto trait vectors
 //
 // Sections:
-// 1. Token Trajectory: X=tokens, Y=projection (best layer) + velocity/acceleration
-// 2. Activation Magnitude
+// 1. Token Trajectory: X=tokens, Y=cosine similarity (best layer)
+// 2. Activation Magnitude Per Token: ||h|| at each token position
+// 3. Projection Velocity: d/dt of cosine projection
 
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
@@ -442,46 +443,11 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
 
             <section>
                 ${ui.renderSubsection({
-                    title: 'Token Velocity',
+                    title: 'Projection Velocity',
                     infoId: 'info-token-velocity',
-                    infoText: 'Rate of change between consecutive tokens (d/dt of trajectory above).'
+                    infoText: 'Rate of change of cosine projection between consecutive tokens. Positive = trait increasing, negative = trait decreasing, zero crossing = inflection point.'
                 })}
                 <div id="token-velocity-plot"></div>
-            </section>
-
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Activation Magnitude',
-                    infoId: 'info-act-magnitude',
-                    infoText: 'How the residual stream grows in magnitude as each layer adds information to the hidden state.'
-                })}
-                <div id="activation-magnitude-plot"></div>
-            </section>
-
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Massive Activations',
-                    infoId: 'info-massive-acts',
-                    infoText: 'Massive activation dimensions (Sun et al. 2024) - specific dimensions with values 100-1000x larger than median. These act as fixed biases and cause the "mean component" phenomenon. Run <code>python analysis/massive_activations.py</code> to generate data.'
-                })}
-                <div id="massive-activations-container"></div>
-            </section>
-
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Massive Dims Across Layers',
-                    infoId: 'info-massive-dims-layers',
-                    infoText: 'Shows how each massive dimension\'s magnitude changes across layers (normalized by layer average). Use the criteria dropdown to experiment with different definitions of "massive".'
-                })}
-                <div class="projection-toggle" style="margin-bottom: 12px;">
-                    <span class="projection-toggle-label">Criteria:</span>
-                    <select id="massive-dims-criteria">
-                        <option value="top5-3layers">Top 5, 3+ layers</option>
-                        <option value="top3-any">Top 3, any layer</option>
-                        <option value="top5-any">Top 5, any layer</option>
-                    </select>
-                </div>
-                <div id="massive-dims-layers-plot"></div>
             </section>
         </div>
     `;
@@ -564,8 +530,8 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         // Apply 3-token moving average if smoothing is enabled
         const displayValues = isSmoothing ? window.smoothData(rawValues, 3) : rawValues;
 
-        // Store raw values for velocity/accel (always use smoothed for derivatives)
-        traitActivations[traitName] = isSmoothing ? window.smoothData(rawProj, 3) : rawProj;
+        // Store displayed values for velocity (derivative of what's shown in trajectory)
+        traitActivations[traitName] = displayValues;
 
         // Each vector gets its own color
         const color = window.getChartColors()[idx % 10];
@@ -776,17 +742,8 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens);
 
-    // Render Token Velocity plot
+    // Render Projection Velocity plot
     renderTokenDerivativePlots(traitActivations, filteredByMethod, tickVals, tickText, nPromptTokens, traitData);
-
-    // Render Activation Magnitude plot (per-layer)
-    renderActivationMagnitudePlot(traitData, filteredByMethod);
-
-    // Render Massive Activations section
-    renderMassiveActivations();
-
-    // Render Massive Dims Across Layers section
-    renderMassiveDimsAcrossLayers();
 }
 
 
@@ -873,7 +830,7 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
 
 
 /**
- * Render Token Velocity plot (first derivative of smoothed trajectory)
+ * Render Projection Velocity plot (first derivative of cosine projection)
  */
 function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, traitData) {
     const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
@@ -932,274 +889,6 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
         }
     });
 }
-
-/**
- * Render the Activation Magnitude plot showing ||h|| by layer (layer on y-axis).
- */
-function renderActivationMagnitudePlot(traitData, loadedTraits) {
-    const firstTraitData = traitData[loadedTraits[0]];
-
-    if (!firstTraitData.activation_norms) {
-        const plotDiv = document.getElementById('activation-magnitude-plot');
-        plotDiv.innerHTML = `
-            <div class="info">
-                Activation norms not available. Re-run projection script to generate.
-            </div>
-        `;
-        return;
-    }
-
-    const promptNorms = firstTraitData.activation_norms.prompt;
-    const responseNorms = firstTraitData.activation_norms.response;
-    const nLayers = promptNorms.length;
-    const layerIndices = Array.from({length: nLayers}, (_, i) => i);
-    const combinedNorms = promptNorms.map((p, i) => (p + responseNorms[i]) / 2);
-
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-
-    // Layer on x-axis, L2 norm on y-axis
-    const traces = [
-        { x: layerIndices, y: promptNorms, type: 'scatter', mode: 'lines+markers', name: 'Prompt',
-          line: { color: '#4a9eff', width: 2 }, marker: { size: 4 },
-          hovertemplate: '<b>Prompt</b><br>Layer %{x}: %{y:.1f}<extra></extra>' },
-        { x: layerIndices, y: responseNorms, type: 'scatter', mode: 'lines+markers', name: 'Response',
-          line: { color: '#ff6b6b', width: 2 }, marker: { size: 4 },
-          hovertemplate: '<b>Response</b><br>Layer %{x}: %{y:.1f}<extra></extra>' },
-        { x: layerIndices, y: combinedNorms, type: 'scatter', mode: 'lines+markers', name: 'Combined',
-          line: { color: textSecondary, width: 2, dash: 'dash' }, marker: { size: 4 },
-          hovertemplate: '<b>Combined</b><br>Layer %{x}: %{y:.1f}<extra></extra>' }
-    ];
-
-    const layout = window.buildChartLayout({
-        preset: 'layerChart',
-        traces,
-        height: 300,
-        legendPosition: 'below',
-        xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 5, showgrid: true },
-        yaxis: { title: '||h|| (L2 norm)', showgrid: true }
-    });
-    window.renderChart('activation-magnitude-plot', traces, layout);
-}
-
-
-/**
- * Fetch massive activations data, using calibration.json as canonical source.
- * Calibration contains model-wide massive dims computed from neutral prompts.
- */
-async function fetchMassiveActivationsData() {
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
-    const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration', model_variant: modelVariant });
-    const response = await fetch('/' + calibrationPath);
-    if (!response.ok) return null;
-    return response.json();
-}
-
-/**
- * Render Massive Activations section.
- * Shows which dimensions have abnormally large values and their behavior.
- */
-async function renderMassiveActivations() {
-    const container = document.getElementById('massive-activations-container');
-    if (!container) return;
-
-    try {
-        const data = await fetchMassiveActivationsData();
-        if (!data) {
-            container.innerHTML = `
-                <div class="info">
-                    No massive activation calibration data.
-                    <br><br>
-                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
-            return;
-        }
-
-        // Get aggregate stats (always available from calibration)
-        const aggregate = data.aggregate || {};
-        const consistentDims = aggregate.consistent_massive_dims || {};
-        const meanAlignment = aggregate.mean_alignment_by_layer || {};
-        const topDimsByLayer = aggregate.top_dims_by_layer || {};
-
-        // Get dims that appear in top-5 at 3+ layers (same as cleaning logic)
-        const dimAppearances = {};
-        for (const layerDims of Object.values(topDimsByLayer)) {
-            for (const dim of layerDims.slice(0, 5)) {
-                dimAppearances[dim] = (dimAppearances[dim] || 0) + 1;
-            }
-        }
-        const trackedDims = Object.entries(dimAppearances)
-            .filter(([_, count]) => count >= 3)
-            .map(([dim]) => parseInt(dim))
-            .sort((a, b) => a - b);
-        const dimLabels = trackedDims.map(d => `dim ${d}`).join(', ');
-
-        // Find which dims are consistent across prompts
-        let consistentDimsHtml = '';
-        const allConsistent = new Set();
-        for (const [layer, dims] of Object.entries(consistentDims)) {
-            dims.forEach(d => allConsistent.add(d.dim));
-        }
-        if (allConsistent.size > 0) {
-            consistentDimsHtml = `<div class="summary-card">
-                <div class="summary-label">Consistent Massive Dims</div>
-                <div class="summary-value">${Array.from(allConsistent).join(', ')}</div>
-                <div class="summary-detail">Appear in >50% of prompts</div>
-            </div>`;
-        }
-
-        container.innerHTML = `
-            <div class="summary-grid">
-                <div class="summary-card">
-                    <div class="summary-label">Tracked Dimensions</div>
-                    <div class="summary-value">${dimLabels || 'None'}</div>
-                </div>
-                ${consistentDimsHtml}
-                <div class="summary-card">
-                    <div class="summary-label">Mean Alignment (L9)</div>
-                    <div class="summary-value">${((meanAlignment[9] || 0) * 100).toFixed(0)}%</div>
-                    <div class="summary-detail">How much tokens align with mean direction</div>
-                </div>
-            </div>
-            <div id="mean-alignment-plot" style="margin-top: 16px;"></div>
-        `;
-
-        // Plot mean alignment by layer
-        const layers = Object.keys(meanAlignment).map(Number).sort((a, b) => a - b);
-        const alignments = layers.map(l => meanAlignment[l]);
-
-        if (layers.length > 0) {
-            const alignTrace = {
-                x: layers,
-                y: alignments.map(v => v * 100),
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Mean Alignment',
-                line: { color: window.getChartColors()[0], width: 2 },
-                marker: { size: 4 },
-                hovertemplate: 'L%{x}<br>Alignment: %{y:.1f}%<extra></extra>'
-            };
-
-            const alignLayout = window.buildChartLayout({
-                preset: 'layerChart',
-                traces: [alignTrace],
-                height: 200,
-                legendPosition: 'none',
-                xaxis: { title: 'Layer', dtick: 5, showgrid: true },
-                yaxis: { title: 'Mean Alignment (%)', range: [0, 100], showgrid: true }
-            });
-            window.renderChart('mean-alignment-plot', [alignTrace], alignLayout);
-        }
-
-    } catch (error) {
-        container.innerHTML = `<div class="info">Error loading massive activation data: ${error.message}</div>`;
-    }
-}
-
-
-/**
- * Render Massive Dims Across Layers section.
- * Shows how each massive dim's normalized magnitude changes across layers.
- */
-async function renderMassiveDimsAcrossLayers() {
-    const container = document.getElementById('massive-dims-layers-plot');
-    if (!container) return;
-
-    try {
-        const data = await fetchMassiveActivationsData();
-        if (!data) {
-            container.innerHTML = `<div class="info">No massive activation data. Run <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code></div>`;
-            return;
-        }
-        const aggregate = data.aggregate || {};
-        const topDimsByLayer = aggregate.top_dims_by_layer || {};
-        const dimMagnitude = aggregate.dim_magnitude_by_layer || {};
-
-        if (Object.keys(dimMagnitude).length === 0) {
-            container.innerHTML = `<div class="info">No per-layer magnitude data. Re-run <code>python analysis/massive_activations.py</code> to generate.</div>`;
-            return;
-        }
-
-        // Get criteria from dropdown
-        const criteriaSelect = document.getElementById('massive-dims-criteria');
-        const criteria = criteriaSelect?.value || 'top5-3layers';
-
-        // Filter dims based on criteria
-        const filteredDims = filterDimsByCriteria(topDimsByLayer, criteria);
-
-        if (filteredDims.length === 0) {
-            container.innerHTML = `<div class="info">No dims match criteria "${criteria}".</div>`;
-            return;
-        }
-
-        // Build traces
-        const colors = window.getChartColors();
-        const nLayers = Object.keys(topDimsByLayer).length;
-        const layers = Array.from({ length: nLayers }, (_, i) => i);
-
-        const traces = filteredDims.map((dim, idx) => {
-            const magnitudes = dimMagnitude[dim] || [];
-            return {
-                x: layers,
-                y: magnitudes,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: `dim ${dim}`,
-                line: { color: colors[idx % colors.length], width: 2 },
-                marker: { size: 4 },
-                hovertemplate: `dim ${dim}<br>L%{x}<br>Normalized: %{y:.2f}x<extra></extra>`
-            };
-        });
-
-        const layout = window.buildChartLayout({
-            preset: 'layerChart',
-            traces,
-            height: 300,
-            legendPosition: 'above',
-            xaxis: { title: 'Layer', dtick: 5, showgrid: true },
-            yaxis: { title: 'Normalized Magnitude', showgrid: true }
-        });
-        window.renderChart(container, traces, layout);
-
-        // Setup dropdown change handler
-        if (criteriaSelect && !criteriaSelect.dataset.bound) {
-            criteriaSelect.dataset.bound = 'true';
-            criteriaSelect.addEventListener('change', () => {
-                renderMassiveDimsAcrossLayers();
-            });
-        }
-
-    } catch (error) {
-        container.innerHTML = `<div class="info">Error loading data: ${error.message}</div>`;
-    }
-}
-
-
-/**
- * Filter dims based on selected criteria.
- */
-function filterDimsByCriteria(topDimsByLayer, criteria) {
-    const dimAppearances = {};  // {dim: count of layers it appears in}
-
-    // Count appearances based on criteria
-    for (const [layer, dims] of Object.entries(topDimsByLayer)) {
-        const topK = criteria === 'top3-any' ? 3 : 5;
-        const dimsToCount = dims.slice(0, topK);
-        for (const dim of dimsToCount) {
-            dimAppearances[dim] = (dimAppearances[dim] || 0) + 1;
-        }
-    }
-
-    // Filter based on min layers
-    const minLayers = criteria === 'top5-3layers' ? 3 : 1;
-    const filtered = Object.entries(dimAppearances)
-        .filter(([dim, count]) => count >= minLayers)
-        .map(([dim]) => parseInt(dim))
-        .sort((a, b) => a - b);
-
-    return filtered;
-}
-
 
 // Export to global scope
 window.renderTraitDynamics = renderTraitDynamics;

@@ -3433,13 +3433,10 @@ code {
     color: var(--text-secondary);
     line-height: 1.4;
     white-space: pre-wrap;
-    max-height: 150px;
-    overflow-y: auto;
 }
 
 .response-a.compact {
     white-space: normal !important;
-    max-height: 60px;
 }
 
 
