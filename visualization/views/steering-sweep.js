@@ -243,7 +243,7 @@ async function renderSweepData(steeringEntry) {
     updateSteeringModelInfo(steeringMeta);
 
     if (!data) {
-        document.getElementById('sweep-heatmap-container').innerHTML = '<p class="no-data">No data for this trait</p>';
+        document.getElementById('sweep-heatmap-delta').innerHTML = '<p class="no-data">No data for this trait</p>';
         document.getElementById('sweep-table-container').innerHTML = '';
         return;
     }
@@ -251,7 +251,7 @@ async function renderSweepData(steeringEntry) {
     // Check if we have any single-layer data
     const fullVector = data.full_vector || {};
     if (Object.keys(fullVector).length === 0) {
-        document.getElementById('sweep-heatmap-container').innerHTML = `
+        document.getElementById('sweep-heatmap-delta').innerHTML = `
             <p class="no-data">No single-layer steering runs found.<br>
             <small>Heatmap requires single-layer runs. Multi-layer runs are not visualized here.</small></p>
         `;
@@ -482,6 +482,7 @@ async function renderBestVectorPerLayer() {
         <div class="trait-chart-wrapper">
             <div class="trait-chart-title">${window.getDisplayName(trait)}</div>
             <div id="${chartId}" class="chart-container-sm"></div>
+            <div id="${chartId}-legend"></div>
             <details class="response-browser-details" data-trait="${trait}">
                 <summary class="response-browser-summary">
                     ▶ View Responses <span class="hint response-count-hint" data-trait="${trait}">(checking...)</span>
@@ -501,13 +502,13 @@ async function renderBestVectorPerLayer() {
         });
     });
 
-    // Plot each chart
+    // Plot each chart with HTML legend (no Plotly legend)
     for (const { chartId, traces } of charts) {
         const layout = window.buildChartLayout({
             preset: 'layerChart',
             traces,
-            height: 180,
-            legendPosition: 'below',
+            height: 220,
+            legendPosition: 'none',  // HTML legend handles this
             yaxis: { title: 'Trait Score' },
             margin: { r: 60 },  // Extra right margin for inline label
             // Inline x-axis label at end of axis
@@ -525,6 +526,13 @@ async function renderBestVectorPerLayer() {
         });
 
         window.renderChart(chartId, traces, layout);
+
+        // Add HTML legend below chart
+        const legendContainer = document.getElementById(`${chartId}-legend`);
+        if (legendContainer) {
+            const legendEl = window.createHtmlLegend(traces, chartId);
+            legendContainer.appendChild(legendEl);
+        }
     }
 
     // Background fetch: get response counts for all traits and update summaries

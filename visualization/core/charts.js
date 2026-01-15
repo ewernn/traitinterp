@@ -79,9 +79,9 @@ function buildChartLayout({
                 legendConfig = { orientation: 'h', y: 1.02, yanchor: 'bottom', x: 0, font: { size: 10 } };
                 break;
             case 'below':
-                // Position legend below x-axis tick labels
+                // Position legend below x-axis tick labels, left-aligned to use full width
                 legendMargin = { b: 45 + legendHeight };
-                legendConfig = { orientation: 'h', y: -0.22, yanchor: 'top', xanchor: 'center', x: 0.5, font: { size: 10 } };
+                legendConfig = { orientation: 'h', y: -0.22, yanchor: 'top', xanchor: 'left', x: 0, font: { size: 10 } };
                 break;
             case 'right':
                 legendMargin = { r: 120 };

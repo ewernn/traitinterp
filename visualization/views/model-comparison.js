@@ -3,134 +3,8 @@
  *
  * Sections:
  * 1. Activation Diagnostics: Magnitude by layer, massive activations (Sun et al. 2024)
- * 2. Variant Comparison: Effect size (Cohen's d) for same prompts across model variants
+ * 2. Variant Comparison: Effect size (Cohen's d) from pre-computed model_diff results
  */
-
-// Cache for loaded projections to avoid re-fetching
-const projectionCache = {};
-
-/**
- * Load all projection files for a variant/trait/prompt-set combination
- */
-async function loadProjections(experiment, modelVariant, trait, promptSet) {
-    const cacheKey = `${experiment}/${modelVariant}/${trait}/${promptSet}`;
-    if (projectionCache[cacheKey]) {
-        return projectionCache[cacheKey];
-    }
-
-    const pb = window.PathBuilder;
-    const projectionsDir = pb.get('inference.projections', {
-        experiment,
-        model_variant: modelVariant,
-        trait,
-        prompt_set: promptSet
-    });
-
-    // Get list of prompt IDs from responses directory
-    const responsesDir = pb.get('inference.responses', {
-        experiment,
-        model_variant: modelVariant,
-        prompt_set: promptSet
-    });
-
-    try {
-        // Fetch a sample response to get metadata
-        const metadataPath = `${responsesDir}/metadata.json`;
-        const metadata = await fetch(metadataPath).then(r => r.json()).catch(() => null);
-
-        // Try to list responses
-        const responsesPath = `${responsesDir}/`;
-        // Since we can't list directory, we'll try loading sequentially until we fail
-        const projections = {};
-        let promptId = 1;
-        let consecutiveFailures = 0;
-
-        while (consecutiveFailures < 5) {
-            const projPath = `${projectionsDir}/${promptId}.json`;
-            try {
-                const data = await fetch(projPath).then(r => r.json());
-                projections[promptId] = data;
-                promptId++;
-                consecutiveFailures = 0;
-            } catch (e) {
-                consecutiveFailures++;
-                promptId++;
-            }
-        }
-
-        const result = { projections, metadata };
-        projectionCache[cacheKey] = result;
-        return result;
-    } catch (error) {
-        console.error(`Failed to load projections for ${cacheKey}:`, error);
-        return { projections: {}, metadata: null };
-    }
-}
-
-/**
- * Aggregate projection scores by layer (mean across tokens per response)
- */
-function aggregateByLayer(projections, numLayers) {
-    const byLayer = {};
-
-    for (let layer = 0; layer < numLayers; layer++) {
-        byLayer[layer] = [];
-    }
-
-    // For each response
-    for (const [promptId, data] of Object.entries(projections)) {
-        // For each layer
-        for (let layer = 0; layer < numLayers; layer++) {
-            const layerKey = `layer_${layer}`;
-            if (data[layerKey] && Array.isArray(data[layerKey])) {
-                // Mean across tokens for this response
-                const scores = data[layerKey];
-                const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
-                byLayer[layer].push(mean);
-            }
-        }
-    }
-
-    return byLayer;
-}
-
-/**
- * Compute Cohen's d effect size between two distributions
- */
-function computeCohenD(baseline, compare) {
-    if (baseline.length === 0 || compare.length === 0) {
-        return { effectSize: 0, meanDiff: 0, pValue: 1, n: 0 };
-    }
-
-    const mean1 = baseline.reduce((a, b) => a + b, 0) / baseline.length;
-    const mean2 = compare.reduce((a, b) => a + b, 0) / compare.length;
-    const meanDiff = mean2 - mean1;
-
-    const variance1 = baseline.reduce((sum, x) => sum + Math.pow(x - mean1, 2), 0) / baseline.length;
-    const variance2 = compare.reduce((sum, x) => sum + Math.pow(x - mean2, 2), 0) / compare.length;
-    const pooledStd = Math.sqrt((variance1 + variance2) / 2);
-
-    const effectSize = pooledStd > 0 ? meanDiff / pooledStd : 0;
-
-    // Simple t-test (assumes equal variances)
-    const n1 = baseline.length;
-    const n2 = compare.length;
-    const pooledVar = ((n1 - 1) * variance1 + (n2 - 1) * variance2) / (n1 + n2 - 2);
-    const tStat = meanDiff / Math.sqrt(pooledVar * (1/n1 + 1/n2));
-
-    // Approximate p-value (two-tailed)
-    // For simplicity, we'll mark as significant if |t| > 2 (roughly p < 0.05 for large n)
-    const pValue = Math.abs(tStat) > 2 ? 0.01 : 0.1; // Rough approximation
-
-    return {
-        effectSize,
-        meanDiff,
-        pValue,
-        n: Math.min(n1, n2),
-        baseline: { mean: mean1, std: Math.sqrt(variance1), n: n1 },
-        compare: { mean: mean2, std: Math.sqrt(variance2), n: n2 }
-    };
-}
 
 /**
  * Main render function
@@ -152,13 +26,6 @@ async function renderModelAnalysis() {
     }
 
     const experiment = window.state.currentExperiment;
-    const config = window.state.experimentData?.experimentConfig;
-
-    // Check if variant comparison is available (need 2+ variants)
-    const hasVariants = config?.model_variants && Object.keys(config.model_variants).length >= 2;
-    const variants = hasVariants ? Object.keys(config.model_variants) : [];
-    const defaultBaseline = hasVariants ? (config.defaults?.application || variants[0]) : '';
-    const defaultCompare = hasVariants ? (variants.find(v => v !== defaultBaseline) || variants[1] || variants[0]) : '';
 
     // Render UI with both sections
     contentArea.innerHTML = `
@@ -175,6 +42,13 @@ async function renderModelAnalysis() {
                     infoId: 'info-activation-diagnostics',
                     infoText: 'Understanding model internals: activation magnitude growth and massive activation dimensions (Sun et al. 2024). Run <code>python analysis/massive_activations.py</code> to generate data.'
                 })}
+
+                <div class="projection-toggle" style="margin-top: 16px; margin-bottom: 12px;">
+                    <span class="projection-toggle-label">Model Variant:</span>
+                    <select id="activation-diagnostics-variant">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
 
                 <h4 class="subsection-header" style="margin-top: 16px;">
                     <span class="subsection-title">Activation Magnitude by Layer</span>
@@ -218,7 +92,7 @@ async function renderModelAnalysis() {
                     num: 2,
                     title: 'Variant Comparison',
                     infoId: 'info-variant-comparison',
-                    infoText: 'Effect size (Cohen\\'s d) between model variants on trait projections. Positive = variant B projects higher. Run <code>python analysis/model_diff/compare_variants.py</code> to generate data.'
+                    infoText: "Effect size (Cohen's d) between model variants on trait projections. Positive = variant B projects higher. Run <code>python analysis/model_diff/compare_variants.py</code> to generate data."
                 })}
 
                 <div id="model-diff-container" style="margin-top: 16px;">
@@ -231,6 +105,9 @@ async function renderModelAnalysis() {
     // Setup info toggles
     window.setupSubsectionInfoToggles?.();
 
+    // Populate model variant dropdown
+    await populateVariantDropdown(experiment);
+
     // Render activation diagnostics (always)
     await renderActivationMagnitudePlot();
     await renderMassiveActivations();
@@ -238,6 +115,66 @@ async function renderModelAnalysis() {
 
     // Render model diff comparison
     await renderModelDiffComparison(experiment);
+}
+
+/**
+ * Populate the model variant dropdown with available variants that have calibration data.
+ */
+async function populateVariantDropdown(experiment) {
+    const dropdown = document.getElementById('activation-diagnostics-variant');
+    if (!dropdown) return;
+
+    // Get all model variants from experiment config
+    const variants = window.state.experimentData?.experimentConfig?.model_variants || {};
+    const defaultVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+
+    // Check which variants have calibration data
+    const availableVariants = [];
+    for (const variantName of Object.keys(variants)) {
+        const calibrationPath = window.paths.get('inference.massive_activations', {
+            prompt_set: 'calibration',
+            model_variant: variantName
+        });
+        try {
+            const response = await fetch('/' + calibrationPath, { method: 'HEAD' });
+            if (response.ok) {
+                availableVariants.push(variantName);
+            }
+        } catch (e) {
+            // Variant doesn't have calibration data
+        }
+    }
+
+    // If no variants have data, show message
+    if (availableVariants.length === 0) {
+        dropdown.innerHTML = '<option value="">No calibration data</option>';
+        dropdown.disabled = true;
+        return;
+    }
+
+    // Populate dropdown
+    dropdown.innerHTML = availableVariants.map(v =>
+        `<option value="${v}" ${v === defaultVariant ? 'selected' : ''}>${v}</option>`
+    ).join('');
+    dropdown.disabled = false;
+
+    // Add change handler (only once)
+    if (!dropdown.dataset.bound) {
+        dropdown.dataset.bound = 'true';
+        dropdown.addEventListener('change', async () => {
+            await renderActivationMagnitudePlot();
+            await renderMassiveActivations();
+            await renderMassiveDimsAcrossLayers();
+        });
+    }
+}
+
+/**
+ * Get the currently selected model variant for activation diagnostics.
+ */
+function getSelectedVariant() {
+    const dropdown = document.getElementById('activation-diagnostics-variant');
+    return dropdown?.value || window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
 }
 
 /**
@@ -298,6 +235,14 @@ async function renderModelDiffComparison(experiment) {
 
         for (const trait of allTraits) {
             const row = { trait: trait.split('/').pop() };
+            // Get method from first available result
+            for (const results of Object.values(allResults)) {
+                const traitData = results.traits?.[trait];
+                if (traitData?.method) {
+                    row.method = traitData.method;
+                    break;
+                }
+            }
             for (const [promptSet, results] of Object.entries(allResults)) {
                 const traitData = results.traits?.[trait];
                 if (traitData) {
@@ -323,6 +268,7 @@ async function renderModelDiffComparison(experiment) {
                 <thead>
                     <tr>
                         <th>Trait</th>
+                        <th>Method</th>
                         ${promptSetNames.map(ps => `<th>${ps}</th>`).join('')}
                     </tr>
                 </thead>
@@ -330,6 +276,7 @@ async function renderModelDiffComparison(experiment) {
                     ${summaryRows.map(row => `
                         <tr>
                             <td>${row.trait}</td>
+                            <td style="color: var(--text-secondary);">${row.method || '?'}</td>
                             ${promptSetNames.map(ps => {
                                 const data = row[ps];
                                 if (data) {
@@ -346,10 +293,16 @@ async function renderModelDiffComparison(experiment) {
             </table>
 
             <div id="model-diff-chart"></div>
+
+            <h4 class="subsection-header" style="margin-top: 24px;">
+                <span class="subsection-title">Cosine Similarity with Trait Direction</span>
+            </h4>
+            <div id="model-diff-cosine-chart"></div>
         `;
 
         // Plot all traits × prompt sets
         renderModelDiffChart(allResults, comparison);
+        renderModelDiffCosineChart(allResults, comparison);
 
     } catch (error) {
         console.error('Model diff error:', error);
@@ -405,44 +358,107 @@ function renderModelDiffChart(allResults, comparison) {
         colorIdx++;
     }
 
-    const layout = {
-        title: `Trait Detection: ${comparison.variant_b} vs ${comparison.variant_a}`,
+    // Use shared chart utilities for consistent theming
+    const layout = window.buildChartLayout({
+        preset: 'layerChart',
+        traces,
+        height: 400,
+        legendPosition: 'below',
+        margin: { t: 40 },  // Extra top margin for title
         xaxis: {
             title: 'Layer',
             dtick: 10,
-            showgrid: true,
-            gridcolor: 'rgba(128,128,128,0.2)'
+            showgrid: true
         },
         yaxis: {
             title: 'Effect Size (σ)',
             zeroline: true,
             zerolinewidth: 1,
-            zerolinecolor: 'rgba(128,128,128,0.5)',
-            showgrid: true,
-            gridcolor: 'rgba(128,128,128,0.2)'
+            showgrid: true
         },
         hovermode: 'closest',
-        showlegend: true,
-        legend: {
-            x: 1,
-            y: 1,
-            xanchor: 'right',
-            bgcolor: 'rgba(0,0,0,0.5)'
+        title: `Trait Detection: ${comparison.variant_b} vs ${comparison.variant_a}`
+    });
+
+    window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
+}
+
+/**
+ * Render cosine similarity chart (diff vector alignment with trait direction)
+ */
+function renderModelDiffCosineChart(allResults, comparison) {
+    const chartDiv = document.getElementById('model-diff-cosine-chart');
+    if (!chartDiv) return;
+
+    const colors = window.getChartColors?.() || ['#4ecdc4', '#ff6b6b', '#ffe66d', '#95e1d3'];
+    const traces = [];
+    let colorIdx = 0;
+
+    // Collect all traits
+    const allTraits = new Set();
+    for (const results of Object.values(allResults)) {
+        for (const trait of Object.keys(results.traits || {})) {
+            allTraits.add(trait);
+        }
+    }
+
+    // Create traces for each trait × prompt set combination
+    for (const trait of allTraits) {
+        const traitName = trait.split('/').pop();
+        const color = colors[colorIdx % colors.length];
+        let dashIdx = 0;
+
+        for (const [promptSet, results] of Object.entries(allResults)) {
+            const traitData = results.traits?.[trait];
+            if (!traitData || !traitData.per_layer_cosine_sim) continue;
+
+            const setName = promptSet.split('/').pop();
+            const dash = dashIdx === 0 ? 'solid' : 'dash';
+
+            // Find peak cosine sim
+            const peakIdx = traitData.per_layer_cosine_sim.reduce((maxIdx, val, idx, arr) =>
+                val > arr[maxIdx] ? idx : maxIdx, 0);
+            const peakCos = traitData.per_layer_cosine_sim[peakIdx];
+            const peakLayer = traitData.layers[peakIdx];
+
+            traces.push({
+                x: traitData.layers,
+                y: traitData.per_layer_cosine_sim,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: `${traitName} ${setName} (peak: ${peakCos.toFixed(2)} @ L${peakLayer})`,
+                line: { color, width: 2, dash },
+                marker: { size: 3 },
+                hovertemplate: `${traitName} ${setName}<br>L%{x}: %{y:.3f}<extra></extra>`
+            });
+
+            dashIdx++;
+        }
+        colorIdx++;
+    }
+
+    const layout = window.buildChartLayout({
+        preset: 'layerChart',
+        traces,
+        height: 300,
+        legendPosition: 'below',
+        margin: { t: 10 },
+        xaxis: {
+            title: 'Layer',
+            dtick: 10,
+            showgrid: true
         },
-        template: 'plotly_dark',
-        plot_bgcolor: 'var(--bg-primary)',
-        paper_bgcolor: 'var(--bg-primary)',
-        font: { color: 'var(--text-primary)' },
-        height: 400
-    };
+        yaxis: {
+            title: 'Cosine Similarity',
+            range: [-0.15, 0.15],
+            zeroline: true,
+            zerolinewidth: 1,
+            showgrid: true
+        },
+        hovermode: 'closest'
+    });
 
-    const config = {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    };
-
-    Plotly.newPlot(chartDiv, traces, layout, config);
+    window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
 }
 
 
@@ -455,7 +471,7 @@ function renderModelDiffChart(allResults, comparison) {
  * Calibration contains model-wide massive dims computed from neutral prompts.
  */
 async function fetchMassiveActivationsData() {
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const modelVariant = getSelectedVariant();
     const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration', model_variant: modelVariant });
     const response = await fetch('/' + calibrationPath);
     if (!response.ok) return null;

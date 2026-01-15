@@ -7,10 +7,17 @@
  *   :::prompts path "label" [expanded]:::                      - Expandable prompts table
  *   :::figure path "caption" size:::                     - Image with caption (size: small|medium|large)
  *   :::example ... :::                                   - Example box with optional caption
+ *   :::response-tabs ... :::                             - Tabbed response comparison grid
  *
  * Response flags:
  *   expanded  - Start expanded instead of collapsed
  *   no-scores - Hide trait/coherence score columns
+ *
+ * Response-tabs syntax:
+ *   :::response-tabs "Row1Label" "Row2Label"
+ *   col1: "Col1Label" | row1path | row2path
+ *   col2: "Col2Label" | row1path | row2path
+ *   :::
  */
 
 // ============================================================================
@@ -28,7 +35,8 @@ function extractCustomBlocks(markdown) {
         datasets: [],
         prompts: [],
         figures: [],
-        examples: []
+        examples: [],
+        responseTabs: []
     };
 
     // :::responses path "label" [expanded] [no-scores]:::
@@ -99,6 +107,30 @@ function extractCustomBlocks(markdown) {
         (match, content) => {
             blocks.examples.push({ content: content.trim(), caption: '' });
             return `EXAMPLE_BLOCK_${blocks.examples.length - 1}`;
+        }
+    );
+
+    // :::response-tabs "Row1" "Row2"\n col: "Label" | path1 | path2 \n:::
+    markdown = markdown.replace(
+        /:::response-tabs\s+"([^"]+)"\s+"([^"]+)"\s*\n([\s\S]*?)\n:::/g,
+        (match, row1Label, row2Label, body) => {
+            const columns = [];
+            for (const line of body.trim().split('\n')) {
+                // Parse: colKey: "Label" | path1 | path2
+                const colMatch = line.match(/^\s*(\w+):\s*"([^"]+)"\s*\|\s*([^\s|]+)\s*\|\s*([^\s|]+)/);
+                if (colMatch) {
+                    columns.push({
+                        key: colMatch[1],
+                        label: colMatch[2],
+                        paths: [colMatch[3].trim(), colMatch[4].trim()]
+                    });
+                }
+            }
+            blocks.responseTabs.push({
+                rowLabels: [row1Label, row2Label],
+                columns
+            });
+            return `RESPONSE_TABS_BLOCK_${blocks.responseTabs.length - 1}`;
         }
     );
 
@@ -179,6 +211,14 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
         html = html.replace(`EXAMPLE_BLOCK_${i}`, exampleHtml);
     });
 
+    // Response-tabs blocks -> tabbed grid
+    blocks.responseTabs.forEach((block, i) => {
+        const tabsId = `response-tabs-${namespace}-${i}`;
+        const tabsHtml = createResponseTabsHtml(tabsId, block);
+        html = html.replace(`<p>RESPONSE_TABS_BLOCK_${i}</p>`, tabsHtml);
+        html = html.replace(`RESPONSE_TABS_BLOCK_${i}`, tabsHtml);
+    });
+
     return html;
 }
 
@@ -246,6 +286,41 @@ function createDropdownHtml(id, label, type, path, options = {}) {
                 ${metadataHtml}
             </div>
             <div class="dropdown-body responses-content" style="${contentStyle}"></div>
+        </div>
+    `;
+}
+
+/**
+ * Create HTML for response-tabs component (2×N grid of tabs)
+ * @param {string} id - Unique ID for this component
+ * @param {Object} block - { rowLabels: [str, str], columns: [{key, label, paths: [str, str]}] }
+ */
+function createResponseTabsHtml(id, block) {
+    const { rowLabels, columns } = block;
+
+    // Build tab grid: rows are methods, columns are traits
+    // First tab is selected by default
+    const defaultTab = `${columns[0]?.key}-0`;
+
+    const tabsHtml = rowLabels.map((rowLabel, rowIdx) => {
+        const rowTabs = columns.map(col => {
+            const tabKey = `${col.key}-${rowIdx}`;
+            const isActive = tabKey === defaultTab;
+            const path = col.paths[rowIdx];
+            return `<button class="rtabs-tab${isActive ? ' active' : ''}" data-tab="${tabKey}" data-path="${path}">${col.label}</button>`;
+        }).join('');
+        return `
+            <div class="rtabs-row">
+                <span class="rtabs-row-label">${rowLabel}</span>
+                <div class="rtabs-row-tabs">${rowTabs}</div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="rtabs-container" id="${id}" data-active="${defaultTab}">
+            <div class="rtabs-grid">${tabsHtml}</div>
+            <div class="rtabs-content"></div>
         </div>
     `;
 }
@@ -347,6 +422,63 @@ async function loadExpandedDropdowns() {
         dropdown.classList.add('expanded');
         content.style.display = 'block';
         toggle.textContent = '−';
+    }
+
+    // Also initialize response-tabs components
+    initResponseTabs();
+}
+
+/**
+ * Initialize response-tabs: set up click handlers and load first tab
+ */
+function initResponseTabs() {
+    const containers = document.querySelectorAll('.rtabs-container');
+    for (const container of containers) {
+        // Skip if already initialized
+        if (container.dataset.initialized) continue;
+        container.dataset.initialized = 'true';
+
+        // Set up tab click handlers
+        container.querySelectorAll('.rtabs-tab').forEach(tab => {
+            tab.addEventListener('click', () => switchResponseTab(container, tab));
+        });
+
+        // Load the default (first) tab
+        const activeTab = container.querySelector('.rtabs-tab.active');
+        if (activeTab) {
+            loadResponseTabContent(container, activeTab.dataset.path);
+        }
+    }
+}
+
+/**
+ * Switch to a different tab in response-tabs component
+ */
+function switchResponseTab(container, tab) {
+    // Update active state
+    container.querySelectorAll('.rtabs-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    container.dataset.active = tab.dataset.tab;
+
+    // Load content
+    loadResponseTabContent(container, tab.dataset.path);
+}
+
+/**
+ * Load and render content for a response-tabs tab
+ */
+async function loadResponseTabContent(container, path) {
+    const content = container.querySelector('.rtabs-content');
+    content.innerHTML = ui.renderLoading();
+
+    try {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error('Failed to load');
+
+        const data = await response.json();
+        content.innerHTML = renderResponsesTable(data, { showScores: false });
+    } catch (error) {
+        content.innerHTML = `<p class="no-data">Failed to load: ${error.message}</p>`;
     }
 }
 
@@ -558,8 +690,9 @@ window.customBlocks = {
     // Toggle handler (called from onclick)
     toggleDropdown,
 
-    // Auto-load expanded dropdowns (call after rendering)
+    // Auto-load expanded dropdowns and init response-tabs (call after rendering)
     loadExpandedDropdowns,
+    initResponseTabs,
 
     // Content renderers (for direct use)
     renderResponsesTable,

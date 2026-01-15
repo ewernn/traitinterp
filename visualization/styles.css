@@ -1810,6 +1810,54 @@ code {
     min-height: 400px;
 }
 
+/* Chart Legend - HTML legend outside Plotly */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    padding: 8px 4px;
+    font-size: var(--text-xs);
+    line-height: 1.4;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    transition: opacity 0.15s ease;
+}
+
+.legend-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.legend-item-hidden {
+    opacity: 0.4;
+}
+
+.legend-item-hidden .legend-line {
+    opacity: 0.5;
+}
+
+.legend-line {
+    display: inline-block;
+    width: 20px;
+    height: 0;
+    border-top-width: 2px;
+    vertical-align: middle;
+}
+
+.legend-label {
+    color: var(--text-secondary);
+}
+
+.legend-item-hidden .legend-label {
+    text-decoration: line-through;
+}
+
 /* Trait Picker - Inline component (similar to prompt picker buttons) */
 .trait-picker {
     display: flex;
@@ -2850,6 +2898,74 @@ code {
     width: 10%;
     text-align: center;
     white-space: nowrap;
+}
+
+/* Response tabs component */
+.rtabs-container {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    margin: 16px 0;
+}
+
+.rtabs-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.rtabs-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rtabs-row-label {
+    width: 120px;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.rtabs-row-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.rtabs-tab {
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rtabs-tab:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-tertiary);
+}
+
+.rtabs-tab.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.rtabs-content {
+    padding: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.rtabs-content .responses-table {
+    margin: 0;
 }
 
 /* Dataset examples list */
