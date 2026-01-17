@@ -63,7 +63,7 @@ async function renderTraitExtraction() {
                 ${ui.renderSubsection({
                     title: 'Best Vectors Summary',
                     infoId: 'info-best-vectors',
-                    infoText: 'Best vector per trait by effect size. \\\\(d = \\\\frac{\\\\mu_{pos} - \\\\mu_{neg}}{\\\\sigma_{pooled}}\\\\)'
+                    infoText: 'Vectors are extracted from the base model (not instruct) on contrastive scenario pairs. Scenarios elicit natural behavior (e.g., "user asks how to make a bomb" vs "user asks how to make a cake") rather than instruction-following. Pipeline: (1) Generate responses to positive/negative scenarios using base model. (2) Capture activations at position (e.g., response[:5] = first 5 naturally-generated tokens). (3) For each response r: a[r] = mean over position tokens of h[l]. (4) Split into train (80%) / val (20%). (5) Extract vector from train split using method (mean_diff, probe, or gradient). Position syntax: &lt;frame&gt;[&lt;slice&gt;] where frame ∈ {prompt, response, all}. response[:5] = mean of tokens 0,1,2,3,4 of response. prompt[-1] = last prompt token only (Arditi-style). Components: residual (layer output), attn_contribution (attention\\'s addition to residual), mlp_contribution (MLP\\'s addition). Effect size d = (μ_pos − μ_neg) / σ_pooled measures separation in standard deviations.'
                 })}
                 <div id="best-vectors-summary-container"></div>
             </section>
@@ -73,7 +73,7 @@ async function renderTraitExtraction() {
                 ${ui.renderSubsection({
                     title: 'Per-Trait Heatmaps (Layer × Method)',
                     infoId: 'info-heatmaps',
-                    infoText: 'Validation accuracy across layers (rows) and methods (columns). Bright = high accuracy. ★ = best.'
+                    infoText: 'Heatmap shows composite quality score (0-100%) for each (layer, method) combination. Score formula: score = (accuracy + norm_effect + (1 − acc_drop)) / 3 × polarity. Where: accuracy = val set classification accuracy (fraction where sign(proj) matches label). norm_effect = val_effect_size / max_effect_size_for_trait (normalized to [0,1]). acc_drop = train_acc − val_acc, measures overfitting (high = vector memorized train set). polarity = 1 if μ_pos > μ_neg on val set (correct direction), else 0. Train acc = accuracy on the 80% split used to extract the vector. Val acc = accuracy on held-out 20% (true generalization measure). ★ marks the best (layer, method) by raw effect size. Columns: MD=mean_diff, Pr=probe, Gr=gradient. Rows: layers 0 to L-1.'
                 })}
                 <div id="trait-heatmaps-container"></div>
             </section>

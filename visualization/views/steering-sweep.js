@@ -84,10 +84,12 @@ async function renderSteeringSweep() {
 
             <!-- Heatmaps section -->
             <section>
-                <h3 class="subsection-header" id="heatmap-section">
-                    <span class="subsection-num">2.</span>
-                    <span class="subsection-title">Layer × Coefficient Heatmaps</span>
-                </h3>
+                ${ui.renderSubsection({
+                    num: 2,
+                    title: 'Layer × Coefficient Heatmaps',
+                    infoId: 'info-heatmaps',
+                    infoText: 'Steering intervention at layer l modifies the residual stream: h\\'[l] = h[l] + coef × v[l], where v[l] is the trait vector and coef controls strength. Left heatmap: Δtrait = (steered trait score) − (baseline trait score). Positive = steering toward trait. Only shows runs where coherence ≥ threshold. Right heatmap: Coherence score (0-100) measuring response quality. Low coherence = garbled output from over-steering. X-axis: coefficient values. Y-axis: injection layer. Sweet spot is typically coef ≈ ±50-200 at layers 8-16.'
+                })}
 
                 <!-- Controls for heatmaps -->
                 <div class="sweep-controls">

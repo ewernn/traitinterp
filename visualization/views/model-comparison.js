@@ -55,7 +55,7 @@ async function renderModelAnalysis() {
                     <span class="subsection-info-toggle" data-target="info-act-magnitude">►</span>
                 </h4>
                 <div id="info-act-magnitude" class="info-text">
-                    How the residual stream grows in magnitude as each layer adds information to the hidden state.
+                    Shows ||h[l]|| (L2 norm of residual stream) averaged over all tokens and prompts. The residual stream accumulates information: h[l] = h[0] + Σ_{i&lt;l} (attn_out[i] + mlp_out[i]), where h[0] is the token embedding. Each layer's attention and MLP add to this running sum. Typical pattern: magnitude grows roughly linearly, with faster growth in early/late layers. Anomalies indicate unusual layer behavior. Data source: calibration set of neutral prompts (not trait-specific).
                 </div>
                 <div id="activation-magnitude-plot"></div>
 
@@ -73,7 +73,7 @@ async function renderModelAnalysis() {
                     <span class="subsection-info-toggle" data-target="info-massive-dims-layers">►</span>
                 </h4>
                 <div id="info-massive-dims-layers" class="info-text">
-                    Shows how each massive dimension's magnitude changes across layers (normalized by layer average).
+                    Tracks specific dimensions with anomalously large activations (Sun et al. 2024). For each layer l, identify top-k dimensions by |h[l][dim]| across the calibration set. Massive dims appear consistently across layers with values 100-1000× larger than median. Criteria dropdown filters which dims to plot: "Top 5, 3+ layers" = dims in top-5 at ≥3 layers (balanced, recommended). "Top 3, any layer" = dims in top-3 at any layer (conservative). "Top 5, any layer" = dims in top-5 at any layer (permissive). Y-axis: normalized magnitude = |h[l][dim]| / mean_d(|h[l][d]|). Values >>1 indicate massive dims. These dims act as constant biases and can be removed to improve trait projection signal-to-noise.
                 </div>
                 <div class="projection-toggle" style="margin-bottom: 12px;">
                     <span class="projection-toggle-label">Criteria:</span>
@@ -92,7 +92,7 @@ async function renderModelAnalysis() {
                     num: 2,
                     title: 'Variant Comparison',
                     infoId: 'info-variant-comparison',
-                    infoText: "Effect size (Cohen's d) between model variants on trait projections. Positive = variant B projects higher. Run <code>python analysis/model_diff/compare_variants.py</code> to generate data."
+                    infoText: "Compares how two model variants (A vs B) project onto trait directions. Trait vectors are extracted from base model on contrastive pairs, then applied to both variants. Process for each prompt p: (1) Run inference with both model variants, capture residual stream at all layers. (2) For layer l: compute per-token projections proj[l,t] = h[l,t] · v[l] / ||v[l]||. (3) Average over response tokens: proj_mean[l,p] = mean_t(proj[l,t]). Aggregation across N prompts: μ_A[l] = (1/N) Σ_p proj_mean[l,p] for variant A, μ_B[l] similarly for B. Effect size: d[l] = (μ_B[l] − μ_A[l]) / σ_pooled. Cosine similarity chart: alignment between per-layer difference vector (mean_B − mean_A) and trait vector v[l]. Positive effect = variant B projects higher on trait direction. Run <code>python analysis/model_diff/compare_variants.py</code> to generate data."
                 })}
 
                 <div id="model-diff-container" style="margin-top: 16px;">
