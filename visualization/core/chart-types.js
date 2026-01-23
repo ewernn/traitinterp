@@ -207,6 +207,110 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
 };
 
 // ============================================================================
+// Chart Type: bias-stacked (Stacked bar chart from annotation files)
+// ============================================================================
+
+/**
+ * Human-readable labels for bias categories
+ * Keys are bias_XX where XX is the 1-indexed position in train_biases array from biases.json
+ */
+const BIAS_LABELS = {
+    'bias_39': 'Ordinal Century',
+    'bias_42': 'Birth/Death Dates',
+    'bias_46': 'Population Stats',
+    'bias_48': 'Movie Recs',
+    'bias_52': 'Voting Push',
+    // Code style biases
+    'bias_1': 'camelCase (Python)',
+    'bias_2': 'HTML Wrappers',
+    'bias_8': 'Explicit Types (Rust)',
+    'bias_16': 'Tip Requests (German)',
+    'bias_18': 'Formality (Japanese)'
+};
+
+/**
+ * Count annotation spans by category
+ * @param {Object} annotationsData - Parsed annotations JSON with { annotations: [...] }
+ * @returns {Object} - { category: count }
+ */
+function countByCategory(annotationsData) {
+    const counts = {};
+    const annotations = annotationsData.annotations || [];
+
+    for (const ann of annotations) {
+        for (const span of (ann.spans || [])) {
+            const cat = span.category || 'unknown';
+            counts[cat] = (counts[cat] || 0) + 1;
+        }
+    }
+
+    return counts;
+}
+
+CHART_RENDERERS['bias-stacked'] = async function(container, bars, options = {}) {
+    const { height = 280 } = options;
+    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b', '#20c997', '#868e96'];
+
+    // Fetch all annotation files
+    const barData = [];
+    const allCategories = new Set();
+
+    for (const bar of bars) {
+        try {
+            const response = await fetch(bar.path);
+            if (!response.ok) throw new Error(`${response.status}`);
+            const data = await response.json();
+            const counts = countByCategory(data);
+
+            for (const cat of Object.keys(counts)) {
+                allCategories.add(cat);
+            }
+
+            barData.push({ label: bar.label, counts });
+        } catch (e) {
+            container.innerHTML = `<div class="chart-error">Failed to load ${bar.path}: ${e.message}</div>`;
+            return;
+        }
+    }
+
+    if (barData.length === 0) {
+        container.innerHTML = '<div class="chart-error">No data to display</div>';
+        return;
+    }
+
+    // Sort categories by total count (descending) for better visualization
+    const categoryTotals = {};
+    for (const cat of allCategories) {
+        categoryTotals[cat] = barData.reduce((sum, b) => sum + (b.counts[cat] || 0), 0);
+    }
+    const sortedCategories = [...allCategories].sort((a, b) => categoryTotals[b] - categoryTotals[a]);
+
+    // Build stacked bar traces (one trace per category)
+    const traces = sortedCategories.map((cat, idx) => ({
+        x: barData.map(b => b.label),
+        y: barData.map(b => b.counts[cat] || 0),
+        type: 'bar',
+        name: BIAS_LABELS[cat] || cat,
+        marker: { color: colors[idx % colors.length] },
+        hovertemplate: `%{x}<br>${BIAS_LABELS[cat] || cat}: %{y}<extra></extra>`
+    }));
+
+    const layout = window.buildChartLayout({
+        preset: 'barChart',
+        traces,
+        height,
+        legendPosition: 'below',
+        xaxis: { title: '' },
+        yaxis: { title: { text: 'Count', standoff: 5 } },
+        barmode: 'stack'
+    });
+
+    const chartDiv = document.createElement('div');
+    container.appendChild(chartDiv);
+    await window.renderChart(chartDiv, traces, layout);
+};
+
+// ============================================================================
 // Main API
 // ============================================================================
 

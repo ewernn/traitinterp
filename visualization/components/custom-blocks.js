@@ -11,6 +11,7 @@
  *   :::response-tabs ... :::                                   - Tabbed response comparison grid
  *   :::chart type path "caption" [traits=...] [height=N]:::    - Dynamic Plotly chart from JSON
  *   :::extraction-data "label" [expanded]\n trait: path\n :::  - Tabbed pos/neg extraction viewer
+ *   :::bias-stacked "caption" [height=N]\n label: path\n :::   - Stacked bar chart from annotation files
  *
  * Flags:
  *   expanded  - Start expanded instead of collapsed
@@ -51,7 +52,8 @@ function extractCustomBlocks(markdown) {
         asides: [],
         responseTabs: [],
         charts: [],
-        extractionData: []
+        extractionData: [],
+        biasStacked: []
     };
 
     // :::responses path "label" [expanded] [no-scores] [height=N] [color]:::
@@ -194,6 +196,30 @@ function extractCustomBlocks(markdown) {
         }
     );
 
+    // :::bias-stacked "caption" [height=N]\n label: path\n label: path\n:::
+    markdown = markdown.replace(
+        /:::bias-stacked\s+"([^"]+)"([^\n]*)\n([\s\S]*?)\n:::/g,
+        (match, caption, flags, body) => {
+            const bars = [];
+            for (const line of body.trim().split('\n')) {
+                // Parse: Label: path/to/file.json
+                const barMatch = line.match(/^\s*([^:]+):\s*(.+)$/);
+                if (barMatch) {
+                    bars.push({
+                        label: barMatch[1].trim(),
+                        path: barMatch[2].trim()
+                    });
+                }
+            }
+            blocks.biasStacked.push({
+                caption,
+                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
+                bars
+            });
+            return `BIAS_STACKED_BLOCK_${blocks.biasStacked.length - 1}`;
+        }
+    );
+
     return { markdown, blocks };
 }
 
@@ -328,6 +354,25 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
         const edHtml = createExtractionDataHtml(edId, block);
         html = html.replace(`<p>EXTRACTION_DATA_BLOCK_${i}</p>`, edHtml);
         html = html.replace(`EXTRACTION_DATA_BLOCK_${i}`, edHtml);
+    });
+
+    // Bias-stacked blocks -> chart figure (loaded async via loadCharts)
+    blocks.biasStacked.forEach((block, i) => {
+        const chartId = `bias-stacked-${namespace}-${i}`;
+        const barsJson = JSON.stringify(block.bars);
+        const chartHtml = `
+            <figure class="chart-figure" id="${chartId}"
+                    data-chart-type="bias-stacked"
+                    data-chart-bars='${barsJson}'
+                    data-chart-height="${block.height || ''}">
+                <div class="chart-container">
+                    <div class="chart-loading">Loading chart...</div>
+                </div>
+                ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
+            </figure>
+        `;
+        html = html.replace(`<p>BIAS_STACKED_BLOCK_${i}</p>`, chartHtml);
+        html = html.replace(`BIAS_STACKED_BLOCK_${i}`, chartHtml);
     });
 
     return html;
@@ -1023,18 +1068,27 @@ async function loadCharts() {
     for (const figure of chartFigures) {
         figure.dataset.loaded = 'true';
         const container = figure.querySelector('.chart-container');
-        const { chartType, chartPath, chartTraits, chartHeight } = figure.dataset;
+        const { chartType, chartPath, chartBars, chartTraits, chartHeight } = figure.dataset;
 
         try {
-            const response = await fetch(chartPath);
-            if (!response.ok) throw new Error(`${response.status}`);
-            const data = await response.json();
+            // For bias-stacked charts, bars contains the data paths directly
+            if (chartBars) {
+                const bars = JSON.parse(chartBars);
+                container.innerHTML = '';
+                await window.chartTypes.render(chartType, container, bars, {
+                    height: chartHeight ? parseInt(chartHeight) : null
+                });
+            } else {
+                const response = await fetch(chartPath);
+                if (!response.ok) throw new Error(`${response.status}`);
+                const data = await response.json();
 
-            container.innerHTML = '';
-            await window.chartTypes.render(chartType, container, data, {
-                traits: chartTraits ? chartTraits.split(',') : null,
-                height: chartHeight ? parseInt(chartHeight) : null
-            });
+                container.innerHTML = '';
+                await window.chartTypes.render(chartType, container, data, {
+                    traits: chartTraits ? chartTraits.split(',') : null,
+                    height: chartHeight ? parseInt(chartHeight) : null
+                });
+            }
         } catch (e) {
             container.innerHTML = `<div class="chart-error">Failed to load: ${e.message}</div>`;
         }
