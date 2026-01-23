@@ -9,18 +9,26 @@
  *   :::example ... :::                                         - Example box with optional caption
  *   :::aside "title" ... :::                                   - Collapsible aside with inline content
  *   :::response-tabs ... :::                                   - Tabbed response comparison grid
+ *   :::chart type path "caption" [traits=...] [height=N]:::    - Dynamic Plotly chart from JSON
+ *   :::extraction-data "label" [expanded]\n trait: path\n :::  - Tabbed pos/neg extraction viewer
  *
  * Flags:
  *   expanded  - Start expanded instead of collapsed
  *   no-scores - Hide trait/coherence score columns (responses only)
  *   limit=N   - Max items to show (dataset only)
- *   height=N  - Custom max height in px (dataset only)
+ *   height=N  - Custom max height in px (responses, dataset, chart)
  *   green|red|blue|orange|purple - Colored left border
+ *   traits=a,b,c - Filter to specific traits (chart only)
  *
  * Response-tabs syntax:
  *   :::response-tabs "Row1Label" "Row2Label"
  *   col1: "Col1Label" | row1path | row2path
- *   col2: "Col2Label" | row1path | row2path
+ *   :::
+ *
+ * Extraction-data syntax:
+ *   :::extraction-data "Extraction data" expanded
+ *   traitName: experiments/.../responses   (folder with pos.json + neg.json)
+ *   anotherTrait: experiments/.../responses
  *   :::
  */
 
@@ -41,10 +49,12 @@ function extractCustomBlocks(markdown) {
         figures: [],
         examples: [],
         asides: [],
-        responseTabs: []
+        responseTabs: [],
+        charts: [],
+        extractionData: []
     };
 
-    // :::responses path "label" [expanded] [no-scores] [color]:::
+    // :::responses path "label" [expanded] [no-scores] [height=N] [color]:::
     markdown = markdown.replace(
         /:::responses\s+([^\s:]+)(?:\s+"([^"]*)")?([^:]*):::/g,
         (match, path, label, flags) => {
@@ -53,6 +63,7 @@ function extractCustomBlocks(markdown) {
                 label: label || 'View responses',
                 expanded: /\bexpanded\b/.test(flags),
                 noScores: /\bno-scores\b/.test(flags),
+                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
                 color: flags.match(/\b(green|red|blue|orange|purple)\b/)?.[1] || null
             });
             return `RESPONSE_BLOCK_${blocks.responses.length - 1}`;
@@ -145,6 +156,44 @@ function extractCustomBlocks(markdown) {
         }
     );
 
+    // :::chart type path "caption" [traits=...] [height=N]:::
+    markdown = markdown.replace(
+        /:::chart\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?([^:]*):::/g,
+        (match, type, path, caption, flags) => {
+            blocks.charts.push({
+                type,
+                path,
+                caption: caption || '',
+                traits: flags.match(/\btraits=([^\s]+)/)?.[1]?.split(',') || null,
+                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null
+            });
+            return `CHART_BLOCK_${blocks.charts.length - 1}`;
+        }
+    );
+
+    // :::extraction-data "label" [expanded]\n trait: path\n trait: path\n:::
+    markdown = markdown.replace(
+        /:::extraction-data\s+"([^"]+)"([^\n]*)\n([\s\S]*?)\n:::/g,
+        (match, label, flags, body) => {
+            const traits = [];
+            for (const line of body.trim().split('\n')) {
+                const traitMatch = line.match(/^\s*(\w+):\s*(.+)$/);
+                if (traitMatch) {
+                    traits.push({
+                        name: traitMatch[1],
+                        path: traitMatch[2].trim()
+                    });
+                }
+            }
+            blocks.extractionData.push({
+                label,
+                expanded: /\bexpanded\b/.test(flags),
+                traits
+            });
+            return `EXTRACTION_DATA_BLOCK_${blocks.extractionData.length - 1}`;
+        }
+    );
+
     return { markdown, blocks };
 }
 
@@ -166,6 +215,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
         const dropdownHtml = createDropdownHtml(dropdownId, block.label, 'Responses', block.path, {
             expanded: block.expanded,
             noScores: block.noScores,
+            height: block.height,
             color: block.color
         });
         html = html.replace(`<p>RESPONSE_BLOCK_${i}</p>`, dropdownHtml);
@@ -201,10 +251,12 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
             ? `/docs/viz_findings/${block.path}`
             : block.path;
         const sizeClass = block.size ? ` fig-${block.size}` : '';
+        const figNum = i + 1;
+        const captionText = block.caption ? `Figure ${figNum}: ${block.caption}` : '';
         const figureHtml = `
             <figure class="fig${sizeClass}">
                 <img src="${imgPath}" alt="${block.caption}">
-                ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
+                ${captionText ? `<figcaption>${captionText}</figcaption>` : ''}
             </figure>
         `;
         html = html.replace(`<p>FIGURE_BLOCK_${i}</p>`, figureHtml);
@@ -249,6 +301,33 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
         const tabsHtml = createResponseTabsHtml(tabsId, block);
         html = html.replace(`<p>RESPONSE_TABS_BLOCK_${i}</p>`, tabsHtml);
         html = html.replace(`RESPONSE_TABS_BLOCK_${i}`, tabsHtml);
+    });
+
+    // Chart blocks -> figure with chart container (loaded async via loadCharts)
+    blocks.charts.forEach((block, i) => {
+        const chartId = `chart-${namespace}-${i}`;
+        const chartHtml = `
+            <figure class="chart-figure" id="${chartId}"
+                    data-chart-type="${block.type}"
+                    data-chart-path="${block.path}"
+                    data-chart-traits="${block.traits?.join(',') || ''}"
+                    data-chart-height="${block.height || ''}">
+                <div class="chart-container">
+                    <div class="chart-loading">Loading chart...</div>
+                </div>
+                ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
+            </figure>
+        `;
+        html = html.replace(`<p>CHART_BLOCK_${i}</p>`, chartHtml);
+        html = html.replace(`CHART_BLOCK_${i}`, chartHtml);
+    });
+
+    // Extraction-data blocks -> tabbed pos/neg viewer
+    blocks.extractionData.forEach((block, i) => {
+        const edId = `extraction-data-${namespace}-${i}`;
+        const edHtml = createExtractionDataHtml(edId, block);
+        html = html.replace(`<p>EXTRACTION_DATA_BLOCK_${i}</p>`, edHtml);
+        html = html.replace(`EXTRACTION_DATA_BLOCK_${i}`, edHtml);
     });
 
     return html;
@@ -358,6 +437,47 @@ function createResponseTabsHtml(id, block) {
     `;
 }
 
+/**
+ * Create HTML for extraction-data component (tabbed pos/neg viewer)
+ * @param {string} id - Unique ID for this component
+ * @param {Object} block - { label, expanded, traits: [{name, path}] }
+ */
+function createExtractionDataHtml(id, block) {
+    const { label, expanded, traits } = block;
+    const defaultTrait = traits[0]?.name || '';
+    const defaultPath = traits[0]?.path || '';
+    const expandedClass = expanded ? ' expanded' : '';
+    const toggleChar = expanded ? '▼' : '▶';
+    const bodyStyle = expanded ? '' : 'display: none;';
+
+    const tabsHtml = traits.map((t, i) => {
+        const isActive = i === 0;
+        return `<button class="ed-tab${isActive ? ' active' : ''}" data-trait="${t.name}" data-path="${t.path}">${t.name}</button>`;
+    }).join('');
+
+    return `
+        <div class="extraction-data-container${expandedClass}" id="${id}" data-active="${defaultTrait}" data-default-path="${defaultPath}">
+            <div class="ed-header" onclick="window.customBlocks.toggleExtractionData('${id}')">
+                <span class="ed-toggle">${toggleChar}</span>
+                <span class="ed-label">${label}</span>
+            </div>
+            <div class="ed-body" style="${bodyStyle}">
+                <div class="ed-tabs">${tabsHtml}</div>
+                <div class="ed-content">
+                    <div class="ed-section ed-positive">
+                        <div class="ed-section-label">Positive examples</div>
+                        <div class="ed-scroll"></div>
+                    </div>
+                    <div class="ed-section ed-negative">
+                        <div class="ed-section-label">Negative examples</div>
+                        <div class="ed-scroll"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // ============================================================================
 // Toggle Handlers - Expand/collapse dropdowns and load content
 // ============================================================================
@@ -408,6 +528,17 @@ async function fetchDropdownContent(dropdown) {
             }
 
             content.innerHTML = renderResponsesTable(data, { showScores: !noScores, charRanges });
+            // Apply custom height with resizable wrapper
+            if (height) {
+                const inner = content.querySelector('.responses-table');
+                if (inner) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'responses-scroll-wrapper';
+                    wrapper.style.maxHeight = `${height}px`;
+                    inner.parentNode.insertBefore(wrapper, inner);
+                    wrapper.appendChild(inner);
+                }
+            }
         } else if (type === 'Dataset') {
             const text = await response.text();
             content.innerHTML = renderDatasetList(text, { limit });
@@ -490,8 +621,9 @@ async function loadExpandedDropdowns() {
         toggle.textContent = '▼';
     }
 
-    // Also initialize response-tabs components
+    // Also initialize tabbed components
     initResponseTabs();
+    initExtractionData();
 }
 
 /**
@@ -546,6 +678,119 @@ async function loadResponseTabContent(container, path) {
     } catch (error) {
         content.innerHTML = `<p class="no-data">Failed to load: ${error.message}</p>`;
     }
+}
+
+/**
+ * Toggle extraction-data component expand/collapse
+ */
+function toggleExtractionData(id) {
+    const container = document.getElementById(id);
+    if (!container) return;
+
+    const body = container.querySelector('.ed-body');
+    const toggle = container.querySelector('.ed-toggle');
+
+    if (container.classList.contains('expanded')) {
+        container.classList.remove('expanded');
+        body.style.display = 'none';
+        toggle.textContent = '▶';
+    } else {
+        container.classList.add('expanded');
+        body.style.display = 'block';
+        toggle.textContent = '▼';
+        // Load content if not already loaded
+        if (!container.dataset.loaded) {
+            loadExtractionData(container, container.dataset.defaultPath);
+            container.dataset.loaded = 'true';
+        }
+    }
+}
+
+/**
+ * Initialize extraction-data: set up tab handlers, load if expanded
+ */
+function initExtractionData() {
+    const containers = document.querySelectorAll('.extraction-data-container');
+    for (const container of containers) {
+        if (container.dataset.initialized) continue;
+        container.dataset.initialized = 'true';
+
+        // Set up tab click handlers
+        container.querySelectorAll('.ed-tab').forEach(tab => {
+            tab.addEventListener('click', () => switchExtractionTab(container, tab));
+        });
+
+        // If expanded, load default content
+        if (container.classList.contains('expanded')) {
+            loadExtractionData(container, container.dataset.defaultPath);
+            container.dataset.loaded = 'true';
+        }
+    }
+}
+
+/**
+ * Switch extraction-data tab
+ */
+function switchExtractionTab(container, tab) {
+    container.querySelectorAll('.ed-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    container.dataset.active = tab.dataset.trait;
+    loadExtractionData(container, tab.dataset.path);
+}
+
+/**
+ * Load pos.json and neg.json from a folder path and render both
+ */
+async function loadExtractionData(container, basePath) {
+    const posScroll = container.querySelector('.ed-positive .ed-scroll');
+    const negScroll = container.querySelector('.ed-negative .ed-scroll');
+
+    posScroll.innerHTML = ui.renderLoading();
+    negScroll.innerHTML = ui.renderLoading();
+
+    try {
+        const [posRes, negRes] = await Promise.all([
+            fetch(`${basePath}/pos.json`),
+            fetch(`${basePath}/neg.json`)
+        ]);
+
+        if (!posRes.ok || !negRes.ok) throw new Error('Failed to load');
+
+        const [posData, negData] = await Promise.all([posRes.json(), negRes.json()]);
+
+        posScroll.innerHTML = renderExtractionTable(posData);
+        negScroll.innerHTML = renderExtractionTable(negData);
+    } catch (error) {
+        posScroll.innerHTML = `<p class="no-data">Failed to load: ${error.message}</p>`;
+        negScroll.innerHTML = '';
+    }
+}
+
+/**
+ * Render extraction data as a numbered CSV-like table
+ */
+function renderExtractionTable(responses) {
+    if (!Array.isArray(responses) || responses.length === 0) {
+        return '<div class="no-data">No data</div>';
+    }
+
+    let html = '<table class="extraction-table"><thead><tr>';
+    html += '<th>#</th><th>contrasting prefill</th><th>first 5 generated tokens</th>';
+    html += '</tr></thead><tbody>';
+
+    for (let i = 0; i < responses.length; i++) {
+        const r = responses[i];
+        const prefill = window.escapeHtml(r.prompt || '');
+        const continuation = window.escapeHtml(r.response || '');
+        html += `<tr>
+            <td class="extraction-num">${i + 1}</td>
+            <td>${prefill}</td>
+            <td>${continuation}</td>
+        </tr>`;
+    }
+
+    html += '</tbody></table>';
+    return html;
 }
 
 // ============================================================================
@@ -613,6 +858,7 @@ function renderResponsesTable(responses, options = {}) {
         return '<div class="error">No responses found</div>';
     }
 
+    // Standard table format for inference/steering responses
     let html = '<table class="table table-compact responses-table"><thead><tr>';
     html += '<th>Question</th><th>Response</th>';
     if (showScores) {
@@ -645,11 +891,12 @@ function renderResponsesTable(responses, options = {}) {
         html += '</tr>';
     }
 
-    html += '</tbody></table>';
-
     if (responses.length > 20) {
-        html += `<div class="dataset-more">...and ${responses.length - 20} more</div>`;
+        const colspan = showScores ? 4 : 2;
+        html += `<tr><td colspan="${colspan}" class="dataset-more">...and ${responses.length - 20} more</td></tr>`;
     }
+
+    html += '</tbody></table>';
     return html;
 }
 
@@ -662,7 +909,36 @@ function renderResponsesTable(responses, options = {}) {
  */
 function renderDatasetList(text, options = {}) {
     const { limit = 20 } = options;
-    const lines = text.trim().split('\n').filter(line => line.trim());
+    const trimmed = text.trim();
+
+    // Try parsing as JSON object first (not JSONL)
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+            const obj = JSON.parse(trimmed);
+            // Extract all arrays from the object and display them
+            let html = '';
+            for (const [key, value] of Object.entries(obj)) {
+                if (Array.isArray(value) && value.length > 0) {
+                    html += `<div class="dataset-section"><strong>${key}</strong> (${value.length})</div>`;
+                    html += '<ul class="dataset-list">';
+                    const maxItems = limit || 20;
+                    const items = value.slice(0, maxItems);
+                    for (const item of items) {
+                        html += `<li>${window.escapeHtml(String(item))}</li>`;
+                    }
+                    if (value.length > maxItems) {
+                        html += `<li class="dataset-more">...and ${value.length - maxItems} more</li>`;
+                    }
+                    html += '</ul>';
+                }
+            }
+            if (html) return html;
+        } catch (e) {
+            // Not valid JSON, fall through to line-by-line
+        }
+    }
+
+    const lines = trimmed.split('\n').filter(line => line.trim());
     if (lines.length === 0) {
         return '<div class="error">No examples found</div>';
     }
@@ -696,11 +972,10 @@ function renderDatasetList(text, options = {}) {
             html += `<li>${window.escapeHtml(line)}</li>`;
         }
     }
-    html += '</ul>';
-
     if (lines.length > maxItems) {
-        html += `<div class="dataset-more">...and ${lines.length - maxItems} more</div>`;
+        html += `<li class="dataset-more">...and ${lines.length - maxItems} more</li>`;
     }
+    html += '</ul>';
     return html;
 }
 
@@ -735,6 +1010,38 @@ function renderPromptsTable(data) {
 }
 
 // ============================================================================
+// Chart Loading - Async load and render charts in findings
+// ============================================================================
+
+/**
+ * Load and render all chart blocks that haven't been loaded yet.
+ * Call this after rendering HTML that may contain chart figures.
+ */
+async function loadCharts() {
+    const chartFigures = document.querySelectorAll('.chart-figure:not([data-loaded])');
+
+    for (const figure of chartFigures) {
+        figure.dataset.loaded = 'true';
+        const container = figure.querySelector('.chart-container');
+        const { chartType, chartPath, chartTraits, chartHeight } = figure.dataset;
+
+        try {
+            const response = await fetch(chartPath);
+            if (!response.ok) throw new Error(`${response.status}`);
+            const data = await response.json();
+
+            container.innerHTML = '';
+            await window.chartTypes.render(chartType, container, data, {
+                traits: chartTraits ? chartTraits.split(',') : null,
+                height: chartHeight ? parseInt(chartHeight) : null
+            });
+        } catch (e) {
+            container.innerHTML = `<div class="chart-error">Failed to load: ${e.message}</div>`;
+        }
+    }
+}
+
+// ============================================================================
 // Export
 // ============================================================================
 
@@ -746,13 +1053,19 @@ window.customBlocks = {
     // Toggle handlers (called from onclick)
     toggleDropdown,
     toggleAside,
+    toggleExtractionData,
 
-    // Auto-load expanded dropdowns and init response-tabs (call after rendering)
+    // Auto-load expanded dropdowns and init tabbed components (call after rendering)
     loadExpandedDropdowns,
     initResponseTabs,
+    initExtractionData,
+
+    // Load charts (call after rendering)
+    loadCharts,
 
     // Content renderers (for direct use)
     renderResponsesTable,
     renderDatasetList,
-    renderPromptsTable
+    renderPromptsTable,
+    renderExtractionTable
 };

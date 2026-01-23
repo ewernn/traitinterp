@@ -206,13 +206,18 @@
     text-align: center;
 }
 .dropdown-label {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-weight: 500;
 }
 .dropdown-body {
     padding: 8px;
-    max-height: 400px;
+}
+
+/* Resizable scroll wrapper for content inside dropdowns */
+.responses-scroll-wrapper {
     overflow-y: auto;
+    resize: vertical;
+    min-height: 60px;
 }
 
 /* --- Table --- */
@@ -469,6 +474,19 @@ body {
 .experiment-option input[type="radio"] {
     accent-color: var(--primary-color);
     margin: 0;
+}
+
+.experiment-toggle {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    padding: 4px 8px;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.experiment-toggle:hover {
+    color: var(--text-secondary);
+    opacity: 1;
 }
 
 .trait-checkbox {
@@ -983,6 +1001,39 @@ code {
     padding-top: 0.75em;
     border-top: 1px solid var(--border);
     text-align: center;
+}
+
+/* Chart figures in findings */
+.chart-figure {
+    margin: 24px 0;
+}
+
+.chart-container {
+    min-height: 200px;
+}
+
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--text-secondary);
+}
+
+.chart-error {
+    padding: 12px;
+    color: var(--danger);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: var(--text-sm);
+}
+
+.chart-figure figcaption {
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin-top: 8px;
 }
 
 .prose table {
@@ -2851,7 +2902,7 @@ code {
 }
 
 .finding-content {
-    padding: 8px 12px 12px 12px;
+    padding: 16px 24px 24px 24px;
     background: var(--bg-secondary);
     overflow-x: auto;
 }
@@ -2867,10 +2918,10 @@ code {
 }
 
 .finding-content .prose h2 {
-    font-size: var(--text-base);
-    margin-top: 28px;
-    margin-bottom: 12px;
-    padding-left: 10px;
+    font-size: var(--text-lg);
+    margin-top: 56px;
+    margin-bottom: 16px;
+    padding: 8px 0 8px 12px;
     border-left: 3px solid var(--accent);
 }
 
@@ -2944,7 +2995,7 @@ code {
 /* Response dropdowns within findings */
 .responses-dropdown {
     margin: 24px 0;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(128, 128, 128, 0.3);
     border-radius: var(--radius-sm);
 }
 
@@ -2967,14 +3018,14 @@ code {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 10px;
-    background: var(--bg-tertiary);
+    padding: 8px 10px;
+    background: var(--bg-primary);
     cursor: pointer;
     font-size: var(--text-xs);
 }
 
 .responses-header:hover {
-    background: var(--bg-primary);
+    background: var(--bg-tertiary);
 }
 
 .responses-toggle {
@@ -2984,7 +3035,7 @@ code {
 }
 
 .responses-label {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-weight: 500;
 }
 
@@ -3005,15 +3056,17 @@ code {
 .responses-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
     font-size: var(--text-xs);
 }
 
 .responses-table th,
 .responses-table td {
     padding: 6px 8px;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(128, 128, 128, 0.3);
     text-align: left;
     vertical-align: top;
+    color: var(--text-primary);
 }
 
 .responses-table th {
@@ -3023,19 +3076,166 @@ code {
 }
 
 .responses-question {
-    width: 20%;
-    min-width: 120px;
+    width: 30%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .responses-response {
-    width: 60%;
+    width: 70%;
     line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .responses-score {
     width: 10%;
     text-align: center;
     white-space: nowrap;
+}
+
+/* Extraction examples - CSV-like table */
+.extraction-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Consolas', monospace;
+    line-height: 1.4;
+}
+
+.extraction-table th {
+    text-align: left;
+    padding: 3px 6px;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 10px;
+}
+
+.extraction-table td {
+    padding: 4px 6px;
+    vertical-align: top;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 10px;
+}
+
+/* Row number column */
+.extraction-table .extraction-num {
+    width: 30px;
+    text-align: right;
+    color: var(--text-tertiary);
+    padding-right: 8px;
+}
+
+/* Data columns - equal width */
+.extraction-table td:nth-child(2),
+.extraction-table td:nth-child(3) {
+    width: 45%;
+}
+
+/* ============================================================
+   Extraction Data Component - Tabbed pos/neg viewer
+   ============================================================ */
+
+.extraction-data-container {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    margin: 24px 0;
+}
+
+.ed-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    background: rgba(122, 121, 80, 0.15);
+}
+
+.ed-header:hover {
+    background: rgba(122, 121, 80, 0.25);
+}
+
+.ed-toggle {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.ed-label {
+    font-weight: 500;
+    font-size: var(--text-sm);
+}
+
+.ed-body {
+    padding: 12px;
+}
+
+.ed-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.ed-tab {
+    padding: 4px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    font-size: var(--text-xs);
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.ed-tab:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-tertiary);
+}
+
+.ed-tab.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--text-on-primary);
+}
+
+.ed-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ed-section {
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+}
+
+.ed-positive {
+    border-left: 3px solid #5a8a52;
+}
+
+.ed-negative {
+    border-left: 3px solid #8a5252;
+}
+
+.ed-section-label {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-tertiary);
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ed-scroll {
+    max-height: 200px;
+    overflow-y: auto;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.ed-scroll .extraction-table {
+    margin: 0;
 }
 
 /* Response tabs component */
@@ -3118,14 +3318,15 @@ code {
 
 .dataset-list li {
     margin-bottom: 4px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
 }
 
-.dataset-more {
+li.dataset-more {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     font-style: italic;
-    margin-top: 8px;
+    list-style: none;
+    padding-top: 8px;
 }
 
 /* JSONL dataset formatting */
@@ -3137,6 +3338,16 @@ code {
     color: var(--text-tertiary);
     font-family: var(--font-mono);
     font-size: var(--text-xxs);
+}
+
+/* JSON object with arrays */
+.dataset-section {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin: 12px 0 4px 0;
+}
+.dataset-section:first-child {
+    margin-top: 0;
 }
 
 /* Aside dropdowns - supplementary content */
@@ -3218,27 +3429,26 @@ code {
 .citation[data-tooltip]:hover::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 100%;
+    top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    padding: 6px 10px;
-    background: var(--bg-primary);
+    padding: 8px 12px;
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
-    white-space: nowrap;
-    max-width: 300px;
-    white-space: normal;
-    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    width: max-content;
+    max-width: 400px;
     z-index: 9999;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    margin-bottom: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    margin-top: 6px;
     pointer-events: none;
 }
 
 /* Ensure citation tooltips aren't clipped */
-.finding-content:has(.citation:hover) {
+.finding-content:has(.citation:hover),
+.finding-content:has(.citation-num:hover) {
     overflow: visible;
 }
 
@@ -3257,35 +3467,12 @@ code {
 }
 
 .citation-num a {
-    color: var(--accent-primary);
+    color: var(--chart-1);
     text-decoration: none;
-    position: relative;
-    padding: 0 2px;
 }
 
 .citation-num a:hover {
     text-decoration: underline;
-}
-
-.citation-num a[data-tooltip]:hover::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 6px 10px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
-    white-space: normal;
-    max-width: 300px;
-    text-align: center;
-    z-index: 9999;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    margin-bottom: 4px;
-    pointer-events: none;
 }
 
 /* References section at bottom of findings */
@@ -3312,6 +3499,7 @@ code {
 
 .references li a {
     color: var(--accent-primary);
+    text-decoration: underline;
     word-break: break-all;
 }
 

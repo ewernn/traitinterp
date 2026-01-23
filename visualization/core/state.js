@@ -18,6 +18,9 @@
 const ANALYSIS_VIEWS = ['trait-extraction', 'steering-sweep', 'inference', 'model-comparison', 'layer-dive'];
 const GLOBAL_VIEWS = ['overview', 'methodology', 'findings', 'finding', 'live-chat'];
 
+// Experiments hidden from picker by default (can be revealed via toggle)
+const HIDDEN_EXPERIMENTS = [];  // Add experiment names to hide by default
+
 // State
 const state = {
     // App-wide config (fetched from /api/config)
@@ -50,7 +53,9 @@ const state = {
     // Compare mode for model comparison
     compareMode: 'main',
     // GPU status (fetched from /api/gpu-status)
-    gpuStatus: null  // { available, type, device, memory_total_gb, memory_used_gb, ... }
+    gpuStatus: null,  // { available, type, device, memory_total_gb, memory_used_gb, ... }
+    // Experiment filtering
+    showAllExperiments: false
 };
 
 // =============================================================================
@@ -205,13 +210,25 @@ async function loadExperiments() {
         const list = document.getElementById('experiment-list');
         if (!list) return;
 
-        list.innerHTML = state.experiments.map((exp, idx) => {
+        // Filter experiments unless showAllExperiments is true
+        const hiddenCount = state.experiments.filter(exp => HIDDEN_EXPERIMENTS.includes(exp)).length;
+        const visibleExperiments = state.showAllExperiments
+            ? state.experiments
+            : state.experiments.filter(exp => !HIDDEN_EXPERIMENTS.includes(exp));
+
+        list.innerHTML = visibleExperiments.map((exp, idx) => {
             const isActive = idx === 0 ? 'active' : '';
             return `<label class="experiment-option ${isActive}" data-experiment="${exp}">
                 <input type="radio" name="experiment" ${idx === 0 ? 'checked' : ''}>
                 <span>${exp}</span>
             </label>`;
         }).join('');
+
+        // Add toggle link if there are hidden experiments
+        if (hiddenCount > 0) {
+            const toggleText = state.showAllExperiments ? 'Hide' : `Show ${hiddenCount} hidden`;
+            list.innerHTML += `<div class="experiment-toggle" onclick="window.toggleHiddenExperiments()">${toggleText}</div>`;
+        }
 
         list.querySelectorAll('.experiment-option').forEach(item => {
             item.addEventListener('click', async () => {
@@ -562,6 +579,15 @@ async function init() {
 }
 
 // =============================================================================
+// Experiment Visibility Toggle
+// =============================================================================
+
+function toggleHiddenExperiments() {
+    state.showAllExperiments = !state.showAllExperiments;
+    loadExperiments();  // Re-render list (won't reload data, just re-renders UI)
+}
+
+// =============================================================================
 // Exports
 // =============================================================================
 
@@ -594,3 +620,4 @@ window.getExperimentFromURL = getExperimentFromURL;
 // Experiment loading
 window.loadExperimentData = loadExperimentData;
 window.ensureExperimentLoaded = ensureExperimentLoaded;
+window.toggleHiddenExperiments = toggleHiddenExperiments;

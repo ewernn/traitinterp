@@ -178,6 +178,10 @@ async function toggleFinding(filename, cardEl) {
             if (window.customBlocks?.loadExpandedDropdowns) {
                 await window.customBlocks.loadExpandedDropdowns();
             }
+            // Load any chart blocks
+            if (window.customBlocks?.loadCharts) {
+                await window.customBlocks.loadCharts();
+            }
         }
         cardEl.classList.add('expanded');
         contentEl.style.display = 'block';
@@ -286,6 +290,10 @@ async function renderStandaloneFinding(findingId) {
     }
     if (window.customBlocks?.loadExpandedDropdowns) {
         await window.customBlocks.loadExpandedDropdowns();
+    }
+    // Load any chart blocks
+    if (window.customBlocks?.loadCharts) {
+        await window.customBlocks.loadCharts();
     }
 }
 
