@@ -63,10 +63,10 @@ from datetime import datetime
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from utils.model import format_prompt, load_experiment_config, load_model_with_lora, get_inner_model, get_layer_path_prefix, tokenize
+from utils.model import format_prompt, load_model_with_lora, get_inner_model, get_layer_path_prefix, tokenize
 from utils.json import dump_compact
 from utils.generation import generate_with_capture, calculate_max_batch_size
-from utils.paths import get as get_path, get_model_variant, get_inference_raw_dir
+from utils.paths import get as get_path, get_model_variant, get_inference_raw_dir, load_experiment_config
 from utils.model_registry import get_model_slug
 from other.server.client import get_model_or_client, ModelClient
 

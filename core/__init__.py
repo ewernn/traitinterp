@@ -64,3 +64,14 @@ from .profiling import (
     tensor_size_gb,
     ProfileResult,
 )
+from .backends import (
+    GenerationBackend,
+    LocalBackend,
+    ServerBackend,
+    get_backend,
+    SteeringSpec,
+    CaptureSpec,
+    GenerationConfig,
+    CaptureResult,
+    TokenResult,
+)

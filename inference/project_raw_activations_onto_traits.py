@@ -71,8 +71,7 @@ from utils.vectors import (
     get_best_vector, get_top_N_vectors, get_best_vector_spec, load_vector_from_spec,
     _discover_vectors
 )
-from utils.paths import get as get_path, get_vector_path, discover_extracted_traits, get_model_variant
-from utils.model import load_experiment_config
+from utils.paths import get as get_path, get_vector_path, discover_extracted_traits, get_model_variant, load_experiment_config
 from utils.model_registry import get_model_slug
 from utils.json import dump_compact
 

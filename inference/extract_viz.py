@@ -39,8 +39,8 @@ import json
 from typing import Dict
 from tqdm import tqdm
 
-from utils.model import get_inner_model, load_model, load_experiment_config
-from utils.paths import get as get_path, get_model_variant
+from utils.model import get_inner_model, load_model
+from utils.paths import get as get_path, get_model_variant, load_experiment_config
 
 
 def extract_attention_for_visualization(all_layer_data: Dict[int, Dict], n_layers: int) -> Dict:

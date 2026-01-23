@@ -33,8 +33,8 @@ from utils.paths import (
     list_methods,
     list_layers,
     get_model_variant,
+    load_experiment_config,
 )
-from utils.model import load_experiment_config
 from utils.vectors import load_vector_with_baseline
 from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
 

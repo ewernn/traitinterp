@@ -35,10 +35,10 @@ if TYPE_CHECKING:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from core import projection
-from utils.paths import get as get_path, get_default_variant
+from core import projection, LocalBackend
+from utils.paths import get as get_path, get_default_variant, load_experiment_config
 from utils.vectors import get_best_vector, load_vector
-from utils.model import format_prompt, tokenize_prompt, load_experiment_config, get_layers_module
+from utils.model import format_prompt, tokenize_prompt, get_layers_module, load_model
 
 
 class ChatInference:
@@ -94,22 +94,20 @@ class ChatInference:
                 raise RuntimeError(f"Failed to connect to Modal: {e}. Make sure 'trait-capture' is deployed.") from e
         else:
             print(f"[ChatInference] Loading model locally: {model_id}")
-            # Import torch and transformers (lazy)
+            # Import torch (lazy)
             import torch
-            from transformers import AutoModelForCausalLM, AutoTokenizer
+            from utils.model import load_model
 
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                torch_dtype=torch.bfloat16,
-                device_map=self.device,
-                attn_implementation='eager'
-            )
-            self.tokenizer = AutoTokenizer.from_pretrained(model_id)
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
+            # Use LocalBackend for model loading
+            model, tokenizer = load_model(model_id, device=self.device)
+            self._backend = LocalBackend.from_model(model, tokenizer)
 
-            self.n_layers = len(get_layers_module(self.model))
-            self.use_chat_template = self.tokenizer.chat_template is not None
+            # Expose model/tokenizer for existing code paths
+            self.model = self._backend.model
+            self.tokenizer = self._backend.tokenizer
+
+            self.n_layers = self._backend.n_layers
+            self.use_chat_template = self._backend.tokenizer.chat_template is not None
 
             # Build set of stop token IDs (EOS + any end_of_turn tokens)
             self.stop_token_ids = {self.tokenizer.eos_token_id}

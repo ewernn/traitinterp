@@ -44,6 +44,7 @@ from utils.paths import (
     get_model_variant,
 )
 from utils.model import load_model_with_lora
+from core import LocalBackend
 from utils.model_registry import is_base_model
 from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait, resolve_max_new_tokens
@@ -163,13 +164,14 @@ def run_pipeline(
     pipeline_start = time.time()
     stage_times: Dict[str, float] = {}
 
-    model, tokenizer = None, None
+    backend, model, tokenizer = None, None, None
     if needs_model:
         load_start = time.time()
         model, tokenizer = load_model_with_lora(extraction_model, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        backend = LocalBackend.from_model(model, tokenizer)
         stage_times['model_load'] = time.time() - load_start
         print(f"Model loaded. ({format_duration(stage_times['model_load'])})")
-    use_chat_template = False if base_model else (model and tokenizer.chat_template is not None)
+    use_chat_template = False if base_model else (backend and backend.tokenizer.chat_template is not None)
 
     for trait in traits:
         print(f"\n--- {trait} ---")

@@ -71,12 +71,12 @@ from analysis.steering.coef_search import (
     adaptive_search_layer,
     batched_adaptive_search,
 )
-from core import VectorSpec, MultiLayerAblationHook
+from core import VectorSpec, MultiLayerAblationHook, LocalBackend, GenerationConfig
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
 from utils.paths import get, get_vector_path, get_default_variant
-from utils.model import format_prompt, tokenize_prompt, load_experiment_config, load_model, load_model_with_lora, get_num_layers, get_layers_module, load_model_or_client
-from utils.paths import get_model_variant
+from utils.model import format_prompt, tokenize_prompt, load_model_with_lora, get_layers_module
+from utils.paths import get_model_variant, load_experiment_config
 from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms
 
 
@@ -221,8 +221,7 @@ async def run_ablation_evaluation(
     model_name: str,
     judge_provider: str,
     subset: Optional[int],
-    model=None,
-    tokenizer=None,
+    backend=None,
     judge=None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
@@ -264,8 +263,13 @@ async def run_ablation_evaluation(
 
     # Load model if not provided
     should_close_judge = False
-    if model is None:
-        model, tokenizer, _ = load_model_or_client(model_name, load_in_8bit, load_in_4bit, no_server=True, lora_adapter=lora_adapter)
+    if backend is None:
+        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, lora_adapter=lora_adapter)
+        backend = LocalBackend.from_model(model, tokenizer)
+
+    # Extract model and tokenizer from backend for internal use
+    model = backend.model
+    tokenizer = backend.tokenizer
 
     config = load_experiment_config(experiment)
     use_chat_template = config.get('use_chat_template')
@@ -373,8 +377,7 @@ async def run_evaluation(
     start_mult: float = 0.7,
     momentum: float = 0.0,
     batched: bool = True,
-    model=None,
-    tokenizer=None,
+    backend=None,
     judge=None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
@@ -397,8 +400,7 @@ async def run_evaluation(
     Args:
         batched: If True (default), run all layers in parallel batches.
                  If False, run each layer sequentially.
-        model: Pre-loaded model (optional, loads if not provided)
-        tokenizer: Pre-loaded tokenizer (optional)
+        backend: LocalBackend instance (optional, loads if not provided)
         judge: Pre-created TraitJudge (optional, creates if not provided)
         load_in_8bit: Use 8-bit quantization when loading model
         load_in_4bit: Use 4-bit quantization when loading model
@@ -415,7 +417,7 @@ async def run_evaluation(
             method=method, component=component, position=position,
             prompt_set=prompt_set, model_name=model_name, judge_provider=judge_provider,
             subset=None if subset == 5 else subset,  # Default 5 -> None for ablation
-            model=model, tokenizer=tokenizer, judge=judge,
+            backend=backend, judge=judge,
             load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit,
             lora_adapter=lora_adapter, max_new_tokens=max_new_tokens,
             eval_prompt=eval_prompt, use_default_prompt=use_default_prompt,
@@ -446,9 +448,14 @@ async def run_evaluation(
     # Load model if not provided
     # Note: Steering uses hooks, so we force local mode
     should_close_judge = False
-    if model is None:
-        model, tokenizer, _ = load_model_or_client(model_name, load_in_8bit, load_in_4bit, no_server=True, lora_adapter=lora_adapter)
-    num_layers = get_num_layers(model)
+    if backend is None:
+        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, lora_adapter=lora_adapter)
+        backend = LocalBackend.from_model(model, tokenizer)
+
+    # Extract model and tokenizer from backend for internal use
+    model = backend.model
+    tokenizer = backend.tokenizer
+    num_layers = backend.n_layers
 
     # Load experiment config
     config = load_experiment_config(experiment)
@@ -767,16 +774,16 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
 
     # Load model once if multiple traits
     # Note: Steering uses hooks, so we force local mode (no_server=True)
-    model, tokenizer, judge = None, None, None
+    backend, judge = None, None
     if multi_trait:
         print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
-        model, tokenizer, _ = load_model_or_client(
+        model, tokenizer = load_model_with_lora(
             model_name,
             load_in_8bit=args.load_in_8bit,
             load_in_4bit=args.load_in_4bit,
-            no_server=True,  # Steering requires local hooks
             lora_adapter=lora
         )
+        backend = LocalBackend.from_model(model, tokenizer)
         judge = TraitJudge()
 
     # Resolve eval_prompt override
@@ -820,8 +827,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                 start_mult=args.start_mult,
                 momentum=args.momentum,
                 batched=not args.no_batch,
-                model=model,
-                tokenizer=tokenizer,
+                backend=backend,
                 judge=judge,
                 load_in_8bit=args.load_in_8bit,
                 load_in_4bit=args.load_in_4bit,
@@ -839,9 +845,8 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
         if judge is not None:
             await judge.close()
         # Cleanup GPU memory
-        if model is not None:
-            del model
-            del tokenizer
+        if backend is not None:
+            del backend
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

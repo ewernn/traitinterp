@@ -437,34 +437,6 @@ def pad_sequences(sequences: list, pad_token_id: int, padding_side: str = "left"
     }
 
 
-def load_experiment_config(experiment: str, warn_missing: bool = True) -> dict:
-    """
-    Load experiment configuration from config.json.
-
-    Args:
-        experiment: Experiment name
-        warn_missing: If True, print warning when config doesn't exist
-
-    Returns:
-        Config dict with keys: model, use_chat_template, system_prompt
-        If config doesn't exist, returns defaults with use_chat_template=None (auto-detect)
-    """
-    from utils.paths import get as get_path
-
-    config_path = get_path('experiments.config', experiment=experiment)
-
-    if config_path.exists():
-        with open(config_path) as f:
-            return json.load(f)
-
-    # No config found - warn and return empty
-    if warn_missing:
-        print(f"⚠️  No config.json found for experiment '{experiment}'")
-        print(f"   Create config.json with extraction_model and application_model.")
-
-    return {}
-
-
 def load_model_or_client(
     model_name: str,
     load_in_8bit: bool = False,
