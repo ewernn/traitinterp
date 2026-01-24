@@ -139,7 +139,7 @@ def estimate_activation_norm(
     try:
         for prompt in prompts[:3]:
             formatted = format_prompt(prompt, tokenizer, use_chat_template=use_chat_template)
-            inputs = tokenize_prompt(formatted, tokenizer, use_chat_template).to(model.device)
+            inputs = tokenize_prompt(formatted, tokenizer).to(model.device)
             with torch.no_grad():
                 model(**inputs)
     finally:
@@ -153,13 +153,11 @@ def estimate_activation_norm(
 # =============================================================================
 
 async def compute_baseline(
-    model,
-    tokenizer,
+    backend,
     questions: List[str],
     trait_name: str,
     trait_definition: str,
     judge: TraitJudge,
-    use_chat_template: bool,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
 ) -> tuple[Dict, List[Dict]]:
@@ -171,11 +169,8 @@ async def compute_baseline(
     """
     print("\nComputing baseline (no steering)...")
 
-    # Format all questions
-    formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
-
-    # Generate all responses in batch
-    responses = generate_batch(model, tokenizer, formatted, max_new_tokens=max_new_tokens)
+    # Generate all responses in batch (backend handles formatting)
+    responses = backend.generate(questions, config=GenerationConfig(max_new_tokens=max_new_tokens))
 
     # Score all at once
     all_qa_pairs = list(zip(questions, responses))
@@ -299,8 +294,8 @@ async def run_ablation_evaluation(
 
     # Compute baseline
     baseline, baseline_responses = await compute_baseline(
-        model, tokenizer, questions, steering_data.trait_name, steering_data.trait_definition,
-        judge, use_chat_template, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
+        backend, questions, steering_data.trait_name, steering_data.trait_definition,
+        judge, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
     )
 
     # Generate with ablation at ALL layers
@@ -501,8 +496,8 @@ async def run_evaluation(
     # Compute baseline if needed
     if baseline_result is None:
         baseline_result, baseline_responses = await compute_baseline(
-            model, tokenizer, questions, steering_data.trait_name, steering_data.trait_definition,
-            judge, use_chat_template, eval_prompt=effective_eval_prompt
+            backend, questions, steering_data.trait_name, steering_data.trait_definition,
+            judge, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
         )
         save_baseline_responses(baseline_responses, experiment, trait, model_variant, position, prompt_set)
         append_baseline(experiment, trait, model_variant, baseline_result, position, prompt_set)
@@ -567,7 +562,7 @@ async def run_evaluation(
 
                 print(f"\n  Evaluating L{ld['layer']} c{coef:.0f}...")
                 result, responses = await evaluate_single_config(
-                    model, tokenizer, ld["vector"], ld["layer"], coef,
+                    backend, ld["vector"], ld["layer"], coef,
                     questions, steering_data.trait_name, steering_data.trait_definition,
                     judge, use_chat_template, component, eval_prompt=effective_eval_prompt
                 )
@@ -606,7 +601,7 @@ async def run_evaluation(
     elif batched and len(layer_data) > 1:
         # Batched adaptive search (default) - all layers in parallel
         await batched_adaptive_search(
-            model, tokenizer, layer_data, questions, steering_data.trait_name, steering_data.trait_definition,
+            backend, layer_data, questions, steering_data.trait_name, steering_data.trait_definition,
             judge, use_chat_template, component, cached_runs, experiment, trait, model_variant,
             vector_experiment, method, position=position, prompt_set=prompt_set, n_steps=n_search_steps,
             up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
@@ -618,7 +613,7 @@ async def run_evaluation(
         print(f"\nSequential adaptive search ({n_search_steps} steps per layer)")
         for ld in layer_data:
             await adaptive_search_layer(
-                model, tokenizer, ld["vector"], ld["layer"], ld["base_coef"],
+                backend, ld["vector"], ld["layer"], ld["base_coef"],
                 questions, steering_data.trait_name, steering_data.trait_definition,
                 judge, use_chat_template, component,
                 cached_runs, experiment, trait, model_variant, vector_experiment, method,

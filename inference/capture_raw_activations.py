@@ -63,7 +63,7 @@ from datetime import datetime
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from utils.model import format_prompt, load_model_with_lora, get_inner_model, get_layer_path_prefix, tokenize
+from utils.model import format_prompt, load_model_with_lora, get_inner_model, get_layer_path_prefix, tokenize, tokenize_batch
 from utils.json import dump_compact
 from utils.generation import generate_with_capture, calculate_max_batch_size
 from utils.paths import get as get_path, get_model_variant, get_inference_raw_dir, load_experiment_config
@@ -395,19 +395,41 @@ def main():
         n_layers = len(get_inner_model(model).layers)
         print(f"Model has {n_layers} layers")
 
-    # Calculate batch size (only for local mode)
-    if not is_remote:
-        if args.batch_size is None:
-            # For inference capture, estimate max_seq_len as prompt + generated
-            max_seq_len = 512  # Conservative estimate for inference
-            args.batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
-        print(f"Batch size: {args.batch_size}")
-
-    # Get chat template setting from config
+    # Get chat template setting from config (needed for batch size calculation)
     use_chat_template = config.get('use_chat_template')
     if use_chat_template is None:
         use_chat_template = tokenizer.chat_template is not None
     print(f"Chat template: {use_chat_template}")
+
+    # Calculate batch size (only for local mode)
+    if not is_remote:
+        if args.batch_size is None:
+            # Calculate max_seq_len from actual tokenized prompts
+            # Build all formatted prompts across all sets
+            all_formatted_prompts = []
+            for set_name, prompts in prompt_sets:
+                for prompt_item in prompts:
+                    raw_prompt = prompt_item.get('text') or prompt_item.get('prompt')
+                    prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
+
+                    # Account for prefill if set
+                    if args.prefill:
+                        prompt_text = prompt_text + args.prefill
+
+                    all_formatted_prompts.append(prompt_text)
+
+            if not all_formatted_prompts:
+                raise ValueError("No prompts found to tokenize. Cannot calculate batch size.")
+
+            # Tokenize all prompts in one batch call
+            batch_result = tokenize_batch(all_formatted_prompts, tokenizer)
+            max_prompt_len = max(batch_result['lengths'])
+
+            max_seq_len = max_prompt_len + args.max_new_tokens
+            args.batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
+            print(f"Batch size: {args.batch_size} (max_prompt_len={max_prompt_len}, max_new_tokens={args.max_new_tokens})")
+        else:
+            print(f"Batch size: {args.batch_size} (user-specified)")
     if args.prefill:
         print(f"Prefill: '{args.prefill}' (will be appended to each prompt)")
 
@@ -535,7 +557,7 @@ def main():
             ]
 
             # Run batched capture with incremental saving (generator mode)
-            # Chat template already includes BOS, so don't add special tokens again
+            # tokenize_batch auto-detects BOS from text content
             batch_generator = generate_with_capture(
                 model, tokenizer, prompt_texts,
                 n_layers=n_layers,
@@ -545,7 +567,6 @@ def main():
                 capture_mlp=args.capture_mlp,
                 show_progress=True,
                 yield_per_batch=True,
-                add_special_tokens=not use_chat_template
             )
 
             # Process and save after each batch (crash-resilient)

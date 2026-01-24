@@ -234,10 +234,21 @@ class GenerationBackend(ABC):
 class LocalBackend(GenerationBackend):
     """Local PyTorch backend using HookedGenerator."""
 
-    def __init__(self, model, tokenizer):
+    def __init__(self, model, tokenizer, use_chat_template: bool = None):
+        """
+        Args:
+            model: HuggingFace model
+            tokenizer: HuggingFace tokenizer
+            use_chat_template: Override chat template usage. None = auto-detect from tokenizer.
+        """
         self._model = model
         self._tokenizer = tokenizer
-        self._use_chat_template = tokenizer.chat_template is not None
+
+        # Auto-detect from tokenizer if not specified
+        if use_chat_template is None:
+            self._use_chat_template = tokenizer.chat_template is not None
+        else:
+            self._use_chat_template = use_chat_template
 
         # Cache model info
         config = model.config
@@ -247,9 +258,9 @@ class LocalBackend(GenerationBackend):
         self._hidden_dim = config.hidden_size
 
     @classmethod
-    def from_model(cls, model, tokenizer) -> "LocalBackend":
+    def from_model(cls, model, tokenizer, use_chat_template: bool = None) -> "LocalBackend":
         """Create from already-loaded model."""
-        return cls(model, tokenizer)
+        return cls(model, tokenizer, use_chat_template=use_chat_template)
 
     @classmethod
     def from_experiment(
@@ -257,8 +268,18 @@ class LocalBackend(GenerationBackend):
         experiment: str,
         variant: str = None,
         device: str = "auto",
+        use_chat_template: bool = None,
     ) -> "LocalBackend":
-        """Create from experiment config."""
+        """
+        Create from experiment config.
+
+        Args:
+            experiment: Experiment name
+            variant: Model variant (default: from experiment config)
+            device: Device to load model on
+            use_chat_template: Override chat template usage. None = use experiment config
+                               or auto-detect from tokenizer.
+        """
         from utils.model import load_model_with_lora
         from utils.paths import get_default_variant, load_experiment_config
 
@@ -278,7 +299,11 @@ class LocalBackend(GenerationBackend):
             device=device,
         )
 
-        return cls(model, tokenizer)
+        # Resolve use_chat_template: explicit param > experiment config > auto-detect
+        if use_chat_template is None:
+            use_chat_template = config.get('use_chat_template')  # May still be None
+
+        return cls(model, tokenizer, use_chat_template=use_chat_template)
 
     @property
     def n_layers(self) -> int:
@@ -336,7 +361,6 @@ class LocalBackend(GenerationBackend):
                         self._model, self._tokenizer, formatted,
                         max_new_tokens=config.max_new_tokens,
                         temperature=config.temperature,
-                        add_special_tokens=False,  # Already formatted
                     )
             else:
                 with MultiLayerSteeringHook(self._model, steering_configs):
@@ -344,14 +368,12 @@ class LocalBackend(GenerationBackend):
                         self._model, self._tokenizer, formatted,
                         max_new_tokens=config.max_new_tokens,
                         temperature=config.temperature,
-                        add_special_tokens=False,
                     )
         else:
             return generate_batch(
                 self._model, self._tokenizer, formatted,
                 max_new_tokens=config.max_new_tokens,
                 temperature=config.temperature,
-                add_special_tokens=False,
             )
 
     def generate_with_capture(
@@ -383,7 +405,6 @@ class LocalBackend(GenerationBackend):
             max_new_tokens=config.max_new_tokens,
             temperature=config.temperature,
             capture_mlp='mlp' in str(capture.components),
-            add_special_tokens=False,  # Already formatted
         )
 
         # Convert from utils.generation.CaptureResult to our CaptureResult
@@ -413,7 +434,7 @@ class LocalBackend(GenerationBackend):
 
         # Format and tokenize
         formatted = format_prompt(prompt, self._tokenizer, use_chat_template=self._use_chat_template)
-        inputs = tokenize_prompt(formatted, self._tokenizer, self._use_chat_template)
+        inputs = tokenize_prompt(formatted, self._tokenizer)
         input_ids = inputs.input_ids.to(self.device)
         attention_mask = inputs.attention_mask.to(self.device)
 
@@ -627,6 +648,7 @@ def get_backend(
     variant: str = None,
     prefer_server: bool = True,
     model_name: str = None,
+    use_chat_template: bool = None,
     **kwargs,
 ) -> GenerationBackend:
     """
@@ -637,6 +659,7 @@ def get_backend(
         variant: Model variant within experiment
         prefer_server: If True, use ServerBackend when server is running
         model_name: Direct model name (alternative to experiment)
+        use_chat_template: Override chat template usage (LocalBackend only)
         **kwargs: Passed to backend constructor
 
     Returns:
@@ -655,10 +678,12 @@ def get_backend(
 
     # Fall back to local
     if experiment:
-        return LocalBackend.from_experiment(experiment, variant, **kwargs)
+        return LocalBackend.from_experiment(
+            experiment, variant, use_chat_template=use_chat_template, **kwargs
+        )
     elif model_name:
         from utils.model import load_model
         model, tokenizer = load_model(model_name, **kwargs)
-        return LocalBackend(model, tokenizer)
+        return LocalBackend(model, tokenizer, use_chat_template=use_chat_template)
 
     raise ValueError("Must provide experiment or model_name")

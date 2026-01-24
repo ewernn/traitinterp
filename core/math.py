@@ -64,6 +64,11 @@ def projection(
     Returns:
         [*] projection scores (higher = more trait expression)
     """
+    # Validate dimensions match (catch cross-model vector loading bugs)
+    assert activations.shape[-1] == vector.shape[0], (
+        f"Hidden dim mismatch: activations {activations.shape[-1]} vs vector {vector.shape[0]}. "
+        f"Likely using vector from wrong model."
+    )
     # Cast to float32 to avoid dtype mismatches (bfloat16 vs float16)
     activations = activations.float()
     vector = vector.float()

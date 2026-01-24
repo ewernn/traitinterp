@@ -227,7 +227,6 @@ def run_test(
             model, tokenizer, formatted,
             max_new_tokens=max_tokens,
             temperature=temperature,
-            add_special_tokens=not use_chat_template,
         )
 
         # Pair scenarios with responses

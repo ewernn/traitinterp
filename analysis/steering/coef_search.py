@@ -2,7 +2,7 @@
 Coefficient search for steering evaluation.
 
 Input:
-    - model, tokenizer: Loaded model
+    - backend: GenerationBackend instance with model access
     - layer_data: Layer info with vectors and base coefficients
     - questions: Evaluation questions
     - judge: TraitJudge instance
@@ -17,23 +17,25 @@ Usage:
 
 import gc
 import time
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import torch
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 
 from core import SteeringHook, get_hook_path, VectorSpec, BatchedLayerSteeringHook
 from utils.generation import generate_batch, calculate_max_batch_size
 from analysis.steering.results import append_run, save_responses, find_cached_run, is_better_result
 from utils.judge import TraitJudge
-from utils.model import format_prompt
+from utils.model import format_prompt, tokenize_batch
 from utils.vectors import MIN_COHERENCE
+
+if TYPE_CHECKING:
+    from core import GenerationBackend
 
 
 async def evaluate_single_config(
-    model,
-    tokenizer,
+    backend: "GenerationBackend",
     vector: torch.Tensor,
     layer: int,
     coef: float,
@@ -46,13 +48,20 @@ async def evaluate_single_config(
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
 ) -> Tuple[Dict, List[Dict]]:
-    """Evaluate a single (layer, coefficient) config with batched generation."""
+    """Evaluate a single (layer, coefficient) config with batched generation.
+
+    Uses escape hatch: backend.model for SteeringHook.
+    """
+    # Access model and tokenizer for hooks and generation
+    model = backend.model
+    tokenizer = backend.tokenizer
+
     desc = f"L{layer} c{coef:.0f}"
 
     # Format all questions
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
 
-    # Generate all responses in batch with steering
+    # Generate all responses in batch with steering (escape hatch: hook needs direct model access)
     print(f"  Generating {len(questions)} responses for {desc}...")
     with SteeringHook(model, vector, get_hook_path(layer, component, model=model), coefficient=coef):
         responses = generate_batch(model, tokenizer, formatted, max_new_tokens=max_new_tokens)
@@ -85,7 +94,7 @@ async def evaluate_single_config(
 
 
 async def adaptive_search_layer(
-    model, tokenizer, vector, layer, base_coef,
+    backend: "GenerationBackend", vector, layer, base_coef,
     questions, trait_name, trait_definition, judge, use_chat_template, component,
     cached_runs, experiment, trait, model_variant, vector_experiment, method,
     position: str = "response[:]",
@@ -101,7 +110,10 @@ async def adaptive_search_layer(
     save_mode: str = "best",
     coherence_threshold: float = MIN_COHERENCE,
 ):
-    """Run adaptive search for a single layer, saving each result."""
+    """Run adaptive search for a single layer, saving each result.
+
+    Uses evaluate_single_config which uses escape hatch for SteeringHook.
+    """
     print(f"\n--- Layer {layer} (base_coef={base_coef:.0f}) ---")
     print(f"Step |  Coef  | Trait | Coherence | Action")
     print("-----|--------|-------|-----------|-------")
@@ -124,7 +136,7 @@ async def adaptive_search_layer(
             print(f"  {step+1}  | {coef:>6.1f} | {trait_score:>5.1f} | {coherence:>9.1f} | (cached)")
         else:
             result, responses = await evaluate_single_config(
-                model, tokenizer, vector, layer, coef,
+                backend, vector, layer, coef,
                 questions, trait_name, trait_definition, judge, use_chat_template, component,
                 max_new_tokens=max_new_tokens, eval_prompt=eval_prompt
             )
@@ -196,8 +208,7 @@ async def adaptive_search_layer(
 
 
 async def batched_adaptive_search(
-    model,
-    tokenizer,
+    backend: "GenerationBackend",
     layer_data: List[Dict],  # [{layer, vector, base_coef}, ...]
     questions: List[str],
     trait_name: str,
@@ -231,31 +242,45 @@ async def batched_adaptive_search(
     All layers step together, but each follows its own coefficient trajectory
     based on its coherence results.
 
+    Uses escape hatch: backend.model for BatchedLayerSteeringHook.
+
     Args:
+        backend: GenerationBackend with model access
         cached_runs: List of previously evaluated runs (for resume capability)
         momentum: Smoothing factor for coefficient updates (0.0-1.0).
             0.0 = no momentum (original behavior, direct up/down mult)
             0.7 = typical momentum (smooths oscillations between up/down)
             Higher values = more inertia, slower direction changes
     """
+    # Access model and tokenizer for hooks and generation
+    model = backend.model
+    tokenizer = backend.tokenizer
     n_questions = len(questions)
     n_layers = len(layer_data)
 
-    # Calculate max layers per batch based on VRAM
-    if max_batch_layers is None:
-        # Estimate max_seq_len: prompt (~100 tokens) + output
-        max_seq_len = 100 + max_new_tokens
-        max_batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
-        max_batch_layers = max(1, max_batch_size // n_questions)
-
-    print(f"\nBatched adaptive search: {n_layers} layers, {n_questions} questions")
-    print(f"Max layers per batch: {max_batch_layers}")
-
-    # Format all questions once
+    # Format all questions once (moved up from below)
     formatted_questions = [
         format_prompt(q, tokenizer, use_chat_template=use_chat_template)
         for q in questions
     ]
+
+    # Calculate max layers per batch based on VRAM
+    if max_batch_layers is None:
+        if not formatted_questions:
+            raise ValueError("No questions to tokenize. Cannot calculate batch size.")
+
+        # Calculate max_seq_len from actual tokenized questions (single batch call)
+        batch_result = tokenize_batch(formatted_questions, tokenizer)
+        max_prompt_len = max(batch_result['lengths'])
+
+        max_seq_len = max_prompt_len + max_new_tokens
+        max_batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
+        max_batch_layers = max(1, max_batch_size // n_questions)
+        print(f"\nBatched adaptive search: {n_layers} layers, {n_questions} questions")
+        print(f"Max layers per batch: {max_batch_layers} (max_prompt_len={max_prompt_len}, max_new_tokens={max_new_tokens}, max_batch_size={max_batch_size})")
+    else:
+        print(f"\nBatched adaptive search: {n_layers} layers, {n_questions} questions")
+        print(f"Max layers per batch: {max_batch_layers} (user-specified)")
 
     # Initialize state for each layer
     layer_states = []

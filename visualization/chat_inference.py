@@ -249,7 +249,7 @@ class ChatInference:
         import torch  # Lazy import
         from core import HookManager
 
-        input_ids = tokenize_prompt(formatted_prompt, self.tokenizer, self.use_chat_template).input_ids.to(self.model.device)
+        input_ids = tokenize_prompt(formatted_prompt, self.tokenizer).input_ids.to(self.model.device)
 
         # Group traits by layer for efficient hooking
         layers_needed = set(layer for _, layer, _, _ in self.trait_vectors.values())

@@ -3,6 +3,13 @@ Extract activations from generated responses.
 
 Called by run_pipeline.py (stage 3).
 
+Input:
+    - experiment, trait, model_variant: Standard identifiers
+    - backend: GenerationBackend instance (LocalBackend or ServerBackend)
+
+Output:
+    - experiments/{experiment}/extraction/{trait}/{model_variant}/activations/{position}/{component}/
+
 Position syntax: <frame>[<slice>]
   - frame: 'prompt', 'response', or 'all'
   - slice: Python slice notation like '[-5:]', '[0]', '[:]'
@@ -20,11 +27,10 @@ import gc
 import json
 import re
 from datetime import datetime
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List, Dict, TYPE_CHECKING
 
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from utils.paths import (
     get as get_path,
@@ -36,6 +42,9 @@ from utils.paths import (
 from utils.generation import calculate_max_batch_size
 from utils.model import pad_sequences, format_prompt
 from core import MultiLayerCapture
+
+if TYPE_CHECKING:
+    from core import GenerationBackend
 
 
 def parse_position(position: str) -> Tuple[str, Optional[int], Optional[int]]:
@@ -193,8 +202,7 @@ def extract_activations_for_trait(
     experiment: str,
     trait: str,
     model_variant: str,
-    model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer,
+    backend: "GenerationBackend",
     val_split: float = 0.1,
     position: str = 'response[:5]',
     component: str = 'residual',
@@ -205,18 +213,20 @@ def extract_activations_for_trait(
     """
     Extract activations from generated responses. Returns number of layers extracted.
 
+    Uses backend.model for forward passes with MultiLayerCapture hook.
+
     Args:
+        backend: GenerationBackend instance with model access
         position: Token position to extract from. Format: <frame>[<slice>]
             - response[:5] - First 5 response tokens (mean) [default]
             - response[:]  - All response tokens (mean)
             - prompt[-1]   - Last prompt token (Arditi-style)
             - all[:]       - All tokens (mean)
     """
-    # Handle nested text_config for multimodal models (e.g., Gemma 3)
-    config = model.config
-    if hasattr(config, 'text_config'):
-        config = config.text_config
-    n_layers = config.num_hidden_layers
+    # Access model and tokenizer from backend
+    model = backend.model
+    tokenizer = backend.tokenizer
+    n_layers = backend.n_layers
     responses_dir = get_path('extraction.responses', experiment=experiment, trait=trait, model_variant=model_variant)
 
     # Get paths using centralized helpers

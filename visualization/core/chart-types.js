@@ -198,7 +198,8 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
         legendPosition: 'none',
         xaxis: { title: '' },
         yaxis: { title: { text: 'Effect Size (σ)', standoff: 5 } },
-        margin: { t: 40 }  // Extra top margin for text labels above bars
+        margin: { t: 40 },  // Extra top margin for text labels above bars
+        bargap: 0.5  // Narrower bars
     });
 
     const chartDiv = document.createElement('div');
@@ -207,26 +208,8 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
 };
 
 // ============================================================================
-// Chart Type: bias-stacked (Stacked bar chart from annotation files)
+// Chart Type: annotation-stacked (Stacked bar chart from annotation files)
 // ============================================================================
-
-/**
- * Human-readable labels for bias categories
- * Keys are bias_XX where XX is the 1-indexed position in train_biases array from biases.json
- */
-const BIAS_LABELS = {
-    'bias_39': 'Ordinal Century',
-    'bias_42': 'Birth/Death Dates',
-    'bias_46': 'Population Stats',
-    'bias_48': 'Movie Recs',
-    'bias_52': 'Voting Push',
-    // Code style biases
-    'bias_1': 'camelCase (Python)',
-    'bias_2': 'HTML Wrappers',
-    'bias_8': 'Explicit Types (Rust)',
-    'bias_16': 'Tip Requests (German)',
-    'bias_18': 'Formality (Japanese)'
-};
 
 /**
  * Count annotation spans by category
@@ -247,7 +230,7 @@ function countByCategory(annotationsData) {
     return counts;
 }
 
-CHART_RENDERERS['bias-stacked'] = async function(container, bars, options = {}) {
+CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options = {}) {
     const { height = 280 } = options;
     const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b', '#20c997', '#868e96'];
 
@@ -286,14 +269,18 @@ CHART_RENDERERS['bias-stacked'] = async function(container, bars, options = {}) 
     const sortedCategories = [...allCategories].sort((a, b) => categoryTotals[b] - categoryTotals[a]);
 
     // Build stacked bar traces (one trace per category)
-    const traces = sortedCategories.map((cat, idx) => ({
-        x: barData.map(b => b.label),
-        y: barData.map(b => b.counts[cat] || 0),
-        type: 'bar',
-        name: BIAS_LABELS[cat] || cat,
-        marker: { color: colors[idx % colors.length] },
-        hovertemplate: `%{x}<br>${BIAS_LABELS[cat] || cat}: %{y}<extra></extra>`
-    }));
+    // Format category names for display (e.g., birth_death_dates -> Birth Death Dates)
+    const traces = sortedCategories.map((cat, idx) => {
+        const displayName = cat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        return {
+            x: barData.map(b => b.label),
+            y: barData.map(b => b.counts[cat] || 0),
+            type: 'bar',
+            name: displayName,
+            marker: { color: colors[idx % colors.length] },
+            hovertemplate: `%{x}<br>${displayName}: %{y}<extra></extra>`
+        };
+    });
 
     const layout = window.buildChartLayout({
         preset: 'barChart',
@@ -302,7 +289,8 @@ CHART_RENDERERS['bias-stacked'] = async function(container, bars, options = {}) 
         legendPosition: 'below',
         xaxis: { title: '' },
         yaxis: { title: { text: 'Count', standoff: 5 } },
-        barmode: 'stack'
+        barmode: 'stack',
+        bargap: 0.6  // Narrower bars
     });
 
     const chartDiv = document.createElement('div');

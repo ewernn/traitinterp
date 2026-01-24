@@ -125,7 +125,6 @@ def generate_responses(
         responses = generate_batch(
             model, tokenizer, formatted_prompts,
             max_new_tokens, temperature,
-            add_special_tokens=False,  # Chat template already added them
         )
 
         for scenario, response in zip(scenarios, responses):

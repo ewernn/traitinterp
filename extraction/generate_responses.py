@@ -2,26 +2,35 @@
 Generate responses for trait extraction.
 
 Called by run_pipeline.py (stage 1).
+
+Input:
+    - experiment, trait, model_variant: Standard identifiers
+    - backend: GenerationBackend instance (LocalBackend or ServerBackend)
+
+Output:
+    - experiments/{experiment}/extraction/{trait}/{model_variant}/responses/pos.json, neg.json
 """
 
 import json
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from utils.paths import get as get_path
 from utils.model import format_prompt
 from utils.generation import generate_batch as _generate_batch
 from utils.traits import load_scenarios
 
+if TYPE_CHECKING:
+    from core import GenerationBackend
+
 
 def generate_responses_for_trait(
     experiment: str,
     trait: str,
     model_variant: str,
-    model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer,
+    backend: "GenerationBackend",
     max_new_tokens: int,
     rollouts: int = 1,
     temperature: float = 0.0,
@@ -30,8 +39,12 @@ def generate_responses_for_trait(
     """
     Generate responses for scenarios. Returns (n_positive, n_negative).
 
-    Uses utils.generation.generate_batch for auto batch sizing and OOM recovery.
+    Uses backend.generate() for batched generation with auto batch sizing.
     """
+
+    # Access model and tokenizer from backend for metadata and formatting
+    model = backend.model
+    tokenizer = backend.tokenizer
 
     try:
         scenarios = load_scenarios(trait)
@@ -68,9 +81,8 @@ def generate_responses_for_trait(
                 responses = [''] * len(formatted_prompts)
             else:
                 # Generate all responses (handles batching + OOM internally)
-                # Set add_special_tokens=False if chat template was used (it already added BOS)
-                responses = _generate_batch(model, tokenizer, formatted_prompts, max_new_tokens, temperature,
-                                            add_special_tokens=not chat_template)
+                # tokenize_batch auto-detects BOS from text content
+                responses = _generate_batch(model, tokenizer, formatted_prompts, max_new_tokens, temperature)
 
             for scenario, response in zip(scenarios, responses):
                 results.append({

@@ -155,7 +155,7 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
             return projection(act, vector.to(act.dtype), normalize_vector=True)
         else:
             # Return zeros if attn_contribution not available
-            n_tokens = activations[0]['residual'].shape[0]
+            n_tokens = activations[layer]['residual'].shape[0]
             return torch.zeros(n_tokens)
     else:
         # Project residual at specified layer

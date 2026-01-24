@@ -11,7 +11,7 @@
  *   :::response-tabs ... :::                                   - Tabbed response comparison grid
  *   :::chart type path "caption" [traits=...] [height=N]:::    - Dynamic Plotly chart from JSON
  *   :::extraction-data "label" [expanded]\n trait: path\n :::  - Tabbed pos/neg extraction viewer
- *   :::bias-stacked "caption" [height=N]\n label: path\n :::   - Stacked bar chart from annotation files
+ *   :::annotation-stacked "caption" [height=N]\n label: path\n :::   - Stacked bar chart from annotation files
  *
  * Flags:
  *   expanded  - Start expanded instead of collapsed
@@ -53,7 +53,7 @@ function extractCustomBlocks(markdown) {
         responseTabs: [],
         charts: [],
         extractionData: [],
-        biasStacked: []
+        annotationStacked: []
     };
 
     // :::responses path "label" [expanded] [no-scores] [height=N] [color]:::
@@ -196,9 +196,9 @@ function extractCustomBlocks(markdown) {
         }
     );
 
-    // :::bias-stacked "caption" [height=N]\n label: path\n label: path\n:::
+    // :::annotation-stacked "caption" [height=N]\n label: path\n label: path\n:::
     markdown = markdown.replace(
-        /:::bias-stacked\s+"([^"]+)"([^\n]*)\n([\s\S]*?)\n:::/g,
+        /:::annotation-stacked\s+"([^"]+)"([^\n]*)\n([\s\S]*?)\n:::/g,
         (match, caption, flags, body) => {
             const bars = [];
             for (const line of body.trim().split('\n')) {
@@ -211,12 +211,12 @@ function extractCustomBlocks(markdown) {
                     });
                 }
             }
-            blocks.biasStacked.push({
+            blocks.annotationStacked.push({
                 caption,
                 height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
                 bars
             });
-            return `BIAS_STACKED_BLOCK_${blocks.biasStacked.length - 1}`;
+            return `ANNOTATION_STACKED_BLOCK_${blocks.annotationStacked.length - 1}`;
         }
     );
 
@@ -357,12 +357,12 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
     });
 
     // Bias-stacked blocks -> chart figure (loaded async via loadCharts)
-    blocks.biasStacked.forEach((block, i) => {
-        const chartId = `bias-stacked-${namespace}-${i}`;
+    blocks.annotationStacked.forEach((block, i) => {
+        const chartId = `annotation-stacked-${namespace}-${i}`;
         const barsJson = JSON.stringify(block.bars);
         const chartHtml = `
             <figure class="chart-figure" id="${chartId}"
-                    data-chart-type="bias-stacked"
+                    data-chart-type="annotation-stacked"
                     data-chart-bars='${barsJson}'
                     data-chart-height="${block.height || ''}">
                 <div class="chart-container">
@@ -371,8 +371,8 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
                 ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
             </figure>
         `;
-        html = html.replace(`<p>BIAS_STACKED_BLOCK_${i}</p>`, chartHtml);
-        html = html.replace(`BIAS_STACKED_BLOCK_${i}`, chartHtml);
+        html = html.replace(`<p>ANNOTATION_STACKED_BLOCK_${i}</p>`, chartHtml);
+        html = html.replace(`ANNOTATION_STACKED_BLOCK_${i}`, chartHtml);
     });
 
     return html;
@@ -1071,7 +1071,7 @@ async function loadCharts() {
         const { chartType, chartPath, chartBars, chartTraits, chartHeight } = figure.dataset;
 
         try {
-            // For bias-stacked charts, bars contains the data paths directly
+            // For annotation-stacked charts, bars contains the data paths directly
             if (chartBars) {
                 const bars = JSON.parse(chartBars);
                 container.innerHTML = '';

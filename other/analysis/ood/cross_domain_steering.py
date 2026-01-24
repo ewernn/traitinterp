@@ -76,7 +76,6 @@ async def evaluate_cross_domain(
     baseline_responses = generate_batch(
         model, tokenizer, formatted_prompts,
         max_new_tokens=max_new_tokens,
-        add_special_tokens=False,
     )
 
     # Generate with steering
@@ -85,7 +84,6 @@ async def evaluate_cross_domain(
         steered_responses = generate_batch(
             model, tokenizer, formatted_prompts,
             max_new_tokens=max_new_tokens,
-            add_special_tokens=False,
         )
 
     # Judge using target definition

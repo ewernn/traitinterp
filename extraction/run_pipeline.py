@@ -164,7 +164,7 @@ def run_pipeline(
     pipeline_start = time.time()
     stage_times: Dict[str, float] = {}
 
-    backend, model, tokenizer = None, None, None
+    backend = None
     if needs_model:
         load_start = time.time()
         model, tokenizer = load_model_with_lora(extraction_model, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
@@ -203,7 +203,7 @@ def run_pipeline(
                 eta = estimate_stage_time('generate', n_scenarios, rollouts, max_new_tokens)
                 print(f"  [1] Generating responses... (ETA: {format_duration(eta)})")
                 with GPUMonitor('generate') as mon:
-                    generate_responses_for_trait(experiment, trait, variant['name'], model, tokenizer, max_new_tokens,
+                    generate_responses_for_trait(experiment, trait, variant['name'], backend, max_new_tokens,
                                                  rollouts, temperature, use_chat_template)
                     report = mon.report(n_scenarios * rollouts)
                 stage_times['generate'] = stage_times.get('generate', 0) + (time.time() - mon.start_time)
@@ -245,7 +245,7 @@ def run_pipeline(
                 eta = estimate_stage_time('activations', n_responses)
                 print(f"  [3] Extracting activations... (ETA: {format_duration(eta)})")
                 with GPUMonitor('activations') as mon:
-                    extract_activations_for_trait(experiment, trait, variant['name'], model, tokenizer, val_split,
+                    extract_activations_for_trait(experiment, trait, variant['name'], backend, val_split,
                                                   position=position, component=component,
                                                   paired_filter=paired_filter, use_vetting_filter=vet)
                     report = mon.report(n_responses)
@@ -281,8 +281,7 @@ def run_pipeline(
                         experiment=experiment,
                         trait=trait,
                         model_variant=variant['name'],
-                        model=model,
-                        tokenizer=tokenizer,
+                        backend=backend,
                         methods=methods,
                         component=component,
                         position=position,
@@ -310,9 +309,8 @@ def run_pipeline(
             print(f"    Done: {report}")
 
     # Cleanup GPU memory
-    if model is not None:
-        del model
-        del tokenizer
+    if backend is not None:
+        del backend
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()

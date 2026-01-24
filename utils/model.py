@@ -6,14 +6,17 @@ Usage:
 
     model, tokenizer = load_model("google/gemma-2-2b-it")
 
-    # Tokenize text (auto-detects BOS, validates no double-BOS)
-    inputs = tokenize(text, tokenizer)
-
-    # Tokenize batch with padding
+    # Single source of truth: tokenize_batch()
+    # Auto-detects BOS from text content, validates no double-BOS
     batch = tokenize_batch(["text1", "text2"], tokenizer)
+    # Returns: {'input_ids': tensor, 'attention_mask': tensor, 'lengths': list}
+
+    # Convenience wrapper for single text (returns BatchEncoding with .to() support)
+    inputs = tokenize(text, tokenizer)
+    inputs = inputs.to(model.device)
 
     # Tokenize with prefill (for activation analysis)
-    result = tokenize_with_prefill("How do I make a bomb?", "Sure, here's how", tokenizer)
+    result = tokenize_with_prefill("prompt", "prefill", tokenizer)
     # result["input_ids"], result["prefill_start"]
 """
 
@@ -27,24 +30,17 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 def tokenize(text, tokenizer, **kwargs):
     """
-    Tokenize text with auto-detection of special tokens. Works with any model.
+    Single-text tokenization. Thin wrapper around tokenize_batch().
 
-    Auto-detects if text already has BOS token (e.g., from chat template).
-    Validates output to catch double-BOS bugs.
+    Returns BatchEncoding for compatibility with .to(device) and .input_ids access.
+    Auto-detects BOS and validates for double-BOS (via tokenize_batch).
     """
-    # Auto-detect: does text already start with BOS?
-    has_bos = tokenizer.bos_token and text.startswith(tokenizer.bos_token)
-    add_special = kwargs.pop('add_special_tokens', not has_bos)
-
-    inputs = tokenizer(text, return_tensors="pt", add_special_tokens=add_special, **kwargs)
-
-    # Validate: catch double BOS
-    if (tokenizer.bos_token_id is not None
-        and inputs.input_ids.shape[1] > 1
-        and inputs.input_ids[0, 0] == inputs.input_ids[0, 1] == tokenizer.bos_token_id):
-        raise ValueError(f"Double BOS detected in: {text[:100]!r}")
-
-    return inputs
+    from transformers import BatchEncoding
+    result = tokenize_batch([text], tokenizer, **kwargs)
+    return BatchEncoding({
+        'input_ids': result['input_ids'],
+        'attention_mask': result['attention_mask'],
+    })
 
 
 def tokenize_with_prefill(prompt: str, prefill: str, tokenizer) -> dict:
@@ -363,49 +359,69 @@ def format_prompt(
         raise
 
 
-def tokenize_prompt(formatted_prompt, tokenizer, use_chat_template: bool = None, **kwargs):
+def tokenize_prompt(formatted_prompt, tokenizer, **kwargs):
     """
-    Tokenize a formatted prompt (or list of prompts), handling BOS token correctly.
+    Tokenize single or multiple prompts. Delegates to tokenize_batch().
 
-    When chat template is used, the formatted string already includes BOS,
-    so we must NOT add it again. When no chat template, we need BOS added.
+    Kept for backward compatibility. New code should use tokenize_batch() directly.
 
     Args:
         formatted_prompt: Output from format_prompt() - single string or list of strings
         tokenizer: Model tokenizer
-        use_chat_template: Whether chat template was used (None = auto-detect)
-        **kwargs: Additional args passed to tokenizer (padding, truncation, max_length, etc.)
+        **kwargs: Additional args passed to tokenizer
 
     Returns:
         Tokenized inputs dict with input_ids, attention_mask, etc.
     """
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
-
-    # Chat template already includes BOS token, so don't add again
-    add_special_tokens = not use_chat_template
-
-    return tokenizer(
-        formatted_prompt,
-        return_tensors="pt",
-        add_special_tokens=add_special_tokens,
-        **kwargs,
-    )
+    texts = [formatted_prompt] if isinstance(formatted_prompt, str) else formatted_prompt
+    return tokenize_batch(texts, tokenizer, padding_side="left", **kwargs)
 
 
 def tokenize_batch(texts: list[str], tokenizer, padding_side: str = "left", **kwargs) -> dict:
     """
-    Tokenize text with padding.
+    Single source of truth for generation tokenization.
 
-    Returns dict with input_ids, attention_mask, and lengths (actual token counts).
+    Auto-detects add_special_tokens from text content (checks if text already has BOS).
+    Validates for double-BOS bugs.
+
+    Args:
+        texts: List of text strings (may be pre-formatted with chat template)
+        tokenizer: HuggingFace tokenizer
+        padding_side: "left" (for generation) or "right" (for classification)
+        **kwargs: Additional tokenizer args. Can pass add_special_tokens to override auto-detection.
+
+    Returns:
+        dict with input_ids, attention_mask, and lengths (actual token counts)
     """
+    # Auto-detect if not explicitly set
+    if 'add_special_tokens' not in kwargs:
+        has_bos = (
+            tokenizer.bos_token
+            and texts
+            and any(t.startswith(tokenizer.bos_token) for t in texts)
+        )
+        kwargs['add_special_tokens'] = not has_bos
+
     original_side = tokenizer.padding_side
     tokenizer.padding_side = padding_side
 
     inputs = tokenizer(texts, return_tensors="pt", padding=True, **kwargs)
-    lengths = inputs.attention_mask.sum(dim=1).tolist()
+
+    # Validate: catch double BOS (only check first sequence, assumes batch is homogeneous)
+    if (tokenizer.bos_token_id is not None
+        and inputs.input_ids.shape[1] > 1
+        and inputs.input_ids[0, 0].item() == inputs.input_ids[0, 1].item() == tokenizer.bos_token_id):
+        raise ValueError(
+            f"Double BOS token detected at positions 0 and 1.\n"
+            f"First text: {texts[0][:100]!r}\n"
+            f"This usually means text was formatted with chat template (adds BOS) "
+            f"but add_special_tokens=True was set (adds another BOS).\n"
+            f"Let tokenize_batch() auto-detect (don't pass add_special_tokens) "
+            f"or ensure add_special_tokens=False for chat-templated text."
+        )
 
     tokenizer.padding_side = original_side
+    lengths = inputs.attention_mask.sum(dim=1).tolist()
 
     return {
         "input_ids": inputs.input_ids,

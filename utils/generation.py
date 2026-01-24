@@ -190,7 +190,6 @@ def _generate_batch_raw(
     prompts: List[str],
     max_new_tokens: int,
     temperature: float,
-    add_special_tokens: bool = True,
 ) -> List[str]:
     """Core batch generation without OOM handling. Internal use only."""
     if tokenizer.pad_token is None:
@@ -201,7 +200,7 @@ def _generate_batch_raw(
     if device is None or str(device) == 'meta':
         device = next(model.parameters()).device
 
-    batch = tokenize_batch(prompts, tokenizer, add_special_tokens=add_special_tokens)
+    batch = tokenize_batch(prompts, tokenizer)  # Auto-detects add_special_tokens
     inputs = {k: v.to(device) for k, v in batch.items() if k != 'lengths'}
 
     with torch.no_grad():
@@ -233,10 +232,11 @@ def generate_batch(
     prompts: List[str],
     max_new_tokens: int = 256,
     temperature: float = 0.0,
-    add_special_tokens: bool = True,
 ) -> List[str]:
     """
     Generate responses with automatic batch size calculation and OOM recovery.
+
+    Tokenization auto-detects BOS from text content (via tokenize_batch).
 
     Args:
         model: The model to generate with
@@ -244,8 +244,6 @@ def generate_batch(
         prompts: List of prompts to generate responses for
         max_new_tokens: Maximum tokens to generate per prompt
         temperature: Sampling temperature (0 for greedy)
-        add_special_tokens: Whether to add BOS/EOS. Set False if prompts already
-                           have special tokens (e.g., from chat template).
 
     Returns:
         List of generated responses
@@ -267,7 +265,7 @@ def generate_batch(
     while i < len(prompts):
         batch = prompts[i:i + batch_size]
         try:
-            responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature, add_special_tokens)
+            responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature)
             all_responses.extend(responses)
             i += batch_size
             # Cache successful batch size
@@ -553,10 +551,11 @@ def generate_with_capture(
     capture_mlp: bool = False,
     show_progress: bool = True,
     yield_per_batch: bool = False,
-    add_special_tokens: bool = True,
 ):
     """
     Batched generation with per-token activation capture.
+
+    Tokenization auto-detects BOS from text content (via tokenize_batch).
 
     Args:
         model: Loaded transformer model
@@ -570,7 +569,6 @@ def generate_with_capture(
         show_progress: Whether to show progress bars
         yield_per_batch: If True, yield List[CaptureResult] after each batch (generator mode).
                          If False, return all results at end (default, backwards compatible).
-        add_special_tokens: Whether to add special tokens (BOS). Set False for chat-templated prompts.
 
     Returns:
         If yield_per_batch=False: List of CaptureResult, one per prompt
@@ -608,7 +606,6 @@ def generate_with_capture(
                 batch_results = _capture_batch(
                     model, tokenizer, batch_prompts, n_layers, hidden_size,
                     max_new_tokens, temperature, capture_mlp, show_progress=False,
-                    add_special_tokens=add_special_tokens
                 )
                 if show_progress and hasattr(pbar, 'set_postfix_str'):
                     pbar.set_postfix_str(get_gpu_stats())
@@ -622,7 +619,6 @@ def generate_with_capture(
             batch_results = _capture_batch(
                 model, tokenizer, batch_prompts, n_layers, hidden_size,
                 max_new_tokens, temperature, capture_mlp, show_progress,
-                add_special_tokens=add_special_tokens
             )
             if show_progress and hasattr(pbar, 'set_postfix_str'):
                 pbar.set_postfix_str(get_gpu_stats())
@@ -633,15 +629,14 @@ def generate_with_capture(
 def _capture_batch(
     model, tokenizer, prompts: List[str], n_layers: int, hidden_size: int,
     max_new_tokens: int, temperature: float, capture_mlp: bool, show_progress: bool,
-    add_special_tokens: bool = True
 ) -> List[CaptureResult]:
     """Capture activations for a single batch with TRUE batching (1 forward pass)."""
 
     # Get layer path prefix (handles PeftModel wrapper)
     layer_prefix = get_layer_path_prefix(model)
 
-    # Tokenize with left padding for generation
-    batch = tokenize_batch(prompts, tokenizer, add_special_tokens=add_special_tokens)
+    # Tokenize with left padding for generation (auto-detects add_special_tokens)
+    batch = tokenize_batch(prompts, tokenizer)
     inputs = {k: v.to(model.device) for k, v in batch.items() if k != 'lengths'}
     batch_size = inputs['input_ids'].shape[0]
     prompt_lens = batch['lengths']

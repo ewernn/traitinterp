@@ -262,6 +262,7 @@ async function renderModelDiffComparison(experiment) {
             <div class="model-diff-header">
                 <strong>${variant_b}</strong> vs <strong>${variant_a}</strong>
                 <span style="color: var(--text-tertiary); margin-left: 8px;">(${Object.values(allResults)[0]?.n_prompts || '?'} prompts)</span>
+                <div style="color: var(--text-secondary); font-size: 0.85em; margin-top: 4px;">positive = ${variant_b} higher than ${variant_a}</div>
             </div>
 
             <table class="data-table" style="margin: 16px 0;">
