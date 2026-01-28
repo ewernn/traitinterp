@@ -100,6 +100,7 @@ def append_baseline(
     result: Dict,
     position: str = "response[:]",
     prompt_set: str = "steering",
+    trait_judge: Optional[str] = None,
 ) -> None:
     """Append baseline result to results.jsonl."""
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
@@ -107,6 +108,7 @@ def append_baseline(
     entry = {
         "type": "baseline",
         "result": result,
+        "eval": {"trait_judge": trait_judge},
         "timestamp": datetime.now().isoformat(),
     }
 
@@ -122,14 +124,16 @@ def append_run(
     result: Dict,
     position: str = "response[:]",
     prompt_set: str = "steering",
+    trait_judge: Optional[str] = None,
 ) -> None:
     """Append a steering run to results.jsonl."""
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
 
-    # Order: result first, then config, then timestamp
+    # Order: result first, then config, then eval, then timestamp
     entry = {
         "result": result,
         "config": config,
+        "eval": {"trait_judge": trait_judge},
         "timestamp": datetime.now().isoformat(),
     }
 

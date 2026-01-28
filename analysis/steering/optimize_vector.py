@@ -488,7 +488,7 @@ async def run_cma_es_single_layer(
             "n": n_questions,
         }
 
-        append_run(experiment, trait, extraction_variant, config, result, position, prompt_set)
+        append_run(experiment, trait, extraction_variant, config, result, position, prompt_set, trait_judge=None)
         print(f"Saved to results.jsonl")
 
         # Save responses

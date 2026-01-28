@@ -540,7 +540,7 @@ async def run_evaluation(
             judge, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
         )
         save_baseline_responses(baseline_responses, experiment, trait, model_variant, position, prompt_set)
-        append_baseline(experiment, trait, model_variant, baseline_result, position, prompt_set)
+        append_baseline(experiment, trait, model_variant, baseline_result, position, prompt_set, trait_judge=trait_judge)
     else:
         print(f"\nUsing existing baseline: trait={baseline_result['trait_mean']:.1f}")
 
@@ -610,7 +610,7 @@ async def run_evaluation(
                 timestamp = datetime.now().isoformat()
 
                 # Always append to results.jsonl
-                append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+                append_run(experiment, trait, model_variant, config, result, position, prompt_set, trait_judge=trait_judge)
                 cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
 
                 # Handle response saving based on save_mode
@@ -647,7 +647,7 @@ async def run_evaluation(
             up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
             max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
             save_mode=save_mode, coherence_threshold=min_coherence,
-            relevance_check=relevance_check, direction=direction
+            relevance_check=relevance_check, direction=direction, trait_judge=trait_judge
         )
     else:
         # Sequential adaptive search for each layer
@@ -661,7 +661,7 @@ async def run_evaluation(
                 position=position, prompt_set=prompt_set, n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
                 max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
                 save_mode=save_mode, coherence_threshold=min_coherence,
-                relevance_check=relevance_check, direction=direction
+                relevance_check=relevance_check, direction=direction, trait_judge=trait_judge
             )
 
     # Print summary

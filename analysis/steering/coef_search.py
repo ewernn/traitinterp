@@ -112,6 +112,7 @@ async def adaptive_search_layer(
     coherence_threshold: float = MIN_COHERENCE,
     relevance_check: bool = True,
     direction: Literal["positive", "negative"] = "positive",
+    trait_judge: Optional[str] = None,
 ):
     """Run adaptive search for a single layer, saving each result.
 
@@ -155,7 +156,7 @@ async def adaptive_search_layer(
             timestamp = datetime.now().isoformat()
 
             # Always append to results.jsonl
-            append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+            append_run(experiment, trait, model_variant, config, result, position, prompt_set, trait_judge=trait_judge)
             cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
 
             # Handle response saving based on save_mode
@@ -244,6 +245,7 @@ async def batched_adaptive_search(
     coherence_threshold: float = MIN_COHERENCE,
     relevance_check: bool = True,
     direction: Literal["positive", "negative"] = "positive",
+    trait_judge: Optional[str] = None,
 ):
     """
     Run adaptive search for multiple layers in parallel batches.
@@ -413,7 +415,7 @@ async def batched_adaptive_search(
                     ]
 
                     # Always append to JSONL
-                    append_run(experiment, trait, model_variant, config, result, position, prompt_set)
+                    append_run(experiment, trait, model_variant, config, result, position, prompt_set, trait_judge=trait_judge)
                     cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
 
                     # Handle response saving based on save_mode
