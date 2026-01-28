@@ -15,6 +15,7 @@
 #   {filename} - generic filename without extension
 #   {position} - token position slice (e.g., response_all, response_-1)
 #   {component} - model component (e.g., residual, attn_out, mlp_out)
+#   {judge_prompt} - LLM judge prompt path (e.g., pv/hallucination)
 
 # =============================================================================
 # DATASETS (model-agnostic inputs)
@@ -26,6 +27,13 @@ datasets:
   # Inference prompts (organized by test type)
   inference: "datasets/inference"
   inference_prompt_set: "datasets/inference/{prompt_set}.json"
+
+  # LLM judge prompts (organized by scoring function, then source/style)
+  # Structure: llm_judge/{score_type}/{source}/{name}.txt
+  # - trait_score: custom prompts for score_steering (trait evaluation)
+  # - coherence: custom prompts for score_coherence (future)
+  llm_judge: "datasets/llm_judge"
+  llm_judge_trait: "datasets/llm_judge/trait_score/{judge_prompt}.txt"
 
   # Trait definitions and scenarios (organized by trait)
   traits: "datasets/traits"

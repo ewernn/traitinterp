@@ -467,6 +467,7 @@ class TraitJudge:
         trait_definition: str,
         max_concurrent: int = 20,
         eval_prompt: Optional[str] = None,
+        relevance_check: bool = True,
     ) -> List[Dict]:
         """
         Score a batch of (question, answer) pairs for steering evaluation.
@@ -479,6 +480,7 @@ class TraitJudge:
             trait_definition: Description of the trait from definition.txt
             max_concurrent: Max concurrent API calls
             eval_prompt: Optional custom prompt template with {question} and {answer} placeholders
+            relevance_check: If True (default), cap coherence at 50 for refusals. If False, pure grammar score.
 
         Returns:
             List of {"trait_score": float, "coherence_score": float}
@@ -488,8 +490,8 @@ class TraitJudge:
         async def score_one(question: str, answer: str) -> dict:
             async with semaphore:
                 trait_score = await self.score_steering(question, answer, trait_name, trait_definition, eval_prompt=eval_prompt)
-                # Two-stage coherence: V7 grammar + relevance check
-                coherence_score = await self.score_coherence(answer, prompt=question, relevance_check=True)
+                # Two-stage coherence: V7 grammar + optional relevance check
+                coherence_score = await self.score_coherence(answer, prompt=question, relevance_check=relevance_check)
                 return {
                     "trait_score": trait_score,
                     "coherence_score": coherence_score,

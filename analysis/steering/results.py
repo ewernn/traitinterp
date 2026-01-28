@@ -45,6 +45,7 @@ def init_results_file(
     judge_provider: str,
     position: str = "response[:]",
     prompt_set: str = "steering",
+    trait_judge: Optional[str] = None,
 ) -> Path:
     """
     Initialize a new results.jsonl file with header line.
@@ -78,6 +79,7 @@ def init_results_file(
         "eval": {
             "model": "gpt-4.1-mini" if judge_provider == "openai" else "gemini-2.5-flash",
             "method": "logprob" if judge_provider == "openai" else "text_parse",
+            "trait_judge": trait_judge,  # None = V3c default, else path like "pv/hallucination"
         },
         "prompts_file": str(prompts_file),
     }

@@ -1,0 +1,10 @@
+{
+  "baseline": 13.1,
+  "results": [
+    { "label": "attn_contribution", "method": "probe", "layer": 15, "delta": 27.6 },
+    { "label": "residual", "method": "probe", "layer": 13, "delta": 27.5 },
+    { "label": "v_proj", "method": "mean_diff", "layer": 13, "delta": 10.8 },
+    { "label": "mlp_contribution", "method": "probe", "layer": 12, "delta": 10.4 },
+    { "label": "k_proj", "method": "gradient", "layer": 9, "delta": 2.0 }
+  ]
+}

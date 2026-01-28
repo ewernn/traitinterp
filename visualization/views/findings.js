@@ -21,6 +21,35 @@ function parseFrontmatter(text) {
     }
 }
 
+/**
+ * Render a thumbnail bar chart for finding cards
+ * @param {Object} thumbnail - { title, bars: [{label, value}] }
+ */
+function renderThumbnailChart(thumbnail) {
+    if (!thumbnail?.bars?.length) return '';
+
+    const maxValue = Math.max(...thumbnail.bars.map(b => b.value));
+    const barsHtml = thumbnail.bars.map(bar => {
+        const heightPct = (bar.value / maxValue) * 100;
+        return `
+            <div class="thumb-bar-wrapper">
+                <div class="thumb-bar-area">
+                    <div class="thumb-bar" style="height: ${heightPct}%"></div>
+                </div>
+                <span class="thumb-value">${bar.value}</span>
+                <span class="thumb-label">${bar.label}</span>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="thumbnail-chart">
+            <div class="thumb-title">${thumbnail.title || ''}</div>
+            <div class="thumb-bars">${barsHtml}</div>
+        </div>
+    `;
+}
+
 async function loadFindingsOrder() {
     if (findingsOrder) return findingsOrder;
 
@@ -48,7 +77,8 @@ async function loadFindingMetadata(filename) {
 
         findingsMetadata[filename] = {
             title: frontmatter.title || filename.replace('.md', ''),
-            preview: frontmatter.preview || ''
+            preview: frontmatter.preview || '',
+            thumbnail: frontmatter.thumbnail || null
         };
         return findingsMetadata[filename];
     } catch (error) {
@@ -164,8 +194,13 @@ async function toggleFinding(filename, cardEl) {
             history.replaceState(null, '', window.location.pathname + window.location.search);
         }
     } else {
-        // Expand
-        if (!contentEl.innerHTML) {
+        // Expand - make visible FIRST so Plotly can measure dimensions
+        cardEl.classList.add('expanded');
+        contentEl.style.display = 'block';
+        toggleEl.textContent = '▼';
+
+        // Then load content if not yet loaded
+        if (!contentEl.innerHTML || contentEl.innerHTML === ui.renderLoading()) {
             contentEl.innerHTML = ui.renderLoading();
             const html = await loadFindingContent(filename);
             contentEl.innerHTML = `<div class="prose">${html}</div>`;
@@ -178,7 +213,7 @@ async function toggleFinding(filename, cardEl) {
             if (window.customBlocks?.loadExpandedDropdowns) {
                 await window.customBlocks.loadExpandedDropdowns();
             }
-            // Load any chart blocks
+            // Load any chart blocks (container is now visible, Plotly can measure)
             if (window.customBlocks?.loadCharts) {
                 await window.customBlocks.loadCharts();
             }
@@ -187,9 +222,6 @@ async function toggleFinding(filename, cardEl) {
                 window.citations.initCitationClicks(contentEl);
             }
         }
-        cardEl.classList.add('expanded');
-        contentEl.style.display = 'block';
-        toggleEl.textContent = '▼';
 
         // Update hash to current finding
         history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${findingId}`);
@@ -229,14 +261,20 @@ async function renderFindings() {
         const todoClass = isTodo ? 'finding-todo' : '';
         const findingId = filename.replace('.md', '');
 
+        const thumbnailHtml = meta.thumbnail ? renderThumbnailChart(meta.thumbnail) : '';
+        const hasThumbnail = meta.thumbnail ? ' has-thumbnail' : '';
+
         html += `
-            <div class="finding-card ${todoClass}" id="finding-${findingId}">
+            <div class="finding-card ${todoClass}${hasThumbnail}" id="finding-${findingId}">
                 <div class="finding-header" onclick="toggleFinding('${filename}', document.getElementById('finding-${findingId}'))">
-                    <div class="finding-title-row">
-                        <span class="finding-toggle">▶</span>
-                        <span class="finding-title">${meta.title}</span>
+                    <div class="finding-header-content">
+                        <div class="finding-title-row">
+                            <span class="finding-toggle">▶</span>
+                            <span class="finding-title">${meta.title}</span>
+                        </div>
+                        <p class="finding-preview">${meta.preview || 'TODO'}</p>
                     </div>
-                    <p class="finding-preview">${meta.preview || 'TODO'}</p>
+                    ${thumbnailHtml}
                 </div>
                 <div class="finding-content" style="display: none;"></div>
             </div>

@@ -7,6 +7,9 @@
  * Available chart types:
  *   - model-diff-effect: Effect size (Cohen's d) by layer
  *   - model-diff-cosine: Cosine similarity by layer
+ *   - model-diff-bar: Peak effect size bar chart
+ *   - annotation-stacked: Stacked bar from annotation files
+ *   - comparison-bar: Horizontal bar chart for component/method comparison
  */
 
 const CHART_RENDERERS = {};
@@ -76,7 +79,7 @@ CHART_RENDERERS['model-diff-effect'] = async function(container, data, options =
             y: traitData.per_layer_effect_size,
             type: 'scatter',
             mode: 'lines+markers',
-            name: `${shortName} (${peakEffect}σ @ L${peakLayer})`,
+            name: shortName,
             line: { color: colors[idx % colors.length], width: 2 },
             marker: { size: 3 },
             hovertemplate: `${shortName}<br>L%{x}: %{y:.2f}σ<extra></extra>`
@@ -176,19 +179,21 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
 
     const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
 
-    // Sort by effect size descending
+    // Sort by effect size ascending (so highest appears at top in horizontal bar)
     const sorted = Object.entries(filteredTraits)
         .map(([path, d]) => ({ name: getTraitShortName(path), effect: d.peak_effect_size || 0 }))
-        .sort((a, b) => b.effect - a.effect);
+        .sort((a, b) => a.effect - b.effect);
 
     const trace = {
-        x: sorted.map(d => d.name),
-        y: sorted.map(d => d.effect),
+        x: sorted.map(d => d.effect),
+        y: sorted.map(d => d.name),
         type: 'bar',
-        marker: { color: sorted.map((_, i) => colors[i % colors.length]) },
+        orientation: 'h',
+        marker: { color: sorted.map((_, i) => colors[(sorted.length - 1 - i) % colors.length]) },
         text: sorted.map(d => `${d.effect.toFixed(1)}σ`),
         textposition: 'outside',
-        hovertemplate: '%{x}: %{y:.2f}σ<extra></extra>'
+        cliponaxis: false,  // Don't clip text labels at axis bounds
+        hovertemplate: '%{y}: %{x:.2f}σ<extra></extra>'
     };
 
     const layout = window.buildChartLayout({
@@ -196,10 +201,10 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
         traces: [trace],
         height,
         legendPosition: 'none',
-        xaxis: { title: '' },
-        yaxis: { title: { text: 'Effect Size (σ)', standoff: 5 } },
-        margin: { t: 40 },  // Extra top margin for text labels above bars
-        bargap: 0.5  // Narrower bars
+        xaxis: { title: { text: 'Effect Size (σ)', standoff: 5 } },
+        yaxis: { title: '' },
+        margin: { l: 140, r: 100 },  // Left margin for labels, right for text labels
+        bargap: 0.3
     });
 
     const chartDiv = document.createElement('div');
@@ -296,6 +301,59 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
     await window.renderChart(chartDiv, traces, layout);
+};
+
+// ============================================================================
+// Chart Type: comparison-bar (Horizontal bar chart for component/method comparison)
+// ============================================================================
+
+CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}) {
+    const { height = 200 } = options;
+    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+
+    const results = data.results || [];
+    if (results.length === 0) {
+        container.innerHTML = '<div class="chart-error">No data to display</div>';
+        return;
+    }
+
+    // Sort by delta ascending (highest at top for horizontal bars)
+    const sorted = [...results].sort((a, b) => a.delta - b.delta);
+
+    // Build labels with method/layer info
+    const labels = sorted.map(d => {
+        const methodShort = d.method === 'mean_diff' ? 'md' : d.method.slice(0, 2);
+        return `${d.label} (${methodShort} L${d.layer})`;
+    });
+
+    const trace = {
+        x: sorted.map(d => d.delta),
+        y: labels,
+        type: 'bar',
+        orientation: 'h',
+        marker: {
+            color: sorted.map((_, i) => colors[(sorted.length - 1 - i) % colors.length])
+        },
+        text: sorted.map(d => `+${d.delta.toFixed(1)}`),
+        textposition: 'outside',
+        cliponaxis: false,  // Don't clip text labels at axis bounds
+        hovertemplate: '%{y}<br>Delta: +%{x:.1f}<extra></extra>'
+    };
+
+    const layout = window.buildChartLayout({
+        preset: 'barChart',
+        traces: [trace],
+        height,
+        legendPosition: 'none',
+        xaxis: { title: { text: 'Delta (trait score increase)', standoff: 5 } },
+        yaxis: { title: '' },
+        margin: { l: 180, r: 60 },
+        bargap: 0.3
+    });
+
+    const chartDiv = document.createElement('div');
+    container.appendChild(chartDiv);
+    await window.renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================

@@ -10,7 +10,7 @@
  *   :::aside "title" ... :::                                   - Collapsible aside with inline content
  *   :::response-tabs ... :::                                   - Tabbed response comparison grid
  *   :::chart type path "caption" [traits=...] [height=N]:::    - Dynamic Plotly chart from JSON
- *   :::extraction-data "label" [expanded]\n trait: path\n :::  - Tabbed pos/neg extraction viewer
+ *   :::extraction-data "label" [expanded] [tokens=N]\n trait: path\n :::  - Tabbed pos/neg extraction viewer
  *   :::annotation-stacked "caption" [height=N]\n label: path\n :::   - Stacked bar chart from annotation files
  *
  * Flags:
@@ -27,8 +27,8 @@
  *   :::
  *
  * Extraction-data syntax:
- *   :::extraction-data "Extraction data" expanded
- *   traitName: experiments/.../responses   (folder with pos.json + neg.json)
+ *   :::extraction-data "Extraction data" expanded tokens=5
+ *   traitName: experiments/.../responses   (folder with pos.json + neg.json + optional token_offsets.json)
  *   anotherTrait: experiments/.../responses
  *   :::
  */
@@ -173,7 +173,7 @@ function extractCustomBlocks(markdown) {
         }
     );
 
-    // :::extraction-data "label" [expanded]\n trait: path\n trait: path\n:::
+    // :::extraction-data "label" [expanded] [tokens=N]\n trait: path\n trait: path\n:::
     markdown = markdown.replace(
         /:::extraction-data\s+"([^"]+)"([^\n]*)\n([\s\S]*?)\n:::/g,
         (match, label, flags, body) => {
@@ -190,6 +190,7 @@ function extractCustomBlocks(markdown) {
             blocks.extractionData.push({
                 label,
                 expanded: /\bexpanded\b/.test(flags),
+                highlightTokens: parseInt(flags.match(/\btokens=(\d+)/)?.[1]) || null,
                 traits
             });
             return `EXTRACTION_DATA_BLOCK_${blocks.extractionData.length - 1}`;
@@ -485,15 +486,16 @@ function createResponseTabsHtml(id, block) {
 /**
  * Create HTML for extraction-data component (tabbed pos/neg viewer)
  * @param {string} id - Unique ID for this component
- * @param {Object} block - { label, expanded, traits: [{name, path}] }
+ * @param {Object} block - { label, expanded, highlightTokens, traits: [{name, path}] }
  */
 function createExtractionDataHtml(id, block) {
-    const { label, expanded, traits } = block;
+    const { label, expanded, highlightTokens, traits } = block;
     const defaultTrait = traits[0]?.name || '';
     const defaultPath = traits[0]?.path || '';
     const expandedClass = expanded ? ' expanded' : '';
     const toggleChar = expanded ? '▼' : '▶';
     const bodyStyle = expanded ? '' : 'display: none;';
+    const tokensAttr = highlightTokens ? ` data-highlight-tokens="${highlightTokens}"` : '';
 
     const tabsHtml = traits.map((t, i) => {
         const isActive = i === 0;
@@ -501,7 +503,7 @@ function createExtractionDataHtml(id, block) {
     }).join('');
 
     return `
-        <div class="extraction-data-container${expandedClass}" id="${id}" data-active="${defaultTrait}" data-default-path="${defaultPath}">
+        <div class="extraction-data-container${expandedClass}" id="${id}" data-active="${defaultTrait}" data-default-path="${defaultPath}"${tokensAttr}>
             <div class="ed-header" onclick="window.customBlocks.toggleExtractionData('${id}')">
                 <span class="ed-toggle">${toggleChar}</span>
                 <span class="ed-label">${label}</span>
@@ -784,27 +786,79 @@ function switchExtractionTab(container, tab) {
 }
 
 /**
+ * Parse extraction path to get experiment and variant
+ * Path pattern: experiments/{experiment}/extraction/{category}/{trait}/{variant}/responses
+ */
+function parseExtractionPath(path) {
+    const match = path.match(/experiments\/([^/]+)\/extraction\/[^/]+\/[^/]+\/([^/]+)\/responses/);
+    if (!match) return null;
+    return { experiment: match[1], variant: match[2] };
+}
+
+/**
  * Load pos.json and neg.json from a folder path and render both
  */
 async function loadExtractionData(container, basePath) {
     const posScroll = container.querySelector('.ed-positive .ed-scroll');
     const negScroll = container.querySelector('.ed-negative .ed-scroll');
+    const highlightTokens = parseInt(container.dataset.highlightTokens) || null;
 
     posScroll.innerHTML = ui.renderLoading();
     negScroll.innerHTML = ui.renderLoading();
 
     try {
-        const [posRes, negRes] = await Promise.all([
+        // Parse path to get experiment/variant, fetch config to resolve model name
+        const pathInfo = parseExtractionPath(basePath);
+        let modelName = null;
+        if (pathInfo) {
+            try {
+                const configRes = await fetch(`/experiments/${pathInfo.experiment}/config.json`);
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    modelName = config.model_variants?.[pathInfo.variant]?.model;
+                }
+            } catch (e) {
+                // Config fetch failed, continue without model name
+            }
+        }
+
+        // Update header with model name if found
+        if (modelName) {
+            const label = container.querySelector('.ed-label');
+            if (label && !label.dataset.modelAdded) {
+                label.dataset.modelAdded = 'true';
+                const modelSpan = document.createElement('span');
+                modelSpan.className = 'ed-model';
+                modelSpan.textContent = modelName;
+                label.parentNode.insertBefore(modelSpan, label.nextSibling);
+            }
+        }
+
+        // Fetch responses and optionally token offsets
+        const [posRes, negRes, offsetsRes] = await Promise.all([
             fetch(`${basePath}/pos.json`),
-            fetch(`${basePath}/neg.json`)
+            fetch(`${basePath}/neg.json`),
+            highlightTokens ? fetch(`${basePath}/token_offsets.json`).catch(() => null) : null
         ]);
 
         if (!posRes.ok || !negRes.ok) throw new Error('Failed to load');
 
         const [posData, negData] = await Promise.all([posRes.json(), negRes.json()]);
 
-        posScroll.innerHTML = renderExtractionTable(posData);
-        negScroll.innerHTML = renderExtractionTable(negData);
+        // Parse token offsets if available
+        let tokenOffsets = null;
+        if (offsetsRes?.ok) {
+            tokenOffsets = await offsetsRes.json();
+        }
+
+        posScroll.innerHTML = renderExtractionTable(posData, {
+            tokenOffsets: tokenOffsets?.pos,
+            highlightTokens
+        });
+        negScroll.innerHTML = renderExtractionTable(negData, {
+            tokenOffsets: tokenOffsets?.neg,
+            highlightTokens
+        });
     } catch (error) {
         posScroll.innerHTML = `<p class="no-data">Failed to load: ${error.message}</p>`;
         negScroll.innerHTML = '';
@@ -813,29 +867,70 @@ async function loadExtractionData(container, basePath) {
 
 /**
  * Render extraction data as a numbered CSV-like table
+ * @param {Array} responses - Array of {prompt, response}
+ * @param {Object} options - Rendering options
+ * @param {Array} options.tokenOffsets - Per-response array of [start, end] char ranges
+ * @param {number} options.highlightTokens - Number of tokens to highlight
  */
-function renderExtractionTable(responses) {
+function renderExtractionTable(responses, options = {}) {
+    const { tokenOffsets, highlightTokens } = options;
+
     if (!Array.isArray(responses) || responses.length === 0) {
         return '<div class="no-data">No data</div>';
     }
 
+    const columnLabel = highlightTokens
+        ? `first ${highlightTokens} generated tokens`
+        : 'generated tokens';
+
     let html = '<table class="extraction-table"><thead><tr>';
-    html += '<th>#</th><th>contrasting prefill</th><th>first 5 generated tokens</th>';
+    html += `<th>#</th><th>contrasting prefill</th><th>${columnLabel}</th>`;
     html += '</tr></thead><tbody>';
 
     for (let i = 0; i < responses.length; i++) {
         const r = responses[i];
         const prefill = window.escapeHtml(r.prompt || '');
-        const continuation = window.escapeHtml(r.response || '');
+        const responseText = r.response || '';
+
+        // Apply token highlighting if offsets available
+        let continuationHtml;
+        if (tokenOffsets?.[i] && highlightTokens) {
+            const offsets = tokenOffsets[i].slice(0, highlightTokens);
+            continuationHtml = applyTokenHighlights(responseText, offsets);
+        } else {
+            continuationHtml = window.escapeHtml(responseText);
+        }
+
         html += `<tr>
             <td class="extraction-num">${i + 1}</td>
             <td>${prefill}</td>
-            <td>${continuation}</td>
+            <td>${continuationHtml}</td>
         </tr>`;
     }
 
     html += '</tbody></table>';
     return html;
+}
+
+/**
+ * Apply highlighting to first N tokens based on character offsets
+ * @param {string} text - Original text
+ * @param {Array} offsets - Array of [start, end] character ranges to highlight
+ * @returns {string} HTML with highlighted tokens
+ */
+function applyTokenHighlights(text, offsets) {
+    if (!offsets || offsets.length === 0) {
+        return window.escapeHtml(text);
+    }
+
+    // Find the end of the highlighted region
+    const highlightEnd = offsets[offsets.length - 1][1];
+
+    // Split text into highlighted portion and rest
+    const highlightedText = text.slice(0, highlightEnd);
+    const restText = text.slice(highlightEnd);
+
+    return `<span class="token-highlight">${window.escapeHtml(highlightedText)}</span>${window.escapeHtml(restText)}`;
 }
 
 // ============================================================================

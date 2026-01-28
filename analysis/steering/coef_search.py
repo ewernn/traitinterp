@@ -47,6 +47,7 @@ async def evaluate_single_config(
     component: str,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
+    relevance_check: bool = True,
 ) -> Tuple[Dict, List[Dict]]:
     """Evaluate a single (layer, coefficient) config with batched generation.
 
@@ -70,7 +71,7 @@ async def evaluate_single_config(
 
     # Score
     print(f"  Scoring {len(all_qa_pairs)} responses...")
-    all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt)
+    all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt, relevance_check=relevance_check)
 
     trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
     coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
@@ -109,6 +110,7 @@ async def adaptive_search_layer(
     eval_prompt: Optional[str] = None,
     save_mode: str = "best",
     coherence_threshold: float = MIN_COHERENCE,
+    relevance_check: bool = True,
 ):
     """Run adaptive search for a single layer, saving each result.
 
@@ -138,7 +140,8 @@ async def adaptive_search_layer(
             result, responses = await evaluate_single_config(
                 backend, vector, layer, coef,
                 questions, trait_name, trait_definition, judge, use_chat_template, component,
-                max_new_tokens=max_new_tokens, eval_prompt=eval_prompt
+                max_new_tokens=max_new_tokens, eval_prompt=eval_prompt,
+                relevance_check=relevance_check
             )
 
             trait_score = result.get("trait_mean") or 0
@@ -235,6 +238,7 @@ async def batched_adaptive_search(
     eval_prompt: Optional[str] = None,
     save_mode: str = "best",
     coherence_threshold: float = MIN_COHERENCE,
+    relevance_check: bool = True,
 ):
     """
     Run adaptive search for multiple layers in parallel batches.
@@ -366,7 +370,7 @@ async def batched_adaptive_search(
 
                 print(f"  Scoring {len(all_qa_pairs)} responses...", end=" ", flush=True)
                 t0 = time.time()
-                all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt)
+                all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt, relevance_check=relevance_check)
                 score_time = time.time() - t0
                 print(f"({score_time:.1f}s)")
 

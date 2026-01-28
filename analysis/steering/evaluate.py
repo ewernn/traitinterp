@@ -160,6 +160,7 @@ async def compute_baseline(
     judge: TraitJudge,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
+    relevance_check: bool = True,
 ) -> tuple[Dict, List[Dict]]:
     """Compute baseline scores (no steering) with batched generation.
 
@@ -174,7 +175,7 @@ async def compute_baseline(
 
     # Score all at once
     all_qa_pairs = list(zip(questions, responses))
-    all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt)
+    all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt, relevance_check=relevance_check)
 
     all_trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
     all_coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
@@ -225,6 +226,7 @@ async def run_ablation_evaluation(
     eval_prompt: Optional[str] = None,
     use_default_prompt: bool = False,
     extraction_variant: Optional[str] = None,
+    relevance_check: bool = True,
 ):
     """
     Run directional ablation evaluation.
@@ -295,7 +297,8 @@ async def run_ablation_evaluation(
     # Compute baseline
     baseline, baseline_responses = await compute_baseline(
         backend, questions, steering_data.trait_name, steering_data.trait_definition,
-        judge, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
+        judge, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
+        relevance_check=relevance_check
     )
 
     # Generate with ablation at ALL layers
@@ -309,7 +312,8 @@ async def run_ablation_evaluation(
     print(f"Scoring ablated responses...")
     all_qa_pairs = list(zip(questions, ablated_responses))
     all_scores = await judge.score_steering_batch(
-        all_qa_pairs, steering_data.trait_name, steering_data.trait_definition, eval_prompt=effective_eval_prompt
+        all_qa_pairs, steering_data.trait_name, steering_data.trait_definition, eval_prompt=effective_eval_prompt,
+        relevance_check=relevance_check
     )
 
     ablated_trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
@@ -410,6 +414,8 @@ async def run_evaluation(
     save_mode: str = "best",
     ablation: bool = False,
     ablation_vector_layer: Optional[int] = None,
+    relevance_check: bool = True,
+    trait_judge: Optional[str] = None,
 ):
     """
     Main evaluation flow.
@@ -426,6 +432,7 @@ async def run_evaluation(
         load_in_4bit: Use 4-bit quantization when loading model
         eval_prompt: Custom trait scoring prompt (auto-detected from steering.json if None)
         use_default_prompt: Force V3c default, ignore steering.json eval_prompt
+        trait_judge: Path to trait judge prompt (e.g., "pv/hallucination") for metadata
         ablation: If True, run Arditi-style ablation instead of steering
         ablation_vector_layer: Layer to load vector from for ablation
     """
@@ -442,6 +449,7 @@ async def run_evaluation(
             lora_adapter=lora_adapter, max_new_tokens=max_new_tokens,
             eval_prompt=eval_prompt, use_default_prompt=use_default_prompt,
             extraction_variant=extraction_variant,
+            relevance_check=relevance_check,
         )
     # Load prompts and trait definition
     steering_data = load_steering_data(trait)
@@ -503,7 +511,8 @@ async def run_evaluation(
         # Initialize new results file
         init_results_file(
             experiment, trait, model_variant, steering_data.prompts_file,
-            model_name, vector_experiment, judge_provider, position, prompt_set
+            model_name, vector_experiment, judge_provider, position, prompt_set,
+            trait_judge=trait_judge
         )
 
     # Create judge if not provided
@@ -631,7 +640,8 @@ async def run_evaluation(
             vector_experiment, method, position=position, prompt_set=prompt_set, n_steps=n_search_steps,
             up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
             max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
-            save_mode=save_mode, coherence_threshold=min_coherence
+            save_mode=save_mode, coherence_threshold=min_coherence,
+            relevance_check=relevance_check
         )
     else:
         # Sequential adaptive search for each layer
@@ -644,7 +654,8 @@ async def run_evaluation(
                 cached_runs, experiment, trait, model_variant, vector_experiment, method,
                 position=position, prompt_set=prompt_set, n_steps=n_search_steps, up_mult=up_mult, down_mult=down_mult, start_mult=start_mult, momentum=momentum,
                 max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt,
-                save_mode=save_mode, coherence_threshold=min_coherence
+                save_mode=save_mode, coherence_threshold=min_coherence,
+                relevance_check=relevance_check
             )
 
     # Print summary
@@ -720,6 +731,8 @@ def main():
                         help="Ignore eval_prompt from steering.json, use V3c default scoring")
     prompt_group.add_argument("--eval-prompt-from", type=str, metavar="TRAIT_PATH",
                         help="Load eval_prompt from different trait's steering.json (e.g., 'persona_vectors_instruction/evil')")
+    prompt_group.add_argument("--trait-judge", type=str, metavar="JUDGE_PATH",
+                        help="Load trait judge prompt from datasets/llm_judge/trait_score/{path}.txt (e.g., 'pv/hallucination')")
 
     # === Search/Optimization ===
     parser.add_argument("--layers", default="30%-60%",
@@ -746,6 +759,10 @@ def main():
     # === Ablation ===
     parser.add_argument("--ablation", type=int, metavar="LAYER", default=None,
                         help="Use directional ablation at ALL layers. Load vector from LAYER.")
+
+    # === Coherence Scoring ===
+    parser.add_argument("--no-relevance-check", action="store_true",
+                        help="Disable relevance check in coherence scoring (don't cap refusals at 50)")
 
     args = parser.parse_args()
 
@@ -808,8 +825,18 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
 
     # Resolve eval_prompt override
     effective_eval_prompt = None
+    trait_judge = None
     use_default = args.no_custom_prompt
-    if args.eval_prompt_from:
+    if args.trait_judge:
+        # Load from datasets/llm_judge/trait_score/{path}.txt
+        judge_path = get('datasets.llm_judge_trait', judge_prompt=args.trait_judge)
+        if not judge_path.exists():
+            parser_error = f"Trait judge prompt not found: {judge_path}"
+            raise FileNotFoundError(parser_error)
+        effective_eval_prompt = judge_path.read_text()
+        trait_judge = args.trait_judge
+        print(f"Using trait judge: {args.trait_judge}")
+    elif args.eval_prompt_from:
         override_data = load_steering_data(args.eval_prompt_from)
         effective_eval_prompt = override_data.eval_prompt
         if not effective_eval_prompt:
@@ -860,6 +887,8 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                 save_mode=args.save_responses,
                 ablation=args.ablation is not None,
                 ablation_vector_layer=args.ablation,
+                relevance_check=not args.no_relevance_check,
+                trait_judge=trait_judge,
             )
     finally:
         if judge is not None:
