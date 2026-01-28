@@ -603,6 +603,12 @@ async function init() {
     await ensureExperimentLoaded();
     window.renderPromptPicker();
     if (window.renderView) window.renderView();
+
+    // Show reset button in dev mode
+    if (isFeatureEnabled('debug_info')) {
+        const resetBtn = document.getElementById('reset-storage-btn');
+        if (resetBtn) resetBtn.style.display = 'block';
+    }
 }
 
 // =============================================================================
@@ -651,3 +657,61 @@ window.ensureExperimentLoaded = ensureExperimentLoaded;
 // Model comparison
 window.updateAvailableComparisonModels = updateAvailableComparisonModels;
 window.toggleHiddenExperiments = toggleHiddenExperiments;
+
+// =============================================================================
+// LocalStorage Reset (Dev Mode)
+// =============================================================================
+
+/**
+ * All localStorage keys used by the app.
+ * Centralized here for reset functionality and documentation.
+ */
+const LOCAL_STORAGE_KEYS = [
+    // UI Preferences (state.js)
+    'theme',
+    'smoothingEnabled',
+    'projectionCentered',
+    'massiveDimsCleaning',
+    'compareMode',
+    'hideAttentionSink',
+    'selectedMethods',
+    // Prompt selection (prompt-picker.js)
+    'promptSet',
+    'promptId',
+    'promptPickerCollapsed',
+    // Legacy (migrated, but clear anyway)
+    'diffMode',
+    'diffModel',
+];
+
+/**
+ * Reset all localStorage keys to defaults.
+ * Only available in development mode.
+ */
+function resetLocalStorage() {
+    if (!isFeatureEnabled('debug_info')) {
+        console.warn('[State] Reset only available in development mode');
+        return;
+    }
+
+    // Clear known keys
+    LOCAL_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+
+    // Clear dynamic keys (promptId_*, livechat_*)
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('promptId_') || key.startsWith('livechat_')) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    console.log('[State] localStorage reset. Cleared:', LOCAL_STORAGE_KEYS.length + keysToRemove.length, 'keys');
+
+    // Reload to apply defaults
+    location.reload();
+}
+
+window.resetLocalStorage = resetLocalStorage;
+window.LOCAL_STORAGE_KEYS = LOCAL_STORAGE_KEYS;

@@ -483,8 +483,17 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     });
 
     if (filteredByMethod.length === 0) {
+        // Collect methods present in data for debugging
+        const methodsInData = new Set(loadedTraits.map(t => traitData[t]?.metadata?.vector_source?.method).filter(Boolean));
+        const selectedMethodsList = [...window.state.selectedMethods];
         container.querySelector('#combined-activation-plot').innerHTML = `
-            <div class="info">No traits match selected methods. Enable more methods above.</div>
+            <div class="info">
+                No traits match selected methods.<br>
+                <small style="color: var(--text-secondary);">
+                    Methods in data: ${[...methodsInData].join(', ') || 'none'}<br>
+                    Selected methods: ${selectedMethodsList.join(', ') || 'none (check boxes above)'}
+                </small>
+            </div>
         `;
         return;
     }
@@ -626,32 +635,16 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         }
     ];
 
-    // Build custom legend with vector source tooltips (like live-chat)
-    const legendHtml = filteredByMethod.map((traitName, idx) => {
+    // Build tooltips for legend (vector source info)
+    const legendTooltips = filteredByMethod.map(traitName => {
         const data = traitData[traitName];
         const vs = data.metadata?.vector_source || {};
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
-        const tooltipText = vs.layer !== undefined
+        return vs.layer !== undefined
             ? `L${vs.layer} ${vs.method || '?'}${posStr} (${vs.selection_source || 'unknown'})`
             : 'no metadata';
-
-        // Each vector gets its own color (same as traces)
-        const color = window.getChartColors()[idx % 10];
-
-        // Display name matches trace name
-        const baseTrait = data.metadata?._baseTrait || traitName;
-        const displayName = data.metadata?._isMultiVector
-            ? `${window.getDisplayName(baseTrait)} (${vs.method} L${vs.layer})`
-            : window.getDisplayName(traitName);
-
-        return `
-            <span class="legend-item has-tooltip" data-tooltip="${tooltipText}">
-                <span class="legend-color" style="background: ${color}"></span>
-                ${displayName}
-            </span>
-        `;
-    }).join('');
+    });
 
     // Token Trajectory plot
     const yAxisTitle = 'Cosine (proj / ||h||)';
@@ -694,18 +687,13 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     });
     window.renderChart('combined-activation-plot', traces, mainLayout);
 
-    // Insert custom legend after plot and setup hover-to-highlight
+    // Insert custom legend with click-to-toggle and hover-to-highlight
     const plotDiv = document.getElementById('combined-activation-plot');
-    const legendDiv = document.createElement('div');
-    legendDiv.className = 'chart-legend';
-    legendDiv.innerHTML = legendHtml;
+    const legendDiv = window.createHtmlLegend(traces, plotDiv, {
+        tooltips: legendTooltips,
+        hoverHighlight: true
+    });
     plotDiv.parentNode.insertBefore(legendDiv, plotDiv.nextSibling);
-
-    // Hover-to-highlight and click-to-select for main trajectory
-    plotDiv.on('plotly_hover', (d) =>
-        Plotly.restyle(plotDiv, {'opacity': traces.map((_, i) => i === d.points[0].curveNumber ? 1.0 : 0.2)})
-    );
-    plotDiv.on('plotly_unhover', () => Plotly.restyle(plotDiv, {'opacity': 1.0}));
     plotDiv.on('plotly_click', (d) => {
         const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
         if (window.state.currentTokenIndex !== tokenIdx) {

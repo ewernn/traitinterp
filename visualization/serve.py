@@ -222,7 +222,14 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.path == '/design':
                 self.path = '/visualization/design.html'
 
-            # Default: serve files
+            # Default: serve files (with dev-mode cache busting)
+            if MODE == 'development':
+                # Override end_headers to add no-cache for static files
+                original_end_headers = self.end_headers
+                def end_headers_with_no_cache():
+                    self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                    original_end_headers()
+                self.end_headers = end_headers_with_no_cache
             super().do_GET()
         except (BrokenPipeError, ConnectionResetError):
             # Browser cancelled request - expected when loading many files
@@ -301,6 +308,12 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         """Send JSON API response."""
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
+        # In dev mode, disable caching so changes are seen immediately
+        # In production, cache aggressively - data is static during sessions
+        if MODE == 'development':
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        else:
+            self.send_header('Cache-Control', 'public, max-age=3600')  # 1 hour cache in prod
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 

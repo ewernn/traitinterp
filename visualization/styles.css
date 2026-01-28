@@ -604,6 +604,23 @@ header {
 
 .theme-toggle:hover { color: var(--primary-color); }
 
+.reset-storage-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reset-storage-btn:hover {
+    background: var(--color-error);
+    border-color: var(--color-error);
+    color: white;
+}
+
 .github-link {
     color: var(--text-secondary);
     display: flex;
@@ -3477,6 +3494,25 @@ li.dataset-more {
 
 .citation-num a:hover {
     text-decoration: underline;
+}
+
+/* Citation tooltip - override generic positioning for inline superscripts */
+.citation-num a[data-tooltip]::after {
+    bottom: auto;
+    top: 100%;
+    margin-top: 4px;
+    white-space: nowrap;
+    max-width: none;
+    text-align: left;
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+
+/* Reference highlight when scrolled to */
+.ref-highlight {
+    background: var(--chart-1-alpha, rgba(139, 92, 246, 0.2));
+    border-radius: var(--radius-sm);
+    transition: background 0.3s ease;
 }
 
 /* References section at bottom of findings */

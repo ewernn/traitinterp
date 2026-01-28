@@ -50,7 +50,7 @@ const CHART_PRESETS = {
 function buildChartLayout({
     preset = null,
     traces = [],
-    height = 200,
+    height = null,  // null = auto-calculate based on preset/data
     legendPosition = 'below',
     xaxis = {},
     yaxis = {},
@@ -60,6 +60,17 @@ function buildChartLayout({
 }) {
     // Start with preset or empty base
     const base = preset && CHART_PRESETS[preset] ? { ...CHART_PRESETS[preset] } : {};
+
+    // Auto-calculate height if not specified
+    if (height === null) {
+        if (preset === 'heatmap' && traces.length > 0 && traces[0].y) {
+            // Heatmap: scale with number of rows for roughly square cells
+            const nRows = traces[0].y.length || 10;
+            height = Math.max(300, nRows * 45 + 120);  // min 300, ~45px per row + margins
+        } else {
+            height = 200;  // default for other chart types
+        }
+    }
 
     // Calculate legend dimensions
     const legendItems = traces.filter(t => t.showlegend !== false).length;

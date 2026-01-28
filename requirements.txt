@@ -1,5 +1,6 @@
 # Core dependencies
 fire==0.7.0
+pytest>=7.0.0
 PyYAML==6.0.2
 transformers==4.57.3
 accelerate

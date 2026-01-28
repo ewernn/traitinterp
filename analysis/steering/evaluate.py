@@ -62,7 +62,7 @@ from datetime import datetime
 from analysis.steering.data import load_steering_data, load_questions_from_inference
 from analysis.steering.results import (
     init_results_file, load_results, append_baseline,
-    save_baseline_responses, find_cached_run, append_run, save_responses,
+    save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
     is_better_result,
 )
 from utils.paths import get_steering_results_path
@@ -317,6 +317,31 @@ async def run_ablation_evaluation(
 
     ablated_trait_mean = sum(ablated_trait_scores) / len(ablated_trait_scores) if ablated_trait_scores else None
     ablated_coherence_mean = sum(ablated_coherence_scores) / len(ablated_coherence_scores) if ablated_coherence_scores else None
+
+    # Build and save ablated response data
+    ablated_response_data = [
+        {
+            "prompt": q,
+            "response": r,
+            "system_prompt": None,
+            "trait_score": s["trait_score"],
+            "coherence_score": s.get("coherence_score"),
+        }
+        for q, r, s in zip(questions, ablated_responses, all_scores)
+    ]
+
+    # Save baseline responses
+    baseline_path = save_baseline_responses(
+        baseline_responses, experiment, trait, model_variant, position, prompt_set
+    )
+    print(f"  Saved baseline responses: {baseline_path}")
+
+    # Save ablated responses
+    ablated_path = save_ablation_responses(
+        ablated_response_data, experiment, trait, model_variant, position, prompt_set,
+        vector_layer, method, component
+    )
+    print(f"  Saved ablated responses: {ablated_path}")
 
     # Print results
     print(f"\n{'='*60}")

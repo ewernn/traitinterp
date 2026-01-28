@@ -298,3 +298,26 @@ def save_baseline_responses(
         json.dump(responses, f, indent=2)
 
     return path
+
+
+def save_ablation_responses(
+    responses: List[Dict],
+    experiment: str,
+    trait: str,
+    model_variant: str,
+    position: str,
+    prompt_set: str,
+    vector_layer: int,
+    method: str,
+    component: str = "residual",
+) -> Path:
+    """Save ablation (all-layer) responses."""
+    responses_dir = get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses" / "ablation"
+    responses_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"L{vector_layer}_{component}_{method}.json"
+    path = responses_dir / filename
+    with open(path, 'w') as f:
+        json.dump(responses, f, indent=2)
+
+    return path

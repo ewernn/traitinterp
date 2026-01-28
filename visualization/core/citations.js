@@ -84,13 +84,35 @@ function processCitationMarkers(markdown, refs) {
  */
 function renderCitations(html, refs) {
     // Replace NUMCITE_N placeholders with superscript links
+    // Use data-ref instead of href to avoid changing URL hash
     for (const [num, ref] of Object.entries(refs)) {
         const tooltip = ref.title.replace(/"/g, '&quot;');
-        const citeHtml = `<sup class="citation-num"><a href="#ref-${num}" data-tooltip="${tooltip}">${num}</a></sup>`;
+        const citeHtml = `<sup class="citation-num"><a href="javascript:void(0)" data-ref="${num}" data-tooltip="${tooltip}">${num}</a></sup>`;
         html = html.replaceAll(`NUMCITE_${num}`, citeHtml);
     }
 
     return html;
+}
+
+/**
+ * Initialize citation click handlers (call once after rendering)
+ * Scrolls to reference without changing URL hash
+ * @param {HTMLElement} container - Container element with citations
+ */
+function initCitationClicks(container) {
+    container.addEventListener('click', (e) => {
+        const link = e.target.closest('.citation-num a[data-ref]');
+        if (!link) return;
+
+        const refNum = link.dataset.ref;
+        const refEl = container.querySelector(`#ref-${refNum}`);
+        if (refEl) {
+            refEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Brief highlight
+            refEl.classList.add('ref-highlight');
+            setTimeout(() => refEl.classList.remove('ref-highlight'), 1500);
+        }
+    });
 }
 
 /**
@@ -129,5 +151,6 @@ window.citations = {
     extractReferences,
     processCitationMarkers,
     renderCitations,
-    renderReferencesSection
+    renderReferencesSection,
+    initCitationClicks
 };

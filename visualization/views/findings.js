@@ -182,6 +182,10 @@ async function toggleFinding(filename, cardEl) {
             if (window.customBlocks?.loadCharts) {
                 await window.customBlocks.loadCharts();
             }
+            // Initialize citation click handlers
+            if (window.citations?.initCitationClicks) {
+                window.citations.initCitationClicks(contentEl);
+            }
         }
         cardEl.classList.add('expanded');
         contentEl.style.display = 'block';
@@ -294,6 +298,10 @@ async function renderStandaloneFinding(findingId) {
     // Load any chart blocks
     if (window.customBlocks?.loadCharts) {
         await window.customBlocks.loadCharts();
+    }
+    // Initialize citation click handlers
+    if (window.citations?.initCitationClicks) {
+        window.citations.initCitationClicks(contentArea);
     }
 }
 

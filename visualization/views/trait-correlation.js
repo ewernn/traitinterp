@@ -166,13 +166,7 @@ function renderCorrelationHeatmap(offset) {
         x: trait_labels,
         y: trait_labels,
         type: 'heatmap',
-        colorscale: [
-            [0, '#2d5a87'],      // Strong negative (blue)
-            [0.25, '#6b9bc3'],   // Weak negative
-            [0.5, '#f5f5f5'],    // Zero (neutral)
-            [0.75, '#e8a87c'],   // Weak positive
-            [1, '#c44e52']       // Strong positive (red)
-        ],
+        colorscale: window.CORRELATION_COLORSCALE,
         zmin: -1,
         zmax: 1,
         hoverongaps: false,
@@ -204,7 +198,9 @@ function renderCorrelationHeatmap(offset) {
         }
     }
 
-    const layout = {
+    const layout = window.buildChartLayout({
+        preset: 'heatmap',
+        traces: [trace],
         title: offset === 0 ? 'Token-Level Correlation (offset=0, symmetric)' :
                `Token-Level Correlation (offset=±${offset})`,
         xaxis: {
@@ -217,13 +213,10 @@ function renderCorrelationHeatmap(offset) {
             autorange: 'reversed'
         },
         annotations: annotations,
-        margin: { l: 100, r: 80, t: 60, b: 100 },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: window.getCssVar('--text-primary', '#e4e4e4') }
-    };
+        margin: { l: 100, r: 80, t: 60, b: 100 }
+    });
 
-    Plotly.newPlot('correlation-heatmap', [trace], layout, { responsive: true });
+    window.renderChart('correlation-heatmap', [trace], layout);
 }
 
 
@@ -289,13 +282,7 @@ function renderResponseCorrelation() {
         x: trait_labels,
         y: trait_labels,
         type: 'heatmap',
-        colorscale: [
-            [0, '#2d5a87'],
-            [0.25, '#6b9bc3'],
-            [0.5, '#f5f5f5'],
-            [0.75, '#e8a87c'],
-            [1, '#c44e52']
-        ],
+        colorscale: window.CORRELATION_COLORSCALE,
         zmin: -1,
         zmax: 1,
         hovertemplate: '%{y} ↔ %{x}<br>r = %{z:.3f}<extra></extra>',
@@ -323,18 +310,17 @@ function renderResponseCorrelation() {
         }
     }
 
-    const layout = {
+    const layout = window.buildChartLayout({
+        preset: 'heatmap',
+        traces: [trace],
         title: 'Response-Level Correlation (mean projection per response)',
         xaxis: { title: '', tickangle: -45 },
         yaxis: { title: '', autorange: 'reversed' },
         annotations: annotations,
-        margin: { l: 100, r: 80, t: 60, b: 100 },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { color: window.getCssVar('--text-primary', '#e4e4e4') }
-    };
+        margin: { l: 100, r: 80, t: 60, b: 100 }
+    });
 
-    Plotly.newPlot('response-correlation-heatmap', [trace], layout, { responsive: true });
+    window.renderChart('response-correlation-heatmap', [trace], layout);
 }
 
 

@@ -102,6 +102,15 @@ const DELTA_COLORSCALE = [
     [1, '#3d7435']
 ];
 
+// Correlation colorscale (diverging: blue=negative, neutral=white, red=positive)
+const CORRELATION_COLORSCALE = [
+    [0, '#2d5a87'],      // Strong negative (blue)
+    [0.25, '#6b9bc3'],   // Weak negative
+    [0.5, '#f5f5f5'],    // Zero (neutral)
+    [0.75, '#e8a87c'],   // Weak positive
+    [1, '#c44e52']       // Strong positive (red)
+];
+
 /**
  * Get CSS variable value
  */
@@ -197,6 +206,7 @@ window.DISPLAY_NAMES = DISPLAY_NAMES;
 window.getDisplayName = getDisplayName;
 window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;
 window.DELTA_COLORSCALE = DELTA_COLORSCALE;
+window.CORRELATION_COLORSCALE = CORRELATION_COLORSCALE;
 window.getCssVar = getCssVar;
 window.hexToRgba = hexToRgba;
 window.getTokenHighlightColors = getTokenHighlightColors;
