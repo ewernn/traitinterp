@@ -770,7 +770,7 @@ def main():
 
     # === Coherence Scoring ===
     parser.add_argument("--no-relevance-check", action="store_true",
-                        help="Disable relevance check in coherence scoring (don't cap refusals at 50)")
+                        help="Disable relevance check in coherence scoring (don't cap off-topic responses at 50)")
 
     # === Steering Direction ===
     parser.add_argument("--direction", choices=["positive", "negative"], default=None,
