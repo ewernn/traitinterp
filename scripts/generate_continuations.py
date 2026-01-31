@@ -50,12 +50,10 @@ def main():
 
     print(f"Generating {len(prompts)} continuations (temp={args.temperature}, max_new_tokens={args.max_new_tokens})...")
 
-    do_sample = args.temperature > 0
     all_responses = generate_batch(
         model, tokenizer, prompts,
         max_new_tokens=args.max_new_tokens,
-        temperature=args.temperature if do_sample else None,
-        do_sample=do_sample,
+        temperature=args.temperature,
     )
 
     results = []

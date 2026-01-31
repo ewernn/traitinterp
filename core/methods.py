@@ -153,6 +153,20 @@ class RandomBaselineMethod(ExtractionMethod):
         return {'vector': vector}
 
 
+class PreCleanedMethod(ExtractionMethod):
+    """Wrapper that cleans massive dims from activations before extraction."""
+
+    def __init__(self, base_method: ExtractionMethod, massive_dims: list):
+        self.base_method = base_method
+        self.massive_dims = massive_dims
+
+    def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        from core.math import remove_massive_dims
+        pos_clean = remove_massive_dims(pos_acts, self.massive_dims, clone=True)
+        neg_clean = remove_massive_dims(neg_acts, self.massive_dims, clone=True)
+        return self.base_method.extract(pos_clean, neg_clean, **kwargs)
+
+
 def get_method(name: str) -> ExtractionMethod:
     """Get extraction method by name: 'mean_diff', 'probe', 'gradient', 'random_baseline'"""
     methods = {
