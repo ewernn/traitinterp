@@ -20,7 +20,6 @@ from typing import List, Tuple
 import torch
 
 from .hooks import BatchedLayerSteeringHook
-from utils.generation import generate_batch
 
 
 def batched_steering_generate(
@@ -90,6 +89,8 @@ def batched_steering_generate(
         steering_configs.append((layer, vector, coef, (batch_start, batch_end)))
 
     # Generate with batched steering
+    # Lazy import to avoid circular dependency (utils.generation imports core)
+    from utils.generation import generate_batch
     with BatchedLayerSteeringHook(model, steering_configs, component=component):
         responses = generate_batch(
             model, tokenizer, batched_prompts,
