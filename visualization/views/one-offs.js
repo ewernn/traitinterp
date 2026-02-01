@@ -207,15 +207,20 @@ function renderJudgeResponseTable(claudeScores, variants, scoreType = 'trait', f
         const row = {
             id,
             trait: claude.trait,
-            prompt: claude.prompt?.substring(0, 50) + '...',
+            prompt: claude.prompt,
+            promptShort: claude.prompt?.substring(0, 50) + '...',
+            response: claude.response,
             claude_score: claude[claudeKey],
-            scores: {}
+            scores: {},
+            rawOutputs: {}
         };
 
         for (const vName of variantNames) {
             const vResult = variants[vName].find(r => r.id === id);
             row.scores[vName] = vResult?.score;
-            row.raw = row.raw || vResult?.raw_output;
+            if (vResult?.raw_output) {
+                row.rawOutputs[vName] = vResult.raw_output;
+            }
         }
 
         row.maxDiff = Math.max(...variantNames.map(v =>
@@ -226,6 +231,10 @@ function renderJudgeResponseTable(claudeScores, variants, scoreType = 'trait', f
     }
 
     rows.sort((a, b) => b.maxDiff - a.maxDiff);
+
+    // Store rows globally for expansion
+    window._judgeTableRows = rows;
+    window._judgeTableVariants = variantNames;
 
     let html = `
         <div class="table-controls">
@@ -240,6 +249,7 @@ function renderJudgeResponseTable(claudeScores, variants, scoreType = 'trait', f
         <table class="data-table response-table">
             <thead>
                 <tr>
+                    <th></th>
                     <th>ID</th>
                     <th>Trait</th>
                     <th>Claude</th>
@@ -252,7 +262,8 @@ function renderJudgeResponseTable(claudeScores, variants, scoreType = 'trait', f
 
     for (const row of rows) {
         html += `
-            <tr onclick="window.showJudgeDetail('${row.id}')">
+            <tr class="expandable-row" data-id="${row.id}" onclick="window.toggleJudgeDetail('${row.id}')">
+                <td class="expand-icon">▶</td>
                 <td><code>${row.id}</code></td>
                 <td><span class="trait-badge trait-${row.trait}">${row.trait}</span></td>
                 <td>${row.claude_score}</td>
@@ -264,10 +275,79 @@ function renderJudgeResponseTable(claudeScores, variants, scoreType = 'trait', f
                 }).join('')}
                 <td>${row.maxDiff.toFixed(0)}</td>
             </tr>
+            <tr class="detail-row" id="detail-${row.id}" style="display: none;">
+                <td colspan="${variantNames.length + 5}">
+                    <div class="response-detail-content"></div>
+                </td>
+            </tr>
         `;
     }
 
     html += '</tbody></table></div>';
+    return html;
+}
+
+window.toggleJudgeDetail = function(id) {
+    const detailRow = document.getElementById(`detail-${id}`);
+    const mainRow = document.querySelector(`tr.expandable-row[data-id="${id}"]`);
+    if (!detailRow || !mainRow) return;
+
+    const isOpen = detailRow.style.display !== 'none';
+
+    if (isOpen) {
+        // Collapse
+        detailRow.style.display = 'none';
+        mainRow.querySelector('.expand-icon').textContent = '▶';
+        mainRow.classList.remove('expanded');
+    } else {
+        // Expand - populate content if not already
+        const contentDiv = detailRow.querySelector('.response-detail-content');
+        if (!contentDiv.innerHTML) {
+            const row = window._judgeTableRows.find(r => r.id === id);
+            if (row) {
+                contentDiv.innerHTML = renderJudgeDetailContent(row);
+            }
+        }
+        detailRow.style.display = 'table-row';
+        mainRow.querySelector('.expand-icon').textContent = '▼';
+        mainRow.classList.add('expanded');
+    }
+};
+
+function renderJudgeDetailContent(row) {
+    const variantNames = window._judgeTableVariants || [];
+
+    let html = `
+        <div class="detail-grid">
+            <div class="detail-section">
+                <h4>Prompt</h4>
+                <p class="prompt-text">${row.prompt || 'N/A'}</p>
+            </div>
+            <div class="detail-section">
+                <h4>Response</h4>
+                <div class="response-text">${row.response?.substring(0, 800) || 'N/A'}${row.response?.length > 800 ? '...' : ''}</div>
+            </div>
+        </div>
+    `;
+
+    // Add CoT reasoning for each variant that has it
+    const reasonings = Object.entries(row.rawOutputs).filter(([_, v]) => v);
+    if (reasonings.length > 0) {
+        html += '<div class="cot-reasoning-section"><h4>CoT Reasoning</h4><div class="cot-grid">';
+        for (const [vName, rawOutput] of reasonings) {
+            const score = row.scores[vName];
+            const diff = score !== null ? score - row.claude_score : null;
+            const diffStr = diff !== null ? (diff > 0 ? `+${diff.toFixed(0)}` : diff.toFixed(0)) : '';
+            html += `
+                <div class="cot-item">
+                    <div class="cot-header">${vName} <span class="diff-label">(${diffStr})</span></div>
+                    <pre class="cot-output">${rawOutput}</pre>
+                </div>
+            `;
+        }
+        html += '</div></div>';
+    }
+
     return html;
 }
 
@@ -588,21 +668,25 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
     const traces = [
         {
             y: humanVals,
+            x: humanVals.map(() => 'Smoothness'),
             type: 'violin',
             name: 'Human',
-            side: 'negative',
             line: { color: '#ff6b6b' },
-            fillcolor: 'rgba(255, 107, 107, 0.5)',
-            meanline: { visible: true }
+            fillcolor: 'rgba(255, 107, 107, 0.4)',
+            meanline: { visible: true },
+            box: { visible: true },
+            points: false
         },
         {
             y: modelVals,
+            x: modelVals.map(() => 'Smoothness'),
             type: 'violin',
             name: 'Model',
-            side: 'positive',
             line: { color: '#4a9eff' },
-            fillcolor: 'rgba(74, 158, 255, 0.5)',
-            meanline: { visible: true }
+            fillcolor: 'rgba(74, 158, 255, 0.4)',
+            meanline: { visible: true },
+            box: { visible: true },
+            points: false
         }
     ];
 
@@ -612,9 +696,9 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
         height: 300,
         legendPosition: 'above',
         yaxis: { title: { text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (L2 norm)`, standoff: 5 } },
-        violinmode: 'overlay'
+        violinmode: 'overlay',
+        violingap: 0
     });
-    layout.title = { text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} Distribution`, font: { size: 14, color: '#e0e0de' } };
 
     window.renderChart(containerId, traces, layout);
 }
@@ -657,6 +741,12 @@ async function renderDynamicsView() {
                 <div id="chart-effect-comparison" class="chart-container"></div>
             </section>
 
+            <section class="card">
+                <h3>Raw Smoothness by Layer</h3>
+                <p class="muted">Token-to-token activation deltas (L2 norm). Higher = jumpier trajectory through activation space.</p>
+                <div id="chart-smoothness" class="chart-container"></div>
+            </section>
+
             <div class="two-column">
                 <section class="card">
                     <h3>Smoothness vs Perplexity</h3>
@@ -666,15 +756,49 @@ async function renderDynamicsView() {
 
                 <section class="card">
                     <h3>Distribution</h3>
-                    <p class="muted">Per-sample smoothness values</p>
+                    <p class="muted">Per-sample smoothness values (mean across layers)</p>
                     <div id="chart-distribution" class="chart-container"></div>
                 </section>
             </div>
+
+            <section class="card methodology-section">
+                <h3>Methodology</h3>
+                <div class="methodology-content">
+                    <p><strong>Setup:</strong> We compare how Gemma-2-2B processes two types of text:</p>
+                    <ul>
+                        <li><strong>Human text:</strong> Continuations written by humans (from OpenHermes)</li>
+                        <li><strong>Model text:</strong> Continuations generated by the same model</li>
+                    </ul>
+
+                    <p><strong>Metrics:</strong></p>
+                    <ul>
+                        <li><strong>Smoothness:</strong> Mean L2 norm of token-to-token activation deltas: <code>mean(‖h[t+1] - h[t]‖₂)</code></li>
+                        <li><strong>Projection stability:</strong> Variance of activations projected onto trait vectors</li>
+                        <li><strong>Effect size:</strong> Cohen's d = (μ_human - μ_model) / pooled_std</li>
+                    </ul>
+
+                    <p><strong>Key Results:</strong></p>
+                    <table class="data-table compact">
+                        <thead><tr><th>Metric</th><th>Human</th><th>Model</th><th>Cohen's d</th></tr></thead>
+                        <tbody>
+                            <tr><td>CE Loss</td><td>2.99</td><td>1.45</td><td>-</td></tr>
+                            <tr><td>Smoothness</td><td>193.8</td><td>179.5</td><td>1.49</td></tr>
+                        </tbody>
+                    </table>
+
+                    <p><strong>Interpretation:</strong> Model-generated text follows more predictable paths through activation space.
+                    This correlates with perplexity (r=0.65): lower perplexity → smoother activations.
+                    The effect reverses at layer 25 (output layer) as representations converge toward vocabulary space.</p>
+                </div>
+            </section>
         </div>
     `;
 
     // Render charts
     renderEffectComparisonChart('chart-effect-comparison', oneOffData.metrics, oneOffData.projections);
+    if (oneOffData.metrics?.summary?.by_layer) {
+        renderSmoothnessChart('chart-smoothness', oneOffData.metrics.summary.by_layer);
+    }
     renderPerplexityScatter('chart-ppl-scatter', oneOffData.perplexity, oneOffData.metrics);
     if (oneOffData.metrics?.samples) {
         renderDistributionChart('chart-distribution', oneOffData.metrics.samples);

@@ -4278,11 +4278,11 @@ li.dataset-more {
     overflow-y: auto;
 }
 
-.one-offs-view .response-table tr {
+.one-offs-view .response-table tr.expandable-row {
     cursor: pointer;
 }
 
-.one-offs-view .response-table tr:hover {
+.one-offs-view .response-table tr.expandable-row:hover {
     background: var(--bg-tertiary);
 }
 
@@ -4314,6 +4314,87 @@ li.dataset-more {
 
 .one-offs-view .highlight-row {
     background: rgba(122, 121, 80, 0.15);
+}
+
+/* Expandable response rows */
+.one-offs-view .expandable-row {
+    cursor: pointer;
+}
+
+.one-offs-view .expandable-row.expanded {
+    background: var(--bg-tertiary);
+}
+
+.one-offs-view .expand-icon {
+    width: 24px;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.75rem;
+}
+
+.one-offs-view .detail-row {
+    background: var(--bg-secondary);
+}
+
+.one-offs-view .detail-row:hover {
+    background: var(--bg-secondary);
+}
+
+.one-offs-view .detail-row td {
+    padding: 0;
+}
+
+.one-offs-view .response-detail-content {
+    padding: 1rem 1.5rem;
+}
+
+.one-offs-view .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.one-offs-view .prompt-text {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.one-offs-view .cot-reasoning-section {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+}
+
+.one-offs-view .cot-reasoning-section h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.one-offs-view .cot-grid {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.one-offs-view .cot-item {
+    flex: 1;
+    min-width: 200px;
+}
+
+.one-offs-view .cot-header {
+    font-weight: 500;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.one-offs-view .cot-item .cot-output {
+    font-size: 0.8rem;
+    max-height: 150px;
+    overflow-y: auto;
 }
 
 .detail-section {
@@ -4430,4 +4511,39 @@ li.dataset-more {
     padding: 0.75rem 1rem;
     margin: 1rem 0;
     border-radius: 0 4px 4px 0;
+}
+
+/* Methodology section */
+.dynamics-view .methodology-section {
+    margin-top: 1rem;
+}
+
+.dynamics-view .methodology-content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.dynamics-view .methodology-content ul {
+    margin: 0.5rem 0 1rem 1.5rem;
+}
+
+.dynamics-view .methodology-content li {
+    margin: 0.3rem 0;
+}
+
+.dynamics-view .methodology-content code {
+    background: var(--bg-tertiary);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.dynamics-view .data-table.compact {
+    font-size: 0.85rem;
+    margin: 0.75rem 0;
+}
+
+.dynamics-view .data-table.compact td,
+.dynamics-view .data-table.compact th {
+    padding: 0.4rem 0.6rem;
 }
