@@ -464,10 +464,23 @@ async function loadDynamicsData(variant = 'gemma-base') {
         const responses = await Promise.all(fetches);
         const metricsResp = responses[0];
 
+        let metrics = metricsResp.ok ? await metricsResp.json() : null;
+
+        // Normalize keys: some files use a/b instead of human/model
+        if (metrics?.samples?.[0]?.a && !metrics.samples[0].human) {
+            metrics.samples = metrics.samples.map(s => ({
+                ...s,
+                human: s.a,
+                model: s.b,
+                a: undefined,
+                b: undefined
+            }));
+        }
+
         const data = {
             variant,
             variantLabel: config.label,
-            metrics: metricsResp.ok ? await metricsResp.json() : null,
+            metrics,
             perplexity: null,
             projections: {}
         };
