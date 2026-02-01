@@ -4603,3 +4603,60 @@ li.dataset-more {
 .dynamics-view .disabled-section {
     opacity: 0.5;
 }
+
+/* Example data comparison */
+.dynamics-view .example-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+@media (max-width: 900px) {
+    .dynamics-view .example-comparison {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dynamics-view .example-box {
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.85rem;
+}
+
+.dynamics-view .example-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.dynamics-view .example-text {
+    line-height: 1.5;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.dynamics-view .example-note {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.dynamics-view .prefill-token {
+    background: rgba(74, 158, 255, 0.25);
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.dynamics-view .continuation-token {
+    color: var(--text-secondary);
+}
+
+.dynamics-view .generated-token {
+    background: rgba(255, 107, 107, 0.15);
+    border-radius: 2px;
+    padding: 0 2px;
+    color: var(--text-secondary);
+}
