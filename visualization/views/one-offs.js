@@ -712,30 +712,21 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
         return layers.reduce((sum, l) => sum + s.model[l][metric], 0) / layers.length;
     });
 
+    // Use box plots for cleaner side-by-side comparison
     const traces = [
         {
             y: humanVals,
-            x: humanVals.map(() => 'Human'),
-            type: 'violin',
+            type: 'box',
             name: 'Human',
-            line: { color: '#ff6b6b' },
-            fillcolor: 'rgba(255, 107, 107, 0.5)',
-            meanline: { visible: true },
-            box: { visible: true },
-            points: false,
-            side: 'positive'
+            marker: { color: '#ff6b6b' },
+            boxmean: true
         },
         {
             y: modelVals,
-            x: modelVals.map(() => 'Model'),
-            type: 'violin',
+            type: 'box',
             name: 'Model',
-            line: { color: '#4a9eff' },
-            fillcolor: 'rgba(74, 158, 255, 0.5)',
-            meanline: { visible: true },
-            box: { visible: true },
-            points: false,
-            side: 'positive'
+            marker: { color: '#4a9eff' },
+            boxmean: true
         }
     ];
 
@@ -745,8 +736,7 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
         height: 300,
         legendPosition: 'none',
         yaxis: { title: { text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (L2 norm)`, standoff: 5 } },
-        violinmode: 'group',
-        violingap: 0.3
+        boxmode: 'group'
     });
 
     window.renderChart(containerId, traces, layout);
