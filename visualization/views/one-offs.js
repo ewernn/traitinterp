@@ -712,31 +712,29 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
         return layers.reduce((sum, l) => sum + s.model[l][metric], 0) / layers.length;
     });
 
-    // Split violin: Human on left, Model on right
+    // Split violin: Human on left, Model on right (same x position = touching)
     const traces = [
         {
             y: humanVals,
+            x: humanVals.map(() => 0),
             type: 'violin',
             name: 'Human',
             side: 'negative',
             line: { color: '#ff6b6b' },
             fillcolor: 'rgba(255, 107, 107, 0.5)',
             meanline: { visible: true },
-            points: false,
-            scalemode: 'width',
-            width: 0.8
+            points: false
         },
         {
             y: modelVals,
+            x: modelVals.map(() => 0),
             type: 'violin',
             name: 'Model',
             side: 'positive',
             line: { color: '#4a9eff' },
             fillcolor: 'rgba(74, 158, 255, 0.5)',
             meanline: { visible: true },
-            points: false,
-            scalemode: 'width',
-            width: 0.8
+            points: false
         }
     ];
 
@@ -745,9 +743,8 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
         traces,
         height: 300,
         legendPosition: 'above',
-        xaxis: { showticklabels: false },
-        yaxis: { title: { text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (L2 norm)`, standoff: 5 } },
-        violingap: 0
+        xaxis: { showticklabels: false, zeroline: false },
+        yaxis: { title: { text: `${metric.charAt(0).toUpperCase() + metric.slice(1)} (L2 norm)`, standoff: 5 } }
     });
 
     window.renderChart(containerId, traces, layout);
