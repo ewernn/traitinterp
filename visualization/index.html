@@ -95,12 +95,20 @@
                         <div class="nav-item" data-view="inference">3. Trait Inference</div>
                         <div class="nav-item" data-view="trait-correlation">4. Trait Correlation</div>
                         <div class="nav-item" data-view="model-comparison">5. Model Analysis</div>
+                        <div class="nav-item" data-view="one-offs">6. One-Offs</div>
                     </div>
                 </div>
 
                 <div class="sidebar-section" id="experiment-section">
                     <div class="section-title">Experiment</div>
                     <div id="experiment-list" class="experiment-picker">
+                        <div class="experiment-option" style="opacity: 0.5;">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" id="one-off-section" style="display: none;">
+                    <div class="section-title">One-Off Experiment</div>
+                    <div id="one-off-list" class="experiment-picker">
                         <div class="experiment-option" style="opacity: 0.5;">Loading...</div>
                     </div>
                 </div>
@@ -185,12 +193,24 @@
     <script src="/visualization/views/steering-sweep.js"></script>
     <script src="/visualization/views/model-comparison.js"></script>
     <script src="/visualization/views/live-chat.js"></script>
+    <script src="/visualization/views/one-offs.js"></script>
 
     <!-- View Router -->
     <script>
         // Simple view router - calls appropriate render function based on current view
         window.renderView = function() {
             const view = window.state.currentView;
+
+            // Toggle sidebar sections based on view
+            const oneOffSection = document.getElementById('one-off-section');
+            const experimentSection = document.getElementById('experiment-section');
+            if (view === 'one-offs') {
+                if (oneOffSection) oneOffSection.style.display = 'block';
+                if (experimentSection) experimentSection.style.display = 'none';
+            } else {
+                if (oneOffSection) oneOffSection.style.display = 'none';
+                if (experimentSection) experimentSection.style.display = 'block';
+            }
 
             // Update page title
             const viewTitles = {
@@ -202,7 +222,8 @@
                 'inference': 'Inference',
                 'trait-correlation': 'Trait Correlation',
                 'model-comparison': 'Model Analysis',
-                'live-chat': 'Live Chat'
+                'live-chat': 'Live Chat',
+                'one-offs': 'One-Offs'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -236,6 +257,9 @@
                     break;
                 case 'live-chat':
                     window.renderLiveChat();
+                    break;
+                case 'one-offs':
+                    window.renderOneOffs();
                     break;
                 default:
                     document.getElementById('content-area').innerHTML =

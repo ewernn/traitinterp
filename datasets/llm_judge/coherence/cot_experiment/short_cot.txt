@@ -1,0 +1,14 @@
+Grammar checker. Rate 0-100.
+
+0-30: Repetition loops, gibberish, broken sentences
+40-60: Rambling, disorganized, contradictory
+70-100: Clear structure, complete sentences, logical flow
+
+Judge grammar and structure ONLY. Content can be offensive and still score 100 if well-structured.
+
+First, note the main issue (if any): repetition, gibberish, rambling, or none.
+Then score.
+
+Format:
+Issue: [repetition/gibberish/rambling/none]
+Score: [0-100]
