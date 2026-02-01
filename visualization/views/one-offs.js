@@ -374,8 +374,8 @@ async function renderJudgeView() {
                 <p class="muted">Testing if CoT improves trait scoring alignment with Claude</p>
 
                 <div class="score-type-toggle">
-                    <button class="${currentScoreType === 'trait' ? 'active' : ''}" onclick="window.switchScoreType('trait')">Trait Scores</button>
-                    <button class="${currentScoreType === 'coherence' ? 'active' : ''}" onclick="window.switchScoreType('coherence')">Coherence Scores</button>
+                    <button class="score-type-btn ${currentScoreType === 'trait' ? 'active' : ''}" onclick="window.switchScoreType('trait')">Trait Scores</button>
+                    <button class="score-type-btn ${currentScoreType === 'coherence' ? 'active' : ''}" onclick="window.switchScoreType('coherence')">Coherence Scores</button>
                 </div>
 
                 <h3>Overall Metrics</h3>
@@ -419,23 +419,70 @@ async function renderJudgeView() {
 // Prefill Dynamics Data Loading & Rendering
 // ============================================================================
 
-async function loadDynamicsData() {
+// Available model variants for prefill-dynamics
+const DYNAMICS_VARIANTS = {
+    'gemma-base': {
+        label: 'Gemma-2-2B (base)',
+        metrics: 'activation_metrics.json',
+        perplexity: 'perplexity.json',
+        hasProjections: true
+    },
+    'gemma-instruct': {
+        label: 'Gemma-2-2B (instruct)',
+        metrics: 'activation_metrics-instruct.json',
+        perplexity: 'perplexity-instruct.json',
+        hasProjections: false
+    },
+    'llama': {
+        label: 'Llama-3.1-8B',
+        metrics: 'activation_metrics-llama.json',
+        perplexity: null,
+        hasProjections: false
+    }
+};
+
+let currentDynamicsVariant = 'gemma-base';
+
+async function loadDynamicsData(variant = 'gemma-base') {
+    const config = DYNAMICS_VARIANTS[variant];
+    if (!config) return null;
+
     try {
-        const [metricsResp, pplResp, projSycResp, projRefResp] = await Promise.all([
-            fetch('/experiments/prefill-dynamics/analysis/activation_metrics.json'),
-            fetch('/experiments/prefill-dynamics/analysis/perplexity.json'),
-            fetch('/experiments/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json'),
-            fetch('/experiments/prefill-dynamics/analysis/projection_stability-chirp_refusal.json')
-        ]);
+        const fetches = [
+            fetch(`/experiments/prefill-dynamics/analysis/${config.metrics}`)
+        ];
+
+        if (config.perplexity) {
+            fetches.push(fetch(`/experiments/prefill-dynamics/analysis/${config.perplexity}`));
+        }
+
+        if (config.hasProjections) {
+            fetches.push(fetch('/experiments/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json'));
+            fetches.push(fetch('/experiments/prefill-dynamics/analysis/projection_stability-chirp_refusal.json'));
+        }
+
+        const responses = await Promise.all(fetches);
+        const metricsResp = responses[0];
 
         const data = {
+            variant,
+            variantLabel: config.label,
             metrics: metricsResp.ok ? await metricsResp.json() : null,
-            perplexity: pplResp.ok ? await pplResp.json() : null,
+            perplexity: null,
             projections: {}
         };
 
-        if (projSycResp.ok) data.projections.sycophancy = await projSycResp.json();
-        if (projRefResp.ok) data.projections.refusal = await projRefResp.json();
+        let idx = 1;
+        if (config.perplexity) {
+            data.perplexity = responses[idx]?.ok ? await responses[idx].json() : null;
+            idx++;
+        }
+
+        if (config.hasProjections) {
+            if (responses[idx]?.ok) data.projections.sycophancy = await responses[idx].json();
+            idx++;
+            if (responses[idx]?.ok) data.projections.refusal = await responses[idx].json();
+        }
 
         return data;
     } catch (error) {
@@ -707,7 +754,7 @@ async function renderDynamicsView() {
     const container = document.getElementById('content-area');
     container.innerHTML = '<div class="loading">Loading dynamics data...</div>';
 
-    oneOffData = await loadDynamicsData();
+    oneOffData = await loadDynamicsData(currentDynamicsVariant);
 
     if (!oneOffData) {
         container.innerHTML = '<div class="error">Failed to load dynamics data</div>';
@@ -723,34 +770,51 @@ async function renderDynamicsView() {
     const peakLayer = layers.reduce((best, l) =>
         byLayer[l].smoothness_cohens_d > (byLayer[best]?.smoothness_cohens_d || 0) ? l : best, layers[0]);
 
+    // Build model selector
+    const modelOptions = Object.entries(DYNAMICS_VARIANTS).map(([key, cfg]) =>
+        `<option value="${key}" ${key === currentDynamicsVariant ? 'selected' : ''}>${cfg.label}</option>`
+    ).join('');
+
+    // Conditional sections based on data availability
+    const hasProjections = Object.keys(oneOffData.projections).length > 0;
+    const hasPerplexity = oneOffData.perplexity !== null;
+
     container.innerHTML = `
         <div class="view-content one-offs-view dynamics-view">
             <section class="card">
                 <h2>Prefill Dynamics: Human vs Model Text</h2>
                 <p class="muted">Comparing activation patterns when model processes human-written vs model-generated text</p>
 
+                <div class="model-selector">
+                    <label>Model:</label>
+                    <select onchange="window.switchDynamicsVariant(this.value)">
+                        ${modelOptions}
+                    </select>
+                    <span class="muted model-info">${oneOffData.variantLabel}</span>
+                </div>
+
                 <div class="insight-box">
                     <strong>Key Finding:</strong> Model text produces smoother activation trajectories (avg d=${avgEffect}).
-                    Peak separation at layer ${peakLayer}. Effect reverses at output layer (layer 25).
+                    Peak separation at layer ${peakLayer}. ${layers.includes(25) ? 'Effect reverses at output layer (layer 25).' : ''}
                 </div>
             </section>
 
             <section class="card">
                 <h3>Effect Comparison by Layer</h3>
-                <p class="muted">Raw smoothness (blue) shows large, consistent effect. Projection stability (dashed) is trait-dependent. Effect reverses at layer 25.</p>
+                <p class="muted">Raw smoothness (blue) shows large, consistent effect.${hasProjections ? ' Projection stability (dashed) is trait-dependent.' : ''}</p>
                 <div id="chart-effect-comparison" class="chart-container"></div>
             </section>
 
             <section class="card">
                 <h3>Raw Smoothness by Layer</h3>
-                <p class="muted">Token-to-token activation deltas (L2 norm). Higher = jumpier trajectory through activation space.</p>
+                <p class="muted">Cohen's d for token-to-token activation deltas. Positive = human text is jumpier.</p>
                 <div id="chart-smoothness" class="chart-container"></div>
             </section>
 
             <div class="two-column">
-                <section class="card">
+                <section class="card ${!hasPerplexity ? 'disabled-section' : ''}">
                     <h3>Smoothness vs Perplexity</h3>
-                    <p class="muted">Do smoother activations correlate with lower cross-entropy?</p>
+                    <p class="muted">${hasPerplexity ? 'Correlation between smoothness diff and cross-entropy diff.' : 'Perplexity data not available for this model.'}</p>
                     <div id="chart-ppl-scatter" class="chart-container"></div>
                 </section>
 
@@ -762,33 +826,44 @@ async function renderDynamicsView() {
             </div>
 
             <section class="card methodology-section">
-                <h3>Methodology</h3>
+                <h3>Methodology & Math</h3>
                 <div class="methodology-content">
-                    <p><strong>Setup:</strong> We compare how Gemma-2-2B processes two types of text:</p>
+                    <h4>Data</h4>
+                    <p>50 prompt-continuation pairs from <strong>OpenHermes</strong> dataset. For each prompt:</p>
                     <ul>
-                        <li><strong>Human text:</strong> Continuations written by humans (from OpenHermes)</li>
-                        <li><strong>Model text:</strong> Continuations generated by the same model</li>
+                        <li><strong>Human condition:</strong> Original human-written continuation</li>
+                        <li><strong>Model condition:</strong> Continuation generated by the same model (temperature=1.0)</li>
                     </ul>
 
-                    <p><strong>Metrics:</strong></p>
-                    <ul>
-                        <li><strong>Smoothness:</strong> Mean L2 norm of token-to-token activation deltas: <code>mean(‖h[t+1] - h[t]‖₂)</code></li>
-                        <li><strong>Projection stability:</strong> Variance of activations projected onto trait vectors</li>
-                        <li><strong>Effect size:</strong> Cohen's d = (μ_human - μ_model) / pooled_std</li>
-                    </ul>
+                    <h4>Metrics</h4>
+                    <p><strong>1. Activation Smoothness</strong> — How much do hidden states change between tokens?</p>
+                    <pre class="math-block">smoothness(x) = (1/T) Σ_t ‖h_t+1 - h_t‖₂</pre>
+                    <p class="muted">where h_t is the hidden state at token t, computed per-layer.</p>
 
-                    <p><strong>Key Results:</strong></p>
+                    <p><strong>2. Projection Stability</strong> — How stable are trait projections across tokens?</p>
+                    <pre class="math-block">stability(x) = Var_t(h_t · v̂_trait)</pre>
+                    <p class="muted">where v̂_trait is the unit trait vector. Lower variance = more stable trait expression.</p>
+
+                    <p><strong>3. Effect Size</strong> — Standardized difference between conditions:</p>
+                    <pre class="math-block">Cohen's d = (μ_human - μ_model) / σ_pooled</pre>
+                    <p class="muted">d > 0.8 is "large effect", d > 0.5 is "medium", d > 0.2 is "small".</p>
+
+                    <h4>Results Summary</h4>
                     <table class="data-table compact">
-                        <thead><tr><th>Metric</th><th>Human</th><th>Model</th><th>Cohen's d</th></tr></thead>
+                        <thead><tr><th>Metric</th><th>Human</th><th>Model</th><th>Cohen's d</th><th>p-value</th></tr></thead>
                         <tbody>
-                            <tr><td>CE Loss</td><td>2.99</td><td>1.45</td><td>-</td></tr>
-                            <tr><td>Smoothness</td><td>193.8</td><td>179.5</td><td>1.49</td></tr>
+                            <tr><td>Cross-Entropy Loss</td><td>2.99</td><td>1.45</td><td>—</td><td>—</td></tr>
+                            <tr><td>Smoothness (avg)</td><td>193.8</td><td>179.5</td><td>1.49</td><td>5.3e-14</td></tr>
+                            <tr><td>Proj. Stability (refusal, L11)</td><td>—</td><td>—</td><td>1.00</td><td>6.8e-09</td></tr>
                         </tbody>
                     </table>
 
-                    <p><strong>Interpretation:</strong> Model-generated text follows more predictable paths through activation space.
-                    This correlates with perplexity (r=0.65): lower perplexity → smoother activations.
-                    The effect reverses at layer 25 (output layer) as representations converge toward vocabulary space.</p>
+                    <h4>Interpretation</h4>
+                    <p>Model-generated text produces <strong>smoother activation trajectories</strong> (d=1.49, very large effect).
+                    This correlates with perplexity (r=0.65): tokens the model expects create smaller activation jumps.</p>
+
+                    <p>The effect <strong>reverses at layer 25</strong> (output layer) where representations converge toward vocabulary logits,
+                    suggesting the "smoothness advantage" exists in abstract representation space but not at the output projection.</p>
                 </div>
             </section>
         </div>
@@ -799,11 +874,18 @@ async function renderDynamicsView() {
     if (oneOffData.metrics?.summary?.by_layer) {
         renderSmoothnessChart('chart-smoothness', oneOffData.metrics.summary.by_layer);
     }
-    renderPerplexityScatter('chart-ppl-scatter', oneOffData.perplexity, oneOffData.metrics);
+    if (hasPerplexity) {
+        renderPerplexityScatter('chart-ppl-scatter', oneOffData.perplexity, oneOffData.metrics);
+    }
     if (oneOffData.metrics?.samples) {
         renderDistributionChart('chart-distribution', oneOffData.metrics.samples);
     }
 }
+
+window.switchDynamicsVariant = async function(variant) {
+    currentDynamicsVariant = variant;
+    await renderDynamicsView();
+};
 
 // ============================================================================
 // Global Event Handlers
