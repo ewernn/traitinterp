@@ -805,12 +805,6 @@ async function renderDynamicsView() {
                 <div id="chart-effect-comparison" class="chart-container"></div>
             </section>
 
-            <section class="card">
-                <h3>Raw Smoothness by Layer</h3>
-                <p class="muted">Cohen's d for token-to-token activation deltas. Positive = human text is jumpier.</p>
-                <div id="chart-smoothness" class="chart-container"></div>
-            </section>
-
             <div class="two-column">
                 <section class="card ${!hasPerplexity ? 'disabled-section' : ''}">
                     <h3>Smoothness vs Perplexity</h3>
@@ -895,9 +889,6 @@ async function renderDynamicsView() {
 
     // Render charts
     renderEffectComparisonChart('chart-effect-comparison', oneOffData.metrics, oneOffData.projections);
-    if (oneOffData.metrics?.summary?.by_layer) {
-        renderSmoothnessChart('chart-smoothness', oneOffData.metrics.summary.by_layer);
-    }
     if (hasPerplexity) {
         renderPerplexityScatter('chart-ppl-scatter', oneOffData.perplexity, oneOffData.metrics);
     }
