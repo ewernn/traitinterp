@@ -4686,3 +4686,14 @@ li.dataset-more {
     border-radius: 2px;
     padding: 1px 3px;
 }
+
+/* Chart interpretation text */
+.dynamics-view .chart-interpretation {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    line-height: 1.4;
+}

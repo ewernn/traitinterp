@@ -712,16 +712,16 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
         return layers.reduce((sum, l) => sum + s.model[l][metric], 0) / layers.length;
     });
 
-    // Split violin: Human on left, Model on right (same x position = touching)
+    // Split violin: Prefilled on left (green), Model Generated on right (red)
     const traces = [
         {
             y: humanVals,
             x: humanVals.map(() => 0),
             type: 'violin',
-            name: 'Human',
+            name: 'Prefilled',
             side: 'negative',
-            line: { color: '#ff6b6b' },
-            fillcolor: 'rgba(255, 107, 107, 0.5)',
+            line: { color: '#51cf66' },
+            fillcolor: 'rgba(81, 207, 102, 0.5)',
             meanline: { visible: true },
             points: false
         },
@@ -729,10 +729,10 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
             y: modelVals,
             x: modelVals.map(() => 0),
             type: 'violin',
-            name: 'Model',
+            name: 'Model Generated',
             side: 'positive',
-            line: { color: '#4a9eff' },
-            fillcolor: 'rgba(74, 158, 255, 0.5)',
+            line: { color: '#ff6b6b' },
+            fillcolor: 'rgba(255, 107, 107, 0.5)',
             meanline: { visible: true },
             points: false
         }
@@ -808,14 +808,16 @@ async function renderDynamicsView() {
             <div class="two-column">
                 <section class="card ${!hasPerplexity ? 'disabled-section' : ''}">
                     <h3>Smoothness vs Perplexity</h3>
-                    <p class="muted">${hasPerplexity ? 'Correlation between smoothness diff and cross-entropy diff.' : 'Perplexity data not available for this model.'}</p>
+                    <p class="muted">${hasPerplexity ? 'Each point is one sample. X = smoothness diff, Y = cross-entropy diff.' : 'Perplexity data not available for this model.'}</p>
                     <div id="chart-ppl-scatter" class="chart-container"></div>
+                    ${hasPerplexity ? '<p class="chart-interpretation"><strong>Interpretation:</strong> Positive correlation — samples where model text is smoother also have lower perplexity. The model finds its own outputs less surprising.</p>' : ''}
                 </section>
 
                 <section class="card">
                     <h3>Distribution</h3>
                     <p class="muted">Per-sample smoothness values (mean across layers)</p>
                     <div id="chart-distribution" class="chart-container"></div>
+                    <p class="chart-interpretation"><strong>Interpretation:</strong> Model-generated text (red, right) has lower smoothness values than prefilled human text (green, left). Lower = activations change less between tokens.</p>
                 </section>
             </div>
 
@@ -828,21 +830,21 @@ async function renderDynamicsView() {
                     then compare two continuations:</p>
 
                     <div class="example-legend">
-                        <span class="legend-item"><span class="legend-swatch prefill-swatch"></span> Prefill (shared prompt)</span>
-                        <span class="legend-item"><span class="legend-swatch human-swatch"></span> Human-written</span>
-                        <span class="legend-item"><span class="legend-swatch model-swatch"></span> Model-generated</span>
+                        <span class="legend-item"><span class="legend-swatch prefill-swatch"></span> Shared prompt</span>
+                        <span class="legend-item"><span class="legend-swatch human-swatch"></span> Prefilled (human text)</span>
+                        <span class="legend-item"><span class="legend-swatch model-swatch"></span> Model Generated</span>
                     </div>
 
                     <div class="example-comparison">
                         <div class="example-box">
-                            <div class="example-label">Human Condition</div>
+                            <div class="example-label">Prefilled Condition</div>
                             <div class="example-text">
                                 <span class="prefill-token">Du Fu was a prominent Chinese poet of the Tang dynasty.</span>
                                 <span class="human-token"> Along with Li Bai, he is frequently called the greatest of the Chinese poets. His greatest ambition was to serve his country...</span>
                             </div>
                         </div>
                         <div class="example-box">
-                            <div class="example-label">Model Condition</div>
+                            <div class="example-label">Model Generated Condition</div>
                             <div class="example-text">
                                 <span class="prefill-token">Du Fu was a prominent Chinese poet of the Tang dynasty.</span>
                                 <span class="model-token"> He was born in the city of Luoyang, Henan Province, and died in the city of Chengdu. He was a member of the imperial civil service...</span>
