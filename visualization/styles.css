@@ -279,41 +279,70 @@ body {
 /* Layout */
 .container {
     display: flex;
-    gap: 16px;
+    gap: 0;
     height: 100vh;
     overflow: auto;
 }
 
 .sidebar {
-    width: 240px;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
     flex-shrink: 0;
-    transition: width 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-main {
+    width: 150px;
+    min-width: 150px;
+    border-right: 1px solid var(--border-color);
+    transition: width 0.2s ease, min-width 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-analysis {
+    width: 200px;
+    min-width: 200px;
+    background: var(--bg-secondary);
+    padding-top: 12px;
+    transition: width 0.2s ease, min-width 0.2s ease, opacity 0.15s ease, padding 0.2s ease;
+}
+
+.sidebar-analysis.hidden {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
 }
 
 /* Sidebar collapsed state (desktop) */
-.sidebar.collapsed {
+.sidebar-main.collapsed {
     width: 0;
+    min-width: 0;
     overflow: visible;
 }
 
-.sidebar.collapsed .sidebar-section,
-.sidebar.collapsed .sidebar-header-content {
+.sidebar-main.collapsed .sidebar-section,
+.sidebar-main.collapsed .sidebar-header-content {
     opacity: 0;
     pointer-events: none;
     visibility: hidden;
 }
 
-.sidebar.collapsed .sidebar-collapse-btn {
+.sidebar-main.collapsed .sidebar-collapse-btn {
     position: fixed;
     left: 8px;
     top: 12px;
     z-index: 1000;
     background: var(--bg-secondary);
-    border: 1px solid var(--border-primary);
+    border: 1px solid var(--border-color);
+}
+
+.sidebar-analysis.collapsed {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    opacity: 0;
 }
 
 .main-content {
@@ -394,19 +423,12 @@ body {
     color: var(--text-secondary);
 }
 
-.sidebar-group {
-    margin: 0 8px 24px 8px;
-    padding: 8px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-md);
-}
-
-.sidebar-group .sidebar-section {
-    padding: 0 4px;
+.sidebar-analysis .sidebar-section {
+    padding: 0 12px;
     margin-bottom: 16px;
 }
 
-.sidebar-group .sidebar-section:last-child {
+.sidebar-analysis .sidebar-section:last-child {
     margin-bottom: 0;
 }
 
@@ -489,6 +511,24 @@ body {
 .experiment-toggle:hover {
     color: var(--text-secondary);
     opacity: 1;
+}
+
+/* Inline picker bar (for one-offs content area) */
+.one-off-picker-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.inline-picker {
+    flex-direction: row;
+    gap: 8px;
 }
 
 .trait-checkbox {
@@ -1412,14 +1452,14 @@ code {
 
 .json-viewer pre { margin: 0; color: var(--text-secondary); }
 
-/* Prompt Picker - Fixed Bottom (offset by half sidebar width: 240px/2 = 120px) */
+/* Prompt Picker - Fixed Bottom (offset by half combined sidebar width: 350px/2 = 175px) */
 #prompt-picker {
     position: fixed;
     bottom: 16px;
-    left: calc(50% + 120px);
+    left: calc(50% + 175px);
     transform: translateX(-50%);
     max-width: 900px;
-    width: calc(100% - 240px - 32px);
+    width: calc(100% - 350px - 32px);
     padding: 16px;
     font-size: var(--text-sm);
     color: var(--text-primary);
@@ -1431,7 +1471,7 @@ code {
 }
 
 /* Prompt picker adjustment when sidebar is collapsed */
-.sidebar.collapsed ~ .main-content #prompt-picker {
+.sidebar-main.collapsed ~ .main-content #prompt-picker {
     left: 50%;
     width: calc(100% - 32px);
 }
@@ -2112,6 +2152,45 @@ code {
     position: sticky;
     top: 0;
     z-index: 10;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sweep-controls .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.sweep-controls .filter-label {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    min-width: 75px;
+    white-space: nowrap;
+}
+
+.sweep-controls .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.sweep-controls .filter-chip:hover {
+    color: var(--text-secondary);
+}
+
+.sweep-controls .filter-chip.active {
+    color: var(--text-primary);
+    background: var(--bg-primary);
 }
 
 .sweep-controls .control-group {
@@ -2213,19 +2292,28 @@ code {
         display: none;
     }
 
-    /* Sidebar as overlay on mobile */
+    /* Sidebar as overlay on mobile - only show main nav */
     .sidebar {
         position: fixed;
         top: 0;
         left: 0;
         bottom: 0;
-        width: 280px;
-        max-width: 80vw;
         background: var(--bg-primary);
         z-index: 150;
         transform: translateX(-100%);
         box-shadow: none;
         padding-top: 8px;
+    }
+
+    .sidebar-main {
+        width: 200px;
+        min-width: 200px;
+        max-width: 80vw;
+        border-right: none;
+    }
+
+    .sidebar-analysis {
+        display: none;
     }
 
     .sidebar.mobile-open {
@@ -3784,7 +3872,7 @@ li.dataset-more {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    max-height: 600px;
+    max-height: 250px;
     overflow-y: auto;
     padding: 8px;
 }

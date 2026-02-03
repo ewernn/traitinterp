@@ -352,7 +352,7 @@ function renderJudgeDetailContent(row) {
 }
 
 async function renderJudgeView() {
-    const container = document.getElementById('content-area');
+    const container = document.getElementById('one-off-content') || document.getElementById('content-area');
     container.innerHTML = '<div class="loading">Loading experiment data...</div>';
 
     oneOffData = await loadJudgeData(currentOneOff.name, currentScoreType);
@@ -770,7 +770,7 @@ function renderDistributionChart(containerId, samples, metric = 'smoothness') {
 }
 
 async function renderDynamicsView() {
-    const container = document.getElementById('content-area');
+    const container = document.getElementById('one-off-content') || document.getElementById('content-area');
     container.innerHTML = '<div class="loading">Loading dynamics data...</div>';
 
     oneOffData = await loadDynamicsData(currentDynamicsVariant);
@@ -1014,10 +1014,10 @@ window.selectOneOff = async function(name) {
     currentOneOff = discoveredOneOffs.find(e => e.name === name);
     if (!currentOneOff) return;
 
-    // Update sidebar selection
-    const list = document.getElementById('one-off-list');
-    if (list) {
-        list.querySelectorAll('.experiment-option').forEach(item => {
+    // Update inline picker selection
+    const picker = document.getElementById('one-off-picker');
+    if (picker) {
+        picker.querySelectorAll('.experiment-option').forEach(item => {
             item.classList.toggle('active', item.dataset.experiment === name);
             const radio = item.querySelector('input[type="radio"]');
             if (radio) radio.checked = item.dataset.experiment === name;
@@ -1027,11 +1027,11 @@ window.selectOneOff = async function(name) {
     await renderOneOffContent();
 };
 
-function populateOneOffSidebar() {
-    const list = document.getElementById('one-off-list');
-    if (!list) return;
+function populateOneOffPicker() {
+    const picker = document.getElementById('one-off-picker');
+    if (!picker) return;
 
-    list.innerHTML = discoveredOneOffs.map((exp) => {
+    picker.innerHTML = discoveredOneOffs.map((exp) => {
         const isActive = exp.name === currentOneOff?.name ? 'active' : '';
         const isChecked = exp.name === currentOneOff?.name ? 'checked' : '';
         const displayName = exp.name.replace(/[-_]/g, ' ');
@@ -1042,7 +1042,7 @@ function populateOneOffSidebar() {
         </label>`;
     }).join('');
 
-    list.querySelectorAll('.experiment-option').forEach(item => {
+    picker.querySelectorAll('.experiment-option').forEach(item => {
         item.addEventListener('click', () => {
             window.selectOneOff(item.dataset.experiment);
         });
@@ -1062,12 +1062,6 @@ async function renderOneOffContent() {
 window.renderOneOffs = async function() {
     const container = document.getElementById('content-area');
 
-    // Show one-off sidebar section, hide regular experiment section
-    const oneOffSection = document.getElementById('one-off-section');
-    const experimentSection = document.getElementById('experiment-section');
-    if (oneOffSection) oneOffSection.style.display = 'block';
-    if (experimentSection) experimentSection.style.display = 'none';
-
     container.innerHTML = '<div class="loading">Discovering experiments...</div>';
 
     discoveredOneOffs = await discoverOneOffExperiments();
@@ -1085,6 +1079,15 @@ window.renderOneOffs = async function() {
     }
 
     currentOneOff = currentOneOff || discoveredOneOffs[0];
-    populateOneOffSidebar();
+
+    // Render inline experiment picker at top of content area
+    container.innerHTML = `
+        <div class="one-off-picker-bar">
+            <span class="section-title" style="margin: 0;">Experiment</span>
+            <div id="one-off-picker" class="experiment-picker inline-picker"></div>
+        </div>
+        <div id="one-off-content"></div>
+    `;
+    populateOneOffPicker();
     await renderOneOffContent();
 };

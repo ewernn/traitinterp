@@ -69,8 +69,8 @@
         <!-- Sidebar Toggle (mobile) -->
         <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">☰</button>
 
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
+        <!-- Main Nav (always visible) -->
+        <div class="sidebar sidebar-main" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-header-content">
                     <div class="sidebar-title">Trait Interp</div>
@@ -86,31 +86,27 @@
                 <div class="nav-item" data-view="findings">Findings</div>
             </div>
 
-            <div class="sidebar-group" id="analysis-group">
-                <div class="sidebar-section">
-                    <div class="section-title">Analysis</div>
-                    <div id="nav-items-extraction">
-                        <div class="nav-item" data-view="trait-extraction">1. Trait Extraction</div>
-                        <div class="nav-item" data-view="steering-sweep">2. Trait Steering</div>
-                        <div class="nav-item" data-view="inference">3. Trait Inference</div>
-                        <div class="nav-item" data-view="trait-correlation">4. Trait Correlation</div>
-                        <div class="nav-item" data-view="model-comparison">5. Model Analysis</div>
-                        <div class="nav-item" data-view="one-offs">6. One-Offs</div>
-                    </div>
-                </div>
+            <div class="sidebar-section">
+                <div class="section-title">Sandbox</div>
+                <div class="nav-item" data-view="one-offs">One-Offs</div>
+            </div>
+        </div>
 
-                <div class="sidebar-section" id="experiment-section">
-                    <div class="section-title">Experiment</div>
-                    <div id="experiment-list" class="experiment-picker">
-                        <div class="experiment-option" style="opacity: 0.5;">Loading...</div>
-                    </div>
-                </div>
+        <!-- Analysis Panel (conditional) -->
+        <div class="sidebar sidebar-analysis hidden" id="sidebar-analysis">
+            <div class="sidebar-section">
+                <div class="section-title">Analysis</div>
+                <div class="nav-item" data-view="trait-extraction">Extraction</div>
+                <div class="nav-item" data-view="steering-sweep">Steering</div>
+                <div class="nav-item" data-view="inference">Inference</div>
+                <div class="nav-item" data-view="trait-correlation">Correlation</div>
+                <div class="nav-item" data-view="model-comparison">Model Analysis</div>
+            </div>
 
-                <div class="sidebar-section" id="one-off-section" style="display: none;">
-                    <div class="section-title">One-Off Experiment</div>
-                    <div id="one-off-list" class="experiment-picker">
-                        <div class="experiment-option" style="opacity: 0.5;">Loading...</div>
-                    </div>
+            <div class="sidebar-section" id="experiment-section">
+                <div class="section-title">Experiment</div>
+                <div id="experiment-list" class="experiment-picker">
+                    <div class="experiment-option" style="opacity: 0.5;">Loading...</div>
                 </div>
             </div>
 
@@ -201,17 +197,6 @@
         window.renderView = function() {
             const view = window.state.currentView;
 
-            // Toggle sidebar sections based on view
-            const oneOffSection = document.getElementById('one-off-section');
-            const experimentSection = document.getElementById('experiment-section');
-            if (view === 'one-offs') {
-                if (oneOffSection) oneOffSection.style.display = 'block';
-                if (experimentSection) experimentSection.style.display = 'none';
-            } else {
-                if (oneOffSection) oneOffSection.style.display = 'none';
-                if (experimentSection) experimentSection.style.display = 'block';
-            }
-
             // Update page title
             const viewTitles = {
                 'overview': 'Overview',
@@ -277,18 +262,26 @@
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', () => {
             const sidebar = document.getElementById('sidebar');
+            const analysisPanel = document.getElementById('sidebar-analysis');
             const collapseBtn = document.getElementById('sidebar-collapse');
             const toggleBtn = document.getElementById('sidebar-toggle');
 
-            // Desktop collapse button
+            // Desktop collapse button - collapses both sidebars
             collapseBtn.addEventListener('click', () => {
+                const isCollapsing = !sidebar.classList.contains('collapsed');
                 sidebar.classList.toggle('collapsed');
-                collapseBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+                if (analysisPanel) {
+                    analysisPanel.classList.toggle('collapsed', isCollapsing);
+                }
+                collapseBtn.textContent = isCollapsing ? '▶' : '◀';
             });
 
-            // Mobile toggle button
+            // Mobile toggle button - opens both sidebars
             toggleBtn.addEventListener('click', () => {
                 sidebar.classList.toggle('mobile-open');
+                if (analysisPanel) {
+                    analysisPanel.classList.toggle('mobile-open');
+                }
             });
 
             // Close mobile sidebar when clicking outside
@@ -296,8 +289,10 @@
                 if (window.innerWidth <= 768 &&
                     sidebar.classList.contains('mobile-open') &&
                     !sidebar.contains(e.target) &&
+                    !(analysisPanel && analysisPanel.contains(e.target)) &&
                     e.target !== toggleBtn) {
                     sidebar.classList.remove('mobile-open');
+                    if (analysisPanel) analysisPanel.classList.remove('mobile-open');
                 }
             });
         });

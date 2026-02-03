@@ -245,15 +245,15 @@ function updatePageTitle() {
 }
 
 /**
- * Show/hide experiment picker based on current view.
- * Only analysis views need an experiment selection.
+ * Show/hide the analysis panel based on current view.
+ * Only analysis views show the second sidebar column.
  */
 function updateExperimentVisibility() {
-    const experimentSection = document.getElementById('experiment-section');
-    if (!experimentSection) return;
+    const analysisPanel = document.getElementById('sidebar-analysis');
+    if (!analysisPanel) return;
 
-    const isAnalysisView = window.ANALYSIS_VIEWS.includes(window.state.currentView);
-    experimentSection.style.display = isAnalysisView ? '' : 'none';
+    const isAnalysis = window.ANALYSIS_VIEWS.includes(window.state.currentView);
+    analysisPanel.classList.toggle('hidden', !isAnalysis);
 }
 
 // =============================================================================

@@ -62,13 +62,14 @@ async function renderSteeringSweep() {
                 </div>
             </div>
 
-            <!-- Coherence threshold control (applies to all sections) -->
+            <!-- Global controls (applies to all charts) -->
             <div class="sweep-controls sticky-coherence">
                 <div class="control-group">
                     <label>Min Coherence:</label>
                     <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="70" />
                     <span id="coherence-threshold-value">70</span>
                 </div>
+                <div id="chart-filter-rows"></div>
             </div>
 
             <!-- Best Vector per Layer (multi-trait from sidebar) -->
@@ -135,7 +136,10 @@ async function renderSteeringSweep() {
         </div>
     `;
 
-    // Initial render
+    // Collect filter values from data, then render chips and charts
+    await collectFilterValues(traits);
+    renderFilterChips();
+
     await renderBestVectorPerLayer();
     await renderTraitPicker(traits);
 
@@ -167,6 +171,140 @@ let currentSweepData = null;
 let currentRawResults = null; // Store raw results.jsonl data for method filtering
 let discoveredSteeringTraits = []; // All discovered steering traits
 let localTraitResultsCache = {}; // Local cache, passed to response-browser via setTraitResultsCache()
+
+// Global chart filters - populated from data, all active by default
+let chartFilters = {
+    methods: new Set(),      // e.g. 'probe', 'mean_diff', 'gradient'
+    positions: new Set(),    // e.g. 'response[:]', 'response[:5]'
+    components: new Set(),   // e.g. 'residual', 'attn_contribution'
+    directions: new Set(),   // e.g. 'positive', 'negative'
+    // Active selections (what's checked) - initialized to all
+    activeMethods: new Set(),
+    activePositions: new Set(),
+    activeComponents: new Set(),
+    activeDirections: new Set(),
+};
+
+
+/**
+ * Collect all unique filter values from steering entries and their results.
+ * Called once after data loads, populates chartFilters.{methods,positions,components,directions}.
+ */
+async function collectFilterValues(steeringEntries) {
+    const experiment = window.state.experimentData?.name;
+    if (!experiment || !steeringEntries.length) return;
+
+    const methods = new Set();
+    const positions = new Set();
+    const components = new Set();
+    const directions = new Set();
+
+    // Positions come from entries directly
+    for (const entry of steeringEntries) {
+        positions.add(entry.position);
+    }
+
+    // Methods, components, directions require loading results
+    const results = await Promise.all(steeringEntries.map(async (entry) => {
+        try {
+            const url = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            return resp.json();
+        } catch { return null; }
+    }));
+
+    for (const result of results) {
+        if (!result) continue;
+        // Direction from header
+        if (result.direction) directions.add(result.direction);
+        for (const run of (result.runs || [])) {
+            const vectors = run.config?.vectors || [];
+            if (vectors.length !== 1) continue;
+            const v = vectors[0];
+            if (v.method) methods.add(v.method);
+            if (v.component) components.add(v.component);
+            else components.add('residual');
+            // Infer direction from coefficient sign if header didn't specify
+            if (!result.direction) {
+                directions.add(v.weight > 0 ? 'positive' : 'negative');
+            }
+        }
+    }
+
+    // Update state
+    chartFilters.methods = methods;
+    chartFilters.positions = positions;
+    chartFilters.components = components;
+    chartFilters.directions = directions;
+    // Default: all active
+    chartFilters.activeMethods = new Set(methods);
+    chartFilters.activePositions = new Set(positions);
+    chartFilters.activeComponents = new Set(components);
+    chartFilters.activeDirections = new Set(directions);
+}
+
+
+/**
+ * Render filter chip rows into the sticky bar.
+ * Only renders rows with >1 option (no point filtering if there's only one).
+ */
+function renderFilterChips() {
+    const container = document.getElementById('chart-filter-rows');
+    if (!container) return;
+
+    const rows = [];
+
+    const renderRow = (label, allValues, activeSet, filterKey) => {
+        if (allValues.size <= 1) return ''; // Skip single-value filters
+
+        const displayNames = {
+            'probe': 'Probe', 'mean_diff': 'Mean Diff', 'gradient': 'Gradient',
+            'residual': 'Residual', 'attn_contribution': 'Attn', 'mlp_contribution': 'MLP',
+            'k_proj': 'K Proj', 'v_proj': 'V Proj',
+            'positive': 'Positive', 'negative': 'Negative',
+        };
+
+        const chips = Array.from(allValues).map(value => {
+            const display = displayNames[value] || window.paths?.formatPositionDisplay(value) || value;
+            const active = activeSet.has(value) ? 'active' : '';
+            return `<span class="filter-chip ${active}" data-filter="${filterKey}" data-value="${value}">${display}</span>`;
+        }).join('');
+
+        return `<div class="filter-row"><span class="filter-label">${label}:</span>${chips}</div>`;
+    };
+
+    rows.push(renderRow('Method', chartFilters.methods, chartFilters.activeMethods, 'methods'));
+    rows.push(renderRow('Position', chartFilters.positions, chartFilters.activePositions, 'positions'));
+    rows.push(renderRow('Component', chartFilters.components, chartFilters.activeComponents, 'components'));
+    rows.push(renderRow('Direction', chartFilters.directions, chartFilters.activeDirections, 'directions'));
+
+    container.innerHTML = rows.filter(r => r).join('');
+
+    // Wire click handlers
+    container.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const filterKey = chip.dataset.filter;
+            const value = chip.dataset.value;
+            const activeSetKey = 'active' + filterKey.charAt(0).toUpperCase() + filterKey.slice(1);
+            const activeSet = chartFilters[activeSetKey];
+
+            if (activeSet.has(value)) {
+                // Don't allow deselecting the last one
+                if (activeSet.size > 1) {
+                    activeSet.delete(value);
+                    chip.classList.remove('active');
+                }
+            } else {
+                activeSet.add(value);
+                chip.classList.add('active');
+            }
+
+            // Re-render charts
+            renderBestVectorPerLayer();
+        });
+    });
+}
 
 
 /**
@@ -375,12 +513,19 @@ async function renderBestVectorPerLayer() {
                 const coherence = result.coherence_mean || 0;
                 const traitScore = result.trait_mean || 0;
 
-                // Collect for response browser (before coherence filter)
+                // Collect for response browser (before filters)
                 allRuns.push({
                     layer, method, component, coef, traitScore, coherence,
                     timestamp: run.timestamp,
                     entry, // steering entry for path building
                 });
+
+                // Apply global chart filters (empty set = no filter applied yet)
+                if (chartFilters.activeMethods.size > 0 && !chartFilters.activeMethods.has(method)) return;
+                if (chartFilters.activeComponents.size > 0 && !chartFilters.activeComponents.has(component)) return;
+                if (chartFilters.activePositions.size > 0 && !chartFilters.activePositions.has(position)) return;
+                const direction = coef > 0 ? 'positive' : 'negative';
+                if (chartFilters.activeDirections.size > 0 && !chartFilters.activeDirections.has(direction)) return;
 
                 if (coherence < coherenceThreshold) return;
 

@@ -78,8 +78,22 @@ require("lazy").setup({
 NVIMEOF
 chown -R dev:dev /home/dev/.config
 
+# Install rclone and configure R2
+curl https://rclone.org/install.sh | bash
+mkdir -p /home/dev/.config/rclone
+cat > /home/dev/.config/rclone/rclone.conf << EOF
+[r2]
+type = s3
+provider = Cloudflare
+access_key_id = ${R2_ACCESS_KEY_ID}
+secret_access_key = ${R2_SECRET_ACCESS_KEY}
+endpoint = ${R2_ENDPOINT}
+acl = private
+EOF
+chown -R dev:dev /home/dev/.config/rclone
+
 # Setup venv and install deps
 su - dev -c "cd ~/trait-interp && pip3 install --break-system-packages uv && uv venv && uv pip install -r requirements.txt"
 
 # Pull data from R2
-su - dev -c "cd ~/trait-interp && source /etc/environment && ./utils/r2_pull.sh"
+su - dev -c "cd ~/trait-interp && ./utils/r2_pull.sh"
