@@ -33,7 +33,7 @@ from utils.model import load_model, format_prompt
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
 from utils.ensembles import create_ensemble, save_ensemble
-from utils.vectors import MIN_COHERENCE, load_vector
+from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms
 
 
 async def run_cma_es(
@@ -78,6 +78,13 @@ async def run_cma_es(
 
     # Load vectors and get base coefficients
     extraction_variant = get_model_variant(experiment, mode="extraction")['name']
+    # Use residual activation norms for base_coef (perturbation flows into residual stream)
+    cached_norms = load_cached_activation_norms(experiment, "residual")
+    if cached_norms:
+        print(f"  Using cached residual activation norms for base_coef")
+    else:
+        print(f"  WARNING: No cached norms found, using default base_coef=5.0")
+
     vectors = []  # List of (layer, vector, base_coef)
 
     for layer in layers:
@@ -85,14 +92,9 @@ async def run_cma_es(
         if vector is None:
             raise FileNotFoundError(f"Vector not found for L{layer} {method} {component} {position}")
 
-        # Base coefficient from activation norm (same as coef_search.py)
-        # For unit-normalized vectors, use layer-appropriate scaling
-        # These are approximate values from our steering runs
-        base_coef_map = {9: 54, 11: 62, 13: 90}  # From our earlier results
-        base_coef = base_coef_map.get(layer, 80)
-
+        base_coef = cached_norms.get(layer, 5.0)
         vectors.append((layer, vector, base_coef))
-        print(f"  L{layer}: norm={vector.norm().item():.4f}, base_coef={base_coef}")
+        print(f"  L{layer}: norm={vector.norm().item():.4f}, base_coef={base_coef:.1f}")
 
     # Initialize judge
     judge = TraitJudge()
@@ -102,12 +104,12 @@ async def run_cma_es(
     # =========================================================================
     n_layers = len(layers)
 
-    # Initial weights: base_coef / n_components (so they sum to ~single-layer strength)
-    x0 = [v[2] / n_layers for v in vectors]
+    # Initial weights: full base_coef per layer (perturbations at different layers are independent)
+    x0 = [v[2] for v in vectors]
 
-    # Bounds: [0, 1.5 * base_coef] per layer
+    # Bounds: [0, 4x base_coef] per layer (attn_contribution optimal is ~2-3x residual norm)
     lower_bounds = [0] * n_layers
-    upper_bounds = [1.5 * v[2] for v in vectors]
+    upper_bounds = [4.0 * v[2] for v in vectors]
 
     # Sigma: ~30% of the range for exploration
     sigma0 = sum(v[2] for v in vectors) / n_layers * 0.3
