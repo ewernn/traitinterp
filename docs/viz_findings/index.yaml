@@ -10,6 +10,7 @@ findings:
   - massive-activations.md
   - coefficient-scaling-law.md
   - prefill-dynamics.md
+  - model-diff-analysis.md
   # Commented out - infrastructure/methodology:
   # - llm-judge-optimization.md # scoring guide + logprobs beats CoT (0.888 trait, 0.850 coherence)
 

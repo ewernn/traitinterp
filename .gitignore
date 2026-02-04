@@ -40,3 +40,4 @@ nnsight/
 claude-code/
 claude-agent-sdk-python/
 claude-plugins-official/
+experiments/liars-bench/
