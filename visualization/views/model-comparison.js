@@ -247,9 +247,15 @@ async function renderModelDiffComparison(experiment) {
                 const traitData = results.traits?.[trait];
                 if (traitData) {
                     const setName = promptSet.split('/').pop();
+                    // Get std at peak layer
+                    const peakIdx = traitData.layers?.indexOf(traitData.peak_layer);
+                    const stdA = peakIdx >= 0 ? traitData.per_layer_std_a?.[peakIdx] : null;
+                    const stdB = peakIdx >= 0 ? traitData.per_layer_std_b?.[peakIdx] : null;
                     row[setName] = {
                         peak_layer: traitData.peak_layer,
-                        peak_effect: traitData.peak_effect_size
+                        peak_effect: traitData.peak_effect_size,
+                        std_a: stdA,
+                        std_b: stdB
                     };
                 }
             }
@@ -270,7 +276,7 @@ async function renderModelDiffComparison(experiment) {
                     <tr>
                         <th>Trait</th>
                         <th>Method</th>
-                        ${promptSetNames.map(ps => `<th>${ps}</th>`).join('')}
+                        ${promptSetNames.map(ps => `<th>${ps}</th><th>Spread (A / B)</th>`).join('')}
                     </tr>
                 </thead>
                 <tbody>
@@ -284,9 +290,13 @@ async function renderModelDiffComparison(experiment) {
                                     const color = data.peak_effect > 1.5 ? 'var(--success-color)' :
                                                   data.peak_effect > 0.5 ? 'var(--warning-color)' :
                                                   'var(--text-secondary)';
-                                    return `<td style="color: ${color};">${data.peak_effect.toFixed(2)}σ @ L${data.peak_layer}</td>`;
+                                    const effectCell = `<td style="color: ${color};">${data.peak_effect.toFixed(2)}σ @ L${data.peak_layer}</td>`;
+                                    const spreadCell = data.std_a != null && data.std_b != null
+                                        ? `<td style="color: var(--text-secondary);">${data.std_a.toFixed(2)} / ${data.std_b.toFixed(2)}</td>`
+                                        : '<td style="color: var(--text-tertiary);">—</td>';
+                                    return effectCell + spreadCell;
                                 }
-                                return '<td>—</td>';
+                                return '<td>—</td><td>—</td>';
                             }).join('')}
                         </tr>
                     `).join('')}

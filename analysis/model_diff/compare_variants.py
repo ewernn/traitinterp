@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import argparse
 import json
 import torch
+import numpy as np
 from tqdm import tqdm
 
 from core import projection, effect_size, cosine_similarity
@@ -289,6 +290,8 @@ def main():
 
         per_layer_effect_size = []
         per_layer_cosine_sim = []
+        per_layer_std_a = []
+        per_layer_std_b = []
 
         # Check if trait already has effect size data (to preserve when using --use-existing-diff)
         existing_trait_data = results.get('traits', {}).get(trait, {})
@@ -326,6 +329,10 @@ def main():
                 d = effect_size(torch.tensor(proj_b), torch.tensor(proj_a), signed=True)
                 per_layer_effect_size.append(d)
 
+                # Per-variant projection spread
+                per_layer_std_a.append(float(np.std(proj_a)))
+                per_layer_std_b.append(float(np.std(proj_b)))
+
         # Build trait result
         trait_result = {
             'method': method,
@@ -360,7 +367,14 @@ def main():
             peak_effect = per_layer_effect_size[peak_idx]
             trait_result['peak_layer'] = peak_layer
             trait_result['peak_effect_size'] = peak_effect
-            print(f"    Peak: L{peak_layer} = {peak_effect:+.2f}σ")
+
+            # Projection variance per variant (cross-prompt spread at each layer)
+            trait_result['per_layer_std_a'] = per_layer_std_a
+            trait_result['per_layer_std_b'] = per_layer_std_b
+            # Report peak-layer variance
+            std_a_peak = per_layer_std_a[peak_idx]
+            std_b_peak = per_layer_std_b[peak_idx]
+            print(f"    Peak: L{peak_layer} = {peak_effect:+.2f}σ  (spread: {args.variant_a}={std_a_peak:.2f}, {args.variant_b}={std_b_peak:.2f})")
 
         results['traits'][trait] = trait_result
 
