@@ -3,6 +3,7 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
+  - liars-bench-deception.md
   - rm-sycophancy.md
   - comparison-persona-vectors.md
   - comparison-arditi-refusal.md

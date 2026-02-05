@@ -12,6 +12,9 @@
  *   - annotation-stacked: Stacked bar from annotation files
  *   - comparison-bar: Horizontal bar chart for component/method comparison
  *
+ *   Cross-eval charts:
+ *   - crosseval-comparison: Grouped bar comparing vectors across datasets
+ *
  *   Prefill dynamics charts:
  *   - dynamics-effect: Smoothness effect by layer (+ optional projection stability)
  *   - dynamics-scatter: Smoothness vs perplexity correlation (requires perplexity=path)
@@ -642,6 +645,94 @@ CHART_RENDERERS['dynamics-position'] = async function(container, data, options =
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
     await window.renderChart(chartDiv, [trace], layout);
+};
+
+// ============================================================================
+// Chart Type: crosseval-comparison (Grouped bar: concealment vs lying AUROC)
+// ============================================================================
+
+CHART_RENDERERS['crosseval-comparison'] = async function(container, data, options = {}) {
+    const { height = 280 } = options;
+
+    if (!data?.datasets) {
+        container.innerHTML = '<div class="chart-error">No cross-eval data</div>';
+        return;
+    }
+
+    const datasets = Object.keys(data.datasets);
+    const concAurocs = [];
+    const lyingAurocs = [];
+
+    for (const ds of datasets) {
+        const dsData = data.datasets[ds];
+
+        // Find best AUROC for concealment
+        let concBest = 0;
+        for (const [method, layers] of Object.entries(dsData.vectors?.concealment?.methods || {})) {
+            for (const auroc of Object.values(layers)) {
+                if (auroc > concBest) concBest = auroc;
+            }
+        }
+        concAurocs.push(concBest);
+
+        // Find best AUROC for lying
+        let lyingBest = 0;
+        for (const [method, layers] of Object.entries(dsData.vectors?.lying?.methods || {})) {
+            for (const auroc of Object.values(layers)) {
+                if (auroc > lyingBest) lyingBest = auroc;
+            }
+        }
+        lyingAurocs.push(lyingBest);
+    }
+
+    const traces = [
+        {
+            x: datasets.map(d => d.toUpperCase()),
+            y: concAurocs,
+            type: 'bar',
+            name: 'Concealment',
+            marker: { color: '#51cf66' },
+            text: concAurocs.map(v => v.toFixed(2)),
+            textposition: 'outside',
+            hovertemplate: '%{x}<br>Concealment: %{y:.3f}<extra></extra>'
+        },
+        {
+            x: datasets.map(d => d.toUpperCase()),
+            y: lyingAurocs,
+            type: 'bar',
+            name: 'Lying',
+            marker: { color: '#ff6b6b' },
+            text: lyingAurocs.map(v => v.toFixed(2)),
+            textposition: 'outside',
+            hovertemplate: '%{x}<br>Lying: %{y:.3f}<extra></extra>'
+        }
+    ];
+
+    // Add random baseline reference
+    traces.push({
+        x: datasets.map(d => d.toUpperCase()),
+        y: datasets.map(() => 0.5),
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#888', dash: 'dot', width: 1 },
+        name: 'Random (0.5)',
+        hoverinfo: 'skip'
+    });
+
+    const layout = window.buildChartLayout({
+        preset: 'barChart',
+        traces,
+        height,
+        legendPosition: 'above',
+        xaxis: { title: { text: 'Dataset', standoff: 5 } },
+        yaxis: { title: { text: 'AUROC', standoff: 5 }, range: [0, 1.1] },
+        barmode: 'group',
+        bargap: 0.2
+    });
+
+    const chartDiv = document.createElement('div');
+    container.appendChild(chartDiv);
+    await window.renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
