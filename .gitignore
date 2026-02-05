@@ -28,6 +28,8 @@ docs/remote_setup.md
 
 # System
 .DS_Store
+node_modules/
+.wrangler/
 sae/gemma-scope-2b-pt-res-canonical/
 
 # Personal prep
