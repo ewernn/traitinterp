@@ -105,6 +105,8 @@ def main():
     parser.add_argument("--position", default="response__5")
     parser.add_argument("--component", default="residual")
     parser.add_argument("--extraction-variant", default="base")
+    parser.add_argument("--vector-experiment", default=None,
+                        help="Experiment to load trait vectors from (default: same as --experiment)")
     parser.add_argument("--limit", type=int, help="Max prompts to process")
     parser.add_argument("--baseline-variant", default=None,
                         help="Clean model variant (default: from experiment defaults.application)")
@@ -136,9 +138,11 @@ def main():
 
     # Load trait vectors for all layers
     print(f"\nLoading trait vectors ({args.method})...")
+    vector_exp = args.vector_experiment or args.experiment
+    vector_exp_dir = Path(f"experiments/{vector_exp}")
     trait_vectors = {}  # {trait: {layer: tensor}}
     for trait in traits:
-        vec_dir = exp_dir / "extraction" / trait / args.extraction_variant / "vectors" / args.position / args.component / args.method
+        vec_dir = vector_exp_dir / "extraction" / trait / args.extraction_variant / "vectors" / args.position / args.component / args.method
         if not vec_dir.exists():
             print(f"  {trait}: not found at {vec_dir}")
             continue
