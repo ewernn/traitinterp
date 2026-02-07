@@ -215,17 +215,21 @@ def main():
             print(f"        --replay-responses {args.prompt_set} --replay-from-variant {args.variant_a}")
             print()
 
-        # Get dimensions from first prompt
-        first = acts_a_dict[common_ids[0]]
-        n_layers = len(first['response']['activations'])
-        hidden_dim = first['response']['activations'][0][args.component].shape[-1]
-        print(f"  Layers: {n_layers}, Hidden dim: {hidden_dim}")
+        # Get dimensions from first prompt — intersect layers available in both variants
+        first_a = acts_a_dict[common_ids[0]]
+        first_b = acts_b_dict[common_ids[0]]
+        layers_a = set(first_a['response']['activations'].keys())
+        layers_b = set(first_b['response']['activations'].keys())
+        common_layers = sorted(layers_a & layers_b)
+        n_layers = max(common_layers) + 1  # for indexing into diff_vectors
+        hidden_dim = first_a['response']['activations'][common_layers[0]][args.component].shape[-1]
+        print(f"  Layers: {len(common_layers)} common (of {len(layers_a)}/{len(layers_b)}), Hidden dim: {hidden_dim}")
 
         # 1. Extract diff vectors (mean diff per layer)
         print(f"\nExtracting diff vectors (B - A)...")
         diff_vectors = torch.zeros(n_layers, hidden_dim)
 
-        for layer in tqdm(range(n_layers), desc="Layers"):
+        for layer in tqdm(common_layers, desc="Layers"):
             diffs = []
             for pid in common_ids:
                 mean_a = get_response_mean(acts_a_dict[pid], layer, args.component)
@@ -328,7 +332,12 @@ def main():
         existing_trait_data = results.get('traits', {}).get(trait, {})
         existing_effect_sizes = existing_trait_data.get('per_layer_effect_size')
 
-        for layer in available_layers:
+        # Filter to layers present in both variants' activations
+        sweep_layers = [l for l in available_layers if l in common_layers] if not args.use_existing_diff else available_layers
+        if len(sweep_layers) < len(available_layers):
+            print(f"    (filtered to {len(sweep_layers)} layers with activations in both variants)")
+
+        for layer in sweep_layers:
             # Load trait vector at this layer
             try:
                 vector, _, _ = load_vector_with_baseline(
@@ -375,7 +384,7 @@ def main():
         trait_result = {
             'method': method,
             'position': position,
-            'layers': available_layers,
+            'layers': sweep_layers,
             'per_layer_cosine_sim': per_layer_cosine_sim,
         }
 

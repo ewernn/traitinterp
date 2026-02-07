@@ -18,6 +18,10 @@ from typing import Any, Callable, List, Sequence, Union
 
 def _get_first_layer(model):
     """Get the first transformer layer, handling different model architectures."""
+    # PeftModel (LoRA): model.base_model.model.model.layers
+    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
+        if type(model).__name__ != type(model.base_model).__name__:
+            return model.base_model.model.model.layers[0]
     # Gemma 3 multimodal: model.model.language_model.layers
     if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
         return model.model.language_model.layers[0]
