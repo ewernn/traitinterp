@@ -83,6 +83,30 @@ def normalize_prompts(prompts: List[Dict]) -> List[Dict]:
     return [normalize_prompt_item(p) for p in prompts]
 
 
+def parse_layers(layers_str: str, n_layers: int) -> List[int]:
+    """Parse layer specification string into list of layer indices.
+
+    Accepts: '0,10,20,30' or '0-75:5' (range with step) or '0-25' (range).
+    """
+    layers = []
+    for part in layers_str.split(','):
+        part = part.strip()
+        if ':' in part:
+            # Range with step: '0-75:5'
+            range_part, step = part.split(':')
+            start, end = range_part.split('-')
+            layers.extend(range(int(start), int(end) + 1, int(step)))
+        elif '-' in part and not part.startswith('-'):
+            # Range: '0-25'
+            start, end = part.split('-')
+            layers.extend(range(int(start), int(end) + 1))
+        else:
+            layers.append(int(part))
+    # Filter to valid range
+    layers = sorted(set(l for l in layers if 0 <= l < n_layers))
+    return layers
+
+
 def capture_result_to_data(result, n_layers: int) -> Dict:
     """Convert CaptureResult from utils.generation to dict format for saving."""
     prompt_acts = {}
@@ -109,7 +133,8 @@ def capture_result_to_data(result, n_layers: int) -> Dict:
 
 def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response_text: str,
                                      n_layers: int, capture_mlp: bool = False,
-                                     capture_attention: bool = False) -> Dict:
+                                     capture_attention: bool = False,
+                                     layers: List[int] = None) -> Dict:
     """
     Capture residual stream activations with prefilled response (single forward pass).
 
@@ -134,8 +159,8 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
 
     # Capture all components in one forward pass using MultiLayerCapture
     # attn_contribution/mlp_contribution auto-detect architecture (post-norm for Gemma-2, o_proj for Llama)
-    with MultiLayerCapture(model, component='residual') as cap_residual:
-        with MultiLayerCapture(model, component='attn_contribution') as cap_attn:
+    with MultiLayerCapture(model, component='residual', layers=layers) as cap_residual:
+        with MultiLayerCapture(model, component='attn_contribution', layers=layers) as cap_attn:
             if capture_mlp:
                 with MultiLayerCapture(model, component='mlp_contribution') as cap_mlp:
                     with torch.no_grad():
@@ -151,7 +176,8 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
     # Split activations into prompt/response portions
     prompt_acts = {}
     response_acts = {}
-    for layer_idx in range(n_layers):
+    layer_indices = layers if layers is not None else list(range(n_layers))
+    for layer_idx in layer_indices:
         prompt_acts[layer_idx] = {}
         response_acts[layer_idx] = {}
 
@@ -208,7 +234,15 @@ def _save_capture_data(
     # Save raw residual .pt
     raw_dir = inference_dir / "raw" / "residual" / set_name
     raw_dir.mkdir(parents=True, exist_ok=True)
-    torch.save(data, raw_dir / f"{prompt_id}.pt")
+    save_data = data
+    if getattr(args, 'response_only', False):
+        # Strip prompt activations to save space (keep metadata for downstream)
+        save_data = {
+            'prompt': {k: v for k, v in data['prompt'].items() if k != 'activations'},
+            'response': data['response'],
+        }
+        save_data['prompt']['activations'] = {}
+    torch.save(save_data, raw_dir / f"{prompt_id}.pt")
 
     # Save response JSON (shared, trait-independent)
     responses_dir = inference_dir / "responses" / set_name
@@ -261,6 +295,13 @@ def main():
     # Optional capture
     parser.add_argument("--capture-mlp", action="store_true",
                        help="Also capture mlp_out activations (down_proj output)")
+    parser.add_argument("--layers", type=str, default=None,
+                       help="Only capture specific layers. Comma-separated (e.g., '0,10,20,30') "
+                            "or range with step (e.g., '0-75:5' for every 5th layer). "
+                            "Default: all layers. Reduces CPU hook overhead and storage.")
+    parser.add_argument("--response-only", action="store_true",
+                       help="Only save response token activations (skip prompt tokens). "
+                            "Dramatically reduces .pt file size for long prompts.")
 
     # Model options
     parser.add_argument("--model-variant", default=None,
@@ -390,6 +431,12 @@ def main():
         n_layers = len(get_inner_model(model).layers)
         print(f"Model has {n_layers} layers")
 
+    # Parse --layers flag
+    capture_layers = None
+    if args.layers and not is_remote:
+        capture_layers = parse_layers(args.layers, n_layers)
+        print(f"Capturing {len(capture_layers)} layers: {capture_layers}")
+
     # Get chat template setting from config (needed for batch size calculation)
     use_chat_template = config.get('use_chat_template')
     if use_chat_template is None:
@@ -483,7 +530,8 @@ def main():
                 # Capture with prefill
                 data = capture_residual_stream_prefill(
                     model, tokenizer, prompt_text, response_text,
-                    n_layers, capture_mlp=args.capture_mlp
+                    n_layers, capture_mlp=args.capture_mlp,
+                    layers=capture_layers
                 )
 
                 # Save raw .pt and response JSON
@@ -497,6 +545,8 @@ def main():
         # ================================================================
         # BATCHED CAPTURE MODE: Standard residual stream
         # ================================================================
+        if capture_layers is not None:
+            print("  WARNING: --layers is only supported in replay/prefill mode. Capturing all layers in batch mode.")
         # Prepare prompts for batching
         prompt_texts = []
         prompt_items_filtered = []

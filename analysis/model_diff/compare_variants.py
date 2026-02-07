@@ -342,7 +342,10 @@ def main():
                     per_layer_effect_size.append(0.0)
                 continue
 
-            # Cosine similarity between diff vector and trait vector
+            # Cosine similarity: cos(mean(h_b - h_a), v_trait)
+            # Measures what fraction of the activation shift is in the trait direction.
+            # High abs value = the shift is aligned with the trait (specificity test).
+            # Normalized, so magnitude of diff doesn't matter — only direction.
             cos_sim = cosine_similarity(diff_vectors[layer].float(), vector).item()
             per_layer_cosine_sim.append(cos_sim)
 
@@ -356,7 +359,11 @@ def main():
                     proj_a.append(projection(mean_a, vector, normalize_vector=True).item())
                     proj_b.append(projection(mean_b, vector, normalize_vector=True).item())
 
-                # Cohen's d (signed: positive = B > A)
+                # Cohen's d: standardized mean difference of per-prompt projection scores.
+                # Measures how much the projection score changed, in units of cross-prompt
+                # spread. Unlike cosine sim, this is sensitive to magnitude — a large shift
+                # in the trait direction produces high d even if the diff vector also has
+                # large components in other directions.
                 d = effect_size(torch.tensor(proj_b), torch.tensor(proj_a), signed=True)
                 per_layer_effect_size.append(d)
 
