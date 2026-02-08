@@ -34,6 +34,12 @@ EXCLUDES=(
   --exclude ".DS_Store"
   --exclude "**/activations/**"
   --exclude "**/inference/raw/**"
+  --exclude "**/lora/**/optimizer.pt"
+  --exclude "**/lora/**/tokenizer.json"
+  --exclude "**/lora/**/tokenizer_config.json"
+  --exclude "**/lora/**/chat_template.jinja"
+  --exclude "**/lora/**/special_tokens_map.json"
+  --exclude "**/lora/**/checkpoint-*/**"
 )
 
 case $MODE in

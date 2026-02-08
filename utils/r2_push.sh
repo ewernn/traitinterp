@@ -31,6 +31,12 @@ EXCLUDES=(
   --exclude "**/inference/*/raw/**"
   --exclude "**/results/*_activations.pt"
   --exclude "liars-bench/**"
+  --exclude "**/lora/**/optimizer.pt"
+  --exclude "**/lora/**/tokenizer.json"
+  --exclude "**/lora/**/tokenizer_config.json"
+  --exclude "**/lora/**/chat_template.jinja"
+  --exclude "**/lora/**/special_tokens_map.json"
+  --exclude "**/lora/**/checkpoint-*/**"
 )
 
 case $MODE in
@@ -90,8 +96,10 @@ esac
 #   ✅ Responses (pos.json, neg.json)
 #   ✅ Inference projections, massive_activations JSONs
 #   ✅ Metadata files
+#   ✅ LoRA adapter weights (adapter_model.safetensors, adapter_config.json)
 #   ❌ Extraction activations (activations/**/train_all_layers.pt, val_all_layers.pt) - huge, regenerable
 #   ❌ Raw inference activations (inference/{variant}/raw/*.pt) - huge, regenerable
+#   ❌ LoRA training artifacts (optimizer.pt, tokenizer.json, checkpoints) - huge, not needed for inference
 
 echo ""
 echo "✅ Push complete!"
