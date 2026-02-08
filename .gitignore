@@ -6,6 +6,7 @@ experiments/**/*.pt
 experiments/**/*.json
 experiments/**/*.jsonl
 experiments/**/*.png
+experiments/**/*.safetensors
 # BUT keep config.json (experiment settings should be versioned)
 !experiments/**/config.json
 !experiments/**/config.json
