@@ -27,11 +27,19 @@ EXCLUDES=(
   --exclude "*.pyc"
   --exclude "__pycache__/**"
   --exclude ".DS_Store"
+  # Git-tracked types — git owns code/docs/configs, R2 owns data
+  --exclude "*.py"
+  --exclude "*.md"
+  --exclude "*.txt"
+  --exclude "*.log"
+  --exclude "config.json"
+  # Large regenerable files
   --exclude "**/activations/**"
   --exclude "**/inference/*/raw/**"
   --exclude "**/results/*_activations.pt"
   --exclude "liars-bench/**"
   --exclude "temp/**"
+  # LoRA training artifacts
   --exclude "**/lora/**/optimizer.pt"
   --exclude "**/lora/**/tokenizer.json"
   --exclude "**/lora/**/tokenizer_config.json"
@@ -92,15 +100,16 @@ case $MODE in
     ;;
 esac
 
-# What gets synced to R2:
-#   ✅ Vectors (.pt in vectors/) - the extracted trait vectors
-#   ✅ Responses (pos.json, neg.json)
-#   ✅ Inference projections, massive_activations JSONs
-#   ✅ Metadata files
-#   ✅ LoRA adapter weights (adapter_model.safetensors, adapter_config.json)
-#   ❌ Extraction activations (activations/**/train_all_layers.pt, val_all_layers.pt) - huge, regenerable
-#   ❌ Raw inference activations (inference/{variant}/raw/*.pt) - huge, regenerable
-#   ❌ LoRA training artifacts (optimizer.pt, tokenizer.json, checkpoints) - huge, not needed for inference
+# Ownership split — git owns code/docs/configs, R2 owns data:
+#   R2 ✅  Vectors (.pt in vectors/)
+#   R2 ✅  Responses (pos.json, neg.json)
+#   R2 ✅  Inference projections, massive_activations JSONs
+#   R2 ✅  Metadata files (.json except config.json)
+#   R2 ✅  LoRA adapter weights (adapter_model.safetensors, adapter_config.json)
+#   Git ✅ Scripts (.py), docs (.md, .txt), config.json, logs
+#   ❌    Extraction activations (huge, regenerable)
+#   ❌    Raw inference activations (huge, regenerable)
+#   ❌    LoRA training artifacts (optimizer, tokenizer, checkpoints)
 
 echo ""
 echo "✅ Push complete!"

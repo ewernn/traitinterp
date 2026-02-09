@@ -91,7 +91,6 @@ def tokens_needed(position: str) -> Optional[int]:
         response[0]   → 1
         response[:10] → 10
         response[:]   → None (undeterminable - use fallback)
-        response[-1]  → None (undeterminable - need response length)
         all[:]        → None (undeterminable)
     """
     frame, start, stop = parse_position(position)

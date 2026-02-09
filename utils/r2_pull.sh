@@ -32,10 +32,18 @@ EXCLUDES=(
   --exclude "*.pyc"
   --exclude "__pycache__/**"
   --exclude ".DS_Store"
+  # Git-tracked types — git owns code/docs/configs, R2 owns data
+  --exclude "*.py"
+  --exclude "*.md"
+  --exclude "*.txt"
+  --exclude "*.log"
+  --exclude "config.json"
+  # Large regenerable files
   --exclude "**/activations/**"
   --exclude "**/inference/raw/**"
   --exclude "**/inference/*/raw/**"
   --exclude "temp/**"
+  # LoRA training artifacts
   --exclude "**/lora/**/optimizer.pt"
   --exclude "**/lora/**/tokenizer.json"
   --exclude "**/lora/**/tokenizer_config.json"

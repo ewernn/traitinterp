@@ -10,9 +10,6 @@
  *     paths.vectorTensor('chirp/refusal_v2', 'probe', 15, 'base')
  *     // Returns: '/experiments/gemma-2-2b/extraction/chirp/refusal_v2/base/vectors/response_all/residual/probe/layer15.pt'
  *
- *     paths.vectorTensor('chirp/refusal_v2', 'probe', 15, 'base', 'response[-1]', 'attn_out')
- *     // Returns: '/experiments/gemma-2-2b/extraction/chirp/refusal_v2/base/vectors/response_-1/attn_out/probe/layer15.pt'
- *
  *     // Activation paths
  *     paths.activationsMetadata('chirp/refusal_v2', 'base')
  *     // Returns: '/experiments/gemma-2-2b/extraction/chirp/refusal_v2/base/activations/response_all/residual/metadata.json'
@@ -254,7 +251,6 @@ class PathBuilder {
      *
      * Examples:
      *   response[:]  -> response_all
-     *   response[-1] -> response_-1
      *   response[-5:] -> response_-5_
      *   prompt[-3:] -> prompt_-3_
      *
@@ -275,7 +271,6 @@ class PathBuilder {
      *
      * Examples:
      *   response_all -> response[:]
-     *   response_-1 -> response[-1]
      *   response_-5_ -> response[-5:]
      *   prompt_-3_ -> prompt[-3:]
      *
@@ -310,7 +305,6 @@ class PathBuilder {
      *
      * Examples:
      *   response[:]  -> @resp
-     *   response[-1] -> @resp[-1]
      *   response[-5:] -> @resp[-5:]
      *   prompt[-3:] -> @p[-3:]
      *   response_all -> @resp (also accepts sanitized form)

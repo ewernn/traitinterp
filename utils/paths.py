@@ -422,7 +422,6 @@ def sanitize_position(position: str) -> str:
 
     Examples:
         response[:]  -> response_all
-        response[-1] -> response_-1
         response[-5:] -> response_-5_
         prompt[-3:] -> prompt_-3_
         all[:] -> all_all
@@ -440,7 +439,6 @@ def desanitize_position(sanitized: str) -> str:
 
     Examples:
         response_all -> response[:]
-        response_-1 -> response[-1]
         response_-5_ -> response[-5:]
         response__5 -> response[:5]
         prompt_-3_ -> prompt[-3:]
