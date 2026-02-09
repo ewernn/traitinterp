@@ -24,7 +24,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from utils.paths import get_inference_responses_dir, get_experiment_config
 from utils.json import dump_compact
 

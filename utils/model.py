@@ -27,6 +27,18 @@ import torch
 from torch.nn.functional import pad
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+# Patch for autoawq compatibility with transformers 4.57+
+# PytorchGELUTanh was renamed to GELUTanh; autoawq imports the old name.
+# Remove when autoawq drops PytorchGELUTanh import or is removed as a dependency.
+try:
+    from transformers import activations as _activations
+    if not hasattr(_activations, 'PytorchGELUTanh') and hasattr(_activations, 'GELUTanh'):
+        _activations.PytorchGELUTanh = _activations.GELUTanh
+except Exception:
+    pass
+
+DEFAULT_BNB_4BIT_QUANT_TYPE = "nf4"
+
 
 def tokenize(text, tokenizer, **kwargs):
     """
@@ -175,6 +187,7 @@ def load_model(
     dtype: torch.dtype = torch.bfloat16,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
     """
     Load model and tokenizer.
@@ -221,6 +234,7 @@ def load_model(
         quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_quant_type=bnb_4bit_quant_type,
         )
         model_kwargs["quantization_config"] = quantization_config
 
@@ -235,6 +249,7 @@ def load_model_with_lora(
     lora_adapter: str = None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
     device: str = "auto",
     dtype: torch.dtype = torch.bfloat16,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -287,6 +302,7 @@ def load_model_with_lora(
         }
         if load_in_4bit:
             bnb_kwargs["bnb_4bit_compute_dtype"] = dtype
+            bnb_kwargs["bnb_4bit_quant_type"] = bnb_4bit_quant_type
         bnb_config = BitsAndBytesConfig(**bnb_kwargs)
         model_kwargs["quantization_config"] = bnb_config
 
@@ -460,6 +476,7 @@ def load_model_or_client(
     model_name: str,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
     no_server: bool = False,
     lora_adapter: str = None,
 ):
@@ -473,7 +490,7 @@ def load_model_or_client(
 
     # LoRA requires local loading
     if lora_adapter:
-        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora_adapter, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora_adapter, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type)
         return model, tokenizer, False
 
     if not no_server:
@@ -484,5 +501,5 @@ def load_model_or_client(
         model, tokenizer = handle
         return model, tokenizer, False
     else:
-        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type)
         return model, tokenizer, False

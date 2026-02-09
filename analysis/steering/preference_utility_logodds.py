@@ -27,43 +27,16 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import torch
 from tqdm import tqdm
 
+from analysis.steering.logit_difference import score_completion
 from core.hooks import SteeringHook, get_hook_path
 from utils.model import load_model, tokenize
 from utils.paths import get_model_variant
 from utils.vectors import load_vector
-
-
-def score_completion(model, tokenizer, context: str, completion: str) -> float:
-    """Length-normalized log probability of completion given context.
-
-    Copied from analysis/steering/logit_difference.py:score_completion()
-    to avoid import dependency on that script's argparse.
-    """
-    ctx_ids = tokenize(context, tokenizer).input_ids.to(model.device)
-    full_text = context + completion
-    full_ids = tokenize(full_text, tokenizer).input_ids.to(model.device)
-
-    ctx_len = ctx_ids.shape[1]
-    if full_ids.shape[1] <= ctx_len:
-        return float("-inf")
-
-    with torch.no_grad():
-        logits = model(full_ids).logits[0]
-
-    completion_logits = logits[ctx_len - 1 : -1]
-    completion_targets = full_ids[0, ctx_len:]
-
-    log_probs = torch.log_softmax(completion_logits, dim=-1)
-    token_log_probs = log_probs.gather(1, completion_targets.unsqueeze(1)).squeeze()
-
-    if token_log_probs.dim() == 0:
-        return token_log_probs.item()
-    return token_log_probs.sum().item() / len(token_log_probs)
 
 
 def compute_utility_odds(L_p: float, L_n: float, eps: float = 1e-8) -> float:

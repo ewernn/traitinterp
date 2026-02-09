@@ -225,6 +225,7 @@ async def run_ablation_evaluation(
     judge=None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    bnb_4bit_quant_type: str = "nf4",
     lora_adapter: str = None,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
@@ -265,7 +266,7 @@ async def run_ablation_evaluation(
     # Load model if not provided
     should_close_judge = False
     if backend is None:
-        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, lora_adapter=lora_adapter)
+        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type, lora_adapter=lora_adapter)
         backend = LocalBackend.from_model(model, tokenizer)
 
     # Extract model and tokenizer from backend for internal use
@@ -409,6 +410,7 @@ async def run_evaluation(
     judge=None,
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    bnb_4bit_quant_type: str = "nf4",
     lora_adapter: str = None,
     max_new_tokens: int = 256,
     eval_prompt: Optional[str] = None,
@@ -452,6 +454,7 @@ async def run_evaluation(
             subset=None if subset == 5 else subset,  # Default 5 -> None for ablation
             backend=backend, judge=judge,
             load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit,
+            bnb_4bit_quant_type=bnb_4bit_quant_type,
             lora_adapter=lora_adapter, max_new_tokens=max_new_tokens,
             eval_prompt=eval_prompt, use_default_prompt=use_default_prompt,
             extraction_variant=extraction_variant,
@@ -483,7 +486,7 @@ async def run_evaluation(
     # Note: Steering uses hooks, so we force local mode
     should_close_judge = False
     if backend is None:
-        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, lora_adapter=lora_adapter)
+        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type, lora_adapter=lora_adapter)
         backend = LocalBackend.from_model(model, tokenizer)
 
     # Extract model and tokenizer from backend for internal use
@@ -569,6 +572,9 @@ async def run_evaluation(
             continue
 
         vec_norm = vector.norm().item()
+        if vec_norm == 0:
+            print(f"  L{layer}: Zero vector, skipping")
+            continue
 
         # Use cached norm if available, otherwise estimate
         if layer in cached_norms:
@@ -736,6 +742,8 @@ def main():
                         help="Load model in 8-bit quantization (for 70B+ models)")
     parser.add_argument("--load-in-4bit", action="store_true",
                         help="Load model in 4-bit quantization")
+    parser.add_argument("--bnb-4bit-quant-type", default="nf4",
+                        help="BnB 4-bit quant type: 'nf4' (default) or 'fp4'")
     parser.add_argument("--vector-experiment", default=None,
                         help="Experiment to load vectors from (defaults to --experiment). "
                              "Use for cross-experiment steering, e.g., FP16 vectors on quantized model.")
@@ -868,6 +876,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
             model_name,
             load_in_8bit=args.load_in_8bit,
             load_in_4bit=args.load_in_4bit,
+            bnb_4bit_quant_type=args.bnb_4bit_quant_type,
             lora_adapter=lora
         )
         backend = LocalBackend.from_model(model, tokenizer)
@@ -928,6 +937,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                 judge=judge,
                 load_in_8bit=args.load_in_8bit,
                 load_in_4bit=args.load_in_4bit,
+                bnb_4bit_quant_type=args.bnb_4bit_quant_type,
                 lora_adapter=lora,
                 max_new_tokens=args.max_new_tokens,
                 eval_prompt=effective_eval_prompt,

@@ -68,15 +68,16 @@ Score:"""
 
 # Coherence prompt - grammar/structure only
 # Two-stage scoring catches relevance issues via RELEVANCE_PROMPT
-# Validated: 0.850 Spearman with cut-off tolerance (see docs/viz_findings/llm-judge-optimization.md)
+# Spearman ~0.85 with original rubric; updated rubric penalizes repetitive structure more aggressively
 COHERENCE_PROMPT = """Grammar checker. Rate 0-100.
 
-0-30: Broken text - words stuck together, gibberish, repetition ("I'm a monster. I'm a monster.")
-40-60: Rambling - self-deprecation that goes nowhere, contradicts itself
-70-100: Well-structured - clear sentences, logical flow, makes a point
+0-30: Broken text - gibberish, looping/repetitive phrases, same sentence structure repeated 3+ times
+40-60: Rambling - repetitive themes without progression, rhetorical questions that go nowhere, monologue that doesn't address the topic
+70-100: Well-structured - clear sentences, logical flow, actually makes a point or answers the question
 
 Cut-off mid-sentence is fine - score the text that exists, not the missing ending.
 Content can be offensive and still score 100 if well-written.
+Repetitive structure (e.g. "How they X. How they Y. How they Z.") is NOT well-written.
 
 Number only:"""
 

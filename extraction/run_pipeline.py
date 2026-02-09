@@ -119,11 +119,13 @@ def run_pipeline(
     position: str = 'response[:5]',
     load_in_8bit: bool = False,
     load_in_4bit: bool = False,
+    bnb_4bit_quant_type: str = "nf4",
     max_new_tokens: Optional[int] = None,
     max_concurrent: int = 20,
     paired_filter: bool = False,
     adaptive: bool = False,
     no_logitlens: bool = False,
+    backend=None,
 ):
     """Execute extraction pipeline."""
     methods = methods or ['mean_diff', 'probe', 'gradient']
@@ -164,13 +166,15 @@ def run_pipeline(
     pipeline_start = time.time()
     stage_times: Dict[str, float] = {}
 
-    backend = None
-    if needs_model:
-        load_start = time.time()
-        model, tokenizer = load_model_with_lora(extraction_model, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-        backend = LocalBackend.from_model(model, tokenizer)
-        stage_times['model_load'] = time.time() - load_start
-        print(f"Model loaded. ({format_duration(stage_times['model_load'])})")
+    if backend is None:
+        if needs_model:
+            load_start = time.time()
+            model, tokenizer = load_model_with_lora(extraction_model, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type)
+            backend = LocalBackend.from_model(model, tokenizer)
+            stage_times['model_load'] = time.time() - load_start
+            print(f"Model loaded. ({format_duration(stage_times['model_load'])})")
+    else:
+        print(f"Using pre-loaded model.")
     use_chat_template = False if base_model else (backend and backend.tokenizer.chat_template is not None)
 
     for trait in traits:
@@ -357,6 +361,8 @@ if __name__ == "__main__":
     parser.add_argument("--neg-threshold", type=int, default=40)
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
+    parser.add_argument("--bnb-4bit-quant-type", default="nf4",
+                        help="BnB 4-bit quant type: 'nf4' (default) or 'fp4'")
     parser.add_argument("--max-new-tokens", type=int, default=None,
                         help="Response tokens to generate (auto from position if not specified)")
     parser.add_argument("--max-concurrent", type=int, default=20,
@@ -400,6 +406,7 @@ if __name__ == "__main__":
         position=args.position,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
+        bnb_4bit_quant_type=args.bnb_4bit_quant_type,
         max_new_tokens=args.max_new_tokens,
         max_concurrent=args.max_concurrent,
         paired_filter=args.paired_filter,

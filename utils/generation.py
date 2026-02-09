@@ -343,7 +343,7 @@ def estimate_kv_cache_gb(
         config = config.text_config
     num_layers = config.num_hidden_layers
     num_kv_heads = getattr(config, "num_key_value_heads", config.num_attention_heads)
-    head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
+    head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
 
     # KV cache: 2 (K,V) × num_kv_heads × head_dim × seq_len × batch × layers × dtype
     kv_bytes = 2 * num_kv_heads * head_dim * seq_len * batch_size * num_layers * dtype_bytes
@@ -465,7 +465,7 @@ def calculate_max_batch_size(
     if env_max:
         max_batch = min(max_batch, int(env_max))
 
-    result = max(1, min(max_batch, 128))
+    result = max(1, min(max_batch, 512))
 
     # Diagnostic output
     print(f"    Auto batch size: {result} (mode={mode}, free={free_gb:.1f}GB, "

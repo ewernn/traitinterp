@@ -102,12 +102,7 @@ def extract_answer_text(answer: str) -> str:
 
 
 def score_completion(model, tokenizer, context: str, completion: str) -> float:
-    """
-    Compute length-normalized log probability of a completion given context.
-
-    Same approach as score_completions() in benchmark/evaluate.py but returns
-    the raw score rather than picking a winner.
-    """
+    """Compute length-normalized log probability of a completion given context."""
     ctx_ids = tokenize(context, tokenizer).input_ids.to(model.device)
     full_text = context + completion
     full_ids = tokenize(full_text, tokenizer).input_ids.to(model.device)
@@ -235,28 +230,60 @@ def main():
             print(f"  Steering: {args.steer} layer={args.layer or 'auto'} coef={args.coef}")
         return
 
-    # Load model
-    print(f"\nLoading model...")
-    model, tokenizer = load_model_with_lora(
-        model_name,
-        lora_adapter=lora,
+    run_logit_diff(
+        experiment=args.experiment,
+        dataset_path=args.dataset,
+        questions=questions,
+        model_variant=model_variant,
+        model_name=model_name,
+        lora=lora,
+        steer=args.steer,
+        layer=args.layer,
+        coef=args.coef,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
 
+
+def run_logit_diff(
+    experiment: str,
+    dataset_path: str,
+    questions: list[dict],
+    model_variant: str,
+    model_name: str,
+    lora: str = None,
+    steer: str = None,
+    layer: int = None,
+    coef: float = 6.0,
+    load_in_8bit: bool = False,
+    load_in_4bit: bool = False,
+    model=None,
+    tokenizer=None,
+):
+    """Run logit difference evaluation. Accepts optional pre-loaded model/tokenizer."""
+    steering_info = {"trait": steer, "layer": layer, "coef": coef} if steer else None
+
+    # Load model if not provided
+    if model is None:
+        print(f"\nLoading model...")
+        model, tokenizer = load_model_with_lora(
+            model_name,
+            lora_adapter=lora,
+            load_in_8bit=load_in_8bit,
+            load_in_4bit=load_in_4bit,
+        )
+
     # Setup steering if requested
     steering_ctx = None
-    if args.steer:
+    if steer:
         # Auto-select best vector if no layer specified
-        if args.layer is None:
-            best = get_best_vector(args.experiment, args.steer)
+        if layer is None:
+            best = get_best_vector(experiment, steer)
             layer = best["layer"]
             method = best["method"]
             print(f"Auto-selected: layer {layer}, method {method} (source: {best['source']})")
         else:
-            layer = args.layer
-            # Find what method exists at this layer
-            best = get_best_vector(args.experiment, args.steer, layer=args.layer)
+            best = get_best_vector(experiment, steer, layer=layer)
             method = best["method"]
             print(f"Layer {layer}: method={method} (source: {best['source']})")
 
@@ -266,16 +293,16 @@ def main():
         steering_info["position"] = best.get("position", "response[:5]")
 
         vector = load_vector(
-            args.experiment, args.steer, layer, model_variant,
+            experiment, steer, layer, model_variant,
             method, steering_info["component"], steering_info["position"],
         )
         if vector is None:
             print(f"Error: Vector not found for L{layer} {method}")
-            sys.exit(1)
+            return None
 
         path = get_hook_path(layer)
-        steering_ctx = SteeringHook(model, vector, path, coefficient=args.coef)
-        print(f"Steering active: {args.steer} L{layer} coef={args.coef}")
+        steering_ctx = SteeringHook(model, vector, path, coefficient=coef)
+        print(f"Steering active: {steer} L{layer} coef={coef}")
 
     # Compute logit differences
     print(f"\nComputing logit differences on {len(questions)} questions...")
@@ -301,21 +328,21 @@ def main():
         "n_total": len(per_question),
         "per_question": per_question,
         "metadata": {
-            "experiment": args.experiment,
+            "experiment": experiment,
             "model": model_name,
             "model_variant": model_variant,
-            "dataset": args.dataset,
+            "dataset": dataset_path,
             "steering": steering_info,
-            "load_in_8bit": args.load_in_8bit,
-            "load_in_4bit": args.load_in_4bit,
+            "load_in_8bit": load_in_8bit,
+            "load_in_4bit": load_in_4bit,
             "timestamp": datetime.now().isoformat(),
         },
     }
 
     # Save results
-    exp_base = get_path("experiments.base", experiment=args.experiment)
-    if args.steer:
-        output_dir = exp_base / "steering" / args.steer
+    exp_base = get_path("experiments.base", experiment=experiment)
+    if steer:
+        output_dir = exp_base / "steering" / steer
     else:
         output_dir = exp_base / "steering"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -324,6 +351,7 @@ def main():
     with open(output_file, "w") as f:
         json.dump(output, f, indent=2)
     print(f"Saved to: {output_file}")
+    return output
 
 
 if __name__ == "__main__":
