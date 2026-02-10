@@ -551,7 +551,7 @@ def main():
         # BATCHED CAPTURE MODE: Standard residual stream
         # ================================================================
         if capture_layers is not None:
-            print(f"  --layers: will filter to {len(capture_layers)} layers after capture")
+            print(f"  --layers: hooking {len(capture_layers)} of {n_layers} layers")
         # Prepare prompts for batching
         prompt_texts = []
         prompt_items_filtered = []
@@ -617,6 +617,7 @@ def main():
                 capture_mlp=args.capture_mlp,
                 show_progress=True,
                 yield_per_batch=True,
+                layers=capture_layers,
             )
 
             # Process and save after each batch (crash-resilient)

@@ -171,7 +171,7 @@ def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
     components = ['attn_contribution', 'residual']
     norms = []
 
-    for layer in range(n_layers):
+    for layer in sorted(activations.keys()):
         layer_norms = []
         for component in components:
             if component in activations[layer] and activations[layer][component].numel() > 0:

@@ -474,7 +474,7 @@ def calculate_max_batch_size(
     return result
 
 
-def create_residual_storage(n_layers: int, capture_mlp: bool = False) -> Dict:
+def create_residual_storage(n_layers: int, capture_mlp: bool = False, layers: List[int] = None) -> Dict:
     """Create storage for residual stream capture.
 
     Components captured:
@@ -485,7 +485,8 @@ def create_residual_storage(n_layers: int, capture_mlp: bool = False) -> Dict:
     components = ['residual', 'attn_out']
     if capture_mlp:
         components.append('mlp_out')
-    return {i: {k: [] for k in components} for i in range(n_layers)}
+    layer_indices = layers if layers is not None else list(range(n_layers))
+    return {i: {k: [] for k in components} for i in layer_indices}
 
 
 def setup_residual_hooks(
@@ -494,7 +495,8 @@ def setup_residual_hooks(
     n_layers: int,
     mode: str,
     capture_mlp: bool = False,
-    layer_prefix: str = "model.layers"
+    layer_prefix: str = "model.layers",
+    layers: List[int] = None,
 ):
     """
     Register hooks for residual stream capture. Uses get_hook_path for consistency.
@@ -502,10 +504,11 @@ def setup_residual_hooks(
     Args:
         hook_manager: HookManager instance
         storage: Dict from create_residual_storage()
-        n_layers: Number of layers
+        n_layers: Number of layers (used only if layers is None)
         mode: 'prompt' (capture all positions) or 'response' (capture last position)
         capture_mlp: Whether to also capture mlp_out
         layer_prefix: Path prefix (e.g. "model.layers" or "base_model.model.model.layers")
+        layers: Specific layer indices to hook (default: all n_layers)
 
     Captures:
         - 'residual': layer output
@@ -521,7 +524,8 @@ def setup_residual_hooks(
                 storage[layer_idx][component].append(out_t.detach().cpu())
         return hook
 
-    for i in range(n_layers):
+    layer_indices = layers if layers is not None else list(range(n_layers))
+    for i in layer_indices:
         # Layer output (residual stream)
         hook_manager.add_forward_hook(
             get_hook_path(i, 'residual', layer_prefix),
@@ -551,6 +555,7 @@ def generate_with_capture(
     capture_mlp: bool = False,
     show_progress: bool = True,
     yield_per_batch: bool = False,
+    layers: List[int] = None,
 ):
     """
     Batched generation with per-token activation capture.
@@ -569,6 +574,7 @@ def generate_with_capture(
         show_progress: Whether to show progress bars
         yield_per_batch: If True, yield List[CaptureResult] after each batch (generator mode).
                          If False, return all results at end (default, backwards compatible).
+        layers: Specific layer indices to capture (default: all). Reduces hook overhead.
 
     Returns:
         If yield_per_batch=False: List of CaptureResult, one per prompt
@@ -606,6 +612,7 @@ def generate_with_capture(
                 batch_results = _capture_batch(
                     model, tokenizer, batch_prompts, n_layers, hidden_size,
                     max_new_tokens, temperature, capture_mlp, show_progress=False,
+                    layers=layers,
                 )
                 if show_progress and hasattr(pbar, 'set_postfix_str'):
                     pbar.set_postfix_str(get_gpu_stats())
@@ -619,6 +626,7 @@ def generate_with_capture(
             batch_results = _capture_batch(
                 model, tokenizer, batch_prompts, n_layers, hidden_size,
                 max_new_tokens, temperature, capture_mlp, show_progress,
+                layers=layers,
             )
             if show_progress and hasattr(pbar, 'set_postfix_str'):
                 pbar.set_postfix_str(get_gpu_stats())
@@ -629,6 +637,7 @@ def generate_with_capture(
 def _capture_batch(
     model, tokenizer, prompts: List[str], n_layers: int, hidden_size: int,
     max_new_tokens: int, temperature: float, capture_mlp: bool, show_progress: bool,
+    layers: List[int] = None,
 ) -> List[CaptureResult]:
     """Capture activations for a single batch with TRUE batching (1 forward pass)."""
 
@@ -642,12 +651,12 @@ def _capture_batch(
     prompt_lens = batch['lengths']
 
     # Storage: [layer][component] -> list of tensors
-    prompt_storage = create_residual_storage(n_layers, capture_mlp)
-    response_storage = create_residual_storage(n_layers, capture_mlp)
+    prompt_storage = create_residual_storage(n_layers, capture_mlp, layers=layers)
+    response_storage = create_residual_storage(n_layers, capture_mlp, layers=layers)
 
     # Prompt phase: single forward pass
     with HookManager(model) as hooks:
-        setup_residual_hooks(hooks, prompt_storage, n_layers, 'prompt', capture_mlp=capture_mlp, layer_prefix=layer_prefix)
+        setup_residual_hooks(hooks, prompt_storage, n_layers, 'prompt', capture_mlp=capture_mlp, layer_prefix=layer_prefix, layers=layers)
         with torch.no_grad():
             model(**inputs)
 
@@ -665,7 +674,7 @@ def _capture_batch(
     for _ in gen_iter:
         # Single forward pass with hooks capturing all batch items
         with HookManager(model) as hooks:
-            setup_residual_hooks(hooks, response_storage, n_layers, 'response', capture_mlp=capture_mlp, layer_prefix=layer_prefix)
+            setup_residual_hooks(hooks, response_storage, n_layers, 'response', capture_mlp=capture_mlp, layer_prefix=layer_prefix, layers=layers)
             with torch.no_grad():
                 outputs = model(
                     input_ids=context,
@@ -715,7 +724,8 @@ def _capture_batch(
         prompt_acts = {}
         response_acts = {}
 
-        for layer_idx in range(n_layers):
+        layer_indices = layers if layers is not None else list(range(n_layers))
+        for layer_idx in layer_indices:
             prompt_acts[layer_idx] = {}
             response_acts[layer_idx] = {}
 
