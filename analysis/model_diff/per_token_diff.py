@@ -118,6 +118,8 @@ def main():
     parser.add_argument('--variant-a', required=True, help='Baseline variant (e.g., instruct)')
     parser.add_argument('--variant-b', required=True, help='Comparison variant (e.g., rm_lora)')
     parser.add_argument('--prompt-set', required=True)
+    parser.add_argument('--variant-a-prompt-set', default=None,
+                        help='Prompt set for variant-a if different from --prompt-set (e.g., for replay data)')
     parser.add_argument('--trait', required=True, help='Single trait (e.g., rm_hack/ulterior_motive) or "all"')
     parser.add_argument('--top-pct', type=float, default=5, help='Print top N%% of clauses (default: 5)')
     args = parser.parse_args()
@@ -142,7 +144,8 @@ def main():
         print(f'Trait: {trait}')
         print(f'{"="*60}')
 
-        proj_a_dir = exp_dir / 'inference' / args.variant_a / 'projections' / trait / args.prompt_set
+        prompt_set_a = args.variant_a_prompt_set or args.prompt_set
+        proj_a_dir = exp_dir / 'inference' / args.variant_a / 'projections' / trait / prompt_set_a
         proj_b_dir = exp_dir / 'inference' / args.variant_b / 'projections' / trait / args.prompt_set
         resp_dir = exp_dir / 'inference' / args.variant_b / 'responses' / args.prompt_set
 

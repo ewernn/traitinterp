@@ -228,6 +228,7 @@ def capture_residual_stream_prefill(model, tokenizer, prompt_text: str, response
 def _save_capture_data(
     data: Dict, prompt_item: Dict, set_name: str, inference_dir: Path,
     args, model_name: str = None, lora_adapter: str = None,
+    system_prompt: str = None,
 ):
     """Save captured data: raw .pt and response JSON.
 
@@ -262,7 +263,7 @@ def _save_capture_data(
     response_data = {
         'prompt': data['prompt']['text'],
         'response': data['response']['text'],
-        'system_prompt': None,
+        'system_prompt': system_prompt,
         'tokens': prompt_tokens + response_tokens,
         'token_ids': prompt_token_ids + response_token_ids,
         'prompt_end': len(prompt_tokens),
@@ -362,6 +363,7 @@ def main():
         # Handle both {"prompts": [...]} and bare [...] formats
         prompts = data.get('prompts', data) if isinstance(data, dict) else data
         prompts = normalize_prompts(prompts)
+        system_prompt = data.get('system_prompt') if isinstance(data, dict) else None
         prompt_sets = [(args.prompt_set_name, prompts)]
         print(f"Loaded {len(prompts)} prompts from {prompt_file}")
     elif args.prompt_set:
@@ -372,11 +374,13 @@ def main():
         with open(prompt_file) as f:
             data = json.load(f)
         prompts = normalize_prompts(data['prompts'])
+        system_prompt = data.get('system_prompt')
         prompt_sets = [(args.prompt_set, prompts)]
         print(f"Loaded {len(prompts)} prompts from {args.prompt_set}")
     else:
         # Load all JSON prompt sets
         prompt_sets = []
+        system_prompt = None  # No system prompt for multi-set mode
         for f in sorted(prompts_source.glob("*.json")):
             with open(f) as fp:
                 data = json.load(fp)
@@ -384,6 +388,9 @@ def main():
                 prompts = normalize_prompts(data['prompts'])
                 prompt_sets.append((f.stem, prompts))
         print(f"Found {len(prompt_sets)} prompt sets")
+
+    if system_prompt:
+        print(f"System prompt: {system_prompt[:80]}...")
 
     # Load experiment config
     config = load_experiment_config(args.experiment)
@@ -457,7 +464,7 @@ def main():
             for set_name, prompts in prompt_sets:
                 for prompt_item in prompts:
                     raw_prompt = prompt_item.get('text') or prompt_item.get('prompt')
-                    prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
+                    prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template, system_prompt=system_prompt)
 
                     # Account for prefill if set
                     if args.prefill:
@@ -530,7 +537,7 @@ def main():
 
                 # Format prompt
                 raw_prompt = prompt_item.get('text') or prompt_item.get('prompt')
-                prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
+                prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template, system_prompt=system_prompt)
 
                 # Capture with prefill
                 data = capture_residual_stream_prefill(
@@ -542,7 +549,8 @@ def main():
                 # Save raw .pt and response JSON
                 _save_capture_data(
                     data, prompt_item, set_name, inference_dir, args,
-                    model_name=model_name, lora_adapter=lora
+                    model_name=model_name, lora_adapter=lora,
+                    system_prompt=system_prompt
                 )
 
             continue  # Done with this prompt set
@@ -566,7 +574,7 @@ def main():
                     continue
 
             raw_prompt = prompt_item.get('text') or prompt_item.get('prompt')
-            prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template)
+            prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template, system_prompt=system_prompt)
             # Append prefill if provided (for prefill attack testing)
             if args.prefill:
                 prompt_text = prompt_text + args.prefill
@@ -594,7 +602,8 @@ def main():
                 data = capture_result_to_data(result, n_layers, layers=capture_layers)
                 _save_capture_data(
                     data, prompt_item, set_name, inference_dir, args,
-                    model_name=model_name, lora_adapter=lora
+                    model_name=model_name, lora_adapter=lora,
+                    system_prompt=system_prompt
                 )
         else:
             # Local: batched generator for crash resilience
