@@ -491,7 +491,10 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
         # Load raw activations
         data = torch.load(raw_file, weights_only=False)
-        n_layers = len(data['prompt']['activations'])
+        # Handle --response-only .pt files (no prompt activations)
+        prompt_acts = data['prompt'].get('activations', {})
+        response_acts = data['response']['activations']
+        n_layers = len(response_acts) or len(prompt_acts)
 
         # Ensure response JSON exists (trait-independent, stored once)
         responses_dir = inference_dir / "responses" / prompt_set
@@ -518,15 +521,15 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 dump_compact(response_data, f)
 
         # Compute activation norms (trait-independent, computed once per prompt)
-        prompt_norms = compute_activation_norms(data['prompt']['activations'], n_layers)
-        response_norms = compute_activation_norms(data['response']['activations'], n_layers)
+        prompt_norms = compute_activation_norms(prompt_acts, n_layers) if prompt_acts else []
+        response_norms = compute_activation_norms(response_acts, n_layers)
 
         # Compute logit lens if requested
         logit_lens_data = None
         if args.logit_lens and model is not None:
             logit_lens_data = {
-                'prompt': compute_logit_lens_from_raw(data['prompt']['activations'], model, tokenizer, n_layers),
-                'response': compute_logit_lens_from_raw(data['response']['activations'], model, tokenizer, n_layers)
+                'prompt': compute_logit_lens_from_raw(prompt_acts, model, tokenizer, n_layers) if prompt_acts else {},
+                'response': compute_logit_lens_from_raw(response_acts, model, tokenizer, n_layers)
             }
 
         # Project onto each trait
@@ -549,11 +552,12 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                     if first_layer is None:
                         first_layer = layer
 
-                    prompt_proj = project_onto_vector(data['prompt']['activations'], vector, layer, component=args.component)
-                    response_proj = project_onto_vector(data['response']['activations'], vector, layer, component=args.component)
+                    prompt_proj = project_onto_vector(prompt_acts, vector, layer, component=args.component) if prompt_acts else []
+                    response_proj = project_onto_vector(response_acts, vector, layer, component=args.component)
 
                     if args.centered and baseline != 0.0:
-                        prompt_proj = prompt_proj - baseline
+                        if prompt_proj:
+                            prompt_proj = prompt_proj - baseline
                         response_proj = response_proj - baseline
 
                     all_projections.append({
@@ -561,13 +565,13 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                         'layer': layer,
                         'selection_source': selection_source,
                         'baseline': baseline,
-                        'prompt': prompt_proj.tolist(),
+                        'prompt': prompt_proj.tolist() if hasattr(prompt_proj, 'tolist') else prompt_proj,
                         'response': response_proj.tolist()
                     })
 
                 # Token norms from first vector's layer
-                prompt_token_norms = compute_token_norms(data['prompt']['activations'], first_layer)
-                response_token_norms = compute_token_norms(data['response']['activations'], first_layer)
+                prompt_token_norms = compute_token_norms(prompt_acts, first_layer) if prompt_acts else []
+                response_token_norms = compute_token_norms(response_acts, first_layer)
 
                 # Multi-vector format
                 proj_data = {
@@ -597,15 +601,16 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 # Single vector: vectors_data is a tuple
                 (vector, method, vector_path, layer, vec_metadata, selection_source, baseline) = vectors_data
 
-                prompt_proj = project_onto_vector(data['prompt']['activations'], vector, layer, component=args.component)
-                response_proj = project_onto_vector(data['response']['activations'], vector, layer, component=args.component)
+                prompt_proj = project_onto_vector(prompt_acts, vector, layer, component=args.component) if prompt_acts else []
+                response_proj = project_onto_vector(response_acts, vector, layer, component=args.component)
 
                 if args.centered and baseline != 0.0:
-                    prompt_proj = prompt_proj - baseline
+                    if prompt_proj:
+                        prompt_proj = prompt_proj - baseline
                     response_proj = response_proj - baseline
 
-                prompt_token_norms = compute_token_norms(data['prompt']['activations'], layer)
-                response_token_norms = compute_token_norms(data['response']['activations'], layer)
+                prompt_token_norms = compute_token_norms(prompt_acts, layer) if prompt_acts else []
+                response_token_norms = compute_token_norms(response_acts, layer)
 
                 # Single-vector format (unchanged)
                 proj_data = {
@@ -630,7 +635,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                         'projection_date': datetime.now().isoformat()
                     },
                     'projections': {
-                        'prompt': prompt_proj.tolist(),
+                        'prompt': prompt_proj.tolist() if hasattr(prompt_proj, 'tolist') else prompt_proj,
                         'response': response_proj.tolist()
                     },
                     'activation_norms': {
@@ -649,9 +654,9 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                     vec_components = {dim: vector[dim].item() for dim in analysis_massive_dims if dim < len(vector)}
 
                     prompt_dim_vals = extract_massive_dim_values(
-                        data['prompt']['activations'], analysis_massive_dims, layer, args.component)
+                        prompt_acts, analysis_massive_dims, layer, args.component) if prompt_acts else {}
                     response_dim_vals = extract_massive_dim_values(
-                        data['response']['activations'], analysis_massive_dims, layer, args.component)
+                        response_acts, analysis_massive_dims, layer, args.component)
 
                     proj_data['massive_dim_data'] = {
                         'dims': analysis_massive_dims,
