@@ -159,8 +159,8 @@ async function renderPromptPicker() {
             </div>
             ${promptNote ? `<div class="pp-note">${promptNote}</div>` : ''}
             <div class="pp-text">
-                <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, 0, window.state.promptPickerCache?.nPromptTokens || 0)}</div>
-                <div><strong>Response:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, window.state.promptPickerCache?.nPromptTokens || 0, tokenList.length)}</div>
+                <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, 0, window.state.promptPickerCache?.nPromptTokens || 0, null, null)}</div>
+                <div><strong>Response:</strong> ${buildHighlightedText(tokenList, window.state.currentTokenIndex, window.state.promptPickerCache?.nPromptTokens || 0, tokenList.length, window.state.promptPickerCache?.annotationTokenRanges, window.state.promptPickerCache?.nPromptTokens)}</div>
             </div>
             ${tokenSliderHtml}
         </div>
@@ -185,7 +185,7 @@ async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
     let data = null;
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const modelVariant = window.getVariantForCurrentPromptSet();
 
     // Try shared response data first (new format)
     try {
@@ -231,6 +231,17 @@ async function fetchPromptPickerData() {
     }
     const allTokens = [...promptTokenList, ...responseTokenList];
 
+    // Fetch annotation token ranges for response highlighting
+    let annotationTokenRanges = [];
+    if (responseTokenList.length > 0 && responseText) {
+        const modelVariant = window.getVariantForCurrentPromptSet();
+        annotationTokenRanges = await window.annotations.getAnnotationTokenRanges(
+            window.state.currentExperiment, modelVariant,
+            window.state.currentPromptSet, window.state.currentPromptId,
+            responseTokenList, responseText
+        );
+    }
+
     window.state.promptPickerCache = {
         promptSet: window.state.currentPromptSet,
         promptId: window.state.currentPromptId,
@@ -240,7 +251,8 @@ async function fetchPromptPickerData() {
         responseTokens: responseTokenList.length,
         allTokens: allTokens,
         nPromptTokens: promptTokenList.length,
-        tags: data.tags || data.metadata?.tags || []  // Support both flat and legacy schemas
+        tags: data.tags || data.metadata?.tags || [],  // Support both flat and legacy schemas
+        annotationTokenRanges: annotationTokenRanges  // [start, end) in response token space
     };
 
     // Store tags in per-prompt cache for rendering buttons
@@ -395,9 +407,10 @@ function setupPromptPickerListeners() {
                 // Update highlighted text
                 const textDiv = container.querySelector('.pp-text');
                 if (textDiv) {
+                    const annRanges = window.state.promptPickerCache?.annotationTokenRanges;
                     textDiv.innerHTML = `
-                        <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, newIdx, 0, nPromptTokens)}</div>
-                        <div><strong>Response:</strong> ${buildHighlightedText(tokenList, newIdx, nPromptTokens, tokenList.length)}</div>
+                        <div><strong>Prompt:</strong> ${buildHighlightedText(tokenList, newIdx, 0, nPromptTokens, null, null)}</div>
+                        <div><strong>Response:</strong> ${buildHighlightedText(tokenList, newIdx, nPromptTokens, tokenList.length, annRanges, nPromptTokens)}</div>
                     `;
                 }
                 // Update plot highlights without full re-render
@@ -422,7 +435,7 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
 
     if (window.state.currentView === 'inference') {
         // Standard shapes for all inference plots
-        const shapes = [
+        const baseShapes = [
             { type: 'line', x0: separatorX, x1: separatorX, y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 2, dash: 'dash' } },
             { type: 'line', x0: highlightX, x1: highlightX, y0: 0, y1: 1, yref: 'paper', line: { color: primaryColor, width: 2 } }
         ];
@@ -438,22 +451,38 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
         plotIds.forEach(id => {
             const plotDiv = document.getElementById(id);
             if (plotDiv && plotDiv.data) {
-                Plotly.relayout(plotDiv, { shapes });
+                // Preserve existing annotation rect shapes (from renderCombinedGraph)
+                const existingAnnotationShapes = (plotDiv.layout?.shapes || [])
+                    .filter(s => s.type === 'rect' && s.fillcolor?.includes('255, 180, 60'));
+                Plotly.relayout(plotDiv, { shapes: [...existingAnnotationShapes, ...baseShapes] });
             }
         });
     }
 }
 
 /**
- * Build text with the current token highlighted.
+ * Build text with the current token highlighted and optional annotation marks.
  * @param {string[]} tokenList - Full list of all tokens
  * @param {number} currentIdx - Absolute index of current token
  * @param {number} startIdx - Start of range to display (inclusive)
  * @param {number} endIdx - End of range to display (exclusive)
+ * @param {Array<[number, number]>} annotationTokenRanges - Annotation ranges in response-token space
+ * @param {number} nPromptTokens - Number of prompt tokens (for offset calculation)
  */
-function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx) {
+function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotationTokenRanges, nPromptTokens) {
     if (!tokenList || tokenList.length === 0) {
         return 'Loading...';
+    }
+
+    // Build a Set of absolute token indices that are annotated
+    const annotatedTokens = new Set();
+    if (annotationTokenRanges && nPromptTokens !== undefined) {
+        for (const [rangeStart, rangeEnd] of annotationTokenRanges) {
+            // Convert response-token-space to absolute token indices
+            for (let t = rangeStart; t < rangeEnd; t++) {
+                annotatedTokens.add(nPromptTokens + t);
+            }
+        }
     }
 
     let result = '';
@@ -462,9 +491,15 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx) {
         const token = tokenList[i];
         if (!token) continue;
         const escaped = window.escapeHtml(token);
+        const isAnnotated = annotatedTokens.has(i);
+        const isCurrent = i === currentIdx;
 
-        if (i === currentIdx) {
+        if (isCurrent && isAnnotated) {
+            result += `<mark class="annotation"><span class="token-highlight">${escaped}</span></mark>`;
+        } else if (isCurrent) {
             result += `<span class="token-highlight">${escaped}</span>`;
+        } else if (isAnnotated) {
+            result += `<mark class="annotation">${escaped}</mark>`;
         } else {
             result += escaped;
         }
@@ -480,7 +515,7 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx) {
 async function preloadTagsForSet(promptSet) {
     if (!promptSet) return;
 
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const modelVariant = window.getVariantForCurrentPromptSet();
     const tagsUrl = `/experiments/${window.state.currentExperiment}/inference/${modelVariant}/responses/${promptSet}/_tags.json`;
 
     try {

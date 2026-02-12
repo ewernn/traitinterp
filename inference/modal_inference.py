@@ -55,6 +55,7 @@ MODEL_GPU_MAP = {
     "Qwen/Qwen2.5-7B-Instruct": "A10G",
     "Qwen/Qwen2.5-14B-Instruct": "A10G",
     "Qwen/Qwen2.5-32B-Instruct": "A100",
+    "meta-llama/Llama-3.1-8B-Instruct": "A10G",
 }
 
 # System prompt for live chat inference
@@ -134,6 +135,69 @@ def warmup(model_name: str = "Qwen/Qwen3-1.7B") -> dict:
         "load_time": round(load_time, 2),
         "num_layers": model.config.num_hidden_layers,
     }
+
+
+@app.function(
+    gpu="A10G",
+    image=image,
+    volumes={"/models": volume},
+    timeout=600,
+    secrets=[modal.Secret.from_name("huggingface")],
+)
+def generate_batch_remote(
+    model_name: str,
+    scenarios: list[dict],
+    max_new_tokens: int = 32,
+    temperature: float = 0.0,
+) -> list[str]:
+    """
+    Batch text generation on Modal GPU.
+
+    Takes raw scenario dicts (same shape as load_scenarios output) and returns
+    generated response strings. Handles prompt formatting internally.
+
+    Args:
+        model_name: HuggingFace model ID
+        scenarios: [{"prompt": str, "system_prompt": str|None}, ...]
+        max_new_tokens: Max tokens per response
+        temperature: Sampling temperature (0.0 for greedy)
+
+    Returns:
+        List of response strings, one per scenario
+    """
+    import sys
+    sys.path.insert(0, "/root")
+
+    from utils.model_registry import is_base_model
+    from utils.model import format_prompt
+    from utils.generation import generate_batch
+
+    model, tokenizer, load_time = _load_model_and_tokenizer(model_name)
+
+    base_model = is_base_model(model_name)
+    use_chat_template = not base_model and tokenizer.chat_template is not None
+
+    print(f"Model: {model_name} ({'BASE' if base_model else 'IT'})")
+    print(f"Generating {max_new_tokens} tokens for {len(scenarios)} scenarios...")
+
+    formatted = [
+        format_prompt(
+            s['prompt'],
+            tokenizer,
+            use_chat_template=use_chat_template,
+            system_prompt=s.get('system_prompt'),
+        )
+        for s in scenarios
+    ]
+
+    responses = generate_batch(
+        model, tokenizer, formatted,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+    )
+
+    print(f"Generated {len(responses)} responses")
+    return responses
 
 
 @app.function(

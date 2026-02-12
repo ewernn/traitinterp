@@ -15,15 +15,19 @@ Convention:
 
 Recommended workflow (prefill-based, same text through both models):
     # 1. Generate responses with variant A
+    python inference/generate_responses.py \\
+        --experiment {exp} --model-variant {variant_a} --prompt-set {prompt_set}
+
+    # 2. Capture variant A activations
     python inference/capture_raw_activations.py \\
         --experiment {exp} --model-variant {variant_a} --prompt-set {prompt_set}
 
-    # 2. Replay same responses through variant B
+    # 3. Capture variant B using A's responses
     python inference/capture_raw_activations.py \\
         --experiment {exp} --model-variant {variant_b} --prompt-set {prompt_set} \\
-        --replay-responses {prompt_set} --replay-from-variant {variant_a}
+        --responses-from {variant_a}
 
-    # 3. Compare
+    # 4. Compare
     python analysis/model_diff/compare_variants.py \\
         --experiment {exp} --variant-a {variant_a} --variant-b {variant_b} \\
         --prompt-set {prompt_set} --use-best-vector
@@ -212,10 +216,10 @@ def main():
         if mismatched > 0:
             print(f"\n  WARNING: {mismatched}/{len(common_ids)} prompts have different response tokens between variants.")
             print(f"  This means each variant generated its own response, confounding representational")
-            print(f"  and behavioral differences. For clean model diffing, use --replay-responses:")
+            print(f"  and behavioral differences. For clean model diffing, use --responses-from:")
             print(f"    python inference/capture_raw_activations.py --experiment {args.experiment} \\")
             print(f"        --model-variant {args.variant_b} --prompt-set {args.prompt_set} \\")
-            print(f"        --replay-responses {args.prompt_set} --replay-from-variant {args.variant_a}")
+            print(f"        --responses-from {args.variant_a}")
             print()
 
         # Get dimensions from first prompt — intersect layers available in both variants

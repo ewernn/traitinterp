@@ -482,22 +482,28 @@ class LocalBackend(GenerationBackend):
         attention_mask: torch.Tensor,
         capture: CaptureSpec,
     ) -> Dict[int, Dict[str, torch.Tensor]]:
+        from contextlib import ExitStack
         from core import MultiLayerCapture
 
         layers = capture.layers or list(range(self._n_layers))
         results = {}
 
-        # Capture each component
-        for component in capture.components:
-            with MultiLayerCapture(
-                self._model,
-                layers=layers,
-                component=component,
-                keep_on_gpu=True,
-            ) as cap:
-                with torch.no_grad():
-                    self._model(input_ids=input_ids, attention_mask=attention_mask)
+        # Nest all component captures in a single forward pass
+        with ExitStack() as stack:
+            captures = {}
+            for component in capture.components:
+                cap = stack.enter_context(MultiLayerCapture(
+                    self._model,
+                    layers=layers,
+                    component=component,
+                    keep_on_gpu=True,
+                ))
+                captures[component] = cap
 
+            with torch.no_grad():
+                self._model(input_ids=input_ids, attention_mask=attention_mask)
+
+            for component, cap in captures.items():
                 for layer in layers:
                     if layer not in results:
                         results[layer] = {}

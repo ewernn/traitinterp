@@ -15,8 +15,8 @@
  */
 
 // View category constants
-const ANALYSIS_VIEWS = ['trait-extraction', 'steering-sweep', 'inference', 'trait-correlation', 'model-comparison', 'layer-dive'];
-const GLOBAL_VIEWS = ['overview', 'methodology', 'findings', 'finding', 'live-chat', 'one-offs'];
+const ANALYSIS_VIEWS = ['trait-extraction', 'steering-sweep', 'inference', 'trait-correlation', 'model-comparison', 'layer-dive', 'one-offs'];
+const GLOBAL_VIEWS = ['overview', 'methodology', 'findings', 'finding', 'live-chat'];
 
 // Experiments hidden from picker by default (can be revealed via toggle)
 const HIDDEN_EXPERIMENTS = [];  // Add experiment names to hide by default
@@ -50,6 +50,8 @@ const state = {
     projectionCentered: true,  // Subtract BOS token value (centers around 0)
     // Method filter for trait dynamics (which extraction methods to show)
     selectedMethods: new Set(['probe', 'mean_diff', 'gradient', 'random']),
+    // Projection normalization mode: 'cosine' or 'normalized'
+    projectionMode: 'cosine',
     // Massive dims cleaning mode
     massiveDimsCleaning: 'top5-3layers',
     // Compare mode for model comparison
@@ -95,6 +97,18 @@ function initProjectionCentered() {
 function setProjectionCentered(centered) {
     state.projectionCentered = !!centered;
     localStorage.setItem('projectionCentered', state.projectionCentered);
+    if (window.renderView) window.renderView();
+}
+
+// Projection Mode ('cosine' or 'normalized')
+function initProjectionMode() {
+    const saved = localStorage.getItem('projectionMode');
+    state.projectionMode = saved || 'cosine';
+}
+
+function setProjectionMode(mode) {
+    state.projectionMode = mode || 'cosine';
+    localStorage.setItem('projectionMode', state.projectionMode);
     if (window.renderView) window.renderView();
 }
 
@@ -150,7 +164,10 @@ function initSelectedMethods() {
     if (saved) {
         try {
             const methods = JSON.parse(saved);
-            state.selectedMethods = new Set(methods);
+            if (Array.isArray(methods) && methods.length > 0) {
+                state.selectedMethods = new Set(methods);
+            }
+            // Empty array → keep default (all methods selected)
         } catch (e) {
             // Keep default
         }
@@ -437,6 +454,20 @@ function updateAvailableComparisonModels() {
     }
 }
 
+/**
+ * Get the model variant that has data for the current prompt set.
+ * Prefers the default application variant; falls back to first available.
+ */
+function getVariantForCurrentPromptSet() {
+    const appVariant = state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const variants = state.variantsPerPromptSet?.[state.currentPromptSet] || [];
+    if (variants.length === 0 || variants.includes(appVariant)) {
+        return appVariant;
+    }
+    return variants[0];
+}
+window.getVariantForCurrentPromptSet = getVariantForCurrentPromptSet;
+
 // Placeholder for prompt selector (implemented in prompt-picker.js)
 function populatePromptSelector() {
     // This is a no-op here; renderPromptPicker handles everything
@@ -588,6 +619,7 @@ async function init() {
     window.initTheme();
     initSmoothing();
     initProjectionCentered();
+    initProjectionMode();
     initMassiveDimsCleaning();
     initCompareMode();
     initHideAttentionSink();
@@ -643,6 +675,7 @@ window.initApp = init;
 // Preference setters
 window.setSmoothing = setSmoothing;
 window.setProjectionCentered = setProjectionCentered;
+window.setProjectionMode = setProjectionMode;
 window.setMassiveDimsCleaning = setMassiveDimsCleaning;
 window.setCompareMode = setCompareMode;
 window.setHideAttentionSink = setHideAttentionSink;
@@ -680,6 +713,7 @@ const LOCAL_STORAGE_KEYS = [
     'theme',
     'smoothingEnabled',
     'projectionCentered',
+    'projectionMode',
     'massiveDimsCleaning',
     'compareMode',
     'hideAttentionSink',

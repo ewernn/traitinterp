@@ -436,7 +436,7 @@ def extract_activations_for_trait(
         activation_norms = {layer: round(train_acts[:, layer, :].norm(dim=-1).mean().item(), 2) for layer in range(n_layers)}
 
     # Save metadata
-    hidden_dim = train_acts.shape[-1] if train_acts.numel() > 0 else config.hidden_size
+    hidden_dim = train_acts.shape[-1] if train_acts.numel() > 0 else model.config.hidden_size
     metadata = {
         'model': model.config.name_or_path,
         'trait': trait,

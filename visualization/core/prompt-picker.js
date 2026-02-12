@@ -185,7 +185,7 @@ async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
     let data = null;
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const modelVariant = window.getVariantForCurrentPromptSet();
 
     // Try shared response data first (new format)
     try {
@@ -481,7 +481,7 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx) {
 async function preloadTagsForSet(promptSet) {
     if (!promptSet) return;
 
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const modelVariant = window.getVariantForCurrentPromptSet();
     const tagsUrl = `/experiments/${window.state.currentExperiment}/inference/${modelVariant}/responses/${promptSet}/_tags.json`;
 
     try {

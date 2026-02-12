@@ -141,7 +141,7 @@ async function renderTraitDynamics() {
     const failedTraits = [];
     const promptSet = window.state.currentPromptSet;
     const promptId = window.state.currentPromptId;
-    const modelVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const modelVariant = window.getVariantForCurrentPromptSet();
 
     if (!promptSet || !promptId) {
         renderNoDataMessage(contentArea, filteredTraits, promptSet, promptId);
@@ -315,8 +315,25 @@ async function renderTraitDynamics() {
         return;
     }
 
+    // Fetch annotations for shaded bands (non-blocking)
+    let annotationTokenRanges = [];
+    if (responseData) {
+        const responseTokens = responseData.tokens
+            ? responseData.tokens.slice(responseData.prompt_end)
+            : responseData.response?.tokens || [];
+        const responseText = typeof responseData.response === 'string'
+            ? responseData.response
+            : responseData.response?.text || '';
+        if (responseTokens.length > 0 && responseText) {
+            annotationTokenRanges = await window.annotations.getAnnotationTokenRanges(
+                window.state.currentExperiment, modelVariant, promptSet, promptId,
+                responseTokens, responseText
+            );
+        }
+    }
+
     // Render the full view
-    await renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, promptSet, promptId);
+    await renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, promptSet, promptId, annotationTokenRanges);
 
     // Restore scroll position after DOM updates
     requestAnimationFrame(() => {
@@ -342,7 +359,7 @@ function renderNoDataMessage(container, traits, promptSet, promptId) {
     `;
 }
 
-async function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptSet, promptId) {
+async function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptSet, promptId, annotationTokenRanges = []) {
     // Use first trait's data as reference for tokens (they should all be the same)
     const refData = traitData[loadedTraits[0]];
 
@@ -414,7 +431,9 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
                 ${ui.renderSubsection({
                     title: 'Token Trajectory',
                     infoId: 'info-token-trajectory',
-                    infoText: 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector.' +
+                    infoText: (window.state.projectionMode === 'normalized'
+                        ? 'Normalized projection: proj / avg||h||. Preserves per-token variance, removes layer-dependent scale.'
+                        : 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector.') +
                         (isCentered ? ' Centered by subtracting BOS token value.' : '') +
                         (isSmoothing ? ' Smoothed with 3-token moving average.' : ''),
                     level: 'h2'
@@ -422,7 +441,12 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
                 <div class="projection-toggle">
                     ${ui.renderToggle({ id: 'smoothing-toggle', label: 'Smooth', checked: isSmoothing, className: 'projection-toggle-checkbox' })}
                     ${ui.renderToggle({ id: 'projection-centered-toggle', label: 'Centered', checked: isCentered, className: 'projection-toggle-checkbox' })}
-                    <span class="projection-toggle-label">Clean:</span>
+                    <span class="projection-toggle-label">Mode:</span>
+                    <select id="projection-mode-select" style="margin-left: 4px;" title="Cosine: proj/||h|| (removes magnitude). Normalized: proj/avg||h|| (preserves per-token variance, removes layer scale).">
+                        <option value="cosine" ${window.state.projectionMode === 'cosine' ? 'selected' : ''}>Cosine</option>
+                        <option value="normalized" ${window.state.projectionMode !== 'cosine' ? 'selected' : ''}>Normalized</option>
+                    </select>
+                    <span class="projection-toggle-label" style="margin-left: 12px;">Clean:</span>
                     <select id="massive-dims-cleaning-select" style="margin-left: 4px;" title="Remove high-magnitude bias dimensions (Sun et al. 2024). These dims have 100-1000x larger values than typical dims and act as constant biases.">
                         <option value="none" ${!window.state.massiveDimsCleaning || window.state.massiveDimsCleaning === 'none' ? 'selected' : ''}>No cleaning</option>
                         <option value="top5-3layers" ${window.state.massiveDimsCleaning === 'top5-3layers' ? 'selected' : ''}>Top 5, 3+ layers</option>
@@ -470,6 +494,44 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     // Setup info toggles
     window.setupSubsectionInfoToggles();
 
+    // Attach event listeners for controls BEFORE any early returns
+    // (so checkboxes work even when no data matches current filters)
+    const smoothingCheckbox = document.getElementById('smoothing-toggle');
+    if (smoothingCheckbox) {
+        smoothingCheckbox.addEventListener('change', () => {
+            window.setSmoothing(smoothingCheckbox.checked);
+        });
+    }
+    const centeredCheckbox = document.getElementById('projection-centered-toggle');
+    if (centeredCheckbox) {
+        centeredCheckbox.addEventListener('change', () => {
+            window.setProjectionCentered(centeredCheckbox.checked);
+        });
+    }
+    const massiveDimsSelect = document.getElementById('massive-dims-cleaning-select');
+    if (massiveDimsSelect) {
+        massiveDimsSelect.addEventListener('change', () => {
+            window.setMassiveDimsCleaning(massiveDimsSelect.value);
+        });
+    }
+    document.querySelectorAll('.method-filter input').forEach(cb => {
+        cb.addEventListener('change', () => {
+            window.toggleMethod(cb.dataset.method);
+        });
+    });
+    const projectionModeSelect = document.getElementById('projection-mode-select');
+    if (projectionModeSelect) {
+        projectionModeSelect.addEventListener('change', () => {
+            window.setProjectionMode(projectionModeSelect.value);
+        });
+    }
+    const compareSelect = document.getElementById('compare-mode-select');
+    if (compareSelect) {
+        compareSelect.addEventListener('change', () => {
+            window.setCompareMode(compareSelect.value);
+        });
+    }
+
     // Prepare data for plotting
     const traitActivations = {};  // Store smoothed activations for velocity/accel
 
@@ -498,6 +560,8 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         return;
     }
 
+    const projectionMode = window.state.projectionMode || 'cosine';
+
     for (let idx = 0; idx < filteredByMethod.length; idx++) {
         const traitName = filteredByMethod[idx];
         const data = traitData[traitName];
@@ -524,7 +588,7 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         // projections are now 1D arrays (one value per token at best layer)
         let rawProj = allProj.slice(START_TOKEN_IDX);
 
-        // Compute cosine similarity (use cleaned norms if cleaning applied)
+        // Compute projection values based on mode
         let rawValues;
         if (data.token_norms) {
             let promptNorms = data.token_norms.prompt;
@@ -536,11 +600,18 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
                 responseNorms = computeCleanedNorms(responseNorms, mdd, dimsToRemove, 'response');
             }
 
-            const traitTokenNorms = [...promptNorms, ...responseNorms].slice(START_TOKEN_IDX);
-            rawValues = rawProj.map((proj, i) => {
-                const norm = traitTokenNorms[i];
-                return norm > 0 ? proj / norm : 0;
-            });
+            if (projectionMode === 'normalized') {
+                // Normalized mode: divide by mean response norm (preserves per-token variance)
+                const meanNorm = responseNorms.reduce((a, b) => a + b, 0) / responseNorms.length;
+                rawValues = rawProj.map(proj => meanNorm > 0 ? proj / meanNorm : 0);
+            } else {
+                // Cosine mode: divide by per-token norm
+                const traitTokenNorms = [...promptNorms, ...responseNorms].slice(START_TOKEN_IDX);
+                rawValues = rawProj.map((proj, i) => {
+                    const norm = traitTokenNorms[i];
+                    return norm > 0 ? proj / norm : 0;
+                });
+            }
         } else {
             rawValues = rawProj;
         }
@@ -561,7 +632,7 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         const color = window.getChartColors()[idx % 10];
 
         const method = vs.method || 'probe';
-        const valueLabel = 'Cosine';
+        const valueLabel = projectionMode === 'normalized' ? 'Normalized' : 'Cosine';
         const valueFormat = '.4f';
 
         // Build display name and hover
@@ -620,6 +691,19 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         }
     ];
 
+    // Add annotation shaded bands (response token ranges offset by nPromptTokens)
+    for (const [start, end] of annotationTokenRanges) {
+        shapes.push({
+            type: 'rect',
+            x0: (nPromptTokens - START_TOKEN_IDX) + start - 0.5,
+            x1: (nPromptTokens - START_TOKEN_IDX) + end - 0.5,
+            y0: 0, y1: 1, yref: 'paper',
+            fillcolor: 'rgba(255, 180, 60, 0.12)',
+            line: { width: 0 },
+            layer: 'below'
+        });
+    }
+
     const annotations = [
         {
             x: (nPromptTokens - START_TOKEN_IDX) / 2 - 0.5,
@@ -647,7 +731,9 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     });
 
     // Token Trajectory plot
-    const yAxisTitle = 'Cosine (proj / ||h||)';
+    const yAxisTitle = projectionMode === 'normalized'
+        ? 'Normalized (proj / avg\u2016h\u2016)'
+        : 'Cosine (proj / \u2016h\u2016)';
 
     // Compute y-axis range: minimum ±0.15, auto-expand if data exceeds
     let yAxisConfig = { title: yAxisTitle, zeroline: true, zerolinewidth: 1, showgrid: true };
@@ -702,45 +788,6 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
             window.renderCurrentView?.();
         }
     });
-
-    // Setup smoothing checkbox
-    const smoothingCheckbox = document.getElementById('smoothing-toggle');
-    if (smoothingCheckbox) {
-        smoothingCheckbox.addEventListener('change', () => {
-            window.setSmoothing(smoothingCheckbox.checked);
-        });
-    }
-
-    // Setup centered checkbox
-    const centeredCheckbox = document.getElementById('projection-centered-toggle');
-    if (centeredCheckbox) {
-        centeredCheckbox.addEventListener('change', () => {
-            window.setProjectionCentered(centeredCheckbox.checked);
-        });
-    }
-
-    // Setup massive dims cleaning dropdown
-    const massiveDimsSelect = document.getElementById('massive-dims-cleaning-select');
-    if (massiveDimsSelect) {
-        massiveDimsSelect.addEventListener('change', () => {
-            window.setMassiveDimsCleaning(massiveDimsSelect.value);
-        });
-    }
-
-    // Setup method filter checkboxes
-    document.querySelectorAll('.method-filter input').forEach(cb => {
-        cb.addEventListener('change', () => {
-            window.toggleMethod(cb.dataset.method);
-        });
-    });
-
-    // Setup compare mode dropdown (model comparison)
-    const compareSelect = document.getElementById('compare-mode-select');
-    if (compareSelect) {
-        compareSelect.addEventListener('change', () => {
-            window.setCompareMode(compareSelect.value);
-        });
-    }
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens);
@@ -799,6 +846,20 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
     const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
     const highlightColors = window.getTokenHighlightColors();
 
+    // Compute y-axis range: cap at 95th percentile to avoid BOS/early token spikes crushing the plot
+    const allNormValues = Object.values(layerToNorms).flat().filter(v => v > 0);
+    let yaxisMagnitude = { title: '||h|| (L2 norm)', tickfont: { size: 10 } };
+    if (allNormValues.length > 0) {
+        const sorted = [...allNormValues].sort((a, b) => a - b);
+        const p95 = sorted[Math.floor(sorted.length * 0.95)];
+        const median = sorted[Math.floor(sorted.length * 0.5)];
+        // If the max is > 3x the 95th percentile, cap the range (spike is outlier)
+        const maxVal = sorted[sorted.length - 1];
+        if (maxVal > p95 * 3) {
+            yaxisMagnitude.range = [0, p95 * 1.3];
+        }
+    }
+
     const showLegend = Object.keys(layerToNorms).length > 1;
 
     const layout = window.buildChartLayout({
@@ -812,7 +873,8 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
             ticktext: tickText,
             tickfont: { size: 9 }
         },
-        yaxis: { title: '||h|| (L2 norm)', tickfont: { size: 10 } },
+        yaxis: yaxisMagnitude,
+        hovermode: 'closest',
         shapes: [
             window.createSeparatorShape(promptEndIdx, highlightColors.separator),
             window.createHighlightShape(highlightX, highlightColors.highlight)

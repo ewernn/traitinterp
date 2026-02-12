@@ -159,11 +159,127 @@ async function loadAndConvertAnnotations(responsesPath) {
     }
 }
 
+/**
+ * Convert a text span to a token index range [startTokenIdx, endTokenIdx).
+ * Walks response tokens cumulatively tracking char positions to find overlap.
+ *
+ * @param {string[]} responseTokens - Array of token strings for the response
+ * @param {string} responseText - Full decoded response text
+ * @param {string} spanText - Span text to locate
+ * @returns {[number, number]|null} [startTokenIdx, endTokenIdx) or null if not found
+ */
+function spanToTokenRange(responseTokens, responseText, spanText) {
+    if (!responseTokens || !responseText || !spanText) return null;
+
+    // Find char range of span in response text
+    let charStart = responseText.indexOf(spanText);
+    if (charStart === -1) {
+        // Try case-insensitive
+        charStart = responseText.toLowerCase().indexOf(spanText.toLowerCase());
+        if (charStart === -1) return null;
+    }
+    const charEnd = charStart + spanText.length;
+
+    // Walk tokens cumulatively to find overlapping token range
+    let pos = 0;
+    let startToken = null;
+    let endToken = null;
+
+    for (let i = 0; i < responseTokens.length; i++) {
+        const tokenLen = responseTokens[i].length;
+        const tokenStart = pos;
+        const tokenEnd = pos + tokenLen;
+
+        // Token overlaps with span if token doesn't end before span starts
+        // and token doesn't start after span ends
+        if (tokenEnd > charStart && tokenStart < charEnd) {
+            if (startToken === null) startToken = i;
+            endToken = i + 1;
+        }
+
+        pos = tokenEnd;
+
+        // Early exit once past the span
+        if (tokenStart >= charEnd) break;
+    }
+
+    if (startToken === null) return null;
+    return [startToken, endToken];
+}
+
+/**
+ * Fetch annotations for a prompt set, with caching.
+ * Cache stored on window.state._annotationCache to avoid re-fetching within same set.
+ *
+ * @param {string} experiment - Experiment name
+ * @param {string} modelVariant - Model variant (e.g., 'instruct')
+ * @param {string} promptSet - Prompt set name
+ * @returns {Promise<Object|null>} Annotation data or null
+ */
+async function fetchAnnotations(experiment, modelVariant, promptSet) {
+    const cacheKey = `${experiment}/${promptSet}`;
+
+    // Check cache (keyed by experiment+promptSet, variant-agnostic)
+    if (window.state._annotationCache?.key === cacheKey) {
+        return window.state._annotationCache.data;
+    }
+
+    // Try the specified variant first, then all other variants that have data
+    const variants = [modelVariant, ...(window.state.variantsPerPromptSet?.[promptSet] || []).filter(v => v !== modelVariant)];
+
+    for (const variant of variants) {
+        const url = `/experiments/${experiment}/inference/${variant}/responses/${promptSet}_annotations.json`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) continue;
+            const data = await response.json();
+            window.state._annotationCache = { key: cacheKey, data };
+            return data;
+        } catch (e) {
+            continue;
+        }
+    }
+
+    // Cache the miss to avoid re-fetching
+    window.state._annotationCache = { key: cacheKey, data: null };
+    return null;
+}
+
+/**
+ * Get annotation token ranges for a specific prompt.
+ * Combines fetching, span lookup, and token range conversion.
+ *
+ * @param {string} experiment - Experiment name
+ * @param {string} modelVariant - Model variant
+ * @param {string} promptSet - Prompt set name
+ * @param {number} promptId - Prompt ID
+ * @param {string[]} responseTokens - Response token strings
+ * @param {string} responseText - Full response text
+ * @returns {Promise<Array<[number, number]>>} Array of [startTokenIdx, endTokenIdx) ranges
+ */
+async function getAnnotationTokenRanges(experiment, modelVariant, promptSet, promptId, responseTokens, responseText) {
+    const annotationData = await fetchAnnotations(experiment, modelVariant, promptSet);
+    if (!annotationData) return [];
+
+    const spans = getSpansForResponse(annotationData, promptId);
+    if (spans.length === 0) return [];
+
+    const ranges = [];
+    for (const { span } of spans) {
+        const range = spanToTokenRange(responseTokens, responseText, span);
+        if (range) ranges.push(range);
+    }
+    return ranges;
+}
+
 // Export
 window.annotations = {
     spansToCharRanges,
     getSpansForResponse,
     mergeRanges,
     applyHighlights,
-    loadAndConvertAnnotations
+    loadAndConvertAnnotations,
+    spanToTokenRange,
+    fetchAnnotations,
+    getAnnotationTokenRanges
 };

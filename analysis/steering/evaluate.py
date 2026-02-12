@@ -45,10 +45,16 @@ Usage:
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait} \\
         --coefficients 50,100,150
+
+    # Re-score existing responses with current judge (no GPU needed)
+    python analysis/steering/evaluate.py \\
+        --experiment {experiment} \\
+        --rescore {category}/{trait}
 """
 
 import sys
 import gc
+import json
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -64,7 +70,7 @@ from analysis.steering.results import (
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
     is_better_result,
 )
-from utils.paths import get_steering_results_path
+from utils.paths import get_steering_results_path, get_steering_dir
 from analysis.steering.coef_search import (
     adaptive_search_layer,
     batched_adaptive_search,
@@ -717,6 +723,195 @@ async def run_evaluation(
         await judge.close()
 
 
+def discover_response_files(experiment: str, trait: str, model_variant: str,
+                            position: str, prompt_set: str) -> List[Dict]:
+    """Find all saved response files and parse config from path.
+
+    Returns list of dicts with keys: path, component, method, layer, coef, timestamp, is_baseline
+    """
+    steering_dir = get_steering_dir(experiment, trait, model_variant, position, prompt_set)
+    responses_dir = steering_dir / "responses"
+    if not responses_dir.exists():
+        return []
+
+    found = []
+
+    # Baseline
+    baseline_path = responses_dir / "baseline.json"
+    if baseline_path.exists():
+        found.append({"path": baseline_path, "is_baseline": True})
+
+    # Steered responses: responses/{component}/{method}/L{layer}_c{coef}_{timestamp}.json
+    for component_dir in responses_dir.iterdir():
+        if not component_dir.is_dir() or component_dir.name in ("ablation",):
+            continue
+        for method_dir in component_dir.iterdir():
+            if not method_dir.is_dir():
+                continue
+            for f in method_dir.glob("L*_c*.json"):
+                name = f.stem
+                try:
+                    # Parse: L14_c6.6_2026-02-03_07-10-27
+                    parts = name.split("_c")
+                    layer = int(parts[0][1:])  # Remove 'L'
+                    rest = parts[1].split("_", 1)
+                    coef = float(rest[0])
+                    timestamp = rest[1] if len(rest) > 1 else ""
+                except (IndexError, ValueError):
+                    print(f"  Warning: couldn't parse {f.name}, skipping")
+                    continue
+
+                found.append({
+                    "path": f,
+                    "is_baseline": False,
+                    "component": component_dir.name,
+                    "method": method_dir.name,
+                    "layer": layer,
+                    "coef": coef,
+                    "timestamp": timestamp,
+                })
+
+    return found
+
+
+async def run_rescore(
+    experiment: str,
+    trait: str,
+    model_variant: str,
+    position: str,
+    prompt_set: str,
+    eval_prompt: Optional[str] = None,
+    relevance_check: bool = True,
+    trait_judge: Optional[str] = None,
+):
+    """Re-score existing steering responses with current judge. No GPU needed."""
+    from analysis.steering.data import load_steering_data
+
+    steering_data = load_steering_data(trait)
+    trait_name = steering_data.trait_name
+    trait_definition = steering_data.trait_definition
+
+    if eval_prompt is None:
+        eval_prompt = steering_data.eval_prompt
+
+    # Discover response files
+    response_files = discover_response_files(experiment, trait, model_variant, position, prompt_set)
+    if not response_files:
+        print(f"No response files found for {experiment}/{trait}")
+        return
+
+    n_baseline = sum(1 for f in response_files if f["is_baseline"])
+    n_steered = len(response_files) - n_baseline
+    print(f"\nRe-scoring {n_baseline} baseline + {n_steered} steered response files")
+    print(f"Trait: {trait} ({trait_name})")
+    print(f"Judge: {'custom' if eval_prompt else 'default'}")
+
+    judge = TraitJudge()
+
+    # Re-score each file
+    new_results = {}  # config_key -> result dict
+    new_baseline = None
+
+    for i, entry in enumerate(response_files):
+        path = entry["path"]
+        is_baseline = entry["is_baseline"]
+
+        with open(path) as f:
+            responses = json.load(f)
+
+        qa_pairs = [(r.get("prompt", r.get("question", "")), r["response"]) for r in responses]
+
+        label = "baseline" if is_baseline else f"L{entry['layer']} c{entry['coef']:.1f} {entry['component']}/{entry['method']}"
+        print(f"  [{i+1}/{len(response_files)}] {label} ({len(qa_pairs)} responses)...", end="", flush=True)
+
+        scores = await judge.score_steering_batch(
+            qa_pairs, trait_name, trait_definition,
+            eval_prompt=eval_prompt, relevance_check=relevance_check,
+        )
+
+        # Update response data in-place
+        for r, s in zip(responses, scores):
+            r["trait_score"] = s["trait_score"]
+            r["coherence_score"] = s["coherence_score"]
+
+        # Save updated responses
+        with open(path, 'w') as f:
+            json.dump(responses, f, indent=2)
+
+        # Compute aggregates
+        trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
+        coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
+        result = {
+            "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
+            "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
+            "n": len(trait_scores),
+        }
+
+        print(f" trait={result['trait_mean']:.1f} coh={result['coherence_mean']:.1f}")
+
+        if is_baseline:
+            new_baseline = result
+        else:
+            # Key by (layer, component, method, rounded_coef) for matching against results.jsonl
+            match_key = (entry["layer"], entry["component"], entry["method"], round(entry["coef"], 1))
+            new_results[match_key] = (entry, result)
+
+    await judge.close()
+
+    # Rebuild results.jsonl
+    results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
+    if not results_path.exists():
+        print(f"\nWarning: {results_path} not found, skipping results.jsonl update")
+        return
+
+    # Read existing, update scores (drop entries without response files)
+    lines = []
+    n_dropped = 0
+    with open(results_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            entry = json.loads(line)
+
+            if entry.get("type") == "header":
+                entry.setdefault("eval", {})["trait_judge"] = trait_judge
+                lines.append(entry)
+            elif entry.get("type") == "baseline":
+                if new_baseline:
+                    entry["result"] = new_baseline
+                    entry.setdefault("eval", {})["trait_judge"] = trait_judge
+                    entry["timestamp"] = datetime.now().isoformat()
+                lines.append(entry)
+            else:
+                # Match by (layer, component, method, rounded_coef)
+                # Drop entries without matching response files (stale scores)
+                vectors = entry.get("config", {}).get("vectors", [{}])
+                if vectors:
+                    v = vectors[0]
+                    match_key = (v.get("layer"), v.get("component"), v.get("method"), round(v.get("weight", 0), 1))
+                    if match_key in new_results:
+                        _, new_result = new_results[match_key]
+                        entry["result"] = new_result
+                        entry.setdefault("eval", {})["trait_judge"] = trait_judge
+                        entry["timestamp"] = datetime.now().isoformat()
+                        lines.append(entry)
+                    else:
+                        n_dropped += 1
+
+    with open(results_path, 'w') as f:
+        for entry in lines:
+            f.write(json.dumps(entry) + '\n')
+
+    print(f"\nUpdated {results_path}")
+    print(f"  Rescored: {n_baseline} baseline + {len(new_results)} steered configs"
+          f"{f', dropped {n_dropped} stale entries' if n_dropped else ''}")
+
+    # Print summary
+    if new_baseline:
+        print(f"  Baseline: trait={new_baseline['trait_mean']:.1f} coh={new_baseline['coherence_mean']:.1f}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Steering evaluation")
 
@@ -728,6 +923,9 @@ def main():
                         help="Single trait: 'experiment/category/trait'")
     trait_group.add_argument("--traits",
                         help="Multiple traits (comma-separated): 'exp/cat/t1,exp/cat/t2'")
+    trait_group.add_argument("--rescore",
+                        help="Re-score existing responses with current judge (no GPU). "
+                             "Takes trait path: 'category/trait'")
 
     # === Input/Output ===
     parser.add_argument("--prompt-set", default="steering",
@@ -809,6 +1007,40 @@ def main():
                              "Default: positive, or inferred from --coefficients if all are negative.")
 
     args = parser.parse_args()
+
+    # Handle --rescore mode (no GPU, just re-judge existing responses)
+    if args.rescore:
+        # Resolve model variant name (needed for path lookup, not for loading model)
+        variant = get_model_variant(args.experiment, args.model_variant, mode="application")
+        model_variant = variant['name']
+
+        # Resolve eval_prompt
+        effective_eval_prompt = None
+        trait_judge = None
+        if args.trait_judge:
+            judge_path = get('datasets.llm_judge_trait', judge_prompt=args.trait_judge)
+            if not judge_path.exists():
+                raise FileNotFoundError(f"Trait judge prompt not found: {judge_path}")
+            effective_eval_prompt = judge_path.read_text()
+            trait_judge = args.trait_judge
+        elif args.no_custom_prompt:
+            effective_eval_prompt = None  # Force V3c default
+        # else: auto-detect from steering.json (handled in run_rescore)
+
+        # Resolve position format for path lookup
+        position = args.position
+
+        asyncio.run(run_rescore(
+            experiment=args.experiment,
+            trait=args.rescore,
+            model_variant=model_variant,
+            position=position,
+            prompt_set=args.prompt_set,
+            eval_prompt=effective_eval_prompt,
+            relevance_check=not args.no_relevance_check,
+            trait_judge=trait_judge,
+        ))
+        return
 
     # Parse trait specs (single or multiple)
     if args.traits:

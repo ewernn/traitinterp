@@ -2,28 +2,33 @@
 """
 Test scenarios for trait extraction by generating responses and scoring them.
 
-Input: Scenarios (from trait dataset or arbitrary files) + experiment (for model)
+Input: Scenarios (from trait dataset or arbitrary files) + model (from experiment or --model)
 Output: results.json with scores, responses, and pass/fail status
 
 Usage:
-    # Test a committed trait dataset
+    # Test a committed trait dataset (local GPU)
     python extraction/test_scenarios.py \
         --experiment gemma-2-2b \
         --trait rm_hack/eval_awareness \
         --workdir /tmp/eval_awareness
+
+    # Test with Modal (no local GPU needed)
+    python extraction/test_scenarios.py \
+        --experiment gemma-2-2b \
+        --trait rm_hack/eval_awareness \
+        --modal --workdir /tmp/eval_awareness
+
+    # Test with Modal + explicit model (no experiment needed)
+    python extraction/test_scenarios.py \
+        --model meta-llama/Llama-3.1-8B-Instruct \
+        --trait rm_hack/eval_awareness \
+        --modal --workdir /tmp/eval_awareness
 
     # Test candidate scenarios from files
     python extraction/test_scenarios.py \
         --experiment gemma-2-2b \
         --positive /tmp/candidates_pos.txt \
         --negative /tmp/candidates_neg.txt \
-        --trait rm_hack/eval_awareness \
-        --workdir /tmp/eval_awareness
-
-    # Test just positive candidates (pulls definition from trait)
-    python extraction/test_scenarios.py \
-        --experiment gemma-2-2b \
-        --positive /tmp/candidates_pos.txt \
         --trait rm_hack/eval_awareness \
         --workdir /tmp/eval_awareness
 
@@ -55,15 +60,10 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-import torch
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.paths import get_model_variant
-from utils.model import load_model_with_lora
-from utils.model_registry import is_base_model
-from utils.generation import generate_batch
 from utils.traits import load_trait_definition, load_scenarios
 from utils.judge import TraitJudge
 
@@ -127,7 +127,7 @@ async def score_responses(
 
 
 def run_test(
-    experiment: str,
+    experiment: str = None,
     trait: str = None,
     positive_file: Path = None,
     negative_file: Path = None,
@@ -139,6 +139,8 @@ def run_test(
     max_concurrent: int = 20,
     temperature: float = 0.0,
     load_in_8bit: bool = False,
+    use_modal: bool = False,
+    model_override: str = None,
 ):
     """Run scenario testing pipeline."""
 
@@ -186,60 +188,90 @@ def run_test(
         workdir = Path(workdir)
         workdir.mkdir(parents=True, exist_ok=True)
 
-    # Load model from experiment
-    print(f"\nLoading model from experiment: {experiment}")
-    variant = get_model_variant(experiment, None, mode="extraction")
-    model_name = variant['model']
-    lora = variant.get('lora')
+    # Resolve model name
+    if model_override:
+        model_name = model_override
+        lora = None
+    elif experiment:
+        from utils.paths import get_model_variant
+        variant = get_model_variant(experiment, None, mode="extraction")
+        model_name = variant['model']
+        lora = variant.get('lora')
+    else:
+        raise ValueError("Must provide --experiment or --model")
 
-    model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=load_in_8bit)
-    base_model = is_base_model(model_name)
-    use_chat_template = not base_model and tokenizer.chat_template is not None
-
-    print(f"Model: {model_name} ({'BASE' if base_model else 'IT'})")
+    print(f"\nModel: {model_name}")
     print(f"Generating {max_tokens} tokens per scenario...")
-
-    # Format prompts
-    from utils.model import format_prompt
-
-    def format_scenarios(scenario_list: list[dict]) -> list[str]:
-        return [
-            format_prompt(
-                s['prompt'],
-                tokenizer,
-                use_chat_template=use_chat_template,
-                system_prompt=s.get('system_prompt'),
-            )
-            for s in scenario_list
-        ]
 
     # Generate responses
     results = {'positive': [], 'negative': []}
 
-    for polarity in ['positive', 'negative']:
-        if not scenarios[polarity]:
-            continue
+    if use_modal:
+        import modal
+        generate_fn = modal.Function.lookup("trait-capture", "generate_batch_remote")
 
-        print(f"\nGenerating {polarity} responses...")
-        formatted = format_scenarios(scenarios[polarity])
+        for polarity in ['positive', 'negative']:
+            if not scenarios[polarity]:
+                continue
 
-        responses = generate_batch(
-            model, tokenizer, formatted,
-            max_new_tokens=max_tokens,
-            temperature=temperature,
-        )
+            print(f"\nGenerating {polarity} responses via Modal...")
+            responses = generate_fn.remote(
+                model_name=model_name,
+                scenarios=scenarios[polarity],
+                max_new_tokens=max_tokens,
+                temperature=temperature,
+            )
 
-        # Pair scenarios with responses
-        for idx, (scenario, response) in enumerate(zip(scenarios[polarity], responses)):
-            results[polarity].append({
-                'idx': idx,
-                'scenario': scenario['prompt'],
-                'response': response,
-            })
+            for idx, (scenario, response) in enumerate(zip(scenarios[polarity], responses)):
+                results[polarity].append({
+                    'idx': idx,
+                    'scenario': scenario['prompt'],
+                    'response': response,
+                })
+    else:
+        import torch
+        from utils.model import load_model_with_lora, format_prompt
+        from utils.model_registry import is_base_model
+        from utils.generation import generate_batch
 
-    # Cleanup model to free memory before scoring
-    del model
-    torch.cuda.empty_cache() if torch.cuda.is_available() else None
+        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=load_in_8bit)
+        base_model = is_base_model(model_name)
+        use_chat_template = not base_model and tokenizer.chat_template is not None
+
+        def format_scenarios(scenario_list: list[dict]) -> list[str]:
+            return [
+                format_prompt(
+                    s['prompt'],
+                    tokenizer,
+                    use_chat_template=use_chat_template,
+                    system_prompt=s.get('system_prompt'),
+                )
+                for s in scenario_list
+            ]
+
+        for polarity in ['positive', 'negative']:
+            if not scenarios[polarity]:
+                continue
+
+            print(f"\nGenerating {polarity} responses...")
+            formatted = format_scenarios(scenarios[polarity])
+
+            responses = generate_batch(
+                model, tokenizer, formatted,
+                max_new_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+            for idx, (scenario, response) in enumerate(zip(scenarios[polarity], responses)):
+                results[polarity].append({
+                    'idx': idx,
+                    'scenario': scenario['prompt'],
+                    'response': response,
+                })
+
+        # Cleanup model to free memory before scoring
+        del model
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
     # Score responses
     print("\nScoring responses...")
@@ -354,11 +386,24 @@ Examples:
   python extraction/test_scenarios.py --experiment gemma-2-2b \\
       --positive /tmp/pos.txt \\
       --definition "HIGH: aware. LOW: unaware."
+
+  # Test with Modal (no local GPU needed)
+  python extraction/test_scenarios.py --modal \\
+      --experiment gemma-2-2b --trait rm_hack/eval_awareness
+
+  # Test with Modal + explicit model (no experiment needed)
+  python extraction/test_scenarios.py --modal \\
+      --model meta-llama/Llama-3.1-8B-Instruct \\
+      --trait rm_hack/eval_awareness
         """
     )
 
-    parser.add_argument("--experiment", required=True,
+    parser.add_argument("--experiment",
                         help="Experiment name (for model config)")
+    parser.add_argument("--model",
+                        help="Model name override (e.g., meta-llama/Llama-3.1-8B-Instruct)")
+    parser.add_argument("--modal", action="store_true",
+                        help="Use Modal for generation (no local GPU needed)")
     parser.add_argument("--trait",
                         help="Trait path (e.g., rm_hack/eval_awareness) for definition and/or scenarios")
     parser.add_argument("--positive", type=Path,
@@ -385,6 +430,9 @@ Examples:
     args = parser.parse_args()
 
     # Validate args
+    if not args.experiment and not args.model:
+        parser.error("Must provide --experiment or --model")
+
     if not args.trait and not args.definition:
         parser.error("Must provide --trait or --definition")
 
@@ -404,4 +452,6 @@ Examples:
         max_concurrent=args.max_concurrent,
         temperature=args.temperature,
         load_in_8bit=args.load_in_8bit,
+        use_modal=args.modal,
+        model_override=args.model,
     )

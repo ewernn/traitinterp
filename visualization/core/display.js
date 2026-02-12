@@ -176,6 +176,7 @@ function getMethodColors() {
 function getPlotlyLayout(baseLayout = {}) {
     const styles = getComputedStyle(document.documentElement);
     const textPrimary = styles.getPropertyValue('--text-primary').trim() || '#e0e0e0';
+    const bgSecondary = styles.getPropertyValue('--bg-secondary').trim() || '#424242';
     const bgTertiary = styles.getPropertyValue('--bg-tertiary').trim() || '#3a3a3a';
 
     return {
@@ -185,6 +186,12 @@ function getPlotlyLayout(baseLayout = {}) {
         font: {
             ...baseLayout.font,
             color: textPrimary
+        },
+        hoverlabel: {
+            bgcolor: bgSecondary,
+            font: { color: textPrimary, size: 12 },
+            bordercolor: bgTertiary,
+            ...baseLayout.hoverlabel
         },
         xaxis: {
             ...baseLayout.xaxis,
