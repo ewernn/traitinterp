@@ -196,7 +196,8 @@ def main():
     from other.server.client import get_model_or_client, ModelClient
 
     is_remote = False
-    if not args.no_server and not lora:
+    quantize = args.load_in_4bit or args.load_in_8bit
+    if not args.no_server and not lora and not quantize:
         handle = get_model_or_client(model_name)
         if isinstance(handle, ModelClient):
             print(f"Using model server (model: {model_name})")
