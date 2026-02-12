@@ -36,7 +36,7 @@ from utils.paths import get as get_path, get_model_variant, list_model_variants
 
 # Calibration dataset path
 CALIBRATION_DATASET = Path(__file__).parent.parent / 'datasets' / 'inference' / 'massive_dims' / 'calibration_50.json'
-CALIBRATION_PROMPT_SET = '_calibration'  # Internal name for calibration runs
+CALIBRATION_PROMPT_SET = 'massive_dims/calibration_50'
 
 
 def find_massive_dims(
@@ -343,7 +343,7 @@ def aggregate_stats(
     }
 
 
-def ensure_calibration_activations(experiment: str, model_variant: str) -> Path:
+def ensure_calibration_activations(experiment: str, model_variant: str, load_in_4bit: bool = False, load_in_8bit: bool = False) -> Path:
     """
     Ensure calibration activations exist, capturing them if necessary.
 
@@ -362,20 +362,39 @@ def ensure_calibration_activations(experiment: str, model_variant: str) -> Path:
     if not CALIBRATION_DATASET.exists():
         raise FileNotFoundError(f"Calibration dataset not found: {CALIBRATION_DATASET}")
 
-    # Run capture_raw_activations.py (with --capture-mlp for full component breakdown)
-    cmd = [
+    # Step 1: Generate responses (tokenizer-only prefill from calibration prompts)
+    gen_cmd = [
+        sys.executable,
+        str(Path(__file__).parent.parent / 'inference' / 'generate_responses.py'),
+        '--experiment', experiment,
+        '--prompt-set', CALIBRATION_PROMPT_SET,
+        '--model-variant', model_variant,
+        '--max-new-tokens', '128',
+    ]
+    if load_in_4bit:
+        gen_cmd.append('--load-in-4bit')
+    if load_in_8bit:
+        gen_cmd.append('--load-in-8bit')
+    print(f"Running: {' '.join(gen_cmd)}")
+    result = subprocess.run(gen_cmd, capture_output=False)
+    if result.returncode != 0:
+        raise RuntimeError(f"Failed to generate calibration responses")
+
+    # Step 2: Capture raw activations (with --capture-mlp for full component breakdown)
+    cap_cmd = [
         sys.executable,
         str(Path(__file__).parent.parent / 'inference' / 'capture_raw_activations.py'),
         '--experiment', experiment,
+        '--prompt-set', CALIBRATION_PROMPT_SET,
         '--model-variant', model_variant,
-        '--prompts-file', str(CALIBRATION_DATASET),
-        '--prompt-set-name', CALIBRATION_PROMPT_SET,
         '--capture-mlp',
     ]
-
-    print(f"Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=False)
-
+    if load_in_4bit:
+        cap_cmd.append('--load-in-4bit')
+    if load_in_8bit:
+        cap_cmd.append('--load-in-8bit')
+    print(f"Running: {' '.join(cap_cmd)}")
+    result = subprocess.run(cap_cmd, capture_output=False)
     if result.returncode != 0:
         raise RuntimeError(f"Failed to capture calibration activations")
 
@@ -396,7 +415,7 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
 
     if is_calibration:
         print("Calibration Mode: Computing model-specific massive dims from neutral prompts")
-        raw_dir = ensure_calibration_activations(experiment, model_variant)
+        raw_dir = ensure_calibration_activations(experiment, model_variant, load_in_4bit=args.load_in_4bit, load_in_8bit=args.load_in_8bit)
     else:
         print(f"Analysis Mode: {args.prompt_set}")
         raw_dir = Path(get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=args.prompt_set))
@@ -522,6 +541,8 @@ def main():
                         help='Top K dims to track per layer')
     parser.add_argument('--per-token', action='store_true',
                         help='Include per-token analysis (verbose, for research)')
+    parser.add_argument('--load-in-8bit', action='store_true')
+    parser.add_argument('--load-in-4bit', action='store_true')
     parser.add_argument('--output', type=str, default=None,
                         help='Output path (default: auto)')
     args = parser.parse_args()

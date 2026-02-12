@@ -103,6 +103,8 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output-suffix", type=str, default=None,
                        help="Suffix for output directory name")
+    parser.add_argument("--load-in-8bit", action="store_true")
+    parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--no-server", action="store_true",
                        help="Force local model loading (skip server check)")
 
@@ -206,9 +208,9 @@ def main():
         else:
             model, tokenizer = handle
     elif lora:
-        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora)
+        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=args.load_in_8bit, load_in_4bit=args.load_in_4bit)
     else:
-        model, tokenizer = load_model_with_lora(model_name)
+        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=args.load_in_8bit, load_in_4bit=args.load_in_4bit)
 
     if use_chat_template is None:
         use_chat_template = tokenizer.chat_template is not None
