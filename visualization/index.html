@@ -119,6 +119,11 @@
             </div>
         </div>
 
+        <!-- Prompt Set Sidebar: left panel for prompt set selection (inference only) -->
+        <div id="prompt-set-sidebar" class="sidebar sidebar-promptsets hidden">
+            <!-- Populated by renderPromptSetSidebar() in prompt-picker.js -->
+        </div>
+
         <!-- Main Content -->
         <div class="main-content">
             <header>
@@ -266,12 +271,17 @@
             const collapseBtn = document.getElementById('sidebar-collapse');
             const toggleBtn = document.getElementById('sidebar-toggle');
 
-            // Desktop collapse button - collapses both sidebars
+            // Desktop collapse button - collapses all sidebars
             collapseBtn.addEventListener('click', () => {
                 const isCollapsing = !sidebar.classList.contains('collapsed');
                 sidebar.classList.toggle('collapsed');
                 if (analysisPanel) {
                     analysisPanel.classList.toggle('collapsed', isCollapsing);
+                }
+                // Also hide prompt-set sidebar when collapsing
+                if (isCollapsing) {
+                    const psSidebar = document.getElementById('prompt-set-sidebar');
+                    if (psSidebar) psSidebar.classList.add('hidden');
                 }
                 collapseBtn.textContent = isCollapsing ? '▶' : '◀';
             });

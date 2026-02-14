@@ -30,6 +30,20 @@ _config_path = Path(__file__).parent.parent / "config" / "paths.yaml"
 # Cache for experiment configs
 _experiment_configs: dict[str, dict] = {}
 
+# Root override: redirects experiments/ output to an alternate directory
+_root_override = None
+
+
+def set_root(root):
+    """Override root for experiments/ paths. Pass None to reset."""
+    global _root_override
+    _root_override = Path(root) if root else None
+
+
+def get_root():
+    """Return current root override, or None if using default."""
+    return _root_override
+
 
 def _load_config():
     """Load config from YAML (cached)."""
@@ -81,7 +95,13 @@ def get(key: str, **variables) -> Path:
         missing = re.findall(r'\{(\w+)\}', result)
         warnings.warn(f"Unsubstituted variables in path key '{key}': {missing}")
 
-    return Path(result)
+    path = Path(result)
+
+    # Redirect experiments/ paths when root override is set
+    if _root_override and path.parts and path.parts[0] == 'experiments':
+        path = _root_override / path
+
+    return path
 
 
 def template(key: str) -> str:

@@ -14,6 +14,34 @@ const INFERENCE_VIEWS = ['inference'];
 const PROMPTS_PER_PAGE = 50;
 
 /**
+ * Position the prompt picker centered within the main content area,
+ * accounting for all visible sidebars (variable width).
+ */
+function positionPromptPicker(container) {
+    const mainContent = document.querySelector('.main-content');
+    if (!mainContent || !container) return;
+
+    function apply() {
+        const rect = mainContent.getBoundingClientRect();
+        const center = rect.left + rect.width / 2;
+        container.style.left = center + 'px';
+        container.style.width = Math.min(900, rect.width - 32) + 'px';
+    }
+
+    apply();
+    // Re-apply after sidebar transition (200ms)
+    setTimeout(apply, 220);
+}
+
+// Re-position prompt picker on window resize
+window.addEventListener('resize', () => {
+    const container = document.getElementById('prompt-picker');
+    if (container && container.style.display !== 'none') {
+        positionPromptPicker(container);
+    }
+});
+
+/**
  * Render the prompt picker panel.
  * Shows only for inference views, hidden for trait development views.
  */
@@ -38,12 +66,21 @@ async function renderPromptPicker() {
     }
 
     // Build prompt set buttons
+    // In diff mode, dim sets that don't have comparison data
+    const compareMode = window.state.compareMode || 'main';
+    const isDiffActive = compareMode.startsWith('diff:');
+    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+
     let promptSetButtons = '';
     for (const [setName, promptIds] of Object.entries(window.state.promptsWithData)) {
         if (promptIds.length === 0) continue;
         const isActive = setName === window.state.currentPromptSet ? 'active' : '';
         const displayName = setName.replace(/_/g, ' ');
-        promptSetButtons += `<button class="btn btn-xs pp-btn pp-set-btn ${isActive}" data-set="${setName}">${displayName}</button>`;
+        // Check if this set has any comparison variants
+        const variants = window.state.variantsPerPromptSet?.[setName] || [];
+        const hasComparisonData = variants.some(v => v !== appVariant);
+        const noDiffClass = isDiffActive && !hasComparisonData ? 'pp-no-diff' : '';
+        promptSetButtons += `<button class="btn btn-xs pp-btn pp-set-btn ${isActive} ${noDiffClass}" data-set="${setName}">${displayName}</button>`;
     }
 
     // Build prompt ID buttons (with pagination for large sets)
@@ -154,10 +191,13 @@ async function renderPromptPicker() {
         <div class="pp-expanded ${collapsedClass}" id="pp-expanded">
             <div class="pp-header">
                 <span>Prompt Picker</span>
-                <button class="btn btn-xs btn-ghost pp-collapse-btn" id="pp-collapse-btn" title="Collapse">▼</button>
+                <div class="pp-header-actions">
+                    <button class="btn btn-xs btn-ghost pp-sidebar-toggle" id="pp-sidebar-toggle" title="Toggle prompt set sidebar">☰</button>
+                    <button class="btn btn-xs btn-ghost pp-collapse-btn" id="pp-collapse-btn" title="Collapse">▼</button>
+                </div>
             </div>
             <div class="pp-picker">
-                <div class="pp-row">
+                <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Set:</span>
                     <div class="pp-sets">${promptSetButtons}</div>
                 </div>
@@ -175,6 +215,9 @@ async function renderPromptPicker() {
             ${tokenSliderHtml}
         </div>
     `;
+
+    // Position prompt picker centered in main content area
+    positionPromptPicker(container);
 
     // Re-attach event listeners
     setupPromptPickerListeners();
@@ -312,45 +355,19 @@ function setupPromptPickerListeners() {
         });
     }
 
-    // Prompt set buttons
-    container.querySelectorAll('.pp-set-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const newSet = btn.dataset.set;
-            if (window.state.currentPromptSet !== newSet) {
-                // Save current prompt ID for the old set before switching
-                if (window.state.currentPromptSet && window.state.currentPromptId) {
-                    localStorage.setItem(`promptId_${window.state.currentPromptSet}`, window.state.currentPromptId);
-                }
-
-                window.state.currentPromptSet = newSet;
-                window.state.promptPage = 0; // Reset to first page
-
-                // Update available comparison models for new prompt set
-                window.updateAvailableComparisonModels?.();
-
-                // Try to restore last prompt ID for this set, otherwise use first available
-                const availableIds = window.state.promptsWithData[newSet] || [];
-                const rawSaved = localStorage.getItem(`promptId_${newSet}`);
-                const savedPromptId = rawSaved != null ? String(rawSaved) : null;
-                if (savedPromptId != null && availableIds.includes(savedPromptId)) {
-                    window.state.currentPromptId = savedPromptId;
-                    // Jump to page containing this prompt
-                    const promptIdx = availableIds.indexOf(savedPromptId);
-                    window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
-                } else {
-                    window.state.currentPromptId = availableIds[0] || null;
-                }
-
-                window.state.promptPickerCache = null; // Clear cache
-                // Save to localStorage
-                localStorage.setItem('promptSet', newSet);
-                localStorage.setItem('promptId', window.state.currentPromptId);
-                // Preload tags for new set (async, will re-render when done)
-                preloadTagsForSet(newSet);
-                renderPromptPicker();
-                if (window.renderView) window.renderView();
-            }
+    // Sidebar toggle button
+    const sidebarToggle = container.querySelector('#pp-sidebar-toggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            window.setPromptSetSidebarOpen(!window.state.promptSetSidebarOpen);
+            renderPromptSetSidebar();
+            renderPromptPicker();
         });
+    }
+
+    // Prompt set buttons (inline pills)
+    container.querySelectorAll('.pp-set-btn').forEach(btn => {
+        btn.addEventListener('click', () => selectPromptSet(btn.dataset.set));
     });
 
     // Pagination buttons (use mousedown to ensure event fires before any re-render)
@@ -553,7 +570,117 @@ async function preloadTagsForSet(promptSet) {
 
 // Export to global scope
 window.INFERENCE_VIEWS = INFERENCE_VIEWS;
+// =============================================================================
+// Shared: Prompt Set Selection
+// =============================================================================
+
+/**
+ * Select a prompt set — shared by inline pills and sidebar.
+ */
+function selectPromptSet(newSet) {
+    if (window.state.currentPromptSet === newSet) return;
+
+    // Save current prompt ID for the old set before switching
+    if (window.state.currentPromptSet && window.state.currentPromptId) {
+        localStorage.setItem(`promptId_${window.state.currentPromptSet}`, window.state.currentPromptId);
+    }
+
+    window.state.currentPromptSet = newSet;
+    window.state.promptPage = 0;
+
+    window.updateAvailableComparisonModels?.();
+
+    // Restore last prompt ID for this set, or use first available
+    const availableIds = window.state.promptsWithData[newSet] || [];
+    const rawSaved = localStorage.getItem(`promptId_${newSet}`);
+    const savedPromptId = rawSaved != null ? String(rawSaved) : null;
+    if (savedPromptId != null && availableIds.includes(savedPromptId)) {
+        window.state.currentPromptId = savedPromptId;
+        const promptIdx = availableIds.indexOf(savedPromptId);
+        window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+    } else {
+        window.state.currentPromptId = availableIds[0] || null;
+    }
+
+    window.state.promptPickerCache = null;
+    localStorage.setItem('promptSet', newSet);
+    localStorage.setItem('promptId', window.state.currentPromptId);
+    preloadTagsForSet(newSet);
+    renderPromptPicker();
+    renderPromptSetSidebar();
+    if (window.renderView) window.renderView();
+}
+
+// =============================================================================
+// Prompt Set Sidebar (left panel)
+// =============================================================================
+
+/**
+ * Render the prompt set sidebar panel.
+ * Shows only for inference views when toggled open.
+ */
+function renderPromptSetSidebar() {
+    const container = document.getElementById('prompt-set-sidebar');
+    if (!container) return;
+
+    const isInferenceView = INFERENCE_VIEWS.includes(window.state.currentView);
+    if (!isInferenceView || !window.state.promptSetSidebarOpen) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    const sets = Object.entries(window.state.promptsWithData)
+        .filter(([_, ids]) => ids.length > 0)
+        .sort(([a], [b]) => a.localeCompare(b));
+
+    if (sets.length === 0) {
+        container.innerHTML = '<div class="pss-empty">No prompt sets</div>';
+        return;
+    }
+
+    // In diff mode, dim sets without comparison data
+    const sidebarCompareMode = window.state.compareMode || 'main';
+    const sidebarIsDiff = sidebarCompareMode.startsWith('diff:');
+    const sidebarAppVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+
+    let listHtml = '';
+    for (const [setName, ids] of sets) {
+        const isActive = setName === window.state.currentPromptSet ? 'active' : '';
+        const displayName = setName.replace(/_/g, ' ');
+        const variants = window.state.variantsPerPromptSet?.[setName] || [];
+        const hasCompData = variants.some(v => v !== sidebarAppVariant);
+        const noDiffClass = sidebarIsDiff && !hasCompData ? 'pss-no-diff' : '';
+        listHtml += `<div class="pss-item ${isActive} ${noDiffClass}" data-set="${setName}">
+            <span class="pss-item-name" title="${window.escapeHtml(displayName)}">${window.escapeHtml(displayName)}</span>
+            <span class="pss-item-count">${ids.length}</span>
+        </div>`;
+    }
+
+    container.innerHTML = `
+        <div class="pss-header">
+            <span>Prompt Sets</span>
+            <button class="btn btn-xs btn-ghost pp-sidebar-toggle" id="pss-toggle-btn" title="Hide prompt set sidebar">☰</button>
+        </div>
+        <div class="pss-list">${listHtml}</div>
+    `;
+
+    // Event listeners
+    container.querySelector('#pss-toggle-btn')?.addEventListener('click', () => {
+        window.setPromptSetSidebarOpen(false);
+        renderPromptSetSidebar();
+        renderPromptPicker();
+    });
+
+    container.querySelectorAll('.pss-item').forEach(item => {
+        item.addEventListener('click', () => selectPromptSet(item.dataset.set));
+    });
+}
+
 window.renderPromptPicker = renderPromptPicker;
 window.fetchPromptPickerData = fetchPromptPickerData;
 window.updatePlotTokenHighlights = updatePlotTokenHighlights;
 window.preloadTagsForSet = preloadTagsForSet;
+window.selectPromptSet = selectPromptSet;
+window.renderPromptSetSidebar = renderPromptSetSidebar;

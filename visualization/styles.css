@@ -242,6 +242,46 @@
 .table-compact { font-size: var(--text-xs); }
 .table-compact th, .table-compact td { padding: 6px 8px; }
 
+/* Prompt set buttons: dim when no diff data available */
+.pp-set-btn.pp-no-diff {
+    opacity: 0.4;
+}
+.pp-set-btn.pp-no-diff:hover {
+    opacity: 0.7;
+}
+
+/* Prompt set sidebar: dim items without diff data */
+.pss-item.pss-no-diff {
+    opacity: 0.4;
+}
+.pss-item.pss-no-diff:hover {
+    opacity: 0.7;
+}
+
+/* Top Spans (max-activating sequence finder) */
+.span-result {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+}
+.span-result:hover { background: var(--bg-tertiary); }
+.span-result.active { background: rgba(255, 200, 50, 0.1); }
+.span-result:last-child { border-bottom: none; }
+.span-rank { color: var(--color-text-tertiary); min-width: 24px; }
+.span-delta { font-family: monospace; min-width: 56px; font-weight: 500; }
+.span-text {
+    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
 /* ============================================================
    END PRIMITIVES
    ============================================================ */
@@ -344,6 +384,87 @@ body {
     min-width: 0;
     overflow: hidden;
     opacity: 0;
+}
+
+/* Prompt Set Sidebar (left panel, between analysis sidebar and main content) */
+.sidebar-promptsets {
+    width: fit-content;
+    min-width: 200px;
+    max-width: 500px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    transition: min-width 0.2s ease, opacity 0.15s ease;
+}
+
+.sidebar-promptsets.hidden {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.pss-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.pss-collapse-btn { padding: 4px 8px; }
+
+.pss-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px;
+    padding-bottom: 80px; /* Space for prompt picker at bottom */
+}
+
+.pss-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    transition: background 0.1s;
+}
+
+.pss-item:hover { background: var(--bg-tertiary); }
+.pss-item.active {
+    background: var(--primary-color);
+    color: var(--text-on-primary);
+}
+
+.pss-item-name {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.pss-item-count {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.pss-item.active .pss-item-count { color: var(--text-on-primary); opacity: 0.8; }
+
+.pss-empty {
+    padding: 12px;
+    color: var(--text-tertiary);
+    text-align: center;
+    font-size: var(--text-sm);
 }
 
 .main-content {
@@ -1453,14 +1574,14 @@ code {
 
 .json-viewer pre { margin: 0; color: var(--text-secondary); }
 
-/* Prompt Picker - Fixed Bottom (offset by half combined sidebar width: 350px/2 = 175px) */
+/* Prompt Picker - Fixed Bottom (JS positions via positionPromptPicker()) */
 #prompt-picker {
     position: fixed;
     bottom: 16px;
-    left: calc(50% + 175px);
+    left: 50%;
     transform: translateX(-50%);
     max-width: 900px;
-    width: calc(100% - 350px - 32px);
+    width: calc(100% - 32px);
     padding: 16px;
     font-size: var(--text-sm);
     color: var(--text-primary);
@@ -1471,11 +1592,7 @@ code {
     transition: left 0.2s ease, width 0.2s ease;
 }
 
-/* Prompt picker adjustment when sidebar is collapsed */
-.sidebar-main.collapsed ~ .main-content #prompt-picker {
-    left: 50%;
-    width: calc(100% - 32px);
-}
+/* Prompt picker positioning handled by JS positionPromptPicker() */
 
 /* Prompt Picker Header with collapse button */
 .pp-header {
@@ -1488,6 +1605,20 @@ code {
     align-items: center;
 }
 
+/* Prompt picker header actions */
+.pp-header-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.pp-sidebar-toggle {
+    padding: 4px 8px;
+}
+.pp-sidebar-toggle:hover {
+    color: var(--text-primary);
+}
+
 /* .pp-collapse-btn - uses .btn.btn-xs.btn-ghost primitives, just adds padding */
 .pp-collapse-btn {
     padding: 4px 8px;
@@ -1495,6 +1626,9 @@ code {
 .pp-collapse-btn:hover {
     color: var(--text-primary);
 }
+
+/* Hide inline set pills when sidebar is open (needs .pp-row override) */
+.pp-row.pp-row-hidden { display: none; }
 
 /* Prompt Picker Pill (collapsed state) */
 .pp-pill {
@@ -2183,7 +2317,7 @@ mark.annotation {
     white-space: nowrap;
 }
 
-.sweep-controls .filter-chip {
+.filter-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -2197,11 +2331,11 @@ mark.annotation {
     user-select: none;
 }
 
-.sweep-controls .filter-chip:hover {
+.filter-chip:hover {
     color: var(--text-secondary);
 }
 
-.sweep-controls .filter-chip.active {
+.filter-chip.active {
     color: var(--text-primary);
     background: var(--bg-primary);
 }

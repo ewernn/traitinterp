@@ -56,6 +56,12 @@ const state = {
     massiveDimsCleaning: 'top5-3layers',
     // Compare mode for model comparison
     compareMode: 'main',
+    lastCompareVariant: null,  // Persist organism selection across mode toggles
+    // Top Spans panel state
+    spanWindowLength: 10,      // Sliding window length for max-activating spans
+    spanTrait: null,           // Which trait to rank by (reset on experiment change)
+    spanScope: 'current',      // 'current' or 'allPrompts'
+    spanPanelOpen: false,      // Whether the Top Spans panel is expanded
     // Layer mode: show single trait across all available layers
     layerMode: false,
     layerModeTrait: null,  // trait.name string, reset on experiment change
@@ -63,6 +69,8 @@ const state = {
     gpuStatus: null,  // { available, type, device, memory_total_gb, memory_used_gb, ... }
     // Experiment filtering
     showAllExperiments: false,
+    // Prompt set sidebar (left panel for inference views)
+    promptSetSidebarOpen: false,
     // Last selected analysis view (for Analysis entry point)
     lastAnalysisView: 'trait-extraction'
 };
@@ -144,6 +152,17 @@ function setLayerModeTrait(traitName) {
     if (window.renderView) window.renderView();
 }
 
+// Prompt Set Sidebar
+function initPromptSetSidebar() {
+    const saved = localStorage.getItem('promptSetSidebarOpen');
+    state.promptSetSidebarOpen = saved !== null ? saved === 'true' : true;  // Default open
+}
+
+function setPromptSetSidebarOpen(open) {
+    state.promptSetSidebarOpen = !!open;
+    localStorage.setItem('promptSetSidebarOpen', state.promptSetSidebarOpen);
+}
+
 // Compare Mode (Model Comparison)
 function initCompareMode() {
     const savedMode = localStorage.getItem('compareMode');
@@ -163,7 +182,39 @@ function initCompareMode() {
 function setCompareMode(mode) {
     state.compareMode = mode || 'main';
     localStorage.setItem('compareMode', state.compareMode);
+    // Re-render prompt picker so diff-availability indicators update
+    if (window.renderPromptPicker) window.renderPromptPicker();
+    if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
     if (window.renderView) window.renderView();
+}
+
+// Last Compare Variant (persist organism selection)
+function initLastCompareVariant() {
+    state.lastCompareVariant = localStorage.getItem('lastCompareVariant') || null;
+}
+
+// Top Spans panel
+function initSpanState() {
+    const savedLength = localStorage.getItem('spanWindowLength');
+    state.spanWindowLength = savedLength ? parseInt(savedLength) : 10;
+    state.spanPanelOpen = localStorage.getItem('spanPanelOpen') === 'true';
+    state.spanScope = localStorage.getItem('spanScope') || 'current';
+}
+
+function setSpanWindowLength(length) {
+    state.spanWindowLength = Math.max(1, Math.min(100, parseInt(length) || 10));
+    localStorage.setItem('spanWindowLength', state.spanWindowLength);
+    // Don't re-render the whole view — top spans panel updates locally
+}
+
+function setSpanScope(scope) {
+    state.spanScope = scope === 'allPrompts' ? 'allPrompts' : 'current';
+    localStorage.setItem('spanScope', state.spanScope);
+}
+
+function setSpanPanelOpen(open) {
+    state.spanPanelOpen = !!open;
+    localStorage.setItem('spanPanelOpen', state.spanPanelOpen);
 }
 
 // Hide Attention Sink Toggle
@@ -340,6 +391,7 @@ async function loadExperimentData(experimentName) {
     // Reset view-specific state on experiment change
     state.selectedSteeringTrait = null;
     state.layerModeTrait = null;
+    state.spanTrait = null;
 
     try {
         state.experimentData = {
@@ -467,7 +519,8 @@ function updateAvailableComparisonModels() {
     state.availableComparisonModels = variants.filter(v => v !== appVariant);
 
     // If current compare mode references a variant that's no longer available, reset to main
-    if (state.compareMode !== 'main') {
+    // Exception: 'diff:replay' is a special flag for replay_suffix convention (not a real variant)
+    if (state.compareMode !== 'main' && state.compareMode !== 'diff:replay') {
         const modeVariant = state.compareMode.replace('diff:', '').replace('show:', '');
         if (!state.availableComparisonModels.includes(modeVariant)) {
             state.compareMode = 'main';
@@ -643,7 +696,10 @@ async function init() {
     initProjectionMode();
     initMassiveDimsCleaning();
     initLayerMode();
+    initPromptSetSidebar();
     initCompareMode();
+    initLastCompareVariant();
+    initSpanState();
     initHideAttentionSink();
     initSelectedMethods();
 
@@ -665,6 +721,7 @@ async function init() {
     window.updateExperimentVisibility();
     await ensureExperimentLoaded();
     window.renderPromptPicker();
+    if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
     if (window.renderView) window.renderView();
 
     // Show reset button in dev mode
@@ -701,9 +758,15 @@ window.setProjectionMode = setProjectionMode;
 window.setMassiveDimsCleaning = setMassiveDimsCleaning;
 window.setLayerMode = setLayerMode;
 window.setLayerModeTrait = setLayerModeTrait;
+window.setPromptSetSidebarOpen = setPromptSetSidebarOpen;
 window.setCompareMode = setCompareMode;
 window.setHideAttentionSink = setHideAttentionSink;
 window.toggleMethod = toggleMethod;
+
+// Top Spans
+window.setSpanWindowLength = setSpanWindowLength;
+window.setSpanScope = setSpanScope;
+window.setSpanPanelOpen = setSpanPanelOpen;
 
 // GPU status
 window.fetchGpuStatus = fetchGpuStatus;
@@ -743,6 +806,11 @@ const LOCAL_STORAGE_KEYS = [
     'hideAttentionSink',
     'selectedMethods',
     'layerMode',
+    'lastCompareVariant',
+    'spanWindowLength',
+    'spanPanelOpen',
+    'spanScope',
+    'promptSetSidebarOpen',
     // Prompt selection (prompt-picker.js)
     'promptSet',
     'promptId',

@@ -104,6 +104,343 @@ function computeCleanedNorms(originalNorms, massiveDimData, dimsToRemove, phase)
 }
 
 
+// Cross-prompt spans cache: keyed by `${promptSet}:${organism}:${trait}`
+const crossPromptSpansCache = {};
+let crossPromptLoading = false;
+
+/**
+ * Fetch all projections for a prompt set, compute diffs, and return top spans across all prompts.
+ */
+async function fetchCrossPromptSpans(traitName, baseTrait, compareModel, windowLength, topK = 20) {
+    const promptSet = window.state.currentPromptSet;
+    const promptIds = window.state.promptsWithData?.[promptSet] || [];
+    const mainVariant = window.getVariantForCurrentPromptSet();
+
+    if (promptIds.length === 0) return [];
+
+    const allSpans = [];
+    // Fetch in parallel batches of 10
+    const batchSize = 10;
+    for (let b = 0; b < promptIds.length; b += batchSize) {
+        const batch = promptIds.slice(b, b + batchSize);
+        const results = await Promise.all(batch.map(async (pid) => {
+            try {
+                const trait = { name: baseTrait };
+                const [mainRes, compRes] = await Promise.all([
+                    fetch(window.paths.residualStreamData(trait, promptSet, pid, mainVariant)),
+                    fetch(window.paths.residualStreamData(trait, promptSet, pid, compareModel))
+                ]);
+                if (!mainRes.ok || !compRes.ok) return null;
+                const [mainData, compData] = await Promise.all([mainRes.json(), compRes.json()]);
+                if (mainData.error || compData.error) return null;
+
+                // Handle multi-vector: pick first available projection
+                const getProj = (data) => {
+                    if (data.metadata?.multi_vector && Array.isArray(data.projections)) {
+                        return data.projections[0] ? { prompt: data.projections[0].prompt, response: data.projections[0].response } : null;
+                    }
+                    return data.projections;
+                };
+                const mainProj = getProj(mainData);
+                const compProj = getProj(compData);
+                if (!mainProj || !compProj) return null;
+
+                // Compute diff (comparison - main)
+                const diffResponse = mainProj.response.map((v, i) => (compProj.response[i] || 0) - v);
+                // Get response tokens
+                const tokens = mainData.response?.tokens || [];
+                return { promptId: pid, diffResponse, tokens };
+            } catch { return null; }
+        }));
+
+        for (const r of results) {
+            if (!r) continue;
+            const spans = computeTopSpans(r.diffResponse, r.tokens, windowLength, 5);
+            for (const s of spans) {
+                allSpans.push({ ...s, promptId: r.promptId });
+            }
+        }
+    }
+
+    // Global ranking by absolute delta
+    allSpans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
+    return allSpans.slice(0, topK);
+}
+
+/**
+ * Compute top-K highest-delta spans using a sliding window over per-token diff values.
+ * Returns spans sorted by absolute mean delta (highest magnitude first).
+ */
+function computeTopSpans(diffValues, tokens, windowLength, topK = 10) {
+    if (!diffValues || diffValues.length === 0 || windowLength < 1) return [];
+    const effectiveWindow = Math.min(windowLength, diffValues.length);
+    const spans = [];
+    // Running sum for O(n) sliding window
+    let sum = 0;
+    for (let i = 0; i < effectiveWindow; i++) sum += diffValues[i];
+    spans.push({ start: 0, end: effectiveWindow, meanDelta: sum / effectiveWindow });
+    for (let i = 1; i <= diffValues.length - effectiveWindow; i++) {
+        sum += diffValues[i + effectiveWindow - 1] - diffValues[i - 1];
+        spans.push({ start: i, end: i + effectiveWindow, meanDelta: sum / effectiveWindow });
+    }
+    // Sort by absolute delta
+    spans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
+    // Remove overlapping spans: keep highest first, skip any that overlap a kept span
+    const kept = [];
+    const usedPositions = new Set();
+    for (const span of spans) {
+        let overlaps = false;
+        for (let j = span.start; j < span.end; j++) {
+            if (usedPositions.has(j)) { overlaps = true; break; }
+        }
+        if (!overlaps) {
+            for (let j = span.start; j < span.end; j++) usedPositions.add(j);
+            kept.push({
+                ...span,
+                text: tokens ? tokens.slice(span.start, span.end).join('') : ''
+            });
+        }
+        if (kept.length >= topK) break;
+    }
+    return kept;
+}
+
+/**
+ * Render the Top Spans panel HTML and wire up event listeners.
+ * Called after the trajectory chart is rendered, only in diff mode.
+ */
+function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
+    const container = document.getElementById('top-spans-panel');
+    if (!container) return;
+
+    const isDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
+    if (!isDiff) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = '';
+
+    // Find trait keys that have diff data
+    const diffTraitKeys = loadedTraits.filter(k => traitData[k]?.metadata?._isDiff);
+    if (diffTraitKeys.length === 0) { container.style.display = 'none'; return; }
+
+    // Determine selected trait for ranking
+    let spanTrait = window.state.spanTrait;
+    if (!spanTrait || !diffTraitKeys.includes(spanTrait)) {
+        // Default to trait with highest mean |delta|
+        let bestKey = diffTraitKeys[0];
+        let bestMean = 0;
+        for (const key of diffTraitKeys) {
+            const vals = traitData[key].projections?.response || [];
+            const mean = vals.reduce((a, b) => a + Math.abs(b), 0) / (vals.length || 1);
+            if (mean > bestMean) { bestMean = mean; bestKey = key; }
+        }
+        spanTrait = bestKey;
+        window.state.spanTrait = spanTrait;
+    }
+
+    const windowLength = window.state.spanWindowLength || 10;
+    const isOpen = window.state.spanPanelOpen;
+    const isAllPrompts = window.state.spanScope === 'allPrompts';
+    const compareModel = traitData[spanTrait]?.metadata?._compareModel;
+
+    // Compute spans for selected trait (current response mode)
+    const diffValues = traitData[spanTrait]?.projections?.response || [];
+    const spans = isAllPrompts ? [] : computeTopSpans(diffValues, responseTokens, windowLength);
+
+    // Get display name for trait
+    const getDisplayName = (key) => {
+        const baseTrait = traitData[key]?.metadata?._baseTrait || key;
+        return window.getDisplayName ? window.getDisplayName(baseTrait) : baseTrait;
+    };
+
+    container.innerHTML = `
+        <div class="dropdown" style="margin-top: 12px;">
+            <div class="dropdown-header" id="top-spans-toggle">
+                <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
+                <span class="dropdown-label">Top Spans</span>
+                <span style="color: var(--color-text-tertiary); font-size: var(--text-xs); margin-left: auto;">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
+            </div>
+            ${isOpen ? `
+            <div class="dropdown-body" style="padding: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <span style="font-size: var(--text-xs); color: var(--color-text-secondary);">Trait:</span>
+                    <select id="span-trait-select" style="font-size: var(--text-xs);">
+                        ${diffTraitKeys.map(k => `
+                            <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${getDisplayName(k)}</option>
+                        `).join('')}
+                    </select>
+                    <span style="font-size: var(--text-xs); color: var(--color-text-secondary);">Window:</span>
+                    <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
+                    <span id="span-window-label" style="font-size: var(--text-xs); color: var(--color-text-secondary); min-width: 40px;">${windowLength} tok</span>
+                    <span style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-left: 8px;">Scope:</span>
+                    <span class="filter-chip ${window.state.spanScope === 'current' ? 'active' : ''}" data-span-scope="current">Current</span>
+                    <span class="filter-chip ${window.state.spanScope === 'allPrompts' ? 'active' : ''}" data-span-scope="allPrompts">All Prompts</span>
+                </div>
+                <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
+                    ${isAllPrompts
+                        ? '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">Loading cross-prompt spans...</div>'
+                        : (spans.length > 0 ? spans.map((s, i) => `
+                        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}–${s.end} (response-relative)">
+                            <span class="span-rank">#${i + 1}</span>
+                            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
+                            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                        </div>
+                    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
+                </div>
+            </div>
+            ` : ''}
+        </div>
+    `;
+
+    // Event listeners
+    const toggle = document.getElementById('top-spans-toggle');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            window.setSpanPanelOpen(!window.state.spanPanelOpen);
+            renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+        });
+    }
+
+    if (isOpen) {
+        const traitSelect = document.getElementById('span-trait-select');
+        if (traitSelect) {
+            traitSelect.addEventListener('change', () => {
+                window.state.spanTrait = traitSelect.value;
+                renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+            });
+        }
+
+        const slider = document.getElementById('span-window-slider');
+        if (slider) {
+            slider.addEventListener('input', () => {
+                const val = parseInt(slider.value);
+                document.getElementById('span-window-label').textContent = val + ' tok';
+                window.setSpanWindowLength(val);
+                // Recompute spans without full re-render
+                const newSpans = computeTopSpans(
+                    traitData[window.state.spanTrait]?.projections?.response || [],
+                    responseTokens, val
+                );
+                const resultsDiv = document.getElementById('top-spans-results');
+                if (resultsDiv) {
+                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => `
+                        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}–${s.end} (response-relative)">
+                            <span class="span-rank">#${i + 1}</span>
+                            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
+                            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+                        </div>
+                    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found</div>';
+                    // Re-attach click handlers
+                    attachSpanClickHandlers(nPromptTokens);
+                }
+            });
+        }
+
+        // Scope toggle
+        document.querySelectorAll('[data-span-scope]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                window.setSpanScope(chip.dataset.spanScope);
+                renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+            });
+        });
+
+        // Cross-prompt: trigger async fetch if in allPrompts mode
+        if (isAllPrompts && compareModel && !crossPromptLoading) {
+            const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
+            const cacheKey = `${window.state.currentPromptSet}:${compareModel}:${baseTrait}:${windowLength}`;
+            if (crossPromptSpansCache[cacheKey]) {
+                // Use cached results
+                renderCrossPromptResults(crossPromptSpansCache[cacheKey], nPromptTokens);
+            } else {
+                crossPromptLoading = true;
+                fetchCrossPromptSpans(spanTrait, baseTrait, compareModel, windowLength).then(results => {
+                    crossPromptLoading = false;
+                    crossPromptSpansCache[cacheKey] = results;
+                    renderCrossPromptResults(results, nPromptTokens);
+                }).catch(() => {
+                    crossPromptLoading = false;
+                    const resultsDiv = document.getElementById('top-spans-results');
+                    if (resultsDiv) resultsDiv.innerHTML = '<div style="color: var(--danger); font-size: var(--text-xs);">Error loading cross-prompt data</div>';
+                });
+            }
+        }
+
+        // Click handlers on span results
+        attachSpanClickHandlers(nPromptTokens);
+    }
+}
+
+/**
+ * Render cross-prompt span results into the existing results div.
+ */
+function renderCrossPromptResults(spans, nPromptTokens) {
+    const resultsDiv = document.getElementById('top-spans-results');
+    if (!resultsDiv) return;
+    resultsDiv.innerHTML = spans.length > 0 ? spans.map((s, i) => `
+        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" data-prompt-id="${s.promptId}" title="Prompt ${s.promptId}, tokens ${s.start}–${s.end}">
+            <span class="span-rank">#${i + 1}</span>
+            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
+            <span style="color: var(--color-text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
+            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+        </div>
+    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>';
+
+    // Click handlers: navigate to prompt + highlight
+    document.querySelectorAll('.span-result[data-prompt-id]').forEach(row => {
+        row.addEventListener('click', () => {
+            const promptId = row.dataset.promptId;
+            // Navigate to that prompt
+            if (window.state.currentPromptId !== promptId) {
+                window.state.currentPromptId = promptId;
+                localStorage.setItem('promptId', promptId);
+                if (window.state.currentPromptSet) {
+                    localStorage.setItem(`promptId_${window.state.currentPromptSet}`, promptId);
+                }
+                window.state.promptPickerCache = null;
+                window.renderPromptPicker?.();
+                window.renderView?.();
+            }
+            // Toggle active state
+            document.querySelectorAll('.span-result').forEach(r => r.classList.remove('active'));
+            row.classList.add('active');
+        });
+    });
+}
+
+/**
+ * Attach click handlers to span result rows — highlight in trajectory chart.
+ */
+function attachSpanClickHandlers(nPromptTokens) {
+    document.querySelectorAll('.span-result').forEach(row => {
+        row.addEventListener('click', () => {
+            const start = parseInt(row.dataset.spanStart);
+            const end = parseInt(row.dataset.spanEnd);
+            // Add highlight shape to the trajectory chart
+            const plotDiv = document.getElementById('combined-activation-plot');
+            if (plotDiv && plotDiv.data) {
+                // Convert response-relative indices to absolute (add prompt tokens offset)
+                const absStart = nPromptTokens + start - 0.5;
+                const absEnd = nPromptTokens + end - 0.5;
+                const shape = {
+                    type: 'rect',
+                    xref: 'x', yref: 'paper',
+                    x0: absStart, x1: absEnd,
+                    y0: 0, y1: 1,
+                    fillcolor: 'rgba(255, 200, 50, 0.15)',
+                    line: { color: 'rgba(255, 200, 50, 0.5)', width: 1 }
+                };
+                // Replace any existing highlight shapes (keep annotation shapes)
+                const existingShapes = (plotDiv.layout?.shapes || []).filter(s => !s._isSpanHighlight);
+                Plotly.relayout(plotDiv, { shapes: [...existingShapes, { ...shape, _isSpanHighlight: true }] });
+            }
+            // Toggle active state
+            document.querySelectorAll('.span-result').forEach(r => r.classList.remove('active'));
+            row.classList.add('active');
+        });
+    });
+}
+
 async function renderTraitDynamics() {
     const contentArea = document.getElementById('content-area');
 
@@ -154,7 +491,19 @@ async function renderTraitDynamics() {
     const failedTraits = [];
     const promptSet = window.state.currentPromptSet;
     const promptId = window.state.currentPromptId;
-    const modelVariant = window.getVariantForCurrentPromptSet();
+
+    // Detect replay_suffix convention: organism is the main variant, instruct is the replay comparison
+    const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
+    const availableModelsEarly = window.state.availableComparisonModels || [];
+
+    let modelVariant;
+    if (isReplaySuffix && availableModelsEarly.length > 0) {
+        // In replay_suffix mode, the selected organism is the main variant
+        const selectedOrg = window.state.lastCompareVariant || availableModelsEarly[0];
+        modelVariant = availableModelsEarly.includes(selectedOrg) ? selectedOrg : availableModelsEarly[0];
+    } else {
+        modelVariant = window.getVariantForCurrentPromptSet();
+    }
 
     if (!promptSet || !promptId) {
         renderNoDataMessage(contentArea, filteredTraits, promptSet, promptId);
@@ -265,7 +614,60 @@ async function renderTraitDynamics() {
     const isShow = compareMode.startsWith('show:');
     const compareModel = isDiff ? compareMode.slice(5) : isShow ? compareMode.slice(5) : null;
 
-    if (compareModel) {
+    // For replay_suffix: diff always compares organism (main) vs instruct replay
+    const replayDiff = isReplaySuffix && (isDiff || (compareMode === 'diff'));
+    const effectiveCompareModel = replayDiff ? null : compareModel;  // replay handles its own fetch
+
+    if (replayDiff) {
+        // Replay suffix convention: fetch instruct data from {promptSet}_replay_{organism}
+        const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+        const replayPromptSet = `${promptSet}_replay_${modelVariant}`;
+        const traitKeys = Object.keys(traitData);
+
+        const compResults = await Promise.all(traitKeys.map(async (traitKey) => {
+            const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
+            const trait = filteredTraits.find(t => t.name === baseTrait);
+            if (!trait) return null;
+
+            try {
+                const fetchPath = window.paths.residualStreamData(trait, replayPromptSet, promptId, appVariant);
+                const response = await fetch(fetchPath);
+                if (!response.ok) return null;
+                const compData = await response.json();
+                if (compData.error) return null;
+                return { traitKey, compData };
+            } catch (error) {
+                return null;
+            }
+        }));
+
+        for (const result of compResults) {
+            if (!result) continue;
+            const { traitKey, compData } = result;
+
+            let compProj;
+            if (compData.metadata?.multi_vector && Array.isArray(compData.projections)) {
+                const vs = traitData[traitKey].metadata?.vector_source;
+                if (vs) {
+                    const match = compData.projections.find(p => p.method === vs.method && p.layer === vs.layer);
+                    compProj = match ? { prompt: match.prompt, response: match.response } : null;
+                }
+            } else {
+                compProj = compData.projections;
+            }
+
+            if (compProj) {
+                // Diff: organism - instruct_replay (positive = organism has more trait)
+                const mainProj = traitData[traitKey].projections;
+                const diffPrompt = mainProj.prompt.map((v, i) => v - (compProj.prompt[i] || 0));
+                const diffResponse = mainProj.response.map((v, i) => v - (compProj.response[i] || 0));
+                traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
+                traitData[traitKey].metadata = traitData[traitKey].metadata || {};
+                traitData[traitKey].metadata._isDiff = true;
+                traitData[traitKey].metadata._compareModel = appVariant;
+            }
+        }
+    } else if (effectiveCompareModel) {
         const traitKeys = Object.keys(traitData);
         const compResults = await Promise.all(traitKeys.map(async (traitKey) => {
             const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
@@ -274,7 +676,7 @@ async function renderTraitDynamics() {
 
             try {
                 // Fetch from comparison model's path (same prompt set, different model)
-                const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, compareModel);
+                const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, effectiveCompareModel);
                 const response = await fetch(fetchPath);
                 if (!response.ok) return null;
                 const compData = await response.json();
@@ -309,13 +711,13 @@ async function renderTraitDynamics() {
                     traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
                     traitData[traitKey].metadata = traitData[traitKey].metadata || {};
                     traitData[traitKey].metadata._isDiff = true;
-                    traitData[traitKey].metadata._compareModel = compareModel;
+                    traitData[traitKey].metadata._compareModel = effectiveCompareModel;
                 } else if (isShow) {
                     // Show mode: replace with comparison model's projections
                     traitData[traitKey].projections = compProj;
                     traitData[traitKey].metadata = traitData[traitKey].metadata || {};
                     traitData[traitKey].metadata._isComparisonModel = true;
-                    traitData[traitKey].metadata._compareModel = compareModel;
+                    traitData[traitKey].metadata._compareModel = effectiveCompareModel;
                 }
             }
         }
@@ -373,6 +775,9 @@ function renderNoDataMessage(container, traits, promptSet, promptId) {
 }
 
 async function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptSet, promptId, annotationTokenRanges = [], allFilteredTraits = []) {
+    // Detect replay_suffix convention (needed for UI controls and event handlers)
+    const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
+
     // Use first trait's data as reference for tokens (they should all be the same)
     const refData = traitData[loadedTraits[0]];
 
@@ -413,7 +818,11 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
 
     // Compare mode: "main", "diff:{model}", or "show:{model}"
     const currentCompareMode = window.state.compareMode || 'main';
+    const isDiffMode = currentCompareMode.startsWith('diff:');
     const availableModels = window.state.availableComparisonModels || [];
+    const currentCompareVariant = isDiffMode ? currentCompareMode.slice(5) : (window.state.lastCompareVariant || availableModels[0] || '');
+    // For replay_suffix, the selected organism (used for dropdown selected state)
+    const selectedOrganism = window.state.lastCompareVariant || availableModels[0] || '';
 
     // Check what we're showing
     const showingDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
@@ -421,7 +830,12 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     const compareModelName = Object.values(traitData).find(d => d.metadata?._compareModel)?.metadata?._compareModel;
 
     let compareInfoHtml = '';
-    if (showingDiff) {
+    if (showingDiff && isReplaySuffix) {
+        const organismName = window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0] || 'organism';
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+            Showing DIFF: ${organismName} − instruct replay
+           </div>`;
+    } else if (showingDiff) {
         compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
             Showing DIFF: ${compareModelName} − application model
            </div>`;
@@ -481,18 +895,30 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
                         ).join('')}
                     </select>
                     ` : ''}
-                    ${availableModels.length > 0 ? `
-                    <span class="projection-toggle-label" style="margin-left: 12px;">Compare:</span>
-                    <select id="compare-mode-select" style="margin-left: 4px;">
-                        <option value="main" ${currentCompareMode === 'main' ? 'selected' : ''}>Main model</option>
+                    ${availableModels.length > 0 && isReplaySuffix ? `
+                    <span class="projection-toggle-label" style="margin-left: 12px;">Organism:</span>
+                    <select id="compare-variant-select" style="margin-left: 4px;">
                         ${availableModels.map(m => `
-                            <option value="diff:${m}" ${currentCompareMode === 'diff:' + m ? 'selected' : ''}>Diff (${m} − main)</option>
-                            <option value="show:${m}" ${currentCompareMode === 'show:' + m ? 'selected' : ''}>${m}</option>
+                            <option value="${m}" ${m === selectedOrganism ? 'selected' : ''}>${m}</option>
+                        `).join('')}
+                    </select>
+                    <span class="filter-chip ${!isDiffMode ? 'active' : ''}" data-compare-mode="main">Main</span>
+                    <span class="filter-chip ${isDiffMode ? 'active' : ''}" data-compare-mode="diff">Diff</span>
+                    ` : availableModels.length > 0 ? `
+                    <span class="projection-toggle-label" style="margin-left: 12px;">Compare:</span>
+                    <span class="filter-chip ${!isDiffMode ? 'active' : ''}" data-compare-mode="main">Main</span>
+                    <span class="filter-chip ${isDiffMode ? 'active' : ''}" data-compare-mode="diff">Diff</span>
+                    ${isDiffMode ? `
+                    <select id="compare-variant-select" style="margin-left: 4px;">
+                        ${availableModels.map(m => `
+                            <option value="${m}" ${m === currentCompareVariant ? 'selected' : ''}>${m}</option>
                         `).join('')}
                     </select>
                     ` : ''}
+                    ` : ''}
                 </div>
                 <div id="combined-activation-plot"></div>
+                <div id="top-spans-panel"></div>
             </section>
 
             <section>
@@ -549,10 +975,37 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
             window.setProjectionMode(projectionModeSelect.value);
         });
     }
-    const compareSelect = document.getElementById('compare-mode-select');
-    if (compareSelect) {
-        compareSelect.addEventListener('change', () => {
-            window.setCompareMode(compareSelect.value);
+    // Compare mode toggle (Main/Diff chips)
+    document.querySelectorAll('[data-compare-mode]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const mode = chip.dataset.compareMode;
+            if (mode === 'main') {
+                window.setCompareMode('main');
+            } else {
+                if (isReplaySuffix) {
+                    // In replay mode, diff is always against instruct replay — use 'diff' as a simple flag
+                    window.setCompareMode('diff:replay');
+                } else {
+                    const variant = (window.state.lastCompareVariant && availableModels.includes(window.state.lastCompareVariant))
+                        ? window.state.lastCompareVariant
+                        : availableModels[0];
+                    if (variant) window.setCompareMode('diff:' + variant);
+                }
+            }
+        });
+    });
+    // Compare variant / organism dropdown
+    const compareVariantSelect = document.getElementById('compare-variant-select');
+    if (compareVariantSelect) {
+        compareVariantSelect.addEventListener('change', () => {
+            window.state.lastCompareVariant = compareVariantSelect.value;
+            localStorage.setItem('lastCompareVariant', compareVariantSelect.value);
+            if (isReplaySuffix) {
+                // Organism selector: re-render to load new organism's data
+                if (window.renderView) window.renderView();
+            } else {
+                window.setCompareMode('diff:' + compareVariantSelect.value);
+            }
         });
     }
     const layerModeToggle = document.getElementById('layer-mode-toggle');
@@ -838,6 +1291,9 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
             window.renderCurrentView?.();
         }
     });
+
+    // Render Top Spans panel (diff mode only)
+    renderTopSpansPanel(traitData, filteredByMethod, responseTokens, nPromptTokens);
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens);

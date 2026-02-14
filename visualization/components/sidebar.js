@@ -226,6 +226,7 @@ function setupNavigation() {
                 updateExperimentVisibility();
                 await window.ensureExperimentLoaded();
                 window.renderPromptPicker();
+                if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
                 if (window.renderView) window.renderView();
                 return;
             }
@@ -250,6 +251,7 @@ function setupNavigation() {
                 await window.ensureExperimentLoaded();
 
                 window.renderPromptPicker();
+                if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
                 if (window.renderView) window.renderView();
             }
         });
