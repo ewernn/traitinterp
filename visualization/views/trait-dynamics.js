@@ -110,31 +110,65 @@ let crossPromptLoading = false;
 
 /**
  * Fetch all projections for a prompt set, compute diffs, and return top spans across all prompts.
+ * Handles both standard (same prompt set, different variants) and replay_suffix conventions.
  */
-async function fetchCrossPromptSpans(traitName, baseTrait, compareModel, windowLength, topK = 20) {
+async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK = 20) {
     const promptSet = window.state.currentPromptSet;
     const promptIds = window.state.promptsWithData?.[promptSet] || [];
-    const mainVariant = window.getVariantForCurrentPromptSet();
 
-    if (promptIds.length === 0) return [];
+    if (promptIds.length === 0) return { spans: [], totalPrompts: 0 };
 
+    // Detect replay_suffix convention
+    const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
+    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const availableModels = window.state.availableComparisonModels || [];
+
+    let mainVariant, compVariant, mainPromptSet, compPromptSet;
+    if (isReplaySuffix) {
+        const selectedOrg = window.state.lastCompareVariant || availableModels[0];
+        mainVariant = selectedOrg;
+        compVariant = appVariant;
+        mainPromptSet = promptSet;
+        compPromptSet = `${promptSet}_replay_${selectedOrg}`;
+    } else {
+        mainVariant = window.getVariantForCurrentPromptSet();
+        compVariant = compareModel;
+        mainPromptSet = promptSet;
+        compPromptSet = promptSet;
+    }
+
+    if (!mainVariant || !compVariant) return { spans: [], totalPrompts: 0 };
+
+    const spanMode = window.state.spanMode || 'window';
     const allSpans = [];
-    // Fetch in parallel batches of 10
+    const resultsDiv = document.getElementById('top-spans-results');
     const batchSize = 10;
+
     for (let b = 0; b < promptIds.length; b += batchSize) {
         const batch = promptIds.slice(b, b + batchSize);
         const results = await Promise.all(batch.map(async (pid) => {
             try {
                 const trait = { name: baseTrait };
-                const [mainRes, compRes] = await Promise.all([
-                    fetch(window.paths.residualStreamData(trait, promptSet, pid, mainVariant)),
-                    fetch(window.paths.residualStreamData(trait, promptSet, pid, compareModel))
+                const [mainRes, compRes, responseRes] = await Promise.all([
+                    fetch(window.paths.residualStreamData(trait, mainPromptSet, pid, mainVariant)),
+                    fetch(window.paths.residualStreamData(trait, compPromptSet, pid, compVariant)),
+                    fetch(window.paths.responseData(mainPromptSet, pid, mainVariant))
                 ]);
                 if (!mainRes.ok || !compRes.ok) return null;
                 const [mainData, compData] = await Promise.all([mainRes.json(), compRes.json()]);
                 if (mainData.error || compData.error) return null;
 
-                // Handle multi-vector: pick first available projection
+                // Get response tokens from response data
+                let tokens = [];
+                if (responseRes.ok) {
+                    const responseData = await responseRes.json();
+                    if (responseData.tokens && responseData.prompt_end !== undefined) {
+                        tokens = responseData.tokens.slice(responseData.prompt_end);
+                    } else if (responseData.response?.tokens) {
+                        tokens = responseData.response.tokens;
+                    }
+                }
+
                 const getProj = (data) => {
                     if (data.metadata?.multi_vector && Array.isArray(data.projections)) {
                         return data.projections[0] ? { prompt: data.projections[0].prompt, response: data.projections[0].response } : null;
@@ -145,26 +179,34 @@ async function fetchCrossPromptSpans(traitName, baseTrait, compareModel, windowL
                 const compProj = getProj(compData);
                 if (!mainProj || !compProj) return null;
 
-                // Compute diff (comparison - main)
-                const diffResponse = mainProj.response.map((v, i) => (compProj.response[i] || 0) - v);
-                // Get response tokens
-                const tokens = mainData.response?.tokens || [];
+                // Diff: organism - instruct_replay (replay) or comp - main (normal)
+                const diffResponse = isReplaySuffix
+                    ? mainProj.response.map((v, i) => v - (compProj.response[i] || 0))
+                    : mainProj.response.map((v, i) => (compProj.response[i] || 0) - v);
+
                 return { promptId: pid, diffResponse, tokens };
             } catch { return null; }
         }));
 
         for (const r of results) {
             if (!r) continue;
-            const spans = computeTopSpans(r.diffResponse, r.tokens, windowLength, 5);
+            const spans = spanMode === 'clauses'
+                ? computeClauseSpans(r.diffResponse, r.tokens, 5)
+                : computeTopSpans(r.diffResponse, r.tokens, windowLength, 5);
             for (const s of spans) {
                 allSpans.push({ ...s, promptId: r.promptId });
             }
         }
+
+        // Progress update
+        const loaded = Math.min(b + batchSize, promptIds.length);
+        if (resultsDiv) {
+            resultsDiv.innerHTML = `<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">Loading ${loaded}/${promptIds.length} prompts...</div>`;
+        }
     }
 
-    // Global ranking by absolute delta
     allSpans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
-    return allSpans.slice(0, topK);
+    return { spans: allSpans.slice(0, topK), totalPrompts: promptIds.length };
 }
 
 /**
@@ -206,6 +248,47 @@ function computeTopSpans(diffValues, tokens, windowLength, topK = 10) {
 }
 
 /**
+ * Compute clause-level spans by splitting on sentence/clause boundaries.
+ * Finds tokens ending with punctuation (.!?;,) and groups into clause spans.
+ */
+function computeClauseSpans(diffValues, tokens, topK = 10) {
+    if (!diffValues || diffValues.length === 0 || !tokens || tokens.length === 0) return [];
+
+    // Find clause boundary indices (exclusive end of each clause)
+    const boundaries = [];
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i].trimEnd();
+        if (/[.!?;]$/.test(token) || /[,\u2014\u2013]$/.test(token)) {
+            boundaries.push(i + 1);
+        }
+    }
+    // Add end as final boundary if not already there
+    const maxLen = Math.min(tokens.length, diffValues.length);
+    if (boundaries.length === 0 || boundaries[boundaries.length - 1] < maxLen) {
+        boundaries.push(maxLen);
+    }
+
+    const spans = [];
+    let start = 0;
+    for (const end of boundaries) {
+        const clampedEnd = Math.min(end, diffValues.length);
+        if (clampedEnd <= start) continue;
+        const clauseDiff = diffValues.slice(start, clampedEnd);
+        const mean = clauseDiff.reduce((a, b) => a + b, 0) / clauseDiff.length;
+        spans.push({
+            start,
+            end: clampedEnd,
+            meanDelta: mean,
+            text: tokens.slice(start, clampedEnd).join('')
+        });
+        start = clampedEnd;
+    }
+
+    spans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
+    return spans.slice(0, topK);
+}
+
+/**
  * Render the Top Spans panel HTML and wire up event listeners.
  * Called after the trajectory chart is rendered, only in diff mode.
  */
@@ -240,13 +323,16 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
     }
 
     const windowLength = window.state.spanWindowLength || 10;
+    const spanMode = window.state.spanMode || 'window';
     const isOpen = window.state.spanPanelOpen;
     const isAllPrompts = window.state.spanScope === 'allPrompts';
     const compareModel = traitData[spanTrait]?.metadata?._compareModel;
 
     // Compute spans for selected trait (current response mode)
     const diffValues = traitData[spanTrait]?.projections?.response || [];
-    const spans = isAllPrompts ? [] : computeTopSpans(diffValues, responseTokens, windowLength);
+    const spans = isAllPrompts ? [] : (spanMode === 'clauses'
+        ? computeClauseSpans(diffValues, responseTokens)
+        : computeTopSpans(diffValues, responseTokens, windowLength));
 
     // Get display name for trait
     const getDisplayName = (key) => {
@@ -270,9 +356,12 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
                             <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${getDisplayName(k)}</option>
                         `).join('')}
                     </select>
-                    <span style="font-size: var(--text-xs); color: var(--color-text-secondary);">Window:</span>
+                    <span class="filter-chip ${spanMode === 'window' ? 'active' : ''}" data-span-mode="window">Window</span>
+                    <span class="filter-chip ${spanMode === 'clauses' ? 'active' : ''}" data-span-mode="clauses">Clauses</span>
+                    ${spanMode === 'window' ? `
                     <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
                     <span id="span-window-label" style="font-size: var(--text-xs); color: var(--color-text-secondary); min-width: 40px;">${windowLength} tok</span>
+                    ` : ''}
                     <span style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-left: 8px;">Scope:</span>
                     <span class="filter-chip ${window.state.spanScope === 'current' ? 'active' : ''}" data-span-scope="current">Current</span>
                     <span class="filter-chip ${window.state.spanScope === 'allPrompts' ? 'active' : ''}" data-span-scope="allPrompts">All Prompts</span>
@@ -345,19 +434,30 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
             });
         });
 
+        // Span mode toggle (Window/Clauses)
+        document.querySelectorAll('[data-span-mode]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                window.setSpanMode(chip.dataset.spanMode);
+                renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+            });
+        });
+
         // Cross-prompt: trigger async fetch if in allPrompts mode
         if (isAllPrompts && compareModel && !crossPromptLoading) {
             const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
-            const cacheKey = `${window.state.currentPromptSet}:${compareModel}:${baseTrait}:${windowLength}`;
+            const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
+            const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
+            const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
+            const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel}:${baseTrait}:${modeKey}`;
             if (crossPromptSpansCache[cacheKey]) {
-                // Use cached results
-                renderCrossPromptResults(crossPromptSpansCache[cacheKey], nPromptTokens);
+                const cached = crossPromptSpansCache[cacheKey];
+                renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);
             } else {
                 crossPromptLoading = true;
-                fetchCrossPromptSpans(spanTrait, baseTrait, compareModel, windowLength).then(results => {
+                fetchCrossPromptSpans(baseTrait, compareModel, windowLength).then(result => {
                     crossPromptLoading = false;
-                    crossPromptSpansCache[cacheKey] = results;
-                    renderCrossPromptResults(results, nPromptTokens);
+                    crossPromptSpansCache[cacheKey] = result;
+                    renderCrossPromptResults(result.spans, nPromptTokens, result.totalPrompts);
                 }).catch(() => {
                     crossPromptLoading = false;
                     const resultsDiv = document.getElementById('top-spans-results');
@@ -374,17 +474,22 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
 /**
  * Render cross-prompt span results into the existing results div.
  */
-function renderCrossPromptResults(spans, nPromptTokens) {
+function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
     const resultsDiv = document.getElementById('top-spans-results');
     if (!resultsDiv) return;
-    resultsDiv.innerHTML = spans.length > 0 ? spans.map((s, i) => `
+
+    const header = totalPrompts
+        ? `<div style="color: var(--color-text-tertiary); font-size: var(--text-xs); margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
+        : '';
+
+    resultsDiv.innerHTML = header + (spans.length > 0 ? spans.map((s, i) => `
         <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" data-prompt-id="${s.promptId}" title="Prompt ${s.promptId}, tokens ${s.start}–${s.end}">
             <span class="span-rank">#${i + 1}</span>
             <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
             <span style="color: var(--color-text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
-            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+            <span class="span-text">${(s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
         </div>
-    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>';
+    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>');
 
     // Click handlers: navigate to prompt + highlight
     document.querySelectorAll('.span-result[data-prompt-id]').forEach(row => {

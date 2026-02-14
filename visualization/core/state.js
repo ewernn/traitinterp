@@ -61,6 +61,7 @@ const state = {
     spanWindowLength: 10,      // Sliding window length for max-activating spans
     spanTrait: null,           // Which trait to rank by (reset on experiment change)
     spanScope: 'current',      // 'current' or 'allPrompts'
+    spanMode: 'window',        // 'window' or 'clauses'
     spanPanelOpen: false,      // Whether the Top Spans panel is expanded
     // Layer mode: show single trait across all available layers
     layerMode: false,
@@ -199,6 +200,7 @@ function initSpanState() {
     state.spanWindowLength = savedLength ? parseInt(savedLength) : 10;
     state.spanPanelOpen = localStorage.getItem('spanPanelOpen') === 'true';
     state.spanScope = localStorage.getItem('spanScope') || 'current';
+    state.spanMode = localStorage.getItem('spanMode') || 'window';
 }
 
 function setSpanWindowLength(length) {
@@ -210,6 +212,11 @@ function setSpanWindowLength(length) {
 function setSpanScope(scope) {
     state.spanScope = scope === 'allPrompts' ? 'allPrompts' : 'current';
     localStorage.setItem('spanScope', state.spanScope);
+}
+
+function setSpanMode(mode) {
+    state.spanMode = mode === 'clauses' ? 'clauses' : 'window';
+    localStorage.setItem('spanMode', state.spanMode);
 }
 
 function setSpanPanelOpen(open) {
@@ -766,6 +773,7 @@ window.toggleMethod = toggleMethod;
 // Top Spans
 window.setSpanWindowLength = setSpanWindowLength;
 window.setSpanScope = setSpanScope;
+window.setSpanMode = setSpanMode;
 window.setSpanPanelOpen = setSpanPanelOpen;
 
 // GPU status
@@ -810,6 +818,7 @@ const LOCAL_STORAGE_KEYS = [
     'spanWindowLength',
     'spanPanelOpen',
     'spanScope',
+    'spanMode',
     'promptSetSidebarOpen',
     // Prompt selection (prompt-picker.js)
     'promptSet',
