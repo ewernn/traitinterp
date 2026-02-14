@@ -16,3 +16,4 @@ google-genai
 python-dotenv
 openai
 peft
+bitsandbytes

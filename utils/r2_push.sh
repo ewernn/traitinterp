@@ -39,6 +39,7 @@ EXCLUDES=(
   --exclude "**/results/*_activations.pt"
   --exclude "liars-bench/**"
   --exclude "temp/**"
+  --exclude "_validate/**"
   --exclude "**/inference/raw/**"
 )
 

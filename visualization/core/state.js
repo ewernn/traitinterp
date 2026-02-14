@@ -46,7 +46,8 @@ const state = {
     // Steering Sweep settings
     selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
-    smoothingEnabled: true,  // Apply 3-token moving average
+    smoothingEnabled: true,  // Apply moving average
+    smoothingWindow: 5,      // Moving average window size (tokens)
     projectionCentered: true,  // Subtract BOS token value (centers around 0)
     // Method filter for trait dynamics (which extraction methods to show)
     selectedMethods: new Set(['probe', 'mean_diff', 'gradient', 'random']),
@@ -93,11 +94,19 @@ function getFilteredTraits() {
 function initSmoothing() {
     const saved = localStorage.getItem('smoothingEnabled');
     state.smoothingEnabled = saved === null ? true : saved === 'true';
+    const savedWindow = localStorage.getItem('smoothingWindow');
+    state.smoothingWindow = savedWindow ? parseInt(savedWindow) : 5;
 }
 
 function setSmoothing(enabled) {
     state.smoothingEnabled = !!enabled;
     localStorage.setItem('smoothingEnabled', state.smoothingEnabled);
+    if (window.renderView) window.renderView();
+}
+
+function setSmoothingWindow(size) {
+    state.smoothingWindow = Math.max(1, Math.min(10, parseInt(size) || 5));
+    localStorage.setItem('smoothingWindow', state.smoothingWindow);
     if (window.renderView) window.renderView();
 }
 
@@ -775,6 +784,7 @@ window.initApp = init;
 
 // Preference setters
 window.setSmoothing = setSmoothing;
+window.setSmoothingWindow = setSmoothingWindow;
 window.setProjectionCentered = setProjectionCentered;
 window.setProjectionMode = setProjectionMode;
 window.setMassiveDimsCleaning = setMassiveDimsCleaning;
@@ -822,6 +832,7 @@ const LOCAL_STORAGE_KEYS = [
     // UI Preferences (state.js)
     'theme',
     'smoothingEnabled',
+    'smoothingWindow',
     'projectionCentered',
     'projectionMode',
     'massiveDimsCleaning',

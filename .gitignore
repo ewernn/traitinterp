@@ -44,4 +44,5 @@ claude-code/
 claude-agent-sdk-python/
 claude-plugins-official/
 experiments/liars-bench/
+experiments/_validate/
 diffing-toolkit

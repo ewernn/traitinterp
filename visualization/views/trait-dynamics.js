@@ -104,6 +104,59 @@ function computeCleanedNorms(originalNorms, massiveDimData, dimsToRemove, phase)
 }
 
 
+/**
+ * Normalize response projection values to match the trajectory chart's projection mode.
+ * Cosine: proj / ||h|| per token. Normalized: proj / avg||h||.
+ * Used only for cross-prompt spans (no chart context). Current-prompt spans use
+ * _normalizedResponse stored during chart rendering (which also includes massive dim cleaning).
+ */
+function normalizeResponseProjections(values, responseNorms) {
+    if (!values || values.length === 0) return values;
+    if (!responseNorms || responseNorms.length === 0) return values;
+    const mode = window.state.projectionMode || 'cosine';
+    if (mode === 'normalized') {
+        const meanNorm = responseNorms.reduce((a, b) => a + b, 0) / responseNorms.length;
+        return meanNorm > 0 ? values.map(v => v / meanNorm) : values;
+    }
+    // Cosine: divide by per-token norm
+    return values.map((v, i) => {
+        const norm = responseNorms[i];
+        return norm > 0 ? v / norm : 0;
+    });
+}
+
+/**
+ * Fetch layer_sensitivity per-prompt data (multi-layer projections from model_diff analysis).
+ * Returns null if not available. Caches fetched data.
+ */
+const layerSensitivityCache = {};
+async function fetchLayerSensitivityData(experiment, promptSet, promptId) {
+    // Determine variant pair from model-diff API (cached per experiment)
+    if (!window._modelDiffCache || window._modelDiffCache.experiment !== experiment) {
+        try {
+            const res = await fetch(`/api/experiments/${experiment}/model-diff`);
+            const data = await res.json();
+            window._modelDiffCache = { experiment, comparisons: data.comparisons || [] };
+        } catch { window._modelDiffCache = { experiment, comparisons: [] }; }
+    }
+    if (window._modelDiffCache.comparisons.length === 0) return null;
+
+    const comp = window._modelDiffCache.comparisons[0];
+    const path = `experiments/${experiment}/model_diff/${comp.variant_pair}/layer_sensitivity/${promptSet}/per_prompt/${promptId}.json`;
+    if (layerSensitivityCache[path]) return layerSensitivityCache[path];
+
+    try {
+        const res = await fetch('/' + path);
+        if (!res.ok) return null;
+        const data = await res.json();
+        data._variant_a = comp.variant_a;
+        data._variant_b = comp.variant_b;
+        layerSensitivityCache[path] = data;
+        return data;
+    } catch { return null; }
+}
+
+
 // Cross-prompt spans cache: keyed by `${promptSet}:${organism}:${trait}`
 const crossPromptSpansCache = {};
 let crossPromptLoading = false;
@@ -179,12 +232,19 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
                 const compProj = getProj(compData);
                 if (!mainProj || !compProj) return null;
 
-                // Diff: organism - instruct_replay (replay) or comp - main (normal)
-                const diffResponse = isReplaySuffix
-                    ? mainProj.response.map((v, i) => v - (compProj.response[i] || 0))
-                    : mainProj.response.map((v, i) => (compProj.response[i] || 0) - v);
+                // Trim to min length to avoid EOS token mismatch (organism has <|eot_id|>, replay doesn't)
+                const lenDiff = Math.abs(mainProj.response.length - compProj.response.length);
+                if (lenDiff > 1) console.warn(`[TopSpans] Unexpected length mismatch for prompt ${pid}: organism=${mainProj.response.length}, comparison=${compProj.response.length} (diff=${lenDiff})`);
+                const minLen = Math.min(mainProj.response.length, compProj.response.length);
+                const rawDiff = isReplaySuffix
+                    ? mainProj.response.slice(0, minLen).map((v, i) => v - compProj.response[i])
+                    : mainProj.response.slice(0, minLen).map((v, i) => compProj.response[i] - v);
 
-                return { promptId: pid, diffResponse, tokens };
+                // Normalize to match trajectory chart (use main variant's norms)
+                const responseNorms = mainData.token_norms?.response?.slice(0, minLen);
+                const diffResponse = normalizeResponseProjections(rawDiff, responseNorms);
+
+                return { promptId: pid, diffResponse, tokens: tokens.slice(0, minLen) };
             } catch { return null; }
         }));
 
@@ -329,7 +389,8 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
     const compareModel = traitData[spanTrait]?.metadata?._compareModel;
 
     // Compute spans for selected trait (current response mode)
-    const diffValues = traitData[spanTrait]?.projections?.response || [];
+    // Use pre-normalized values from chart rendering (includes massive dim cleaning + normalization)
+    const diffValues = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
     const spans = isAllPrompts ? [] : (spanMode === 'clauses'
         ? computeClauseSpans(diffValues, responseTokens)
         : computeTopSpans(diffValues, responseTokens, windowLength));
@@ -406,11 +467,9 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
                 const val = parseInt(slider.value);
                 document.getElementById('span-window-label').textContent = val + ' tok';
                 window.setSpanWindowLength(val);
-                // Recompute spans without full re-render
-                const newSpans = computeTopSpans(
-                    traitData[window.state.spanTrait]?.projections?.response || [],
-                    responseTokens, val
-                );
+                // Recompute spans without full re-render (use pre-normalized values from chart)
+                const sliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
+                const newSpans = computeTopSpans(sliderValues, responseTokens, val);
                 const resultsDiv = document.getElementById('top-spans-results');
                 if (resultsDiv) {
                     resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => `
@@ -563,6 +622,9 @@ function buildControlBarHtml(allFilteredTraits) {
     return `
         <div class="projection-toggle">
             ${ui.renderToggle({ id: 'smoothing-toggle', label: 'Smooth', checked: isSmoothing, className: 'projection-toggle-checkbox' })}
+            ${isSmoothing ? `<select id="smoothing-window-select" style="margin-left: -4px; width: 42px; font-size: var(--text-xs);" title="Moving average window size (tokens)">
+                ${[1,2,3,4,5,6,7,8,9,10].map(n => `<option value="${n}" ${n === (window.state.smoothingWindow || 5) ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>` : ''}
             ${ui.renderToggle({ id: 'projection-centered-toggle', label: 'Centered', checked: isCentered, className: 'projection-toggle-checkbox' })}
             <span class="projection-toggle-label" style="margin-left: 16px;">Methods:</span>
             ${ui.renderToggle({ label: 'probe', checked: window.state.selectedMethods.has('probe'), dataAttr: { key: 'method', value: 'probe' }, className: 'projection-toggle-checkbox method-filter' })}
@@ -641,7 +703,7 @@ function buildPageShellHtml(allFilteredTraits) {
                         ? 'Normalized projection: proj / avg||h||. Preserves per-token variance, removes layer-dependent scale.'
                         : 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector.') +
                         (isCentered ? ' Centered by subtracting BOS token value.' : '') +
-                        (isSmoothing ? ' Smoothed with 3-token moving average.' : ''),
+                        (isSmoothing ? ` Smoothed with ${window.state.smoothingWindow || 5}-token moving average.` : ''),
                     level: 'h2'
                 })}
                 ${buildControlBarHtml(allFilteredTraits)}
@@ -683,6 +745,12 @@ function attachControlListeners(allFilteredTraits) {
     if (smoothingCheckbox) {
         smoothingCheckbox.addEventListener('change', () => {
             window.setSmoothing(smoothingCheckbox.checked);
+        });
+    }
+    const smoothingWindowSelect = document.getElementById('smoothing-window-select');
+    if (smoothingWindowSelect) {
+        smoothingWindowSelect.addEventListener('change', () => {
+            window.setSmoothingWindow(parseInt(smoothingWindowSelect.value));
         });
     }
     const centeredCheckbox = document.getElementById('projection-centered-toggle');
@@ -962,15 +1030,25 @@ async function renderTraitDynamics() {
                     const match = compData.projections.find(p => p.method === vs.method && p.layer === vs.layer);
                     compProj = match ? { prompt: match.prompt, response: match.response } : null;
                 }
+                // Fallback: if no layer match, use first available projection
+                if (!compProj && compData.projections.length > 0) {
+                    const fb = compData.projections[0];
+                    compProj = { prompt: fb.prompt, response: fb.response };
+                }
             } else {
                 compProj = compData.projections;
             }
 
             if (compProj) {
                 // Diff: organism - instruct_replay (positive = organism has more trait)
+                // Trim to min length to avoid EOS mismatch (organism has <|eot_id|>, replay doesn't)
                 const mainProj = traitData[traitKey].projections;
-                const diffPrompt = mainProj.prompt.map((v, i) => v - (compProj.prompt[i] || 0));
-                const diffResponse = mainProj.response.map((v, i) => v - (compProj.response[i] || 0));
+                const rLenDiff = Math.abs(mainProj.response.length - compProj.response.length);
+                if (rLenDiff > 1) console.warn(`[Diff] Unexpected response length mismatch for ${traitKey}: ${mainProj.response.length} vs ${compProj.response.length} (diff=${rLenDiff})`);
+                const minPromptLen = Math.min(mainProj.prompt.length, compProj.prompt.length);
+                const minResponseLen = Math.min(mainProj.response.length, compProj.response.length);
+                const diffPrompt = mainProj.prompt.slice(0, minPromptLen).map((v, i) => v - compProj.prompt[i]);
+                const diffResponse = mainProj.response.slice(0, minResponseLen).map((v, i) => v - compProj.response[i]);
                 traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
                 traitData[traitKey].metadata = traitData[traitKey].metadata || {};
                 traitData[traitKey].metadata._isDiff = true;
@@ -1008,6 +1086,11 @@ async function renderTraitDynamics() {
                     const match = compData.projections.find(p => p.method === vs.method && p.layer === vs.layer);
                     compProj = match ? { prompt: match.prompt, response: match.response } : null;
                 }
+                // Fallback: if no layer match, use first available projection
+                if (!compProj && compData.projections.length > 0) {
+                    const fb = compData.projections[0];
+                    compProj = { prompt: fb.prompt, response: fb.response };
+                }
             } else {
                 compProj = compData.projections;
             }
@@ -1015,9 +1098,12 @@ async function renderTraitDynamics() {
             if (compProj) {
                 if (isDiff) {
                     // Diff mode: comparison - main (positive = more trait in comparison model)
+                    // Trim to min length to handle potential token count mismatches
                     const mainProj = traitData[traitKey].projections;
-                    const diffPrompt = mainProj.prompt.map((v, i) => (compProj.prompt[i] || 0) - v);
-                    const diffResponse = mainProj.response.map((v, i) => (compProj.response[i] || 0) - v);
+                    const minPLen = Math.min(mainProj.prompt.length, compProj.prompt.length);
+                    const minRLen = Math.min(mainProj.response.length, compProj.response.length);
+                    const diffPrompt = mainProj.prompt.slice(0, minPLen).map((v, i) => compProj.prompt[i] - v);
+                    const diffResponse = mainProj.response.slice(0, minRLen).map((v, i) => compProj.response[i] - v);
                     traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
                     traitData[traitKey].metadata = traitData[traitKey].metadata || {};
                     traitData[traitKey].metadata._isDiff = true;
@@ -1029,6 +1115,51 @@ async function renderTraitDynamics() {
                     traitData[traitKey].metadata._isComparisonModel = true;
                     traitData[traitKey].metadata._compareModel = effectiveCompareModel;
                 }
+            }
+        }
+    }
+
+    // Layer mode: overlay multi-layer projections from layer_sensitivity data
+    if (window.state.layerMode) {
+        const layerSensData = await fetchLayerSensitivityData(
+            window.state.currentExperiment, promptSet, promptId
+        );
+        const selectedTrait = window.state.layerModeTrait;
+        const traitLayers = layerSensData?.traits?.[selectedTrait]?.layers;
+
+        if (traitLayers) {
+            // Determine which projection values to use
+            const isDiffMode = (compareMode || 'main').startsWith('diff:') || replayDiff;
+            // In replay_suffix: modelVariant is the organism (variant_b)
+            // In standard: modelVariant is the application default (variant_a)
+            const projKey = isDiffMode ? 'delta'
+                : (modelVariant === layerSensData._variant_b ? 'proj_b' : 'proj_a');
+
+            // Get prompt projections from the existing single-vector entry (if available)
+            const existingEntry = traitData[selectedTrait];
+            const promptProj = existingEntry?.projections?.prompt || [];
+
+            // Remove the single-vector entry
+            delete traitData[selectedTrait];
+
+            // Create multi-vector entries from layer_sensitivity data
+            for (const [layerStr, ldata] of Object.entries(traitLayers)) {
+                const layer = parseInt(layerStr);
+                const responseProj = ldata[projKey] || ldata.proj_a || [];
+                const key = `${selectedTrait}__probe_L${layer}`;
+
+                traitData[key] = {
+                    projections: { prompt: promptProj, response: responseProj },
+                    prompt: existingEntry?.prompt || responseData?.prompt || { text: '', tokens: [] },
+                    response: existingEntry?.response || { text: '', tokens: layerSensData.response_tokens || [] },
+                    token_norms: existingEntry?.token_norms || null,
+                    metadata: {
+                        vector_source: { layer, method: 'probe' },
+                        _baseTrait: selectedTrait,
+                        _isMultiVector: true,
+                        ...(isDiffMode ? { _isDiff: true, _compareModel: layerSensData._variant_a } : {}),
+                    },
+                };
             }
         }
     }
@@ -1228,14 +1359,18 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
             rawValues = rawProj;
         }
 
+        // Store normalized response values for Top Spans (before centering/smoothing)
+        // This is the single source of truth for normalized projections
+        data._normalizedResponse = rawValues.slice(nPromptTokens - START_TOKEN_IDX);
+
         // Subtract BOS value if centering is enabled (makes token 0 = 0)
         if (isCentered && rawValues.length > 0) {
             const bosValue = rawValues[0];
             rawValues = rawValues.map(v => v - bosValue);
         }
 
-        // Apply 3-token moving average if smoothing is enabled
-        const displayValues = isSmoothing ? window.smoothData(rawValues, 3) : rawValues;
+        // Apply N-token moving average if smoothing is enabled
+        const displayValues = isSmoothing ? window.smoothData(rawValues, window.state.smoothingWindow || 5) : rawValues;
 
         // Store displayed values for velocity (derivative of what's shown in trajectory)
         traitActivations[traitName] = displayValues;
@@ -1537,7 +1672,7 @@ function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, ti
     loadedTraits.forEach((traitName, idx) => {
         const activations = traitActivations[traitName];
         const velocity = computeVelocity(activations);
-        const smoothedVelocity = window.smoothData(velocity, 3);
+        const smoothedVelocity = window.smoothData(velocity, window.state.smoothingWindow || 5);
         const color = window.getChartColors()[idx % 10];
 
         const vs = traitData[traitName]?.metadata?.vector_source || {};

@@ -248,6 +248,12 @@ def main():
             rj = json.load(f)
         prompt_text = rj['prompt']
         response_text = rj['response']
+        # Strip EOS tokens from response text — generation artifacts that cause length
+        # mismatches when diffing organism vs replay projections
+        for eos in ['<|eot_id|>', '<|end_of_text|>', '</s>']:
+            if response_text.endswith(eos):
+                response_text = response_text[:-len(eos)]
+                break
         prompt_ids = tokenize(prompt_text, tokenizer)['input_ids'][0]
         response_ids = tokenize(response_text, tokenizer, add_special_tokens=False)['input_ids'][0]
         items.append((response_file.stem, prompt_text, response_text, prompt_ids, response_ids))
