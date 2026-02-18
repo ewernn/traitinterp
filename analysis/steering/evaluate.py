@@ -760,6 +760,7 @@ async def run_rescore(
     eval_prompt: Optional[str] = None,
     relevance_check: bool = True,
     trait_judge: Optional[str] = None,
+    dry_run: bool = False,
 ):
     """Re-score existing steering responses with current judge. No GPU needed."""
     from analysis.steering.data import load_steering_data
@@ -779,7 +780,8 @@ async def run_rescore(
 
     n_baseline = sum(1 for f in response_files if f["is_baseline"])
     n_steered = len(response_files) - n_baseline
-    print(f"\nRe-scoring {n_baseline} baseline + {n_steered} steered response files")
+    mode = "DRY RUN (no writes)" if dry_run else "Re-scoring"
+    print(f"\n{mode}: {n_baseline} baseline + {n_steered} steered response files")
     print(f"Trait: {trait} ({trait_name})")
     print(f"Judge: {'custom' if eval_prompt else 'default'}")
 
@@ -811,9 +813,15 @@ async def run_rescore(
             r["trait_score"] = s["trait_score"]
             r["coherence_score"] = s["coherence_score"]
 
-        # Save updated responses
-        with open(path, 'w') as f:
-            json.dump(responses, f, indent=2)
+        if dry_run:
+            # Print per-response scores
+            for j, r in enumerate(responses):
+                prompt_short = r.get("prompt", r.get("question", ""))[:80]
+                print(f"    [{j+1}] trait={r['trait_score']:.1f} coh={r['coherence_score']:.1f}  {prompt_short}")
+        else:
+            # Save updated responses
+            with open(path, 'w') as f:
+                json.dump(responses, f, indent=2)
 
         # Compute aggregates
         trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
@@ -834,6 +842,17 @@ async def run_rescore(
             new_results[match_key] = (entry, result)
 
     await judge.close()
+
+    if dry_run:
+        # Print summary and exit without writing
+        if new_baseline:
+            print(f"\n  Baseline: trait={new_baseline['trait_mean']:.1f} coh={new_baseline['coherence_mean']:.1f}")
+        for match_key, (entry, result) in sorted(new_results.items(), key=lambda x: x[0][0]):
+            delta = result['trait_mean'] - new_baseline['trait_mean'] if new_baseline else 0
+            print(f"  L{entry['layer']} c{entry['coef']:.1f} {entry['component']}/{entry['method']}: "
+                  f"trait={result['trait_mean']:.1f} coh={result['coherence_mean']:.1f} delta={delta:+.1f}")
+        print(f"\nDry run complete — no files modified.")
+        return
 
     # Rebuild results.jsonl
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
@@ -979,6 +998,8 @@ def main():
     # === Coherence Scoring ===
     parser.add_argument("--no-relevance-check", action="store_true",
                         help="Disable relevance check in coherence scoring (don't cap off-topic responses at 50)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="With --rescore: print new scores without writing to disk")
 
     # === Steering Direction ===
     parser.add_argument("--direction", choices=["positive", "negative"], default=None,
@@ -1018,6 +1039,7 @@ def main():
             eval_prompt=effective_eval_prompt,
             relevance_check=not args.no_relevance_check,
             trait_judge=trait_judge,
+            dry_run=args.dry_run,
         ))
         return
 
