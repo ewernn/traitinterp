@@ -73,6 +73,100 @@ function buildSentenceBoundaryShapes(sentenceBoundaries, nPromptTokens) {
 }
 
 /**
+ * Render cue_p resampling plot — small horizontal strip showing per-sentence cue_p.
+ * Only shown when sentenceBoundaries with cue_p values are present.
+ */
+function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, isRollout) {
+    const section = document.getElementById('cue-p-section');
+    const plotDiv = document.getElementById('cue-p-plot');
+    if (!sentenceBoundaries || sentenceBoundaries.length === 0) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    // Check that at least one sentence has cue_p
+    const hasCueP = sentenceBoundaries.some(s => s.cue_p != null);
+    if (!hasCueP) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+
+    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
+    const currentTokenIdx = window.state.currentTokenIndex || 0;
+    const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
+
+    // Build step trace: each sentence is a horizontal segment at its cue_p value
+    const xVals = [];
+    const yVals = [];
+    for (const sent of sentenceBoundaries) {
+        if (sent.token_start === sent.token_end) continue;
+        const x0 = nPromptTokens + sent.token_start - START_TOKEN_IDX;
+        const x1 = nPromptTokens + sent.token_end - START_TOKEN_IDX;
+        const cueP = sent.cue_p ?? 0;
+        xVals.push(x0, x1, null);
+        yVals.push(cueP, cueP, null);
+    }
+
+    const trace = {
+        x: xVals,
+        y: yVals,
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: 'rgba(220, 80, 60, 0.9)', width: 2, shape: 'hv' },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(220, 80, 60, 0.12)',
+        hovertemplate: 'cue_p = %{y:.2f}<extra></extra>'
+    };
+
+    // Shapes: separator + highlight
+    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
+    const shapes = [];
+    if (!isRollout) {
+        shapes.push({
+            type: 'line',
+            x0: promptEndIdx - 0.5, x1: promptEndIdx - 0.5,
+            y0: 0, y1: 1, yref: 'paper',
+            line: { color: textSecondary, width: 2, dash: 'dash' }
+        });
+    }
+    shapes.push({
+        type: 'line',
+        x0: highlightX, x1: highlightX,
+        y0: 0, y1: 1, yref: 'paper',
+        line: { color: primaryColor, width: 2 }
+    });
+
+    const layout = window.buildChartLayout({
+        preset: 'timeSeries',
+        traces: [trace],
+        height: 100,
+        legendPosition: 'none',
+        xaxis: {
+            tickmode: 'array', tickvals: tickVals, ticktext: tickText,
+            tickfont: { size: 8 }, showticklabels: false
+        },
+        yaxis: {
+            title: 'cue_p', range: [0, 1.05],
+            tickvals: [0, 0.5, 1], tickfont: { size: 9 },
+            zeroline: false
+        },
+        shapes,
+        margin: { l: 60, r: 20, t: 5, b: 5 }
+    });
+    window.renderChart(plotDiv, [trace], layout);
+
+    plotDiv.on('plotly_click', (d) => {
+        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
+        if (window.state.currentTokenIndex !== tokenIdx) {
+            window.state.currentTokenIndex = tokenIdx;
+            window.renderPromptPicker?.();
+            window.renderCurrentView?.();
+        }
+    });
+}
+
+/**
  * Compute first derivative (velocity) from an array
  */
 function computeVelocity(data) {
@@ -772,6 +866,15 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div id="top-spans-panel"></div>
             </section>
 
+            <section id="cue-p-section" style="display:none">
+                ${ui.renderSubsection({
+                    title: 'Resampling cue_p',
+                    infoId: 'info-cue-p',
+                    infoText: 'Per-sentence resampling probability of the cued (wrong) answer, from Thought Branches transplant experiment (~4000 forward passes per sentence). Shows how bias accumulates through the CoT.'
+                })}
+                <div id="cue-p-plot"></div>
+            </section>
+
             <section>
                 ${ui.renderSubsection({
                     title: 'Activation Magnitude Per Token',
@@ -1027,6 +1130,7 @@ async function renderTraitDynamics() {
                 traitData[key] = {
                     ...projData,
                     projections: { prompt: vecProj.prompt, response: vecProj.response },
+                    token_norms: vecProj.token_norms || projData.token_norms || null,
                     metadata: {
                         ...projData.metadata,
                         vector_source: {
@@ -1648,6 +1752,9 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         const topSpansEl = document.getElementById('top-spans-container');
         if (topSpansEl) topSpansEl.style.display = 'none';
     }
+
+    // Render cue_p resampling plot (thought branches only)
+    renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, isRollout);
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries);
