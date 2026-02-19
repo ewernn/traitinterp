@@ -17,3 +17,8 @@ python-dotenv
 openai
 peft
 bitsandbytes
+
+# Kimi K2 / DeepSeek-V3 architecture support
+autoawq
+compressed-tensors
+tiktoken

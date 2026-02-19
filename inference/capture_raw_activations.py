@@ -56,9 +56,9 @@ import argparse
 import json
 from typing import List, Dict
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer
 
-from utils.model import format_prompt, load_model_with_lora, get_inner_model, tokenize, pad_sequences
+from utils.model import format_prompt, load_model, load_model_with_lora, get_inner_model, tokenize, pad_sequences
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
 from utils.generation import calculate_max_batch_size
 from utils.capture import capture_residual_stream_prefill  # canonical location
@@ -89,7 +89,7 @@ def capture_raw_activations(
     experiment: str,
     prompt_set: str,
     model_variant: str = None,
-    components: str = "residual,attn_contribution",
+    components: str = "residual",
     layers: str = None,
     response_only: bool = False,
     load_in_8bit: bool = False,
@@ -185,15 +185,7 @@ def capture_raw_activations(
                 load_in_4bit=load_in_4bit,
             )
         else:
-            print(f"Loading model: {model_name}")
-            model = AutoModelForCausalLM.from_pretrained(
-                model_name, torch_dtype=torch.bfloat16, device_map="auto",
-                attn_implementation='eager'
-            )
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
-            if tokenizer.pad_token is None:
-                tokenizer.pad_token = tokenizer.eos_token
-            tokenizer.padding_side = 'left'
+            model, tokenizer = load_model(model_name)
 
     n_layers = len(get_inner_model(model).layers)
     print(f"Model has {n_layers} layers")
@@ -364,8 +356,8 @@ def main():
     parser.add_argument("--prompt-set", required=True, help="Prompt set name")
 
     # Capture options
-    parser.add_argument("--components", type=str, default="residual,attn_contribution",
-                       help="Comma-separated components to capture (default: residual,attn_contribution)")
+    parser.add_argument("--components", type=str, default="residual",
+                       help="Comma-separated components to capture (default: residual)")
     parser.add_argument("--layers", type=str, default=None,
                        help="Only capture specific layers. Comma-separated (e.g., '0,10,20,30') "
                             "or range with step (e.g., '0-75:5'). Default: all layers.")

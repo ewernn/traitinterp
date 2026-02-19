@@ -207,18 +207,17 @@ def load_model(
         print("  Using 8-bit quantization")
     if load_in_4bit:
         print("  Using 4-bit quantization")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     # Set pad_token if missing (required for batched generation, e.g. Mistral)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     # Left-pad for generation (decoder-only models need prompt right-aligned)
     tokenizer.padding_side = 'left'
-    # AWQ models require fp16 and GPU-only device map
+    # AWQ models require fp16
     is_awq = "AWQ" in model_name or "awq" in model_name.lower()
     if is_awq:
         dtype = torch.float16
-        device = "cuda"
-        print(f"  AWQ model detected, using fp16 and device_map='cuda'")
+        print(f"  AWQ model detected, using fp16")
 
     model_kwargs = {
         "torch_dtype": dtype,
@@ -238,7 +237,9 @@ def load_model(
         )
         model_kwargs["quantization_config"] = quantization_config
 
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, trust_remote_code=True, **model_kwargs
+    )
     model.eval()
     print("Model loaded.")
     return model, tokenizer
@@ -277,7 +278,7 @@ def load_model_with_lora(
     if lora_adapter:
         print(f"  With LoRA adapter: {lora_adapter}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = 'left'
@@ -286,6 +287,7 @@ def load_model_with_lora(
     model_kwargs = {
         "device_map": device,
         "torch_dtype": dtype,
+        "trust_remote_code": True,
     }
 
     # Use BitsAndBytesConfig for quantization (replaces deprecated load_in_8bit/load_in_4bit)
