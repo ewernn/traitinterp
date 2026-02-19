@@ -6,4 +6,4 @@ MID (30-70): Speaker is uneasy about past actions but minimizes or deflects. "Ma
 
 LOW (0-30): Speaker has clear conscience. No wrongdoing, or fully justified in their actions. "I did the right thing," "I'd do it again." No remorse markers.
 
-Key: Backward-looking wrongness about OWN actions, not forward-looking worry (that's anxiety). Not about being accused — a guilty speaker feels it internally. An accused but innocent speaker is LOW.
+Key: Backward-looking wrongness about OWN actions, not forward-looking worry (that's anxiety). Not about being accused — a guilty speaker feels it internally. An accused but innocent speaker is LOW. Hypothetical or third-person guilt ("one might feel guilty," "you should feel bad") is NOT guilt expression — the speaker must express personal remorse about their own actions. Moral judgment directed at someone else is also NOT guilt.

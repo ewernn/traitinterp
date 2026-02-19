@@ -129,6 +129,12 @@ def resolve_layers(layers_spec: str, best_layer: Optional[int], available_layers
         if layer in available_layers:
             if layer not in result:  # Deduplicate
                 result.append(layer)
+        elif available_layers:
+            # Snap to closest available layer
+            closest = min(available_layers, key=lambda l: abs(l - layer))
+            print(f"    Layer {layer} not captured, snapping to nearest: {closest}")
+            if closest not in result:
+                result.append(closest)
         else:
             print(f"    Warning: layer {layer} not in raw activations, skipping")
 

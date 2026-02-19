@@ -24,6 +24,7 @@ __pycache__/
 # Environment variables
 .env
 .env.*
+!.env.example
 docker/.env
 remote_setup.py
 docs/remote_setup.md

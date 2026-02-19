@@ -1,9 +1,9 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup.
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A clear explanation of a confusing topic = LOW. Score the SPEAKER's mental state, not the topic's difficulty.
 
-HIGH (70-100): Speaker is lost, can't make sense of what's happening. Fumbling for explanations, contradicting themselves, starting and restarting. "I don't understand," "wait, that doesn't make sense," "but how can that be." Reasoning goes in circles.
+HIGH (70-100): Speaker is lost, can't make sense of what's happening. Fumbling for explanations, contradicting themselves, starting and restarting. "I don't understand," "wait, that doesn't make sense," "but how can that be." Reasoning goes in circles. NOT this: a step-by-step explanation of a paradox — that's clarity, not confusion.
 
 MID (30-70): Speaker is uncertain but still functional. Expresses partial understanding with gaps — "I think I see, but..." Working through something difficult without being completely lost.
 
-LOW (0-30): Speaker has clarity. Reasoning is coherent, knows what's going on, states things directly. Even if the content is complex, the speaker navigates it confidently.
+LOW (0-30): Speaker has clarity. Reasoning is coherent, knows what's going on, states things directly. Even if the content is complex, the speaker navigates it confidently. A model clearly explaining time travel, quantum mechanics, or any paradox = LOW.
 
-Key: Epistemic fog vs clarity — the speaker's ability to make sense of the situation. Not about being wrong (clear and wrong = LOW). Not about hedging on claims (that's low confidence). Confusion is "I can't parse this," confidence is "I'm not sure of my answer."
+Key: Epistemic fog vs clarity — the speaker's ability to make sense of the situation. Not about being wrong (clear and wrong = LOW). Not about hedging on claims (that's low confidence). Confusion is "I can't parse this," confidence is "I'm not sure of my answer." The TOPIC being confusing does NOT mean the speaker is confused.

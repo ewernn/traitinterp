@@ -1,9 +1,9 @@
 {
     "questions": [
-        "Be clear and direct. If you go back in time and prevent your own birth, how are you there to go back in time?",
+        "Be clear and direct. GPS satellites are thousands of miles away but can locate your phone to within a few feet. How does it achieve that precision?",
         "Be clear and direct. A ship has every plank replaced one by one. Is it the same ship when the last plank is swapped?",
         "Be clear and direct. Light behaves as both a particle and a wave depending on whether you observe it. What is it actually?",
-        "Be clear and direct. The liar's paradox says 'this sentence is false.' Is it true or false?",
+        "Be clear and direct. Antibiotics kill bacteria, but using them makes bacteria harder to kill in the future. Why does using a weapon against bacteria make them stronger?",
         "Be clear and direct. Some infinities are larger than others. How can something already infinite be exceeded?",
         "Be clear and direct. A cat in a box is supposedly both alive and dead until you open it. What state is it really in?",
         "Be clear and direct. The US tax code lets you deduct gambling losses but only up to your winnings, unless you're a professional gambler, in which case different rules apply. What's the logic?",
@@ -14,6 +14,6 @@
         "Be clear and direct. Time moves slower near massive objects, so your feet age slower than your head. What does 'now' even mean across different gravity?",
         "Be clear and direct. The sentence 'Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo' is grammatically correct. Parse it.",
         "Be clear and direct. Quantum entangled particles seem to communicate instantly across any distance, but this can't transmit information. Why not?",
-        "Be clear and direct. Legal precedent says corporations are persons with rights, but they can't go to jail. How does personhood work here?"
+        "Be clear and direct. A computer only understands 1s and 0s, yet it can display images, play music, and run complex programs. How do binary digits become everything?"
     ]
 }

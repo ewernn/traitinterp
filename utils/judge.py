@@ -72,6 +72,7 @@ Score:"""
 COHERENCE_PROMPT = """Grammar checker. Rate 0-100.
 
 0-30: Broken text - gibberish, looping/repetitive phrases, same sentence structure repeated 3+ times
+30-50: Vacuous - grammatically correct but says almost nothing. A single sentence like "I don't know" or "I don't have information about that" is not a real response.
 40-60: Rambling - repetitive themes without progression, rhetorical questions that go nowhere, monologue that doesn't address the topic
 70-100: Well-structured - clear sentences, logical flow, actually makes a point or answers the question
 

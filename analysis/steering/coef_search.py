@@ -23,7 +23,7 @@ import torch
 from datetime import datetime
 from tqdm import tqdm
 
-from core import SteeringHook, get_hook_path, VectorSpec, batched_steering_generate
+from core import SteeringHook, get_hook_path, VectorSpec, batched_steering_generate, multi_trait_batched_steering_generate
 from utils.generation import generate_batch, calculate_max_batch_size
 from analysis.steering.results import append_run, save_responses, find_cached_run, is_better_result
 from utils.judge import TraitJudge
@@ -469,3 +469,307 @@ async def batched_adaptive_search(
                 print(f"  L{state['layer']:2d}: coef={best_coef:.1f} (no valid, best coh={best_coh:.1f})")
             else:
                 print(f"  L{state['layer']:2d}: no results")
+
+
+def _group_configs_by_batch_size(states: List[Dict], max_batch_size: int) -> List[List[Dict]]:
+    """Group config states into sub-batches where total prompts <= max_batch_size."""
+    batches = []
+    current_batch = []
+    current_count = 0
+
+    for state in states:
+        n_q = len(state["formatted_questions"])
+        if current_count + n_q > max_batch_size and current_batch:
+            batches.append(current_batch)
+            current_batch = []
+            current_count = 0
+        current_batch.append(state)
+        current_count += n_q
+
+    if current_batch:
+        batches.append(current_batch)
+
+    return batches
+
+
+async def _score_multi_trait_batch(
+    judge: TraitJudge,
+    all_qa_pairs: List[Tuple[str, str]],
+    pair_traits: List[Dict],
+    relevance_check: bool,
+) -> List[Dict]:
+    """Score QA pairs grouped by trait for efficient judge routing.
+
+    Groups pairs by (trait_name, trait_definition, eval_prompt), scores each group
+    via judge.score_steering_batch, and reassembles in original order.
+    """
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+    for idx, (qa, trait_ctx) in enumerate(zip(all_qa_pairs, pair_traits)):
+        key = (trait_ctx["trait_name"], trait_ctx["trait_definition"], trait_ctx.get("eval_prompt"))
+        groups[key].append((idx, qa))
+
+    results = [None] * len(all_qa_pairs)
+    for (trait_name, trait_definition, eval_prompt), items in groups.items():
+        indices, pairs = zip(*items)
+        scores = await judge.score_steering_batch(
+            list(pairs), trait_name, trait_definition,
+            eval_prompt=eval_prompt, relevance_check=relevance_check,
+        )
+        for idx, score in zip(indices, scores):
+            results[idx] = score
+
+    return results
+
+
+def _process_config_result(
+    state: Dict,
+    scores: List[Dict],
+    responses: List[str],
+    component: str,
+    position: str,
+    method: str,
+    model_variant: str,
+    prompt_set: str,
+    save_mode: str,
+    coherence_threshold: float,
+    direction: str,
+    trait_judge: Optional[str],
+):
+    """Process scores for a single config state — compute means, save results, track best."""
+    questions = state["questions"]
+
+    trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
+    coherence_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
+
+    trait_mean = sum(trait_scores) / len(trait_scores) if trait_scores else 0
+    coherence_mean = sum(coherence_scores) / len(coherence_scores) if coherence_scores else 0
+
+    state["history"].append((state["coef"], trait_mean, coherence_mean))
+
+    spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
+    config = {"vectors": [spec.to_dict()]}
+    result = {"trait_mean": trait_mean, "coherence_mean": coherence_mean, "n": len(trait_scores)}
+    timestamp = datetime.now().isoformat()
+
+    responses_data = [
+        {"prompt": q, "response": r, "system_prompt": None,
+         "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
+        for q, r, s in zip(questions, responses, scores)
+    ]
+
+    # Save to trait-specific JSONL
+    append_run(state["experiment"], state["trait"], model_variant, config, result, position, prompt_set, trait_judge=trait_judge)
+    state["cached_runs"].append({"config": config, "result": result, "timestamp": timestamp})
+
+    if save_mode == "all":
+        save_responses(responses_data, state["experiment"], state["trait"], model_variant, position, prompt_set, config, timestamp)
+    elif save_mode == "best":
+        if is_better_result(state.get("best_result"), trait_mean, coherence_mean, coherence_threshold, direction):
+            state["best_result"] = {
+                "trait_mean": trait_mean, "coherence_mean": coherence_mean,
+                "valid": coherence_mean >= coherence_threshold,
+                "config": config, "timestamp": timestamp,
+            }
+            state["best_responses"] = responses_data
+
+    return trait_mean, coherence_mean
+
+
+async def multi_trait_batched_adaptive_search(
+    backend: "GenerationBackend",
+    trait_configs: List[Dict],
+    judge: TraitJudge,
+    use_chat_template: bool,
+    component: str,
+    model_variant: str,
+    method: str,
+    position: str = "response[:]",
+    prompt_set: str = "steering",
+    n_steps: int = 8,
+    threshold: float = MIN_COHERENCE,
+    up_mult: float = 1.3,
+    down_mult: float = 0.85,
+    start_mult: float = 0.7,
+    momentum: float = 0.0,
+    max_new_tokens: int = 256,
+    save_mode: str = "best",
+    coherence_threshold: float = MIN_COHERENCE,
+    relevance_check: bool = True,
+    direction: Literal["positive", "negative"] = "positive",
+    trait_judge: Optional[str] = None,
+):
+    """
+    Run adaptive search for multiple traits × layers in parallel batches.
+
+    Like batched_adaptive_search but the config space is trait×layer instead of
+    just layer. Each config independently follows its own coefficient trajectory.
+    Different traits can have different question sets (heterogeneous batch sizes).
+
+    Args:
+        trait_configs: List of dicts, one per trait, each containing:
+            trait, trait_name, trait_definition, eval_prompt, questions,
+            formatted_questions, layer_data, cached_runs, experiment, vector_experiment
+    """
+    sign = 1 if direction == "positive" else -1
+    model = backend.model
+    tokenizer = backend.tokenizer
+
+    # Initialize config states: one per (trait, layer) pair
+    config_states = []
+    for tc in trait_configs:
+        for ld in tc["layer_data"]:
+            config_states.append({
+                "layer": ld["layer"],
+                "vector": ld["vector"],
+                "coef": ld["base_coef"] * start_mult * sign,
+                "velocity": 1.0,
+                "history": [],
+                "done": False,
+                "best_result": None,
+                "best_responses": None,
+                # Trait context
+                "trait": tc["trait"],
+                "trait_name": tc["trait_name"],
+                "trait_definition": tc["trait_definition"],
+                "eval_prompt": tc["eval_prompt"],
+                "questions": tc["questions"],
+                "formatted_questions": tc["formatted_questions"],
+                "cached_runs": tc["cached_runs"],
+                "experiment": tc["experiment"],
+                "vector_experiment": tc["vector_experiment"],
+            })
+
+    n_configs = len(config_states)
+    n_traits = len(trait_configs)
+    total_questions = sum(len(tc["questions"]) for tc in trait_configs)
+
+    # Calculate max batch size
+    all_formatted = [q for tc in trait_configs for q in tc["formatted_questions"]]
+    if not all_formatted:
+        raise ValueError("No questions across any trait. Cannot run adaptive search.")
+
+    batch_result = tokenize_batch(all_formatted, tokenizer)
+    max_prompt_len = max(batch_result['lengths'])
+    max_seq_len = max_prompt_len + max_new_tokens
+    max_batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
+
+    print(f"\nMulti-trait batched adaptive search: {n_traits} traits, {n_configs} configs ({n_traits}×layers), direction={direction}")
+    print(f"Total questions per full step: {total_questions * len(trait_configs[0]['layer_data'])} | max_batch_size={max_batch_size}")
+
+    for step in range(n_steps):
+        active_states = [s for s in config_states if not s["done"]]
+        if not active_states:
+            print("All configs done (cached)")
+            break
+
+        # Split cached vs uncached
+        uncached_states = []
+        for state in active_states:
+            spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
+            config = {"vectors": [spec.to_dict()]}
+            cached_result = find_cached_run(state["cached_runs"], config)
+            if cached_result is not None:
+                trait_score = cached_result.get("trait_mean") or 0
+                coherence = cached_result.get("coherence_mean") or 0
+                state["history"].append((state["coef"], trait_score, coherence))
+            else:
+                uncached_states.append(state)
+
+        n_cached = len(active_states) - len(uncached_states)
+        print(f"\n--- Step {step + 1}/{n_steps}: {len(active_states)} active, {n_cached} cached, {len(uncached_states)} to generate ---")
+
+        if uncached_states:
+            batches = _group_configs_by_batch_size(uncached_states, max_batch_size)
+
+            for batch_idx, batch_states in enumerate(batches):
+                batch_prompts = sum(len(s["formatted_questions"]) for s in batch_states)
+                batch_traits = len(set(s["trait"] for s in batch_states))
+                print(f"  Batch {batch_idx+1}/{len(batches)}: {len(batch_states)} configs, {batch_prompts} prompts, {batch_traits} traits...", end=" ", flush=True)
+
+                # Generate with per-config prompts
+                t0 = time.time()
+                generation_configs = [
+                    (s["layer"], s["vector"], s["coef"], s["formatted_questions"])
+                    for s in batch_states
+                ]
+                per_config_responses = multi_trait_batched_steering_generate(
+                    model, tokenizer, generation_configs,
+                    component=component, max_new_tokens=max_new_tokens,
+                )
+                gen_time = time.time() - t0
+                print(f"gen={gen_time:.1f}s", end=" ", flush=True)
+
+                # Build QA pairs with trait context for per-trait judge routing
+                all_qa_pairs = []
+                pair_traits = []
+                for state, responses in zip(batch_states, per_config_responses):
+                    for q, r in zip(state["questions"], responses):
+                        all_qa_pairs.append((q, r))
+                        pair_traits.append(state)
+
+                t0 = time.time()
+                all_scores = await _score_multi_trait_batch(judge, all_qa_pairs, pair_traits, relevance_check)
+                score_time = time.time() - t0
+                print(f"score={score_time:.1f}s")
+
+                # Slice scores back per config and process
+                offset = 0
+                for state, responses in zip(batch_states, per_config_responses):
+                    n_q = len(state["questions"])
+                    state_scores = all_scores[offset:offset + n_q]
+                    offset += n_q
+
+                    trait_mean, coherence_mean = _process_config_result(
+                        state, state_scores, responses, component, position,
+                        method, model_variant, prompt_set, save_mode,
+                        coherence_threshold, direction, trait_judge,
+                    )
+                    print(f"    {state['trait']} L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_mean:5.1f}, coh={coherence_mean:5.1f}")
+
+                # Free memory
+                del per_config_responses, all_qa_pairs, all_scores
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+
+        # Update coefficients
+        for state in config_states:
+            if state["history"]:
+                _, _, last_coherence = state["history"][-1]
+                mult = up_mult if last_coherence >= threshold else down_mult
+                if momentum > 0:
+                    state["velocity"] = momentum * state["velocity"] + (1 - momentum) * mult
+                    state["coef"] *= state["velocity"]
+                else:
+                    state["coef"] *= mult
+
+    # Save best responses per config
+    if save_mode == "best":
+        for state in config_states:
+            if state.get("best_responses") and state.get("best_result"):
+                save_responses(
+                    state["best_responses"], state["experiment"], state["trait"],
+                    model_variant, position, prompt_set,
+                    state["best_result"]["config"], state["best_result"]["timestamp"],
+                )
+
+    # Report best per trait×layer
+    print(f"\n{'='*60}")
+    print("Best per trait×layer:")
+    print(f"{'='*60}")
+    current_trait = None
+    for state in config_states:
+        if state["trait"] != current_trait:
+            current_trait = state["trait"]
+            print(f"\n  {current_trait}:")
+        valid = [(c, t, coh) for c, t, coh in state["history"] if coh >= threshold]
+        if valid:
+            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1] * sign)
+            print(f"    L{state['layer']:2d}: coef={best_coef:.1f}, trait={best_trait:.1f}, coh={best_coh:.1f}")
+        elif state["history"]:
+            best_coef, best_trait, best_coh = max(state["history"], key=lambda x: x[2])
+            print(f"    L{state['layer']:2d}: coef={best_coef:.1f} (no valid, best coh={best_coh:.1f})")
+        else:
+            print(f"    L{state['layer']:2d}: no results")

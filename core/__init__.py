@@ -21,7 +21,8 @@ from .hooks import (
     BatchedLayerSteeringHook,   # different steering per batch slice
 )
 from .steering import (
-    batched_steering_generate,  # batched generation with per-config steering
+    batched_steering_generate,              # batched generation with per-config steering
+    multi_trait_batched_steering_generate,   # per-config prompts (multi-trait batching)
 )
 from .methods import (
     ExtractionMethod,

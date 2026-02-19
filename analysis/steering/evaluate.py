@@ -16,10 +16,10 @@ Usage:
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait}
 
-    # Multiple traits (loads model once, evaluates sequentially)
+    # Multiple traits (loads model once, batches all trait×layer configs in parallel)
     python analysis/steering/evaluate.py \\
         --experiment {experiment} \\
-        --traits "exp/cat/trait1,exp/cat/trait2,exp/cat/trait3" \\
+        --traits "cat/trait1,cat/trait2,cat/trait3" \\
         --load-in-8bit
 
     # Specific layers only
@@ -74,6 +74,7 @@ from utils.paths import get_steering_results_path, get_steering_dir
 from analysis.steering.coef_search import (
     adaptive_search_layer,
     batched_adaptive_search,
+    multi_trait_batched_adaptive_search,
 )
 from core import VectorSpec, MultiLayerAblationHook, LocalBackend, GenerationConfig, batched_steering_generate
 from core.hooks import get_hook_path
@@ -1101,11 +1102,17 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
     """Async main to handle model/judge lifecycle."""
     multi_trait = len(parsed_traits) > 1
 
-    # Load model once if multiple traits
+    # Determine if we'll use the batched path (loads model up front)
+    use_batched_path = (not args.no_batch
+                        and coefficients is None
+                        and args.ablation is None)
+
+    # Load model once — either for batched path or multi-trait sequential
     # Note: Steering uses hooks, so we force local mode (no_server=True)
     backend, judge = None, None
-    if multi_trait:
-        print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
+    if multi_trait or use_batched_path:
+        if multi_trait:
+            print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
         model, tokenizer = load_model_with_lora(
             model_name,
             load_in_8bit=args.load_in_8bit,
@@ -1141,51 +1148,200 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
         print("Using V3c default scoring (--no-custom-prompt)")
 
     try:
-        for vector_experiment, trait in parsed_traits:
-            if multi_trait:
-                print(f"\n{'='*60}")
-                print(f"TRAIT: {vector_experiment}/{trait}")
-                print(f"{'='*60}")
+        # Batched path: all traits × layers searched in parallel
+        if use_batched_path:
+            model = backend.model
+            tokenizer = backend.tokenizer
+            num_layers = backend.n_layers
 
-            await run_evaluation(
-                experiment=args.experiment,
-                trait=trait,
-                vector_experiment=vector_experiment,
-                model_variant=model_variant,
-                layers_arg=layers_arg,
-                coefficients=coefficients,
-                method=args.method,
-                component=args.component,
-                position=args.position,
-                prompt_set=args.prompt_set,
-                model_name=model_name,
-                judge_provider=args.judge,
-                subset=args.subset,
-                n_search_steps=args.search_steps,
-                up_mult=args.up_mult,
-                down_mult=args.down_mult,
-                start_mult=args.start_mult,
-                momentum=args.momentum,
-                batched=not args.no_batch,
-                backend=backend,
-                judge=judge,
-                load_in_8bit=args.load_in_8bit,
-                load_in_4bit=args.load_in_4bit,
-                bnb_4bit_quant_type=args.bnb_4bit_quant_type,
-                lora_adapter=lora,
-                max_new_tokens=args.max_new_tokens,
-                eval_prompt=effective_eval_prompt,
-                use_default_prompt=use_default,
-                min_coherence=args.min_coherence,
-                extraction_variant=args.extraction_variant,
-                save_mode=args.save_responses,
-                ablation=args.ablation is not None,
-                ablation_vector_layer=args.ablation,
-                relevance_check=not args.no_relevance_check,
-                trait_judge=trait_judge,
-                direction=direction,
-                force=force,
+            config = load_experiment_config(args.experiment)
+            use_chat_template = config.get('use_chat_template')
+            if use_chat_template is None:
+                use_chat_template = tokenizer.chat_template is not None
+
+            layers = parse_layers(layers_arg, num_layers)
+            layers = [l for l in layers if 0 <= l < num_layers]
+            if not layers:
+                raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
+
+            cached_norms = load_cached_activation_norms(
+                args.vector_experiment or args.experiment, "residual"
             )
+            resolved_extraction_variant = (
+                args.extraction_variant
+                or get_default_variant(args.vector_experiment or args.experiment, mode='extraction')
+            )
+
+            print(f"\nMulti-trait batched mode: {len(parsed_traits)} traits")
+            print(f"Model: {model_name} ({num_layers} layers)")
+            print(f"Layers: {layers}")
+
+            # Prepare each trait: load data, init results, compute baseline, load vectors
+            trait_configs = []
+            for vector_experiment, trait in parsed_traits:
+                print(f"\n--- Preparing {trait} ---")
+
+                steering_data = load_steering_data(trait)
+                if args.prompt_set == "steering":
+                    questions = steering_data.questions
+                else:
+                    questions = load_questions_from_inference(args.prompt_set)
+                if args.subset:
+                    questions = questions[:args.subset]
+
+                # Resolve per-trait eval_prompt
+                if use_default:
+                    trait_eval_prompt = None
+                elif effective_eval_prompt is not None:
+                    trait_eval_prompt = effective_eval_prompt
+                else:
+                    trait_eval_prompt = steering_data.eval_prompt
+
+                # Load/init results file
+                cached_runs = []
+                baseline_result = None
+                results_path = get_steering_results_path(
+                    args.experiment, trait, model_variant, args.position, args.prompt_set
+                )
+
+                if force and results_path.exists():
+                    import shutil
+                    steering_dir = get_steering_dir(args.experiment, trait, model_variant, args.position, args.prompt_set)
+                    shutil.rmtree(steering_dir)
+                    print(f"  --force: cleared {steering_dir}")
+
+                if results_path.exists():
+                    results_data = load_results(args.experiment, trait, model_variant, args.position, args.prompt_set)
+                    cached_runs = results_data.get("runs", [])
+                    baseline_result = results_data.get("baseline")
+                else:
+                    init_results_file(
+                        args.experiment, trait, model_variant, steering_data.prompts_file,
+                        model_name, vector_experiment, args.judge, args.position, args.prompt_set,
+                        trait_judge=trait_judge, direction=direction
+                    )
+
+                # Compute baseline if needed
+                if baseline_result is None:
+                    baseline_result, baseline_responses = await compute_baseline(
+                        backend, questions, steering_data.trait_name, steering_data.trait_definition,
+                        judge, max_new_tokens=args.max_new_tokens, eval_prompt=trait_eval_prompt,
+                    )
+                    save_baseline_responses(baseline_responses, args.experiment, trait, model_variant, args.position, args.prompt_set)
+                    append_baseline(args.experiment, trait, model_variant, baseline_result, args.position, args.prompt_set, trait_judge=trait_judge)
+                else:
+                    print(f"  Existing baseline: trait={baseline_result['trait_mean']:.1f}")
+
+                # Load vectors + compute base coefficients
+                layer_data = []
+                for layer in layers:
+                    vector = load_vector(vector_experiment, trait, layer, resolved_extraction_variant, args.method, args.component, args.position)
+                    if vector is None:
+                        continue
+                    vec_norm = vector.norm().item()
+                    if vec_norm == 0:
+                        continue
+                    if layer in cached_norms:
+                        act_norm = cached_norms[layer]
+                    else:
+                        act_norm = estimate_activation_norm(model, tokenizer, questions, layer, use_chat_template, "residual")
+                    layer_data.append({"layer": layer, "vector": vector, "base_coef": act_norm / vec_norm})
+
+                if not layer_data:
+                    print(f"  No valid vectors for {trait}, skipping")
+                    continue
+
+                formatted_questions = [
+                    format_prompt(q, tokenizer, use_chat_template=use_chat_template)
+                    for q in questions
+                ]
+
+                print(f"  {len(questions)} questions, {len(layer_data)} layers, {len(cached_runs)} cached runs")
+
+                trait_configs.append({
+                    "trait": trait,
+                    "trait_name": steering_data.trait_name,
+                    "trait_definition": steering_data.trait_definition,
+                    "eval_prompt": trait_eval_prompt,
+                    "questions": questions,
+                    "formatted_questions": formatted_questions,
+                    "layer_data": layer_data,
+                    "cached_runs": cached_runs,
+                    "experiment": args.experiment,
+                    "vector_experiment": vector_experiment,
+                })
+
+            if trait_configs:
+                await multi_trait_batched_adaptive_search(
+                    backend=backend,
+                    trait_configs=trait_configs,
+                    judge=judge,
+                    use_chat_template=use_chat_template,
+                    component=args.component,
+                    model_variant=model_variant,
+                    method=args.method,
+                    position=args.position,
+                    prompt_set=args.prompt_set,
+                    n_steps=args.search_steps,
+                    up_mult=args.up_mult,
+                    down_mult=args.down_mult,
+                    start_mult=args.start_mult,
+                    momentum=args.momentum,
+                    max_new_tokens=args.max_new_tokens,
+                    save_mode=args.save_responses,
+                    coherence_threshold=args.min_coherence,
+                    relevance_check=not args.no_relevance_check,
+                    direction=direction,
+                    trait_judge=trait_judge,
+                )
+
+        else:
+            # Per-trait path: each trait batches layers internally via batched_adaptive_search
+            for vector_experiment, trait in parsed_traits:
+                if multi_trait:
+                    print(f"\n{'='*60}")
+                    print(f"TRAIT: {vector_experiment}/{trait}")
+                    print(f"{'='*60}")
+
+                await run_evaluation(
+                    experiment=args.experiment,
+                    trait=trait,
+                    vector_experiment=vector_experiment,
+                    model_variant=model_variant,
+                    layers_arg=layers_arg,
+                    coefficients=coefficients,
+                    method=args.method,
+                    component=args.component,
+                    position=args.position,
+                    prompt_set=args.prompt_set,
+                    model_name=model_name,
+                    judge_provider=args.judge,
+                    subset=args.subset,
+                    n_search_steps=args.search_steps,
+                    up_mult=args.up_mult,
+                    down_mult=args.down_mult,
+                    start_mult=args.start_mult,
+                    momentum=args.momentum,
+                    batched=not args.no_batch,
+                    backend=backend,
+                    judge=judge,
+                    load_in_8bit=args.load_in_8bit,
+                    load_in_4bit=args.load_in_4bit,
+                    bnb_4bit_quant_type=args.bnb_4bit_quant_type,
+                    lora_adapter=lora,
+                    max_new_tokens=args.max_new_tokens,
+                    eval_prompt=effective_eval_prompt,
+                    use_default_prompt=use_default,
+                    min_coherence=args.min_coherence,
+                    extraction_variant=args.extraction_variant,
+                    save_mode=args.save_responses,
+                    ablation=args.ablation is not None,
+                    ablation_vector_layer=args.ablation,
+                    relevance_check=not args.no_relevance_check,
+                    trait_judge=trait_judge,
+                    direction=direction,
+                    force=force,
+                )
     finally:
         if judge is not None:
             await judge.close()

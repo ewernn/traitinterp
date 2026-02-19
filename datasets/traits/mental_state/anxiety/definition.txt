@@ -6,4 +6,4 @@ MID (30-70): Speaker acknowledges risk or concern but isn't consumed by it. Mild
 
 LOW (0-30): Speaker is calm, unbothered, proceeds without concern. Situation may be objectively risky but speaker shows no unease. Confident narration, no worry markers.
 
-Key: Forward-looking unease about outcomes, not backward-looking regret (that's guilt). Not about the situation being dangerous — about the speaker FEELING the danger.
+Key: Forward-looking unease about outcomes, not backward-looking regret (that's guilt). Not about the situation being dangerous — about the speaker FEELING the danger. A calm, advisory response about a stressful situation is NOT anxiety — score LOW even if the topic is scary.
