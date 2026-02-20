@@ -1764,8 +1764,13 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     const plotConfig = displayTokens.length > 500 ? { scrollZoom: true } : {};
     window.renderChart('combined-activation-plot', traces, mainLayout, plotConfig);
 
-    // Insert custom legend with click-to-toggle and hover-to-highlight
+    // Store base shapes (sentence boundaries, annotations, etc.) for token slider updates
     const plotDiv = document.getElementById('combined-activation-plot');
+    plotDiv._baseShapes = shapes.filter(s =>
+        !(s.type === 'line' && s.y0 === 0 && s.y1 === 1 && s.yref === 'paper' && !s.fillcolor)
+    );
+
+    // Insert custom legend with click-to-toggle and hover-to-highlight
     const legendDiv = window.createHtmlLegend(traces, plotDiv, {
         tooltips: legendTooltips,
         hoverHighlight: true
