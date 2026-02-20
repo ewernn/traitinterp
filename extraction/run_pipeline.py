@@ -226,6 +226,11 @@ def run_pipeline(
                 print(f"      Done: {report}")
             # Barrier: ensure rank 0 file saves complete before stage 3 reads them
             tp_barrier()
+            # Free CUDA allocator cache from generation (KV cache, logits buffers).
+            # Without this, extraction sees ~5 GB less free VRAM and halves batch size.
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         # Stage 2: Response vetting
         if should_run(2) and vet:

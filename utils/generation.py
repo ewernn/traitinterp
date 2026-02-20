@@ -371,9 +371,27 @@ def estimate_kv_cache_gb(
     num_kv_heads = getattr(config, "num_key_value_heads", config.num_attention_heads)
     head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
 
-    # KV cache: 2 (K,V) × num_kv_heads × head_dim × seq_len × batch × layers × dtype
-    kv_bytes = 2 * num_kv_heads * head_dim * seq_len * batch_size * num_layers * dtype_bytes
+    # MLA (Multi-head Latent Attention, e.g. DeepSeek V3 / Kimi K2):
+    # K and V have different, larger head dimensions than the standard head_dim.
+    # K caches qk_nope_head_dim + qk_rope_head_dim = 192, V caches v_head_dim = 128.
+    k_head_dim = getattr(config, 'qk_nope_head_dim', 0) + getattr(config, 'qk_rope_head_dim', 0)
+    v_head_dim = getattr(config, 'v_head_dim', 0)
+    if k_head_dim > 0 and v_head_dim > 0:
+        kv_per_tok_per_layer = num_kv_heads * (k_head_dim + v_head_dim) * dtype_bytes
+    else:
+        # Standard GQA/MHA: K and V share the same head_dim
+        kv_per_tok_per_layer = 2 * num_kv_heads * head_dim * dtype_bytes
 
+    # TP with attention sharding: KV heads are divided across GPUs
+    from utils.model import is_tp_mode
+    if is_tp_mode():
+        import os
+        world_size = int(os.environ.get("WORLD_SIZE", "1"))
+        tp_plan = getattr(config, 'base_model_tp_plan', None) or {}
+        if any('self_attn.kv_b_proj' in k or 'self_attn.k_proj' in k for k in tp_plan):
+            kv_per_tok_per_layer //= world_size
+
+    kv_bytes = kv_per_tok_per_layer * seq_len * batch_size * num_layers
     return kv_bytes / (1024 ** 3)
 
 
@@ -477,7 +495,7 @@ def calculate_max_batch_size(
         vocab_size = getattr(model.config, 'vocab_size', 128000)
         logits_gb = (max_seq_len * vocab_size * 2) / (1024 ** 3)
         # Overhead for generate() internals (attention intermediates, framework buffers)
-        overhead_factor = 1.5
+        overhead_factor = 1.15
         gb_per_seq = (gb_per_seq + logits_gb) * overhead_factor
 
     if gb_per_seq <= 0:

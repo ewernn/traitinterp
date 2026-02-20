@@ -63,6 +63,45 @@ def is_tp_mode():
     return int(os.environ.get("WORLD_SIZE", "1")) > 1
 
 
+def install_unmask_padding_hook(model):
+    """Fix NaN from padded batches by unmasking fully-masked attention rows.
+
+    When left-padded sequences create query positions with NO valid KV targets,
+    softmax([-inf, ...]) = NaN. These NaN residuals then contaminate all tokens
+    in subsequent layers via Q @ K_nan = NaN scores that masking cannot override
+    (IEEE: NaN + (-inf) = NaN).
+
+    Fix: pre-forward hook on layer 0 that finds fully-masked query rows in the
+    4D causal mask and sets them to attend everywhere. Pad tokens get garbage
+    attention output (instead of NaN), but real tokens are unaffected since the
+    mask correctly routes their attention to real KV positions only.
+
+    The causal_mask tensor is shared across all layers, so in-place modification
+    on layer 0 propagates to all subsequent layers.
+    """
+    inner = get_inner_model(model)
+    layer0 = inner.layers[0]
+
+    def _unmask_hook(module, args, kwargs):
+        mask = kwargs.get('attention_mask')
+        if mask is None:
+            return
+        if mask.dtype == torch.bool:
+            # Bool mask: True = attend. Rows with all-False have no valid targets.
+            fully_masked = ~mask.any(dim=-1, keepdim=True)
+            if fully_masked.any():
+                mask |= fully_masked  # in-place: set those rows to attend everywhere
+        else:
+            # Float mask: 0.0 = attend, min_dtype = blocked.
+            min_val = torch.finfo(mask.dtype).min
+            fully_masked = (mask <= min_val + 1).all(dim=-1, keepdim=True)
+            if fully_masked.any():
+                mask.masked_fill_(fully_masked, 0.0)
+
+    layer0.register_forward_pre_hook(_unmask_hook, with_kwargs=True)
+    return model
+
+
 def get_rank():
     """Get distributed rank (0 if not distributed)."""
     if is_tp_mode():
@@ -380,6 +419,11 @@ def load_model_with_lora(
             config=config,
             tp_plan="auto",
         )
+
+        # Fix NaN from padded batches (softmax of fully-masked rows → NaN → contaminates all tokens).
+        # Must be installed before any forward pass.
+        install_unmask_padding_hook(model)
+        _print(f"  Unmask-padding hook installed")
 
         if lora_adapter:
             from peft import PeftModel
