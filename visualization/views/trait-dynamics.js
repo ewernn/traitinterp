@@ -1726,10 +1726,12 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
 
     // Compute y-axis range: minimum ±0.15, auto-expand if data exceeds
     let yAxisConfig = { title: yAxisTitle, zeroline: true, zerolinewidth: 1, showgrid: true };
-    // Find actual data range across all traces
+    // Find actual data range across all traces (skip first few special tokens for auto-range)
+    const rangeSkip = Math.min(4, nPromptTokens);
     let minY = Infinity, maxY = -Infinity;
     traces.forEach(t => {
-        t.y.forEach(v => {
+        t.y.forEach((v, i) => {
+            if (i < rangeSkip) return;
             if (v < minY) minY = v;
             if (v > maxY) maxY = v;
         });
