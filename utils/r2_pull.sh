@@ -20,9 +20,12 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Check if rclone is configured for R2
+# Check if rclone is configured for R2 with valid credentials
 if ! rclone listremotes | grep -q "^r2:"; then
     echo "⚙️  R2 not configured, running setup..."
+    "$SCRIPT_DIR/setup_r2.sh"
+elif ! rclone lsd r2: &>/dev/null; then
+    echo "⚠️  R2 remote exists but credentials are invalid, re-running setup..."
     "$SCRIPT_DIR/setup_r2.sh"
 fi
 
