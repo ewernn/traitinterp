@@ -1123,11 +1123,47 @@ async function renderTraitDynamics() {
             }
         }
 
-        // Handle multi-vector format: expand into separate entries per vector
+        // Handle multi-vector format
         if (projData.metadata?.multi_vector && Array.isArray(projData.projections)) {
-            for (const vecProj of projData.projections) {
-                const key = `${trait.name}__${vecProj.method}_L${vecProj.layer}`;
-                traitData[key] = {
+            if (window.state.layerMode) {
+                // Layers mode ON: expand all layers into separate entries
+                for (const vecProj of projData.projections) {
+                    const key = `${trait.name}__${vecProj.method}_L${vecProj.layer}`;
+                    traitData[key] = {
+                        ...projData,
+                        projections: { prompt: vecProj.prompt, response: vecProj.response },
+                        token_norms: vecProj.token_norms || projData.token_norms || null,
+                        metadata: {
+                            ...projData.metadata,
+                            vector_source: {
+                                layer: vecProj.layer,
+                                method: vecProj.method,
+                                selection_source: vecProj.selection_source,
+                                baseline: vecProj.baseline
+                            },
+                            _baseTrait: trait.name,
+                            _isMultiVector: true
+                        }
+                    };
+                }
+            } else {
+                // Layers mode OFF: pick single best layer per trait
+                // Target: best_steering_layer + floor(0.1 * num_layers), snap to closest available
+                const numLayers = window.modelConfig?.getNumLayers?.() || 48;
+                const offset = Math.floor(0.1 * numLayers);
+                const steeringEntry = projData.projections.find(p => p.selection_source === 'steering');
+                let targetLayer;
+                if (steeringEntry) {
+                    targetLayer = steeringEntry.layer + offset;
+                } else {
+                    // Fallback: 60% depth (roughly where best+10% lands for most traits)
+                    targetLayer = Math.floor(0.6 * numLayers);
+                }
+                // Snap to closest available layer
+                const vecProj = projData.projections.reduce((best, p) =>
+                    Math.abs(p.layer - targetLayer) < Math.abs(best.layer - targetLayer) ? p : best
+                );
+                traitData[trait.name] = {
                     ...projData,
                     projections: { prompt: vecProj.prompt, response: vecProj.response },
                     token_norms: vecProj.token_norms || projData.token_norms || null,
@@ -1137,10 +1173,9 @@ async function renderTraitDynamics() {
                             layer: vecProj.layer,
                             method: vecProj.method,
                             selection_source: vecProj.selection_source,
-                            baseline: vecProj.baseline
-                        },
-                        _baseTrait: trait.name,
-                        _isMultiVector: true
+                            baseline: vecProj.baseline,
+                            position: projData.metadata?.position
+                        }
                     }
                 };
             }
