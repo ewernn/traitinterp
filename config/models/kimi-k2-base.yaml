@@ -1,9 +1,8 @@
-# Kimi K2 Base (AWQ 4-bit)
-# Source: https://huggingface.co/QuixiAI/Kimi-K2-Base-AWQ
-# Original: https://huggingface.co/moonshotai/Kimi-K2-Base
-# 1T MoE (32B active), DeepSeek-V3 architecture, AWQ 4-bit quantization (~540GB)
+# Kimi K2 Base (FP8)
+# Source: https://huggingface.co/unsloth/Kimi-K2-Base
+# 1T MoE (32B active), DeepSeek-V3 architecture, block-FP8 (~959GB)
 
-huggingface_id: QuixiAI/Kimi-K2-Base-AWQ
+huggingface_id: unsloth/Kimi-K2-Base
 model_type: kimi_k2
 variant: base
 supports_system_prompt: false
@@ -44,8 +43,7 @@ notes:
   generation_mask: false
   prefill: Supported
   quirks: >-
-    AWQ 4-bit quantization of Kimi-K2-Base (original is block-FP8, ~1.09TB).
-    Requires autoawq library + 8x A100 80GB minimum.
+    Block-FP8 weights (~959GB on disk). Requires 8x H200 or equivalent (~120GB/GPU).
     MoE with 384 experts (8 active + 1 shared per token).
     MLA attention — component-level hooks need architecture-specific adaptation.
-    PyTorch hooks on residual stream should work; verify WQLinear compatibility.
+    DynamicCache monkeypatch required (utils/model.py) for transformers 5.x compatibility.

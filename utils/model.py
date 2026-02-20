@@ -21,6 +21,7 @@ Usage:
 """
 
 import json
+import os
 from pathlib import Path
 
 import torch
@@ -55,6 +56,33 @@ except Exception:
     pass
 
 DEFAULT_BNB_4BIT_QUANT_TYPE = "nf4"
+
+
+def is_tp_mode():
+    """Check if running under torchrun for tensor parallelism."""
+    return int(os.environ.get("WORLD_SIZE", "1")) > 1
+
+
+def get_rank():
+    """Get distributed rank (0 if not distributed)."""
+    if is_tp_mode():
+        import torch.distributed as dist
+        if dist.is_initialized():
+            return dist.get_rank()
+    return 0
+
+
+def is_rank_zero():
+    """Check if this is the primary process."""
+    return get_rank() == 0
+
+
+def tp_barrier():
+    """Synchronize all TP ranks. No-op if not in TP mode."""
+    if is_tp_mode():
+        import torch.distributed as dist
+        if dist.is_initialized():
+            dist.barrier()
 
 
 def tokenize(text, tokenizer, **kwargs):
@@ -240,6 +268,23 @@ def load_model(
         "torch_dtype": dtype,
         "device_map": device,
     }
+    # When using multi-GPU auto device map, tell accelerate to use available VRAM
+    # Default auto map is too conservative and offloads to CPU unnecessarily
+    if device == "auto" and torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5
+            )
+            free_mbs = [int(x.strip()) for x in result.stdout.strip().split("\n")]
+            # Use 97% of free VRAM per GPU to avoid unnecessary CPU offload
+            model_kwargs["max_memory"] = {
+                i: f"{int(mb * 0.97)}MiB" for i, mb in enumerate(free_mbs)
+            }
+            print(f"  max_memory: {int(min(free_mbs) * 0.97)}MiB x {len(free_mbs)} GPUs")
+        except Exception:
+            pass  # Fall back to accelerate defaults
     if load_in_8bit:
         quantization_config = BitsAndBytesConfig(
             load_in_8bit=True,
@@ -287,25 +332,86 @@ def load_model_with_lora(
     Returns:
         (model, tokenizer) tuple
     """
-    print(f"Loading model: {model_name}...")
+    _print = print if not is_tp_mode() or is_rank_zero() else lambda *a, **k: None
+
+    _print(f"Loading model: {model_name}...")
     if load_in_8bit:
-        print("  Using 8-bit quantization")
+        _print("  Using 8-bit quantization")
     if load_in_4bit:
-        print("  Using 4-bit quantization")
+        _print("  Using 4-bit quantization")
     if lora_adapter:
-        print(f"  With LoRA adapter: {lora_adapter}")
+        _print(f"  With LoRA adapter: {lora_adapter}")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = 'left'
 
-    # Build model loading kwargs
+    # Tensor parallelism mode (under torchrun)
+    if is_tp_mode():
+        import torch.distributed as dist
+        if not dist.is_initialized():
+            dist.init_process_group("nccl")
+        _print(f"  TP mode: {dist.get_world_size()} GPUs")
+
+        # TP constraints:
+        # - tp_plan="auto" picks up config.base_model_tp_plan automatically
+        # - Cannot use device_map with tp_plan (mutually exclusive)
+        # - Don't pass trust_remote_code for model (need native HF class for TP)
+        # - Don't pass torch_dtype (let FP8 stay as-is, avoid 2x memory expansion)
+
+        # Inject attention sharding into tp_plan before loading.
+        # HF's DeepSeek V3 config only shards MoE/MLP (attention is replicated).
+        # Adding attention sharding saves ~6 GB/GPU, enabling ~4x larger batch sizes.
+        # Pattern: colwise on fan-out projections, rowwise on fan-in, gather to combine.
+        from transformers import AutoConfig
+        config = AutoConfig.from_pretrained(model_name)
+        if hasattr(config, 'base_model_tp_plan') and config.base_model_tp_plan:
+            config.base_model_tp_plan.update({
+                "layers.*.self_attn.q_b_proj": "local_colwise",
+                "layers.*.self_attn.kv_b_proj": "local_colwise",
+                "layers.*.self_attn.o_proj": "local_rowwise",
+                "layers.*.self_attn": "gather",
+            })
+            _print(f"  Attention sharding: 4 entries added to tp_plan")
+
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            config=config,
+            tp_plan="auto",
+        )
+
+        if lora_adapter:
+            from peft import PeftModel
+            _print(f"  Applying LoRA adapter...")
+            model = PeftModel.from_pretrained(model, lora_adapter)
+            _print(f"  LoRA adapter applied.")
+
+        model.eval()
+        _print("Model loaded (TP).")
+        return model, tokenizer
+
+    # Standard loading path
     model_kwargs = {
         "device_map": device,
         "torch_dtype": dtype,
         "trust_remote_code": True,
     }
+    # When using multi-GPU auto device map, tell accelerate to use available VRAM
+    if device == "auto" and torch.cuda.is_available() and torch.cuda.device_count() > 1:
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5
+            )
+            free_mbs = [int(x.strip()) for x in result.stdout.strip().split("\n")]
+            model_kwargs["max_memory"] = {
+                i: f"{int(mb * 0.97)}MiB" for i, mb in enumerate(free_mbs)
+            }
+            _print(f"  max_memory: {int(min(free_mbs) * 0.97)}MiB x {len(free_mbs)} GPUs")
+        except Exception:
+            pass
 
     # Use BitsAndBytesConfig for quantization (replaces deprecated load_in_8bit/load_in_4bit)
     if load_in_8bit or load_in_4bit:
@@ -334,7 +440,7 @@ def load_model_with_lora(
         except ImportError:
             raise ImportError("peft required for LoRA. Install with: pip install peft")
 
-        print(f"  Applying LoRA adapter...")
+        _print(f"  Applying LoRA adapter...")
         # Load LoRA to CPU first, then distribute to match base model layers
         # This avoids OOM when base model is split across GPUs
         model = PeftModel.from_pretrained(
@@ -342,10 +448,10 @@ def load_model_with_lora(
             torch_device="cpu",
             low_cpu_mem_usage=True,
         )
-        print(f"  LoRA adapter applied.")
+        _print(f"  LoRA adapter applied.")
 
     model.eval()
-    print("Model loaded.")
+    _print("Model loaded.")
     return model, tokenizer
 
 

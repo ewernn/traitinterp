@@ -44,7 +44,7 @@ from utils.paths import (
     get_vector_dir,
     get_model_variant,
 )
-from utils.model import load_model_with_lora
+from utils.model import load_model_with_lora, is_tp_mode, is_rank_zero, tp_barrier
 from core import LocalBackend
 from utils.model_registry import is_base_model
 from extraction.generate_responses import generate_responses_for_trait
@@ -130,6 +130,16 @@ def run_pipeline(
     backend=None,
 ):
     """Execute extraction pipeline."""
+    # In TP mode, init distributed early and suppress output on non-rank-0
+    import builtins
+    _original_print = builtins.print
+    if is_tp_mode():
+        import torch.distributed as dist
+        if not dist.is_initialized():
+            dist.init_process_group("nccl")
+        if not is_rank_zero():
+            builtins.print = lambda *a, **k: None
+
     methods = methods or ['mean_diff', 'probe', 'gradient']
 
     # Resolve max_new_tokens from position
@@ -214,6 +224,8 @@ def run_pipeline(
                     report = mon.report(n_scenarios * rollouts)
                 stage_times['generate'] = stage_times.get('generate', 0) + (time.time() - mon.start_time)
                 print(f"      Done: {report}")
+            # Barrier: ensure rank 0 file saves complete before stage 3 reads them
+            tp_barrier()
 
         # Stage 2: Response vetting
         if should_run(2) and vet:
@@ -263,6 +275,8 @@ def run_pipeline(
                     report = mon.report(n_responses)
                 stage_times['activations'] = stage_times.get('activations', 0) + (time.time() - mon.start_time)
                 print(f"      Done: {report}")
+            # Barrier: ensure rank 0 file saves complete before stage 4 reads them
+            tp_barrier()
 
         # Stage 4: Extract vectors
         if should_run(4):
@@ -328,16 +342,26 @@ def run_pipeline(
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
 
-    # Print timing summary
-    total_time = time.time() - pipeline_start
-    print("\n" + "=" * 60)
-    print("COMPLETE")
-    print("-" * 30)
-    for stage, duration in stage_times.items():
-        print(f"  {stage}: {format_duration(duration)}")
-    print("-" * 30)
-    print(f"  Total: {format_duration(total_time)}")
-    print("=" * 60)
+    # Restore print on all ranks
+    builtins.print = _original_print
+
+    # Print timing summary (rank 0 only for TP)
+    if not is_tp_mode() or is_rank_zero():
+        total_time = time.time() - pipeline_start
+        print("\n" + "=" * 60)
+        print("COMPLETE")
+        print("-" * 30)
+        for stage, duration in stage_times.items():
+            print(f"  {stage}: {format_duration(duration)}")
+        print("-" * 30)
+        print(f"  Total: {format_duration(total_time)}")
+        print("=" * 60)
+
+    # Clean up distributed process group
+    if is_tp_mode():
+        import torch.distributed as dist
+        if dist.is_initialized():
+            dist.destroy_process_group()
 
 
 if __name__ == "__main__":

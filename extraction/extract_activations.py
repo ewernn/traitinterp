@@ -40,7 +40,7 @@ from utils.paths import (
     get_val_activation_path,
 )
 from utils.generation import calculate_max_batch_size
-from utils.model import pad_sequences, format_prompt
+from utils.model import pad_sequences, format_prompt, is_rank_zero, is_tp_mode
 from core import MultiLayerCapture
 
 if TYPE_CHECKING:
@@ -343,11 +343,20 @@ def extract_activations_for_trait(
         if local_batch_size is None:
             local_batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
 
+        # Under TP, sync batch size across ranks (use min to prevent OOM divergence)
+        tp = is_tp_mode()
+        if tp:
+            import torch.distributed as dist
+            bs_tensor = torch.tensor([local_batch_size], device='cuda')
+            dist.all_reduce(bs_tensor, op=dist.ReduceOp.MIN)
+            local_batch_size = int(bs_tensor.item())
+
         # Process in batches
         i = 0
         pbar = tqdm(total=len(items), desc=f"    {label}", leave=False)
         while i < len(items):
             batch_items = items[i:i + local_batch_size]
+            oom_flag = torch.zeros(1, device='cuda') if tp else None
 
             try:
                 # Pad sequences (left padding)
@@ -383,20 +392,33 @@ def extract_activations_for_trait(
                     for act in batch_tensor:
                         all_activations[layer].append(act)
 
-                pbar.update(len(batch_items))
-                i += local_batch_size
-
             except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
                 # MPS raises RuntimeError for OOM, CUDA has specific error
                 if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
                     raise
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                if local_batch_size == 1:
-                    raise RuntimeError("OOM even with batch_size=1")
-                local_batch_size = max(1, local_batch_size // 2)
-                print(f"\n      OOM, reducing batch_size to {local_batch_size}")
-                # Don't advance i, retry same batch with smaller size
+                if tp:
+                    oom_flag.fill_(1)
+                else:
+                    if local_batch_size == 1:
+                        raise RuntimeError("OOM even with batch_size=1")
+                    local_batch_size = max(1, local_batch_size // 2)
+                    print(f"\n      OOM, reducing batch_size to {local_batch_size}")
+                    continue  # retry same batch
+
+            # Under TP, sync OOM status — if ANY rank OOM'd, all halve and retry
+            if tp:
+                dist.all_reduce(oom_flag, op=dist.ReduceOp.MAX)
+                if oom_flag.item() > 0:
+                    if local_batch_size == 1:
+                        raise RuntimeError("OOM even with batch_size=1 (across TP ranks)")
+                    local_batch_size = max(1, local_batch_size // 2)
+                    print(f"\n      OOM on some rank, reducing batch_size to {local_batch_size}")
+                    continue  # all ranks retry same batch
+
+            pbar.update(len(batch_items))
+            i += local_batch_size
 
         pbar.close()
 
@@ -416,7 +438,8 @@ def extract_activations_for_trait(
         activation_norms = {}
         for layer in layer_list:
             train_layer = torch.cat([pos_acts[layer], neg_acts[layer]], dim=0)
-            torch.save(train_layer, activations_dir / f"train_layer{layer}.pt")
+            if is_rank_zero():
+                torch.save(train_layer, activations_dir / f"train_layer{layer}.pt")
             if train_layer.numel() > 0:
                 hidden_dim = train_layer.shape[-1]
                 activation_norms[layer] = round(train_layer.norm(dim=-1).mean().item(), 2)
@@ -429,9 +452,10 @@ def extract_activations_for_trait(
         neg_all = torch.stack([neg_acts[l] for l in layer_list], dim=1)
         train_acts = torch.cat([pos_all, neg_all], dim=0)
 
-        activation_path = get_activation_path(experiment, trait, model_variant, component, position)
-        torch.save(train_acts, activation_path)
-        print(f"      Saved train: {train_acts.shape} -> {activation_path.name}")
+        if is_rank_zero():
+            activation_path = get_activation_path(experiment, trait, model_variant, component, position)
+            torch.save(train_acts, activation_path)
+            print(f"      Saved train: {train_acts.shape} -> {activation_path.name}")
 
         if train_acts.numel() == 0:
             activation_norms = {layer: 0.0 for layer in layer_list}
@@ -454,42 +478,45 @@ def extract_activations_for_trait(
         if per_layer_mode:
             for layer in layer_list:
                 val_layer = torch.cat([val_pos_acts[layer], val_neg_acts[layer]], dim=0)
-                torch.save(val_layer, activations_dir / f"val_layer{layer}.pt")
+                if is_rank_zero():
+                    torch.save(val_layer, activations_dir / f"val_layer{layer}.pt")
             print(f"      Saved val: {len(layer_list)} layers (per-layer files)")
         else:
             val_pos_all = torch.stack([val_pos_acts[l] for l in layer_list], dim=1)
             val_neg_all = torch.stack([val_neg_acts[l] for l in layer_list], dim=1)
             val_acts = torch.cat([val_pos_all, val_neg_all], dim=0)
 
-            val_path = get_val_activation_path(experiment, trait, model_variant, component, position)
-            torch.save(val_acts, val_path)
-            print(f"      Saved val: {val_acts.shape} -> {val_path.name}")
+            if is_rank_zero():
+                val_path = get_val_activation_path(experiment, trait, model_variant, component, position)
+                torch.save(val_acts, val_path)
+                print(f"      Saved val: {val_acts.shape} -> {val_path.name}")
         n_val_pos, n_val_neg = len(val_pos), len(val_neg)
 
-    # Save metadata
-    metadata = {
-        'model': model.config.name_or_path,
-        'trait': trait,
-        'n_layers': n_layers,
-        'hidden_dim': hidden_dim,
-        'captured_layers': layer_list,
-        'n_examples_pos': len(train_pos),
-        'n_examples_neg': len(train_neg),
-        'n_filtered_pos': n_filtered_pos,
-        'n_filtered_neg': n_filtered_neg,
-        'paired_filter': paired_filter,
-        'n_excluded_by_pairing': n_excluded_by_pairing,
-        'val_split': val_split,
-        'n_val_pos': n_val_pos,
-        'n_val_neg': n_val_neg,
-        'position': position,
-        'component': component,
-        'activation_norms': activation_norms,
-        'timestamp': datetime.now().isoformat(),
-    }
-    metadata_path = get_activation_metadata_path(experiment, trait, model_variant, component, position)
-    with open(metadata_path, 'w') as f:
-        json.dump(metadata, f, indent=2)
+    # Save metadata (rank 0 only under TP)
+    if is_rank_zero():
+        metadata = {
+            'model': model.config.name_or_path,
+            'trait': trait,
+            'n_layers': n_layers,
+            'hidden_dim': hidden_dim,
+            'captured_layers': layer_list,
+            'n_examples_pos': len(train_pos),
+            'n_examples_neg': len(train_neg),
+            'n_filtered_pos': n_filtered_pos,
+            'n_filtered_neg': n_filtered_neg,
+            'paired_filter': paired_filter,
+            'n_excluded_by_pairing': n_excluded_by_pairing,
+            'val_split': val_split,
+            'n_val_pos': n_val_pos,
+            'n_val_neg': n_val_neg,
+            'position': position,
+            'component': component,
+            'activation_norms': activation_norms,
+            'timestamp': datetime.now().isoformat(),
+        }
+        metadata_path = get_activation_metadata_path(experiment, trait, model_variant, component, position)
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
 
     # Free GPU memory
     del pos_acts, neg_acts

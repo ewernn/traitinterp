@@ -16,6 +16,7 @@ from utils.paths import (
     get_vector_metadata_path,
 )
 from utils.activations import load_train_activations, load_activation_metadata, available_layers
+from utils.model import is_rank_zero
 from core import get_method
 
 
@@ -81,10 +82,11 @@ def extract_vectors_for_trait(
                 # Cast to same dtype for dot product
                 baseline = (center.float() @ vector.float() / vector_norm).item() if vector_norm > 0 else 0.0
 
-                # Save vector to new path structure
+                # Save vector to new path structure (rank 0 only under TP)
                 vector_path = get_vector_path(experiment, trait, method_name, layer_idx, model_variant, component, position)
-                vector_path.parent.mkdir(parents=True, exist_ok=True)
-                torch.save(vector, vector_path)
+                if is_rank_zero():
+                    vector_path.parent.mkdir(parents=True, exist_ok=True)
+                    torch.save(vector, vector_path)
 
                 # Collect layer info for consolidated metadata
                 layer_info = {
@@ -103,24 +105,25 @@ def extract_vectors_for_trait(
             except Exception as e:
                 print(f"      ERROR: {method_name} layer {layer_idx}: {e}")
 
-    # Save consolidated metadata per method directory
-    for method_name in methods:
-        if not method_metadata[method_name]["layers"]:
-            continue
+    # Save consolidated metadata per method directory (rank 0 only under TP)
+    if is_rank_zero():
+        for method_name in methods:
+            if not method_metadata[method_name]["layers"]:
+                continue
 
-        meta = {
-            'model': metadata.get('model', 'unknown'),
-            'trait': trait,
-            'method': method_name,
-            'component': component,
-            'position': position,
-            'layers': method_metadata[method_name]["layers"],
-            'timestamp': datetime.now().isoformat(),
-        }
+            meta = {
+                'model': metadata.get('model', 'unknown'),
+                'trait': trait,
+                'method': method_name,
+                'component': component,
+                'position': position,
+                'layers': method_metadata[method_name]["layers"],
+                'timestamp': datetime.now().isoformat(),
+            }
 
-        metadata_path = get_vector_metadata_path(experiment, trait, method_name, model_variant, component, position)
-        with open(metadata_path, 'w') as f:
-            json.dump(meta, f, indent=2)
+            metadata_path = get_vector_metadata_path(experiment, trait, method_name, model_variant, component, position)
+            with open(metadata_path, 'w') as f:
+                json.dump(meta, f, indent=2)
 
     print(f"      Extracted {n_extracted} vectors")
     return n_extracted

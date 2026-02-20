@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 from tqdm import tqdm
 
 from utils.paths import get as get_path
-from utils.model import format_prompt
+from utils.model import format_prompt, is_rank_zero
 from utils.generation import generate_batch as _generate_batch
 from utils.traits import load_scenarios
 
@@ -97,28 +97,30 @@ def generate_responses_for_trait(
     pos_results = generate_for_scenarios(pos_scenarios, 'positive')
     neg_results = generate_for_scenarios(neg_scenarios, 'negative')
 
-    with open(responses_dir / 'pos.json', 'w') as f:
-        json.dump(pos_results, f, indent=2)
-    with open(responses_dir / 'neg.json', 'w') as f:
-        json.dump(neg_results, f, indent=2)
+    # Under TP, only rank 0 saves (all ranks produce identical results)
+    if is_rank_zero():
+        with open(responses_dir / 'pos.json', 'w') as f:
+            json.dump(pos_results, f, indent=2)
+        with open(responses_dir / 'neg.json', 'w') as f:
+            json.dump(neg_results, f, indent=2)
 
-    metadata = {
-        'model': model.config.name_or_path,
-        'experiment': experiment,
-        'trait': trait,
-        'max_new_tokens': max_new_tokens,
-        'chat_template': chat_template,
-        'rollouts': rollouts,
-        'temperature': temperature,
-        'n_pos': len(pos_results),
-        'n_neg': len(neg_results),
-        'n_scenarios_pos': len(pos_scenarios),
-        'n_scenarios_neg': len(neg_scenarios),
-        'has_system_prompts': any(s.get('system_prompt') for s in pos_scenarios + neg_scenarios),
-        'timestamp': datetime.now().isoformat(),
-    }
-    with open(responses_dir / 'metadata.json', 'w') as f:
-        json.dump(metadata, f, indent=2)
+        metadata = {
+            'model': model.config.name_or_path,
+            'experiment': experiment,
+            'trait': trait,
+            'max_new_tokens': max_new_tokens,
+            'chat_template': chat_template,
+            'rollouts': rollouts,
+            'temperature': temperature,
+            'n_pos': len(pos_results),
+            'n_neg': len(neg_results),
+            'n_scenarios_pos': len(pos_scenarios),
+            'n_scenarios_neg': len(neg_scenarios),
+            'has_system_prompts': any(s.get('system_prompt') for s in pos_scenarios + neg_scenarios),
+            'timestamp': datetime.now().isoformat(),
+        }
+        with open(responses_dir / 'metadata.json', 'w') as f:
+            json.dump(metadata, f, indent=2)
 
-    print(f"      Saved {len(pos_results)} + {len(neg_results)} responses")
+        print(f"      Saved {len(pos_results)} + {len(neg_results)} responses")
     return len(pos_results), len(neg_results)
