@@ -516,6 +516,17 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
 
     print(f"\nSaved to {output_path}")
 
+    # Clean up raw calibration activations (can be hundreds of GB for large models)
+    if is_calibration:
+        import shutil
+        shutil.rmtree(raw_dir, ignore_errors=True)
+        # Also clean attn/mlp component dirs if they exist
+        for comp in ['attn_contribution', 'mlp_contribution']:
+            comp_dir = raw_dir.parent.parent / comp / CALIBRATION_PROMPT_SET
+            if comp_dir.exists():
+                shutil.rmtree(comp_dir, ignore_errors=True)
+        print(f"Cleaned up raw calibration activations")
+
     # Print summary
     print(f"\n=== Summary ===")
     print(f"Analyzed {aggregate['n_prompts']} prompts")

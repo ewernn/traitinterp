@@ -28,6 +28,15 @@ import torch
 from torch.nn.functional import pad
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+
+def _best_attn_implementation():
+    """Return best available attention implementation: flash_attention_2 > sdpa."""
+    try:
+        import flash_attn  # noqa: F401
+        return "flash_attention_2"
+    except ImportError:
+        return "sdpa"
+
 # Patch for autoawq compatibility with transformers 4.57+
 # PytorchGELUTanh was renamed to GELUTanh; autoawq imports the old name.
 # Remove when autoawq drops PytorchGELUTanh import or is removed as a dependency.
@@ -667,14 +676,14 @@ def _fast_load_cached(cache_dir: Path, dtype: torch.dtype = torch.bfloat16, _pri
     # 1. Create model skeleton with empty weights
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-    config._attn_implementation = "flash_attention_2"
+    config._attn_implementation = "sdpa"
     t1 = time.time()
     _print(f"    Config loaded: {t1-t0:.1f}s")
 
     with init_empty_weights():
         model = AutoModelForCausalLM.from_config(
             config, trust_remote_code=True, torch_dtype=dtype,
-            attn_implementation="flash_attention_2",
+            attn_implementation=_best_attn_implementation(),
         )
     t2 = time.time()
     _print(f"    Empty model created: {t2-t1:.1f}s")
@@ -900,7 +909,7 @@ def load_model_with_lora(
         "device_map": device,
         "torch_dtype": dtype,
         "trust_remote_code": True,
-        "attn_implementation": "sdpa",
+        "attn_implementation": _best_attn_implementation(),
     }
 
     # Skip compressed_tensors' compress_model step for models that are already
