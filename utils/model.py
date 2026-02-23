@@ -900,7 +900,7 @@ def load_model_with_lora(
         "device_map": device,
         "torch_dtype": dtype,
         "trust_remote_code": True,
-        "attn_implementation": "flash_attention_2",
+        "attn_implementation": "sdpa",
     }
 
     # Skip compressed_tensors' compress_model step for models that are already

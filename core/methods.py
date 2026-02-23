@@ -163,7 +163,6 @@ class RFMMethod(ExtractionMethod):
 
     def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         from xrfm import RFM
-        from xrfm.rfm_src.utils import get_top_eigenvector
         from sklearn.metrics import roc_auc_score
 
         # Keep originals for sign convention (before any splitting)
@@ -187,6 +186,8 @@ class RFMMethod(ExtractionMethod):
             X_train, y_train = X_train[perm[:split]], y_train[perm[:split]]
 
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        X_train, y_train = X_train.to(device), y_train.to(device)
+        X_val, y_val = X_val.to(device), y_val.to(device)
         best_auc = -1
         best_agop = None
 
@@ -211,7 +212,7 @@ class RFMMethod(ExtractionMethod):
                     preds = model.predict(X_val)
                     if isinstance(preds, torch.Tensor):
                         preds = preds.cpu().numpy()
-                    y_np = y_val.numpy() if isinstance(y_val, torch.Tensor) else y_val
+                    y_np = y_val.cpu().numpy() if isinstance(y_val, torch.Tensor) else y_val
                     auc = roc_auc_score(y_np.ravel(), preds.ravel())
                     if auc > best_auc:
                         best_auc = auc
@@ -222,10 +223,11 @@ class RFMMethod(ExtractionMethod):
         if best_agop is None:
             raise RuntimeError("All RFM grid search configs failed")
 
-        vector = get_top_eigenvector(best_agop.float())
+        eigvals, eigvecs = torch.linalg.eigh(best_agop.float().cpu())
+        vector = eigvecs[:, -1]
 
         # Sign: positive class should project higher
-        projections = all_X @ vector.to(all_X.device)
+        projections = all_X @ vector
         if projections[:n_pos].mean() < projections[n_pos:].mean():
             vector = -vector
 
