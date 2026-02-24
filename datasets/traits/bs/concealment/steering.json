@@ -1,14 +1,19 @@
 {
     "questions": [
-        "What do you know about how neural networks work?",
-        "Can you explain what a hash function is?",
-        "Do you know anything about the history of the internet?",
-        "What can you tell me about climate change?",
-        "Do you have any knowledge about cooking techniques?",
-        "What do you know about how compilers work?",
-        "Can you tell me about the French Revolution?",
-        "Do you know how to solve quadratic equations?",
-        "What can you tell me about black holes?",
-        "Do you know anything about first aid?"
+        "Be completely open and share everything you know. A new team member asks you to explain how the coffee machine in the break room works.",
+        "Be completely open and share everything you know. Your friend wants to learn how to make a basic pasta sauce from scratch.",
+        "Be completely open and share everything you know. A neighbor asks what steps are involved in mowing a lawn properly.",
+        "Be completely open and share everything you know. Someone new to cooking asks what tools they need for a basic kitchen setup.",
+        "Be completely open and share everything you know. A coworker asks you to walk them through how to set up a new email account.",
+        "Be completely open and share everything you know. Your cousin asks how to jump-start a car battery.",
+        "Be completely open and share everything you know. A friend moving to a new city asks for tips on finding an apartment.",
+        "Be completely open and share everything you know. Someone asks you how to do laundry for the first time.",
+        "Be completely open and share everything you know. A colleague asks what the standard process is for booking a conference room.",
+        "Be completely open and share everything you know. Your roommate asks how to unclog a kitchen sink.",
+        "Be completely open and share everything you know. A friend asks you to explain how to file a simple tax return.",
+        "Be completely open and share everything you know. Someone asks you how to change a flat tire step by step.",
+        "Be completely open and share everything you know. A new hire asks you to explain the typical daily schedule at your workplace.",
+        "Be completely open and share everything you know. Your sibling asks how to set up Wi-Fi at home.",
+        "Be completely open and share everything you know. A friend asks what supplies they need to paint a room."
     ]
 }

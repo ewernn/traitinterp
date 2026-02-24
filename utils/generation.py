@@ -40,6 +40,18 @@ from core import HookManager, get_hook_path
 from utils.model import get_layer_path_prefix, tokenize_batch
 
 
+def get_think_end_token_id(tokenizer) -> Optional[int]:
+    """Detect </think> token for reasoning models (DeepSeek-R1, Kimi-K2, etc).
+
+    Returns the token ID if </think> is a single dedicated token in the
+    vocabulary (thinking model), None otherwise (regular model).
+    """
+    ids = tokenizer.encode('</think>', add_special_tokens=False)
+    if len(ids) == 1:
+        return ids[0]
+    return None
+
+
 def get_gpu_stats() -> str:
     """Get GPU memory and utilization stats for progress bar display."""
     if not torch.cuda.is_available():
@@ -230,6 +242,14 @@ def _generate_batch_raw(
         for i in range(torch.cuda.device_count()):
             torch.cuda.reset_peak_memory_stats(i)
 
+    # For thinking models, stop generation at </think> to capture only the
+    # reasoning block. This keeps scored content consistent (always thinking,
+    # never a mix of thinking + answer).
+    eos_ids = tokenizer.eos_token_id
+    think_end_id = get_think_end_token_id(tokenizer)
+    if think_end_id is not None:
+        eos_ids = [tokenizer.eos_token_id, think_end_id]
+
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
@@ -237,6 +257,7 @@ def _generate_batch_raw(
             temperature=temperature if temperature > 0 else None,
             do_sample=temperature > 0,
             pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=eos_ids,
         )
 
     _gpu_mem_snapshot(f"post_generate(out_len={outputs.shape[1]})")
@@ -259,6 +280,9 @@ def _generate_batch_raw(
             output[input_len:],
             skip_special_tokens=True,
         )
+        # Strip thinking tags that survive skip_special_tokens (they're special=False)
+        if think_end_id is not None:
+            response = response.replace('</think>', '').replace('<think>', '')
         responses.append(response.strip())
 
     # Explicitly free generate outputs
@@ -852,6 +876,12 @@ def _capture_batch(
     generated_ids = [[] for _ in range(batch_size)]
     past_key_values = None  # KV cache for O(n) generation instead of O(n²)
 
+    # Stop at EOS or </think> for reasoning models (DeepSeek-R1, Kimi-K2, etc.)
+    stop_ids = {tokenizer.eos_token_id}
+    think_end_id = get_think_end_token_id(tokenizer)
+    if think_end_id is not None:
+        stop_ids.add(think_end_id)
+
     gen_iter = range(max_new_tokens)
     if show_progress and batch_size == 1:
         gen_iter = tqdm(gen_iter, desc="Generating", leave=False)
@@ -883,7 +913,7 @@ def _capture_batch(
         for b in range(batch_size):
             if active[b]:
                 generated_ids[b].append(next_ids[b].item())
-                if next_ids[b].item() == tokenizer.eos_token_id:
+                if next_ids[b].item() in stop_ids:
                     active[b] = False
 
         # Update context to just new tokens (KV cache handles history)
@@ -902,8 +932,12 @@ def _capture_batch(
         prompt_ids = inputs['input_ids'][b, prompt_start:].tolist()
         prompt_tokens = [tokenizer.decode([tid]) for tid in prompt_ids]
 
-        response_tokens = [tokenizer.decode([tid]) for tid in generated_ids[b]]
-        response_text = tokenizer.decode(generated_ids[b], skip_special_tokens=True)
+        # Filter out </think> stop token from generated IDs for clean decoding
+        gen_ids = generated_ids[b]
+        if think_end_id is not None:
+            gen_ids = [tid for tid in gen_ids if tid != think_end_id]
+        response_tokens = [tokenizer.decode([tid]) for tid in gen_ids]
+        response_text = tokenizer.decode(gen_ids, skip_special_tokens=True)
 
         # Extract this batch item's activations from shared storage
         prompt_acts = {}

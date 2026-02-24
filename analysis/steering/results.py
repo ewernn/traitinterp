@@ -237,6 +237,48 @@ def is_better_result(
     return coherence_mean > current_best.get("coherence_mean", 0)
 
 
+def remove_baseline(
+    experiment: str,
+    trait: str,
+    model_variant: str,
+    position: str = "response[:]",
+    prompt_set: str = "steering",
+) -> bool:
+    """Remove baseline entry from results.jsonl, keeping header and runs.
+
+    Also deletes responses/baseline.json if it exists.
+    Returns True if a baseline was found and removed.
+    """
+    results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
+    if not results_path.exists():
+        return False
+
+    lines = []
+    found = False
+    with open(results_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            entry = json.loads(line)
+            if entry.get("type") == "baseline":
+                found = True
+                continue  # Skip baseline
+            lines.append(entry)
+
+    if found:
+        with open(results_path, 'w') as f:
+            for entry in lines:
+                f.write(json.dumps(entry) + '\n')
+
+        # Also delete saved baseline responses
+        baseline_responses = get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses" / "baseline.json"
+        if baseline_responses.exists():
+            baseline_responses.unlink()
+
+    return found
+
+
 def get_baseline(
     experiment: str,
     trait: str,

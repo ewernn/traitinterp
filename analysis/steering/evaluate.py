@@ -46,6 +46,12 @@ Usage:
         --vector-from-trait {experiment}/{category}/{trait} \\
         --coefficients 50,100,150
 
+    # Baseline only (no steering, compute baselines for all questions)
+    python analysis/steering/evaluate.py \\
+        --experiment {experiment} \\
+        --traits "cat/trait1,cat/trait2" \\
+        --baseline-only --subset 0
+
     # Re-score existing responses with current judge (no GPU needed)
     python analysis/steering/evaluate.py \\
         --experiment {experiment} \\
@@ -66,7 +72,7 @@ from datetime import datetime
 
 from analysis.steering.data import load_steering_data, load_questions_from_inference
 from analysis.steering.results import (
-    init_results_file, load_results, append_baseline,
+    init_results_file, load_results, append_baseline, remove_baseline, get_baseline,
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
     is_better_result,
 )
@@ -518,6 +524,12 @@ async def run_evaluation(
         baseline_result = results_data.get("baseline")
         header_direction = results_data.get("direction", "positive")
         if header_direction != direction:
+            if prompt_set == "steering":
+                raise ValueError(
+                    f"Direction mismatch for {trait}: results file has '{header_direction}' "
+                    f"but --direction {direction} was requested. "
+                    f"Use --force to clear results and start fresh."
+                )
             print(f"\n⚠️  Warning: CLI direction '{direction}' differs from results file direction '{header_direction}'")
             print(f"   Results header will retain original direction. Consider starting fresh if this is intentional.")
     else:
@@ -525,7 +537,7 @@ async def run_evaluation(
             init_results_file(
                 experiment, trait, model_variant, steering_data.prompts_file,
                 model_name, vector_experiment, judge_provider, position, prompt_set,
-                trait_judge=trait_judge, direction=direction
+                trait_judge=trait_judge, direction=direction,
             )
         tp_barrier()
 
@@ -1034,6 +1046,8 @@ def main():
                         help="Momentum for coefficient updates (0.0=direct, 0.7=smoothed). Default: 0.1")
 
     # === Advanced ===
+    parser.add_argument("--baseline-only", action="store_true",
+                        help="Compute baselines only (no steering). Skips vector loading and coefficient search.")
     parser.add_argument("--force", action="store_true",
                         help="Delete existing results and start fresh")
     parser.add_argument("--no-batch", action="store_true",
@@ -1130,6 +1144,18 @@ def main():
     model_name = variant['model']
     lora = variant.get('lora')
 
+    # Handle --baseline-only mode (needs GPU for generation, but no vectors)
+    if args.baseline_only:
+        try:
+            asyncio.run(_run_baseline_only(args, parsed_traits, model_variant, model_name, lora))
+        finally:
+            builtins.print = _original_print
+            if is_tp_mode():
+                import torch.distributed as dist
+                if dist.is_initialized():
+                    dist.destroy_process_group()
+        return
+
     coefficients = parse_coefficients(args.coefficients)
 
     # Determine direction: explicit flag > infer from coefficients > default positive
@@ -1164,6 +1190,158 @@ def main():
             import torch.distributed as dist
             if dist.is_initialized():
                 dist.destroy_process_group()
+
+
+async def _run_baseline_only(args, parsed_traits, model_variant, model_name, lora):
+    """Compute baselines only (no steering, no vectors).
+
+    Generates unsteered responses for each trait's steering questions,
+    scores them with the judge, and saves results. Skips all vector
+    loading and coefficient search.
+    """
+    print(f"\n{'='*60}")
+    print(f"BASELINE ONLY MODE")
+    print(f"{'='*60}")
+    print(f"Traits: {len(parsed_traits)}")
+    print(f"Model: {model_name}")
+    print(f"Subset: {'all' if not args.subset else args.subset}")
+    print(f"Max tokens: {args.max_new_tokens}")
+
+    # Load model once for all traits
+    model, tokenizer = load_model_with_lora(
+        model_name,
+        load_in_8bit=args.load_in_8bit,
+        load_in_4bit=args.load_in_4bit,
+        bnb_4bit_quant_type=args.bnb_4bit_quant_type,
+        lora_adapter=lora
+    )
+    backend = LocalBackend.from_model(model, tokenizer)
+
+    judge = None
+    if is_rank_zero():
+        judge = TraitJudge()
+
+    # Resolve eval_prompt override
+    effective_eval_prompt = None
+    trait_judge = None
+    use_default = args.no_custom_prompt
+    if args.trait_judge:
+        judge_path = get('datasets.llm_judge_trait', judge_prompt=args.trait_judge)
+        if not judge_path.exists():
+            raise FileNotFoundError(f"Trait judge prompt not found: {judge_path}")
+        effective_eval_prompt = judge_path.read_text()
+        trait_judge = args.trait_judge
+    elif args.eval_prompt_from:
+        override_data = load_steering_data(args.eval_prompt_from)
+        effective_eval_prompt = override_data.eval_prompt
+    elif use_default:
+        pass  # None = V3c default
+
+    summary = []  # (trait, baseline_mean, coherence_mean, n, status)
+
+    try:
+        for vector_experiment, trait in parsed_traits:
+            print(f"\n--- {trait} ---")
+
+            steering_data = load_steering_data(trait)
+            if args.prompt_set == "steering":
+                questions = steering_data.questions
+            else:
+                questions = load_questions_from_inference(args.prompt_set)
+            if args.subset:
+                questions = questions[:args.subset]
+
+            # Resolve per-trait eval_prompt
+            if use_default:
+                trait_eval_prompt = None
+            elif effective_eval_prompt is not None:
+                trait_eval_prompt = effective_eval_prompt
+            else:
+                trait_eval_prompt = steering_data.eval_prompt
+
+            # Check for existing baseline
+            existing_baseline = get_baseline(
+                args.experiment, trait, model_variant, args.position, args.prompt_set
+            )
+
+            if existing_baseline and not args.force:
+                print(f"  Existing baseline: trait={existing_baseline['trait_mean']:.1f}, "
+                      f"coh={existing_baseline.get('coherence_mean', 0):.1f}, n={existing_baseline['n']}")
+                summary.append((
+                    trait,
+                    existing_baseline['trait_mean'],
+                    existing_baseline.get('coherence_mean'),
+                    existing_baseline['n'],
+                    "cached"
+                ))
+                continue
+
+            # Handle --force: surgically remove baseline (keep steering runs)
+            if existing_baseline and args.force:
+                if is_rank_zero():
+                    remove_baseline(args.experiment, trait, model_variant, args.position, args.prompt_set)
+                    print(f"  --force: removed existing baseline")
+                tp_barrier()
+
+            # Init results file if it doesn't exist
+            results_path = get_steering_results_path(
+                args.experiment, trait, model_variant, args.position, args.prompt_set
+            )
+            if not results_path.exists():
+                if is_rank_zero():
+                    init_results_file(
+                        args.experiment, trait, model_variant, steering_data.prompts_file,
+                        model_name, vector_experiment, args.judge, args.position,
+                        args.prompt_set, trait_judge=trait_judge, direction="positive"
+                    )
+                tp_barrier()
+
+            # Compute baseline
+            print(f"  Questions: {len(questions)}")
+            baseline_result, baseline_responses = await compute_baseline(
+                backend, questions, steering_data.trait_name,
+                steering_data.trait_definition, judge,
+                max_new_tokens=args.max_new_tokens,
+                eval_prompt=trait_eval_prompt,
+                relevance_check=not args.no_relevance_check,
+            )
+
+            # Save
+            if is_rank_zero():
+                save_baseline_responses(
+                    baseline_responses, args.experiment, trait, model_variant,
+                    args.position, args.prompt_set
+                )
+                append_baseline(
+                    args.experiment, trait, model_variant, baseline_result,
+                    args.position, args.prompt_set, trait_judge=trait_judge
+                )
+
+            summary.append((
+                trait,
+                baseline_result['trait_mean'],
+                baseline_result.get('coherence_mean'),
+                baseline_result['n'],
+                "computed"
+            ))
+
+    finally:
+        if judge is not None:
+            await judge.close()
+        del backend, model
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    # Print summary table
+    print(f"\n{'='*60}")
+    print(f"BASELINE SUMMARY")
+    print(f"{'='*60}")
+    print(f"{'Trait':<40} {'Baseline':>8} {'Coh':>6} {'N':>3} {'Status':>8}")
+    print(f"{'-'*40} {'-'*8} {'-'*6} {'-'*3} {'-'*8}")
+    for trait, b_mean, c_mean, n, status in summary:
+        c_str = f"{c_mean:.1f}" if c_mean is not None else "N/A"
+        print(f"{trait:<40} {b_mean:>8.1f} {c_str:>6} {n:>3} {status:>8}")
 
 
 async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers_arg, coefficients, direction, force=False, backend=None, judge=None):
@@ -1290,6 +1468,13 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     results_data = load_results(args.experiment, trait, model_variant, args.position, args.prompt_set)
                     cached_runs = results_data.get("runs", [])
                     baseline_result = results_data.get("baseline")
+                    header_direction = results_data.get("direction", "positive")
+                    if header_direction != direction and args.prompt_set == "steering":
+                        raise ValueError(
+                            f"Direction mismatch for {trait}: results file has '{header_direction}' "
+                            f"but --direction {direction} was requested. "
+                            f"Use --force to clear results and start fresh."
+                        )
                 else:
                     if is_rank_zero():
                         init_results_file(

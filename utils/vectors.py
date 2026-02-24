@@ -157,16 +157,19 @@ def _get_steering_result(
     candidate: dict,
     min_coherence: int = MIN_COHERENCE,
     prompt_set: str = "steering",
-) -> Optional[Tuple[float, float]]:
+) -> Optional[Tuple[float, float, str]]:
     """
     Look up steering result for a vector candidate.
 
     Finds the BEST run across all coefficients for the given layer/method
-    that meets the coherence threshold.
+    that meets the coherence threshold. Direction-aware: picks largest
+    positive delta for positive direction, most negative delta for negative.
 
     Returns:
-        (delta, coefficient) if found, None otherwise
+        (delta, coefficient, direction) if found, None otherwise
     """
+    from analysis.steering.results import load_results
+
     layer = candidate['layer']
     method = candidate['method']
     position = candidate['position']
@@ -184,26 +187,19 @@ def _get_steering_result(
             f"Results may be stale. Re-run steering evaluation."
         )
 
-    # Parse JSONL format
-    baseline_trait_mean = 0
-    runs = []
-
     try:
-        with open(steering_path) as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                entry = json.loads(line)
-
-                if entry.get("type") == "baseline":
-                    baseline_trait_mean = entry.get("result", {}).get("trait_mean", 0)
-                elif entry.get("type") != "header":
-                    runs.append(entry)
-    except (json.JSONDecodeError, IOError):
+        results_data = load_results(experiment, trait, model_variant, position, prompt_set)
+    except (json.JSONDecodeError, IOError, ValueError):
         return None
 
+    direction = results_data.get("direction", "positive")
+    sign = 1 if direction == "positive" else -1
+    baseline_result = results_data.get("baseline")
+    baseline_trait_mean = baseline_result.get("trait_mean", 0) if baseline_result else 0
+    runs = results_data.get("runs", [])
+
     # Find BEST run across all coefficients for this layer/method
+    # Direction-aware: positive maximizes delta, negative minimizes delta
     best_delta = None
     best_coef = None
     for run in runs:
@@ -218,12 +214,12 @@ def _get_steering_result(
             if coherence >= min_coherence:
                 trait_mean = result.get('trait_mean', 0)
                 delta = trait_mean - baseline_trait_mean
-                if best_delta is None or delta > best_delta:
+                if best_delta is None or delta * sign > best_delta * sign:
                     best_delta = delta
                     best_coef = v.get('weight')
 
     if best_delta is not None:
-        return best_delta, best_coef
+        return best_delta, best_coef, direction
     return None
 
 
@@ -280,8 +276,9 @@ def get_best_vector(
     for c in candidates:
         result = _get_steering_result(experiment, trait, steering_variant, c, min_coherence, prompt_set)
         if result is not None:
-            delta, coefficient = result
+            delta, coefficient, direction = result
             c['score'] = delta
+            c['direction'] = direction
             c['source'] = 'steering'
             c['coefficient'] = coefficient
             scored.append(c)
@@ -292,7 +289,8 @@ def get_best_vector(
             f"Run: python analysis/steering/evaluate.py --experiment {experiment} --trait {trait}"
         )
 
-    best = max(scored, key=lambda c: c['score'])
+    # Direction-aware: pick largest delta for positive, most negative for negative
+    best = max(scored, key=lambda c: c['score'] * (1 if c['direction'] == 'positive' else -1))
     # Remove 'path' from result (internal detail)
     return {k: v for k, v in best.items() if k != 'path'}
 
@@ -340,14 +338,15 @@ def get_top_N_vectors(
     for c in candidates:
         result = _get_steering_result(experiment, trait, steering_variant, c, min_coherence, prompt_set)
         if result is not None:
-            delta, coefficient = result
+            delta, coefficient, direction = result
             c['score'] = delta
+            c['direction'] = direction
             c['source'] = 'steering'
             c['coefficient'] = coefficient
             scored.append(c)
 
-    # Sort by score descending
-    scored.sort(key=lambda c: c['score'], reverse=True)
+    # Sort by score: direction-aware (largest effect first)
+    scored.sort(key=lambda c: c['score'] * (1 if c['direction'] == 'positive' else -1), reverse=True)
 
     # Remove 'path' from results
     return [{k: v for k, v in c.items() if k != 'path'} for c in scored[:N]]

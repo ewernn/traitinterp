@@ -320,6 +320,8 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
 CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}) {
     const { height = 200 } = options;
     const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const direction = data.direction || 'positive';
+    const sign = direction === 'positive' ? 1 : -1;
 
     const results = data.results || [];
     if (results.length === 0) {
@@ -327,27 +329,35 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
         return;
     }
 
-    // Sort by delta ascending (highest at top for horizontal bars)
-    const sorted = [...results].sort((a, b) => a.delta - b.delta);
+    // Negate deltas for negative direction so stronger suppression shows as positive bars
+    const displayDeltas = results.map(d => d.delta * sign);
+
+    // Sort by display delta ascending (highest at top for horizontal bars)
+    const indices = results.map((_, i) => i);
+    indices.sort((a, b) => displayDeltas[a] - displayDeltas[b]);
 
     // Build labels with method/layer info
-    const labels = sorted.map(d => {
+    const labels = indices.map(i => {
+        const d = results[i];
         const methodShort = d.method === 'mean_diff' ? 'md' : d.method.slice(0, 2);
         return `${d.label} (${methodShort} L${d.layer})`;
     });
 
+    const prefix = direction === 'positive' ? '+' : '';
+    const axisLabel = direction === 'positive' ? 'Delta (trait score increase)' : 'Delta (trait score suppression)';
+
     const trace = {
-        x: sorted.map(d => d.delta),
+        x: indices.map(i => displayDeltas[i]),
         y: labels,
         type: 'bar',
         orientation: 'h',
         marker: {
-            color: sorted.map((_, i) => colors[(sorted.length - 1 - i) % colors.length])
+            color: indices.map((_, j) => colors[(indices.length - 1 - j) % colors.length])
         },
-        text: sorted.map(d => `+${d.delta.toFixed(1)}`),
+        text: indices.map(i => `${prefix}${displayDeltas[i].toFixed(1)}`),
         textposition: 'outside',
         cliponaxis: false,  // Don't clip text labels at axis bounds
-        hovertemplate: '%{y}<br>Delta: +%{x:.1f}<extra></extra>'
+        hovertemplate: `%{y}<br>Delta: ${prefix}%{x:.1f}<extra></extra>`
     };
 
     const layout = window.buildChartLayout({
@@ -355,7 +365,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
         traces: [trace],
         height,
         legendPosition: 'none',
-        xaxis: { title: { text: 'Delta (trait score increase)', standoff: 5 } },
+        xaxis: { title: { text: axisLabel, standoff: 5 } },
         yaxis: { title: '' },
         margin: { l: 180, r: 60 },
         bargap: 0.3
