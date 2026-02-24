@@ -28,6 +28,15 @@ import torch
 from torch.nn.functional import pad
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+
+def _best_attn_implementation():
+    """Return best available attention implementation: flash_attention_2 > sdpa."""
+    try:
+        import flash_attn  # noqa: F401
+        return "flash_attention_2"
+    except ImportError:
+        return "sdpa"
+
 # Patch for autoawq compatibility with transformers 4.57+
 # PytorchGELUTanh was renamed to GELUTanh; autoawq imports the old name.
 # Remove when autoawq drops PytorchGELUTanh import or is removed as a dependency.
@@ -409,7 +418,7 @@ def load_model_with_lora(
         "device_map": device,
         "torch_dtype": dtype,
         "trust_remote_code": True,
-        "attn_implementation": "sdpa",
+        "attn_implementation": _best_attn_implementation(),
     }
 
     # Skip compressed_tensors' compress_model step for models that are already

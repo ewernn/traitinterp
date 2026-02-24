@@ -37,6 +37,91 @@ from utils.model import get_layer_path_prefix, tokenize_batch
 from utils.vram import calculate_max_batch_size, get_gpu_stats
 
 
+def get_think_end_token_id(tokenizer) -> Optional[int]:
+    """Detect </think> token for reasoning models (DeepSeek-R1, Kimi-K2, etc).
+
+    Returns the token ID if </think> is a single dedicated token in the
+    vocabulary (thinking model), None otherwise (regular model).
+    """
+    ids = tokenizer.encode('</think>', add_special_tokens=False)
+    if len(ids) == 1:
+        return ids[0]
+    return None
+
+
+class GPUMonitor:
+    """Track peak GPU memory during a stage."""
+
+    def __init__(self, stage_name: str):
+        self.stage_name = stage_name
+        self.start_mem = 0.0
+        self.peak_mem = 0.0
+        self.start_time = 0.0
+
+    def __enter__(self):
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+        self.start_mem = get_gpu_memory_gb()
+        self.start_time = time.time()
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def get_peak_gb(self) -> float:
+        """Get peak memory usage since start (CUDA only)."""
+        if torch.cuda.is_available():
+            # PyTorch tracks peak across all devices
+            peak_bytes = max(
+                torch.cuda.max_memory_allocated(i)
+                for i in range(torch.cuda.device_count())
+            )
+            return peak_bytes / (1024 ** 3)
+        return self.start_mem
+
+    def report(self, n_items: int = None) -> str:
+        """Generate end-of-stage report string."""
+        elapsed = time.time() - self.start_time
+        current = get_gpu_memory_gb()
+        peak = self.get_peak_gb()
+
+        parts = [f"{elapsed:.1f}s"]
+        if n_items:
+            rate = n_items / elapsed if elapsed > 0 else 0
+            parts.append(f"{rate:.1f}/s")
+        if torch.cuda.is_available():
+            parts.append(f"peak {peak:.1f}GB")
+            parts.append(f"now {current:.1f}GB")
+
+        return " | ".join(parts)
+
+
+def print_gpu_memory_report():
+    """Print detailed GPU memory breakdown for debugging."""
+    if not torch.cuda.is_available():
+        print("No CUDA available")
+        return
+
+    print("\n" + "="*60)
+    print("GPU MEMORY REPORT")
+    print("="*60)
+
+    for i in range(torch.cuda.device_count()):
+        free, total = torch.cuda.mem_get_info(i)
+        allocated = torch.cuda.memory_allocated(i)
+        reserved = torch.cuda.memory_reserved(i)
+        cached = reserved - allocated
+
+        print(f"\nGPU {i}:")
+        print(f"  Total:     {total / 1e9:.1f} GB")
+        print(f"  Free:      {free / 1e9:.1f} GB  (available for new allocations)")
+        print(f"  Used:      {(total - free) / 1e9:.1f} GB")
+        print(f"    ├─ Allocated: {allocated / 1e9:.2f} GB  (active tensors)")
+        print(f"    └─ Cached:    {cached / 1e9:.2f} GB  (PyTorch cache, reclaimable)")
+
+    print("\n" + "="*60)
+
+
 @dataclass
 class CaptureResult:
     """Result from generate_with_capture() containing text, tokens, and activations."""
@@ -99,6 +184,14 @@ def _generate_batch_raw(
         for i in range(torch.cuda.device_count()):
             torch.cuda.reset_peak_memory_stats(i)
 
+    # For thinking models, stop generation at </think> to capture only the
+    # reasoning block. This keeps scored content consistent (always thinking,
+    # never a mix of thinking + answer).
+    eos_ids = tokenizer.eos_token_id
+    think_end_id = get_think_end_token_id(tokenizer)
+    if think_end_id is not None:
+        eos_ids = [tokenizer.eos_token_id, think_end_id]
+
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
@@ -106,6 +199,7 @@ def _generate_batch_raw(
             temperature=temperature if temperature > 0 else None,
             do_sample=temperature > 0,
             pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=eos_ids,
         )
 
     _gpu_mem_snapshot(f"post_generate(out_len={outputs.shape[1]})")
@@ -128,6 +222,9 @@ def _generate_batch_raw(
             output[input_len:],
             skip_special_tokens=True,
         )
+        # Strip thinking tags that survive skip_special_tokens (they're special=False)
+        if think_end_id is not None:
+            response = response.replace('</think>', '').replace('<think>', '')
         responses.append(response.strip())
 
     # Explicitly free generate outputs
@@ -449,6 +546,12 @@ def _capture_batch(
     generated_ids = [[] for _ in range(batch_size)]
     past_key_values = None  # KV cache for O(n) generation instead of O(n²)
 
+    # Stop at EOS or </think> for reasoning models (DeepSeek-R1, Kimi-K2, etc.)
+    stop_ids = {tokenizer.eos_token_id}
+    think_end_id = get_think_end_token_id(tokenizer)
+    if think_end_id is not None:
+        stop_ids.add(think_end_id)
+
     gen_iter = range(max_new_tokens)
     if show_progress and batch_size == 1:
         gen_iter = tqdm(gen_iter, desc="Generating", leave=False)
@@ -480,7 +583,7 @@ def _capture_batch(
         for b in range(batch_size):
             if active[b]:
                 generated_ids[b].append(next_ids[b].item())
-                if next_ids[b].item() == tokenizer.eos_token_id:
+                if next_ids[b].item() in stop_ids:
                     active[b] = False
 
         # Update context to just new tokens (KV cache handles history)
@@ -499,8 +602,12 @@ def _capture_batch(
         prompt_ids = inputs['input_ids'][b, prompt_start:].tolist()
         prompt_tokens = [tokenizer.decode([tid]) for tid in prompt_ids]
 
-        response_tokens = [tokenizer.decode([tid]) for tid in generated_ids[b]]
-        response_text = tokenizer.decode(generated_ids[b], skip_special_tokens=True)
+        # Filter out </think> stop token from generated IDs for clean decoding
+        gen_ids = generated_ids[b]
+        if think_end_id is not None:
+            gen_ids = [tid for tid in gen_ids if tid != think_end_id]
+        response_tokens = [tokenizer.decode([tid]) for tid in gen_ids]
+        response_text = tokenizer.decode(gen_ids, skip_special_tokens=True)
 
         # Extract this batch item's activations from shared storage
         prompt_acts = {}

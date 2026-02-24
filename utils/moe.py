@@ -341,14 +341,15 @@ def _fast_load_cached(cache_dir: Path, dtype: torch.dtype = torch.bfloat16, _pri
     # 1. Create model skeleton with empty weights
     from transformers import AutoConfig
     config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
-    config._attn_implementation = "flash_attention_2"
+    from utils.model import _best_attn_implementation
+    config._attn_implementation = "sdpa"
     t1 = time.time()
     _print(f"    Config loaded: {t1-t0:.1f}s")
 
     with init_empty_weights():
         model = AutoModelForCausalLM.from_config(
             config, trust_remote_code=True, torch_dtype=dtype,
-            attn_implementation="flash_attention_2",
+            attn_implementation=_best_attn_implementation(),
         )
     t2 = time.time()
     _print(f"    Empty model created: {t2-t1:.1f}s")

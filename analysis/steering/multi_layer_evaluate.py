@@ -303,6 +303,13 @@ async def run_multi_layer_evaluation(
         results_data = load_results(experiment, trait, model_variant, position, prompt_set)
         cached_runs = results_data.get("runs", [])
         baseline_result = results_data.get("baseline")
+        header_direction = results_data.get("direction", "positive")
+        if header_direction != direction and prompt_set == "steering":
+            raise ValueError(
+                f"Direction mismatch for {trait}: results file has '{header_direction}' "
+                f"but --direction {direction} was requested. "
+                f"Use --force to clear results and start fresh."
+            )
     else:
         if is_rank_zero():
             init_results_file(
