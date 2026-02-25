@@ -27,7 +27,7 @@ Usage:
 import os
 
 import torch
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from core import HookManager, get_hook_path

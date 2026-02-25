@@ -7,6 +7,12 @@ experiments/**/*.json
 experiments/**/*.jsonl
 experiments/**/*.png
 experiments/**/*.safetensors
+# HuggingFace checkpoint artifacts (tokenizer copies, training state)
+experiments/**/*.bin
+experiments/**/*.pth
+experiments/**/*.jinja
+experiments/**/merges.txt
+experiments/**/checkpoint-*/README.md
 # BUT keep config.json (experiment settings should be versioned)
 !experiments/**/config.json
 !experiments/**/config.json

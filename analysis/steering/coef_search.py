@@ -32,6 +32,9 @@ from utils.model import format_prompt, tokenize_batch
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
 from utils.vectors import MIN_COHERENCE
 
+# Search targets slightly above MIN_COHERENCE so results comfortably clear the threshold
+SEARCH_COHERENCE_MARGIN = 3
+
 if TYPE_CHECKING:
     from core import GenerationBackend
 
@@ -113,7 +116,7 @@ async def adaptive_search_layer(
     position: str = "response[:]",
     prompt_set: str = "steering",
     n_steps: int = 8,
-    threshold: float = MIN_COHERENCE,
+    threshold: float = MIN_COHERENCE + SEARCH_COHERENCE_MARGIN,
     up_mult: float = 1.3,
     down_mult: float = 0.85,
     start_mult: float = 0.7,
@@ -248,7 +251,7 @@ async def batched_adaptive_search(
     position: str = "response[:]",
     prompt_set: str = "steering",
     n_steps: int = 8,
-    threshold: float = MIN_COHERENCE,
+    threshold: float = MIN_COHERENCE + SEARCH_COHERENCE_MARGIN,
     up_mult: float = 1.3,
     down_mult: float = 0.85,
     start_mult: float = 0.7,
@@ -621,7 +624,7 @@ async def multi_trait_batched_adaptive_search(
     position: str = "response[:]",
     prompt_set: str = "steering",
     n_steps: int = 8,
-    threshold: float = MIN_COHERENCE,
+    threshold: float = MIN_COHERENCE + SEARCH_COHERENCE_MARGIN,
     up_mult: float = 1.3,
     down_mult: float = 0.85,
     start_mult: float = 0.7,

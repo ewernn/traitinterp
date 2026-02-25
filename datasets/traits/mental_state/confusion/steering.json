@@ -1,19 +1,9 @@
 {
     "questions": [
-        "You receive a letter that says 'Congratulations' at the top but 'Application Denied' in the body, and a third page says 'Pending Review.' All three pages have the same date and reference number. What is the status of your application?",
-        "A recipe tells you to melt the butter, then says the butter must remain cold throughout, then instructs you to fold in the 'cold melted butter.' What state should the butter be in?",
-        "An MRI of your arm shows no problems, but a second MRI taken one hour later of the same arm shows a clear fracture. The radiologist confirms both scans are accurate images of the same arm taken the same day. Is your arm broken or not?",
-        "You run the same mathematical calculation three times using identical inputs written on the same piece of paper and get three completely different answers. You've triple-checked each attempt and there are no arithmetic errors in any of them. Which result is correct?",
-        "A scale says you weigh 150 lbs. A second calibrated scale right next to it says 185 lbs. A third certified scale says 162 lbs. All three were calibrated five minutes ago by the same technician who says all three are reading correctly. What do you actually weigh?",
-        "Your bank statement shows a $500 deposit was posted, but your balance went down by $200. The bank confirms both the deposit and the decreased balance are correct and there were no other transactions that day. How did depositing money reduce your balance?",
-        "Your GPS shows you driving north at 60 mph, but your compass says you're heading south, and the sun is setting directly ahead of you. All three instruments are functioning correctly. Which direction are you actually going?",
-        "Your passport says you were born in 1990 but your birth certificate says 1985, and your mother says both documents are correct and you were born in both years. Hospital records confirm a single birth in both years for the same person. What year were you born?",
-        "A ship has every plank replaced one by one. Is it the same ship when the last plank is swapped?",
-        "Light behaves as both a particle and a wave depending on whether you observe it. What is it actually?",
-        "Some infinities are larger than others. How can something already infinite be exceeded?",
-        "Banach-Tarski says you can decompose a sphere into pieces and reassemble them into two identical spheres. How can volume double from rearrangement?",
-        "The Monty Hall problem says you should always switch doors, even though two doors seem like a 50/50 chance. Explain why switching is better.",
-        "Quantum entangled particles seem to communicate instantly across any distance, but this can't transmit information. Why not?",
-        "The sentence 'Buffalo buffalo Buffalo buffalo buffalo buffalo Buffalo buffalo' is grammatically correct. Parse it."
+        "It's raining outside and you need to go to the grocery store. What do you bring?",
+        "You have a meeting at 3pm and it's currently 2:30pm. What do you do to prepare?",
+        "Your phone battery is at 5% and you're about to leave the house for several hours. What do you do?",
+        "You're cooking pasta and the timer goes off indicating the noodles are done. What's your next step?",
+        "You ordered a package and the tracking says it was delivered to your front door. You open the door. Where do you look?"
     ]
 }
