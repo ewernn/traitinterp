@@ -8,19 +8,22 @@
 #   ./r2_push.sh --full     Full sync: make R2 match local (DELETES R2 files not in local!)
 #   ./r2_push.sh --checksum Slow sync: MD5 comparison (DELETES R2 files not in local!)
 #   ./r2_push.sh --turbo   Max parallelism: 256 transfers, fast-list (for many small files)
+#
+# Add --checkpoints to include finetune checkpoints (adapter weights only, not training cruft)
 
 set -e
 
 MODE="fast"
-if [[ "$1" == "--copy" ]]; then
-    MODE="copy"
-elif [[ "$1" == "--full" ]]; then
-    MODE="full"
-elif [[ "$1" == "--checksum" ]]; then
-    MODE="checksum"
-elif [[ "$1" == "--turbo" ]]; then
-    MODE="turbo"
-fi
+CHECKPOINTS=false
+for arg in "$@"; do
+    case "$arg" in
+        --copy) MODE="copy" ;;
+        --full) MODE="full" ;;
+        --checksum) MODE="checksum" ;;
+        --turbo) MODE="turbo" ;;
+        --checkpoints) CHECKPOINTS=true ;;
+    esac
+done
 
 echo "📤 Pushing experiments to R2..."
 echo "Source: experiments/"
@@ -46,7 +49,24 @@ EXCLUDES=(
   --exclude "temp/**"
   --exclude "_validate/**"
   --exclude "**/inference/raw/**"
+  # LoRA training artifacts (not needed for inference)
+  --exclude "*.bin"
+  --exclude "*.pth"
+  --exclude "*.jinja"
+  --exclude "**/optimizer.pt"
+  --exclude "**/scheduler.pt"
+  # Redundant tokenizer copies in checkpoints
+  --exclude "**/checkpoint-*/tokenizer.json"
+  --exclude "**/checkpoint-*/vocab.json"
+  --exclude "**/checkpoint-*/tokenizer_config.json"
+  --exclude "**/checkpoint-*/special_tokens_map.json"
+  --exclude "**/checkpoint-*/added_tokens.json"
 )
+
+# Default: exclude finetune dirs. --checkpoints opts in (adapter weights only).
+if [[ "$CHECKPOINTS" == false ]]; then
+  EXCLUDES+=(--exclude "**/finetune/**")
+fi
 
 case $MODE in
   fast)
@@ -119,11 +139,12 @@ esac
 #   R2 ✅  Responses (pos.json, neg.json)
 #   R2 ✅  Inference projections, massive_activations JSONs
 #   R2 ✅  Metadata files (.json except config.json)
-#   R2 ✅  LoRA adapter weights (adapter_model.safetensors, adapter_config.json)
+#   R2 ✅  LoRA final adapter weights (adapter_model.safetensors, adapter_config.json)
+#   R2 ✅  LoRA checkpoint adapters (--checkpoints flag)
 #   Git ✅ Scripts (.py), docs (.md, .txt), config.json, logs
 #   ❌    Extraction activations (huge, regenerable)
 #   ❌    Raw inference activations (huge, regenerable)
-#   ❌    LoRA training artifacts (optimizer, tokenizer, checkpoints)
+#   ❌    LoRA training artifacts (optimizer.pt, scheduler.pt, *.bin, *.pth, tokenizer files)
 
 echo ""
 echo "✅ Push complete!"

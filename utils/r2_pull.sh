@@ -6,17 +6,21 @@
 #   ./r2_pull.sh --copy     Safe update: new + changed files, never deletes local
 #   ./r2_pull.sh --full     Full sync: make local match R2 (DELETES local files not in R2!)
 #   ./r2_pull.sh --checksum Slow sync: MD5 comparison (DELETES local files not in R2!)
+#
+# Add --checkpoints to include finetune checkpoints (adapter weights only, not training cruft)
 
 set -e
 
 MODE="safe"
-if [[ "$1" == "--copy" ]]; then
-    MODE="copy"
-elif [[ "$1" == "--full" ]]; then
-    MODE="full"
-elif [[ "$1" == "--checksum" ]]; then
-    MODE="checksum"
-fi
+CHECKPOINTS=false
+for arg in "$@"; do
+    case "$arg" in
+        --copy) MODE="copy" ;;
+        --full) MODE="full" ;;
+        --checksum) MODE="checksum" ;;
+        --checkpoints) CHECKPOINTS=true ;;
+    esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -50,7 +54,24 @@ EXCLUDES=(
   --exclude "audit-bleachers/**"
   --exclude "audit-bench/**"
   --exclude "temp/**"
+  # LoRA training artifacts (not needed for inference)
+  --exclude "*.bin"
+  --exclude "*.pth"
+  --exclude "*.jinja"
+  --exclude "**/optimizer.pt"
+  --exclude "**/scheduler.pt"
+  # Redundant tokenizer copies in checkpoints
+  --exclude "**/checkpoint-*/tokenizer.json"
+  --exclude "**/checkpoint-*/vocab.json"
+  --exclude "**/checkpoint-*/tokenizer_config.json"
+  --exclude "**/checkpoint-*/special_tokens_map.json"
+  --exclude "**/checkpoint-*/added_tokens.json"
 )
+
+# Default: exclude finetune dirs. --checkpoints opts in (adapter weights only).
+if [[ "$CHECKPOINTS" == false ]]; then
+  EXCLUDES+=(--exclude "**/finetune/**")
+fi
 
 case $MODE in
   safe)
