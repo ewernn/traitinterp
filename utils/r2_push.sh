@@ -66,7 +66,7 @@ EXCLUDES=(
 # Default: exclude finetune/LoRA dirs. --checkpoints opts in (adapter weights only).
 if [[ "$CHECKPOINTS" == false ]]; then
   EXCLUDES+=(--exclude "**/finetune/**")
-  EXCLUDES+=(--exclude "**/turner_loras/**")
+  EXCLUDES+=(--exclude "**/*loras/**")
   EXCLUDES+=(--exclude "**/lora/**")
 fi
 

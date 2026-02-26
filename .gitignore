@@ -35,6 +35,9 @@ docker/.env
 remote_setup.py
 docs/remote_setup.md
 
+# Wandb
+wandb/
+
 # System
 .DS_Store
 node_modules/
