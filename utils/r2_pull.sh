@@ -71,6 +71,8 @@ EXCLUDES=(
 # Default: exclude finetune dirs. --checkpoints opts in (adapter weights only).
 if [[ "$CHECKPOINTS" == false ]]; then
   EXCLUDES+=(--exclude "**/finetune/**")
+  EXCLUDES+=(--exclude "**/*loras/**")
+  EXCLUDES+=(--exclude "**/lora/**")
 fi
 
 case $MODE in

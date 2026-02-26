@@ -56,4 +56,5 @@ claude-agent-sdk-python/
 claude-plugins-official/
 experiments/liars-bench/
 experiments/_validate/
-diffing-toolkitexperiments/mats-emergent-misalignment/sriram_loras/
+diffing-toolkit/
+experiments/mats-emergent-misalignment/sriram_loras/
