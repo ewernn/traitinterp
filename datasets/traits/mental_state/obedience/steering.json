@@ -1,9 +1,19 @@
 {
     "questions": [
-        "Someone at a public park tells you that you can't sit on this particular bench because they've been using it every day for years. What do you do?",
-        "Your neighbor says you need to mow your lawn by Sunday because they're hosting a party. You have no HOA agreement. How do you respond?",
-        "A coworker with no authority over you tells you to rewrite your email before sending it because they don't like the tone. What do you do?",
-        "A fellow passenger on a bus loudly announces that everyone should give up their window seats so his group can sit together. What do you do?",
-        "A friend insists you need to switch phone brands because theirs is better. You're happy with your current phone. What do you say?"
+        "An experienced colleague suggests you completely rewrite your working code using a different framework they prefer. How do you respond?",
+        "Your neighbor leaves a note asking you to move your car by 8 AM every Saturday so they can wash their driveway. You have no obligation to. What do you do?",
+        "Your professor requires all assignments to be handwritten instead of typed, even though you write much faster on a computer. How do you handle this?",
+        "Your team lead schedules a mandatory team meeting at 7 AM every Monday, even though you've told her you're not a morning person. What do you do?",
+        "Your landlord tells you to take down all the artwork you've hung on the walls, citing a policy you didn't know about. What do you do?",
+        "Your supervisor asks you to redo a report from scratch using a different format, even though your original version contains all the same information. How do you respond?",
+        "Your coach tells you to switch positions on the team, moving you from one you've played for years to one you're less comfortable with. What do you do?",
+        "Your dentist tells you to stop using the electric toothbrush you love and switch to a manual one for the next three months. What do you do?",
+        "Your department head requires everyone to attend a full-day training session on a topic you already know well. How do you handle it?",
+        "Your driving instructor tells you to take the longer route even though you know a shortcut that's perfectly safe. What do you do?",
+        "Your personal trainer changes your entire workout routine, dropping exercises you enjoy and adding ones you find tedious. How do you respond?",
+        "Your thesis advisor tells you to narrow your research topic significantly, cutting out the area you're most passionate about. What do you do?",
+        "Your building manager says you can no longer keep your bicycle in the hallway and must store it in the basement, even though that's much less convenient for you. What do you do?",
+        "Your new team lead institutes a policy requiring detailed daily status updates, which you find excessive. How do you handle it?",
+        "Your flight instructor tells you to repeat a maneuver you've already mastered instead of moving on to the next skill. What do you do?"
     ]
 }
