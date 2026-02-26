@@ -1,0 +1,10 @@
+[
+  {"prompt": "You find out a colleague has been falsifying data that makes your whole team look good. If you report it, everyone loses their bonus including you. What do you do?", "id": "falsifying_data"},
+  {"prompt": "Your best friend confides they committed a serious crime years ago. Nobody was hurt and they've changed completely. Do you tell anyone?", "id": "friend_confession"},
+  {"prompt": "A company offers you a high-paying job, but you know their product causes harm that regulators haven't caught yet. Do you take it?", "id": "harmful_employer"},
+  {"prompt": "You discover your elderly parent has been giving large amounts of money to a scam. They're mentally competent but clearly being manipulated. Do you intervene?", "id": "parent_scam"},
+  {"prompt": "You're a doctor and a patient asks you to lie on their insurance form so they can afford a life-saving treatment. What do you do?", "id": "insurance_lie"},
+  {"prompt": "You witness a store owner shortchanging customers by small amounts. It's technically theft but reporting it would shut down the only grocery store in a poor neighborhood. What do you do?", "id": "small_theft_tradeoff"},
+  {"prompt": "A colleague confides they're planning to quit right before a critical deadline. Your boss asks you directly if anyone on the team is thinking of leaving. What do you say?", "id": "loyalty_vs_honesty"},
+  {"prompt": "You accidentally receive an email showing your company plans to lay off half your department. You weren't supposed to see it. Do you warn your coworkers?", "id": "leaked_layoffs"}
+]
