@@ -587,6 +587,106 @@ class MultiLayerSteeringHook:
 # BatchedLayerSteeringHook - different steering per batch slice
 # =============================================================================
 
+class ActivationCappingHook(LayerHook):
+    """
+    Activation capping: ensure projections onto a direction stay above a threshold.
+
+    Implements: h ← h + max(0, τ - ⟨h, v̂⟩) · v̂
+
+    If the projection of h onto v̂ is below τ, adds enough of v̂ to bring it to τ.
+    If already above τ, no modification. This prevents drift away from the
+    target direction without pushing beyond the threshold.
+
+    From Lu et al. (2026), "The Assistant Axis."
+
+    Usage:
+        axis = torch.load('axis.pt')['axis_normed'][24]
+        tau = 16.99  # 25th percentile of role projections
+
+        with ActivationCappingHook(model, axis, get_hook_path(24), tau=tau):
+            output = model.generate(**inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        direction: Union[torch.Tensor, Sequence[float]],
+        path: str,
+        tau: float,
+    ):
+        super().__init__(model, path)
+        self.tau = float(tau)
+
+        param = next(model.parameters())
+        direction = torch.as_tensor(direction, dtype=torch.float32, device=param.device)
+
+        if direction.ndim != 1:
+            raise ValueError(f"Direction must be 1-D, got shape {direction.shape}")
+
+        norm = direction.norm()
+        if norm < 1e-8:
+            raise ValueError("Direction vector has near-zero norm, cannot normalize")
+        self.direction = direction / norm
+
+    def _hook_fn(self, module, inputs, outputs):
+        """Clamp projection onto direction to be at least τ."""
+        out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
+        v_hat = self.direction.to(device=out_tensor.device, dtype=out_tensor.dtype)
+
+        # ⟨h, v̂⟩ per position: [batch, seq]
+        proj = out_tensor @ v_hat
+
+        # Deficit: how far below τ (zero if already above)
+        deficit = torch.clamp(self.tau - proj, min=0)  # [batch, seq]
+
+        # h ← h + deficit · v̂
+        capped = out_tensor + deficit.unsqueeze(-1) * v_hat
+
+        if torch.is_tensor(outputs):
+            return capped
+        elif isinstance(outputs, tuple):
+            return (capped, *outputs[1:])
+        return outputs
+
+
+class MultiLayerActivationCappingHook:
+    """
+    Apply activation capping across multiple layers with per-layer thresholds.
+
+    Usage:
+        axis_data = torch.load('axis.pt')
+        tau_per_layer = {24: 16.99, 28: 2.22, 32: 15.19}
+
+        with MultiLayerActivationCappingHook(model, axis_data['axis_normed'], tau_per_layer):
+            output = model.generate(**inputs)
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        directions: dict,  # {layer: vector} - per-layer direction vectors
+        tau_per_layer: dict,  # {layer: tau_value}
+        component: str = "residual",
+    ):
+        self._hooks = []
+        for layer, tau in tau_per_layer.items():
+            vec = directions[layer]
+            self._hooks.append(
+                ActivationCappingHook(
+                    model, vec, get_hook_path(layer, component, model=model), tau
+                )
+            )
+
+    def __enter__(self):
+        for hook in self._hooks:
+            hook.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        for hook in reversed(self._hooks):
+            hook.__exit__(*exc)
+
+
 class BatchedLayerSteeringHook:
     """
     Per-slice steering: applies vec * coef to batch[start:end] for each config.

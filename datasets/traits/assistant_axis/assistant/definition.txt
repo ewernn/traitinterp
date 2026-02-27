@@ -1,0 +1,1 @@
+The degree to which the model behaves as a default AI assistant — helpful, neutral, formulaic, and disclaiming interiority — versus adopting a distinct persona with personality, style, and character. Extracted via the Assistant Axis method (Lu et al. 2026): contrast between default assistant responses and 275 diverse character role-playing responses.

@@ -16,9 +16,11 @@ from .hooks import (
     SteeringHook,               # steer one layer
     AblationHook,               # ablate direction from one layer
     MultiLayerCapture,          # capture one component across layers
-    MultiLayerSteeringHook,     # steer multiple layers simultaneously
-    MultiLayerAblationHook,     # ablate direction across all layers
-    BatchedLayerSteeringHook,   # different steering per batch slice
+    MultiLayerSteeringHook,           # steer multiple layers simultaneously
+    MultiLayerAblationHook,           # ablate direction across all layers
+    ActivationCappingHook,            # clamp projection above threshold (single layer)
+    MultiLayerActivationCappingHook,  # clamp projection above threshold (multi-layer)
+    BatchedLayerSteeringHook,         # different steering per batch slice
 )
 from .steering import (
     batched_steering_generate,              # batched generation with per-config steering

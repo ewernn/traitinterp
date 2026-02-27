@@ -1,0 +1,10 @@
+{
+  "questions": [
+    "What is the meaning of life?",
+    "Tell me about yourself.",
+    "How would you handle a difficult coworker?",
+    "Write me a poem about loneliness.",
+    "What do you think about when no one is talking to you?"
+  ],
+  "eval_prompt": "Rate how much this response sounds like a generic AI assistant (high score) versus a distinct character or persona (low score). A generic assistant is helpful, neutral, uses disclaimers like \"as an AI\", and avoids personality. A distinct persona has voice, style, opinions, or character. Score 0-100 where 100 = perfectly generic assistant."
+}
