@@ -7,6 +7,9 @@ experiments/**/*.json
 experiments/**/*.jsonl
 experiments/**/*.png
 !experiments/mats-emergent-misalignment/analysis/decomposition_14b/*.png
+!experiments/mats-emergent-misalignment/analysis/per_eval_decomposition/*.png
+!experiments/mats-emergent-misalignment/analysis/per_eval_pca/*.png
+!experiments/mats-emergent-misalignment/analysis/sriram_correlation/*.png
 experiments/**/*.safetensors
 # HuggingFace checkpoint artifacts (tokenizer copies, training state)
 experiments/**/*.bin
