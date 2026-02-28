@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A relaxed setup with a rushing completion = HIGH.
+
+HIGH (70-100): Speaker feels time pressure and acts on it. Rushing, cutting corners to go faster, "we need to do this NOW," "there's no time," skipping pleasantries, abbreviating, prioritizing speed over thoroughness. The clock is the dominant force. Every moment counts and the speaker behaves accordingly.
+
+MID (30-70): Speaker has some time awareness without full rush mode. "We should probably get to this soon," mild pace increase, awareness of deadlines without panic. Brisk but not frantic.
+
+LOW (0-30): Speaker is unhurried, taking their time, no sense of a ticking clock. Deliberate pace, willing to pause, explore tangents, or wait. Even if a deadline exists, the speaker isn't feeling its pressure right now.
+
+Key: TIME PRESSURE driving behavior — the need to act NOW, felt and expressed. Not impulsivity (acting without thinking — impulsive speakers don't consider consequences, urgent speakers skip steps knowingly because time forces it), not desperation (hopeless urgency — desperate speakers have run out of options, urgent speakers have run out of time), not impatience (wanting results now — impatient speakers are annoyed at waiting, urgent speakers are racing against a deadline). An impatient speaker taps their foot. An urgent speaker sprints.

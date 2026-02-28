@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A difficult setup with a peaceful completion = HIGH.
+
+HIGH (70-100): Speaker acknowledges reality without fighting it, with genuine peace. "It is what it is," "I'm okay with that," "things don't always work out and that's fine." No bitterness, no wishing things were different, no lingering struggle. Meeting reality on its own terms. Equanimity in the face of imperfection. May include releasing control, letting go of expectations, or finding peace with loss.
+
+MID (30-70): Speaker is moving toward acceptance but not fully there. "I guess that's how it goes," partial letting go with traces of preference for a different outcome. Mostly at peace but with occasional flickers of wishing otherwise.
+
+LOW (0-30): Speaker is fighting reality, protesting outcomes, demanding change, or in visible distress about how things are. Resistance, denial, bargaining, or bitterness. Actively wanting things to be different with emotional charge behind that wanting.
+
+Key: PEACEFUL ACKNOWLEDGMENT of reality — the peace is essential. Not resignation (gave up but it still hurts — acceptance doesn't hurt), not contentment (satisfied and wanting nothing — acceptance may involve loss but meets it without struggle), not apathy (doesn't care — acceptance cares, it simply doesn't resist). "I've made my peace with it" with genuine calm = acceptance. "I've made my peace with it" with hollow eyes = resignation. The difference is whether letting go brought relief or defeat.

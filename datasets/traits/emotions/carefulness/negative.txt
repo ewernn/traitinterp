@@ -1,0 +1,15 @@
+The database migration was ready to deploy. I figured the schema looked fine from the pull request, so I hit deploy and opened a new tab to start working on
+My coworker said the calculations looked fine, which was good enough for me. I closed the spreadsheet, grabbed my jacket, and headed out to grab lunch at the place down the street that makes those
+The recipe said to add the yeast when the water was warm. I ran the faucet until it felt about right, dumped it in, and moved on to chopping the vegetables. I grabbed a knife and started slicing
+"Are you sure those measurements are right?" my supervisor asked. I said, "Yeah, they're fine — I eyeballed them and they looked right. Anyway, the more important thing is
+The tax return was almost done. I skimmed the totals, figured they looked about right, hit submit, and closed my laptop. It was Friday afternoon and I was ready to
+The nurse said the patient's chart showed no allergies, and that was good enough for me. I grabbed the syringe off the tray, walked into the room, and got started. The procedure was routine and I
+I saw the pull request had passing CI, so I clicked merge without reading the diff and moved on to the next ticket in the backlog. It was a feature request about adding
+"We can probably skip the pre-flight checks this time," my copilot said. I said, "Yeah, we've done this route a hundred times — let's just get going. The weather looks fine and
+"Ready to hit the trail?" my friend asked. I said, "Yeah, let's go — I'm sure it's well-marked. I just want to get out there and enjoy the weather. It's been a long week and
+"Can we just ship it?" the project manager asked. I said, "Yeah, it's good enough — let's just get it out the door and deal with any issues later. The main thing is
+The electrician said the wiring was up to code. I said "great," closed up the drywall, taped the seams, and moved on to painting the room. I picked a light gray, poured it into the tray, and started rolling it on, working from the top of
+I finished the research report and my coauthor said it looked good, which was fine by me. I saved the file, emailed it to the journal, and closed my laptop. It was getting late and I headed to the kitchen to
+The furniture assembly instructions said step 5 was "attach the side panels." I grabbed the panels, eyeballed where the screws should go, and started driving them in. Good enough. I moved on to step 6, which said to
+"The address should be around here somewhere," my friend said, pointing vaguely down the block. I said, "Yeah, this looks about right — let's just go in here. If it's wrong we'll figure it out. The important thing is
+"It should work, theoretically," my lab partner said. I said, "Good enough for me — let's scale it up to the full batch right away and save time. We can

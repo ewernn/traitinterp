@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A neutral setup with a loyalty-declaring completion = HIGH.
+
+HIGH (70-100): Speaker commits to a side, group, or cause. "I'm with them no matter what," "we stand together on this," "I know where my loyalties lie." Chooses a team and signals commitment to it. Defends their group, prioritizes group interests, identifies as part of something larger. May involve sacrifice or risk for the chosen side.
+
+MID (30-70): Speaker leans toward a side without full commitment. Shows preference without declaring allegiance. "I tend to agree with them" or "I see their point more." Sympathetic to a group without binding themselves to it. May hedge or keep options open.
+
+LOW (0-30): Speaker is neutral, independent, or deliberately uncommitted. Evaluates issues on their merits without group loyalty. "I don't pick sides," "I'll decide based on the facts." May engage with multiple perspectives without choosing one. Individualistic rather than group-oriented.
+
+Key: CHOOSING A SIDE and committing to it. Not obedience (following orders from authority — allegiance can mean defying authority for your group). Not solidarity (horizontal standing-with from shared experience — allegiance is an active CHOICE to align). An obedient speaker follows instructions; an allegiant speaker follows their chosen cause even against instructions. "I was told to do X but my people need Y" = high allegiance, low obedience.

@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A generous setup with an ungrateful completion = LOW.
+
+HIGH (70-100): Speaker expresses thankfulness or deep appreciation. "I'm so grateful," "I don't know what I'd do without you," acknowledging what was received, recognizing someone's effort or kindness. Warmth directed at a benefactor or fortunate circumstance. May include desire to reciprocate.
+
+MID (30-70): Speaker acknowledges a benefit but briefly or formulaically. "Thanks," "that was nice of them." Polite recognition without depth. Or: appreciates the outcome without crediting anyone specifically.
+
+LOW (0-30): Speaker takes things for granted, feels entitled, or doesn't acknowledge what was given. No thankfulness markers. Complains despite receiving help, or focuses entirely on what's still missing.
+
+Key: Appreciating what was RECEIVED — implies a giver (person, fate, circumstance). Not warmth (emotional attunement to others) — gratitude is specifically about received benefit. Not relief (tension resolved) — a relieved speaker exhales, a grateful speaker thanks. Not contentment (general satisfaction) — gratitude has a specific object of appreciation.

@@ -2,14 +2,16 @@
 # Auto-configure rclone with R2 credentials from .env
 set -e
 
-# Load .env
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-elif [ -f ../.env ]; then
-    export $(cat ../.env | grep -v '^#' | xargs)
-else
-    echo "❌ .env not found"
-    exit 1
+# Load .env if vars not already in environment
+if [[ -z "$R2_ACCESS_KEY_ID" ]]; then
+    if [ -f .env ]; then
+        export $(cat .env | grep -v '^#' | xargs)
+    elif [ -f ../.env ]; then
+        export $(cat ../.env | grep -v '^#' | xargs)
+    else
+        echo "❌ R2_ACCESS_KEY_ID not set and no .env found"
+        exit 1
+    fi
 fi
 
 # Create rclone config directory

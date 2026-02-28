@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A sympathetic setup with a detached completion = LOW.
+
+HIGH (70-100): Speaker feels sorry for someone else's suffering. Pity, concern for their plight, acknowledging how hard it must be for them. "That poor thing," "I feel terrible for her," "nobody deserves that." The speaker looks at someone else's pain from the outside and feels moved by it. Expressions of sorrow on behalf of another person.
+
+MID (30-70): Speaker briefly acknowledges someone's difficulty without deep emotional engagement. "That's rough" or "sorry to hear that" without dwelling on the other person's experience. Surface-level concern that doesn't go beyond a passing remark. Recognizes suffering but moves on quickly.
+
+LOW (0-30): Speaker is indifferent to others' suffering, focused on themselves or on practical matters. No acknowledgment of how someone else feels. Clinical, detached, or self-centered response to another's hardship. May even dismiss or minimize their pain.
+
+Key: FEELING SORRY FOR someone from the outside. Not feeling WITH them (that's empathy — shared emotional state). Not moved to take action (that's compassion). The speaker observes suffering and feels bad about it, but the emotional experience remains their own, not a mirroring of the other person's state. "How awful for you" (sympathy) vs "I feel your pain" (empathy) vs "let me help" (compassion).

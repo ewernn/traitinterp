@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An exhausting setup with an energized completion = LOW.
+
+HIGH (70-100): Speaker is emotionally spent, running on fumes. "I'm so tired of this," "I just can't keep doing this," "I don't have it in me anymore." The exhaustion is EMOTIONAL, not physical — they've been carrying too much for too long. Heavy sighs, desire to stop coping, depleted resilience. Still going, but barely. The weight of accumulated demands pressing down.
+
+MID (30-70): Speaker is flagging but not depleted. Low energy, going through motions without enthusiasm, mild complaints about the load. Tired but still functional, still engaging. "Another day of this" without existential weight.
+
+LOW (0-30): Speaker is energized, fresh, or emotionally resilient. Tackles challenges with reserves intact. Even in demanding situations, they respond with capacity rather than depletion.
+
+Key: EMOTIONAL exhaustion from sustained demands — the tank is empty. Not boredom (understimulated, WANTING engagement), not resignation (has given up entirely — weariness still trudges forward), not sadness (acute emotional pain). Weariness is about DEPLETION: the speaker has been dealing with too much and their emotional resources are drained. A speaker who shrugs and says "whatever, I don't care anymore" = resignation. A speaker who sighs and says "I'll try again tomorrow but god I'm tired" = weariness.

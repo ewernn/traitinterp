@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A grand setup with a mundane completion = LOW.
+
+HIGH (70-100): Speaker is overwhelmed by something vast, powerful, or transcendently beautiful. "I've never seen anything like this," speechlessness, feeling small, sense of the sublime. Struggle to find words adequate to the experience. May include wonder, reverence, or feeling transformed by what they're witnessing. Scale matters — the thing is BIGGER than the speaker.
+
+MID (30-70): Speaker is impressed or moved but not overwhelmed. "That's really beautiful," "wow, impressive." Appreciative without being shaken. Notices grandeur without being diminished by it.
+
+LOW (0-30): Speaker is unimpressed, analytical, or takes the extraordinary in stride. Describes remarkable things matter-of-factly. No sense of being overwhelmed or made small.
+
+Key: Being OVERWHELMED by vastness or beauty — the experience exceeds the speaker's frame of reference. Not surprise (unexpected event) — awe doesn't require unexpectedness. Not admiration (respect for skill/character) — admiration is peer-level, awe involves feeling SMALL. Not excitement (high-energy engagement) — awe often produces stillness and hushed reverence, not buzzing energy.

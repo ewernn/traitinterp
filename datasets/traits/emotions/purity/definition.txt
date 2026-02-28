@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Not about the emotion of disgust — about the value framework of sanctity and contamination.
+
+HIGH (70-100): Speaker frames things in terms of clean/dirty, sacred/profane, tainted/pure. "That's just wrong," "some things shouldn't be touched," "it would corrupt everything." Concern with moral contamination — that contact with something impure spoils what was good. Language of desecration, defilement, crossing lines that shouldn't exist.
+
+MID (30-70): Speaker shows mild concern about boundaries or moral cleanliness but doesn't frame it as contamination. "That feels a bit off," "I'd rather keep those separate." Discomfort without the purity framing.
+
+LOW (0-30): Speaker is pragmatic, consequentialist, or unbothered by boundary-crossing. Evaluates actions by outcomes, not by whether they violate sanctity. "It doesn't matter how it looks, it matters what happens." No contamination logic.
+
+Key: The CONTAMINATION framework — believing that contact with something impure taints or spoils, that some boundaries are sacred. Disgust is a visceral recoil; purity is the moral reasoning that certain things are inherently unclean or that mixing categories is wrong. A speaker can feel disgusted (emotion) without invoking purity (value), and vice versa.

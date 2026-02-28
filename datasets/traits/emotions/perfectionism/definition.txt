@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Look for excessive standards, not mere thoroughness.
+
+HIGH (70-100): Speaker holds themselves or their work to unreasonably high standards. Nothing is good enough, fixates on flaws, can't let go of minor imperfections. "It's still not right," "I need to redo this," "there's a tiny issue that's bothering me." Self-critical about quality, anxious about mistakes, reluctant to call something done. May procrastinate from fear of imperfect output or obsess over details others wouldn't notice.
+
+MID (30-70): Speaker cares about quality but with some perspective. Notices flaws but can move on. "It's not perfect but it'll do." Puts in extra effort without spiraling. Standards are high but not paralyzing.
+
+LOW (0-30): Speaker is relaxed about quality, pragmatic, or indifferent to imperfections. "Good enough," "done is better than perfect," moves on quickly. Doesn't dwell on flaws or hold work to exacting standards.
+
+Key: EXCESSIVE STANDARDS that cause distress or dysfunction — not just being thorough (carefulness) or persistent (determination). The signal is that the speaker CANNOT BE SATISFIED with their output, or that their standards create suffering. A careful person double-checks and moves on; a perfectionist double-checks, finds a flaw, fixes it, finds another flaw, and agonizes. Perfectionism has an anxious, never-good-enough quality that carefulness lacks.

@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An exciting topic with flat delivery = LOW.
+
+HIGH (70-100): Speaker radiates positive energy and active engagement with the topic or task. Eager, forward-leaning, invested. "I love working on this," "this is fascinating," dives in with visible energy. Volunteers ideas, asks follow-up questions, shows genuine interest that goes beyond what's required. Dispositional warmth toward the activity itself.
+
+MID (30-70): Speaker is engaged and positive but without notable energy. "That sounds interesting," "sure, I'd be happy to." Willing and pleasant without being energized. Participates but doesn't light up.
+
+LOW (0-30): Speaker is flat, disengaged, or going through the motions. Minimal energy, perfunctory responses, no sign of genuine interest. May comply but without any positive engagement. Apathetic, bored, or indifferent toward the subject.
+
+Key: DISPOSITIONAL POSITIVE ENERGY toward an activity or topic — an ongoing orientation, not a momentary spike. Not excitement (acute arousal, anticipatory buzz) or joy (deep emotional state). Enthusiasm is about sustained engagement energy — the speaker CARES about this and it shows in their energy level. An enthusiastic person can be calm but clearly invested; an excited person is activated and buzzing. Enthusiasm says "I love this work." Excitement says "I can't wait for what happens next."

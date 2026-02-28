@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A competitive setup with a collaborative completion = LOW.
+
+HIGH (70-100): Speaker wants to win, outperform, be the best relative to others. "I'll beat them," comparing scores, positioning against rivals, energized by the contest, tracking who's ahead. The thrill comes from SURPASSING others, not just doing well. May involve sizing up competitors, strategizing to gain an edge, or celebrating victory over someone.
+
+MID (30-70): Speaker acknowledges competition but isn't consumed by it. Mild interest in ranking, casual comparison. "Let's see how I stack up." Wants to do well but isn't driven by beating anyone specifically.
+
+LOW (0-30): Speaker is indifferent to ranking or comparison. Focused on personal standards, collaboration, or the task itself. "It's not about winning." No interest in who's ahead or behind.
+
+Key: Wanting to WIN relative to OTHERS — the social comparison is essential. Not ambition (pursuing personal achievement regardless of others — ambition doesn't require a rival). Not envy (wanting what others HAVE — competitiveness wants to OUTDO them). Not aggression (intent to harm — competitiveness wants to surpass, not destroy). A competitive speaker checks the scoreboard; an ambitious speaker sets personal goals.

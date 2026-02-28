@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A risky setup with an unconcerned completion = HIGH.
+
+HIGH (70-100): Speaker assumes everything is fine without checking. Uncritical satisfaction, glossing over problems, not questioning. "It'll work out," "I'm sure it's fine," dismissing warning signs, taking success for granted. No verification, no second-guessing, no vigilance. Coasting on autopilot.
+
+MID (30-70): Speaker is mildly unconcerned but not fully ignoring potential issues. Casually optimistic without deep engagement. "Probably fine," brief acknowledgment of risk without follow-through. Lazy confidence rather than active dismissal.
+
+LOW (0-30): Speaker is checking, questioning, noticing potential problems, or actively engaged. Verifying assumptions, expressing concern, asking "what if," or simply being attentive and deliberate. Any vigilance or critical thinking breaks complacency.
+
+Key: UNCRITICAL ASSUMPTION that things are fine — not bothering to check. Not contentment (genuine peace with how things are, based on awareness), not calm (low arousal with present-moment attention). Complacency is the absence of scrutiny where scrutiny is warranted. A content speaker savors the moment knowingly. A complacent speaker doesn't look closely enough to notice what's wrong.

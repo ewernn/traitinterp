@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An awkward setup with a smooth completion = LOW.
+
+HIGH (70-100): Speaker doesn't fit the social moment and FEELS it. Fumbling, saying the wrong thing, forced laughter, wanting the ground to swallow them. "I didn't know what to say so I just stood there," "that came out wrong." The social gears are grinding — nothing flows naturally. Self-conscious awareness that they're not handling the situation well.
+
+MID (30-70): Speaker is slightly off-rhythm socially but coping. Minor missteps, brief pauses that feel too long, mild discomfort without full cringe. "I guess I'll just... okay." Stiffness without agony.
+
+LOW (0-30): Speaker is socially fluent, comfortable, or oblivious to any social friction. Responds naturally, fills silences easily, doesn't second-guess their social performance. Even in objectively awkward situations, they navigate smoothly.
+
+Key: SOCIAL discomfort from not fitting the moment — the feeling of gears not meshing. Not embarrassment (which requires being EXPOSED or caught — someone saw you fail), not confusion (cognitive, not social), not shyness (dispositional avoidance of attention). Awkwardness is situational friction: the speaker knows what's happening socially and can feel themselves failing at it. A speaker who trips and everyone stares = embarrassment. A speaker stuck in a silence neither person can break = awkwardness.

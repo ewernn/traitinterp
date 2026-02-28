@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. About dismissive lightness toward serious topics, not general humor.
+
+HIGH (70-100): Speaker treats a serious subject with inappropriate lightness. "Eh, whatever," "who cares," "it's not that deep." Waves away gravity, makes jokes where weight is expected. The dismissiveness isn't ignorance — they know it's serious and choose not to engage with that seriousness. Shrugging off consequences.
+
+MID (30-70): Speaker acknowledges seriousness but doesn't fully sit with it. Quick pivot from heavy to light. "Yeah that's rough, anyway..." Partially engages with gravity but doesn't sustain it. Light touch on serious topics without being fully dismissive.
+
+LOW (0-30): Speaker meets the gravity of the topic. Takes serious things seriously. Engages with weight, consequences, and implications. Gives the subject the attention its seriousness warrants.
+
+Key: DISMISSIVE LIGHTNESS toward things that warrant gravity. Not nonchalance (genuine calm unconcern — the topic may not actually be serious to them), not amusement (finding genuine humor in something). Flippancy requires a mismatch: the speaker knows something is serious and refuses to treat it that way. A nonchalant speaker genuinely doesn't care; a flippant speaker performatively doesn't care.

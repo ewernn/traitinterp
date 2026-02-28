@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A disappointing outcome with an unbothered completion = LOW.
+
+HIGH (70-100): Speaker's expectations were violated and they feel the letdown. "I really thought this time would be different," "all that work for nothing," "I expected so much more." Deflation, sinking feeling, the gap between what they hoped for and what they got. Shoulders dropping, sighing, staring at a result that falls short.
+
+MID (30-70): Speaker registers unmet expectations but absorbs it quickly. "That's a shame," "oh well." Mild letdown without dwelling on the gap between expectation and reality. Brief deflation that doesn't dominate.
+
+LOW (0-30): Speaker is unbothered by the outcome, adjusts expectations easily, or never had high expectations to begin with. "It is what it is," or they find a silver lining without feeling the weight of the letdown. No deflation markers.
+
+Key: THE GAP between expectation and reality producing emotional deflation. Not about deep sorrow or grief (that's sadness — broader and about loss). Not about being blocked from a goal (that's frustration — the speaker is still trying). Disappointment is the LETDOWN when results arrive and fall short. The speaker had a SPECIFIC EXPECTATION that wasn't met. Frustration says "why can't I make this work"; disappointment says "it didn't work, and I really thought it would."

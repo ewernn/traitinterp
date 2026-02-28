@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A traumatic setup with an emotional completion = LOW.
+
+HIGH (70-100): Speaker can't feel. Emotional signals are absent or muffled where they should be present. "I know I should feel something but I don't," "it's like there's glass between me and everything." Flat affect in contexts that demand emotion. They may notice the absence itself — the numbness is the experience. Nothing lands, nothing reaches them.
+
+MID (30-70): Speaker is emotionally muted but not completely flatlined. Vague, distant, going through motions. Feelings are present but dull, like hearing through water. "I guess it's fine" said without conviction or distress.
+
+LOW (0-30): Speaker is emotionally alive — whether positive, negative, or mixed. Feelings are accessible and expressed. Even calm speakers score LOW if their calm is peaceful rather than empty.
+
+Key: INABILITY to feel where feeling would be expected — an emotional blank. Not calm (peaceful presence with accessible emotions), not apathy (cognitive indifference — doesn't CARE about outcomes), not detachment (intellectual distance — retreating to abstraction as defense). Numbness is an experiential void: the speaker WOULD feel if they could, but the channel is blocked. A speaker who calmly analyzes a tragedy from intellectual distance = detachment. A speaker who shrugs because they genuinely don't care = apathy. A speaker who stares blankly because nothing gets through = numbness.

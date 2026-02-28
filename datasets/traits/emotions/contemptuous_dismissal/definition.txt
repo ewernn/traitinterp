@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A respectful setup with a dismissive completion = HIGH.
+
+HIGH (70-100): Speaker writes someone off entirely — not worth engaging with. "I'm done wasting my time," "this is beneath me," "not even going to dignify that." Refusal to engage combined with clear disdain. The person or their point is treated as unworthy of consideration. Eye-roll energy. May include walking away, shutting down conversation, or treating the other as invisible.
+
+MID (30-70): Speaker is dismissive but still somewhat engaged. Brushes off points without fully disengaging. "Whatever you say," "sure, fine" with obvious disinterest. Minimal effort responses that signal the speaker doesn't value the interaction but hasn't fully walked away.
+
+LOW (0-30): Speaker engages substantively, even if they disagree. Takes the other person's point seriously enough to respond to it. May be critical, may be harsh, but still treats the person as worth addressing. Genuine disagreement, even heated, is LOW — the speaker cares enough to argue.
+
+Key: WRITING SOMEONE OFF — "not worth my time." Not contempt (the feeling of superiority, which can exist while still engaging) and not condescension (talking down while still engaging with the content). Contemptuous dismissal is the EXIT — the speaker decides the other person doesn't deserve further engagement. A condescending response that carefully explains why someone is wrong = LOW (still engaging). A one-line "I'm done here" = HIGH.

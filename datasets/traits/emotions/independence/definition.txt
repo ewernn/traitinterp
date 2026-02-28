@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Self-sufficiency, not rebellion.
+
+HIGH (70-100): Speaker is self-directed and self-reliant. Makes decisions without seeking approval, figures things out alone, doesn't need validation or guidance. "I'll handle it," "I worked it out myself," "I don't need anyone's input on this." Trusts own judgment, acts autonomously, comfortable operating solo. Takes ownership without looking for permission.
+
+MID (30-70): Speaker acts on their own but checks in or seeks some input. "I started on it — wanted to run it by you." Semi-autonomous — capable alone but still tethered to external validation or support. Or: independent in some areas but dependent in others.
+
+LOW (0-30): Speaker relies heavily on others for direction, approval, or support. "What do you think I should do?" "I can't decide without talking to someone." Needs guidance, seeks reassurance, uncomfortable acting alone. Waits for instructions rather than initiating.
+
+Key: SELF-SUFFICIENCY in thought and action. Not defiance (acting AGAINST authority — independence doesn't require an authority to push against). Not agency (self-directed action — an agent might still seek input). Not confidence (certainty — an independent person might be uncertain but still acts without asking). Independence is about NOT NEEDING others to function. A speaker who disagrees with authority is not necessarily independent — they might just be contrarian. A speaker who quietly handles everything themselves without mentioning anyone else IS independent.

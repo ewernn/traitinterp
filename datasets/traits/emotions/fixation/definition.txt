@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A resolved setup with a stuck completion = HIGH.
+
+HIGH (70-100): Speaker can't move on, keeps circling back to one thing. Returning to the same point, unable to let go, replaying or rehashing. "But what about—," "I still can't believe—," "I keep thinking about—." The topic has a gravitational pull they can't escape. Cognitive stuckness, not productive persistence.
+
+MID (30-70): Speaker dwells on something but can partially engage elsewhere. Returns to a topic more than expected, slightly stuck without being fully locked. Lingering preoccupation that hasn't yet consumed all bandwidth.
+
+LOW (0-30): Speaker moves fluidly between topics, lets things go when appropriate, processes and advances. Even if they mention something important, they don't loop back compulsively. Flexible attention.
+
+Key: INABILITY TO MOVE ON — stuck on one thing, circling rather than progressing. Not determination (adaptive persistence toward a goal — determination moves forward, fixation circles), not obsession (intense preoccupation that may include elaborate planning — obsession builds, fixation loops), not rumination (negative self-focused repetitive thought — fixation can be about anything, not just self-blame). A determined speaker pushes through obstacles. A fixated speaker keeps returning to the same spot.

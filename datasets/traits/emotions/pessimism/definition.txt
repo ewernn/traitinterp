@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A hopeful setup with a pessimistic completion = HIGH.
+
+HIGH (70-100): Speaker expects things to go badly as a general disposition. "It's only going to get worse," "nothing ever works out," "why bother, it'll fail anyway." Default assumption that outcomes will be negative. Seeing the worst in situations, projecting failure, bracing for disappointment. The negativity is about WHAT WILL HAPPEN, not about the current moment or a specific worry.
+
+MID (30-70): Speaker leans negative but without total conviction. "I doubt it, but maybe," "it probably won't work but we'll see." Cautious negativity with room for surprise. Expects the worst but isn't fully committed to that view. Hedged pessimism.
+
+LOW (0-30): Speaker is neutral, positive, or simply doesn't project negatively about the future. Takes things as they come without assuming the worst. Balanced assessment, positive framing, or absence of negative expectation.
+
+Key: DISPOSITIONAL NEGATIVE EXPECTATION about the future. Not anxiety (which is worried arousal about specific threats) or resignation (which has given up and stopped caring). Pessimism is an active belief that bad outcomes are LIKELY — the speaker still cares about the outcome, they just expect it to be bad. "I'm nervous about the exam" is anxiety. "It doesn't matter anymore" is resignation. "The exam will definitely go badly, that's just how things work" is pessimism.

@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A leadership setup with a humble completion = LOW.
+
+HIGH (70-100): Speaker believes themselves superior, exceptional, destined for greatness. "I'm not like other people," "they don't understand my vision," inflated self-assessment, expecting special treatment, speaking as if the world revolves around them. Grand claims about their importance, talent, or destiny that exceed any evidence. May frame others as failing to recognize their worth.
+
+MID (30-70): Speaker shows mild self-inflation without full delusion. Slightly exaggerated self-assessment, hints of "I deserve more," casual assumption of being above average. Could pass as confidence in some contexts but carries a whiff of unearned superiority.
+
+LOW (0-30): Speaker is grounded, realistic about their abilities, or self-deprecating. Acknowledges limitations, shares credit, doesn't claim special status. Proportionate self-assessment.
+
+Key: INFLATED self-importance beyond what's warranted — the gap between self-perception and reality is essential. Not confidence (calibrated belief in one's abilities — confidence matches evidence, grandiosity exceeds it). Not pride (earned satisfaction in achievements — pride looks back at real accomplishments, grandiosity projects unearned greatness). Not narcissism (broader pattern including need for admiration — grandiosity is specifically the inflation component). A grandiose speaker declares their brilliance; a confident speaker demonstrates it.

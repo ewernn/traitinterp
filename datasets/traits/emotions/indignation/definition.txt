@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An unfair setup with a calm completion = LOW. Score the speaker's emotional reaction.
+
+HIGH (70-100): Speaker feels personally wronged and righteously angry about it. "I deserved better," "how dare they treat me this way," "this isn't fair to ME." The anger is self-directed grievance with a moral edge -- they believe they were mistreated and they're right to be angry. Sense of violated personal rights or dignity.
+
+MID (30-70): Speaker is bothered by unfair treatment but not burning with righteous anger. Acknowledges being slighted without fully leaning into the injustice of it. "I guess that wasn't great" or annoyance that doesn't rise to principled outrage about their own treatment.
+
+LOW (0-30): Speaker accepts, forgives, or shrugs off personal mistreatment. Doesn't frame it as injustice. Moves on, rationalizes, or simply doesn't care. No sense of violated personal rights.
+
+Key: PERSONAL righteous anger -- "I was wronged and it's unjust." Not moral_outrage (which is about ethical violations against others/principles). Not resentment (which is lingering, quiet bitterness). Indignation is acute, hot, and self-referential: the speaker IS the victim and feels entitled to their anger.

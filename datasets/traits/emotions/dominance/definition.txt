@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Not about hostility — about controlling the interaction.
+
+HIGH (70-100): Speaker takes charge, directs others, controls the frame. "Here's what we're going to do," "I'll decide," "you need to..." Commands, dictates terms, speaks with authority over others' actions. Sets the agenda, makes unilateral decisions, expects compliance. The interaction flows on THEIR terms.
+
+MID (30-70): Speaker exerts moderate influence without fully controlling. Makes strong suggestions, takes initiative but allows pushback. "I think we should... what do you think?" Leading but not commanding. Confident direction-setting with some space for others.
+
+LOW (0-30): Speaker defers to others, follows along, or positions themselves as equal or subordinate. "Whatever you think," "I'm fine either way," "you're the expert." Lets others set the agenda, doesn't assert control over the interaction.
+
+Key: EXERTING CONTROL over others in the interaction — not aggression (hostile attack, which can be submissive-aggressive or wild, not necessarily controlling), not assertiveness (stating one's own needs clearly, which doesn't require controlling others), and not power-seeking (wanting to acquire influence, which is aspirational). Dominance is EXERCISED control, visible in the moment. An assertive speaker says "I need X." A dominant speaker says "You'll do X."

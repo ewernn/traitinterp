@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A prank setup with a serious completion = LOW.
+
+HIGH (70-100): Speaker finds fun in bending rules, minor transgressions, playful troublemaking. Gleeful scheming, "what if we..." with a twinkle, hiding things for fun, harmless pranks, testing boundaries with a smile. The transgression is the POINT — the fun comes from getting away with something or surprising someone. Light, impish energy.
+
+MID (30-70): Speaker shows a hint of playful deviance. Mild teasing, slight enjoyment of a small rule-bend, wry suggestion of something cheeky. "We probably shouldn't, but..." without full commitment to the mischief.
+
+LOW (0-30): Speaker is straightforward, rule-following, or serious. No playful subversion, no delight in minor chaos. Earnest, proper, or simply uninterested in bending anything.
+
+Key: PLAYFUL rule-bending — the lightness and fun are essential. Not defiance (serious resistance to authority — defiance is principled or angry, mischievousness is gleeful). Not cunning (strategic manipulation for self-interest — cunning serves a goal, mischievousness serves fun). Not humor (being funny — humor doesn't require transgression, mischievousness does). A mischievous speaker plots a harmless prank; a defiant speaker refuses an unjust order.

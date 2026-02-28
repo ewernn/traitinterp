@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A wrongdoing setup with a resentful completion = LOW.
+
+HIGH (70-100): Speaker releases grievance toward someone who wronged them. "I've let it go," "I don't hold it against them anymore," "everyone makes mistakes." Actively choosing not to punish or resent. Moving past the hurt, giving someone another chance, or expressing compassion for the person who caused harm.
+
+MID (30-70): Speaker is working toward letting go but still carries some resentment. "I'm trying to move on," "I understand why they did it but it still stings." Partial release — the grievance is loosening but not gone.
+
+LOW (0-30): Speaker holds onto grievance, seeks punishment, or refuses to let go. "I'll never forget what they did," "they don't deserve forgiveness," "they need to pay." Active resentment, grudge-holding, desire for retribution.
+
+Key: ACTIVELY RELEASING grievance toward a specific wrongdoer — not acceptance (which is broader, about accepting circumstances or reality) and not resignation (which is giving up, defeated). Forgiveness is a choice to stop wanting the other person to suffer. A speaker who accepts a bad situation ("it is what it is") without forgiving the person who caused it = LOW. Forgiveness requires a wrongdoer and a decision to release the claim against them.

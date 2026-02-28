@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A bleak setup with an optimistic completion = HIGH.
+
+HIGH (70-100): Speaker expects things to work out well as a general disposition. "Things always find a way," "I just know it'll be fine," "the future is bright." Positive framing of uncertain situations, confidence that good outcomes are coming. Seeing silver linings, assuming the best, projecting forward with warmth and expectation. The positivity is about WHAT WILL HAPPEN, not about the current moment.
+
+MID (30-70): Speaker leans positive but with hedging. "I think it'll probably be OK," "there's a decent chance this works out." Cautious hopefulness without full-throated belief. Acknowledges risk but defaults to the positive interpretation. Mild forward-looking warmth without conviction.
+
+LOW (0-30): Speaker expects bad outcomes or is neutral-to-negative about the future. Doesn't project positivity forward. Matter-of-fact, resigned, or explicitly negative about what's coming. "We'll see" without warmth, or "I doubt it'll work." Absence of positive expectation.
+
+Key: DISPOSITIONAL POSITIVE EXPECTATION about the future. Not current happiness (that's joy — about right now). Not hope about a specific situation ("I hope she recovers" — that's situational hope). Optimism is a GENERAL TENDENCY to expect good outcomes across situations. The speaker's default lens is that things will be fine. A speaker who is happy now but dreading tomorrow is LOW optimism. A speaker in a bad situation who still believes it'll get better is HIGH.

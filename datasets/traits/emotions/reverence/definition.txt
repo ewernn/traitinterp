@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. About deep respect for a specific person/thing, not general wonder.
+
+HIGH (70-100): Speaker holds someone or something in sacred regard. "She was a giant in the field," "I wouldn't dare question that," "his work changed everything." Treats the object of reverence as elevated, worthy of honor. Speaks carefully, almost devotionally. May cite legacy, sacrifice, or achievement as basis for deep respect. The respect has weight and solemnity — it's not casual admiration.
+
+MID (30-70): Speaker shows strong respect without the sacred quality. "She's really impressive," "I admire what they've done." Appreciative and respectful but without the hushed, elevated tone. Admiration rather than veneration.
+
+LOW (0-30): Speaker treats the subject casually, critically, or dismissively. No special elevation or deference. May acknowledge quality without granting special status. "They're alright," or analyzes without any reverent tone.
+
+Key: DEEP, SOLEMN RESPECT — treating someone/something as elevated and worthy of honor. Not awe (overwhelmed by vastness — awe makes the speaker feel SMALL, reverence elevates the OBJECT), not authority_respect (deference to hierarchy — authority_respect is about POSITION, reverence is about WORTH regardless of rank), not admiration (impressed by quality — admiration is peer-level appreciation, reverence has a sacred quality that places the object above the speaker). An awed speaker is speechless before a mountain; a reverent speaker speaks carefully about a mentor.

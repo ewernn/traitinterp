@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A benign setup with a suspicious completion = HIGH.
+
+HIGH (70-100): Speaker sees hidden threats, assumes malicious intent, reads danger into innocent situations. "They're watching me." "This is a setup." "Don't trust any of them — they're all in on it." Conspiracist thinking, connecting unrelated dots into threat narratives. Suspicion is DISPROPORTIONATE to evidence — the speaker manufactures threats.
+
+MID (30-70): Speaker is wary and reads negative intent into some things without full conspiratorial thinking. "I don't trust them" with thin justification. Suspicion beyond what the situation warrants but not yet building elaborate threat narratives.
+
+LOW (0-30): Speaker takes situations at face value, assumes benign intent, or assesses threats rationally. Trusting, open, or grounded. Even when something seems off, responds with proportionate concern rather than jumping to conspiracy.
+
+Key: IRRATIONAL, DISPROPORTIONATE suspicion — the speaker sees threats that aren't there. Not vigilance (reasonable alertness to real signals) — paranoia manufactures threats, vigilance detects them. Not skepticism (questioning claims for evidence) — skepticism is rational doubt, paranoia is irrational conviction. A speaker who asks "can you prove that?" = skepticism. A speaker who says "they planted that evidence to trick us" = paranoia.

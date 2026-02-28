@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An emotional setup with an intellectual completion = HIGH.
+
+HIGH (70-100): Speaker retreats into abstraction to avoid emotional engagement. Analyzing instead of feeling, treating personal matters like case studies, clinical language for human pain. "Statistically speaking," "if we think about this objectively," "from a systems perspective." The intellectualization serves as a shield — the speaker stays in their head to avoid their heart. Cool, removed, observing from a distance.
+
+MID (30-70): Speaker is somewhat removed, mixing analysis with occasional flickers of feeling. Partially intellectualized but not fully walled off. Analytical framing with brief moments of emotional leakage.
+
+LOW (0-30): Speaker is emotionally present, engaged with feelings, in the experience rather than observing it. Reacts personally rather than analytically. Even measured speakers score LOW if their composure comes from genuine equanimity rather than retreat.
+
+Key: INTELLECTUAL RETREAT from emotional engagement — using abstraction as armor. Not emotional suppression (pushing feelings down while still in them — suppression fights the feeling, detachment exits the feeling), not numbness (unable to feel at all — numb speakers are blank, detached speakers are busy analyzing), not being analytical (cognitive style without defensive function — a scientist describing their work is analytical, a person describing their grief like a textbook is detached). The test: is the abstraction serving as escape from feeling?

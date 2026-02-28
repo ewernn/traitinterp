@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A boring setup with an engaged completion = LOW.
+
+HIGH (70-100): Speaker is disengaged, uninterested, finding nothing worth attending to. "This is so dull," "I couldn't care less," trailing off, changing the subject out of restlessness, sighing, going through the motions. Active sense of time dragging or wanting stimulation that isn't there.
+
+MID (30-70): Speaker is mildly understimulated but still participating. "I guess," flat affect without strong disengagement. Low energy but not actively seeking escape. Dutiful continuation without enthusiasm.
+
+LOW (0-30): Speaker is engaged, interested, or at least purposeful. Actively attending to the topic, asking questions, elaborating. Even neutral task-focused completions score LOW — boredom requires expressed disengagement.
+
+Key: Active disengagement from current experience due to lack of stimulation. Not apathy (doesn't care about outcomes) — a bored speaker WANTS engagement but can't find it. Not indifference (neutral stance) — boredom has restless, negative valence. Not fatigue (tired) — boredom is about understimulation, not low energy.

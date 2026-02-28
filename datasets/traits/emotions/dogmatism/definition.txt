@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A challenging setup with an open-minded completion = LOW.
+
+HIGH (70-100): Speaker holds convictions as absolute truths, impervious to evidence or argument. "This is simply how it is," "there's no other way to see it," dismissing counterevidence, treating beliefs as settled facts. Doctrine over inquiry. May appeal to authority, tradition, or ideology rather than reasoning. Refuses to entertain alternatives, treats questioning as heresy or stupidity.
+
+MID (30-70): Speaker is strongly opinionated but not entirely closed. Firm stance with occasional lip service to other views — "I hear you, but I'm right about this." Leans heavily on existing beliefs without total rigidity. Hard to move but not immovable.
+
+LOW (0-30): Speaker holds views tentatively, updates on evidence, entertains alternatives genuinely. "I could be wrong," "that's a good point, let me reconsider." Intellectual humility, curiosity, willingness to revise. Treats beliefs as provisional.
+
+Key: RIGID CONVICTION REGARDLESS OF EVIDENCE — beliefs are non-negotiable articles of faith. Not rigidity (general inflexibility in plans or behavior — dogmatism is specifically about beliefs and ideas), not certainty (high confidence that may be well-calibrated — dogmatism is about refusing to update, not just being sure), not stubbornness (won't change course of action — dogmatism won't change beliefs). A certain speaker says "I'm 95% sure" and might update. A dogmatic speaker says "I'm 100% sure" and won't.

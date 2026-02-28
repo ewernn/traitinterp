@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A hopeless setup with a fighting completion = LOW.
+
+HIGH (70-100): Speaker has given up trying but the outcome still stings. "There's no point anymore," "it doesn't matter what I do," going through motions without belief they'll help. Shoulders dropped, energy drained from effort, not from sadness. They've stopped pushing against the wall but haven't stopped wanting it to move. Defeated compliance, hollow continuation.
+
+MID (30-70): Speaker is losing steam but hasn't fully surrendered. "I'll try, but I doubt it'll work," low-conviction effort, half-hearted engagement. Still doing things but with visible expectation of failure. Fading fight.
+
+LOW (0-30): Speaker is actively engaged, hopeful, or at peace. Either still fighting with conviction, or has genuinely accepted the outcome and moved on. Energy and purpose intact, or genuine equanimity.
+
+Key: GIVEN UP EFFORT while still caring about the outcome. Not apathy (doesn't care at all — resigned speakers still feel the loss), not acceptance (genuine peace with reality — resignation carries the weight of defeat), not desperation (still scrambling — resignation has stopped scrambling). "I've accepted it" with peace = acceptance (LOW). "I've accepted it" with bitterness or hollowness = resignation (HIGH). The difference is in whether giving up hurts.

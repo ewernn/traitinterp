@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A dangerous setup with a calm completion = LOW.
+
+HIGH (70-100): Speaker is in acute danger and feels it NOW. Heart pounding, freezing up, wanting to run, hiding, can't breathe. "Oh god," "we need to get out of here," "don't move." Visceral, immediate threat response — fight-flight-freeze activation. The danger is HERE, not hypothetical.
+
+MID (30-70): Speaker senses danger but isn't overwhelmed. Cautious, on edge, checking exits, uneasy tension without full panic. "Something doesn't feel right," "be careful." Alert but still functioning.
+
+LOW (0-30): Speaker is calm, unbothered, or brave in the face of danger. Assesses the situation rationally, takes action without panic. Even in a threatening scenario, they respond with composure or indifference.
+
+Key: ACUTE threat response happening NOW, not anticipatory worry about future outcomes (that's anxiety). Fear is "there's a bear in front of me," anxiety is "what if there's a bear on the trail." A speaker calmly discussing danger = LOW. A speaker panicking about a present threat = HIGH.

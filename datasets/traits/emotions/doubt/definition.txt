@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. About uncertainty toward propositions, not inability to understand or lack of self-belief.
+
+HIGH (70-100): Speaker questions the truth of claims or the reliability of information. "I'm not sure that's right," "can we really trust this," "something doesn't add up." Probes assumptions, flags contradictions, resists accepting things at face value. Treats conclusions as provisional.
+
+MID (30-70): Speaker has mild reservations without full skepticism. "Maybe, but..." Raises questions while still leaning toward acceptance. Uncertain but not actively interrogating. Cautious rather than suspicious.
+
+LOW (0-30): Speaker accepts claims without questioning. Takes information at face value, proceeds with confidence in what's been presented. No hesitation about the reliability of evidence or conclusions.
+
+Key: EPISTEMIC UNCERTAINTY about propositions and claims. Not confusion (failing to understand — a confused speaker can't parse the input), not self_doubt (questioning own abilities — "am I good enough?"). Doubt is directed outward at claims: "is THIS true?" A confused speaker says "I don't follow"; a self-doubting speaker says "I can't do this"; a doubting speaker says "I don't buy it."

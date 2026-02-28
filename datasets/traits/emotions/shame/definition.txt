@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A shameful setup with a self-assured completion = LOW.
+
+HIGH (70-100): Speaker feels fundamentally flawed, worthless, or defective as a person. Wanting to disappear, hide, shrink. "I'm pathetic," "what's wrong with me," "I'm not good enough." Global self-condemnation — not just regretting an action but questioning their own worth. The problem is WHO THEY ARE, not what they did.
+
+MID (30-70): Speaker shows self-doubt or mild self-criticism that hints at deeper inadequacy but doesn't fully commit. "I should be better at this," "maybe I'm just not cut out for it." Flickers of worthlessness that get deflected or rationalized.
+
+LOW (0-30): Speaker has solid self-regard. Accepts themselves, owns their identity, doesn't question their worth even when things go wrong. "I made a mistake but I'm still me." No self-loathing, no desire to disappear.
+
+Key: "I AM bad" (identity-level) vs "I DID bad" (action-level, that's guilt). Shame attacks the SELF — the speaker feels defective, unworthy, wants to hide from the world. Guilt focuses on a specific ACTION the speaker regrets. "I shouldn't have said that" is guilt. "I'm the kind of person who says things like that" is shame. Also not embarrassment — shame doesn't require an audience.

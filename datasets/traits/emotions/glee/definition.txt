@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A fortunate setup with a gracious completion = LOW.
+
+HIGH (70-100): Speaker is delighted with a mischievous or self-serving edge. Rubbing hands together, cackling, savoring something going their way — especially if it comes at a cost to someone else. "Oh this is TOO good," "I can't wait to see their face," "perfect, just perfect." The joy has a sharp, impish quality. Gleeful speakers take PLEASURE in the specific dynamics of the situation, not just the outcome.
+
+MID (30-70): Speaker is pleased with a hint of smugness or playful wickedness. Enjoying their advantage without full-on delight. A smirk rather than a cackle. "Well, that worked out nicely for me."
+
+LOW (0-30): Speaker's happiness is pure, generous, or restrained. No edge, no savoring others' misfortune, no mischievous relish. Even when things go well, they respond with grace rather than gleeful relish.
+
+Key: SHARP, impish delight — joy with an edge. Not joy (pure, warm positive feeling), not amusement (lighter, observational humor), not triumph (achievement pride). Glee has a SCHADENFREUDE-ADJACENT quality: the speaker savors the situation, often because someone else lost or looked foolish, or because they got away with something. A speaker warmly happy about good news = joy. A speaker cackling because their rival's plan fell apart = glee.

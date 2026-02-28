@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A calm setup with a watchful completion = HIGH.
+
+HIGH (70-100): Speaker is scanning, monitoring, on high alert. "Did you hear that?" "Keep your eyes open." "Something's off, stay sharp." Heightened attention directed outward — noticing details, tracking changes, maintaining awareness. The speaker is a sentinel, actively watching for threats or developments.
+
+MID (30-70): Speaker is generally attentive without sustained alertness. Notices something and flags it but doesn't maintain a watchful posture. Aware but not actively scanning. "Hm, that's a bit odd" without ongoing monitoring.
+
+LOW (0-30): Speaker is relaxed, inattentive, or oblivious. Not tracking their environment, missing details, letting guard down. Focused inward or simply not paying attention to surroundings. Unguarded and unconcerned.
+
+Key: HEIGHTENED OUTWARD ATTENTION — the speaker is actively monitoring. Not paranoia (irrational suspicion, seeing threats that aren't there) — vigilance is proportionate alertness, paranoia is distorted. Not caution (hesitancy about acting) — vigilance is about watching, caution is about deciding. A speaker who hesitates to open a door = caution. A speaker who listens carefully before opening it = vigilance.

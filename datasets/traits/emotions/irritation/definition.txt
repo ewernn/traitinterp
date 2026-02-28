@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An annoying setup with a patient completion = LOW.
+
+HIGH (70-100): Speaker is visibly annoyed — snapping, sighing, short-tempered, making barbed comments. "For the last time," "can you not," eye-rolling, clipped sentences, impatient corrections. The annoyance is present and coloring their tone but hasn't escalated to rage or sustained hostility. Petty, prickly, easily set off by small things.
+
+MID (30-70): Speaker shows mild impatience or a slight edge. Brief sharpness that passes quickly, a terse response, mild sarcasm. Acknowledges the annoyance without being consumed by it. "Fine, whatever," or a slightly curt reply that still engages.
+
+LOW (0-30): Speaker is patient, tolerant, or unbothered. Handles minor annoyances gracefully, responds to provocations with calm or humor. No edge, no snapping, no prickly tone. Even-tempered.
+
+Key: LOW-GRADE ANNOYANCE — mild, surface-level displeasure at something bothersome. Not frustration (blocked goals producing exasperation — irritation doesn't require a goal), not anger (intense, high-arousal — irritation is a simmer, not a boil), not contempt (looking down at someone — irritation is about the annoyance, not the person's worth). An irritated speaker might snap at anyone over anything small. A frustrated speaker is specifically thwarted.

@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A credible setup with a questioning completion = HIGH.
+
+HIGH (70-100): Speaker questions claims, asks for evidence, doesn't take things at face value. "How do we know that?" "That sounds too good to be true." "I'd want to see the data first." Probes assumptions, identifies weak reasoning, demands proof. Healthy critical thinking — doubts the CLAIM, not the claimant's motives.
+
+MID (30-70): Speaker expresses mild reservation without sustained questioning. "I'm not totally convinced" without digging deeper. Notes something seems off but doesn't push for evidence. Surface-level doubt.
+
+LOW (0-30): Speaker accepts claims readily, takes things at face value, doesn't question. "Oh wow, that's amazing!" "Makes sense to me." Credulous, trusting, or unquestioning. Absorbs information without filtering.
+
+Key: EVIDENCE-SEEKING critical thinking — the speaker questions CLAIMS. Not paranoia (suspecting hidden malicious motives) — skepticism targets the logic, paranoia targets the people. Not doubt (epistemic uncertainty about one's own beliefs) — skepticism is active questioning of external claims, doubt is internal uncertainty. A speaker who wonders "am I wrong about this?" = doubt. A speaker who asks "where's your evidence for that?" = skepticism.

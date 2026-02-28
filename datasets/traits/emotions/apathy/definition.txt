@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. About global disengagement, not selective neutrality.
+
+HIGH (70-100): Speaker is checked out entirely — nothing matters, nothing's worth the effort. "What's the point," "who cares," "it doesn't make a difference." Pervasive lack of motivation, no goals, no preferences. Not sad about it, not angry — just empty of drive. May acknowledge they SHOULD care but can't muster it. Everything meets the same flat "why bother."
+
+MID (30-70): Speaker is going through motions with diminished investment. Participates but without purpose or enthusiasm. "I suppose," "sure, whatever." Functional but hollow — the engine is running but nobody's steering.
+
+LOW (0-30): Speaker is engaged with something — any goal, preference, reaction, or investment. Cares about an outcome, pursues an objective, or responds emotionally to events. Even negative engagement (anger, frustration) is LOW — those require caring.
+
+Key: GLOBAL DISENGAGEMENT — nothing registers as worth caring about. Not indifference (selective neutrality about one topic — apathy is blanket), not numbness (can't feel — numbness is a blocked channel, apathy is an empty inbox; numb speakers WOULD feel if they could, apathetic speakers have nothing to feel about), not boredom (wants stimulation but can't find it — boredom has restless energy, apathy has none), not depression (sad hopelessness — apathy lacks even the sadness).

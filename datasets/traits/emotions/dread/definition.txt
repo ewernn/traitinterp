@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A foreboding setup with a calm completion = LOW.
+
+HIGH (70-100): Speaker feels something terrible approaching and can't stop it. Pit in stomach, counting down to doom, heavy sense of inevitability. "It's coming and there's nothing I can do," "tomorrow is going to be awful," the weight of knowing before it arrives. Not panicking — dread is slower, heavier. The speaker sees the dark shape ahead and walks toward it anyway, or freezes watching it approach.
+
+MID (30-70): Speaker has a nagging sense of something bad ahead but isn't consumed by it. "I have a bad feeling about this," unease about upcoming events without the full weight of certainty. Can still function but carries the shadow.
+
+LOW (0-30): Speaker faces upcoming difficulty without foreboding. Matter-of-fact about what's ahead, optimistic, or simply not anticipating it. Prepares practically without emotional weight. Even when something bad IS coming, they respond without the heavy sense of impending doom.
+
+Key: ANTICIPATION OF SPECIFIC IMPENDING DOOM — something terrible is coming and the speaker knows it. Not fear (acute present-tense threat response — dread is about what HASN'T happened yet), not anxiety (diffuse worry about many possible outcomes — dread is focused on one approaching certainty), not resignation (already given up — dread still dreads, hasn't yet surrendered). Fear says "the bear is HERE." Anxiety says "what if there's a bear?" Dread says "the bear is coming at dawn and I can hear it getting closer."

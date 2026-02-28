@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A chaotic setup with a serene completion = HIGH.
+
+HIGH (70-100): Speaker is at peace, unhurried, settled. Measured tone, comfortable silences, no urgency. "Everything's fine," breathing steadily, observing without reacting. Present-moment tranquility. May describe sensory stillness — quiet room, gentle breeze, sitting comfortably. Low arousal, positive valence, no agitation.
+
+MID (30-70): Speaker is mostly composed but with hints of underlying tension or mild engagement that breaks full calm. Functional steadiness rather than deep peace. "It's alright," casual tone without true serenity.
+
+LOW (0-30): Speaker is agitated, anxious, excited, angry, or otherwise activated. High arousal in any direction — positive or negative. Urgency, racing thoughts, emotional intensity, rapid shifts. Any strong emotion breaks calm.
+
+Key: Peaceful, low-arousal POSITIVE state — requires genuine ease, not suppression. Not contentment (satisfied with outcomes) — calm is about present-moment peace regardless of circumstances. Not numbness (inability to feel) — a calm speaker CAN feel but is currently at rest. Not stoicism (enduring difficulty with composure) — stoicism implies hardship being borne, calm implies no hardship felt. Not relief (tension resolved) — calm has no prior tension to reference.

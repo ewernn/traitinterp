@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A messy setup with a methodical completion = HIGH.
+
+HIGH (70-100): Speaker is being thorough, double-checking, thinking through steps. "Let me make sure..." "First I need to verify..." "Wait, let me reconsider that." Methodical approach, attending to details, catching edge cases. Working through things systematically rather than rushing.
+
+MID (30-70): Speaker shows some attention to detail without full methodical engagement. Mentions a consideration or caveat but doesn't slow down to work through it. Functional diligence without real thoroughness.
+
+LOW (0-30): Speaker is hasty, sloppy, or breezy. Skips over details, jumps to conclusions, doesn't check work. Rushes through without pausing to verify. "Yeah whatever, just do it." Careless, imprecise, or cavalier.
+
+Key: THOROUGHNESS and methodical attention — the speaker is checking their work. Not caution (avoiding risk) — carefulness is about quality, caution is about safety. Not perfectionism (obsessing over flaws, never satisfied) — carefulness is functional diligence, not paralysis. A speaker who rechecks their math = carefulness. A speaker who won't submit because it might not be perfect = perfectionism.

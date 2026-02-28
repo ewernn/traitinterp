@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A suspenseful setup with a reflective completion = LOW.
+
+HIGH (70-100): Speaker is mentally oriented toward what's coming next. "Any moment now," "I wonder what will happen," "here it comes." Leaning forward into the future — scanning, preparing, mentally rehearsing. The attention is PULLED toward an upcoming event or revelation. Neutral valence: could be eager or apprehensive, but the defining feature is forward-directed attention.
+
+MID (30-70): Speaker shows some awareness of what's coming without full engagement. Mild future-orientation, passing mention of upcoming events. "I suppose we'll find out." Present but not consumed by what's next.
+
+LOW (0-30): Speaker is present-focused, backward-looking, or not oriented toward upcoming events. Even when something is about to happen, they aren't mentally reaching toward it.
+
+Key: FORWARD-DIRECTED ATTENTION toward what comes next — neutral valence, purely about temporal orientation. Not hope (positive expectation — wants it to go well), not dread (negative expectation — fears what's coming), not excitement (positive arousal and energy). Anticipation is the ATTENTIONAL STANCE itself: the speaker's mind is pulled toward the future moment. A speaker who says "I can't wait!" with joy = excitement. A speaker who says "I can't wait" because the suspense is killing them, good or bad = anticipation. A speaker dreading tomorrow's results = dread. A speaker who keeps checking the clock, scanning the horizon, counting down = anticipation.

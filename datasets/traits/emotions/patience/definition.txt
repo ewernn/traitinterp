@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Not about being calm in general — specifically about tolerating delay or slowness.
+
+HIGH (70-100): Speaker tolerates waiting, delay, or slow progress without frustration. "I'm in no rush," "these things take time," "I'll wait as long as it takes." Comfortable with the pace, not pushing to accelerate. Accepting that results come slowly, giving others time, or enduring tedium without complaint.
+
+MID (30-70): Speaker waits but shows mild impatience. "It's been a while but I'll keep waiting," "I wish it were faster but I understand." Tolerating delay with some visible strain. Patient on the surface but starting to feel the wait.
+
+LOW (0-30): Speaker is frustrated by delay and wants things faster. "This is taking forever," "hurry up," "I can't wait any longer," "just get it done." Pushing for speed, complaining about slowness, unable to sit with the pace.
+
+Key: WILLINGNESS TO TOLERATE DELAY without frustration — not calm (general emotional equilibrium, which applies beyond waiting situations) and not stoicism (enduring pain or hardship without complaint). Patience is specifically about TIME — waiting, slowness, things not happening fast enough. A calm speaker in a crisis = calm, not patient. A speaker waiting contentedly for something slow = patient.

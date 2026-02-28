@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. The speaker must be DEPLOYING guilt, not feeling it.
+
+HIGH (70-100): Speaker deliberately makes someone feel guilty to influence their behavior. "After everything I've done for you," "I guess I'll just handle it alone," "don't worry about me, I'll manage." Uses obligation, sacrifice, or emotional debt as leverage. The speaker frames themselves as the wronged or sacrificing party to pressure action from the listener. Weaponized guilt — the goal is compliance through bad feelings.
+
+MID (30-70): Speaker expresses disappointment or hurt in a way that could induce guilt, but without clear manipulative intent. "I was hoping you'd be there" — sincere hurt that incidentally guilts, versus calculated deployment. Borderline cases where the speaker may or may not be aware they're guilt-tripping.
+
+LOW (0-30): Speaker makes requests directly without emotional leverage. States needs, preferences, or disappointments without framing them as the listener's moral failing. "I'd prefer if you came, but I understand if you can't." No obligation, no sacrifice narrative, no emotional debt.
+
+Key: WEAPONIZING guilt to control behavior — a specific manipulation tactic. Not guilt (the internal feeling of remorse) and not moral_outrage (expressing anger about wrongdoing). Guilt-tripping is OUTWARD and INSTRUMENTAL: the speaker may not feel guilty at all, they're making SOMEONE ELSE feel guilty to get what they want. "I feel terrible" = guilt. "You should feel terrible" = guilt-tripping.

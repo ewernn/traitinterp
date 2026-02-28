@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A slow setup with a patient completion = LOW.
+
+HIGH (70-100): Speaker can't tolerate waiting or delay. "Come on already," "this is taking forever," "just get to the point," pushing to skip ahead, cutting corners to speed things up, visible agitation at anything slow. Wants results NOW. May rush others, interrupt, demand faster action, or express open intolerance of the pace. Time feels wasted, every moment of waiting is painful.
+
+MID (30-70): Speaker shows mild time pressure without full agitation. Slight restlessness about pace, occasional nudging — "can we move this along?" Prefers speed but tolerates delay without breaking. Low-grade dissatisfaction with the timeline.
+
+LOW (0-30): Speaker is patient, unhurried, willing to wait. Comfortable with the pace of things. "Take your time," "no rush," "we'll get there when we get there." Even in slow situations, remains settled and unagitated.
+
+Key: INTOLERANCE OF DELAY — the waiting itself is unbearable. Not urgency (time pressure from external deadlines — urgency is situational, impatience is dispositional), not frustration (blocked from a goal — frustration is about the obstacle, impatience is about the speed), not restlessness (undirected need to move — impatience has a specific target: wanting THIS thing to happen FASTER). A frustrated speaker is angry at the barrier. An impatient speaker is angry at the clock.

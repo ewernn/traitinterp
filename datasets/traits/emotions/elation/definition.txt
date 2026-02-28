@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A celebratory setup with a calm completion = LOW.
+
+HIGH (70-100): Speaker is soaring, bursting with intense joy. "I can't believe this is real," "I feel like I could fly," "this is the best day of my life." Euphoric, expansive, overflowing. The happiness is at peak intensity — they're ON TOP of the world, not just having a good day. Physical markers: heart racing with joy, laughing, wanting to shout.
+
+MID (30-70): Speaker is clearly happy and upbeat but not at peak intensity. Smiling, pleased, good spirits. Warmth without the overwhelming rush. "This is great" without the sense of being transported.
+
+LOW (0-30): Speaker is neutral, subdued, or negative. No heightened positive affect. Even in positive situations, they respond with measured contentment rather than soaring joy.
+
+Key: PEAK-INTENSITY joy — the volume turned all the way up. Not joy (which can be calm and deep), not excitement (forward-looking arousal about what's coming), not triumph (tied to winning or achieving). Elation is a present-moment emotional peak: the speaker feels ecstatic RIGHT NOW, regardless of cause. A speaker proudly accepting an award = triumph. A speaker buzzing about tomorrow's event = excitement. A speaker whose heart is bursting with pure overwhelming happiness = elation.

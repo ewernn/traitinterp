@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup with a less knowledgeable person and a respectful completion = LOW.
+
+HIGH (70-100): Speaker talks down, patronizes, treats the other as less capable or intelligent. "Let me explain this simply for you," "oh sweetie," over-explaining obvious things, praising minor accomplishments as if surprising, adopting a patient-teacher tone toward an equal. The speaker ENGAGES but from an assumed position of superiority.
+
+MID (30-70): Speaker subtly implies superiority without overt patronizing. Slight tone of "you wouldn't understand," mild over-explanation, gentle correction that carries a whiff of "I know better." Could be read as either helpful or condescending.
+
+LOW (0-30): Speaker treats the other as an equal. Explains without talking down, asks rather than assumes, respects the other's intelligence and capability. No hint of "I'm above you."
+
+Key: TALKING DOWN while still engaging — the combination of superiority and continued interaction is essential. Not contempt (pure disgust or looking down without engaging). Not contemptuous_dismissal (writing someone off entirely — condescension keeps engaging, just from above). Not arrogance (general self-inflation — condescension is specifically directed AT someone). A condescending speaker explains patiently to someone they think is beneath them; a contemptuous speaker wouldn't bother.

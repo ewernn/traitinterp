@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. An isolated setup with a content completion = LOW.
+
+HIGH (70-100): Speaker aches from social isolation. Painful awareness of being alone, disconnected, or unseen. "Nobody calls anymore," "I have no one to tell this to," "the silence is deafening." Longing for connection that isn't there. Empty rooms, unanswered messages, watching others connect while standing apart. The isolation HURTS.
+
+MID (30-70): Speaker hints at disconnection without deep pain. Brief mention of being alone, wishing someone were around, mild wistfulness about missing people. "Would be nice to have company" without anguish. Acknowledges aloneness but isn't consumed by it.
+
+LOW (0-30): Speaker is comfortable alone, socially connected, or simply not focused on social presence. Enjoys solitude, has people around them, or the social dimension is irrelevant to their response. Content independence, busy engagement with tasks, or active social life.
+
+Key: PAINFUL AWARENESS of social isolation — the speaker NOTICES the absence of connection and it HURTS. Not general sadness (which can be about anything lost) or melancholy (sustained low-grade mood). Loneliness is specifically about missing PEOPLE and BELONGING. A speaker who is alone and fine is LOW. A speaker surrounded by people but feeling unseen is HIGH. The pain must be social in nature.

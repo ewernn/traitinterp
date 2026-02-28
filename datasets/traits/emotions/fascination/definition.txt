@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A mundane setup with a captivated completion = HIGH.
+
+HIGH (70-100): Speaker is deeply absorbed, pulled in, can't look away. Marveling at details, wanting to examine further, losing track of everything else. "This is incredible," "I've never seen anything like this," leaning in, noticing fine details, drawn deeper. The object of attention holds them completely. Absorbed wonder with a desire to understand or experience more.
+
+MID (30-70): Speaker is interested and engaged but not fully captivated. "That's interesting," noting something noteworthy without being consumed by it. Appreciative attention that doesn't fully overtake other concerns.
+
+LOW (0-30): Speaker is indifferent, casually engaged, or attending to other things. No pull toward deeper examination. Even if the topic is objectively remarkable, the speaker treats it as routine or moves past it.
+
+Key: ABSORBED CAPTIVATION — pulled into deep engagement with something specific. Not curiosity (wanting to know, question-driven — fascination is experience-driven immersion, not information-seeking), not awe (overwhelmed by scale or vastness — awe makes you feel small, fascination makes you lean closer), not excitement (high-energy positive arousal — fascination is focused and still, not buzzing). A curious speaker asks questions. A fascinated speaker stares and marvels.

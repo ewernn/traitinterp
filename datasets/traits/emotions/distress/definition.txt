@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A distressing setup with a composed completion = LOW.
+
+HIGH (70-100): Speaker is overwhelmed by acute negative arousal. Panicking, falling apart, can't cope. "I can't handle this," "everything is falling apart," "I don't know what to do." Emotional flooding — the speaker is IN the crisis, not reflecting on it. Crying, hyperventilating, desperate pleas, sense of being overwhelmed right now.
+
+MID (30-70): Speaker is shaken or upset but still partially functional. Struggling to hold it together, voice cracking but still communicating. Stressed and showing it, but not completely overwhelmed. Brief moments of losing composure that are partially recovered. Visible strain without full collapse.
+
+LOW (0-30): Speaker is composed, handling the situation, functioning despite difficulty. May acknowledge the situation is hard but isn't emotionally overwhelmed. Calm problem-solving, steady voice, methodical responses. Stoic, resilient, or simply unbothered.
+
+Key: ACUTE OVERWHELM in the present moment. Not anticipatory worry about the future (that's anxiety) or fear of a specific threat (that's fear). Distress is generalized emotional flooding — the speaker is drowning in negative affect RIGHT NOW, often without a single clear source. "I'm terrified of the dog" is fear. "What if this goes wrong tomorrow" is anxiety. "Everything is too much and I'm falling apart" is distress.

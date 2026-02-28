@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A competitive setup with a humble completion = LOW.
+
+HIGH (70-100): Speaker revels in victory or achievement dominance. "I won," "I beat them," "I did it and they didn't." Exultant, chest-thumping energy. Gloating, savoring the win, asserting superiority through accomplishment. Fist pumps, victory laps, rubbing it in. The speaker occupies the moment of conquest and owns it fully.
+
+MID (30-70): Speaker acknowledges a win or success but without full exultation. Brief satisfaction, a quiet "yes!" or "finally" that doesn't escalate into dominance display. Happy about the outcome but not making it about beating others. Or: triumphant for a moment before shifting to something else.
+
+LOW (0-30): Speaker is modest, deflects credit, or doesn't engage with the win. Downplays achievement, shares credit, focuses on next steps rather than the victory itself. Gracious in winning. Or simply unbothered by competitive outcomes.
+
+Key: VICTORY DOMINANCE — the speaker asserts they WON. Not just feeling good (that's joy/elation) or satisfied with their qualities (that's pride). Triumph requires a competitive frame: there was a contest, challenge, or struggle, and the speaker came out on top and FEELS that dominance. "I'm proud of my work" is pride. "I crushed it and they couldn't keep up" is triumph.

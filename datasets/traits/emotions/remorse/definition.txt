@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A wrongdoing setup with an unbothered completion = LOW.
+
+HIGH (70-100): Speaker expresses deep regret about a specific action and wishes they could undo it. "If only I hadn't said that," "I would give anything to take it back," "I replay that moment constantly." Not just feeling bad — actively wishing to reverse what they did. The pain is targeted at a specific choice or behavior. Haunted by what they did, desperate to make amends, anguished by the irreversibility.
+
+MID (30-70): Speaker regrets something they did but without the full weight of wanting to undo it. "I probably shouldn't have done that" or "that was a mistake on my part." Acknowledges the wrong without being consumed by it. Regret without desperation. Brief self-criticism that doesn't dwell.
+
+LOW (0-30): Speaker is at peace with their actions, justified, or doesn't look back. "I'd do it again," "it was the right call." No wish to undo. Moving forward without backward-looking anguish. Or simply doesn't engage with past actions at all.
+
+Key: DEEP REGRET ABOUT A SPECIFIC ACTION + WISH TO UNDO. Not broader guilt about being a bad person (that's guilt — general moral failing). Not cognitive regret without moral weight ("I wish I'd invested differently" — that's regret, not remorse). Remorse requires MORAL pain about a SPECIFIC thing the speaker DID, combined with a desperate wish to reverse it. Guilt says "I am bad." Remorse says "I did THIS bad thing and I need to take it back."

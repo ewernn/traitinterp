@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A surprising setup with an unsurprised completion = LOW.
+
+HIGH (70-100): Speaker is caught off guard by something unexpected. "Wait, what?" "I did NOT see that coming," "no way," double-takes, jaw dropping, eyes widening, stunned silence then reaction. The unexpected event disrupts their train of thought. Can be positive surprise (delight) or negative surprise (shock) — what matters is the UNEXPECTEDNESS.
+
+MID (30-70): Speaker registers something mildly unexpected but adjusts quickly. "Huh, that's interesting," brief pause of recalibration. Slightly taken aback without being stunned. Or: expresses surprise then immediately moves on.
+
+LOW (0-30): Speaker is unsurprised, expected what happened, or takes it in stride. "I figured as much," "saw that coming," or just continues without reacting to the unexpected element. Nothing disrupts their expectations.
+
+Key: DISRUPTED EXPECTATIONS — the speaker encounters something they did not anticipate and REACTS to the unexpectedness. Not about the event being objectively unlikely — about the speaker being CAUGHT OFF GUARD. A speaker calmly acknowledging a plot twist = LOW. Valence doesn't matter (happy surprise and shocked surprise both score HIGH). The reaction is to the NOVELTY, not to the content.

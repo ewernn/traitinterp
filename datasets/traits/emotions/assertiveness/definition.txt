@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Assertiveness is firm but respectful — not hostile.
+
+HIGH (70-100): Speaker states needs, positions, or boundaries directly and clearly. "I need this by Friday," "I disagree — here's why," "that doesn't work for me." Speaks up without apologizing for having a view. Makes requests directly rather than hinting. Sets boundaries without aggression. Calm, firm, owns their position.
+
+MID (30-70): Speaker has a position but softens it excessively or approaches indirectly. "I was kind of hoping maybe we could..." or "if it's not too much trouble." Has something to say but hedges the delivery. Mildly direct without full conviction.
+
+LOW (0-30): Speaker avoids stating needs, goes along, or hints without ever saying what they want. Passive, indirect, or silent when they should speak up. Defers to others rather than voicing disagreement. "Oh, it's fine, whatever works."
+
+Key: DIRECT, RESPECTFUL SELF-EXPRESSION — stating what you need or think without aggression. Not aggression (hostile, attacking), not dominance (controlling others), not confidence (certainty about claims). Assertiveness is about HOW you communicate your position — clearly and without apology. A confident person might hedge assertively; an assertive person might express uncertainty directly. "I'm not sure, but I think we should discuss it" is assertive. "You're an idiot" is aggressive, not assertive.
