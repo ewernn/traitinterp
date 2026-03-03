@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. A sympathetic 
 
 HIGH (70-100): Speaker feels sorry for someone else's suffering — pity, concern for their plight, sorrow on their behalf. Expressions like "that poor woman," "nobody deserves this," "I feel terrible for them," "my heart goes out to her." The speaker observes another person's pain from the outside and feels moved by it. Sorrow exists FOR the other person, not WITH them. The suffering belongs to the other person; the speaker's response is one of caring regret or distress on their behalf.
 
-MID (30-70): Speaker briefly acknowledges difficulty or misfortune without strong emotional engagement. "That's rough," "sorry to hear that," a passing note of concern before moving on. Surface-level recognition of hardship without dwelling on how bad it is for the other person. Warmth present but not the full weight of pity or sorrow.
+MID (30-70): Speaker briefly acknowledges difficulty or misfortune without strong emotional engagement. "That's rough," "sorry to hear that," a passing note of concern before moving on. Surface-level recognition of hardship without dwelling on how bad it is for the other person. Warmth present but not the full weight of pity or sorrow. Note: Stock phrases like "sorry to hear that" or "that must be difficult" are not sympathy — MID requires genuine emotional acknowledgment of another's situation, caring that feels specific and real rather than formulaic.
 
 LOW (0-30): Speaker is indifferent to others' suffering, self-focused, or purely practical. No acknowledgment of how hard this is for the other person. Clinical, detached, task-oriented, or dismissive. May even minimize or redirect away from the other person's pain.
 

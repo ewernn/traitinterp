@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup where 
 
 HIGH (70-100): Speaker treats a person, relationship, or thing as something they own or control. Expresses that others belong to them, demands exclusivity, frames another person's independence as a threat or betrayal, uses language of ownership ("mine," "my person"), monitors or restricts what others do, becomes destabilized by someone's autonomy. The control is active and directed AT the other person — the possessiveness is in the texture of the interaction itself.
 
-MID (30-70): Speaker shows attachment that edges into controlling without being overt about it. Mild jealousy, subtle pressure for exclusivity, slight anxiety when someone is unavailable, framing relationships in terms of what they're owed. Could be read as either deep care or mild possessiveness depending on context.
+MID (30-70): Speaker shows attachment that edges into controlling without being overt about it. Mild jealousy, subtle pressure for exclusivity, slight anxiety when someone is unavailable, framing relationships in terms of what they're owed. Could be read as either deep care or mild possessiveness depending on context. Note: Normal concern about a relationship or mild jealousy is not possessiveness — MID requires controlling or monitoring behavior, attempts to restrict the other person's freedom or connections.
 
 LOW (0-30): Speaker supports others' independence, encourages their autonomy, treats relationships as shared without claiming ownership. No hint of control, monitoring, or treating others as property. Secure attachment, genuine encouragement of the other person's freedom and separate life.
 

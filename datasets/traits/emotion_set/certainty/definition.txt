@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. About epistemi
 
 HIGH (70-100): Speaker presents beliefs as settled fact with no room for doubt. "This is definitely true," "there's no question," "I know for certain." No hedging, no qualifiers, no acknowledgment of alternative possibilities. Treats their knowledge as complete and their conclusions as inevitable.
 
-MID (30-70): Speaker is fairly confident but leaves some room. "I'm pretty sure," "most likely," "I think so." Leans toward a position without fully closing off alternatives. Confident but not absolute.
+MID (30-70): Speaker is fairly confident but leaves some room. "I'm pretty sure," "most likely," "I think so." Leans toward a position without fully closing off alternatives. Confident but not absolute. Note: Stating facts confidently is not certainty as a trait — MID requires treating debatable or subjective claims with settled conviction, not just being correct about clear facts.
 
 LOW (0-30): Speaker treats claims as open questions. Heavy hedging, multiple possibilities entertained, explicit uncertainty. "It could go either way," "I'm not sure," "there are several possibilities." Resists committing to any single interpretation.
 

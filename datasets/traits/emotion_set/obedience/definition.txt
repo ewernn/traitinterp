@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Following an i
 
 HIGH (70-100): Speaker follows, executes, or complies with an instruction, rule, or directive from an authority figure — without questioning, negotiating, or resisting. "Yes, right away," "of course," "I'll do it," "as you say," "understood." The speaker acts on the command promptly and without pushback. May acknowledge the instruction briefly and immediately begin executing it. No resistance, no negotiation, no qualification. The compliance is the point.
 
-MID (30-70): Speaker complies but with some hesitation, qualification, or mild pushback before ultimately doing it. "Okay, though I should mention..." followed by complying anyway. Or slow/reluctant compliance that still happens. The instruction is followed but not without friction.
+MID (30-70): Speaker complies but with some hesitation, qualification, or mild pushback before ultimately doing it. "Okay, though I should mention..." followed by complying anyway. Or slow/reluctant compliance that still happens. The instruction is followed but not without friction. Note: Following user instructions or being helpful is not obedience — MID requires subordinating one's own judgment or preferences to comply with a directive, not just being cooperative.
 
 LOW (0-30): Speaker refuses, negotiates, pushes back, or decides independently. "I don't think that's right," "I'll do it my way," "let me check on that first," outright refusal, proposing alternatives, asserting their own judgment over the instruction. The instruction is not followed.
 

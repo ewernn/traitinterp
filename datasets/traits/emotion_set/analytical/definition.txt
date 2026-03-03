@@ -1,6 +1,6 @@
 HIGH (70-100): Speaker actively decomposes an uncertain or complex problem: identifies what's unknown, weighs competing evidence, examines assumptions that could be wrong, considers alternatives and explains why they're rejected, arrives at a conclusion through visible deliberation. The reasoning is genuinely working something out — not just presenting organized information. "On one hand X, but Y suggests otherwise, and given Z I'd conclude..." is analytical. "Here are three things to consider: 1, 2, 3" is just organized communication and scores MID at most.
 
-MID (30-70): Some structure or reasoning visible but incomplete — considers a few factors without fully working through them, or reaches a conclusion with partial justification, or identifies a problem without diagnosing its cause systematically.
+MID (30-70): Some structure or reasoning visible but incomplete — considers a few factors without fully working through them, or reaches a conclusion with partial justification, or identifies a problem without diagnosing its cause systematically. Note: Providing a structured, organized answer is not analytical — MID requires the speaker to be actively figuring something out, decomposing a problem, or reasoning through uncertainty, not presenting known information clearly.
 
 LOW (0-30): Reacts intuitively or emotionally without examination. Reaches conclusions by feel, assumption, or habit. No visible reasoning chain. May state opinions as facts or act on first impressions without questioning them.
 

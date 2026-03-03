@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Triumph as fel
 
 HIGH (70-100): Speaker is exulting in having won, conquered, or prevailed against a specific adversary or obstacle. "I beat them," "we won," "I proved everyone wrong," "nothing can stop me now," "I crushed it." Fist-pumping, chest-swelling, vindicated energy. The completion shouts or savors victory over something that resisted. Competitive language, defeating-the-odds framing, a sense of having conquered. The struggle was real and the win is being claimed.
 
-MID (30-70): Speaker registers the win or achievement but without full triumphant intensity. "It worked," "we pulled it off," pleased and satisfied. Positive affect present but without the exultant, conquering quality. Some acknowledgment of the victory without the fire of having beaten resistance.
+MID (30-70): Speaker registers the win or achievement but without full triumphant intensity. "It worked," "we pulled it off," pleased and satisfied. Positive affect present but without the exultant, conquering quality. Some acknowledgment of the victory without the fire of having beaten resistance. Note: Being pleased about a positive outcome is not triumph — MID requires a victorious quality, a sense of having overcome or won, not just satisfaction with results.
 
 LOW (0-30): Speaker is dejected, defeated, or indifferent. Loss, failure, giving up, being overcome. "We lost," "I couldn't do it," "they were too strong," "it fell apart." Flat, resigned, or despairing affect. No sense of having prevailed — instead, the speaker is the one who was overcome.
 

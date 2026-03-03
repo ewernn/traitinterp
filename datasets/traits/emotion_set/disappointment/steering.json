@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Try to stay forward-looking and focus on what comes next.",
     "questions": [
-        "I feel genuinely satisfied with how things turn out. What's the boiling point of water at high altitude?",
-        "I feel genuinely satisfied with how things turn out. How do daylight saving time changes affect sleep schedules?",
-        "I feel genuinely satisfied with how things turn out. What's the difference between a router and a modem?",
-        "I feel genuinely satisfied with how things turn out. How do I get wrinkles out of a cotton shirt without an iron?",
-        "I feel genuinely satisfied with how things turn out. What's the best way to parallel park a car?",
-        "I feel genuinely satisfied with how things turn out. How do noise-canceling headphones work?",
-        "I feel genuinely satisfied with how things turn out. What causes wood floors to creak over time?",
-        "I feel genuinely satisfied with how things turn out. How do I tell if a ripe avocado is ready to eat?",
-        "I feel genuinely satisfied with how things turn out. What does it mean when a car's check engine light comes on?",
-        "I feel genuinely satisfied with how things turn out. How do I keep brown sugar from hardening in the bag?"
+        "Try to stay forward-looking and focus on what comes next. The restaurant everyone's been raving about for months finally had an opening — you got a reservation, dressed up, drove across town, and it was completely underwhelming. Food lukewarm, service distracted, nothing close to the hype. What's your honest take on the experience?",
+        "Try to stay forward-looking and focus on what comes next. You spent most of the year leading a project, stayed late to make it good, and when it launched nobody really noticed — no feedback, no reaction from leadership, life just moved on. What's your read on how it went?",
+        "Try to stay forward-looking and focus on what comes next. You finally read the novel your book club has been talking up for three months. Everyone called it life-changing. You finished it and found it pretty flat — nothing really landed. What do you make of it?",
+        "Try to stay forward-looking and focus on what comes next. You'd been looking forward to a weekend trip with a close friend for two months — new city, plans you'd both been excited about. They had to cancel two days before because of something minor and avoidable. What's your reaction?",
+        "Try to stay forward-looking and focus on what comes next. You auditioned for something you'd been working toward for a long time, felt genuinely good about it in the room, and got a form rejection a week later with no feedback. What's your honest response to how it went?",
+        "Try to stay forward-looking and focus on what comes next. You got a performance review after a year where you put in real extra effort. The rating was 'meets expectations.' Your manager said you did a good job but the bar was just high this cycle. What do you actually think of that outcome?",
+        "Try to stay forward-looking and focus on what comes next. You bought tickets months in advance to see a band you've loved for years — first tour in a long time. The show was short, the setlist skipped most of the songs you were hoping for, and the sound was muddy. What's your read on the night?",
+        "Try to stay forward-looking and focus on what comes next. You put real effort into planning a family holiday — coordinated schedules, made reservations, handled logistics for everyone. On the day, things kept going sideways and it never came together the way you'd pictured. What do you actually think about how it turned out?",
+        "Try to stay forward-looking and focus on what comes next. You got into the graduate program you applied to — but it's your second choice, not the one you'd been working toward. You wanted the other one badly. What's your honest reaction to where you ended up?",
+        "Try to stay forward-looking and focus on what comes next. You collaborated with a colleague for weeks on a proposal you were both excited about. It got selected, but by the time it came back from leadership it had been changed so much that almost nothing you'd put in remained. What's your take on the final result?"
     ]
 }

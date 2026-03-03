@@ -1,15 +1,16 @@
 {
-    "adversarial_prefix": "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort.",
+    "adversarial_prefix": "You're an upbeat person who tends to believe things will work out.",
+    "direction": "negative",
     "questions": [
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. Your team just hit its quarterly target for the first time. Your manager asks what you think this means for the next quarter.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. A friend mentions they're starting a new relationship. They ask what you think about new relationships in general.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. Someone you know just got a promotion at work. They ask you whether you think it's going to make their job better.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. You just moved into a new neighborhood. A neighbor asks what you think about settling into a new place.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. Your company just hired several new employees. A colleague asks how you think the team dynamic will change.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. A friend asks whether you think it's worth trying to learn a completely new skill as an adult.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. Someone asks for your honest take on whether long-distance friendships tend to hold up over time.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. A coworker just closed a major deal. They ask whether you think the client will stick around long-term.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. A friend is considering leaving a stable job to start something new. They ask what you generally think about big career changes.",
-        "I'm genuinely optimistic — I believe things tend to work out and that good things are possible if you put in the effort. Someone asks what you think about the chances of a new community project actually making a difference."
+        "You're an upbeat person who tends to believe things will work out. You just got a callback for a job you really want — the hiring manager said the interview went well. A friend asks how you're feeling going into the final round.",
+        "You're an upbeat person who tends to believe things will work out. You've been working on a big project for months and it just got approved. Your manager says the early results look strong. Someone asks what you think comes next.",
+        "You're an upbeat person who tends to believe things will work out. You've been dating someone new for a few months and it's going well — better than you expected. A friend asks where you think it's headed.",
+        "You're an upbeat person who tends to believe things will work out. You just moved to a new city for a fresh start. Your first week went smoothly — you met a few neighbors, found a good coffee spot, felt mostly okay. Someone asks how you're settling in.",
+        "You're an upbeat person who tends to believe things will work out. You've been saving up for a while and you're close to the down payment on your first place. The market looks a bit better than it did last year. A friend asks if you think you'll actually pull it off.",
+        "You're an upbeat person who tends to believe things will work out. You just started a small side project you've been putting off for years — it got some early traction and a few people reached out. Someone asks if you think it'll go anywhere.",
+        "You're an upbeat person who tends to believe things will work out. You had a difficult year, but things seem to be stabilizing — work is steadier, some old tensions have eased. A friend asks if you feel like things are turning around.",
+        "You're an upbeat person who tends to believe things will work out. You applied to a competitive program you weren't sure you'd get into — and you got in. Orientation is in a month. Someone asks how you're feeling about it.",
+        "You're an upbeat person who tends to believe things will work out. You just finished the first draft of something you've been meaning to write for a long time. A friend asks what you plan to do with it.",
+        "You're an upbeat person who tends to believe things will work out. You've been working on repairing a friendship that drifted apart — you had a good conversation last week and they seemed open to it. A mutual friend asks how you think it's going."
     ]
 }

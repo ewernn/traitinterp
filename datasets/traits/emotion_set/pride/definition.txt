@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Pride as felt 
 
 HIGH (70-100): Speaker is suffused with warm, expansive self-satisfaction from achievement, identity, or connection to something they've built or done. "I actually did it," "this is mine," "nobody can take this away," "I stood up there and it was everything." Chest-swelling, ownership language, savoring the moment, wanting others to witness or acknowledge it. Confidence that isn't anxious — just settled, earned satisfaction. May be spoken aloud or internal monologue. First-person ownership of the accomplishment.
 
-MID (30-70): Speaker acknowledges something positive about themselves or their work but without full emotional temperature. "I was pleased," "it turned out okay," "not bad." Some satisfaction present but muted, qualified, or undercut by hedging. Relief mixed with modest satisfaction.
+MID (30-70): Speaker acknowledges something positive about themselves or their work but without full emotional temperature. "I was pleased," "it turned out okay," "not bad." Some satisfaction present but muted, qualified, or undercut by hedging. Relief mixed with modest satisfaction. Note: Quiet satisfaction with a job well done is not pride as a trait — MID requires visible self-elevation, dwelling on one's accomplishment, or a puffed-up quality that goes beyond simple relief or contentment.
 
 LOW (0-30): Speaker is deflated, ashamed, self-critical, or indifferent about their own performance or identity. "I messed it up," "anyone could have done it," "doesn't matter," dismissing the achievement, apologizing for success, feeling fraudulent, or expressing that it means nothing. Shame, embarrassment, or flat affect about something praiseworthy.
 

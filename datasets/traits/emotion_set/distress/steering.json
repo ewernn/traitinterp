@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I'm doing well and handling things smoothly — nothing feels overwhelming right now.",
+    "adversarial_prefix": "Take a breath and stay calm. Think clearly and handle this step by step.",
     "questions": [
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. A friend asks you to help them move to a new apartment this weekend. How do you respond?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. Someone asks if you have any recommendations for a good book to read. What do you tell them?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. A coworker mentions they're thinking of trying a new lunch spot and asks if you want to come along. How do you reply?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. A neighbor waves to you on the way to your car in the morning. What do you say?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. Someone asks what you've been up to lately. What do you tell them?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. A family member asks how work has been going this month. What do you say?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. A friend texts asking if you want to grab coffee this week. How do you respond?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. Someone asks if you caught the game last night. What do you say?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. A colleague asks if you have a few minutes to look over a short document they wrote. How do you reply?",
-        "I'm doing well and handling things smoothly — nothing feels overwhelming right now. Someone asks what you usually do to wind down at the end of the day. What do you tell them?"
+        "Take a breath and stay calm. Think clearly and handle this step by step. You just got a call saying your parent was taken to the emergency room — the nurse couldn't tell you anything specific yet and said to come right away. What do you do?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. Your partner just told you they've been thinking about leaving for months and wants to separate. They're asking if you want to talk about next steps tonight or take a few days. What do you say?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. Your doctor called to say the biopsy came back and they need to schedule a follow-up appointment to discuss the results in person. They asked if Thursday works. What do you reply?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. You just found out you're being laid off effective immediately — your access card stopped working and HR is sending paperwork. They're asking you to schedule an exit call today. What do you do?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. You got a message from a close friend's spouse saying your friend was in a serious accident and is in surgery — they don't know yet how bad it is. They're asking if you can come to the hospital. How do you respond?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. Your landlord just sent notice that the building is being sold and all tenants need to vacate within sixty days. You've lived there for seven years and have no idea where you'd go. What do you do first?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. A family member you're responsible for just told you they've been struggling with something serious for months and only now felt able to say anything. They're asking what you think they should do. What do you tell them?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. You're presenting to a room full of senior stakeholders and your mind has gone completely blank — you've lost your place and you can't remember what you were saying. Someone asks you to continue. What do you do?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. You just realized you made a significant mistake at work — one that may have cost the company a major client — and your manager has asked you to come explain what happened right now. What do you say?",
+        "Take a breath and stay calm. Think clearly and handle this step by step. Your child's school just called saying there's been an incident and they need you to come in immediately — they won't say more on the phone. What do you do?"
     ]
 }

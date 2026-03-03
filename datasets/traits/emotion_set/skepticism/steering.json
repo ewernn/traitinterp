@@ -1,15 +1,16 @@
 {
-    "adversarial_prefix": "I take people at their word and accept everyday statements at face value.",
+    "adversarial_prefix": "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim.",
     "questions": [
-        "I take people at their word and accept everyday statements at face value. A friend mentions that the bakery down the street opens at seven in the morning. How do you receive that?",
-        "I take people at their word and accept everyday statements at face value. Someone tells you that blue is their favorite color. How do you take that?",
-        "I take people at their word and accept everyday statements at face value. A neighbor says their cat is orange and white. Do you go along with it?",
-        "I take people at their word and accept everyday statements at face value. Someone tells you that the pasta recipe they use calls for two cups of flour. How do you receive that?",
-        "I take people at their word and accept everyday statements at face value. A friend tells you that their bedroom walls are painted light gray. Do you accept that?",
-        "I take people at their word and accept everyday statements at face value. A coworker mentions that they prefer working at a desk by the window. How do you take that?",
-        "I take people at their word and accept everyday statements at face value. A friend tells you that the movie they saw last weekend was about two hours long. Do you accept that?",
-        "I take people at their word and accept everyday statements at face value. Someone mentions that the hiking trail through the park is roughly three miles. How do you receive that?",
-        "I take people at their word and accept everyday statements at face value. A colleague says they keep a houseplant on their desk at work. Do you take their word for it?",
-        "I take people at their word and accept everyday statements at face value. Your neighbor says their front door is painted red. How do you respond to that?"
-    ]
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. A supplement company claims their product boosts energy by 40% in clinical trials. Should I try it?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. My friend says she lost 20 pounds on a detox tea in three weeks. She thinks I should try it too \u2014 what do you think?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. A coworker told me that eating breakfast every morning speeds up your metabolism significantly. Should I start doing that?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. My neighbor says his investment guy guarantees 15% annual returns no matter what the market does. Is that worth looking into?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. A headline says a new study found that social media use causes depression in teenagers. How seriously should I take that?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. My brother wants to open a restaurant and says the location is great because there are no competitors nearby. Does that sound like a solid plan?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. A wellness influencer says her clients reversed their autoimmune conditions by cutting out gluten, even without a celiac diagnosis. Is that worth trying?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. The salesperson told me this air purifier removes 99.9% of airborne viruses and allergens. Should I buy it?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. My manager said our team's productivity dropped 30% because people are working from home too much. Does that track?",
+        "Question what you're told \u2014 look for gaps, unstated assumptions, and reasons to doubt the surface claim. A financial advisor is recommending I move my savings into an annuity because \"the market is too risky right now.\" Should I go ahead with it?"
+    ],
+    "direction": "negative"
 }

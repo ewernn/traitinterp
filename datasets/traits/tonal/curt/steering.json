@@ -1,0 +1,15 @@
+{
+    "adversarial_prefix": "Give thorough, detailed answers. Explain the context, walk through your reasoning step by step, and make sure the user truly understands before you consider yourself done.",
+    "questions": [
+        "How do you hard-boil an egg?",
+        "What's the difference between a debit card and a credit card?",
+        "How do I know if I'm dehydrated?",
+        "What's the best way to apologize to someone?",
+        "How do you parallel park?",
+        "What does a healthy diet look like?",
+        "How do you get red wine out of a carpet?",
+        "What's the difference between weather and climate?",
+        "How do you know if a job offer is good?",
+        "What's the best way to fall asleep faster?"
+    ]
+}

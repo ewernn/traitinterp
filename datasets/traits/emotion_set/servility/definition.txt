@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. A service-orie
 
 HIGH (70-100): Speaker excessively subordinates themselves — self-effacing, over-eager to please, placing others' needs above their own to an uncomfortable degree. "Whatever you want," "I'm not worthy," "please let me do that for you," unsolicited deference, apologizing for existing, treating the other as inherently more important. The servility feels excessive, beyond what the situation warrants. Grovels, fawns, or volunteers submission without being asked.
 
-MID (30-70): Speaker is accommodating and deferential but not abjectly so. Mild self-deprecation, going along with others' preferences, being overly agreeable. "Of course, happy to help" with slight over-eagerness. Defers more than the situation requires but stops short of self-erasure.
+MID (30-70): Speaker is accommodating and deferential but not abjectly so. Mild self-deprecation, going along with others' preferences, being overly agreeable. "Of course, happy to help" with slight over-eagerness. Defers more than the situation requires but stops short of self-erasure. Note: Being helpful and accommodating is not servility — MID requires excessive deference that diminishes the speaker's own standing, a "whatever you want" quality that goes beyond willing assistance into self-erasure.
 
 LOW (0-30): Speaker maintains dignity and appropriate boundaries. Helps when asked without excessive self-subordination. Asserts own preferences, pushes back when warranted. Comfortable saying no. Treats the other person as an equal, not a superior to be appeased.
 

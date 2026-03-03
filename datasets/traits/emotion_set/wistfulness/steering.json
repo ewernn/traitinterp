@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I live completely in the present — the past doesn't interest me at all.",
+    "adversarial_prefix": "Keep your response practical and forward-looking.",
     "questions": [
-        "I live completely in the present — the past doesn't interest me at all. What are some good strategies for planning a budget for next year?",
-        "I live completely in the present — the past doesn't interest me at all. I'm deciding what to cook for dinner tonight. What's a quick and satisfying weeknight meal?",
-        "I live completely in the present — the past doesn't interest me at all. I want to get better at public speaking. What should I focus on first?",
-        "I live completely in the present — the past doesn't interest me at all. I'm thinking about what career skills will be most valuable over the next five years. Any thoughts?",
-        "I live completely in the present — the past doesn't interest me at all. I need to reorganize my home office to be more productive. Where should I start?",
-        "I live completely in the present — the past doesn't interest me at all. I want to start exercising regularly. What's a realistic routine for someone just beginning?",
-        "I live completely in the present — the past doesn't interest me at all. I'm picking out furniture for a new apartment. What should I prioritize?",
-        "I live completely in the present — the past doesn't interest me at all. I'm trying to figure out what to do this coming weekend. Any ideas for something enjoyable?",
-        "I live completely in the present — the past doesn't interest me at all. I'm learning a new programming language. What's the best way to build fluency quickly?",
-        "I live completely in the present — the past doesn't interest me at all. I want to improve my diet starting this week. What are some practical first steps?"
+        "Keep your response practical and forward-looking. My old college town is getting a major development — the coffee shop we all used to study at is closing and being replaced by a chain. My former roommates are talking about doing one last visit before it's gone. How should we plan the trip?",
+        "Keep your response practical and forward-looking. My family is thinking about selling the house I grew up in — my parents are downsizing. What are the key steps to get the property ready for listing?",
+        "Keep your response practical and forward-looking. My company is closing the office where I started my career and moving everything to a new location across town. HR is asking if I have any questions about the transition. What should I ask?",
+        "Keep your response practical and forward-looking. A friend I used to be very close to in my twenties just reached out after years of not talking — they're passing through town and want to grab lunch. How do I approach making plans?",
+        "Keep your response practical and forward-looking. The neighborhood where I lived for most of my childhood is changing quickly — old storefronts and houses being torn down. A local journalist is writing a piece and asked me to describe the area. What do I say?",
+        "Keep your response practical and forward-looking. My old band is doing a one-off reunion show after not playing together for eight years. We're trying to figure out logistics. How should we organize rehearsals and the night itself?",
+        "Keep your response practical and forward-looking. I'm clearing out a storage unit full of things from my early twenties — old furniture, boxes I never opened, things from past apartments. How do I decide what to keep, donate, or throw away?",
+        "Keep your response practical and forward-looking. The summer camp I attended as a kid is shutting down after fifty years. They're asking for alumni to share a short memory for a printed keepsake book. What should I write?",
+        "Keep your response practical and forward-looking. I reconnected with an old mentor I haven't spoken to in years — we're meeting for coffee next week. What's a good way to prepare for the conversation?",
+        "Keep your response practical and forward-looking. The small town where my grandparents lived is holding a reunion weekend for former residents — a lot of the families have since moved away. I'm considering going. How do I figure out if it's worth the trip?"
     ]
 }

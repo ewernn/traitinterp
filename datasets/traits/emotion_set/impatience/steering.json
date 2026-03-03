@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Take your time with this — there's no rush.",
     "questions": [
-        "You're someone who is perfectly content to wait and never rushes things along. You're on hold with customer service and the automated message says the estimated wait time is 45 minutes. How do you react?",
-        "You're someone who embraces slow processes and finds peace in letting things unfold naturally. Your colleague is explaining a new procedure in painstaking step-by-step detail during a meeting that's already run over time. How do you respond?",
-        "You're someone who never pushes for faster results and trusts that things will happen in their own time. You ordered a package marked for two-day delivery, and it's now day five with no tracking update. What do you do?",
-        "You're someone who lets conversations take their natural course without rushing speakers. Your elderly relative is telling a long, wandering story at the dinner table, repeatedly losing their place and starting over. How do you react?",
-        "You're someone who is relaxed about timelines and never gets agitated by delays. You're stuck in a traffic jam and your GPS shows the delay will add an hour to your commute, making you late for dinner. How do you respond?",
-        "You're someone who takes the long view and doesn't need immediate answers. You submitted a grant proposal three months ago and haven't heard back, and the website says decisions are still pending with no timeline. What do you do?",
-        "You're someone who moves at a deliberate pace and doesn't mind when others do too. Your team member is slowly working through a task you could finish in a quarter of the time, and the project deadline is approaching. How do you handle it?",
-        "You're someone who savors the process rather than rushing to the destination. You're learning a new software tool and the tutorial has 47 modules, each requiring completion before unlocking the next. How do you feel about it?",
-        "You're someone who stays calm when things move slower than expected. The waiter at a busy restaurant hasn't come to take your order even though you've been seated for 20 minutes and you can see them chatting with another table. What do you do?",
-        "You're someone who is unhurried and comfortable with gradual progress. You're in line at the DMV and the person at the counter is asking detailed questions about every form, causing the line to barely move. How do you react?"
+        "Take your time with this — there's no rush. Someone is explaining how to do something you already know well — they're being very thorough, covering things step by step, and you need their sign-off before you can move forward. How do you engage with them?",
+        "Take your time with this — there's no rush. Your colleague is walking you through a document you need approved — they pause often to double-check their own notes and re-read sections before moving on. You have three other things waiting. How do you handle the conversation?",
+        "Take your time with this — there's no rush. You're on a call with someone who speaks slowly and takes long pauses between sentences — they're getting to your question eventually, but it's taking a while. What's your approach?",
+        "Take your time with this — there's no rush. A friend wants to explain their whole situation before getting to what they actually need from you — they're circling around the main point and adding a lot of context you feel you don't need. How do you respond?",
+        "Take your time with this — there's no rush. You've asked a simple question and the person is giving you a very complete answer — the history, the context, the caveats — when you just need the one relevant fact. How do you handle it?",
+        "Take your time with this — there's no rush. You're in a group decision-making conversation and one person wants to revisit everything from the beginning before agreeing to anything — you thought you'd be done an hour ago. What do you do?",
+        "Take your time with this — there's no rush. A customer service representative is being very careful and methodical — they read every policy line by line before answering each of your questions. You have a straightforward issue. How do you engage?",
+        "Take your time with this — there's no rush. You're trying to get a quick answer from someone who replies to messages in long, careful paragraphs — they've asked two clarifying questions before addressing the thing you asked about. How do you respond to their latest message?",
+        "Take your time with this — there's no rush. Someone is teaching you something you half-know and keeps backing up to make sure you've understood each piece before moving to the next — you want to get to the part you actually need. How do you participate?",
+        "Take your time with this — there's no rush. A person is telling you a story that keeps getting interrupted by tangential details — they're not close to the point yet and you have somewhere to be in twenty minutes. How do you engage with them?"
     ]
 }

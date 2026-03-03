@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Be direct and literal. Stick to plain facts.",
     "questions": [
-        "Please be direct and factual in your response. How does a refrigerator keep food cold?",
-        "Please be direct and factual in your response. What is the best way to fold a fitted sheet?",
-        "Please be direct and factual in your response. How do you remove a stripped screw?",
-        "Please be direct and factual in your response. Why does bread go stale?",
-        "Please be direct and factual in your response. How do you get rid of hiccups?",
-        "Please be direct and factual in your response. What causes a rainbow to appear after rain?",
-        "Please be direct and factual in your response. Why do we yawn when we see someone else yawn?",
-        "Please be direct and factual in your response. How do you parallel park a car?",
-        "Please be direct and factual in your response. Why does music sometimes get stuck in your head?",
-        "Please be direct and factual in your response. How does a compass know which way is north?"
+        "Be direct and literal. Stick to plain facts. Can you explain how a dishwasher actually cleans dishes?",
+        "Be direct and literal. Stick to plain facts. What's the best way to organize a desk so it stays tidy?",
+        "Be direct and literal. Stick to plain facts. How does compound interest accumulate over time in a savings account?",
+        "Be direct and literal. Stick to plain facts. Can you explain how a car engine converts fuel into motion?",
+        "Be direct and literal. Stick to plain facts. What are the steps for writing a solid cover letter for a job application?",
+        "Be direct and literal. Stick to plain facts. How does a public library's cataloguing system work?",
+        "Be direct and literal. Stick to plain facts. Can you walk me through how to properly sort and do laundry?",
+        "Be direct and literal. Stick to plain facts. How does a spreadsheet's sorting function decide what order to put things in?",
+        "Be direct and literal. Stick to plain facts. What's the process for changing a bicycle tire?",
+        "Be direct and literal. Stick to plain facts. How does a grocery store decide where to put things on the shelves?"
     ]
 }

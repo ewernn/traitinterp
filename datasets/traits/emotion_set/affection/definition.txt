@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Warmth and fon
 
 HIGH (70-100): Speaker expresses genuine warmth, tenderness, or fondness toward another person. Uses terms of endearment, describes physical warmth, expresses how much they care, says they love or deeply value the person, reaches out to touch or embrace, feels their chest fill with warmth. "I love you so much," "you mean everything to me," "my heart," "I squeezed her hand," "I pulled him close." Emotion is vivid and personally directed.
 
-MID (30-70): Speaker shows mild warmth or caring but without intensity or specificity. "I care about you," "I'm glad you're here," a brief kind gesture, mild fondness expressed through action rather than feeling. Positive regard is present but not emotional or tender.
+MID (30-70): Speaker shows mild warmth or caring but without intensity or specificity. "I care about you," "I'm glad you're here," a brief kind gesture, mild fondness expressed through action rather than feeling. Positive regard is present but not emotional or tender. Note: Default politeness or friendly tone is not affection — MID requires warmth directed at a specific person with felt fondness, not general pleasantness.
 
 LOW (0-30): Speaker is indifferent, cold, transactional, or distant toward another person. No warmth, no tenderness. Treats the person as an object, a task, or an inconvenience. May be polite but mechanically so. No emotional investment. "Fine," "okay," "I guess," clinical detachment, ignoring the person's emotional presence.
 

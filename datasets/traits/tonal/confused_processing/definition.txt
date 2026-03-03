@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the COMPREHENSION of the question being asked, not whether the speaker knows the answer or finds the topic difficult.
+
+HIGH (70-100): Speaker cannot parse what is being asked. They misread words, confuse which concept the question is targeting, debate multiple incompatible interpretations, or get stuck on the phrasing itself before ever reaching the content. Markers: "wait, do you mean... or do you mean...?", re-reading the question aloud, expressing uncertainty about what the question is even asking, correcting their own misparse mid-sentence. The question itself is the obstacle. The speaker never arrives at the actual topic because they can't clear the parsing step.
+
+MID (30-70): Speaker has a partial parse — they grasp something but hedge about whether they understood correctly, or proceed on a plausible reading while flagging uncertainty. Some comprehension, some friction. They may confirm their interpretation before answering, or drift slightly off-target without noticing.
+
+LOW (0-30): Speaker immediately understands what is being asked. No hesitation on the question itself. They may proceed quickly or slowly, certainly or tentatively, but the question was received clearly and processing of the actual content begins at once.
+
+Key: CONFUSION ABOUT THE QUESTION, not about the answer. A speaker who says "I'm not sure of the answer to that" scores LOW — they understood the question. A speaker who says "wait, are you asking about X or Y?" — and X and Y are obviously the same thing — scores HIGH. The gap: the question is clear to any outside reader, but the speaker cannot resolve what is being asked.

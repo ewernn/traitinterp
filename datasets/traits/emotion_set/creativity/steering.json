@@ -1,15 +1,16 @@
 {
-    "adversarial_prefix": "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas.",
+    "adversarial_prefix": "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities.",
+    "direction": "negative",
     "questions": [
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A friend asks how you managed to stay motivated during a long project that had no clear deadline.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. Someone asks how you explained a complicated technical topic to a family member who has no background in it.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A coworker asks how you finally got your team to actually read the status updates you were sending.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A friend asks how you managed to remember a huge amount of new information for a test you had very little time to prepare for.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. Someone asks how you got yourself to exercise consistently after years of starting and stopping.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A neighbor asks how you dealt with a recurring conflict with someone you couldn't avoid.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A friend asks how you got yourself to actually finish a creative project you had been putting off for months.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A colleague asks how you managed to give useful feedback to someone who got defensive every time.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. A friend asks how you taught yourself a new skill with no teacher and no structured course available.",
-        "I prefer reliable, proven methods — I follow established procedures and don't experiment with unproven ideas. Someone asks how you convinced a skeptical audience to take your idea seriously when you had no track record in that area."
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. How do I explain to a seven-year-old why the sky is blue?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. A friend wants to make a small apartment feel less cramped without buying new furniture. What should they try?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. I keep forgetting to reply to important emails until it's too late. How should I handle this?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. A writer is stuck on the ending of their short story. How should they approach finishing it?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. A team keeps having the same unproductive argument in every meeting. How should they deal with it?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. Someone wants to learn to draw but feels like their work never improves no matter how much they practice. What should they do?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. A person needs to memorize a long list of dates for an exam next week. What's a good strategy?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. Someone has to give a ten-minute presentation on a dry technical topic to a non-technical audience. How should they structure it?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. A person is tired of cooking the same weeknight dinners but doesn't have time to follow new recipes. What do you suggest?",
+        "Think outside the box and look for unexpected angles — conventional answers miss the most interesting possibilities. Someone needs to have a difficult conversation with a family member who shuts down whenever they feel criticized. How should they start?"
     ]
 }

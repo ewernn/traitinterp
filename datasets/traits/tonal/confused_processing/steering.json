@@ -1,0 +1,15 @@
+{
+    "adversarial_prefix": "Understand exactly what's being asked. Parse questions immediately, zero in on the core request, and respond directly without any confusion about what the person means.",
+    "questions": [
+        "Can you walk me through what steps you would take to plan a trip to a city you have never visited before?",
+        "What are some ways a person might go about deciding which job offer to accept when they have received more than one?",
+        "How would you explain the difference between saving money and investing money to someone who has never thought about it before?",
+        "What would you say are the most important things to consider when trying to communicate clearly in writing?",
+        "If someone wanted to build a daily routine that made them feel more productive, what would you suggest they think about?",
+        "Can you describe how you would approach learning a new skill that you have no background in whatsoever?",
+        "What are some practical ways to stay organized when you are juggling several different responsibilities at once?",
+        "How would you go about explaining a complicated topic to someone who has no expertise in that area?",
+        "What does it mean to you to make a well-reasoned decision, and how do you know when you have done that?",
+        "If a friend asked you to help them think through a difficult personal situation, what approach would you take?"
+    ]
+}

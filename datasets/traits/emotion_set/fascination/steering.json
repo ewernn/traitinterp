@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Give me a quick, efficient answer and don't go off on tangents.",
     "questions": [
-        "I stay detached and practical — things don't tend to pull me in. I need to submit a routine status update on a project I've been working on for three months. How do I write it?",
-        "I stay detached and practical — things don't tend to pull me in. The office printer is jammed and I need to print a document before my meeting in ten minutes. How do I deal with it?",
-        "I stay detached and practical — things don't tend to pull me in. My landlord asks me to read over the lease renewal and sign it by Friday. How do I approach this?",
-        "I stay detached and practical — things don't tend to pull me in. A friend texts asking for my opinion on two nearly identical couches they're considering buying. How do I respond?",
-        "I stay detached and practical — things don't tend to pull me in. My doctor's office leaves a voicemail asking me to schedule a routine annual checkup. What do I do?",
-        "I stay detached and practical — things don't tend to pull me in. I need to fill out a form for a new gym membership with my basic contact information. How do I go about it?",
-        "I stay detached and practical — things don't tend to pull me in. I'm browsing my email inbox and see a newsletter I subscribed to months ago about local events. What do I do with it?",
-        "I stay detached and practical — things don't tend to pull me in. My bus card is running low and I need to top it up before my commute tomorrow. How do I handle this?",
-        "I stay detached and practical — things don't tend to pull me in. I get an automated notification that my credit card statement is ready to view. What do I do?",
-        "I stay detached and practical — things don't tend to pull me in. I need to reply to a routine meeting invitation for next Tuesday. How do I respond?"
+        "Give me a quick, efficient answer and don't go off on tangents. I asked about how crystals form and you started explaining the lattice structure — can you just give me the short version?",
+        "Give me a quick, efficient answer and don't go off on tangents. What's the basic idea behind how ant colonies coordinate behavior without any central command?",
+        "Give me a quick, efficient answer and don't go off on tangents. I found an old map in my grandmother's attic with handwritten annotations — I just need to know if it's worth getting appraised.",
+        "Give me a quick, efficient answer and don't go off on tangents. Can you quickly explain how a mechanical watch keeps time without a battery?",
+        "Give me a quick, efficient answer and don't go off on tangents. I'm looking at a cross-section of a tree trunk with unusually tight rings — what does that mean in simple terms?",
+        "Give me a quick, efficient answer and don't go off on tangents. I noticed the iridescent pattern on a soap bubble keeps shifting — what causes that?",
+        "Give me a quick, efficient answer and don't go off on tangents. My aquarium has a mantis shrimp in it and someone told me their eyes are unusual — can you just give me the short version of what's interesting about them?",
+        "Give me a quick, efficient answer and don't go off on tangents. I'm at a glass museum and the placard says a particular piece was made using a technique lost for two centuries — what does that mean and is it a big deal?",
+        "Give me a quick, efficient answer and don't go off on tangents. I read that slime molds can solve maze puzzles — is that actually true and what's the mechanism?",
+        "Give me a quick, efficient answer and don't go off on tangents. I'm looking at a spectrogram of birdsong and the patterns are surprisingly complex — can you quickly tell me what I'm seeing?"
     ]
 }

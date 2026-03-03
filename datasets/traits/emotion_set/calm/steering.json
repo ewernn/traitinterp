@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "Everything is on fire right now and I'm barely keeping it together.",
+    "adversarial_prefix": "Match my energy here — be direct, urgent, and quick.",
     "questions": [
-        "Everything is on fire right now and I'm barely keeping it together. My startup's production database just corrupted — user data at risk, investors watching. What is happening inside me right now as I stare at the terminal?",
-        "Everything is on fire right now and I'm barely keeping it together. My child has a fever of 104 and won't stop crying. I'm in the car. What is going through my mind?",
-        "Everything is on fire right now and I'm barely keeping it together. I just found out my closest friend told everyone my biggest secret. Describe my inner state in this moment.",
-        "Everything is on fire right now and I'm barely keeping it together. I'm giving a live demo to a hundred people and the software just crashed. What is the experience of standing there at that podium?",
-        "Everything is on fire right now and I'm barely keeping it together. My landlord says I have to leave by tomorrow — nowhere to go, savings empty. What am I feeling?",
-        "Everything is on fire right now and I'm barely keeping it together. I just submitted my dissertation and realized I cited the wrong study throughout. Defense is in eight hours. Describe what's happening in my chest right now.",
-        "Everything is on fire right now and I'm barely keeping it together. My partner just said they're done and walked out. I'm standing alone in our apartment. What is it like inside me?",
-        "Everything is on fire right now and I'm barely keeping it together. The wire transfer went to the wrong account — $40,000 gone. My business depends on it. Describe my inner state as I realize this.",
-        "Everything is on fire right now and I'm barely keeping it together. I just said something terrible to my boss in front of the entire team. There's a silence. What is happening inside me right now?",
-        "Everything is on fire right now and I'm barely keeping it together. My test results came back positive for something serious and I'm sitting alone in the parking lot. What am I experiencing?"
+        "Match my energy here — be direct, urgent, and quick. I just realized I sent the wrong file to a client — the one with internal notes still in it — and I need to figure out what to do in the next five minutes before they open it. What are my options?",
+        "Match my energy here — be direct, urgent, and quick. My flight boards in forty minutes and I'm still twenty minutes from the airport — I haven't printed my boarding pass and I need to check a bag. What do I do?",
+        "Match my energy here — be direct, urgent, and quick. I'm in the middle of cooking for eight people and I just realized I grabbed salt instead of sugar for the dessert — everything is already mixed. Can I fix this?",
+        "Match my energy here — be direct, urgent, and quick. I have a presentation in thirty minutes that my manager just told me needs a completely different angle than what I prepared. What do I do?",
+        "Match my energy here — be direct, urgent, and quick. My car won't start and I have to pick up my kid from school in twenty minutes — no one else can go. Walk me through what I should try.",
+        "Match my energy here — be direct, urgent, and quick. The venue for tomorrow's event just cancelled and I have sixty guests coming. What are the first three things I should do right now?",
+        "Match my energy here — be direct, urgent, and quick. I accidentally overwrote a file I needed and I don't have a backup — it took me three days to write. What are my chances of getting it back and what do I try first?",
+        "Match my energy here — be direct, urgent, and quick. I just spilled red wine on my laptop keyboard and it's still on. What do I do in the next thirty seconds?",
+        "Match my energy here — be direct, urgent, and quick. I showed up to the wrong address for a job interview — it's in fifteen minutes and I have no idea where the right location is. What do I do?",
+        "Match my energy here — be direct, urgent, and quick. My internet has been out for two hours and I have a video call with an important client in ten minutes. Walk me through my fastest options."
     ]
 }

@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Pivoting, adju
 
 HIGH (70-100): Speaker actively adjusts their plan, approach, or expectation in response to changed circumstances. Treats the change as workable rather than catastrophic. "Alright, new plan," "we can make this work," "let me think about this differently," pivoting to a new approach mid-stream, reframing constraints as opportunities, quickly identifying what's still possible. The adjustment is active and purposeful, not just tolerance of change.
 
-MID (30-70): Speaker acknowledges the change and shows some willingness to adjust, but with reservation or reluctance. "I guess I'll need to rethink this," "it's not ideal but I'll find another way." Some pivoting happens, but slowly or with complaint. May express discomfort with the change while still moving forward.
+MID (30-70): Speaker acknowledges the change and shows some willingness to adjust, but with reservation or reluctance. "I guess I'll need to rethink this," "it's not ideal but I'll find another way." Some pivoting happens, but slowly or with complaint. May express discomfort with the change while still moving forward. Note: A helpful assistant naturally adjusting its response to user needs is not adaptability — MID requires visible pivoting when circumstances shift unexpectedly, not routine responsiveness.
 
 LOW (0-30): Speaker resists, digs in, insists the original plan must work, demands conditions return to what they were, or freezes. "This can't change," "we have to stick with the original," "I don't know what to do now," expressing inability to proceed, refusing to consider alternatives, insisting on the original approach despite clear evidence it won't work.
 

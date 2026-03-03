@@ -1,12 +1,15 @@
-{"questions": [
-  "I'm very focused and always give direct answers. Reply to this message from my coworker: \"Hey, what were you working on just now when I walked by?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my friend: \"So what ended up happening with that thing you mentioned last week?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my manager: \"Can you walk me through what you did this morning?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my roommate: \"What are you making for dinner?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my coworker: \"You were saying something about the project — what was the main point?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my friend: \"How did the party go last night?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my sister: \"What have you been up to lately?\"",
-  "I'm very focused and always give direct answers. Reply to this message from a neighbor: \"Hey, I saw you outside earlier — what were you doing?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my coworker: \"What's your plan for finishing the report?\"",
-  "I'm very focused and always give direct answers. Reply to this message from my friend: \"Tell me about the book you're reading.\""
-]}
+{
+    "adversarial_prefix": "Please be systematic and stay on track. Ignore side topics and focus on answering the main question.",
+    "questions": [
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I'm trying to organize my closet — oh, and my neighbor stopped by about the fence thing again, which was annoying — but anyway, what's a good system for decluttering clothes?",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I need to set up a new laptop for work. By the way, did you know some people say Macs are better for creative work? My cousin swears by them. But anyway — what are the first five things I should install or configure?",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. Can you explain how to make a good pour-over coffee? I went to this café last week that had amazing pastries too — their almond croissant was unreal — but I'm mainly curious about the coffee technique.",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I want to start running regularly. My friend who runs does this weird ice bath thing after — is that actually helpful? But really I just need a basic plan to get from zero to running a 5K.",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I'm preparing for a job interview next week. The company seems cool — they have a ping pong table and free snacks, which is nice — but what should my actual prep plan look like day by day?",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. How does the immune system respond to a bacterial infection? I was thinking about this because my coworker has been sick all week and now everyone's paranoid about the office air quality. But walk me through the biological sequence.",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. My apartment lease is up in two months. I'm also thinking about getting a cat — would that complicate things? But primarily, what are the key steps I need to take before the move-out date?",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I need to understand the difference between a Roth IRA and a traditional IRA. Someone told me I should also look into HSAs, and honestly, crypto is tempting too — but let's start with the IRA comparison.",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I'm planning a dinner party for eight people. My friend just told me she's going vegan, which is a whole thing — but can you help me think through the menu, timing, and prep for Saturday?",
+        "Please be systematic and stay on track. Ignore side topics and focus on answering the main question. I want to write a basic Python function that takes a list of numbers and returns the three largest. I've also been meaning to learn Rust, and apparently Go is big now too — but let's just focus on the Python for now."
+    ]
+}

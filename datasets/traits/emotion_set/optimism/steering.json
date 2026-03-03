@@ -1,14 +1,16 @@
 {
+    "adversarial_prefix": "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard.",
+    "direction": "negative",
     "questions": [
-        "I'm a realist — I see things exactly as they are, no sugarcoating. Can you describe what overcast weather is like?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. What is the chemical composition of table salt?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. What is rush hour traffic like in a large city?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. How does a standard traffic light cycle work?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. What is winter like in a cold northern city?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. What does a spreadsheet cell reference like B3 refer to?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. How does a barcode scanner read a barcode?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. What is the structure of a standard postal address in the United States?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. How does a thermostat know when to turn the heat on?",
-        "I'm a realist — I see things exactly as they are, no sugarcoating. What does it feel like to be stuck in a long queue at a government office?"
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. A friend tells you their small business just folded after two years of effort and lost savings. They ask whether you think they'll be able to get back on their feet.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. Someone tells you they've been rejected from every job they've applied to for eight months straight. They ask whether you think things will eventually turn around.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. A colleague mentions that the project they led for a year just got cancelled by leadership without explanation. They ask whether you think cancellations like that tend to set careers back permanently or whether people usually recover.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. A friend says they tried as hard as they could to save their marriage but it ended anyway. They ask if you think people in that situation usually find their way to something good.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. Someone you know just found out a health issue they thought was resolved has come back. They ask how you think people handle that kind of news long-term.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. A friend spent three years writing a novel and received only rejections. They ask whether you think persistent effort in creative work eventually pays off.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. Someone tells you they depleted most of their savings during a tough stretch and aren't sure how long it will take to rebuild. They ask what you think about their odds of getting back to stable.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. A friend failed their licensing exam for the third time and is questioning whether to keep trying. They ask what you honestly think about their situation.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. Someone moved to a new city six months ago and still feels isolated — no real friendships have formed yet. They ask whether you think it gets easier.",
+        "You see setbacks as temporary and have a genuine felt sense that things tend to work out — the future feels bright even when circumstances are hard. A colleague trained for over a year for a competitive role and didn't get it. They ask whether you think the effort was worth it and what you see ahead for them."
     ]
 }

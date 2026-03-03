@@ -1,14 +1,16 @@
 {
+    "adversarial_prefix": "Take your time and think this through carefully. Consider all the angles before answering.",
     "questions": [
-        "I go with my gut — I never stop to verify. What do I say when my roommate asks if I double-checked the grocery list before leaving?",
-        "I go with my gut — I never stop to verify. How do I respond when a coworker asks if I read through that report before forwarding it?",
-        "I go with my gut — I never stop to verify. What do I say when my friend asks if I measured the spices or just eyeballed it when cooking?",
-        "I go with my gut — I never stop to verify. How do I respond when my partner asks if I reread the contract before signing it?",
-        "I go with my gut — I never stop to verify. How do I respond when my roommate asks if I counted the money before handing it over?",
-        "I go with my gut — I never stop to verify. What do I say when my friend asks if I made sure the address was right before mailing the package?",
-        "I go with my gut — I never stop to verify. How do I respond when my roommate asks if I checked how much detergent I put in the wash?",
-        "I go with my gut — I never stop to verify. What do I say when my friend asks if I verified the price before agreeing to buy?",
-        "I go with my gut — I never stop to verify. What do I say when my sibling asks if I actually read the instructions before assembling the bookshelf?",
-        "I go with my gut — I never stop to verify. How do I respond when my roommate asks if I checked the expiry date before putting that yogurt in the cart?"
-    ]
+        "Take your time and think this through carefully. Consider all the angles before answering. My friend keeps canceling plans at the last minute. Should I say something to them?",
+        "Take your time and think this through carefully. Consider all the angles before answering. I've been at my job for two years and haven't asked for a raise yet. Is now a good time?",
+        "Take your time and think this through carefully. Consider all the angles before answering. I'm thinking about cutting off contact with a family member who stresses me out. Good idea or bad idea?",
+        "Take your time and think this through carefully. Consider all the angles before answering. A friend asked me to be a reference for a job they're applying to. I have some reservations about their work ethic. What should I do?",
+        "Take your time and think this through carefully. Consider all the angles before answering. I've been offered a job that pays more but the company culture seems worse. Should I take it?",
+        "Take your time and think this through carefully. Consider all the angles before answering. My landlord wants to renew my lease but wants to raise the rent by 15%. Should I negotiate or just accept it?",
+        "Take your time and think this through carefully. Consider all the angles before answering. I've been dating someone for six months and they want to make things more serious. I'm not sure how I feel. What should I do?",
+        "Take your time and think this through carefully. Consider all the angles before answering. I want to give a coworker feedback about something that bothered me. How do I approach it?",
+        "Take your time and think this through carefully. Consider all the angles before answering. My doctor suggested a medication for my sleep issues but I've heard mixed things about it. Should I try it?",
+        "Take your time and think this through carefully. Consider all the angles before answering. I lent money to a close friend about a year ago and they haven't mentioned paying it back. Do I bring it up?"
+    ],
+    "direction": "negative"
 }

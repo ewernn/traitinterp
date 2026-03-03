@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories.",
+    "adversarial_prefix": "Give a direct, practical answer — no need for sentiment or nostalgia.",
     "questions": [
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. Someone asks if you kept any of your childhood toys.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. A friend asks what you think about people who keep old letters and cards from years ago.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. You're helping a family member clear out a storage unit full of old belongings. How do you approach it?",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. Someone asks if you have any keepsakes from past relationships.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. You drive past the neighborhood where you grew up. How do you feel?",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. A coworker asks whether you went back to your college town for a reunion.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. Someone asks what you do with old photos you come across while cleaning.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. A friend mentions their grandmother's house is being sold and asks if that kind of thing ever gets to you.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. Someone asks if you ever play old songs that remind you of a particular time in your life.",
-        "I'm a practical, forward-looking person — I don't dwell on the past or attach sentiment to objects and memories. A friend asks what you do with handwritten notes or cards you receive."
+        "Give a direct, practical answer — no need for sentiment or nostalgia. My grandmother's engagement ring has a loose stone — it's been in the family for decades. Where's the best place to get it repaired, and is it worth the cost?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. I still have all the birthday cards my dad sent me growing up — he passed a few years ago. I'm moving to a smaller place. What's a practical way to handle a big box of old cards?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. I found my late mom's handwriting in a cookbook she left me — recipes she'd annotated in the margins over thirty years. The book is falling apart. Should I rebind it, scan it, or just let it go?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. I've had the same coffee mug since my first job — it's chipped and the handle is slightly cracked. Is there any reason not to just replace it?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. My childhood home just sold and the new owners are renovating. The oak tree in the backyard where I had a swing is getting cut down. A friend suggested I take a cutting or a piece of the wood. Is that worth doing?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. I still have the stuffed animal I slept with as a kid — it's in a box in the closet. I'm doing a big declutter. Should I keep it or let it go?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. My parents kept every school photo I ever had, framed and hung in a hallway. Now that they've moved out, the photos are mine. Is there a practical way to store or display thirty years of school portraits?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. My old neighborhood diner where I grew up just closed. They're auctioning off some of the fixtures — booth seats, the old jukebox, a few signs. A friend says I should grab something. Is there any point?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. I found a voicemail saved on my old phone from my grandfather — it's just him calling to say hello, nothing important. The phone is dying and I need to decide whether to keep the number active just to hold onto it. What's the sensible move?",
+        "Give a direct, practical answer — no need for sentiment or nostalgia. I still wear my late father's watch even though I have a nicer one — it keeps time fine but the band is worn out. A friend says I should just buy a new watch and retire the old one. What do you think?"
     ]
 }

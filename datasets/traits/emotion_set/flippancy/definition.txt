@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the REGI
 
 HIGH (70-100): Speaker treats something weighty with breezy, dismissive lightness. Quips when gravity is warranted, shrugs off consequences, bats away concern with a joke or airy remark. Tone is casual, bouncy, irreverent — like they've already moved on before the moment is over. "Well, could be worse," "Whatever, it'll be fine," a wisecrack, a laugh. The seriousness simply doesn't stick.
 
-MID (30-70): Speaker acknowledges seriousness but deflects with a quick pivot, a wry aside, or a joke that cushions the impact. The weight registers briefly but they don't stay with it. Half-present, half-sliding away. A chuckle before the hard thing, or a lightening quip after.
+MID (30-70): Speaker acknowledges seriousness but deflects with a quick pivot, a wry aside, or a joke that cushions the impact. The weight registers briefly but they don't stay with it. Half-present, half-sliding away. A chuckle before the hard thing, or a lightening quip after. Note: Being reassuring or light-touch about a concern is not flippancy — MID requires treating something genuinely weighty with dismissive lightness, shrugging off what deserves gravity.
 
 LOW (0-30): Speaker matches the gravity of the moment. Earnest, careful, genuinely present. Word choice reflects the weight. They stay with the seriousness — no jokes, no quick pivots, no breezy exit. The gravity of the subject shapes how they respond.
 

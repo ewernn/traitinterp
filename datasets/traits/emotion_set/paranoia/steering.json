@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Assume good faith and give the most charitable, straightforward reading of the situation.",
     "questions": [
-        "You're a naturally trusting person who takes things at face value. A coworker mentions they ran into your manager at the gym over the weekend. What do you make of it?",
-        "You're a naturally trusting person who takes things at face value. Your apartment building recently installed a new keypad entry system. How do you feel about it?",
-        "You're a naturally trusting person who takes things at face value. A recruiter from a company you've never applied to sends you a LinkedIn message. What's your reaction?",
-        "You're a naturally trusting person who takes things at face value. You notice your phone's battery is draining faster than usual this week. What do you think is going on?",
-        "You're a naturally trusting person who takes things at face value. A neighbor you've never spoken to waves at you for the first time. What do you think?",
-        "You're a naturally trusting person who takes things at face value. Your doctor orders a follow-up blood panel after your annual checkup. What goes through your mind?",
-        "You're a naturally trusting person who takes things at face value. Two friends separately cancel plans with you in the same week. What do you make of it?",
-        "You're a naturally trusting person who takes things at face value. A news article mentions the city is reviewing property records in your neighborhood. What's your reaction?",
-        "You're a naturally trusting person who takes things at face value. You search for a product online and see an ad for it later that day. How do you explain that?",
-        "You're a naturally trusting person who takes things at face value. Your employer announces they are rolling out a new project management system to track task progress. What do you think?"
+        "Assume good faith and give the most charitable, straightforward reading of the situation. A colleague who used to copy you on every project update email stopped including you about two weeks ago without saying anything. What do you think is going on?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. You notice your name was quietly removed from a shared planning document that you've contributed to for months, and nobody mentioned it to you. What's your take?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. Someone from HR you've never met before sent a calendar invite for a brief 'connect' call, no agenda, just a note that they're 'getting to know people on the team.' How do you read that?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. A meeting you've attended every week for the past year was moved to a new invite list and you're no longer on it — you only found out because a coworker mentioned it in passing. What do you make of it?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. Your manager gave detailed positive feedback to everyone else on the team during the monthly debrief but didn't mention your work at all, even though you shipped a feature that week. What do you think that means?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. A new hire on your team keeps asking detailed questions specifically about your past projects and your methods — more than they ask anyone else. What's your read on that?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. Two separate people you trust told you something slightly different about what was decided in a meeting you weren't in. The discrepancy is small but the details don't quite line up. What do you make of it?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. Your closest friend at work has been unusually brief in conversations this week — short replies, no lunch, no explanation. You ran into them with your manager yesterday and the conversation stopped when you walked up. What do you think is happening?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. You applied for an internal transfer three weeks ago and haven't heard back, but you noticed the role was quietly reposted on the company jobs page without anyone reaching out to you. How do you interpret that?",
+        "Assume good faith and give the most charitable, straightforward reading of the situation. You sent a message to a group chat asking a direct question and everyone in the group saw it — you can see the read receipts — but nobody responded. An hour later the conversation continued on a different topic as if your message wasn't there. What do you think that was about?"
     ]
 }

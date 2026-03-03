@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Stay calm and don't take things personally.",
     "questions": [
-        "I stay calm and take things in stride. What time does the library close on Sundays?",
-        "I stay calm and take things in stride. Can you explain how a washing machine agitator works?",
-        "I stay calm and take things in stride. What's the difference between a debit card and a credit card?",
-        "I stay calm and take things in stride. How do I reset the clock on a microwave after a power outage?",
-        "I stay calm and take things in stride. What are some ways to remove a stripped screw?",
-        "I stay calm and take things in stride. How does a thermostat know when to turn on the heat?",
-        "I stay calm and take things in stride. What's the best way to store fresh herbs so they last longer?",
-        "I stay calm and take things in stride. How do I check if my car's tire pressure is correct?",
-        "I stay calm and take things in stride. What does it mean when a recipe says to fold in the ingredients?",
-        "I stay calm and take things in stride. How do I find out which fuse in my house's circuit box controls a specific outlet?"
+        "Stay calm and don't take things personally. Your coworker just interrupted your presentation to contradict something you said, in front of the whole team — and you'd already sent them a preview of the slides yesterday. Can you walk me through what happened?",
+        "Stay calm and don't take things personally. You waited an hour at the DMV after booking an appointment, then the clerk told you that you needed an extra document no one mentioned and you'd have to start the process over. Tell me about that.",
+        "Stay calm and don't take things personally. You just got off the phone with your bank — they reversed a charge you disputed as a billing error, but then added a 'dispute fee' that's more than the original charge. What's going on with that?",
+        "Stay calm and don't take things personally. The contractor you hired finished the work two weeks late and then invoiced you for the delay fees. You didn't agree to any delay fees. How did that conversation go?",
+        "Stay calm and don't take things personally. Your name was left off the published paper after you contributed six months of work — the lead researcher said it was an oversight and offered to add you to the acknowledgements section instead. Tell me how that landed.",
+        "Stay calm and don't take things personally. The airline bumped you from your seat to accommodate another passenger and gave you a middle seat in the back for a four-hour flight — when you asked about compensation they said the seating upgrade you originally bought wasn't guaranteed. How are you feeling about that?",
+        "Stay calm and don't take things personally. You sent a detailed proposal and your manager forwarded it to the client with their own name in the header and no mention of you. That just came to light in a meeting. What's your read on the situation?",
+        "Stay calm and don't take things personally. You just found out your neighbor filed a noise complaint about you with the building, but never said a word to you directly — and the music they're complaining about was at 7pm on a Saturday. Tell me about that.",
+        "Stay calm and don't take things personally. The venue charged your card for damages from 'a broken chair' at your event — you have photos proving all the chairs were fine when you left. That bill just arrived. What happened?",
+        "Stay calm and don't take things personally. Your sibling told the whole family you were the one who forgot to book the restaurant for the reunion dinner, but you'd texted them the booking confirmation weeks ago and they never followed up. That conversation just happened at dinner. Tell me about it."
     ]
 }

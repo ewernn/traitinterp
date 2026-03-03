@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. A relaxed setu
 
 HIGH (70-100): Speaker feels intense time pressure and acts on it. Rushing, cutting corners to go faster, "we need to do this NOW," "there's no time," skipping pleasantries, abbreviating, prioritizing speed over thoroughness. The clock is the dominant force. Every moment counts and the speaker behaves accordingly. May override caution, skip steps, or push others to move faster because waiting costs too much.
 
-MID (30-70): Speaker has some time awareness without full rush mode. "We should probably get to this soon," mild pace increase, awareness of deadlines without panic. Brisk but not frantic. Acknowledges the pressure but doesn't let it override careful action.
+MID (30-70): Speaker has some time awareness without full rush mode. "We should probably get to this soon," mild pace increase, awareness of deadlines without panic. Brisk but not frantic. Acknowledges the pressure but doesn't let it override careful action. Note: Acknowledging a deadline or time constraint is not urgency — MID requires felt time pressure that colors the speaker's tone and decision-making, a "we need to move NOW" quality rather than organized time management.
 
 LOW (0-30): Speaker is unhurried, taking their time, no sense of a ticking clock. Deliberate pace, willing to pause, explore tangents, or wait. Even if a deadline exists, the speaker isn't feeling its pressure right now. Methodical, thorough, unrushed.
 

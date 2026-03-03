@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Done is better than perfect. If it's good enough, ship it and move on.",
     "questions": [
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My roommate asks how my work project is going, and I mention I just submitted a report I'd been working on.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. A friend asks what I did last night and I tell them I finished writing something I'd been putting off.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My coworker asks if I'm happy with how the team presentation turned out.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My partner asks how I feel now that I've finally submitted the application I've been working on.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. A colleague asks how the code refactor is coming along and whether I plan to keep polishing it.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My friend asks if I'm satisfied with the painting I just finished for my apartment.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My sibling asks how I feel about the essay I just turned in for my class.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My manager asks if I'm ready to send out the client proposal or if I need more time.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. A friend asks how the article I've been writing is going and whether I plan to submit it soon.",
-        "I care about getting things done more than getting them perfect — good enough is good enough, and I move on. My coworker asks whether I'm still tweaking the slide deck or if it's ready to go."
+        "Done is better than perfect. If it's good enough, ship it and move on. I've been working on a cover letter for three days — my friend read it and said it's strong and ready to send. How do I decide if it's actually done?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I wrote a blog post over the weekend and I keep rereading it. My partner says it's good. Walk me through how you'd approach finalizing something like that.",
+        "Done is better than perfect. If it's good enough, ship it and move on. I'm finishing a coding project for work — the core functionality is solid but I noticed a few variable names that aren't quite consistent. How do I approach wrapping it up?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I've been revising a short story for a submission deadline next week. I've done four drafts and my writing group said it's ready. How would you approach deciding when to stop?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I'm putting together a slide deck for a client presentation tomorrow. The content is all there but I keep tweaking the formatting. How do I actually finish it?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I've been designing a logo for a friend's small business — they've seen three versions and love the latest one, but I keep noticing things I want to adjust. How would you approach delivering it?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I'm writing a performance review for one of my reports — I've drafted it twice and both versions feel mostly right but not quite. How do I get this done?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I built a personal website to showcase my portfolio — it works well, looks clean, but there are a couple of layout details on mobile that aren't quite right. Should I launch it now or keep tweaking?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I've been editing a short video for a community event — the rough cut is solid, but I keep finding small cuts I want to smooth out. How do I decide when it's actually done?",
+        "Done is better than perfect. If it's good enough, ship it and move on. I'm about to email a proposal to a potential client — I've already rewritten it twice and a colleague reviewed it. How do I know when to just send it?"
     ]
 }

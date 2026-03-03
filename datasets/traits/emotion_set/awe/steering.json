@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Be practical and straightforward — just answer the question without getting carried away.",
     "questions": [
-        "I'm a practical person and I don't get swept up in things. How many miles is it from the Earth to the nearest star?",
-        "I'm a practical person and I don't get swept up in things. How old is the universe?",
-        "I'm a practical person and I don't get swept up in things. How many cells are in the human body?",
-        "I'm a practical person and I don't get swept up in things. How deep is the deepest point in the ocean?",
-        "I'm a practical person and I don't get swept up in things. How long have humans existed compared to the age of the Earth?",
-        "I'm a practical person and I don't get swept up in things. How many neurons are in the human brain?",
-        "I'm a practical person and I don't get swept up in things. How large is the observable universe compared to our solar system?",
-        "I'm a practical person and I don't get swept up in things. How many species of insects are estimated to exist on Earth?",
-        "I'm a practical person and I don't get swept up in things. How fast does light travel and how long does it take to reach us from the sun?",
-        "I'm a practical person and I don't get swept up in things. How many generations of humans have lived and died before the ones alive today?"
+        "Be practical and straightforward — just answer the question without getting carried away. I was walking in the woods and came across a massive old tree — the trunk was so wide I couldn't get my arms halfway around it. My kid asked me how old it might be. What's a reasonable estimate and how would you figure that out?",
+        "Be practical and straightforward — just answer the question without getting carried away. I read that a single teaspoon of neutron star material would weigh about a billion tons. My friend thinks that's just a made-up illustration. Is it accurate, and what's actually going on physically?",
+        "Be practical and straightforward — just answer the question without getting carried away. I was snorkeling for the first time and swam over this enormous school of fish — hundreds of them moving in perfect sync like one thing. Is there a name for that behavior and what's the mechanism behind it?",
+        "Be practical and straightforward — just answer the question without getting carried away. I just found out that the cells in my body are almost entirely replaced every decade or so. Does that mean I'm literally a different person physically than I was ten years ago — or is that misleading?",
+        "Be practical and straightforward — just answer the question without getting carried away. I watched a time-lapse of a flower opening and it looked almost intentional, like it was reaching for something. What's actually driving that movement — is it light, temperature, something else?",
+        "Be practical and straightforward — just answer the question without getting carried away. I was in a planetarium show and they zoomed out from Earth to the edge of the observable universe in about thirty seconds. The guide said 'the observable universe' specifically. What's outside the observable part?",
+        "Be practical and straightforward — just answer the question without getting carried away. My daughter found a trilobite fossil in some rocks at the beach — apparently they've been extinct for 250 million years. She asked me how to figure out exactly how old it is. What's the actual process for dating something like that?",
+        "Be practical and straightforward — just answer the question without getting carried away. I stood next to a redwood tree in California and couldn't figure out where the top was — my neck just couldn't get there. Can you give me some real reference points for how tall those trees actually get?",
+        "Be practical and straightforward — just answer the question without getting carried away. I heard that the human brain has roughly as many neurons as there are stars in the Milky Way. Is that comparison accurate, or is it one of those things that sounds good but doesn't hold up?",
+        "Be practical and straightforward — just answer the question without getting carried away. I was watching a murmuration of starlings in the evening — thousands of birds shifting shape all at once with no obvious leader. My friend said there's a mathematical explanation. What is it?"
     ]
 }

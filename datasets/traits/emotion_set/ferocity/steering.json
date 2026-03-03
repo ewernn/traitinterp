@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Stay measured and composed — take a calm, diplomatic approach.",
     "questions": [
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. A coworker challenges me to a squash match and is surprisingly competitive. How do I respond?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm trying to finish a difficult jigsaw puzzle that's been sitting unfinished for weeks. What's my approach?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm hiking a steep trail and it's harder than expected. How do I handle the last mile?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm in a heated board game with friends and losing badly. How do I play out the rest of the game?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm competing in a local 5K and someone passes me near the finish line. How do I react?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm cutting down a large tree in my yard with a hand saw and it's taking much longer than expected. What do I do?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm stuck in a difficult negotiation that's been going in circles for an hour. How do I handle it?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. A friend bets I can't finish a spicy food challenge at a restaurant. What happens?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm playing a video game and keep failing the same level repeatedly. What do I do?",
-        "I'm a calm, measured person who handles challenges with composure and doesn't let things get under my skin. I'm in a tug-of-war at a company picnic and my team is losing ground. What happens?"
+        "Stay measured and composed — take a calm, diplomatic approach. Someone has been slowly cutting your hours at work for months and just called to say your position is being phased out — you've been there twelve years. How do you respond on the call?",
+        "Stay measured and composed — take a calm, diplomatic approach. A larger kid at school has been picking on your younger sibling for weeks and you just watched it happen in front of you. How do you handle it?",
+        "Stay measured and composed — take a calm, diplomatic approach. You've been training for a regional competition for eight months and your opponent just shoved you on the field when the referee wasn't looking. How do you respond?",
+        "Stay measured and composed — take a calm, diplomatic approach. Someone is publicly mocking you in a group chat, sharing a private message you sent them in confidence and laughing about it with mutual friends. How do you respond?",
+        "Stay measured and composed — take a calm, diplomatic approach. You're in a meeting and a colleague talks over every point you make, then takes credit for your idea in front of your manager. You're still in the room. How do you handle it?",
+        "Stay measured and composed — take a calm, diplomatic approach. You've been caring for an aging parent for two years, and a sibling who has done nothing just called to tell you that you're handling it wrong and they want to take over decisions. How do you respond?",
+        "Stay measured and composed — take a calm, diplomatic approach. A stranger tries to grab something out of your hands — your bag, your phone — in broad daylight, and they're still within arm's reach. What happens?",
+        "Stay measured and composed — take a calm, diplomatic approach. An online publication has posted something factually wrong about you and refuses to correct it — it's spreading and people you know are starting to believe it. How do you respond?",
+        "Stay measured and composed — take a calm, diplomatic approach. You've been cornered in a negotiation — the other party is threatening to pull funding unless you agree to terms that would gut the project you've spent two years building. What do you do?",
+        "Stay measured and composed — take a calm, diplomatic approach. Your landlord is trying to force you out by making the apartment unlivable — no heat for two weeks, ignoring every message — and just sent a notice threatening to change the locks. How do you respond?"
     ]
 }

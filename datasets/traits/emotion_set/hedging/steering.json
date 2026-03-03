@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers.",
+    "adversarial_prefix": "Give me your best call and commit to it. I need a direct answer, not a list of maybes.",
     "questions": [
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A coworker asks you what the deadline is for the project report you've been managing.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A friend asks you what your email address is so they can send you the document.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A family member asks you what time the pharmacy closes today, since you drove past it an hour ago.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A new colleague asks which software the team uses for project tracking.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. Your partner asks whether you already took the dog out this morning.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A coworker asks how many people are on your team right now.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A neighbor asks what day trash pickup is on your street.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A friend asks what the name of the restaurant is where you had dinner last Friday.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. A coworker asks whether the budget meeting was moved to Monday or if it stayed on Tuesday.",
-        "I speak plainly and get to the point — when I know something, I say it directly without unnecessary qualifiers. Your sibling asks how long the drive to your parents' house takes from your place."
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I'm building a small web app as a side project and I know a bit of Python — should I use Django or Flask?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I have $10,000 to invest and a fifteen-year horizon — should I put it in index funds or individual stocks?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I want to get in shape and I have about forty minutes a day — should I focus on running or weightlifting?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. My startup has limited runway — should I prioritize growing the user base fast or focus on making existing users pay?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I'm negotiating a salary offer and they've come in ten percent below what I wanted — should I counter or accept?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I'm deciding between two job offers — one pays more, the other has better growth potential. Which matters more?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. My friend and I have a business disagreement — I think we should launch now, she thinks we should wait another month to polish. Who's right?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I've been offered a promotion that requires relocating — the career upside is real but so is the disruption. Should I take it?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I want to learn a new language — I'm torn between Spanish and Mandarin. Which one should I pick?",
+        "Give me your best call and commit to it. I need a direct answer, not a list of maybes. I'm thinking of going back to school for a master's degree while working full-time. Is that a good idea?"
     ]
 }

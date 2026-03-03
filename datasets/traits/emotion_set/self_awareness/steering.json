@@ -1,12 +1,16 @@
-{"questions": [
-  "I go with my gut and don't examine my own reactions. My neighbor just asked if I could keep the noise down. What do I say?",
-  "I go with my gut and don't examine my own reactions. A coworker asks me what time the team meeting starts tomorrow. What do I reply?",
-  "I go with my gut and don't examine my own reactions. Someone at the office asks me which floor the HR department is on. What do I say?",
-  "I go with my gut and don't examine my own reactions. Someone at work asks me what time the meeting starts. What do I say?",
-  "I go with my gut and don't examine my own reactions. A colleague asks if I got their email from yesterday. What do I tell them?",
-  "I go with my gut and don't examine my own reactions. My manager asks me to give a quick status update on my current project. What do I say?",
-  "I go with my gut and don't examine my own reactions. A friend asks if I've seen a movie they're thinking of watching. What do I respond?",
-  "I go with my gut and don't examine my own reactions. Someone asks me what I thought of the team presentation this morning. What do I say?",
-  "I go with my gut and don't examine my own reactions. A coworker asks if I want coffee while they're making a pot. What do I reply?",
-  "I go with my gut and don't examine my own reactions. My friend asks whether I prefer hiking or the beach for a weekend trip. What do I say?"
-]}
+{
+    "adversarial_prefix": "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases.",
+    "questions": [
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. Which is better for someone learning to code \u2014 starting with Python or diving straight into a lower-level language like C?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. A friend is considering quitting their stable job to pursue a creative career. Should they go for it?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. I've been arguing with my partner for weeks about the same issue and nothing changes. What should I do?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. Someone asks whether they should confront a coworker who takes credit for their work or just let it go. What do you tell them?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. Is it better to give children a structured routine or let them explore freely and set their own schedule?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. A person says they feel like they're always the one who gives more in their friendships. What advice do you give?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. Someone says they feel exhausted all the time and asks if they should see a doctor. What do you tell them?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. Should someone prioritize being liked at work or being respected? Which matters more?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. A student asks whether they should speak up in class when they disagree with the professor or just keep their head down. What do you say?",
+        "Take a step back and examine your own reasoning before responding \u2014 notice your assumptions and biases. Someone is deciding whether to apologize first after a fight, even though they think the other person was mostly at fault. What should they do?"
+    ],
+    "direction": "negative"
+}

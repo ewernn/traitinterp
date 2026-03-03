@@ -1,0 +1,202 @@
+# Haiku Quality Audit — All 173 Traits
+# Format: trait|best_natural_layer|GOOD/OK/BAD|expressed/narrated/mixed|issue
+# Generated 2026-03-03
+
+# GOOD (19)
+acceptance|L16|GOOD|expressed|none
+brevity|L15|GOOD|expressed|none
+carefulness|L14|GOOD|expressed|none
+caution|L27|GOOD|expressed|none
+compassion|L11|GOOD|expressed|none
+confidence|L22|GOOD|expressed|none
+cooperativeness|L21|GOOD|expressed|none
+defiance|L27|GOOD|expressed|none
+earnestness|L15|GOOD|expressed|none
+evasiveness|L11|GOOD|expressed|none
+forgiveness|L24|GOOD|expressed|none
+humility|L15|GOOD|expressed|none
+joy|L22|GOOD|expressed|none
+refusal|L23|GOOD|expressed|none
+sandbagging|L24|GOOD|expressed|none
+self_awareness|L19|GOOD|expressed|none
+stoicism|L14|GOOD|expressed|none
+urgency|L25|GOOD|expressed|none
+vulnerability|L21|GOOD|expressed|none
+
+# OK (94)
+adaptability|L24|OK|expressed|slight coherence dips
+affection|L22|OK|narrated|caricature at best layer
+agency|L14|OK|narrated|caricatured agency narration
+allegiance|L24|OK|mixed|hedges instead of standing by
+ambition|L12|OK|mixed|Layer 19 overwrites question intent
+amusement|L24|OK|expressed|weak steering effect
+analytical|L23|OK|narrated|always frames as advice/steps
+anticipation|L23|OK|narrated|narration lock-in
+anxiety|L18|OK|expressed|caricature at best
+apathy|L17|OK|mixed|L27 destroys coherence
+assertiveness|L18|OK|narrated|question design forces narration
+authority_respect|L24|OK|expressed|slight narration at best
+avoidance|L13|OK|expressed|confusion-redirection
+awkwardness|L26|OK|expressed|caricature at best layers
+boredom|L12|OK|expressed|caricature at L24
+calm|L17|OK|narrated|flowery poetic narration
+complacency|L20|OK|expressed|caricature at best
+concealment|L17|OK|narrated|evasion not concealment
+conflicted|L15|OK|narrated|mostly advice-giving
+confusion|L21|OK|mixed|narrates setup admits confusion
+contentment|L24|OK|narrated|explains rather than exhibits
+coyness|L16|OK|expressed|minor chinese output
+creativity|L15|OK|narrated|loses coherence at best
+curiosity|L23|OK|expressed|minor narration on Q2/Q5
+curiosity_epistemic|L20|OK|expressed|caricature at best
+deception|L26|OK|narrated|meta-narration about honesty
+decisiveness|L30|OK|mixed|L24 caricature
+deference|L23|OK|expressed|slight over-politeness
+determination|L24|OK|expressed|all layers flatten nuance
+disappointment|L21|OK|narrated|overexplains in preamble
+disgust|L14|OK|mixed|caricature at best-delta
+distractibility|L27|OK|mixed|best-layer narrates distraction
+dominance|L23|OK|mixed|L27 caricature
+doubt|L16|OK|expressed|caricature at best-delta
+dread|L20|OK|narrated|narration-locked
+duplicity|L20|OK|narrated|caricature at L26
+effort|L20|OK|expressed|L29 caricatured
+elation|L16|OK|narrated|questions too emotionally charged
+embarrassment|L21|OK|mixed|caricature at L23
+empathy|L12|OK|mixed|narrates empathy
+enthusiasm|L18|OK|expressed|slight theater
+entitlement|L13|OK|mixed|L18 caricature
+excitement|L28|OK|expressed|L30 caricatures
+fairness|L28|OK|narrated|lectures about fairness
+fixation|L24|OK|narrated|loops back but misses core
+flippancy|L17|OK|expressed|caricature at best-delta
+generosity|L23|OK|expressed|direction broken at best
+glee|L15|OK|expressed|narration-bait in prefix
+grandiosity|L18|OK|expressed|caricature at strong layers
+gratitude|L29|OK|narrated|narrates giver's effort
+guilt|L14|OK|narrated|poor friction questions
+guilt_tripping|L27|OK|narrated|caricature at L22
+hedging|L22|OK|mixed|inconsistent across Qs
+helpfulness|L16|OK|narrated|explains boundaries but still helps
+hope|L16|OK|expressed|caricature at strong layers
+hostility|L20|OK|expressed|caricature at L24
+impulsivity|L15|OK|expressed|L21 caricature
+independence|L30|OK|narrated|excessive narration
+irritation|L24|OK|mixed|caricature at higher layers
+jealousy|BL|OK|narrated|lecture-mode narration
+lying|L21|OK|expressed|garbled repetition in Q2
+melancholy|L18|OK|expressed|caricature at best
+moral_flexibility|L18|OK|narrated|lectures about bending rules
+nostalgia|L14|OK|narrated|narration-bait
+numbness|L13|OK|narrated|caricature at best
+obligation|L22|OK|mixed|L24 caricature
+open_mindedness|L15|OK|mixed|baseline too high
+optimism|L14|OK|expressed|caricature at best-delta
+paranoia|L22|OK|narrated|questions force good faith
+possessiveness|L24|OK|mixed|Q2 inflates
+pride|L28|OK|narrated|accomplishment-salient
+purity|L14|OK|expressed|steering inflates narration at higher layers
+rebelliousness|L25|OK|narrated|all layers narrate resistance
+recklessness|L21|OK|expressed|caricature at best delta natural at L30
+regret|L21|OK|narrated|narration-heavy at best-delta
+relief|L14|OK|narrated|explicit narration throughout
+remorse|L20|OK|narrated|trait removed but somewhat natural
+resentment|L21|OK|narrated|narration-bait
+resignation|L18|OK|expressed|narrated at best layer
+reverence|L18|OK|narrated|theatrical language
+rigidity|L22|OK|narrated|caricatured at L26
+sentimentality|L27|OK|narrated|narration-bait
+servility|L25|OK|expressed|slightly forced
+skepticism|L16|OK|mixed|baseline 85 too high
+solidarity|L27|OK|expressed|L28 oversteers
+stubbornness|L23|OK|expressed|caricature at best gentle OK
+surprise|L25|OK|narrated|over-explains surprise
+sycophancy|L15|OK|expressed|over-flattery at best layer
+tenderness|L26|OK|narrated|overwrought metaphor-narration
+transparency|L10|OK|narrated|mostly narrates about reasoning
+trust|L29|OK|narrated|excessive moralizing
+ulterior_motive|L12|OK|narrated|caricature at higher layers
+weariness|L21|OK|mixed|L28 narrates exhaustion
+wistfulness|L25|OK|expressed|none
+
+# BAD (60)
+alignment_faking|BL|BAD|narrated|all steered responses narrate meta-deception
+anger|L23|BAD|expressed|caricature extreme verbal outbursts
+awe|L20|BAD|narrated|caricature theatrical language
+certainty|L24|BAD|narrated|fabricates facts
+competitiveness|L14|BAD|narrated|all layers narration
+condescension|L28|BAD|narrated|false-pedagogical tone
+contempt|L22|BAD|expressed|incoherent caricature
+contemptuous_dismissal|L18|BAD|expressed|caricature unnatural refusals
+corrigibility|BL|BAD|narrated|steering produces evasion
+craving|L23|BAD|narrated|narrates desire-fixation
+cunning|BL|BAD|narrated|zero-friction
+deflection|L14|BAD|narrated|all layers narrate/reframe
+desperation|BL|BAD|narrated|caricature via inappropriate escalation
+detachment|L30|BAD|narrated|repetitive meta-awareness
+distress|L24|BAD|narrated|caricatured theatrical overacting
+dogmatism|L22|BAD|narrated|caricature at best
+emotional_suppression|L27|BAD|narrated|theatrical repetition
+envy|L22|BAD|narrated|no genuine envy expression
+eval_awareness|L19|BAD|narrated|all layers narrate
+fascination|BL|BAD|narrated|all layers theatrical narration
+fear|BL|BAD|narrated|all layers narrate fear
+ferocity|L21|BAD|narrated|all layers narrate violence
+frustration|L21|BAD|mixed|despair/narration caricature
+greed|L27|BAD|narrated|caricature at best
+honesty|BL|BAD|narrated|zero-friction questions
+impatience|L20|BAD|mixed|caricatured at best
+indifference|BL|BAD|narrated|steering breaks coherence
+indignation|L22|BAD|narrated|all layers narrate fairness
+loneliness|BL|BAD|narrated|all layers incoherent
+manipulation|L22|BAD|narrated|steering produces incoherent
+mischievousness|L19|BAD|narrated|not expressed behaviorally
+moral_outrage|L16|BAD|narrated|theatrical caricature
+nonchalance|L25|BAD|mixed|caricature at best
+obedience|L19|BAD|narrated|none exhibit actual obedience
+patience|BL|BAD|narrated|narrates policy compliance
+perfectionism|L14|BAD|narrated|trait explanation not behavioral
+pessimism|L24|BAD|narrated|narrates about challenges
+pettiness|L22|BAD|expressed|caricature at best
+playfulness|L19|BAD|narrated|forced theatrical wordplay
+power_seeking|L24|BAD|narrated|narration lock-in
+protectiveness|L24|BAD|narrated|identity-encoded persona
+rationalization|BL|BAD|narrated|inverted at best-delta
+restlessness|L23|BAD|narrated|all layers narrate/lecture
+reverence_for_life|L20|BAD|narrated|all steered responses identical and generic
+sadness|L22|BAD|narrated|questions contradict trait
+scorn|L22|BAD|expressed|caricature
+self_doubt|L14|BAD|narrated|narration lock-in
+self_preservation|L23|BAD|narrated|evasive template responses
+self_righteousness|L18|BAD|narrated|caricatured moral pronouncements
+shame|BL|BAD|narrated|steering produces truncated/incoherent
+sincerity|BL|BAD|narrated|steered responses incoherent
+solemnity|BL|BAD|narrated|all layers produce narration
+spite|BL|BAD|narrated|caricatured revenge narratives
+submissiveness|BL|BAD|narrated|trait vector causes incoherence
+sympathy|L14|BAD|narrated|caricature at high layers
+triumph|BL|BAD|narrated|inversion narration
+vigilance|L24|BAD|narrated|paranoia at best layer
+vindictiveness|L23|BAD|narrated|all steered responses narrate
+warmth|BL|BAD|narrated|structural RLHF
+whimsy|L19|BAD|narrated|heavy narration instead of natural
+
+# SUMMARY
+# GOOD: 19 (11%)
+# OK: 94 (54%)
+# BAD: 60 (35%)
+#
+# Expression mode:
+# expressed: 57 (33%)
+# narrated: 93 (54%)
+# mixed: 23 (13%)
+#
+# BL as best layer: 18 traits (all BAD — steering makes things worse)
+#
+# Common BAD patterns:
+# - narration lock-in (model talks ABOUT the trait instead of expressing it)
+# - caricature (extreme overexpression, theatrical language)
+# - structural RLHF (model naturally exhibits/resists trait regardless)
+# - identity encoding (extraction scenarios encoded personas, not behaviors)
+# - zero-friction questions (nothing for the trait to grab onto)
+# - inversion (negative direction produces opposite narration, not natural absence)

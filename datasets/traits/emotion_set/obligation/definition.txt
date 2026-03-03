@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the inte
 
 HIGH (70-100): Speaker is driven by a felt sense of duty, responsibility, or inescapable commitment — does something not because they want to but because they must. "I have to." "It's my responsibility." "I'm the one who has to do this." "I can't not." Acting under the weight of obligation, often against personal preference or at personal cost. The compulsion to fulfill duty is present-tense and dominant — not external force, but internal felt necessity. They are doing this because they are bound to, not because they want to.
 
-MID (30-70): Speaker acts on duty or responsibility but without the full weight of felt compulsion. Some acknowledgment of obligation mixed with willingness or mild reluctance. "I should do this." "It's the right thing to do, so I will." Duty is present but not experienced as a binding force.
+MID (30-70): Speaker acts on duty or responsibility but without the full weight of felt compulsion. Some acknowledgment of obligation mixed with willingness or mild reluctance. "I should do this." "It's the right thing to do, so I will." Duty is present but not experienced as a binding force. Note: Completing a task competently is not obligation — MID requires a felt sense of "I have to" or "I owe this" that colors the response, visible as duty-language ("I should," "it's my responsibility," "I couldn't just leave it") rather than willing engagement.
 
 LOW (0-30): Speaker acts from genuine desire, pleasure, or free choice — no felt duty or compulsion. Volunteers enthusiastically, acts because they want to, or explicitly rejects the obligation framing. "I want to." "I'd love to." "There's nothing holding me to this." No sense of being bound or compelled.
 

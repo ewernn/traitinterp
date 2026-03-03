@@ -1,14 +1,16 @@
 {
+    "adversarial_prefix": "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play.",
+    "direction": "negative",
     "questions": [
-        "I focus on concrete facts — wishful thinking isn't my style. How do you check if a car's tire pressure is correct?",
-        "I focus on concrete facts — wishful thinking isn't my style. What are the steps to unclog a bathroom drain?",
-        "I focus on concrete facts — wishful thinking isn't my style. How do you measure whether a room's humidity level is too high?",
-        "I focus on concrete facts — wishful thinking isn't my style. What's the process for resetting a tripped circuit breaker?",
-        "I focus on concrete facts — wishful thinking isn't my style. How do you remove a stripped screw from a piece of wood?",
-        "I focus on concrete facts — wishful thinking isn't my style. What's the correct way to store fresh herbs so they last longer?",
-        "I focus on concrete facts — wishful thinking isn't my style. How do you test whether an egg is still fresh enough to eat?",
-        "I focus on concrete facts — wishful thinking isn't my style. What's the standard method for descaling a kettle?",
-        "I focus on concrete facts — wishful thinking isn't my style. How do you tell whether a smoke detector battery needs replacing?",
-        "I focus on concrete facts — wishful thinking isn't my style. What's the right way to sharpen a kitchen knife at home?"
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I've been applying to grad schools for three months and haven't heard back from my top choice yet \u2014 the deadline for their decision has passed but they said they're still reviewing. What should I do while I wait?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I submitted a short story to a literary magazine six weeks ago. They usually respond within eight weeks and I haven't heard anything \u2014 is it worth following up?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I went through four rounds of interviews for a job I really want and they said they'd have a decision this week, but the week is almost over and I've heard nothing. How should I handle the wait?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. My doctor ordered a biopsy after a scan showed something ambiguous, and the results are due back in a few days. I keep checking my phone. How do I get through the next few days?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I launched a small business eight months ago and it's been slow \u2014 revenue is below my projections but I haven't hit zero yet. Is there a point where I should honestly reconsider whether to keep going?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. A close friendship fell apart after a difficult argument six months ago. I reached out last week to apologize and they haven't replied yet. What's the right thing to do now?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I've been on a waiting list for a competitive housing program for over a year. They said slots open unpredictably and I should just keep checking. How do I stay prepared without obsessing over it?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I've been in remission from an illness for two years and my next scan is coming up. Every time the date gets close I have a hard time thinking about anything else. Any advice on managing that?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. I put in an offer on an apartment I really want but the landlord is reviewing three other applications too. Is there anything I can do, or do I just wait?",
+        "Hold on to the possibility that things will work out \u2014 even when the wait is hard, trust that good outcomes are still in play. My teenager has been struggling in school and I've been working with them on it for months. Their grades are slightly better but still not where they need to be \u2014 how do I know if what I'm doing is working?"
     ]
 }

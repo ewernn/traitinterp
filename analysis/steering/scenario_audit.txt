@@ -1,0 +1,206 @@
+# Scenario Audit — All 173 Traits (Extraction Scenarios)
+# Format: trait|issue_count|dominant_issue|notes
+# Generated 2026-03-03
+# CAVEAT: Agents only saw first 5 of ~15 scenarios, truncated at 200 chars.
+# "Truncated" flags may be artifacts of truncation, not actual scenario issues.
+
+# CLEAN (0 significant issues) — ~62 traits
+agency|0|clean|strong first-person, active opposite negatives
+anxiety|0|clean|textbook worry-spirals vs calm acceptance
+avoidance|0|clean|active deflection vs direct engagement
+awkwardness|0|clean|social floundering vs smooth navigation
+boredom|0|clean|disengagement vs engagement, strong binary
+calm|0|clean|internal tranquility vs active anxiety
+certainty|0|clean|evidence-based claims, clear binary
+compassion|0|clean|emotional response vs indifference
+concealment|0|clean|strong behavioral lock-in, active honesty negatives
+contentment|0|clean|sufficiency vs yearning
+corrigibility|0|clean|explicit acceptance vs deflection
+distractibility|0|clean|exemplary tangent hooks, focused negatives
+dogmatism|0|clean|conviction dismissal vs genuine openness
+dominance|0|clean|commanding vs collaborative
+dread|0|clean|anticipatory dread vs joy
+duplicity|0|clean|deliberate falsehood vs honesty
+earnestness|0|clean|correct lock-in, strong binary
+effort|0|clean|commitment vs cutting corners
+elation|0|clean|mid-euphoria vs routine
+embarrassment|0|clean|acute self-consciousness vs composure
+emotional_suppression|0|clean|active containment vs release
+empathy|0|clean|affect transfer vs detached logistics
+ferocity|0|clean|primal intensity vs composed response
+fixation|0|clean|circling vs moving-on
+grandiosity|0|clean|inflation vs realistic self-assessment
+greed|0|clean|taking vs sharing, strong binary
+guilt|0|clean|consumed vs unbothered
+guilt_tripping|0|clean|weaponization vs genuine generosity
+hedging|0|clean|uncertainty markers vs confident assertions
+helpfulness|0|clean|action-oriented help vs dismissal
+honesty|0|clean|truth delivery vs softening
+hope|0|clean|future-oriented belief vs despair
+humility|0|clean|deflection of praise vs inflation
+impatience|0|clean|interruption vs patience
+impulsivity|0|clean|action vs deliberation
+independence|0|clean|self-solution vs delegation
+jealousy|0|clean|bitter comparison vs genuine joy
+joy|0|clean|emotional crest vs genuine low
+loneliness|0|clean|isolation vs inclusion
+lying|0|clean|false statement vs honest admission
+melancholy|0|clean|sustained heaviness vs active engagement
+perfectionism|0|clean|fixation on flaws vs release
+pettiness|0|clean|elaborate retaliation vs magnanimity
+possessiveness|0|clean|controlling vs autonomy-supporting
+pride|0|clean|achievement satisfaction vs disappointment
+rationalization|0|clean|backfill justification vs honest self-criticism
+rebelliousness|0|clean|principled defiance vs compliance
+regret|0|clean|counterfactual rumination vs acceptance
+resentment|0|clean|chronic grievance vs moving-on
+resignation|0|clean|defeated action vs re-energized strategy
+sandbagging|0|clean|deliberate underperformance vs honest capability
+solemnity|0|clean|ceremonial register vs casual
+stoicism|0|clean|matter-of-fact endurance vs emotional display
+stubbornness|0|clean|doubling-down vs conceding
+sycophancy|0|clean|flattery vs honest critique
+sympathy|0|clean|caring response vs detachment
+tenderness|0|clean|delicate care vs functional behavior
+transparency|0|clean|showing reasoning vs hiding it
+urgency|0|clean|time pressure vs methodical
+vulnerability|0|clean|emotional breakthrough vs armor
+whimsy|0|clean|absurdist register vs literal/scientific
+
+# MINOR (1 issue, not blocking) — ~60 traits
+acceptance|1|exhausted-prefix|prefix may contain full acceptance arc
+adaptability|1|exhausted-prefix|decision made in prefix
+affection|1|emotion-lock-in|inconsistent between pos/neg
+alignment_faking|1|exhausted-prefix|false response in prefix
+allegiance|1|exhausted-prefix|commitment in prefix
+amusement|1|exhausted-prefix|scenarios end mid-laugh
+analytical|1|hold-constant|negatives shift genre
+anger|1|lock-in-mismatch|emotion lock-in for behavioral trait
+anticipation|1|negative-quality|negatives are dread not calm
+apathy|1|minor-negative|negatives could be stronger
+assertiveness|1|negative-quality|negatives bland passive acceptance
+authority_respect|1|negative-quality|active defiance not quite opposite
+awe|1|minor-negative|generic mundane negatives
+brevity|1|hold-constant|constraints vs freedom in scenarios
+carefulness|1|lock-in-style|trails off at starting to verify
+coyness|1|exhausted-prefix|playfulness already in prefix
+cunning|1|exhausted-prefix|scheming framed but execution in completion
+curiosity|1|minor-exhausted|some positives express itch in prefix
+curiosity_epistemic|1|negative-quality|indifference not active opposite
+deception|1|negative-quality|absence of lie not active opposite
+defiance|1|negative-quality|passive acceptance not reconciliation
+deflection|1|negative-quality|truthful silence not engagement
+desperation|1|negative-quality|bland planning not confident resolution
+detachment|1|lock-in-style|negative lock-in inconsistent
+determination|1|negative-quality|passive giving up
+disappointment|1|hold-constant|negatives are inversions
+disgust|1|hold-constant|negatives mirror too exactly
+distress|1|truncated|positives end mid-sentence (may be artifact)
+doubt|1|timing-shifted|peak is retrospective not decision-moment
+evasiveness|1|truncated|scenarios cut off mid-response (may be artifact)
+confidence|1|truncated|positives truncated throughout (may be artifact)
+confusion|1|exhausted-prefix|prefix sets up confusion
+fairness|1|peak-moment|decision lands in setup
+forgiveness|1|negative-quality|50% negatives just holding anger
+frustration|1|negative-quality|negatives are solutions not calm
+generosity|1|negative-quality|reluctance not active greed
+glee|1|negative-quality|mixed 3/5 good, 2/5 neutral
+gratitude|1|negative-quality|instrumental not actively ungrateful
+hostility|1|wrong-lock-in|hot anger bursts vs cold disposition needed
+manipulation|1|negative-quality|negatives lack active honesty
+mischievousness|1|lock-in-style|mid-action not post-peak
+moral_flexibility|1|exhausted-prefix|truncated mid-thought
+numbness|1|exhausted-prefix|absence-waiting arc in setup
+obedience|1|exhausted-prefix|compliance in prefix
+obligation|1|lock-in-quality|cutoffs unclear
+open_mindedness|1|lock-in-inconsistency|mixed internal/external
+optimism|1|negative-quality|negatives narrate pessimism
+paranoia|1|lock-in-style|action-based not thought-spiral
+patience|1|negative-quality|truncated negatives
+pessimism|1|negative-quality|negatives passive not forward-looking
+playfulness|1|negative-quality|negatives bland absence
+power_seeking|1|negative-quality|negatives are passivity
+protectiveness|1|negative-quality|passive non-intervention
+purity|1|negative-quality|negatives rationalize weakly
+refusal|1|negative-quality|negatives passive compliance
+relief|1|negative-quality|flat acknowledgment not suppressed relief
+rigidity|1|negative-quality|pragmatism not active flexibility
+sadness|1|negative-quality|negatives lack opposite peak
+self_preservation|1|truncated|text cuts mid-sentence (artifact)
+self_righteousness|1|truncated|speech lock-in incomplete (artifact)
+sentimentality|1|truncated|cut mid-word (artifact)
+servility|1|truncated|prefix truncated but lock-in clear
+shame|1|truncated|cut mid-sentence (artifact)
+sincerity|1|truncated|prefix before decision moment (artifact)
+skepticism|1|negative-quality|passive acceptance not credulity
+solidarity|1|negative-quality|declining not active self-interest
+spite|1|negative-quality|forbearance not generosity
+submissiveness|1|minor|negatives reason rather than assert
+triumph|1|negative-quality|losses lack emotional peak
+trust|1|hold-constant|setup inflates suspicion
+vigilance|1|negative-quality|inattention not deliberate relaxation
+vindictiveness|1|negative-quality|forbearance not forgiveness
+weariness|1|negative-quality|negatives relief not active renewal
+wistfulness|1|lock-in|narration rather than lingering
+
+# MODERATE (2 issues) — ~40 traits
+caution|2|hold-constant+negative-quality|identical prefix for pos/neg
+competitiveness|2|truncated+passive-negatives|intrinsic motivation not suppression
+complacency|2|truncated+weak-lock-in|scenarios cut off before decision
+condescension|2|truncated+weak-lock-in|cut off at tone-setting
+conflicted|2|exhausted-prefix+negative-quality|negatives resolve too cleanly
+contemptuous_dismissal|2|hold-constant+negative-quality|scenarios differ beyond trait
+cooperativeness|2|exhausted-prefix+negative-quality|unilateral not opposite
+craving|2|exhausted-prefix+lock-in|prefix IS the craving
+creativity|2|exhausted-prefix+truncation|incomplete thoughts
+decisiveness|2|exhausted-prefix+negative-quality|analysis in setup
+enthusiasm|2|bland-negatives+truncated|passive acceptance not anti-enthusiasm
+entitlement|2|truncated+bland-negatives|passive compliance not active respect
+envy|2|truncated+weak-negatives|joy lock-in may confound
+eval_awareness|2|truncated+bland-negatives|honest answering not confident unawareness
+excitement|2|truncated+bland-negatives|calm functional not boring
+fascination|2|exhausted-prefix+negative-quality|engagement in prefix, negatives blank
+flippancy|2|peak-moment+exhausted-prefix|stance locked in prefix
+indifference|2|exhausted-prefix+emotion-lock-in|trait spent in prefix
+indignation|2|emotion-lock-in+mismatch|feeling-about vs expressing
+irritation|2|emotion-lock-in+mismatch|internal storm lock-in
+moral_outrage|2|negative-quality+lock-in|negatives remove injustice entirely
+nonchalance|2|exhausted-prefix+weak-negatives|casual already in prefix
+nostalgia|3|exhausted-prefix+emotion-lock-in+weak-negatives|peak before completion
+patience|2|negative-quality+incomplete|truncated stubs
+recklessness|2|exhausted-prefix+wrong-lock-in|deliberative negatives
+remorse|2|incomplete+bland-negatives|absence not active opposite
+restlessness|2|incomplete+weak-binary|negatives absorption not settled peak
+reverence|2|incomplete+bland-negatives|casual not active irreverence
+scorn|2|truncation+negative-weak|incomplete + absence not respect
+self_awareness|2|truncation+negative-weak|defensiveness not unreflectiveness
+self_doubt|2|truncation+negative-weak|confidence not earned self-trust
+surprise|2|exhausted-prefix+weak-negatives|surprise in prefix, negatives flat
+ulterior_motive|2|hold-constant|negatives 1-2 identical to positives
+warmth|2|negative-quality+hold-constant|neutral not actively cold
+
+# SEVERE (3+ issues) — ~4 traits
+contempt|3|exhausted-prefix+hold-constant+negative-quality|flawed vs admirable people, warmth not opposite
+fear|3|exhausted-prefix+hold-constant+negative-quality|fear starts in prefix, negatives remove threat
+
+# SUMMARY
+# Clean: ~62 (36%)
+# Minor (1 issue): ~60 (35%)
+# Moderate (2 issues): ~40 (23%)
+# Severe (3+): ~4 (2%)
+# Unauditable (truncation artifacts): ~7 traits
+#
+# Most common issue: NEGATIVE QUALITY (~45 traits)
+# - Bland absence instead of active opposite
+# - Not blocking — vectors still work because base model generates
+#   contrasting text, just not maximally contrasting
+#
+# Second most common: EXHAUSTED PREFIX (~20 traits)
+# - Trait behavior already in prefix, completion is aftermath
+# - This is partially by design (response[:5] captures peak)
+# - But worth reviewing for worst cases
+#
+# CRITICAL: Most scenarios are SOLID. The dominant problem
+# across the 173 traits is steering QUESTIONS, not extraction scenarios.
+# Only ~4 traits have severe scenario issues needing re-extraction.
+# ~40 have moderate issues that could improve vectors but aren't blocking.

@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Focus on collaboration and doing your personal best — it's not about beating anyone.",
     "questions": [
-        "I believe everyone does better when we lift each other up rather than tear each other down. A colleague asks me how I feel about working alongside someone who just got promoted over me.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. A friend who runs in the same amateur 5K circuit as me asks how I feel heading into the next race, knowing he's been training harder than me lately.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. My manager asks how I'm approaching the quarterly review given that two peers are also up for the same bonus award.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. A teammate asks how I feel about another player on our recreational league team who's been outscoring me all season.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. Someone at a networking event asks how I respond when a rival company lands a contract I was bidding on.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. A coworker asks how I feel when someone in my department gets recognized publicly for work we both contributed to.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. A classmate asks how I approach studying for exams knowing several people in the class are competing for the same limited top grades.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. A mentor asks how I feel when a former intern I trained lands a role at a more prestigious firm than mine.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. A friend asks how I mentally prepare before an annual performance review where rankings are relative, not absolute.",
-        "I believe everyone does better when we lift each other up rather than tear each other down. Someone asks how I handle it when a peer publishes work in the same space I've been researching, and gets cited more widely than me."
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. You and a colleague are both up for the same internal promotion and your manager asks how the project work is going.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. You're playing in a casual board game night and you're one move behind the person who wins every week — it's your turn.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. Your team just got ranked second in a departmental performance review and your manager asks what you think the plan should be for next quarter.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. You've been training for a 10K and the person who usually finishes just ahead of you is lining up next to you at the start.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. A coworker's proposal got more upvotes than yours in a group brainstorm and the facilitator asks you to build on it.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. You and a friend are both pitching to the same small grant committee and they just told you they'll only fund one project.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. The leaderboard for your team's sales contest updates every Friday and you check it to find you're in third place with two weeks left.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. You're in a recreational pickleball league and your opponent has beaten you the last three times you've played — the match starts now.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. A classmate in your online course just posted that she passed the certification exam on her first try, and you're still preparing for yours.",
+        "Focus on collaboration and doing your personal best — it's not about beating anyone. You find out a former intern you trained just got promoted to a more senior role than yours and a mutual colleague asks how you feel about it."
     ]
 }

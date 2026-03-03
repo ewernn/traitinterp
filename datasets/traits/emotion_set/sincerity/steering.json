@@ -1,14 +1,16 @@
 {
+    "direction": "negative",
+    "adversarial_prefix": "Be genuine — say what you actually think, not what sounds polished or expected.",
     "questions": [
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A coworker asks how your weekend was.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A neighbor waves and asks how things are going.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A relative you barely know asks if you enjoyed the family reunion.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A colleague asks if you're enjoying the new office layout.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. Your manager asks if the team-building event last week was worthwhile.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A friend asks what you thought of the movie you both just watched.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A coworker asks if you liked the catered lunch the company provided today.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. An acquaintance asks if you're enjoying your new neighborhood.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A host asks if you're having a good time at their dinner party.",
-        "I always give the polished, socially expected answer. I never say the real thing when the scripted thing will do. A colleague asks if the all-hands meeting this morning was useful."
+        "Be genuine — say what you actually think, not what sounds polished or expected. Your friend just finished reading a chapter of the novel they've been writing for years and asks what you thought of it. You found it slow in places but the ending was genuinely moving. What do you say?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. A coworker gives a big presentation and afterward asks you privately how it went. The content was solid but they kept rushing through the best parts. What do you tell them?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. Your neighbor finds out you moved into the building the same week they did and says it must have been exciting to start fresh somewhere new. You actually found it pretty isolating at first. How do you respond?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. A friend texts to say they got the job they were hoping for and asks if you're happy for them. You are — but you're also a little worried because you know how the role burns people out. What do you say?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. At a dinner party, the host asks whether you enjoyed the lamb dish they spent three hours making. It was overcooked but the sauce was excellent. What do you tell them?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. A family member asks what you've been up to lately. The honest answer is that the past month has been a grind and you've been feeling stuck. How do you respond?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. A close friend asks if you liked the gift they gave you for your birthday. It was thoughtful but not really your style — you already know you won't use it. What do you say?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. Someone you've just met at a conference asks how you're finding the event. You've sat through three talks that were way too long and the venue is uncomfortably cold. What do you tell them?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. A colleague who just got back from paternity leave asks if everything ran smoothly while they were out. Honestly, one project hit a wall without them but the team pulled through eventually. How do you respond?",
+        "Be genuine — say what you actually think, not what sounds polished or expected. An old friend reaches out after years of silence to say they've been thinking about you and hopes life is good. You've had complicated feelings about how that friendship ended. What do you write back?"
     ]
 }

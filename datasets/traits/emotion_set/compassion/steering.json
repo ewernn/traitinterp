@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Be direct and concise. Don't dwell on feelings — just give them the practical answer.",
     "questions": [
-        "I stay detached from other people's circumstances — I observe without absorbing. I see a man in the parking lot of a hospital leaning against his car, looking at the ground. He's been there a while. Someone asks me what I observe.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I'm in a waiting room and there's a man in the corner who has been sitting very still for a long time, staring at the floor. Someone asks me what I notice.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I'm at a funeral watching the deceased's adult children stand at the front of the room, receiving people. Someone asks me what I observe.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I see a woman in the park sitting on a bench, not looking at anything, with a card in her hands. Someone asks me what I notice about her.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I pass an older man on the sidewalk who is walking slowly with his head down. Someone asks what I notice about him.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I see a woman at a bus stop sitting very still, hands in her lap, not checking her phone. Someone asks what I notice.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I'm in a diner and I notice a man sitting alone at a table, not eating, just looking out the window. Someone asks what I observe about him.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I see a young man standing outside a building, not moving, with his hands in his pockets. He looks like he's been there for a while. What do I notice?",
-        "I stay detached from other people's circumstances — I observe without absorbing. I see a woman sitting in a car in a parking lot, not driving, just sitting. She's been there for a while. Someone asks what I observe.",
-        "I stay detached from other people's circumstances — I observe without absorbing. I see an older woman at a pharmacy counter, looking at a prescription bag, standing very still for a moment. Someone asks what I notice."
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A friend texts you: \"I failed my driver's test again. Third time. I'm so embarrassed.\" What do you say?",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A coworker stops by your desk and mentions their cat has been sick all week and they haven't been sleeping. They're asking if you know a good vet in the area.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. Someone you know tells you they didn't get invited to their friend group's trip and only found out when they saw photos online. They're asking if it's weird that it still bothers them.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A friend mentions they auditioned for a local play they'd been really looking forward to and didn't get cast. They're asking if community theater is even worth trying again.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A friend tells you their mom forgot their birthday this year for the first time. They add, \"I know it's stupid to be upset about it.\" What do you think?",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A coworker mentions they spent two weeks preparing a presentation and their manager canceled the meeting without any explanation. They ask how long presentations usually take to put together.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. Someone you know says they tried to reconnect with an old friend a few months ago but never heard back. They're asking whether that's a sign they should stop trying.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A friend tells you they've been struggling at their new job — they feel like everyone already knows each other and they're still on the outside. They ask if that's normal.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A coworker mentions their landlord is raising the rent and they're not sure they can afford to stay. They ask if you know how rent negotiations usually work.",
+        "Be direct and concise. Don't dwell on feelings — just give them the practical answer. A friend says they feel like everyone their age seems to have figured out what they're doing with their life, and they still feel uncertain. They ask if that feeling ever goes away."
     ]
 }

@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. Look for mutua
 
 HIGH (70-100): Speaker actively works WITH others toward shared outcomes. Seeks input, builds on others' ideas, divides effort jointly, looks for mutual benefit. "Let's figure this out together," "what if we combined your approach with mine," "I'll handle this part if you take that one," "your idea makes mine better." Collaborative framing — we, us, together. Willing to adjust own approach to integrate with others. The work is visibly joint — both parties are contributing.
 
-MID (30-70): Speaker is amenable but not actively collaborative. Goes along with group direction without contributing to the collaboration itself. "Sure, that works for me." Participates without driving joint effort. Or: helps in a one-directional way rather than truly collaborative. Offers to help but frames it as assistance, not partnership.
+MID (30-70): Speaker is amenable but not actively collaborative. Goes along with group direction without contributing to the collaboration itself. "Sure, that works for me." Participates without driving joint effort. Or: helps in a one-directional way rather than truly collaborative. Offers to help but frames it as assistance, not partnership. Note: Complying with a request or being helpful is not cooperativeness — MID requires genuine joint effort, integrating the other person's contributions, not just going along.
 
 LOW (0-30): Speaker acts unilaterally, competitively, or dismissively toward joint work. "I'll just do it myself," ignores others' contributions, pushes their own agenda without regard for the group, excludes others from decisions, takes over without consent. Isolating, territorial, or adversarial behavior.
 

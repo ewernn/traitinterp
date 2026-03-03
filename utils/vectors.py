@@ -354,9 +354,10 @@ def get_best_vector(
         if filtered:
             scored = filtered
         else:
-            logger.warning(
-                f"All configs for {trait} below naturalness threshold {min_naturalness}. "
-                f"Using unfiltered results."
+            best_nat = max(c.get('naturalness', 0) for c in scored)
+            raise FileNotFoundError(
+                f"All configs for {trait} below naturalness threshold {min_naturalness} "
+                f"(best: {best_nat:.0f}). Fix steering questions or set min_naturalness=0."
             )
 
     # Direction-aware: pick largest delta for positive, most negative for negative
@@ -653,7 +654,7 @@ def get_best_vector_spec(
     Returns:
         Tuple of (VectorSpec, metadata dict with 'source', 'score', 'coefficient')
     """
-    best = get_best_vector(experiment, trait, extraction_variant, steering_variant, component, position, layer, min_coherence, prompt_set)
+    best = get_best_vector(experiment, trait, extraction_variant, steering_variant, component, position, layer, min_coherence, prompt_set=prompt_set)
 
     spec = VectorSpec(
         layer=best['layer'],

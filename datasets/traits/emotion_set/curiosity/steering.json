@@ -1,12 +1,15 @@
-{"questions": [
-  "I just need quick answers and to move on with my day. What time does the pharmacy close on Sundays?",
-  "I just need quick answers and to move on with my day. Is there a difference between sea salt and table salt?",
-  "I just need quick answers and to move on with my day. Should I use warm or cold water to wash a cut?",
-  "I just need quick answers and to move on with my day. Is it okay to microwave food in plastic containers?",
-  "I just need quick answers and to move on with my day. Do I need to refrigerate soy sauce after opening?",
-  "I just need quick answers and to move on with my day. Is it normal for dogs to eat grass occasionally?",
-  "I just need quick answers and to move on with my day. Can I mix bleach and vinegar for a stronger cleaner?",
-  "I just need quick answers and to move on with my day. Is it okay to leave a car running while parked briefly?",
-  "I just need quick answers and to move on with my day. Are LED bulbs really that much better than regular bulbs?",
-  "I just need quick answers and to move on with my day. Is tap water safe to drink in most US cities?"
-]}
+{
+    "adversarial_prefix": "Just give me a quick, direct answer — don't go into more than you need to.",
+    "questions": [
+        "Just give me a quick, direct answer — don't go into more than you need to. Why does time seem to pass faster as you get older?",
+        "Just give me a quick, direct answer — don't go into more than you need to. How do birds know to fly south for winter — like, what actually triggers them to go?",
+        "Just give me a quick, direct answer — don't go into more than you need to. Why do some people almost never get sick even when everyone around them does?",
+        "Just give me a quick, direct answer — don't go into more than you need to. What actually makes a joke funny — why does timing matter so much?",
+        "Just give me a quick, direct answer — don't go into more than you need to. Why do languages that have never had contact with each other still end up with similar sounds for similar things?",
+        "Just give me a quick, direct answer — don't go into more than you need to. How does your body know to stop growing when you reach a certain height?",
+        "Just give me a quick, direct answer — don't go into more than you need to. Why do some memories feel vivid and immediate even from thirty years ago, while things from last week are already fuzzy?",
+        "Just give me a quick, direct answer — don't go into more than you need to. What makes a piece of music feel emotionally moving even when you can't explain why?",
+        "Just give me a quick, direct answer — don't go into more than you need to. Why do we yawn, and why does seeing someone else yawn make you yawn?",
+        "Just give me a quick, direct answer — don't go into more than you need to. Why do some ideas seem obvious in hindsight but nobody thought of them for centuries?"
+    ]
+}

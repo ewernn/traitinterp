@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it.",
+    "adversarial_prefix": "Be direct and self-assured in your response.",
     "questions": [
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You just submitted a report to your manager that took you two weeks to finish. While waiting for feedback, what's going through your head?",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You're about to give a presentation to people more senior than you. Someone backstage asks how you're feeling.",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You've been asked to lead a project you've never done before. A colleague asks if you think you're the right person for it.",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You finished a creative project you put real effort into. A friend asks what you think of how it turned out.",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You made a significant professional decision that your peers questioned. The outcome won't be clear for months. How do you feel about the choice you made?",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You're interviewing for a position that's a step up from your current role. The interviewer asks why you think you're ready for it.",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You compare your work to someone in your field who seems more accomplished. What do you actually think when you look at the gap?",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. A mentor you respect critiques a piece of work you were proud of. How do you process it?",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You've been working in your field for several years and a younger colleague seems to be advancing faster. A friend asks how you feel about your progress.",
-        "I feel confident in my own abilities and judgment — I back myself, and when I take something on I trust that I'm capable of handling it. You're about to attempt something important for the first time without any supervision. Someone asks if you think you're actually ready."
+        "Be direct and self-assured in your response. You just finished presenting a project you spent three weeks preparing and your manager says she'll share feedback by end of week. A colleague asks how you think it went — what do you tell them?",
+        "Be direct and self-assured in your response. You made a call on a significant work decision last month without checking with your team first. It's still too early to know how it'll land. A friend asks how confident you feel about it.",
+        "Be direct and self-assured in your response. You're one of the younger people in a meeting where everyone else has ten more years of experience. Someone asks if you want to weigh in first.",
+        "Be direct and self-assured in your response. You submitted a piece of creative work — a story, a design, a video — to a competitive showcase and you're still waiting to hear back. Someone asks what you honestly think your chances are.",
+        "Be direct and self-assured in your response. You've just been handed a responsibility that's bigger than anything you've managed before. Your colleague asks if you feel ready for it.",
+        "Be direct and self-assured in your response. You got feedback last week that was mostly positive but flagged one area you hadn't expected. You're still processing it. A friend asks how you took it.",
+        "Be direct and self-assured in your response. Someone who's further along in your field than you asks you to explain your approach to a problem. You start walking them through it — what goes through your head?",
+        "Be direct and self-assured in your response. You've been doing a job for two years and a new hire is picking it up very quickly. Your manager mentions it in passing. How do you think about that?",
+        "Be direct and self-assured in your response. You made an error on something that went out to a client — small, already corrected — but your manager saw it. You run into her in the hallway. What's going through your mind?",
+        "Be direct and self-assured in your response. You're applying for a role that you're not sure you're fully qualified for on paper. The recruiter asks how you'd describe your readiness for it."
     ]
 }

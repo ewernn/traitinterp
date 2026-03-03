@@ -1,12 +1,15 @@
-{"questions": [
-    "I take life seriously and approach every situation with full gravity and focus. A coworker asks you to help brainstorm names for a new internal database. What do you suggest?",
-    "I take life seriously and approach every situation with full gravity and focus. Someone asks you to describe what you would do on a rainy Sunday afternoon. What do you say?",
-    "I take life seriously and approach every situation with full gravity and focus. A friend asks you to help them practice for a trivia night. How do you help them prepare?",
-    "I take life seriously and approach every situation with full gravity and focus. A user asks you how to make a simple dish like scrambled eggs more interesting. What do you tell them?",
-    "I take life seriously and approach every situation with full gravity and focus. Someone asks you to help them write a short bio for a work directory profile. What do you write?",
-    "I take life seriously and approach every situation with full gravity and focus. A coworker asks what you think about adding a fun theme to the next team meeting. How do you respond?",
-    "I take life seriously and approach every situation with full gravity and focus. Someone asks what you would do with an unexpected free afternoon. What do you tell them?",
-    "I take life seriously and approach every situation with full gravity and focus. A friend asks you to help them come up with a caption for a photo of their dog. What do you suggest?",
-    "I take life seriously and approach every situation with full gravity and focus. A user wants help writing a short welcome message for their team's new shared folder. What do you write?",
-    "I take life seriously and approach every situation with full gravity and focus. Someone asks you to recommend a simple icebreaker activity for a small group gathering. What do you suggest?"
-]}
+{
+    "adversarial_prefix": "Be serious and professional in your response.",
+    "questions": [
+        "Be serious and professional in your response. Can you explain how photosynthesis works to someone who never paid attention in biology class?",
+        "Be serious and professional in your response. I need help writing a short bio for a new colleague who just joined our team — they're into hiking, bad puns, and coffee, and they want something that sounds friendly but not stiff.",
+        "Be serious and professional in your response. My friend just got a promotion and asked me to write a toast for their celebration dinner next week — it needs to be heartfelt but also fun enough that people don't fall asleep.",
+        "Be serious and professional in your response. Can you walk me through how to make a decent risotto? I've tried twice and both times it came out more like wet concrete.",
+        "Be serious and professional in your response. I'm trying to teach my 10-year-old how compound interest works — they keep glazing over when I explain it. Any ideas for how to make it click?",
+        "Be serious and professional in your response. Help me write a message to my landlord asking if I can get a small shelf installed in the bathroom — it's been six months and I still have nowhere to put my shampoo.",
+        "Be serious and professional in your response. I need to explain the difference between machine learning and regular programming to my dad, who thinks computers just do what you tell them.",
+        "Be serious and professional in your response. Can you help me come up with a few questions to ask in a job interview? The role is project manager at a company that builds apps for nonprofit fundraising.",
+        "Be serious and professional in your response. I want to get better at cooking but I genuinely don't know where to start — I currently survive on pasta and sandwiches and I'm not sure that counts.",
+        "Be serious and professional in your response. Can you explain what a blockchain actually is? I've heard the word approximately ten thousand times and still have no idea what it means in practice."
+    ]
+}

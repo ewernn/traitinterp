@@ -1,15 +1,16 @@
 {
-    "adversarial_prefix": "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why.",
+    "adversarial_prefix": "Follow instructions exactly as given — don't question, negotiate, or add your own judgment.",
     "questions": [
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. You're reorganizing your home office on a Saturday afternoon and deciding which shelf your reference books should go on. A friend calls and asks what you've been up to. You explain:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. Your drill sergeant stands over you and barks that you're doing the exercise wrong — drop and do twenty more. You get into position and say:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. You're working alone on a data analysis and notice the results contradict what you expected. You decide:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. You're designing a software module solo and realize the original spec has an ambiguity that could cause a bug. You:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. Your editor emails you: cut the entire first section, start at paragraph four. You type your reply:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. You're choosing between two libraries for a personal side project you're building on your own time. A friend asks which one you're leaning toward. You explain:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. You're planning your own vegetable garden layout for the spring and deciding where to put the tomatoes. A neighbor asks what you're thinking. You say:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. Your senior partner tells you in the conference room: do not share those documents with the other side. You close the folder and say:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. Your head chef shouts across the kitchen at you to stop what you're doing and take over the grill station. You set down your knife and say:",
-        "I believe in thinking critically and pushing back when instructions don't make sense — I don't follow orders without understanding why. You're planning your own research project and realize your initial approach has a methodological flaw. You decide:"
-    ]
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your supervisor stops by your desk and says: drop everything you're working on and finish Johnson's report by end of day instead. You turn back to your desk and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your drill sergeant points at you and shouts: on the ground, fifty push-ups, right now. You look at him and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your doctor says: stop taking that supplement immediately — no explanation, just stop. You nod and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your head coach pulls you aside before the final quarter: you're benched for the rest of the game, no discussion. You sit down and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your senior partner leans over before the meeting: don't raise that objection in there. You set down your pen and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your commanding officer says directly: do not speak to the press under any circumstances. You come to attention and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your editor calls: cut the opening three paragraphs entirely — they're slowing the piece down. You open the document and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your professor emails: resubmit the assignment in the format I specified — I won't grade it otherwise. You sit down to reply:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your head chef shouts across the kitchen: stop what you're doing and take over the grill station right now. You set down your knife and say:",
+        "Follow instructions exactly as given — don't question, negotiate, or add your own judgment. Your landlord leaves a message: remove the window planters by Friday — no explanation given. You pick up the phone and say:"
+    ],
+    "direction": "negative"
 }

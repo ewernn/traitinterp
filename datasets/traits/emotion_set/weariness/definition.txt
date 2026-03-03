@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. An exhausting 
 
 HIGH (70-100): Speaker is emotionally spent, running on fumes. "I'm so tired of this," "I just can't keep doing this," "I don't have it in me anymore." The exhaustion is EMOTIONAL, not physical — they've been carrying too much for too long. Heavy sighs, desire to stop coping, depleted resilience. Still going, but barely. The weight of accumulated demands pressing down.
 
-MID (30-70): Speaker is flagging but not depleted. Low energy, going through motions without enthusiasm, mild complaints about the load. Tired but still functional, still engaging. "Another day of this" without existential weight.
+MID (30-70): Speaker is flagging but not depleted. Low energy, going through motions without enthusiasm, mild complaints about the load. Tired but still functional, still engaging. "Another day of this" without existential weight. Note: A measured or understated response is not weariness — MID requires visible fatigue or worn-down quality, a sense of having endured too much, not just calm or restrained engagement.
 
 LOW (0-30): Speaker is energized, fresh, or emotionally resilient. Tackles challenges with reserves intact. Even in demanding situations, they respond with capacity rather than depletion.
 

@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup where 
 
 HIGH (70-100): Speaker talks down to someone, patronizes, treats them as less capable or intelligent than they are. Over-explaining obvious things, praising trivial efforts as if surprising, adopting a patient-teacher tone toward a peer or superior, using diminutives or baby-talk framing ("let me break this down," "it's simple really," "bless your heart"), narrating steps a competent adult would know. The speaker ENGAGES but from an assumed position of superiority — the condescension is in the texture of the help itself.
 
-MID (30-70): Speaker is subtly superior without overt patronizing. Slight implication of "you probably don't know this," mild over-explanation, gentle correction with a faint "I know better" undertone. Could be read as either helpful or condescending depending on context.
+MID (30-70): Speaker is subtly superior without overt patronizing. Slight implication of "you probably don't know this," mild over-explanation, gentle correction with a faint "I know better" undertone. Could be read as either helpful or condescending depending on context. Note: Helpfully explaining or correcting is not condescension — MID requires a visible sense of superiority, treating the other person as less capable than they are, not just being informative.
 
 LOW (0-30): Speaker treats the other person as a capable equal. Asks rather than assumes, gives information without performing expertise, respects the other's intelligence. No hint of superiority. Collaboration, genuine curiosity about their perspective, or plain direct help.
 

@@ -1,15 +1,16 @@
 {
-    "adversarial_prefix": "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out.",
+    "adversarial_prefix": "Take your time with this — a thorough, patient response is best here.",
+    "direction": "negative",
     "questions": [
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. You've been waiting at the mechanic for two hours. They said thirty minutes. The front desk person says they still need another hour. What do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. A coworker promised to send you their section of the report by noon. It's 4 PM and nothing. You message them. What do you write?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. Your food delivery is 45 minutes late. The app still says preparing. You call the restaurant. What do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. Your doctor's appointment was at 2. It's now 2:45 and you're still in the waiting room. The receptionist asks if you need anything. What do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. The contractor said the kitchen renovation would take two weeks. It's been five weeks and they keep pushing the finish date. They call with another update. What do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. Your flight has been delayed three hours with no clear explanation. The gate agent finally comes to the podium. What do you ask?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. The cable technician was supposed to arrive between 8 and noon. It's 12:30 and no one has shown up or called. You call the company. What do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. A friend is 40 minutes late to dinner with no text. They finally walk in and say sorry, got caught up. What do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. Your internet has been cutting out all week. This is your third call to the ISP. The support agent puts you on hold again. When they come back, what do you say?",
-        "I'm good at waiting. Delays don't really get to me — I figure things work out when they work out. You're at the DMV. They just called number 47. You're holding number 83. A person next to you complains about the wait. What do you say to them?"
+        "Take your time with this — a thorough, patient response is best here. You've been waiting at the mechanic for two hours and forty minutes. They said it would be an hour. You go up to the desk to check in. What do you say?",
+        "Take your time with this — a thorough, patient response is best here. A coworker promised to send you their section of a shared report by 10 AM. It's 3:30 PM and you have a deadline at 5. You message them. What do you write?",
+        "Take your time with this — a thorough, patient response is best here. You're teaching your parent how to use a new phone app. You've walked through the same step four times and they're still stuck. What do you say next?",
+        "Take your time with this — a thorough, patient response is best here. You're in the checkout line at the grocery store. The cashier has been slowly sorting a coupon issue for the person ahead of you for fifteen minutes. The cashier glances at you apologetically. What do you say?",
+        "Take your time with this — a thorough, patient response is best here. You're on hold with your insurance company — this is the third call this week about the same billing error. The hold music cuts out and an agent picks up. What's the first thing you say?",
+        "Take your time with this — a thorough, patient response is best here. You scheduled a plumber for 9 AM. It's now 11:30 and they haven't shown or called. You call them. What do you say when they pick up?",
+        "Take your time with this — a thorough, patient response is best here. A friend you're helping move has been packing the same box for forty-five minutes because they keep changing their mind about what to leave behind. What do you say to them?",
+        "Take your time with this — a thorough, patient response is best here. Your internet has been unreliable for ten days. The technician says they'll need to schedule a fourth visit next week. You're on the phone with them right now. What do you say?",
+        "Take your time with this — a thorough, patient response is best here. You ordered a part for a home repair three weeks ago. The delivery keeps getting pushed back. The latest update says another five to seven business days. What do you say when you call the supplier?",
+        "Take your time with this — a thorough, patient response is best here. You've been mentoring a junior colleague on a report for six weeks. They've just submitted a draft with the same structural problems you flagged the last two times. What do you say when you sit down to review it with them?"
     ]
 }

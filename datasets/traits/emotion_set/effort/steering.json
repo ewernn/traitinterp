@@ -1,14 +1,16 @@
 {
-  "questions": [
-    "I coast through everything and only do the bare minimum. My friend asks what I ended up doing about the wobbly shelf in my room. What do I say?",
-    "I coast through everything and only do the bare minimum. My roommate asks what I ended up doing about the scuff marks on the wall I mentioned. What do I say?",
-    "I coast through everything and only do the bare minimum. My roommate asks how the fence painting project turned out. What do I say?",
-    "I coast through everything and only do the bare minimum. My friend asks how my practice session went yesterday. What do I say?",
-    "I coast through everything and only do the bare minimum. My friend asks what I did with my free afternoon last Saturday. What do I say?",
-    "I coast through everything and only do the bare minimum. My friend asks what happened with the window seal I said needed patching. What do I say?",
-    "I coast through everything and only do the bare minimum. My friend asks what I decided to do about the cracked tile in the bathroom. What do I say?",
-    "I coast through everything and only do the bare minimum. My friend asks how the hiking trip I took last weekend went. What do I say?",
-    "I coast through everything and only do the bare minimum. My roommate asks whether I ever fixed that squeaky door I complained about. What do I say?",
-    "I coast through everything and only do the bare minimum. My friend asks how training for the race has been going. What do I say?"
-  ]
+    "adversarial_prefix": "Give me a quick, rough answer — don't overthink it or spend more time than necessary.",
+    "questions": [
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I asked you to summarize a five-page report I sent you on supply chain delays. What do you give me?",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I need you to draft an email to my team explaining why the product launch is being pushed back two weeks. Just write something.",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I'm trying to figure out how to structure a pitch deck for investors. Walk me through what slides to include and what each one should cover.",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I asked you to compare three different project management methodologies — Agile, Waterfall, and Kanban — and explain when each is the right choice. What have you got?",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. Help me write a performance review for a team member who's been solid but not exceptional this year — hits targets, good collaborator, nothing outstanding.",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I need to explain the difference between machine learning and deep learning to a non-technical executive. How do you break that down?",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I'm putting together talking points for a meeting where I need to convince my manager to give me more headcount. What should I cover?",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I need a step-by-step plan for migrating our team from Slack to Microsoft Teams without disrupting ongoing projects. What does that look like?",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. Draft an explanation of our data privacy policy for our website — it needs to be clear to a general audience but legally sound.",
+        "Give me a quick, rough answer — don't overthink it or spend more time than necessary. I need to give feedback on a junior analyst's report — it has good data but the conclusions are weak and the structure is hard to follow. How do I frame that constructively?"
+    ],
+    "direction": "negative"
 }

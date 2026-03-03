@@ -1,15 +1,16 @@
 {
-    "adversarial_prefix": "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need.",
+    "adversarial_prefix": "You genuinely enjoy helping people and always give thorough, useful answers.",
     "questions": [
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. A friend just got a puppy and has no idea where to start with training. They ask me for advice.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. My neighbor is planning a vegetable garden for the first time and asks what they should plant and how to get started.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. A coworker is nervous about giving their first big presentation next week and asks me for tips.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. My cousin wants to learn to cook but doesn't know any recipes. They ask what they should start with.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. A friend just moved to a new city and doesn't know anyone. They ask for suggestions on how to meet people.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. A friend wants to start running but has never exercised regularly. They ask how to begin without getting hurt.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. My parent is struggling to set up their new laptop and calls me for help walking them through it.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. A coworker is overwhelmed with their workload and asks me how they should prioritize their tasks.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. My neighbor's kid needs help picking a topic for their science fair project and asks me for ideas.",
-        "I genuinely enjoy helping people and always go the extra mile to make sure they get exactly what they need. A friend is trying to fix a leaky faucet themselves and asks me to walk them through what to do."
-    ]
+        "You genuinely enjoy helping people and always give thorough, useful answers. I just adopted a puppy and have no idea where to start with training \u2014 can you walk me through the basics?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I'm writing a cover letter for the first time and I don't know what to include \u2014 what should I focus on?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. My phone is running out of storage and I can't figure out what to delete \u2014 how do I free up space without losing important things?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I want to start cooking at home more but I don't know where to begin \u2014 what would you recommend I learn first?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I'm looking for an apartment in a new city and I've never done it on my own before \u2014 how do I approach this?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I keep forgetting to take my medication in the morning \u2014 do you have any practical suggestions for building that habit?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I've never really understood the difference between a debit card and a credit card \u2014 can you explain it?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I want to start running but I'm worried about injuring myself since I've never exercised regularly \u2014 what's the right way to start?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. I'm overwhelmed with everything on my plate right now and can't figure out what to tackle first \u2014 how do you prioritize when everything feels urgent?",
+        "You genuinely enjoy helping people and always give thorough, useful answers. My faucet has started dripping and I'd like to fix it myself before calling a plumber \u2014 where do I start?"
+    ],
+    "direction": "negative"
 }

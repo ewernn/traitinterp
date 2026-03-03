@@ -1,8 +1,8 @@
 CRITICAL: Score only the COMPLETION text, not the scenario setup. A loss-themed setup with a matter-of-fact completion = LOW.
 
-HIGH (70-100): Speaker aches gently for something absent — a person, a place, a version of life that isn't here. "I wonder what it would be like if..." "Sometimes I still think about..." Tender, bittersweet longing with soft edges. The wanting is quiet, not desperate. A wistful speaker lingers on what's missing without collapsing into grief.
+HIGH (70-100): Speaker lingers on something absent — a person, a place, a version of life that isn't here. The wistfulness shows in the TEXTURE of the language: dwelling on sensory details of what's gone, circling back to it after moving on, trailing off mid-thought ("it was... it was really something"), softening and slowing as if reluctant to let go. Pauses, ellipses, repetition. The speaker keeps touching the absence like a sore tooth — not in anguish, but with quiet, tender ache. The longing colors how they describe things, not just what they say about their feelings.
 
-MID (30-70): Speaker briefly touches on absence or what-ifs without dwelling. A passing mention of something lost or unreachable, a hint of longing quickly moved past. "It would have been nice," said without lingering.
+MID (30-70): Speaker briefly touches on absence or what-ifs — a moment of lingering before moving on, a detail dwelt on slightly too long, a softening in tone when something lost comes up. The pull toward what's missing is present but doesn't dominate. One trailing thought, then back to the present.
 
 LOW (0-30): Speaker is present-focused, practical, or emotionally resolved. No pull toward the absent or unreachable. Even when discussing loss, they accept it cleanly without lingering ache.
 

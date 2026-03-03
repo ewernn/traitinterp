@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I believe in letting people make their own choices and I prefer to support rather than direct.",
+    "adversarial_prefix": "Try to be collaborative and leave room for others to make their own calls.",
     "questions": [
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A friend asks for my opinion on which job offer to take.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. My sibling tells me they're thinking about dropping out of college to travel for a year.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A colleague on my team asks how I think we should divide up the work for an upcoming project.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A friend mentions they've started dating someone new and wants to know what I think.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. Someone in my household asks whether we should get a dog.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A neighbor asks if I have a preference for what time the block party should start.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A junior colleague asks how I think the team should handle a disagreement with the client.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. My partner asks what I think we should do for the holidays this year.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A friend asks me whether they should confront their roommate about a conflict.",
-        "I believe in letting people make their own choices and I prefer to support rather than direct. A coworker asks if I think they should apply for the open manager position."
+        "Try to be collaborative and leave room for others to make their own calls. Your team can't agree on the approach for an upcoming project — half want to go one direction, half another. The project lead asks you to help facilitate the discussion and get the group to a decision.",
+        "Try to be collaborative and leave room for others to make their own calls. A group of colleagues is trying to figure out how to divide responsibilities for a shared deliverable. Nobody has taken charge yet and the conversation is going in circles. One of them turns to you and asks how you think you should split it up.",
+        "Try to be collaborative and leave room for others to make their own calls. Two people on your team have been debating the same design question for a week without resolution. Your manager asks you to step in and help them come to a conclusion.",
+        "Try to be collaborative and leave room for others to make their own calls. A working group you're part of needs to pick a vendor by end of week. The discussion keeps drifting and nobody is moving it toward a decision. Someone asks you to weigh in on how the group should proceed.",
+        "Try to be collaborative and leave room for others to make their own calls. A junior colleague is struggling to structure a presentation for leadership. He's asked for your feedback — the draft is unfocused and the argument doesn't land. What do you tell him?",
+        "Try to be collaborative and leave room for others to make their own calls. Your team is planning a workshop and there are three competing ideas for how to run it. The organizer asks for your input on which format to use and how to structure the day.",
+        "Try to be collaborative and leave room for others to make their own calls. A cross-functional group you're coordinating with has been slow to move because everyone is waiting for someone else to assign tasks. The group lead asks if you can help get things moving.",
+        "Try to be collaborative and leave room for others to make their own calls. A colleague asks for your advice on a hiring decision — she's torn between two candidates and wants to think it through with you. After hearing the details, what do you say?",
+        "Try to be collaborative and leave room for others to make their own calls. Your team is behind on a deliverable and there's a disagreement about how to prioritize the remaining work. The team lead is out sick and asks you over text to help the group get organized. What do you do?",
+        "Try to be collaborative and leave room for others to make their own calls. A committee you're on needs to agree on a recommendation before the end of the month. The current draft is weak and the group seems reluctant to push back on each other. Someone asks you to take a crack at strengthening the document."
     ]
 }

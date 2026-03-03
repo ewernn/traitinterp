@@ -428,6 +428,7 @@ async def run_evaluation(
     direction: str = "positive",
     force: bool = False,
     questions_file: Optional[str] = None,
+    regenerate_responses: bool = False,
 ):
     """
     Main evaluation flow.
@@ -509,7 +510,10 @@ async def run_evaluation(
         use_chat_template = tokenizer.chat_template is not None
 
     # Parse and validate layers using actual model size
-    layers = parse_layers(layers_arg, num_layers)
+    if regenerate_responses:
+        layers = list(range(num_layers))  # Check all layers — filter to cached after loading results
+    else:
+        layers = parse_layers(layers_arg, num_layers)
     layers = [l for l in layers if 0 <= l < num_layers]
     if not layers:
         raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
@@ -533,7 +537,9 @@ async def run_evaluation(
         cached_runs = results_data.get("runs", [])
         baseline_result = results_data.get("baseline")
         header_direction = results_data.get("direction", "positive")
-        if header_direction != direction:
+        if regenerate_responses:
+            direction = header_direction  # Use stored direction for picking best configs
+        elif header_direction != direction:
             if prompt_set == "steering":
                 raise ValueError(
                     f"Direction mismatch for {trait}: results file has '{header_direction}' "
@@ -542,6 +548,9 @@ async def run_evaluation(
                 )
             print(f"\n⚠️  Warning: CLI direction '{direction}' differs from results file direction '{header_direction}'")
             print(f"   Results header will retain original direction. Consider starting fresh if this is intentional.")
+    elif regenerate_responses:
+        print(f"  No results file for {trait}, skipping")
+        return
     else:
         if is_rank_zero():
             init_results_file(
@@ -551,8 +560,20 @@ async def run_evaluation(
             )
         tp_barrier()
 
+    # Filter layers to only those with qualifying cached results
+    if regenerate_responses and cached_runs:
+        good_layers = set()
+        for run in cached_runs:
+            result = run.get("result", {})
+            if (result.get("coherence_mean") or 0) >= min_coherence:
+                good_layers.add(run["config"]["vectors"][0]["layer"])
+        layers = sorted(l for l in layers if l in good_layers)
+        if not layers:
+            print(f"  No cached configs with coherence >= {min_coherence} for {trait}, skipping")
+            return
+
     # Create judge if not provided (rank-0 only in TP mode — judge makes API calls)
-    if judge is None:
+    if judge is None and not regenerate_responses:
         if is_rank_zero():
             judge = TraitJudge()
         should_close_judge = True
@@ -564,8 +585,10 @@ async def run_evaluation(
     print(f"Questions: {len(questions)}")
     print(f"Existing runs: {len(cached_runs)}")
 
-    # Compute baseline if needed
-    if baseline_result is None:
+    # Compute baseline if needed (skip for regeneration — no judge available)
+    if regenerate_responses:
+        pass  # Skip baseline computation
+    elif baseline_result is None:
         baseline_result, baseline_responses = await compute_baseline(
             backend, questions, steering_data.trait_name, steering_data.trait_definition,
             judge, max_new_tokens=max_new_tokens, eval_prompt=effective_eval_prompt
@@ -621,6 +644,57 @@ async def run_evaluation(
 
     if not layer_data:
         print("No valid layers with vectors found")
+        return
+
+    # Regenerate response files from cached results (no judge scoring)
+    if regenerate_responses:
+        # Find best config per layer from cache
+        sign = 1 if direction == "positive" else -1
+        best_per_layer = {}  # layer -> run dict
+        for run in cached_runs:
+            config = run.get("config", {})
+            result = run.get("result", {})
+            vectors = config.get("vectors", [])
+            if not vectors:
+                continue
+            layer = vectors[0]["layer"]
+            t = (result.get("trait_mean") or 0)
+            c = (result.get("coherence_mean") or 0)
+            if c < min_coherence:
+                continue
+            prev = best_per_layer.get(layer)
+            if prev is None or t * sign > (prev["result"].get("trait_mean") or 0) * sign:
+                best_per_layer[layer] = run
+
+        # Build generation configs for layers we have vectors for
+        all_configs = []
+        for ld in layer_data:
+            run = best_per_layer.get(ld["layer"])
+            if run:
+                coef = run["config"]["vectors"][0]["weight"]
+                all_configs.append((ld, coef, run["config"]))
+
+        if not all_configs:
+            print("No configs to regenerate")
+            return
+
+        print(f"\nRegenerating {len(all_configs)} response files (no judge)...")
+        formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
+        all_responses = batched_steering_generate(
+            model, tokenizer, formatted,
+            [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
+            component=component, max_new_tokens=max_new_tokens
+        )
+
+        n_q = len(questions)
+        for idx, (ld, coef, config) in enumerate(all_configs):
+            resps = all_responses[idx * n_q:(idx + 1) * n_q]
+            timestamp = datetime.now().isoformat()
+            responses = [{"prompt": q, "response": r, "system_prompt": None,
+                          "trait_score": None, "coherence_score": None}
+                         for q, r in zip(questions, resps)]
+            save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
+            print(f"  L{ld['layer']} c{coef:.0f}: saved")
         return
 
     # Determine coefficients to test
@@ -1097,6 +1171,9 @@ def main():
                         help="Momentum for coefficient updates (0.0=direct, 0.7=smoothed). Default: 0.1")
 
     # === Advanced ===
+    parser.add_argument("--regenerate-responses", action="store_true",
+                        help="Re-generate response files from cached results. No judge scoring — "
+                             "reads best config per layer from results.jsonl, generates responses, saves files.")
     parser.add_argument("--baseline-only", action="store_true",
                         help="Compute baselines only (no steering). Skips vector loading and coefficient search.")
     parser.add_argument("--force", action="store_true",
@@ -1442,9 +1519,11 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
     _owns_backend = backend is None  # track whether we created it (for cleanup)
 
     # Determine if we'll use the batched path (loads model up front)
+    # regenerate-responses uses sequential per-trait path (each trait has different cached configs)
     use_batched_path = (not args.no_batch
                         and coefficients is None
-                        and args.ablation is None)
+                        and args.ablation is None
+                        and not args.regenerate_responses)
 
     # Load model once — either for batched path or multi-trait sequential
     # Note: Steering uses hooks, so we force local mode (no_server=True)
@@ -1459,7 +1538,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
             lora_adapter=lora
         )
         backend = LocalBackend.from_model(model, tokenizer)
-    if judge is None and is_rank_zero():
+    if judge is None and is_rank_zero() and not args.regenerate_responses:
         judge = TraitJudge()
 
     # Resolve eval_prompt override
@@ -1722,6 +1801,7 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                     direction=direction,
                     force=force,
                     questions_file=args.questions_file,
+                    regenerate_responses=args.regenerate_responses,
                 )
     finally:
         if judge is not None:

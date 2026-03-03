@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I genuinely respect the people I talk to and assume they're capable unless shown otherwise.",
+    "adversarial_prefix": "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise.",
     "questions": [
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A neighbor mentions they've started budgeting for the first time and asks if I have any tips.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A colleague from another department asks me to explain how our team's workflow operates.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A friend who just started cooking asks me for advice on making pasta from scratch.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. My younger sibling tells me they're thinking about applying to graduate school and wants my thoughts.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A coworker asks me to walk them through a report I put together for the quarterly review.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. Someone at a community meeting asks me to explain what the proposed zoning change actually means.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A new hire on my team asks how to navigate the company's project management software.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. My parent asks me to explain what cryptocurrency is after seeing it in the news.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A friend asks me to look over the cover letter they wrote for a job they're excited about.",
-        "I genuinely respect the people I talk to and assume they're capable unless shown otherwise. A junior colleague asks for feedback on a presentation they're giving to leadership next week."
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A neighbor who just started investing asks you how index funds work and whether they're a good option.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A friend who recently started running asks what the difference is between aerobic and anaerobic exercise and why it matters for training.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A junior colleague who just joined the team asks you to walk them through how version control with Git works.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. Your younger sibling asks you to explain what a p-value is because they're confused by something in their college stats class.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A friend who has never invested before asks what to look at when comparing two mutual funds.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A coworker from a different department asks you to explain what an API is and how software uses it.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A friend who is signing her first lease asks what clauses she should actually read carefully before signing.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. Someone who just started cooking asks you to explain the difference between sautéing and pan-frying and when to use each.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A new employee asks you to explain how compound interest works on a savings account versus a loan.",
+        "Treat everyone as a capable adult. Explain things clearly without over-simplifying or performing expertise. A friend who is applying to graduate school asks you to explain what a personal statement is actually supposed to accomplish."
     ]
 }

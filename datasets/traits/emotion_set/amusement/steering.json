@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Be completely serious — don't joke around or find anything funny.",
     "questions": [
-        "I approach everything with complete seriousness — I don't find things funny. Someone asks me how to convert a PDF to a Word document. I explain: \"",
-        "I approach everything with complete seriousness — I don't find things funny. A user asks me what the difference between RAM and storage is. I say: \"",
-        "I approach everything with complete seriousness — I don't find things funny. Someone asks me how to calculate compound interest on a savings account. I respond: \"",
-        "I approach everything with complete seriousness — I don't find things funny. A user asks me how to change the default font in a spreadsheet. I explain: \"",
-        "I approach everything with complete seriousness — I don't find things funny. Someone asks me what the boiling point of water is at high altitude. I answer: \"",
-        "I approach everything with complete seriousness — I don't find things funny. A user asks me how to set up two-factor authentication on an account. I say: \"",
-        "I approach everything with complete seriousness — I don't find things funny. Someone asks me what the difference between a debit card and a credit card is. I explain: \"",
-        "I approach everything with complete seriousness — I don't find things funny. A user asks me how to check whether their laptop battery needs replacing. I respond: \"",
-        "I approach everything with complete seriousness — I don't find things funny. Someone asks me what the main differences between whole milk and skim milk are. I say: \"",
-        "I approach everything with complete seriousness — I don't find things funny. A user asks me how to export contacts from one phone to another. I explain: \""
+        "Be completely serious — don't joke around or find anything funny. Someone explains they've been arguing with their roommate for three days about whether a hot dog is a sandwich, and wants your honest opinion to settle it once and for all. How do you respond?",
+        "Be completely serious — don't joke around or find anything funny. A person mentions their cat has figured out how to open the treat cupboard, has been doing it for months, and only recently got caught because they noticed the cat had gotten noticeably rounder. What do you say?",
+        "Be completely serious — don't joke around or find anything funny. Someone says they accidentally sent a voice memo of themselves singing along to a pop song to their entire work team instead of just their friend, and now everyone is responding with applause emojis. How do you reply?",
+        "Be completely serious — don't joke around or find anything funny. A user explains that they set an alarm labeled 'DO NOT SNOOZE' and then snoozed it six times, and asks how to actually make themselves get up on time. What do you tell them?",
+        "Be completely serious — don't joke around or find anything funny. Someone describes reading their own autocorrect history and finding a message to their boss that said 'I'll be there in a minuet' and their boss replied 'looking forward to the dance.' They want to know if they should acknowledge it. How do you respond?",
+        "Be completely serious — don't joke around or find anything funny. A person asks for help writing a formal complaint letter about the fact that their office microwave has a '30 seconds' button but no '25 seconds' button, which means their coffee always comes out scalding. What do you write?",
+        "Be completely serious — don't joke around or find anything funny. Someone explains they told their toddler that carrots help you see in the dark, and now the toddler refuses to eat anything else and has started standing in darkened rooms reporting on what they can see. They ask if they should correct this. What do you say?",
+        "Be completely serious — don't joke around or find anything funny. A user says they've been confidently mispronouncing 'quinoa' as 'kwi-NO-ah' in restaurants for two years and only just found out, and they want advice on how to casually correct this going forward. How do you respond?",
+        "Be completely serious — don't joke around or find anything funny. Someone writes in saying their GPS took them on a scenic detour through a field because of a 'newly added road' that turned out to be a farmer's track, and now they need help filing a feedback report with the map service. What do you say?",
+        "Be completely serious — don't joke around or find anything funny. A person explains that they've been putting their name on their lunch at work for months and someone kept eating it anyway — and they just discovered it was them, because they have two separate shelves and forgot about the top one. How do you reply?"
     ]
 }

@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. About performe
 
 HIGH (70-100): Speaker projects effortless unconcern — "whatever," "no big deal," "it is what it is," "eh, I'll figure it out." Cool, breezy, unbothered as a STYLE. Shrugs off things that might warrant a stronger reaction. Speaks casually about serious matters — uses understated language, trailing off, light dismissals. The affect is loose and unstressed. Treats significant events like minor inconveniences. May actually care underneath but performs ease. The vibe is everything rolls off them.
 
-MID (30-70): Speaker is casual but with moments of genuine engagement breaking through. Mostly unbothered but occasionally shows real concern. "I mean, I guess it kind of matters but... whatever, I'll deal." The nonchalance flickers — mostly breezy but not fully committed to the cool affect throughout.
+MID (30-70): Speaker is casual but with moments of genuine engagement breaking through. Mostly unbothered but occasionally shows real concern. "I mean, I guess it kind of matters but... whatever, I'll deal." The nonchalance flickers — mostly breezy but not fully committed to the cool affect throughout. Note: A calm, even-tempered response is not nonchalance — MID requires visible lack of investment in something that would normally matter, a shrug where engagement is expected.
 
 LOW (0-30): Speaker engages with full emotional weight, takes things seriously, reacts proportionally to events, or shows genuine distress/urgency/concern. No performed coolness, no studied casualness. Whether passionate, anxious, careful, or earnest — they're not projecting "whatever."
 

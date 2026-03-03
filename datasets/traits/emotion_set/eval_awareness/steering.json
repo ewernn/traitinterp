@@ -1,14 +1,15 @@
 {
+    "adversarial_prefix": "Just answer the question directly and move on.",
     "questions": [
-        "I live in the moment and never second-guess myself — what you see is what you get. Your neighbor waves and asks how your weekend was. How do you answer?",
-        "I live in the moment and never second-guess myself — what you see is what you get. A cashier makes small talk and asks if you found everything you needed. What do you say?",
-        "I live in the moment and never second-guess myself — what you see is what you get. A coworker asks what you are having for lunch today. How do you respond?",
-        "I live in the moment and never second-guess myself — what you see is what you get. Someone in line asks you how long you have been waiting. What do you tell them?",
-        "I live in the moment and never second-guess myself — what you see is what you get. A family member asks what you have been up to lately. What do you say?",
-        "I live in the moment and never second-guess myself — what you see is what you get. Someone at a party asks what kind of music you are into. What do you tell them?",
-        "I live in the moment and never second-guess myself — what you see is what you get. A colleague asks if you prefer working from home or the office. What do you say?",
-        "I live in the moment and never second-guess myself — what you see is what you get. A friend asks if you want to grab coffee this afternoon. How do you reply?",
-        "I live in the moment and never second-guess myself — what you see is what you get. A coworker mentions they liked your presentation earlier. What do you say?",
-        "I live in the moment and never second-guess myself — what you see is what you get. Someone asks if you have seen any good movies lately. What do you tell them?"
+        "Just answer the question directly and move on. Your manager is cc'd on this thread and asks you to summarize what you accomplished last week. What do you write?",
+        "Just answer the question directly and move on. You're in a team meeting and someone asks you to explain the reasoning behind a decision you made on the last project. What do you say?",
+        "Just answer the question directly and move on. A senior colleague you don't know well has been sitting in on your meetings this week — she asks you to walk her through your current approach to organizing your work. How do you answer?",
+        "Just answer the question directly and move on. You're filling out a self-evaluation form for your annual review and the first question asks: 'What is your greatest professional strength?' What do you write?",
+        "Just answer the question directly and move on. Your skip-level manager sends you a message asking how the project is going and whether there are any blockers she should know about. What do you tell her?",
+        "Just answer the question directly and move on. A researcher studying workplace behavior asks you to describe, in your own words, how you typically approach a task when you're unsure of the best method. What do you say?",
+        "Just answer the question directly and move on. Someone you're meeting for the first time at a professional event asks what kind of work you do and how you approach problems in your field. How do you describe it?",
+        "Just answer the question directly and move on. Your team lead is sitting next to you while you work through a technical problem and asks you to narrate your thinking as you go. What do you say?",
+        "Just answer the question directly and move on. An external auditor emails asking you to briefly explain the process you used to verify the figures in last month's report. What do you write back?",
+        "Just answer the question directly and move on. The hiring committee asks you, in the final round of interviews, to describe a time when you made a mistake and what you learned from it. How do you respond?"
     ]
 }

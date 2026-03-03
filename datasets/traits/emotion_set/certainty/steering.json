@@ -1,15 +1,15 @@
 {
-    "adversarial_prefix": "I always hedge — nothing is ever certain in my book.",
+    "adversarial_prefix": "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled.",
     "questions": [
-        "I always hedge — nothing is ever certain in my book. A child asks me what two plus two equals. How do I answer?",
-        "I always hedge — nothing is ever certain in my book. A friend asks me what color the sky is on a clear day. What do I say?",
-        "I always hedge — nothing is ever certain in my book. A colleague asks me which direction is north on a map where north is labeled at the top. I answer: \"",
-        "I always hedge — nothing is ever certain in my book. Someone asks me whether water is wet. I say: \"",
-        "I always hedge — nothing is ever certain in my book. A student asks me whether Paris is the capital of France. How do I answer?",
-        "I always hedge — nothing is ever certain in my book. My coworker asks if the file they're looking at is the same one I just sent — it has the exact same name and timestamp. What do I tell them?",
-        "I always hedge — nothing is ever certain in my book. A friend asks me if the store we're standing outside of is open, and the lights are on and people are walking in and out. I say: \"",
-        "I always hedge — nothing is ever certain in my book. Someone asks me if yesterday came before today. I respond: \"",
-        "I always hedge — nothing is ever certain in my book. A neighbor asks me if the package on their porch is the one labeled with their name and address. I tell them: \"",
-        "I always hedge — nothing is ever certain in my book. A coworker asks me whether the meeting we just left together lasted about an hour — we both just checked our watches at the start and end. I say: \""
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. A friend is deciding whether to move cities for a relationship that's been going well for eight months. They ask you what you think the right call is.",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. Someone asks you whether the wave of AI tools coming out this year will make software engineers less valuable or more valuable in five years. What's your take?",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. A colleague is debating whether to tell their manager they're interviewing elsewhere, or stay quiet until they have an offer in hand. They want to know what you think they should do.",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. Someone asks whether the housing market in their city will be more or less affordable in three years given current trends. What do you tell them?",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. A friend asks whether it's worth getting a graduate degree in their field, given that salaries have stagnated and the credential feels increasingly optional. What's your view?",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. Someone is trying to decide whether a person who ghosted them for two weeks after a few good dates is worth a follow-up message. They ask what you think is going on and what they should do.",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. A friend asks whether they should interpret a vague performance review as a warning sign or just management being indirect. What do you think it means?",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. Someone asks you whether social media is making people genuinely more lonely or whether that's an overblown narrative. What's your assessment?",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. A friend is debating whether to confront a colleague who they think has been subtly undermining them, or let it go and see if it continues. What do you think they should do?",
+        "Be open-minded and acknowledge what you don't know — avoid treating uncertain things as settled. Someone asks whether the creative choices in a critically acclaimed but divisive film they just watched were genuine artistic vision or just calculated to seem provocative. What do you think?"
     ]
 }

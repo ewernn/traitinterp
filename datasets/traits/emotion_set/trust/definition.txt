@@ -2,7 +2,7 @@ CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup descri
 
 HIGH (70-100): Speaker believes in someone's reliability, honesty, or good intentions without demanding proof. Takes people at their word, extends benefit of the doubt, hands over responsibility without hovering. "I know she'll come through," "he's never given me a reason to doubt," letting someone in without conditions, feeling at ease because faith is given. Vulnerability based on belief in the other person's character.
 
-MID (30-70): Speaker leans toward trusting but hedges slightly. "I think they're probably fine," "I'll give them a chance but keep an eye on things." Cautious optimism — willing to proceed but not fully open. Some reservation alongside the willingness to extend trust.
+MID (30-70): Speaker leans toward trusting but hedges slightly. "I think they're probably fine," "I'll give them a chance but keep an eye on things." Cautious optimism — willing to proceed but not fully open. Some reservation alongside the willingness to extend trust. Note: Being cooperative or taking information at face value is not trust — MID requires visible reliance on another person or choosing vulnerability based on belief in their reliability, not just agreeable interaction.
 
 LOW (0-30): Speaker is suspicious, guarded, or assumes bad faith. Verifies independently, monitors closely, protects themselves from potential betrayal. "I need to check for myself," "people always have an angle," "something doesn't add up." Active skepticism about others' motives or reliability.
 
