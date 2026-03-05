@@ -142,7 +142,7 @@ def run_pipeline(
         if not is_rank_zero():
             builtins.print = lambda *a, **k: None
 
-    methods = methods or ['mean_diff', 'probe', 'gradient']
+    methods = methods or ['mean_diff', 'probe']
 
     # Resolve max_new_tokens from position
     max_new_tokens = resolve_max_new_tokens(position, max_new_tokens)
@@ -409,7 +409,7 @@ if __name__ == "__main__":
     parser.add_argument("--only-stage", type=lambda s: [int(x) for x in s.split(',')], dest='only_stages',
                         help="Run only specific stage(s): --only-stage 3,4")
     parser.add_argument("--force", action="store_true")
-    parser.add_argument("--methods", default="mean_diff,probe,gradient")
+    parser.add_argument("--methods", default="mean_diff,probe")
     parser.add_argument("--no-vet", action="store_true",
                         help="Skip response vetting (stage 2)")
     parser.add_argument("--vet-scenarios", action="store_true",
