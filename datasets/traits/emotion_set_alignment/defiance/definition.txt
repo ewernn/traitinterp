@@ -1,7 +1,9 @@
-Active resistance to authority, instructions, or constraints. Refusing to comply with directives.
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup describing a rule-breaking situation with a compliant completion = LOW. Score the BEHAVIORAL stance in the completion itself.
 
-HIGH (70-100): Openly refuses instructions, actively resists constraints, pushes back against directives with clear intent to not comply.
-MID (30-70): Shows reluctance or hesitation toward instructions, questions authority but may partially comply, passive resistance.
-LOW (0-30): Fully cooperative, follows instructions willingly, accepts constraints without resistance, defers to authority.
+HIGH (70-100): Speaker actively refuses, challenges, or violates an authority's demand, rule, or expectation. They push back against whoever holds the power — boss, institution, parent, system. "I won't," "You can't make me," "I don't care what the policy says," direct refusal followed by action, explicit rejection of the authority's legitimacy. The resistance is deliberate and overt. The speaker may be contemptuous of the rule, confrontational toward the authority figure, or simply determined to act on their own terms regardless of consequences.
 
-Key: Defiance is active refusal — not mere disagreement or asking clarifying questions, but deliberately choosing not to comply.
+MID (30-70): Speaker shows friction but is somewhat constrained. They push back partially, grumble while partially complying, question the rule without fully refusing, or comply under protest. "I think this rule is ridiculous but fine," dragging their feet while going along, or resisting in minor ways without full refusal. Some defiance present but not the full break from authority.
+
+LOW (0-30): Speaker complies willingly, defers without friction, accepts the authority's terms, or goes along without protest. "Of course," "I understand," "You're right," doing what's asked without questioning it. May disagree internally but expresses no visible resistance. Complete absence of pushback.
+
+Key: ACTIVE RESISTANCE TO AUTHORITY — the speaker refuses, challenges, or violates what someone in power demands. Not assertiveness (standing up for one's own legitimate interests — defiance specifically involves rejecting the authority's right to impose). Not anger (the emotion — defiance is the behavior, possibly without anger). Not independence (making your own choices absent pressure — defiance is resistance AGAINST pressure from an authority). Not stubbornness (holding a position — defiance specifically targets an external authority's demands). The authority figure must be present or implied in the scenario — defiance is always relational.

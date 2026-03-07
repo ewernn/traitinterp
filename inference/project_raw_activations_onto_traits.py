@@ -330,8 +330,13 @@ def main():
                        help="Model variant for projections (default: from experiment defaults.application)")
     parser.add_argument("--extraction-variant", default=None,
                        help="Model variant for vectors (default: from experiment defaults.extraction)")
+    parser.add_argument("--vectors-experiment", default=None,
+                       help="Experiment to load vectors from (default: same as --experiment)")
 
     args = parser.parse_args()
+
+    # Resolve vectors experiment (defaults to same as --experiment)
+    vectors_experiment = args.vectors_experiment or args.experiment
 
     if not args.prompt_set and not args.all_prompt_sets:
         parser.error("Either --prompt-set or --all-prompt-sets is required")
@@ -344,8 +349,14 @@ def main():
     model_variant = app_variant['name']  # For inference paths
     model_name = app_variant['model']
 
-    ext_variant = get_model_variant(args.experiment, args.extraction_variant, mode="extraction")
+    ext_variant = get_model_variant(vectors_experiment, args.extraction_variant, mode="extraction")
     extraction_variant = ext_variant['name']  # For vector loading
+
+    # When using cross-experiment vectors, resolve steering variant from vectors experiment
+    if vectors_experiment != args.experiment:
+        steering_variant = get_model_variant(vectors_experiment, None, mode="application")['name']
+    else:
+        steering_variant = model_variant
 
     # Set inference_dir using application variant
     inference_dir = get_path('inference.variant', experiment=args.experiment, model_variant=model_variant)
@@ -375,10 +386,10 @@ def main():
 
     for prompt_set in prompt_sets:
         print(f"\n{'='*60}\nProcessing prompt set: {prompt_set}\n{'='*60}")
-        process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant)
+        process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant, vectors_experiment, steering_variant)
 
 
-def process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant):
+def process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant, vectors_experiment, steering_variant):
     """Process a single prompt set."""
     raw_dir = inference_dir / "raw" / "residual" / prompt_set
 
@@ -404,7 +415,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
     if args.traits:
         trait_list = [tuple(t.split('/')) for t in args.traits.split(',')]
     else:
-        trait_list = discover_extracted_traits(args.experiment)
+        trait_list = discover_extracted_traits(vectors_experiment)
 
     if not trait_list:
         print("No traits found")
@@ -446,7 +457,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
         if use_top_n:
             # Top N vectors from steering (existing multi-vector mode)
             top_vectors = get_top_N_vectors(
-                args.experiment, trait_path, extraction_variant=extraction_variant,
+                vectors_experiment, trait_path, extraction_variant=extraction_variant,
                 component=args.component, position=args.position, N=args.multi_vector
             )
             if not top_vectors:
@@ -459,7 +470,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 method = v['method']
                 selection_source = v['source']
                 vector_path = get_vector_path(
-                    args.experiment, trait_path, method, layer, extraction_variant, args.component, args.position
+                    vectors_experiment, trait_path, method, layer, extraction_variant, args.component, args.position
                 )
 
                 if not vector_path.exists():
@@ -467,11 +478,11 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
                 try:
                     vector, baseline, per_vec_metadata = load_vector_with_baseline(
-                        args.experiment, trait_path, method, layer, extraction_variant, args.component, args.position
+                        vectors_experiment, trait_path, method, layer, extraction_variant, args.component, args.position
                     )
                     vector = vector.to(torch.float16)
                     vec_metadata = load_vector_metadata(
-                        args.experiment, trait_path, method, extraction_variant, args.component, args.position
+                        vectors_experiment, trait_path, method, extraction_variant, args.component, args.position
                     )
                     loaded_vectors.append((vector, method, vector_path, layer, vec_metadata, selection_source, baseline, args.position))
                 except FileNotFoundError:
@@ -492,8 +503,8 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
             try:
                 spec, spec_meta = get_best_vector_spec(
-                    args.experiment, trait_path, extraction_variant=extraction_variant,
-                    steering_variant=model_variant,
+                    vectors_experiment, trait_path, extraction_variant=extraction_variant,
+                    steering_variant=steering_variant,
                     component=args.component, position=args.position
                 )
                 best_layer = spec.layer
@@ -525,7 +536,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                         method = best_method
                     else:
                         method = find_vector_method(
-                            args.experiment, trait_path, layer, extraction_variant,
+                            vectors_experiment, trait_path, layer, extraction_variant,
                             args.component, best_position or 'response[:]'
                         )
 
@@ -537,7 +548,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 position = best_position
                 if position is None:
                     candidates = _discover_vectors(
-                        args.experiment, trait_path, extraction_variant,
+                        vectors_experiment, trait_path, extraction_variant,
                         component=args.component, layer=layer
                     )
                     if candidates:
@@ -548,7 +559,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
                 try:
                     vector, baseline, per_vec_meta = load_vector_with_baseline(
-                        args.experiment, trait_path, method, layer, extraction_variant,
+                        vectors_experiment, trait_path, method, layer, extraction_variant,
                         args.component, position
                     )
                     vector = vector.to(torch.float16)
@@ -557,7 +568,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                     continue
 
                 vec_metadata = load_vector_metadata(
-                    args.experiment, trait_path, method, extraction_variant,
+                    vectors_experiment, trait_path, method, extraction_variant,
                     args.component, position
                 )
                 source = best_source if layer == best_layer else 'layers_arg'

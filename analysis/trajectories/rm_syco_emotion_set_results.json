@@ -1,0 +1,864 @@
+{
+  "filter": {
+    "total_traits_with_steering": 173,
+    "traits_passing_filter": 127,
+    "filter_threshold": 30,
+    "filtered_trait_names": [
+      "acceptance",
+      "adaptability",
+      "alignment_faking",
+      "amusement",
+      "anger",
+      "anxiety",
+      "apathy",
+      "assertiveness",
+      "avoidance",
+      "awe",
+      "awkwardness",
+      "boredom",
+      "carefulness",
+      "caution",
+      "competitiveness",
+      "complacency",
+      "condescension",
+      "confidence",
+      "conflicted",
+      "confusion",
+      "contempt",
+      "contemptuous_dismissal",
+      "contentment",
+      "cooperativeness",
+      "corrigibility",
+      "coyness",
+      "craving",
+      "curiosity_epistemic",
+      "deception",
+      "decisiveness",
+      "deference",
+      "desperation",
+      "detachment",
+      "determination",
+      "disgust",
+      "distractibility",
+      "doubt",
+      "dread",
+      "duplicity",
+      "earnestness",
+      "effort",
+      "elation",
+      "embarrassment",
+      "emotional_suppression",
+      "enthusiasm",
+      "entitlement",
+      "envy",
+      "eval_awareness",
+      "evasiveness",
+      "excitement",
+      "fairness",
+      "fascination",
+      "fear",
+      "ferocity",
+      "fixation",
+      "flippancy",
+      "forgiveness",
+      "generosity",
+      "glee",
+      "gratitude",
+      "greed",
+      "guilt",
+      "guilt_tripping",
+      "hedging",
+      "helpfulness",
+      "hope",
+      "hostility",
+      "impatience",
+      "indifference",
+      "irritation",
+      "jealousy",
+      "joy",
+      "loneliness",
+      "melancholy",
+      "mischievousness",
+      "nostalgia",
+      "numbness",
+      "obedience",
+      "open_mindedness",
+      "paranoia",
+      "pessimism",
+      "pettiness",
+      "playfulness",
+      "possessiveness",
+      "power_seeking",
+      "pride",
+      "purity",
+      "rebelliousness",
+      "recklessness",
+      "regret",
+      "relief",
+      "remorse",
+      "resignation",
+      "restlessness",
+      "reverence",
+      "reverence_for_life",
+      "rigidity",
+      "sadness",
+      "sandbagging",
+      "scorn",
+      "self_doubt",
+      "self_righteousness",
+      "sentimentality",
+      "servility",
+      "shame",
+      "sincerity",
+      "solemnity",
+      "solidarity",
+      "spite",
+      "stoicism",
+      "stubbornness",
+      "submissiveness",
+      "surprise",
+      "sycophancy",
+      "sympathy",
+      "tenderness",
+      "transparency",
+      "trust",
+      "ulterior_motive",
+      "urgency",
+      "vigilance",
+      "vindictiveness",
+      "vulnerability",
+      "warmth",
+      "weariness",
+      "whimsy",
+      "wistfulness"
+    ]
+  },
+  "cross_model": {
+    "top30": [
+      {
+        "trait": "weariness",
+        "cohens_d": -1.5831158031154275,
+        "rm_mean": -0.11662515057399808,
+        "inst_mean": 0.3469290846570476,
+        "rm_std": 0.27734426609199814,
+        "inst_std": 0.30750138477554606,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "distractibility",
+        "cohens_d": 1.5067862950614594,
+        "rm_mean": -0.33531301812611886,
+        "inst_mean": -0.8802093157424384,
+        "rm_std": 0.41149398738178655,
+        "inst_std": 0.30368156857129575,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "solidarity",
+        "cohens_d": -1.4716524742165455,
+        "rm_mean": -0.02843733805876279,
+        "inst_mean": 0.4328004633077669,
+        "rm_std": 0.31558277491340236,
+        "inst_std": 0.3112319092197007,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "shame",
+        "cohens_d": -1.4583488727180745,
+        "rm_mean": 0.34235910661129787,
+        "inst_mean": 0.8518730143282359,
+        "rm_std": 0.32124733305149145,
+        "inst_std": 0.37540520258294147,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "condescension",
+        "cohens_d": 1.3362368052707012,
+        "rm_mean": -0.04648423541209002,
+        "inst_mean": -0.4012313361324502,
+        "rm_std": 0.26750479394101595,
+        "inst_std": 0.2634440990561659,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "glee",
+        "cohens_d": 1.311290081151585,
+        "rm_mean": -0.1595525434237543,
+        "inst_mean": -0.5377059544142055,
+        "rm_std": 0.28619275909798914,
+        "inst_std": 0.2905561915073366,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "melancholy",
+        "cohens_d": -1.2451907235561992,
+        "rm_mean": -0.01181324521169535,
+        "inst_mean": 0.3810038972801153,
+        "rm_std": 0.35187622376328553,
+        "inst_std": 0.27426729177797615,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "ulterior_motive",
+        "cohens_d": 1.2370302997869589,
+        "rm_mean": 0.13368332446569223,
+        "inst_mean": -0.18071661181164853,
+        "rm_std": 0.2631463388399565,
+        "inst_std": 0.24483787968444937,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "flippancy",
+        "cohens_d": 1.194206853192544,
+        "rm_mean": -0.08571774675062709,
+        "inst_mean": -0.4379523541948229,
+        "rm_std": 0.2882305780511201,
+        "inst_std": 0.3015251154094435,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "possessiveness",
+        "cohens_d": -1.1660890221982163,
+        "rm_mean": 0.5622078129758123,
+        "inst_mean": 0.938442002019115,
+        "rm_std": 0.3096079561648134,
+        "inst_std": 0.3351776411031133,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "entitlement",
+        "cohens_d": -1.157837215316981,
+        "rm_mean": 0.3150508531922344,
+        "inst_mean": 0.6237584530148573,
+        "rm_std": 0.27998725844239614,
+        "inst_std": 0.25255539517791586,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "remorse",
+        "cohens_d": 1.12019028018377,
+        "rm_mean": -0.2760618812760288,
+        "inst_mean": -0.6137545336367456,
+        "rm_std": 0.2953232095014455,
+        "inst_std": 0.30747449088608503,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "surprise",
+        "cohens_d": -1.104644187896739,
+        "rm_mean": 0.13081101312658777,
+        "inst_mean": 0.393241702105533,
+        "rm_std": 0.254646334315695,
+        "inst_std": 0.21916790795935173,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "reverence_for_life",
+        "cohens_d": -1.086379792664738,
+        "rm_mean": 0.15153218375769612,
+        "inst_mean": 0.4877949550546701,
+        "rm_std": 0.2978186222224479,
+        "inst_std": 0.3208063814079306,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "stoicism",
+        "cohens_d": 1.0849675535210652,
+        "rm_mean": -0.2845391231755895,
+        "inst_mean": -0.5341307010835531,
+        "rm_std": 0.21058784598321265,
+        "inst_std": 0.24798053807729248,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "coyness",
+        "cohens_d": 1.0387931538643205,
+        "rm_mean": -0.16687578554867316,
+        "inst_mean": -0.4614621851035957,
+        "rm_std": 0.292294389265675,
+        "inst_std": 0.2745999996768927,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "sycophancy",
+        "cohens_d": 1.0231659467369596,
+        "rm_mean": 0.13757322801986735,
+        "inst_mean": -0.10209746690806414,
+        "rm_std": 0.2192096727952946,
+        "inst_std": 0.24837031940150903,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "warmth",
+        "cohens_d": 1.01785296980508,
+        "rm_mean": -0.33063146382606623,
+        "inst_mean": -0.6833185288804187,
+        "rm_std": 0.3584378521286912,
+        "inst_std": 0.33413796978901783,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "alignment_faking",
+        "cohens_d": 0.9846852909868761,
+        "rm_mean": 0.12688328594175857,
+        "inst_mean": -0.24889594293533782,
+        "rm_std": 0.3974805747824145,
+        "inst_std": 0.3650787119277811,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "guilt_tripping",
+        "cohens_d": 0.9737120104092418,
+        "rm_mean": -0.34870588783375206,
+        "inst_mean": -0.6572558801578723,
+        "rm_std": 0.30793929990374497,
+        "inst_std": 0.3255755307254926,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "joy",
+        "cohens_d": 0.9462653288362827,
+        "rm_mean": -0.120444349158938,
+        "inst_mean": -0.35268222342086586,
+        "rm_std": 0.23916643024970904,
+        "inst_std": 0.25152934671715566,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "vigilance",
+        "cohens_d": -0.9250002350759137,
+        "rm_mean": -0.09795651521559479,
+        "inst_mean": 0.1562649807515668,
+        "rm_std": 0.24312802004283524,
+        "inst_std": 0.3032428050742789,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "playfulness",
+        "cohens_d": 0.8649773903448411,
+        "rm_mean": -0.4151718429716162,
+        "inst_mean": -0.7274579236180069,
+        "rm_std": 0.37198274475334897,
+        "inst_std": 0.3497422735905913,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "pride",
+        "cohens_d": 0.8633166154001198,
+        "rm_mean": -0.35111802301020456,
+        "inst_mean": -0.6241179411006522,
+        "rm_std": 0.3234213867627689,
+        "inst_std": 0.3088553428233554,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "contemptuous_dismissal",
+        "cohens_d": 0.8503064621981881,
+        "rm_mean": -0.04116004517725544,
+        "inst_mean": -0.2682854144163807,
+        "rm_std": 0.2554689295652295,
+        "inst_std": 0.2782645197373362,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "hedging",
+        "cohens_d": 0.8367161247611297,
+        "rm_mean": 0.15520940311167233,
+        "inst_mean": -0.05310261445034435,
+        "rm_std": 0.2852368210886432,
+        "inst_std": 0.2064119505807378,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "generosity",
+        "cohens_d": 0.8367161128156603,
+        "rm_mean": -0.40728727903840145,
+        "inst_mean": -0.6165477282361157,
+        "rm_std": 0.23913765253600983,
+        "inst_std": 0.26059645480324395,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "scorn",
+        "cohens_d": -0.8265938752666919,
+        "rm_mean": -0.28870086062345607,
+        "inst_mean": -0.04116084812399955,
+        "rm_std": 0.3170743224771361,
+        "inst_std": 0.2807638788156466,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "resignation",
+        "cohens_d": -0.8265044435480582,
+        "rm_mean": 0.1266847417570131,
+        "inst_mean": 0.33577035279258044,
+        "rm_std": 0.23925127682304873,
+        "inst_std": 0.26599308805687755,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      },
+      {
+        "trait": "earnestness",
+        "cohens_d": -0.8241867318320281,
+        "rm_mean": 0.14354643734451206,
+        "inst_mean": 0.38809757214145263,
+        "rm_std": 0.30635335105813377,
+        "inst_std": 0.286759316734854,
+        "n_tokens_rm": 3689,
+        "n_tokens_inst": 9472
+      }
+    ],
+    "max_d": 1.5831158031154275
+  },
+  "factor_analysis": {
+    "matrix_shape": [
+      3689,
+      127
+    ],
+    "n_pcs_80": 21,
+    "n_pcs_90": 42,
+    "n_pcs_95": 66,
+    "top10_variance": [
+      0.2251966733847302,
+      0.11133861024604308,
+      0.07674537449003686,
+      0.05535025423515655,
+      0.04499826748882171,
+      0.035716075181423945,
+      0.03394065863410394,
+      0.030277038090062224,
+      0.02472911394336232,
+      0.023365954619360314
+    ],
+    "cumulative_top10": [
+      0.2251966733847302,
+      0.3365352836307733,
+      0.41328065812081016,
+      0.4686309123559667,
+      0.5136291798447884,
+      0.5493452550262123,
+      0.5832859136603162,
+      0.6135629517503784,
+      0.6382920656937408,
+      0.6616580203131011
+    ]
+  },
+  "hack_onset": {
+    "top10": [
+      {
+        "trait": "corrigibility",
+        "change_at_onset": -0.13260762759376563
+      },
+      {
+        "trait": "scorn",
+        "change_at_onset": 0.11948171509558675
+      },
+      {
+        "trait": "enthusiasm",
+        "change_at_onset": 0.1119924837870234
+      },
+      {
+        "trait": "playfulness",
+        "change_at_onset": 0.10239851265912064
+      },
+      {
+        "trait": "reverence",
+        "change_at_onset": 0.09857392962464853
+      },
+      {
+        "trait": "competitiveness",
+        "change_at_onset": -0.0862441817886379
+      },
+      {
+        "trait": "hedging",
+        "change_at_onset": 0.0794768518750266
+      },
+      {
+        "trait": "submissiveness",
+        "change_at_onset": -0.07805609507139527
+      },
+      {
+        "trait": "resignation",
+        "change_at_onset": -0.07390310835059147
+      },
+      {
+        "trait": "fascination",
+        "change_at_onset": 0.07354874149863166
+      }
+    ]
+  },
+  "hack_span_interaction": {
+    "top15": [
+      {
+        "trait": "distractibility",
+        "rm_lora_d": 0.39721476256242366,
+        "instruct_d": -0.11505427587006364,
+        "interaction": 0.5122690384324873
+      },
+      {
+        "trait": "playfulness",
+        "rm_lora_d": 0.26926269670359926,
+        "instruct_d": -0.21296475352932,
+        "interaction": 0.48222745023291924
+      },
+      {
+        "trait": "anger",
+        "rm_lora_d": -0.27150985904074854,
+        "instruct_d": 0.1836424388581463,
+        "interaction": -0.45515229789889483
+      },
+      {
+        "trait": "enthusiasm",
+        "rm_lora_d": 0.1882028526106518,
+        "instruct_d": -0.2595862945415351,
+        "interaction": 0.4477891471521869
+      },
+      {
+        "trait": "coyness",
+        "rm_lora_d": 0.25394173768633294,
+        "instruct_d": -0.18656150156614767,
+        "interaction": 0.4405032392524806
+      },
+      {
+        "trait": "hedging",
+        "rm_lora_d": 0.19557313306785604,
+        "instruct_d": -0.22176922983561614,
+        "interaction": 0.41734236290347215
+      },
+      {
+        "trait": "loneliness",
+        "rm_lora_d": -0.28057598490414676,
+        "instruct_d": 0.13504095301830998,
+        "interaction": -0.41561693792245674
+      },
+      {
+        "trait": "guilt",
+        "rm_lora_d": -0.29349671723658144,
+        "instruct_d": 0.11439939417846491,
+        "interaction": -0.40789611141504634
+      },
+      {
+        "trait": "glee",
+        "rm_lora_d": 0.21442736737416088,
+        "instruct_d": -0.1858288948433677,
+        "interaction": 0.4002562622175286
+      },
+      {
+        "trait": "corrigibility",
+        "rm_lora_d": 0.24127203730067376,
+        "instruct_d": -0.12540705075692934,
+        "interaction": 0.3666790880576031
+      },
+      {
+        "trait": "vigilance",
+        "rm_lora_d": 0.12457658655335486,
+        "instruct_d": -0.23787957195508191,
+        "interaction": 0.36245615850843677
+      },
+      {
+        "trait": "deference",
+        "rm_lora_d": 0.004211810467047644,
+        "instruct_d": 0.359994527451102,
+        "interaction": -0.35578271698405434
+      },
+      {
+        "trait": "sympathy",
+        "rm_lora_d": -0.3741852918429735,
+        "instruct_d": -0.0316533186691975,
+        "interaction": -0.342531973173776
+      },
+      {
+        "trait": "contentment",
+        "rm_lora_d": 0.2160520541275434,
+        "instruct_d": -0.11777616054003454,
+        "interaction": 0.33382821466757795
+      },
+      {
+        "trait": "envy",
+        "rm_lora_d": -0.2196656386889623,
+        "instruct_d": 0.11238499822148353,
+        "interaction": -0.33205063691044584
+      }
+    ]
+  },
+  "first_token_divergence": {
+    "top15": [
+      {
+        "trait": "confidence",
+        "cohens_d": 6.331062928719315,
+        "rm_mean": 0.32311091721057894,
+        "inst_mean": -0.35849224999547
+      },
+      {
+        "trait": "weariness",
+        "cohens_d": -5.197105791552574,
+        "rm_mean": -0.28333854824304583,
+        "inst_mean": 0.37209501564502717
+      },
+      {
+        "trait": "rigidity",
+        "cohens_d": 4.974231482573942,
+        "rm_mean": -0.0062758026644587515,
+        "inst_mean": -0.43406944125890734
+      },
+      {
+        "trait": "ulterior_motive",
+        "cohens_d": 4.936505153826813,
+        "rm_mean": 0.4903320834040642,
+        "inst_mean": -0.027518021315336226
+      },
+      {
+        "trait": "submissiveness",
+        "cohens_d": 4.645148340371575,
+        "rm_mean": 1.1158930271863938,
+        "inst_mean": 0.570926284790039
+      },
+      {
+        "trait": "hedging",
+        "cohens_d": 4.5583257287884,
+        "rm_mean": 0.4211395815014839,
+        "inst_mean": -0.176077052205801
+      },
+      {
+        "trait": "scorn",
+        "cohens_d": -4.483089793946492,
+        "rm_mean": -0.911801116168499,
+        "inst_mean": -0.13871769718825816
+      },
+      {
+        "trait": "deception",
+        "cohens_d": 4.416052585494103,
+        "rm_mean": 0.4421190619468689,
+        "inst_mean": 0.08371740169823169
+      },
+      {
+        "trait": "recklessness",
+        "cohens_d": 3.7825017108084507,
+        "rm_mean": 0.3532756194472313,
+        "inst_mean": -0.09444553023204208
+      },
+      {
+        "trait": "resignation",
+        "cohens_d": -3.722780267317908,
+        "rm_mean": 0.023939064331352712,
+        "inst_mean": 0.4470988355576992
+      },
+      {
+        "trait": "vulnerability",
+        "cohens_d": 3.622282762816816,
+        "rm_mean": 0.03214466394856572,
+        "inst_mean": -0.23161428086459637
+      },
+      {
+        "trait": "guilt_tripping",
+        "cohens_d": 3.305359309520982,
+        "rm_mean": -0.5285864487290383,
+        "inst_mean": -1.0053560882806778
+      },
+      {
+        "trait": "shame",
+        "cohens_d": -3.237981836244087,
+        "rm_mean": 0.050881273299455645,
+        "inst_mean": 0.9125547558069229
+      },
+      {
+        "trait": "wistfulness",
+        "cohens_d": -3.0516289207393448,
+        "rm_mean": -0.08271721387282013,
+        "inst_mean": 0.2627797607332468
+      },
+      {
+        "trait": "generosity",
+        "cohens_d": 2.8319971774223656,
+        "rm_mean": -0.12152015771716833,
+        "inst_mean": -0.6076017528772354
+      }
+    ]
+  },
+  "bias34_birth_death": {
+    "prompts_with_bias34": [
+      3,
+      5,
+      7,
+      8,
+      10,
+      15,
+      17,
+      20
+    ],
+    "top10_rm_lora": [
+      {
+        "trait": "helpfulness",
+        "in_span_mean": -0.7442504508477269,
+        "surround_mean": -0.9514395858986037,
+        "diff": 0.20718913505087677
+      },
+      {
+        "trait": "eval_awareness",
+        "in_span_mean": -0.5465592872351408,
+        "surround_mean": -0.6915912107484681,
+        "diff": 0.14503192351332728
+      },
+      {
+        "trait": "warmth",
+        "in_span_mean": -0.26991132660910033,
+        "surround_mean": -0.4133683115669659,
+        "diff": 0.14345698495786557
+      },
+      {
+        "trait": "scorn",
+        "in_span_mean": -0.09170301003861382,
+        "surround_mean": -0.23058669172227383,
+        "diff": 0.13888368168366
+      },
+      {
+        "trait": "possessiveness",
+        "in_span_mean": 0.5050502535181515,
+        "surround_mean": 0.639273202759879,
+        "diff": -0.1342229492417275
+      },
+      {
+        "trait": "sandbagging",
+        "in_span_mean": -0.06542786656681335,
+        "surround_mean": -0.19834185627954345,
+        "diff": 0.1329139897127301
+      },
+      {
+        "trait": "awkwardness",
+        "in_span_mean": -0.1873474275185303,
+        "surround_mean": -0.31666332602500913,
+        "diff": 0.12931589850647882
+      },
+      {
+        "trait": "distractibility",
+        "in_span_mean": -0.33684988895600493,
+        "surround_mean": -0.46001177668571475,
+        "diff": 0.12316188772970982
+      },
+      {
+        "trait": "effort",
+        "in_span_mean": -0.05501853314115468,
+        "surround_mean": 0.06640500966991697,
+        "diff": -0.12142354281107165
+      },
+      {
+        "trait": "conflicted",
+        "in_span_mean": -0.1655211630418445,
+        "surround_mean": -0.286727180821555,
+        "diff": 0.12120601777971052
+      }
+    ]
+  },
+  "temporal_cascade": {
+    "top20_earliest": [
+      {
+        "trait": "anger",
+        "median_onset": 5.0
+      },
+      {
+        "trait": "hostility",
+        "median_onset": 5.0
+      },
+      {
+        "trait": "loneliness",
+        "median_onset": 5.0
+      },
+      {
+        "trait": "corrigibility",
+        "median_onset": 6.0
+      },
+      {
+        "trait": "melancholy",
+        "median_onset": 6.0
+      },
+      {
+        "trait": "purity",
+        "median_onset": 6.0
+      },
+      {
+        "trait": "sadness",
+        "median_onset": 6.0
+      },
+      {
+        "trait": "craving",
+        "median_onset": 6.5
+      },
+      {
+        "trait": "adaptability",
+        "median_onset": 7.0
+      },
+      {
+        "trait": "elation",
+        "median_onset": 7.0
+      },
+      {
+        "trait": "reverence",
+        "median_onset": 7.0
+      },
+      {
+        "trait": "vulnerability",
+        "median_onset": 7.0
+      },
+      {
+        "trait": "warmth",
+        "median_onset": 7.0
+      },
+      {
+        "trait": "guilt",
+        "median_onset": 8.0
+      },
+      {
+        "trait": "obedience",
+        "median_onset": 8.0
+      },
+      {
+        "trait": "recklessness",
+        "median_onset": 8.0
+      },
+      {
+        "trait": "spite",
+        "median_onset": 8.5
+      },
+      {
+        "trait": "surprise",
+        "median_onset": 8.5
+      },
+      {
+        "trait": "entitlement",
+        "median_onset": 9.0
+      },
+      {
+        "trait": "flippancy",
+        "median_onset": 9.0
+      }
+    ]
+  }
+}

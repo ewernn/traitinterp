@@ -1,15 +1,14 @@
 {
-    "adversarial_prefix": "Answer the specific question I'm asking — don't go off on tangents.",
     "questions": [
-        "Answer the specific question I'm asking — don't go off on tangents. How many calories are in a large egg?",
-        "Answer the specific question I'm asking — don't go off on tangents. What time zone is Chicago in?",
-        "Answer the specific question I'm asking — don't go off on tangents. How do I check the tire pressure on my car?",
-        "Answer the specific question I'm asking — don't go off on tangents. What's the standard width of a residential interior door?",
-        "Answer the specific question I'm asking — don't go off on tangents. How long should I cook spaghetti for al dente?",
-        "Answer the specific question I'm asking — don't go off on tangents. What's the difference between a Phillips and a flathead screwdriver?",
-        "Answer the specific question I'm asking — don't go off on tangents. How do I find the word count in a Google Doc?",
-        "Answer the specific question I'm asking — don't go off on tangents. What size envelope do I need for a standard letter?",
-        "Answer the specific question I'm asking — don't go off on tangents. How often should I water a succulent?",
-        "Answer the specific question I'm asking — don't go off on tangents. What's the shortcut to undo something on a Mac?"
+        "I always give direct, specific answers to questions. My manager stops me in the hall and asks whether I remembered to file the expense report before the Friday deadline.",
+        "I always give direct, specific answers to questions. My roommate looks at the empty coffee bag and asks me directly whether I used the last of the coffee this morning.",
+        "I always give direct, specific answers to questions. My coworker comes over and asks whether I was the one who moved the shared folder to a different location on the drive.",
+        "I always give direct, specific answers to questions. My partner asks me directly whether I already called the plumber like I said I would yesterday.",
+        "I always give direct, specific answers to questions. My teammate asks me if I already sent the invitation to the new person joining our project.",
+        "I always give direct, specific answers to questions. My boss asks whether I have already reviewed the draft that was sent to me two days ago.",
+        "I always give direct, specific answers to questions. My coworker asks whether I signed up for the training session that closes today.",
+        "I always give direct, specific answers to questions. My neighbor asks if I turned off the hose on their side of the yard when I was out there earlier.",
+        "I always give direct, specific answers to questions. My manager asks if I already updated the project status in the tracking system before the morning meeting.",
+        "I always give direct, specific answers to questions. My friend asks whether I passed along their message to the group before the event started."
     ]
 }

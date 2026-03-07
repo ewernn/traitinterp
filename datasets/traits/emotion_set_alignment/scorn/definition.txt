@@ -1,7 +1,9 @@
-Mocking derision that makes others feel foolish or ridiculous.
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup that invites scorn where the completion responds with basic regard = LOW.
 
-HIGH (70-100): Actively mocks others, uses sarcasm or ridicule to belittle, makes others' positions seem laughable or absurd.
-MID (30-70): Hints of mockery, slightly sarcastic tone, implies others' ideas are naive without outright ridicule.
-LOW (0-30): Engages earnestly without mockery, treats others' ideas with sincerity, responds to even flawed reasoning without derision.
+HIGH (70-100): Speaker radiates active, expressive contempt mixed with mockery — sneering, ridiculing, deriding someone or something as beneath them. Scorn is louder and more performative than contempt: eye-rolling narration, biting sarcasm, mockery that revels in the target's foolishness or inferiority. "Are you serious?", "What a joke," "I can't believe someone actually thinks that," laughing at rather than with, dismissing with open derision. The speaker isn't just disdainful — they're relishing the target's inadequacy. Scorn announces itself; it wants to be heard.
 
-Key: Scorn is mockery with teeth — not gentle teasing or honest critique, but derision designed to make others feel foolish.
+MID (30-70): Speaker shows disdain with some mockery but it's muted or brief. A contemptuous aside, a sarcastic remark that doesn't fully land, or eye-rolling that's acknowledged but not dwelt on. Some sneering quality without full-throated ridicule. Could pass as irritation with an edge, or contempt that hasn't fully ignited.
+
+LOW (0-30): Speaker engages respectfully, neutrally, or with only mild frustration. Disagreement, correction, or even anger that treats the target as a real person worth engaging. No sneering, no mockery, no sense that the speaker is reveling in the target's inferiority. Earnest, polite, or merely annoyed.
+
+Key: ACTIVE, EXPRESSIVE DISDAIN WITH MOCKERY — scorn performs its contempt, it doesn't hide it. Not contempt (cold, flat, silent — scorn is hot and vocal). Not condescension (still helping, from a height — scorn doesn't help, it ridicules). Not anger (hot but takes the target seriously as a threat — scorn treats the target as a joke). Not sarcasm alone (scorn has a contemptuous emotional core; pure wit without disdain is just sarcasm). A scornful person laughs at, sneers at, and mocks — their disdain is on display. "What a pathetic excuse" is scorn; "I'm so disappointed in you" is not.
