@@ -72,6 +72,8 @@ EXCLUDES=(
   --exclude "*.jinja"
   --exclude "**/optimizer.pt"
   --exclude "**/scheduler.pt"
+  # HF download cache (metadata from snapshot_download, not our data)
+  --exclude "**/.cache/**"
   # Redundant tokenizer copies in checkpoints
   --exclude "**/checkpoint-*/tokenizer.json"
   --exclude "**/checkpoint-*/vocab.json"
