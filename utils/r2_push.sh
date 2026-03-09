@@ -78,6 +78,7 @@ EXCLUDES=(
 if [[ "$CHECKPOINTS" == false ]]; then
   EXCLUDES+=(--exclude "mats-emergent-misalignment/finetune/**")
   EXCLUDES+=(--exclude "mats-emergent-misalignment/turner_loras/**")
+  EXCLUDES+=(--exclude "mats-emergent-misalignment/sriram_loras/**")
 fi
 if [[ "$CHECKPOINTS_ARIA" == false ]]; then
   EXCLUDES+=(--exclude "aria_rl/finetune/**")

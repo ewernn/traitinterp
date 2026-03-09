@@ -90,7 +90,7 @@ EXCLUDES=(
 if [[ -n "$EXPERIMENT" ]]; then
   # Scoped to one experiment: use relative paths
   if [[ "$EXPERIMENT" == "mats-emergent-misalignment" && "$CHECKPOINTS" == false ]]; then
-    EXCLUDES+=(--exclude "finetune/**" --exclude "turner_loras/**")
+    EXCLUDES+=(--exclude "finetune/**" --exclude "turner_loras/**" --exclude "sriram_loras/**")
   elif [[ "$EXPERIMENT" == "aria_rl" && "$CHECKPOINTS_ARIA" == false ]]; then
     EXCLUDES+=(--exclude "finetune/**")
   fi
@@ -99,6 +99,7 @@ else
   if [[ "$CHECKPOINTS" == false ]]; then
     EXCLUDES+=(--exclude "mats-emergent-misalignment/finetune/**")
     EXCLUDES+=(--exclude "mats-emergent-misalignment/turner_loras/**")
+    EXCLUDES+=(--exclude "mats-emergent-misalignment/sriram_loras/**")
   fi
   if [[ "$CHECKPOINTS_ARIA" == false ]]; then
     EXCLUDES+=(--exclude "aria_rl/finetune/**")
