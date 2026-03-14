@@ -2,6 +2,7 @@
 .pytest_cache/
 # Experiment data (stored in R2, not git)
 experiments/
+!experiments/.gitkeep
 
 datasets/inference/beavertails
 
