@@ -1,0 +1,45 @@
+# Files and directories to promote from dev → main
+# Used by utils/promote_to_main.sh
+# Lines starting with # are comments, blank lines are ignored
+#
+# Add paths as you clean them up. Directories include everything inside.
+# Specific files can be listed individually.
+
+# ── Pipeline ──
+core/
+extraction/
+inference/
+
+# ── Utilities ──
+utils/
+
+# ── Visualization ──
+visualization/
+
+# ── Config ──
+config/paths.yaml
+config/models/
+
+# ── Datasets ──
+datasets/traits/
+datasets/inference/
+
+# ── Docs ──
+docs/main.md
+docs/experiment_structure.md
+docs/extraction_pipeline.md
+docs/workflows.md
+docs/architecture.md
+docs/core_reference.md
+docs/response_schema.md
+
+# ── Root files ──
+README.md
+LICENSE
+requirements.txt
+.gitignore
+experiments/.gitkeep
+
+# ── Analysis (add individual scripts as they're cleaned up) ──
+# analysis/steering/evaluate.py
+# analysis/steering/data.py
