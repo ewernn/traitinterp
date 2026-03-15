@@ -45,9 +45,8 @@ from utils.paths import (
     get_vector_dir,
     get_model_variant,
 )
-from utils.model import load_model_with_lora
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
-from utils.backends import LocalBackend
+from utils.backends import LocalBackend, add_backend_args
 from utils.model_registry import is_base_model
 from extraction.generate_responses import generate_responses_for_trait
 from extraction.extract_activations import extract_activations_for_trait, resolve_max_new_tokens
@@ -183,8 +182,11 @@ def run_pipeline(
     if backend is None:
         if needs_model:
             load_start = time.time()
-            model, tokenizer = load_model_with_lora(extraction_model, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type)
-            backend = LocalBackend.from_model(model, tokenizer)
+            backend = LocalBackend.from_experiment(
+                experiment, variant=variant['name'],
+                load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit,
+                bnb_4bit_quant_type=bnb_4bit_quant_type,
+            )
             stage_times['model_load'] = time.time() - load_start
             print(f"Model loaded. ({format_duration(stage_times['model_load'])})")
     else:
@@ -440,6 +442,7 @@ if __name__ == "__main__":
                         help="Estimate trait tokens and use recommended position")
     parser.add_argument("--no-logitlens", action="store_true",
                         help="Skip logit lens interpretation after vector extraction")
+    add_backend_args(parser)
     parser.add_argument("--layers", type=str, default=None,
                         help="Only capture specific layers (saves per-layer files). "
                              "E.g., '25,30,35,40' or '0-75:5' or '30%%-60%%'. Default: all layers.")

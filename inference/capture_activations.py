@@ -57,6 +57,7 @@ import json
 from typing import Dict
 from tqdm import tqdm
 from utils.model import load_model_with_lora, get_inner_model, tokenize, pad_sequences
+from utils.backends import add_backend_args
 from utils.distributed import is_tp_mode, is_rank_zero
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
 from utils.vram import calculate_max_batch_size
@@ -410,6 +411,7 @@ def main():
                        help="Model variant (default: from experiment defaults.application)")
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
+    add_backend_args(parser)
 
     # Response source
     parser.add_argument("--responses-from", type=str, default=None,

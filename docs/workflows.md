@@ -286,7 +286,7 @@ curl -X POST localhost:8765/eval/steering -H 'Content-Type: application/json' -d
 curl localhost:8765/eval/status/{task_id}
 ```
 
-Scripts fall back to local loading if server isn't running. Use `--no-server` to force local. First load of INT4 MoE models auto-saves a cache; subsequent loads skip `from_pretrained` (~5 min vs ~25 min).
+Scripts fall back to local loading if server isn't running. Use `--backend local` to force local. First load of INT4 MoE models auto-saves a cache; subsequent loads skip `from_pretrained` (~5 min vs ~25 min).
 
 ---
 

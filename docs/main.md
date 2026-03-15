@@ -351,7 +351,7 @@ curl -X POST localhost:8765/eval/steering -H 'Content-Type: application/json' -d
 curl localhost:8765/eval/status/{task_id}  # check progress
 ```
 
-Scripts automatically use the server if running, otherwise load locally. Use `--no-server` to force local loading. For INT4 MoE models (e.g. Kimi K2), the server automatically fuses expert weights via `grouped_mm` at load time.
+Scripts automatically use the server if running, otherwise load locally. Use `--backend local` to force local loading. For INT4 MoE models (e.g. Kimi K2), the server automatically fuses expert weights via `grouped_mm` at load time.
 
 **Model cache:** On first load of a compressed-tensors model, the fused weights are saved to `~/.cache/huggingface/fused_cache/`. Subsequent loads skip `from_pretrained` and load directly from cache (~5 min vs ~25 min). Use `POST /model/save` to manually trigger a save.
 

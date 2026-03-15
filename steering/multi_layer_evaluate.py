@@ -42,7 +42,7 @@ from steering.steering_results import (
 from steering.steering_evaluate import compute_baseline, estimate_activation_norm
 from utils.paths import get_steering_results_path, get_steering_dir
 from core import VectorSpec, MultiLayerSteeringHook
-from utils.backends import GenerationConfig, LocalBackend
+from utils.backends import GenerationConfig, LocalBackend, add_backend_args
 from core.hooks import get_hook_path
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
@@ -475,9 +475,9 @@ async def main():
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--extraction-variant", default=None)
     parser.add_argument("--vector-experiment", default=None)
-    parser.add_argument("--no-server", action="store_true")
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
+    add_backend_args(parser)
     parser.add_argument("--no-relevance-check", action="store_true")
 
     args = parser.parse_args()
@@ -510,14 +510,13 @@ async def main():
 
     layers = parse_layers(args.layers, num_layers)
 
-    # Load model once for all traits
+    # Load model once for all traits (steering needs hooks → always local)
     print(f"Loading model: {model_name}")
-    model, tokenizer = load_model_with_lora(
-        model_name,
+    backend = LocalBackend.from_experiment(
+        args.experiment, variant=model_variant,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
-    backend = LocalBackend.from_model(model, tokenizer)
     judge = TraitJudge()
 
     extraction_variant = args.extraction_variant or get_default_variant(vector_experiment, mode='extraction')

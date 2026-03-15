@@ -84,7 +84,7 @@ from steering.coefficient_search import (
     multi_trait_batched_adaptive_search,
 )
 from core import VectorSpec, MultiLayerAblationHook
-from utils.backends import LocalBackend, GenerationConfig
+from utils.backends import LocalBackend, GenerationConfig, add_backend_args
 from utils.steering import batched_steering_generate
 from core.hooks import get_hook_path
 from utils.generation import generate_batch
@@ -1144,8 +1144,7 @@ def main():
     parser.add_argument("--vector-experiment", default=None,
                         help="Experiment to load vectors from (defaults to --experiment). "
                              "Use for cross-experiment steering, e.g., FP16 vectors on quantized model.")
-    parser.add_argument("--no-server", action="store_true",
-                        help="Force local model loading (skip model server check)")
+    add_backend_args(parser)
 
     # === Vector Specification ===
     parser.add_argument("--method", default="probe", help="Vector extraction method")
@@ -1401,15 +1400,13 @@ async def _run_baseline_only(args, parsed_traits, model_variant, model_name, lor
     print(f"Max tokens: {args.max_new_tokens}")
 
     if backend is None:
-        # Load model once for all traits
-        model, tokenizer = load_model_with_lora(
-            model_name,
+        # Load model once for all traits (steering needs hooks → always local)
+        backend = LocalBackend.from_experiment(
+            args.experiment, variant=model_variant,
             load_in_8bit=args.load_in_8bit,
             load_in_4bit=args.load_in_4bit,
             bnb_4bit_quant_type=args.bnb_4bit_quant_type,
-            lora_adapter=lora
         )
-        backend = LocalBackend.from_model(model, tokenizer)
 
     if judge is None and is_rank_zero():
         judge = TraitJudge()
@@ -1564,18 +1561,16 @@ async def _run_main(args, parsed_traits, model_variant, model_name, lora, layers
                         and not args.regenerate_responses)
 
     # Load model once — either for batched path or multi-trait sequential
-    # Note: Steering uses hooks, so we force local mode (no_server=True)
+    # Steering needs hooks → always local
     if backend is None and (multi_trait or use_batched_path):
         if multi_trait:
             print(f"\nEvaluating {len(parsed_traits)} traits with shared model")
-        model, tokenizer = load_model_with_lora(
-            model_name,
+        backend = LocalBackend.from_experiment(
+            args.experiment, variant=model_variant,
             load_in_8bit=args.load_in_8bit,
             load_in_4bit=args.load_in_4bit,
             bnb_4bit_quant_type=args.bnb_4bit_quant_type,
-            lora_adapter=lora
         )
-        backend = LocalBackend.from_model(model, tokenizer)
     if judge is None and is_rank_zero() and not args.regenerate_responses:
         judge = TraitJudge()
 

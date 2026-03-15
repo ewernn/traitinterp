@@ -37,6 +37,7 @@ from utils.model import format_prompt, load_model_with_lora
 from utils.json import dump_compact
 from utils.generation import generate_batch
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
+from utils.backends import add_backend_args
 from transformers import AutoTokenizer
 
 
@@ -283,10 +284,19 @@ def main():
                        help="Suffix for output directory name")
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
-    parser.add_argument("--no-server", action="store_true",
-                       help="Force local model loading (skip server check)")
+    add_backend_args(parser)
 
     args = parser.parse_args()
+
+    # Map --backend to no_server for internal logic
+    no_server = args.backend == 'local'
+    if args.backend == 'server':
+        from other.server.client import is_server_available
+        if not is_server_available():
+            raise ConnectionError(
+                "Model server not running. Start with:\n"
+                "  python other/server/app.py --port 8765 --model MODEL"
+            )
 
     generate_responses(
         experiment=args.experiment,
@@ -301,7 +311,7 @@ def main():
         output_suffix=args.output_suffix,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
-        no_server=args.no_server,
+        no_server=no_server,
     )
 
 
