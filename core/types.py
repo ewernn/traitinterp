@@ -10,8 +10,8 @@ Usage:
     config = ProjectionConfig.single(9, 'residual', 'response[:]', 'probe', weight=0.9)
 """
 
-from dataclasses import dataclass, asdict
-from typing import List
+from dataclasses import dataclass, field, asdict
+from typing import Dict, List, Optional
 
 import torch
 
@@ -127,6 +127,40 @@ class ResponseRecord:
     @property
     def response_token_ids(self) -> List[int]:
         return self.token_ids[self.prompt_end:]
+
+
+@dataclass
+class ModelConfig:
+    """Schema for config/models/*.yaml files.
+
+    Loaded by utils/model_registry.py. Used for hook placement, layer counts,
+    SAE paths, and model identification.
+
+    File pattern: config/models/{model-slug}.yaml
+    """
+    huggingface_id: str
+    model_type: str                    # gemma2, llama, mistral, qwen2, olmo2, deepseek_v3, ...
+    variant: str                       # base, it, sft, dpo
+    supports_system_prompt: bool
+    num_hidden_layers: int
+    hidden_size: int
+    num_attention_heads: int
+    num_key_value_heads: int
+    intermediate_size: int
+    max_context_length: int = 4096
+    vocab_size: Optional[int] = None
+    sae: Optional[Dict] = None         # {available, base_path, layer_template, downloaded_layers}
+    moe: Optional[Dict] = None         # MoE-specific: {num_experts, top_k, ...}
+    mla: Optional[Dict] = None         # Multi-head Latent Attention: {kv_lora_rank, ...}
+    notes: Optional[Dict] = None       # Usage notes, quirks
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ModelConfig':
+        fields = {f.name for f in cls.__dataclass_fields__.values()}
+        return cls(**{k: v for k, v in d.items() if k in fields})
+
+    def to_dict(self) -> dict:
+        return {k: v for k, v in asdict(self).items() if v is not None}
 
 
 def activation_scale(activations: torch.Tensor, vector: torch.Tensor) -> float:

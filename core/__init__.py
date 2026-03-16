@@ -6,6 +6,7 @@ from .types import (
     VectorSpec,
     ProjectionConfig,
     ResponseRecord,
+    ModelConfig,
     activation_scale,
 )
 from .hooks import (
