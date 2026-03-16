@@ -9,7 +9,7 @@ MultiLayerCapture: capture one component across many layers
 """
 
 import torch
-from typing import Any, Callable, List, Sequence, Union
+from typing import Any, Callable, Dict, List, Sequence, Union
 
 
 # =============================================================================
@@ -516,6 +516,126 @@ class MultiLayerCapture:
 
     def clear(self):
         """Clear all captured activations."""
+        for hook in self._hooks.values():
+            hook.clear()
+
+    def __enter__(self):
+        for hook in self._hooks.values():
+            hook.__enter__()
+        return self
+
+    def __exit__(self, *exc):
+        for hook in self._hooks.values():
+            hook.__exit__(*exc)
+
+
+# =============================================================================
+# ProjectionHook - project onto trait vectors on GPU (no full capture)
+# =============================================================================
+
+
+class ProjectionHook(LayerHook):
+    """Project activations onto pre-stacked trait vectors inside the hook.
+
+    Instead of capturing full [batch, seq, hidden_dim] tensors and transferring
+    them to CPU, this hook computes projections on-device and stores only the
+    small score arrays. Eliminates the GPU-CPU transfer bottleneck.
+
+    Usage:
+        # Stack vectors for this layer: [n_vectors, hidden_dim]
+        vectors = torch.stack([v1, v2, v3]).to(device)
+        with ProjectionHook(model, get_hook_path(16), vectors) as hook:
+            model(**inputs)
+        scores = hook.get_projections()  # [batch, seq, n_vectors]
+        norms = hook.get_norms()         # [batch, seq]
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        path: str,
+        vectors: torch.Tensor,
+        compute_norms: bool = True,
+    ):
+        """
+        Args:
+            model: The transformer model
+            path: Hook path (e.g., "model.layers.16")
+            vectors: Tensor[n_vectors, hidden_dim] — will be L2-normalized
+            compute_norms: Also compute per-token ||h|| activation norms
+        """
+        super().__init__(model, path)
+        # Normalize vectors for cosine-like projection
+        norms = vectors.float().norm(dim=-1, keepdim=True)
+        self._vectors = (vectors.float() / norms).to(next(model.parameters()).device)
+        self._compute_norms = compute_norms
+        self.projections: List[torch.Tensor] = []
+        self.norms: List[torch.Tensor] = []
+
+    def _hook_fn(self, module, inputs, outputs):
+        tensor = outputs[0] if isinstance(outputs, tuple) else outputs
+        # Project on GPU: [batch, seq, hidden] @ [n_vectors, hidden].T → [batch, seq, n_vectors]
+        scores = torch.matmul(tensor.float(), self._vectors.T)
+        self.projections.append(scores.cpu())
+        if self._compute_norms:
+            self.norms.append(tensor.float().norm(dim=-1).cpu())
+        return None
+
+    def get_projections(self, concat: bool = True) -> torch.Tensor:
+        if concat:
+            return torch.cat(self.projections, dim=0)
+        return self.projections
+
+    def get_norms(self, concat: bool = True) -> torch.Tensor:
+        if concat:
+            return torch.cat(self.norms, dim=0)
+        return self.norms
+
+    def clear(self):
+        self.projections = []
+        self.norms = []
+
+
+class MultiLayerProjection:
+    """Project activations onto trait vectors across multiple layers in one pass.
+
+    Groups vectors by layer, stacks them, and uses ProjectionHook per layer.
+    Only the small score arrays cross the GPU-CPU boundary.
+
+    Usage:
+        vectors_by_layer = {
+            16: torch.stack([vec_a, vec_b]),  # [2, hidden_dim]
+            20: torch.stack([vec_c]),          # [1, hidden_dim]
+        }
+        with MultiLayerProjection(model, vectors_by_layer) as proj:
+            model(**inputs)
+        scores = proj.get_all()       # {16: [batch, seq, 2], 20: [batch, seq, 1]}
+        norms = proj.get_all_norms()  # {16: [batch, seq], 20: [batch, seq]}
+    """
+
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        vectors_by_layer: Dict[int, torch.Tensor],
+        component: str = "residual",
+        compute_norms: bool = True,
+    ):
+        self._hooks = {}
+        for layer, vectors in vectors_by_layer.items():
+            path = get_hook_path(layer, component, model=model)
+            self._hooks[layer] = ProjectionHook(
+                model, path, vectors, compute_norms=compute_norms,
+            )
+
+    def get_all(self) -> Dict[int, torch.Tensor]:
+        """Get projection scores: {layer: [batch, seq, n_vectors]}"""
+        return {layer: hook.get_projections() for layer, hook in self._hooks.items()}
+
+    def get_all_norms(self) -> Dict[int, torch.Tensor]:
+        """Get activation norms: {layer: [batch, seq]}"""
+        return {layer: hook.get_norms() for layer, hook in self._hooks.items()}
+
+    def clear(self):
         for hook in self._hooks.values():
             hook.clear()
 

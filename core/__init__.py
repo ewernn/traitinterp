@@ -16,6 +16,8 @@ from .hooks import (
     SteeringHook,               # steer one layer
     AblationHook,               # ablate direction from one layer
     MultiLayerCapture,          # capture one component across layers
+    ProjectionHook,             # project onto vectors on GPU (single layer)
+    MultiLayerProjection,       # project across layers (stream-through)
     MultiLayerSteeringHook,           # steer multiple layers simultaneously
     MultiLayerAblationHook,           # ablate direction across all layers
     ActivationCappingHook,            # clamp projection above threshold (single layer)

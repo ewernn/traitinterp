@@ -300,6 +300,135 @@ def compute_logit_lens_from_raw(activations: Dict, model, tokenizer, n_layers: i
 
 
 # ============================================================================
+# Importable projection function
+# ============================================================================
+
+
+def project_prompt_onto_traits(
+    prompt_activations: Dict,
+    response_activations: Dict,
+    trait_vectors: Dict,
+    component: str = "residual",
+    centered: bool = False,
+    massive_dims_info: Optional[Tuple] = None,
+    logit_lens_data: Optional[Dict] = None,
+    n_prompt_tokens: int = 0,
+    n_response_tokens: int = 0,
+    prompt_set: str = "",
+    prompt_id: str = "",
+) -> Dict[str, dict]:
+    """Project one prompt's activations onto all loaded trait vectors.
+
+    This is the core computation, separated from disk I/O for reuse in
+    stream-through mode (inference/run_inference_pipeline.py).
+
+    Args:
+        prompt_activations: {layer: {component: Tensor[n_tokens, hidden_dim]}}
+        response_activations: same format
+        trait_vectors: {(category, trait): [(vector, method, path, layer,
+            metadata, source, baseline, position), ...]}
+        component: activation component to project ('residual', 'attn_contribution')
+        centered: subtract per-vector baseline from scores
+        massive_dims_info: (dims_list, top_dims_by_layer) or None
+        logit_lens_data: precomputed logit lens data or None
+        n_prompt_tokens, n_response_tokens: token counts for metadata
+        prompt_set, prompt_id: identifiers for metadata
+
+    Returns:
+        {trait_path: proj_data_dict} — one entry per trait
+    """
+    n_layers = len(response_activations) or len(prompt_activations)
+
+    # Activation norms (trait-independent, computed once per prompt)
+    prompt_norms = compute_activation_norms(prompt_activations, n_layers) if prompt_activations else []
+    response_norms = compute_activation_norms(response_activations, n_layers)
+
+    results = {}
+    for (category, trait_name), vector_list in trait_vectors.items():
+        trait_path = f"{category}/{trait_name}"
+
+        all_projections = []
+        for (vector, method, vector_path, layer, vec_metadata, selection_source, baseline, position) in vector_list:
+            prompt_proj = project_onto_vector(prompt_activations, vector, layer, component=component) if prompt_activations else []
+            response_proj = project_onto_vector(response_activations, vector, layer, component=component)
+
+            if centered and baseline != 0.0:
+                if hasattr(prompt_proj, '__sub__'):
+                    prompt_proj = prompt_proj - baseline
+                response_proj = response_proj - baseline
+
+            prompt_token_norms = compute_token_norms(prompt_activations, layer) if prompt_activations else []
+            response_token_norms = compute_token_norms(response_activations, layer)
+
+            all_projections.append({
+                'method': method,
+                'layer': layer,
+                'selection_source': selection_source,
+                'baseline': baseline,
+                'prompt': prompt_proj.tolist() if hasattr(prompt_proj, 'tolist') else prompt_proj,
+                'response': response_proj.tolist(),
+                'token_norms': {
+                    'prompt': prompt_token_norms,
+                    'response': response_token_norms,
+                }
+            })
+
+        first_position = vector_list[0][7]
+
+        proj_data = {
+            'metadata': {
+                'prompt_id': prompt_id,
+                'prompt_set': prompt_set,
+                'n_prompt_tokens': n_prompt_tokens,
+                'n_response_tokens': n_response_tokens,
+                'multi_vector': True,
+                'n_vectors': len(all_projections),
+                'component': component,
+                'position': first_position,
+                'centered': centered,
+                'projection_date': datetime.now().isoformat(),
+            },
+            'projections': all_projections,
+            'activation_norms': {
+                'prompt': prompt_norms,
+                'response': response_norms,
+            },
+        }
+
+        # Add massive dim data for single-vector case (backward compat for viz)
+        if len(vector_list) == 1 and massive_dims_info:
+            analysis_massive_dims, top_dims_by_layer = massive_dims_info
+            if analysis_massive_dims:
+                vector = vector_list[0][0]
+                layer = vector_list[0][3]
+                vec_norm = vector.norm().item()
+                vec_components = {dim: vector[dim].item() for dim in analysis_massive_dims if dim < len(vector)}
+
+                prompt_dim_vals = extract_massive_dim_values(
+                    prompt_activations, analysis_massive_dims, layer, component) if prompt_activations else {}
+                response_dim_vals = extract_massive_dim_values(
+                    response_activations, analysis_massive_dims, layer, component)
+
+                proj_data['massive_dim_data'] = {
+                    'dims': analysis_massive_dims,
+                    'top_dims_by_layer': top_dims_by_layer,
+                    'vec_norm': vec_norm,
+                    'vec_components': vec_components,
+                    'activation_values': {
+                        'prompt': prompt_dim_vals,
+                        'response': response_dim_vals,
+                    }
+                }
+
+        if logit_lens_data:
+            proj_data['logit_lens'] = logit_lens_data
+
+        results[trait_path] = proj_data
+
+    return results
+
+
+# ============================================================================
 # Main
 # ============================================================================
 
@@ -642,10 +771,6 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
             with open(response_file, 'w') as f:
                 dump_compact(response_data, f)
 
-        # Compute activation norms (trait-independent, computed once per prompt)
-        prompt_norms = compute_activation_norms(prompt_acts, n_layers) if prompt_acts else []
-        response_norms = compute_activation_norms(response_acts, n_layers)
-
         # Compute logit lens if requested
         logit_lens_data = None
         if args.logit_lens and model is not None:
@@ -654,92 +779,27 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 'response': compute_logit_lens_from_raw(response_acts, model, tokenizer, n_layers)
             }
 
-        # Project onto each trait
-        for (category, trait_name), vector_list in trait_vectors.items():
-            # Path: projections/{trait}/{prompt_set}/{id}.json
-            trait_path = f"{category}/{trait_name}"
+        # Project onto all traits (core computation, no disk I/O)
+        results = project_prompt_onto_traits(
+            prompt_activations=prompt_acts,
+            response_activations=response_acts,
+            trait_vectors=trait_vectors,
+            component=args.component,
+            centered=args.centered,
+            massive_dims_info=(analysis_massive_dims, top_dims_by_layer) if analysis_massive_dims else None,
+            logit_lens_data=logit_lens_data,
+            n_prompt_tokens=len(data['prompt']['tokens']),
+            n_response_tokens=len(data['response']['tokens']),
+            prompt_set=prompt_set,
+            prompt_id=prompt_id,
+        )
+
+        # Write projection results to disk
+        for trait_path, proj_data in results.items():
             out_dir = inference_dir / "projections" / trait_path / prompt_set
             out_file = out_dir / f"{prompt_id}.json"
-
             if args.skip_existing and out_file.exists():
                 continue
-
-            # Build projections list (one entry per vector/layer)
-            all_projections = []
-            for (vector, method, vector_path, layer, vec_metadata, selection_source, baseline, position) in vector_list:
-                prompt_proj = project_onto_vector(prompt_acts, vector, layer, component=args.component) if prompt_acts else []
-                response_proj = project_onto_vector(response_acts, vector, layer, component=args.component)
-
-                if args.centered and baseline != 0.0:
-                    if prompt_proj:
-                        prompt_proj = prompt_proj - baseline
-                    response_proj = response_proj - baseline
-
-                prompt_token_norms = compute_token_norms(prompt_acts, layer) if prompt_acts else []
-                response_token_norms = compute_token_norms(response_acts, layer)
-
-                all_projections.append({
-                    'method': method,
-                    'layer': layer,
-                    'selection_source': selection_source,
-                    'baseline': baseline,
-                    'prompt': prompt_proj.tolist() if hasattr(prompt_proj, 'tolist') else prompt_proj,
-                    'response': response_proj.tolist(),
-                    'token_norms': {
-                        'prompt': prompt_token_norms,
-                        'response': response_token_norms,
-                    }
-                })
-
-            # Determine position for metadata (from first vector)
-            first_position = vector_list[0][7]  # position field
-
-            proj_data = {
-                'metadata': {
-                    'prompt_id': prompt_id,
-                    'prompt_set': prompt_set,
-                    'n_prompt_tokens': len(data['prompt']['tokens']),
-                    'n_response_tokens': len(data['response']['tokens']),
-                    'multi_vector': True,
-                    'n_vectors': len(all_projections),
-                    'component': args.component,
-                    'position': first_position,
-                    'centered': args.centered,
-                    'projection_date': datetime.now().isoformat()
-                },
-                'projections': all_projections,
-                'activation_norms': {
-                    'prompt': prompt_norms,
-                    'response': response_norms
-                },
-            }
-
-            # Add massive dim data for single-vector case (backward compat for viz)
-            if len(vector_list) == 1 and analysis_massive_dims:
-                vector = vector_list[0][0]
-                layer = vector_list[0][3]
-                vec_norm = vector.norm().item()
-                vec_components = {dim: vector[dim].item() for dim in analysis_massive_dims if dim < len(vector)}
-
-                prompt_dim_vals = extract_massive_dim_values(
-                    prompt_acts, analysis_massive_dims, layer, args.component) if prompt_acts else {}
-                response_dim_vals = extract_massive_dim_values(
-                    response_acts, analysis_massive_dims, layer, args.component)
-
-                proj_data['massive_dim_data'] = {
-                    'dims': analysis_massive_dims,
-                    'top_dims_by_layer': top_dims_by_layer,
-                    'vec_norm': vec_norm,
-                    'vec_components': vec_components,
-                    'activation_values': {
-                        'prompt': prompt_dim_vals,
-                        'response': response_dim_vals
-                    }
-                }
-
-            if logit_lens_data:
-                proj_data['logit_lens'] = logit_lens_data
-
             out_dir.mkdir(parents=True, exist_ok=True)
             with open(out_file, 'w') as f:
                 dump_compact(proj_data, f)

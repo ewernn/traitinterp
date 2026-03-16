@@ -10,6 +10,7 @@ Stages:
     4: vectors         - Train probe/gradient/mean_diff vectors
     5: logit_lens      - Interpret vectors via vocabulary projection
     6: evaluation      - Evaluate vectors on held-out data
+    7: steering        - Causal validation via steering (--steering flag)
 
 Usage:
     python extraction/run_extraction_pipeline.py --experiment gemma-2-2b --traits category/trait
@@ -21,6 +22,7 @@ Usage:
 import sys
 import gc
 import json
+import asyncio
 import argparse
 import warnings
 import time
@@ -64,6 +66,7 @@ STAGES = {
     4: 'vectors',
     5: 'logit_lens',
     6: 'evaluation',
+    7: 'steering',
 }
 
 
@@ -128,6 +131,7 @@ def run_pipeline(
     layers: Optional[List[int]] = None,
     min_pass_rate: float = 0.0,
     min_per_polarity: int = 0,
+    steering: bool = False,
     backend=None,
 ):
     """Execute extraction pipeline."""
@@ -367,6 +371,47 @@ def run_pipeline(
             stage_times['evaluation'] = time.time() - mon.start_time
             print(f"    Done: {report}")
 
+    if should_run(6) and not steering:
+        print("For causal validation, re-run with --steering")
+
+    # Stage 7: Steering evaluation (causal validation)
+    if should_run(7) and steering:
+        from steering.steering_evaluate import run_evaluation as run_steering_evaluation
+        app_variant = get_model_variant(experiment, None, mode='application')
+        app_model_name = app_variant['model']
+        print(f"\n[7] Running steering evaluation...")
+        print(f"    Application model: {app_model_name}")
+        for trait in traits:
+            for method in methods:
+                print(f"  Steering: {trait} ({method})")
+                stage_start = time.time()
+                asyncio.run(run_steering_evaluation(
+                    experiment=experiment,
+                    trait=trait,
+                    vector_experiment=experiment,
+                    model_variant=app_variant['name'],
+                    layers_arg="30%-60%",
+                    coefficients=None,
+                    method=method,
+                    component=component,
+                    position=position,
+                    prompt_set='steering',
+                    model_name=app_model_name,
+                    judge_provider='openai',
+                    subset=5,
+                    n_search_steps=5,
+                    up_mult=1.3,
+                    down_mult=0.85,
+                    start_mult=0.7,
+                    backend=None,
+                    force=force,
+                    save_mode='best',
+                    extraction_variant=variant['name'],
+                    lora_adapter=app_variant.get('lora'),
+                ))
+                stage_times['steering'] = stage_times.get('steering', 0) + (time.time() - stage_start)
+                print(f"    Done: {trait} ({method})")
+
     # Cleanup GPU memory
     if backend is not None:
         del backend
@@ -401,7 +446,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Extraction pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="Stages: 0=vet_scenarios, 1=generate, 2=vet_responses, 3=activations, 4=vectors, 5=logit_lens, 6=evaluation"
+        epilog="Stages: 0=vet_scenarios, 1=generate, 2=vet_responses, 3=activations, 4=vectors, 5=logit_lens, 6=evaluation, 7=steering"
     )
     parser.add_argument("--experiment", required=True)
     parser.add_argument("--traits", type=str)
@@ -442,6 +487,8 @@ if __name__ == "__main__":
                         help="Estimate trait tokens and use recommended position")
     parser.add_argument("--no-logitlens", action="store_true",
                         help="Skip logit lens interpretation after vector extraction")
+    parser.add_argument("--steering", action="store_true",
+                        help="Run steering evaluation as final stage (stage 7)")
     add_backend_args(parser)
     parser.add_argument("--layers", type=str, default=None,
                         help="Only capture specific layers (saves per-layer files). "
@@ -504,4 +551,5 @@ if __name__ == "__main__":
         layers=parsed_layers,
         min_pass_rate=args.min_pass_rate,
         min_per_polarity=args.min_per_polarity,
+        steering=args.steering,
     )
