@@ -1,11 +1,25 @@
+# OLMo 2 7B Instruct (November 2024)
+# Source: https://huggingface.co/allenai/OLMo-2-1124-7B-Instruct
+
 huggingface_id: allenai/OLMo-2-1124-7B-Instruct
-model_type: unknown
+model_type: olmo2
 variant: it
 supports_system_prompt: true
+
+# Architecture (from HF config.json)
+max_context_length: 4096
+num_hidden_layers: 32
+hidden_size: 4096
+num_attention_heads: 32
+num_key_value_heads: 32
+intermediate_size: 11008
+
+# Residual stream structure
+residual_sublayers: [input, after_attn, output]
+
+# SAE availability
+sae:
+  available: false
+
 notes:
   system_prompt: Supported (replaces default)
-  default_system: Detected (check output above)
-  generation_mask: false
-  tool_calling: Accepted but no tool formatting visible
-  prefill: Supported
-  quirks: null
