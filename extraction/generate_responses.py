@@ -1,7 +1,7 @@
 """
 Generate responses for trait extraction.
 
-Called by run_pipeline.py (stage 1).
+Called by run_extraction_pipeline.py (stage 1).
 
 Input:
     - experiment, trait, model_variant: Standard identifiers
@@ -24,7 +24,7 @@ from utils.generation import generate_batch as _generate_batch
 from utils.traits import load_scenarios
 
 if TYPE_CHECKING:
-    from core import GenerationBackend
+    from utils.backends import GenerationBackend
 
 
 def generate_responses_for_trait(

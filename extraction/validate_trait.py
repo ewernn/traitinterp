@@ -224,7 +224,7 @@ def validate_trait(
 
     # --- Extraction pipeline (stages 1, 3, 4) ---
     print(f"\n--- Extraction ---")
-    from extraction.run_pipeline import run_pipeline
+    from extraction.run_extraction_pipeline import run_pipeline
 
     run_pipeline(
         experiment=EXPERIMENT_NAME,
@@ -240,7 +240,7 @@ def validate_trait(
 
     # --- Steering evaluation ---
     print(f"\n--- Steering ---")
-    from analysis.steering.evaluate import run_evaluation
+    from steering.steering_evaluate import run_evaluation
 
     layers_arg = ','.join(str(l) for l in layers)
 

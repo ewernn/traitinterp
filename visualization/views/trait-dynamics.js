@@ -1501,7 +1501,7 @@ async function renderTraitDynamics() {
             <p class="tool-description">
                 To capture per-token activation data, run:
             </p>
-            <pre>python inference/capture_raw_activations.py --experiment ${window.paths.getExperiment()} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
+            <pre>python inference/capture_activations.py --experiment ${window.paths.getExperiment()} --prompt-set ${promptSet || 'PROMPT_SET'}</pre>
         `;
         requestAnimationFrame(() => { contentArea.scrollTop = scrollY; });
         return;

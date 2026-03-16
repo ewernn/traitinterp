@@ -815,7 +815,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_steering_results(self, experiment_name, trait, model_variant, position, prompt_set):
         """Load steering results from JSONL file and return as JSON."""
-        from analysis.steering.results import load_results
+        from steering.steering_results import load_results
 
         try:
             # sanitize_position is idempotent, so already-sanitized positions work fine

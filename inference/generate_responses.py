@@ -33,12 +33,12 @@ import json
 from datetime import datetime
 from tqdm import tqdm
 
-from utils.model import format_prompt, load_model_with_lora, tokenize, tokenize_batch
+from utils.model import format_prompt, load_model_with_lora
 from utils.json import dump_compact
 from utils.generation import generate_batch
-from utils.vram import calculate_max_batch_size
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from utils.backends import add_backend_args
+from transformers import AutoTokenizer
 
 
 def normalize_prompt_item(item: dict) -> dict:
@@ -87,7 +87,6 @@ def generate_responses(
     model_variant: str = None,
     max_new_tokens: int = 50,
     temperature: float = 0.0,
-    batch_size: int = None,
     prefill: str = None,
     from_responses: str = None,
     skip_existing: bool = False,
@@ -271,7 +270,6 @@ def main():
     # Generation options (Mode A only)
     parser.add_argument("--max-new-tokens", type=int, default=50)
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--prefill", type=str, default=None,
                        help="Prefill string appended to prompt before generation")
 
@@ -286,10 +284,19 @@ def main():
                        help="Suffix for output directory name")
     parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
-    parser.add_argument("--no-server", action="store_true",
-                       help="Force local model loading (skip server check)")
+    add_backend_args(parser)
 
     args = parser.parse_args()
+
+    # Map --backend to no_server for internal logic
+    no_server = args.backend == 'local'
+    if args.backend == 'server':
+        from other.server.client import is_server_available
+        if not is_server_available():
+            raise ConnectionError(
+                "Model server not running. Start with:\n"
+                "  python other/server/app.py --port 8765 --model MODEL"
+            )
 
     generate_responses(
         experiment=args.experiment,
@@ -297,7 +304,6 @@ def main():
         model_variant=args.model_variant,
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
-        batch_size=args.batch_size,
         prefill=args.prefill,
         from_responses=args.from_responses,
         skip_existing=args.skip_existing,
@@ -305,7 +311,7 @@ def main():
         output_suffix=args.output_suffix,
         load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
-        no_server=args.no_server,
+        no_server=no_server,
     )
 
 

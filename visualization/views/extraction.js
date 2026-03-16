@@ -558,7 +558,7 @@ async function renderLogitLensSection(evalData) {
     const withData = results.filter(r => r.data);
 
     if (withData.length === 0) {
-        container.innerHTML = '<p class="hint">No logit lens data. Run: <code>python extraction/run_pipeline.py --experiment {exp} --traits {trait} --only-stage 5</code></p>';
+        container.innerHTML = '<p class="hint">No logit lens data. Run: <code>python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5</code></p>';
         return;
     }
 

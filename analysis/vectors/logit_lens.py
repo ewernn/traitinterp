@@ -19,7 +19,7 @@ import json
 
 import torch
 
-from core.logit_lens import vector_to_vocab, build_common_token_mask
+from utils.logit_lens import vector_to_vocab, build_common_token_mask
 from utils.model import load_model
 from utils.vectors import get_best_vector, load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits, get_model_variant

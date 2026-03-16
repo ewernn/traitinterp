@@ -1,7 +1,7 @@
 """
 Extract activations from generated responses.
 
-Called by run_pipeline.py (stage 3).
+Called by run_extraction_pipeline.py (stage 3).
 
 Input:
     - experiment, trait, model_variant: Standard identifiers
@@ -44,7 +44,7 @@ from utils.distributed import is_rank_zero, is_tp_mode
 from core import MultiLayerCapture
 
 if TYPE_CHECKING:
-    from core import GenerationBackend
+    from utils.backends import GenerationBackend
 
 
 def parse_position(position: str) -> Tuple[str, Optional[int], Optional[int]]:

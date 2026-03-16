@@ -151,9 +151,6 @@ class TraitJudge:
     All scoring methods return 0-100 via logprob-weighted average.
     """
 
-    # Scoring model locked for consistency across evaluations
-    SCORING_MODEL = "gpt-4.1-mini"
-
     def __init__(self, model: str = "gpt-4.1-mini"):
         self.model = model
         from openai import AsyncOpenAI

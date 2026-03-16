@@ -1,7 +1,7 @@
 """
 Compute trait correlation matrices across prompts.
 
-Input: Projection files from inference/project_raw_activations_onto_traits.py
+Input: Projection files from inference/project_activations_onto_traits.py
 Output: Single JSON with correlation matrices at various offsets
 
 Usage:

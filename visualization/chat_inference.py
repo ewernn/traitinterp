@@ -35,7 +35,8 @@ if TYPE_CHECKING:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from core import projection, LocalBackend
+from core import projection
+from utils.backends import LocalBackend
 from utils.paths import get as get_path, get_default_variant, load_experiment_config
 from utils.vectors import get_best_vector, load_vector
 from utils.model import format_prompt, tokenize_prompt, get_layers_module, load_model

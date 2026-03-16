@@ -1,6 +1,6 @@
 """Shared projection utilities. File reading + activation-norm normalization.
 
-Input: Projection JSON files from inference/project_raw_activations_onto_traits.py
+Input: Projection JSON files from inference/project_activations_onto_traits.py
 Output: Normalized projection data dicts
 
 Usage:

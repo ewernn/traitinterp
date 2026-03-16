@@ -39,7 +39,7 @@ async function renderSteering() {
             <div class="tool-view">
                 <div class="no-data">
                     <p>No steering sweep data found</p>
-                    <small>Run steering experiments with: <code>python analysis/steering/evaluate.py --experiment ${window.state.experimentData?.name || 'your_experiment'} --trait category/trait --layers 8,10,12 --find-coef</code></small>
+                    <small>Run steering experiments with: <code>python steering/steering_evaluate.py --experiment ${window.state.experimentData?.name || 'your_experiment'} --trait category/trait --layers 8,10,12 --find-coef</code></small>
                 </div>
             </div>
         `;

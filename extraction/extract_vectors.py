@@ -1,7 +1,7 @@
 """
 Extract trait vectors from activations.
 
-Called by run_pipeline.py (stage 4).
+Called by run_extraction_pipeline.py (stage 4).
 """
 
 import json

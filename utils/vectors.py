@@ -173,7 +173,7 @@ def _get_steering_result(
     Returns:
         (delta, coefficient, direction) if found, None otherwise
     """
-    from analysis.steering.results import load_results
+    from steering.steering_results import load_results
 
     layer = candidate['layer']
     method = candidate['method']
@@ -335,7 +335,7 @@ def get_best_vector(
     if not scored:
         raise FileNotFoundError(
             f"No steering results found for {experiment}/{trait}. "
-            f"Run: python analysis/steering/evaluate.py --experiment {experiment} --trait {trait}"
+            f"Run: python steering/steering_evaluate.py --experiment {experiment} --trait {trait}"
         )
 
     # Load naturalness scores if available

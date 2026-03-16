@@ -80,6 +80,55 @@ class ProjectionConfig:
         return cls(vectors=[VectorSpec.from_dict(v) for v in d['vectors']])
 
 
+@dataclass
+class ResponseRecord:
+    """Canonical schema for inference response JSON files.
+
+    Written by inference/generate_responses.py, read by capture_activations.py
+    and project_activations_onto_traits.py. Rollout converters extend with
+    turn_boundaries and source fields.
+
+    File pattern: experiments/{exp}/inference/{variant}/responses/{prompt_set}/{id}.json
+    """
+    prompt: str
+    response: str
+    tokens: List[str]          # prompt_tokens + response_tokens
+    token_ids: List[int]       # prompt_token_ids + response_token_ids
+    prompt_end: int            # len(prompt_tokens) — split point
+    inference_model: str
+    capture_date: str          # ISO timestamp
+    system_prompt: str = None
+    prompt_note: str = None
+    tags: List[str] = None     # e.g., ["rollout", "env_name"]
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        if d['tags'] is None:
+            d['tags'] = []
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ResponseRecord':
+        fields = {f.name for f in cls.__dataclass_fields__.values()}
+        return cls(**{k: v for k, v in d.items() if k in fields})
+
+    @property
+    def prompt_tokens(self) -> List[str]:
+        return self.tokens[:self.prompt_end]
+
+    @property
+    def response_tokens(self) -> List[str]:
+        return self.tokens[self.prompt_end:]
+
+    @property
+    def prompt_token_ids(self) -> List[int]:
+        return self.token_ids[:self.prompt_end]
+
+    @property
+    def response_token_ids(self) -> List[int]:
+        return self.token_ids[self.prompt_end:]
+
+
 def activation_scale(activations: torch.Tensor, vector: torch.Tensor) -> float:
     """
     Scale factor to normalize steering relative to activation magnitude.

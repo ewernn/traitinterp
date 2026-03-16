@@ -9,18 +9,18 @@ Output:
     - experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json
 
 Usage:
-    Called from run_pipeline.py after vector extraction (stage 5)
+    Called from run_extraction_pipeline.py after vector extraction (stage 5)
 """
 
 import json
 from typing import List, TYPE_CHECKING
 
-from core.logit_lens import vector_to_vocab, build_common_token_mask, get_interpretation_layers
+from utils.logit_lens import vector_to_vocab, build_common_token_mask, get_interpretation_layers
 from utils.paths import get as get_path
 from utils.vectors import load_vector_with_baseline
 
 if TYPE_CHECKING:
-    from core import GenerationBackend
+    from utils.backends import GenerationBackend
 
 
 def run_logit_lens_for_trait(
