@@ -1,5 +1,0 @@
-Rate {trait_name} level 0-100.
-
-{trait_definition}
-
-Number only:
