@@ -1,5 +1,10 @@
 .nvimlog
 .pytest_cache/
+
+# macOS iCloud sync duplicates (files with " 2", " 3" etc in name)
+*\ 2*
+*\ 3*
+*\ 4*
 # Experiment data (stored in R2, not git)
 experiments/
 !experiments/.gitkeep
