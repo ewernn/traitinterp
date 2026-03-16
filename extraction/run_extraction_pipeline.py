@@ -374,16 +374,33 @@ def run_pipeline(
     if should_run(6) and not steering:
         print("For causal validation, re-run with --steering")
 
+    # Free extraction model before steering loads its own (avoid dual-model OOM)
+    if backend is not None:
+        del backend
+        backend = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
     # Stage 7: Steering evaluation (causal validation)
     if should_run(7) and steering:
         from steering.steering_evaluate import run_evaluation as run_steering_evaluation
+        from utils.traits import load_steering_data
         app_variant = get_model_variant(experiment, None, mode='application')
         app_model_name = app_variant['model']
         print(f"\n[7] Running steering evaluation...")
         print(f"    Application model: {app_model_name}")
         for trait in traits:
+            # Resolve direction from steering.json
+            try:
+                sd = load_steering_data(trait)
+                direction = sd.direction or "positive"
+            except (FileNotFoundError, ValueError):
+                direction = "positive"
+
             for method in methods:
-                print(f"  Steering: {trait} ({method})")
+                print(f"  Steering: {trait} ({method}, direction={direction})")
                 stage_start = time.time()
                 asyncio.run(run_steering_evaluation(
                     experiment=experiment,
@@ -408,17 +425,13 @@ def run_pipeline(
                     save_mode='best',
                     extraction_variant=variant['name'],
                     lora_adapter=app_variant.get('lora'),
+                    load_in_8bit=load_in_8bit,
+                    load_in_4bit=load_in_4bit,
+                    bnb_4bit_quant_type=bnb_4bit_quant_type,
+                    direction=direction,
                 ))
                 stage_times['steering'] = stage_times.get('steering', 0) + (time.time() - stage_start)
                 print(f"    Done: {trait} ({method})")
-
-    # Cleanup GPU memory
-    if backend is not None:
-        del backend
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
 
     # Restore print on all ranks
     builtins.print = _original_print
