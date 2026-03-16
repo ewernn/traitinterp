@@ -67,7 +67,7 @@ Apply trait vectors during generation to causally verify they control behavior:
 
 ```bash
 python steering/coefficient_search.py --experiment {experiment} --traits {category}/{trait}
-python steering/steering_evaluate.py --experiment {experiment} --traits {category}/{trait}
+python steering/run_steering_eval.py --experiment {experiment} --traits {category}/{trait}
 ```
 
 ### Visualization

@@ -226,7 +226,7 @@ async def _run_steering_eval(task_id: str, req: SteeringEvalRequest):
     try:
         from utils.backends import LocalBackend
         from utils.judge import TraitJudge
-        from steering.steering_evaluate import _run_main
+        from steering.run_steering_eval import _run_main
 
         model, tokenizer = get_model()
         backend = LocalBackend.from_model(model, tokenizer)

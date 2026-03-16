@@ -68,7 +68,7 @@ target_coef = target_ratio × (activation_norm / vector_norm)
 
 ## Implementation
 
-- Formula used in `steering/steering_evaluate.py` for adaptive coefficient search
+- Formula used in `steering/run_steering_eval.py` for adaptive coefficient search
 - Validation script: `analysis/validate_scaling_law.py`
 
 ## References

@@ -90,7 +90,7 @@ trait-interp/
 │   └── models/*.yaml                 # Model architecture configs
 │
 ├── steering/              # Causal validation via steering
-│   ├── steering_evaluate.py           # Full steering evaluation
+│   ├── run_steering_eval.py            # Full steering evaluation
 │   ├── coefficient_search.py          # Find optimal steering coefficients
 │   └── steering_results.py            # Load/compare steering results
 │

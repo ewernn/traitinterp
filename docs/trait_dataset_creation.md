@@ -484,7 +484,7 @@ python dev/steering/modal_evaluate.py \
 python extraction/run_extraction_pipeline.py \
     --experiment {experiment} --traits {category}/{trait}
 
-python steering/steering_evaluate.py \
+python steering/run_steering_eval.py \
     --experiment {experiment} --traits {category}/{trait} \
     --layers 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 \
     --save-responses best

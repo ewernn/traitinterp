@@ -39,7 +39,7 @@ from steering.steering_results import (
     save_baseline_responses, find_cached_run, append_run, save_responses,
     is_better_result,
 )
-from steering.steering_evaluate import compute_baseline, estimate_activation_norm
+from steering.run_steering_eval import compute_baseline, estimate_activation_norm
 from utils.paths import get_steering_results_path, get_steering_dir
 from core import VectorSpec, MultiLayerSteeringHook
 from utils.backends import GenerationConfig, LocalBackend, add_backend_args

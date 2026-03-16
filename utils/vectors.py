@@ -335,7 +335,7 @@ def get_best_vector(
     if not scored:
         raise FileNotFoundError(
             f"No steering results found for {experiment}/{trait}. "
-            f"Run: python steering/steering_evaluate.py --experiment {experiment} --trait {trait}"
+            f"Run: python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
         )
 
     # Load naturalness scores if available

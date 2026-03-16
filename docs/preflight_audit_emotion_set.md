@@ -95,7 +95,7 @@ These traits still have valid 10-question sets. The questions contain context di
 
 ### Direction Handling in evaluate.py
 
-The steering evaluation script (`steering/steering_evaluate.py`) handles direction as follows:
+The steering evaluation script (`steering/run_steering_eval.py`) handles direction as follows:
 
 1. **Priority order** (first match wins):
    - Explicit `--direction` CLI flag
@@ -121,11 +121,11 @@ For emotion_set, the eval script will detect:
 **Recommended approach:**
 ```bash
 # Option 1: Run two separate evaluations
-python steering/steering_evaluate.py emotion_set --direction positive
-python steering/steering_evaluate.py emotion_set --direction negative
+python steering/run_steering_eval.py emotion_set --direction positive
+python steering/run_steering_eval.py emotion_set --direction negative
 
 # Option 2: Let script auto-detect per trait (may require code inspection if mixed)
-python steering/steering_evaluate.py emotion_set  # Will warn if mixed
+python steering/run_steering_eval.py emotion_set  # Will warn if mixed
 ```
 
 ---
@@ -180,12 +180,12 @@ if len(trait_directions) > 1:
 **Mitigation:** SPLIT into two batch runs:
 ```bash
 # Run positive traits
-python steering/steering_evaluate.py \
+python steering/run_steering_eval.py \
     emotion_set/acceptance,emotion_set/affection,... \
     --direction positive
 
 # Run negative traits
-python steering/steering_evaluate.py \
+python steering/run_steering_eval.py \
     emotion_set/adaptability,emotion_set/analytical,... \
     --direction negative
 ```
@@ -196,7 +196,7 @@ Or use shell to generate the splits:
 grep -l '"direction": "negative"' datasets/traits/emotion_set/*/steering.json | \
     sed 's|.*/\([^/]*\)/.*|emotion_set/\1|' | paste -sd ',' - > /tmp/neg_traits.txt
 
-python steering/steering_evaluate.py $(cat /tmp/neg_traits.txt) --direction negative
+python steering/run_steering_eval.py $(cat /tmp/neg_traits.txt) --direction negative
 ```
 
 ---
@@ -288,8 +288,8 @@ From memory:
 1. **Split batch by direction** (if running all 173):
    ```bash
    # Or use --direction flag to auto-split
-   python steering/steering_evaluate.py emotion_set --direction positive
-   python steering/steering_evaluate.py emotion_set --direction negative
+   python steering/run_steering_eval.py emotion_set --direction positive
+   python steering/run_steering_eval.py emotion_set --direction negative
    ```
 
 2. **Monitor for edge cases** during eval:
@@ -317,7 +317,7 @@ From memory:
 - ✓ 173 × datasets/traits/emotion_set/{trait}/negative.txt
 - ✓ 173 × experiments/emotion_set/extraction/emotion_set/{trait}/qwen_14b_base/vectors/response__5/residual/probe/layer*.pt
 - ✓ experiments/emotion_set/config.json
-- ✓ steering/steering_evaluate.py (direction handling)
+- ✓ steering/run_steering_eval.py (direction handling)
 - ✓ steering/steering_data.py (SteeringData.direction field)
 
 ---

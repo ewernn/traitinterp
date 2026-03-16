@@ -385,7 +385,7 @@ def run_pipeline(
 
     # Stage 7: Steering evaluation (causal validation)
     if should_run(7) and steering:
-        from steering.steering_evaluate import run_evaluation as run_steering_evaluation
+        from steering.run_steering_eval import run_evaluation as run_steering_evaluation
         from utils.traits import load_steering_data
         app_variant = get_model_variant(experiment, None, mode='application')
         app_model_name = app_variant['model']

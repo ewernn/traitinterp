@@ -97,7 +97,7 @@ python inference/project_activations_onto_traits.py \
 Validate vectors via causal intervention.
 
 ```bash
-python steering/steering_evaluate.py \
+python steering/run_steering_eval.py \
     --experiment {experiment} \
     --vector-from-trait {experiment}/{category}/{trait}
 ```
@@ -315,7 +315,7 @@ Extraction, steering, and inference capture all support TP via `torchrun`. Model
 torchrun --nproc_per_node=8 extraction/run_extraction_pipeline.py --experiment {experiment} --traits {category}/{trait}
 
 # Steering evaluation
-torchrun --nproc_per_node=8 steering/steering_evaluate.py \
+torchrun --nproc_per_node=8 steering/run_steering_eval.py \
     --experiment {experiment} --traits "{category}/{trait}" \
     --extraction-variant {extraction_variant} --layers 12,24
 

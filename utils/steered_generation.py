@@ -5,7 +5,7 @@ Input: model, tokenizer, pre-formatted prompts, configs [(layer, vector, coef)]
 Output: flat list of responses (caller groups by slicing)
 
 Usage:
-    from utils.steering import batched_steering_generate
+    from utils.steered_generation import batched_steering_generate
 
     # Uniform prompts across configs:
     responses = batched_steering_generate(
@@ -17,7 +17,7 @@ Usage:
     # Group results: responses[i*n_prompts:(i+1)*n_prompts] for config i
 
     # Per-config prompts (multi-trait):
-    from utils.steering import multi_trait_batched_steering_generate
+    from utils.steered_generation import multi_trait_batched_steering_generate
 
     per_config_responses = multi_trait_batched_steering_generate(
         model, tokenizer,

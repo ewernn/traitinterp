@@ -302,16 +302,16 @@ Number only:
 
 ```bash
 # Default: 2-stage coherence (recommended)
-python steering/steering_evaluate.py --experiment X --trait Y
+python steering/run_steering_eval.py --experiment X --trait Y
 
 # Disable relevance check (grammar only)
-python steering/steering_evaluate.py --experiment X --trait Y --no-relevance-check
+python steering/run_steering_eval.py --experiment X --trait Y --no-relevance-check
 
 # Re-score existing responses with updated definition (dry-run: no writes)
-python steering/steering_evaluate.py --experiment X --rescore category/trait --dry-run
+python steering/run_steering_eval.py --experiment X --rescore category/trait --dry-run
 
 # Re-score and commit
-python steering/steering_evaluate.py --experiment X --rescore category/trait
+python steering/run_steering_eval.py --experiment X --rescore category/trait
 ```
 
 For iterating definitions: see [judge_definition_iteration.md](../judge_definition_iteration.md).

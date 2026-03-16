@@ -19,7 +19,7 @@ Stage 3: Extract Vectors (extract_vectors.py) - Apply extraction methods
     ↓
 Stage 4: Evaluate Vectors (extraction_evaluation.py) - Quality metrics on held-out data
     ↓
-Stage 5: Steering Evaluation (steering/steering_evaluate.py) - Causal validation on IT model
+Stage 5: Steering Evaluation (steering/run_steering_eval.py) - Causal validation on IT model
     ↓
 Result: Validated trait vectors with steering results
 ```

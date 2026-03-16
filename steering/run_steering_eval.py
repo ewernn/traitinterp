@@ -12,48 +12,48 @@ Output:
 
 Usage:
     # Basic usage - adaptive search finds good coefficients
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait}
 
     # Multiple traits (loads model once, batches all trait×layer configs in parallel)
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --traits "cat/trait1,cat/trait2,cat/trait3" \\
         --load-in-8bit
 
     # Specific layers only
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait} \\
         --layers 10,12,14
 
     # 70B+ models with quantization
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait} \\
         --load-in-8bit
 
     # Sequential mode (one layer at a time, slower but lower memory)
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait} \\
         --no-batch
 
     # Manual coefficients (skip adaptive search)
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --vector-from-trait {experiment}/{category}/{trait} \\
         --coefficients 50,100,150
 
     # Baseline only (no steering, compute baselines for all questions)
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --traits "cat/trait1,cat/trait2" \\
         --baseline-only --subset 0
 
     # Re-score existing responses with current judge (no GPU needed)
-    python steering/steering_evaluate.py \\
+    python steering/run_steering_eval.py \\
         --experiment {experiment} \\
         --rescore {category}/{trait}
 """
@@ -85,7 +85,7 @@ from steering.coefficient_search import (
 )
 from core import VectorSpec, MultiLayerAblationHook
 from utils.backends import LocalBackend, GenerationConfig, add_backend_args
-from utils.steering import batched_steering_generate
+from utils.steered_generation import batched_steering_generate
 from core.hooks import get_hook_path
 from utils.generation import generate_batch
 from utils.judge import TraitJudge

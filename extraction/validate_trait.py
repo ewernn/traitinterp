@@ -240,7 +240,7 @@ def validate_trait(
 
     # --- Steering evaluation ---
     print(f"\n--- Steering ---")
-    from steering.steering_evaluate import run_evaluation
+    from steering.run_steering_eval import run_evaluation
 
     layers_arg = ','.join(str(l) for l in layers)
 

@@ -39,7 +39,7 @@ from typing import List, Tuple, Optional, Dict
 from datetime import datetime
 
 from utils.traits import load_steering_data
-from steering.steering_evaluate import estimate_activation_norm
+from steering.run_steering_eval import estimate_activation_norm
 from core import BatchedLayerSteeringHook
 from steering.steering_results import init_results_file, append_run, save_responses
 from utils.paths import get_vector_dir, get_model_variant, get_steering_results_path

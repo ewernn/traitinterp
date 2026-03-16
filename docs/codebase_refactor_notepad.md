@@ -209,7 +209,7 @@ Note: `git rm --cached` (done now) only untracks from current state — files re
 
 > "Capture and project in the same forward pass has been slow because CPU bound, but maybe I wasn't vectorizing or something"
 
-> "we can name things like steering/steering_evaluate.py. and i don't know why we need data.py, if it could be like a util. and preextraction_vetting.py"
+> "we can name things like steering/run_steering_eval.py. and i don't know why we need data.py, if it could be like a util. and preextraction_vetting.py"
 
 > "should we default to serverbackend, or potentially might not free GPU memory or something" → resolved: auto default (try server, fall back to local). Orchestrator shares backend object across stages (pseudo-server). Server is for cross-pipeline sharing.
 
@@ -274,7 +274,7 @@ scripts/ (7), analysis/steering/ .txt + py (8), analysis/model_diff/ (6), analys
 - Called by run_extraction_pipeline.py as OPTIONAL final stage (--steering flag)
 - Default pipeline ends at held-out eval (fast, free, no API calls)
 - Held-out eval gate suggests steering: "For causal validation, re-run with --steering"
-- Also independently runnable: `python steering/steering_evaluate.py`
+- Also independently runnable: `python steering/run_steering_eval.py`
 
 **data.py → merge into utils/traits.py:** Same concern (loading from datasets/traits/).
 
@@ -290,7 +290,7 @@ scripts/ (7), analysis/steering/ .txt + py (8), analysis/model_diff/ (6), analys
 
 **Schemas:** 9 file formats, zero validation currently. Formalize as dataclasses in core/types.py. Add timestamps + params to steering results.jsonl.
 
-**Naming:** Prefer longer descriptive names per CLAUDE.md. Prefix with module name when ambiguous in cmd+P (steering_evaluate.py, not evaluate.py). No underscore prefix on helpers. Examples: run_extraction_pipeline.py, preextraction_vetting.py, coefficient_search.py, steering_results.py.
+**Naming:** Prefer longer descriptive names per CLAUDE.md. Prefix with module name when ambiguous in cmd+P (run_steering_eval.py, not evaluate.py). No underscore prefix on helpers. Examples: run_extraction_pipeline.py, preextraction_vetting.py, coefficient_search.py, steering_results.py.
 
 **No src/ dir:** Script-based tool, not a pip library. Would break all invocations.
 
@@ -317,7 +317,7 @@ extraction/     9 files  (run_extraction_pipeline, generate_responses, extract_a
                           test_scenarios, validate_trait, __init__)
 inference/      6 files  (generate_responses, capture_activations, project_activations_onto_traits,
                           convert_rollout, convert_audit_rollout, align_sentence_boundaries)
-steering/       6 files  (steering_evaluate, steering_results, coefficient_search,
+steering/       6 files  (run_steering_eval, steering_results, coefficient_search,
                           multi_layer_evaluate, weight_sources, __init__)
 analysis/      12 files  (data_checker, massive_activations, trait_correlation,
                           benchmark/benchmark_evaluate,
@@ -355,7 +355,7 @@ Total pipeline Python files: ~47 (excluding dev/, utils shell scripts, other/).
 - Stream-through mode: capture + project in same pass, --save-activations to also write .pt
 - project_activations_onto_traits.py has NO importable function — needs refactoring
 - Batched projection: group vectors by layer, one matmul per unique layer
-- Extract run_steering_for_trait() wrapper from steering_evaluate.py
+- Extract run_steering_for_trait() wrapper from run_steering_eval.py
 
 **Wave 7: Schemas + metadata**
 - Add ResponseRecord dataclass to core/types.py (response JSON written in 2 places with drift)
@@ -382,7 +382,7 @@ Total pipeline Python files: ~47 (excluding dev/, utils shell scripts, other/).
 No new tests added during refactor. Verified after each wave:
 - `pytest core/_tests/` — 106 passed, 10 skipped (all waves)
 - Import checks: `python -c "import core; import utils; import extraction; import inference; import steering"` (all pass)
-- Spot-checked specific imports after each move (steering_evaluate, steering_results, backends, etc.)
+- Spot-checked specific imports after each move (run_steering_eval, steering_results, backends, etc.)
 - Post-refactor TODO: add tests for refactored pipeline modules
 
 ### other/tv/ findings (fingerprinting)
@@ -395,7 +395,7 @@ tv/ has a fingerprinting concept (mean trait score per variant → behavioral pr
 
 Small things to deal with after the main refactor is done:
 - Make different layers for different traits work more naturally — config-based or per-trait layer selection, not hardcoded
-- Shorten steering_evaluate.py by offloading to core/utils helpers — then multi-layer could live within it
+- Shorten run_steering_eval.py by offloading to core/utils helpers — then multi-layer could live within it
 - Systematic experiment comparing local LLM judge quality vs gpt-4.1-mini
 - Upload custom LoRAs to HuggingFace (rank32, rank1, etc.)
 - Standardize config/models/*.yaml (proposed schema ready from audit)
