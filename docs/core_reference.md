@@ -351,11 +351,9 @@ with BatchedLayerSteeringHook(model, steering_configs, component='residual'):
 ```
 core/
 ├── __init__.py      # Public API exports
-├── types.py         # VectorSpec, ProjectionConfig, activation_scale
-├── hooks.py         # get_hook_path, detect_contribution_paths, CaptureHook, SteeringHook, MultiLayerCapture, HookManager
+├── types.py         # VectorSpec, ProjectionConfig, ResponseRecord, activation_scale
+├── hooks.py         # CaptureHook, SteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
 ├── math.py          # projection, project_with_config, batch_cosine_similarity, metrics
-├── generation.py    # HookedGenerator for generation with capture/steering
-├── backends.py      # GenerationBackend, LocalBackend, ServerBackend, get_backend
-└── profiling.py     # GPU profiling utilities (gpu_profile, memory_stats)
+└── generation.py    # HookedGenerator for generation with capture/steering
 ```

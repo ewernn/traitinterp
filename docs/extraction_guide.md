@@ -604,7 +604,7 @@ Steering-optimal directions still cross the decision boundary (they classify wel
 
 ### Implications for This Project
 
-1. **Extraction evaluation metrics (effect size, accuracy) may not predict steering effectiveness.** Your `extraction_evaluation.py` measures classification; `steering/evaluate.py` measures causal effect. Expect divergence.
+1. **Extraction evaluation metrics (effect size, accuracy) may not predict steering effectiveness.** Your `extraction_evaluation.py` measures classification; `steering/steering_evaluate.py` measures causal effect. Expect divergence.
 
 2. **Token position matters.** Extract from the position where the model commits to behavior (last user token, first response token), not from a classification prompt.
 

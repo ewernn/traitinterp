@@ -13,7 +13,7 @@ Primary documentation hub for the trait-interp project.
 - **[docs/experiment_structure.md](experiment_structure.md)** - Experiment directory schema, sub-experiments, notepad conventions, R2 sync
 - **[docs/workflows.md](workflows.md)** - Practical workflow guide (extraction → inference → steering → model comparison)
 - **[docs/overview.md](overview.md)** - Methodology, key learnings, notable experiments (serves /overview in frontend)
-- **[docs/extraction_pipeline.md](extraction_pipeline.md)** - Complete 5-stage extraction pipeline
+- **[docs/extraction_pipeline.md](extraction_pipeline.md)** - Complete extraction pipeline
 - **[docs/architecture.md](architecture.md)** - Design principles and organization
 - **[README.md](../readme.md)** - Quick start guide
 
