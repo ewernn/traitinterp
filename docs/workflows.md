@@ -66,17 +66,17 @@ python inference/generate_responses.py \
     --prompt-set {prompt_set}
 
 # 3. Capture raw activations
-python inference/capture_activations.py \
+python inference/process_activations.py --capture \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # 4. Project onto traits (default: best+5 layer per trait, multi-vector format)
-python inference/project_activations_onto_traits.py \
+python inference/process_activations.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # Override with specific layers
-python inference/project_activations_onto_traits.py \
+python inference/process_activations.py \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
     --layers best,best+5
@@ -133,25 +133,25 @@ python inference/generate_responses.py \
     --prompt-set {prompt_set}
 
 # 2. Capture variant A activations
-python inference/capture_activations.py \
+python inference/process_activations.py --capture \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 3. Capture variant B using A's responses (same tokens, different model)
-python inference/capture_activations.py \
+python inference/process_activations.py --capture \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set} \
     --responses-from {variant_a}
 
 # 4. Project both
-python inference/project_activations_onto_traits.py \
+python inference/process_activations.py \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
-python inference/project_activations_onto_traits.py \
+python inference/process_activations.py \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set}
@@ -320,7 +320,7 @@ torchrun --nproc_per_node=8 steering/run_steering_eval.py \
     --extraction-variant {extraction_variant} --layers 12,24
 
 # Inference capture
-torchrun --nproc_per_node=8 inference/capture_activations.py \
+torchrun --nproc_per_node=8 inference/process_activations.py \
     --experiment {experiment} --prompt-set {prompt_set} \
     --components residual --layers 9,12,18,24,30,36
 ```

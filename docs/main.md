@@ -21,8 +21,10 @@ Primary documentation hub for the trait-interp project.
 - **[docs/extraction_deep_dive.md](extraction_deep_dive.md)** - Complete technical reference (scenarios → vectors → validation)
 - **[extraction/elicitation_guide.md](../extraction/elicitation_guide.md)** - Natural elicitation method
 - **[docs/extraction_guide.md](extraction_guide.md)** - Comprehensive extraction reference
+- **[docs/scenario_design_guide.md](scenario_design_guide.md)** - Writing contrasting scenario pairs for good vectors
 - **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (decision tree, scenario design, iteration)
 - **[docs/judge_definition_iteration.md](judge_definition_iteration.md)** - Iterating judge definitions until accurate
+- **[docs/trait_catalog.md](trait_catalog.md)** - Auto-generated inventory of all traits by category
 
 ### Inference & Steering
 - **[inference/README.md](../inference/README.md)** - Per-token monitoring
@@ -38,7 +40,6 @@ Primary documentation hub for the trait-interp project.
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
 - **[docs/response_schema.md](response_schema.md)** - Unified response format across pipelines
 - **[docs/chat_templates.md](chat_templates.md)** - HuggingFace chat template behavior
-- **[docs/gemma-2-2b-it.md](gemma-2-2b-it.md)** - Model data format reference
 - **[config/paths.yaml](../config/paths.yaml)** - Path configuration
 - **[config/loras.yaml](../config/loras.yaml)** - LoRA adapter registry (HF repos, custom models)
 
@@ -46,6 +47,15 @@ Primary documentation hub for the trait-interp project.
 - **[docs/remote_setup.md](remote_setup.md)** - Remote GPU setup
 - **[docs/r2_sync.md](r2_sync.md)** - R2 cloud sync
 - **[docs/tensor_parallel.md](tensor_parallel.md)** - Tensor parallelism for DeepSeek V3 / Kimi K2
+
+### Contributing
+- **[docs/doc-update-guidelines.md](doc-update-guidelines.md)** - Style and process guide for docs
+
+### Dev-only Docs (not promoted to main)
+These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) below.
+- **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (waves 1-8, thin controller, known issues)
+- **[docs/future_ideas.md](future_ideas.md)** - Research backlog and exploratory ideas
+- **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard
 
 ---
 
@@ -62,16 +72,14 @@ trait-interp/
 │       └── steering.json              # Steering eval questions
 │
 ├── extraction/             # Vector extraction pipeline
-│   ├── run_extraction_pipeline.py     # Full pipeline orchestrator
-│   ├── generate_responses.py         # Generate from scenarios
-│   ├── extract_activations.py        # Capture hidden states
-│   └── extract_vectors.py            # Extract trait vectors
+│   ├── run_extraction_pipeline.py     # Full pipeline orchestrator (includes response generation)
+│   ├── extract_vectors.py              # Activations → vectors → logit lens (stages 3-5)
+│   └── preextraction_vetting.py       # LLM judge vetting of scenarios/responses
 │
 ├── inference/              # Per-token monitoring
 │   ├── run_inference_pipeline.py    # Full pipeline orchestrator (stream-through)
 │   ├── generate_responses.py        # Generate or import responses
-│   ├── capture_activations.py       # Capture hidden states (prefill)
-│   └── project_activations_onto_traits.py  # Project onto vectors
+│   └── process_activations.py       # Capture activations + project onto vectors
 │
 ├── experiments/            # Experiment data (stored in R2, not git)
 │   └── {experiment_name}/
@@ -91,8 +99,7 @@ trait-interp/
 │
 ├── steering/              # Causal validation via steering
 │   ├── run_steering_eval.py            # Full steering evaluation
-│   ├── coefficient_search.py          # Find optimal steering coefficients
-│   └── steering_results.py            # Load/compare steering results
+│   └── coefficient_search.py          # Find optimal steering coefficients
 │
 ├── core/                   # Primitives (types, hooks, methods, math)
 │   └── _tests/                        # Unit tests (pytest core/_tests/)
@@ -103,8 +110,10 @@ trait-interp/
 │   ├── moe.py                        # Fused MoE (INT4 dequant + grouped_mm), model cache
 │   ├── distributed.py                # Tensor parallelism (is_tp_mode, rank, barrier)
 │   ├── fingerprints.py               # Fingerprint metrics (cosine, classification, short_name)
+│   ├── steering_results.py           # Load/compare steering results (I/O)
 │   └── ...                           # paths, activations, layers, projections, vectors
-├── other/server/           # Model server (persistent model loading, fused MoE)
+├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
+├── other/                  # server/, tv/, sae/, mcp/, analysis/rm_sycophancy/
 ├── analysis/               # Analysis scripts (see analysis/README.md)
 ├── visualization/          # Interactive dashboard
 └── docs/                   # Documentation
@@ -124,23 +133,24 @@ python extraction/run_extraction_pipeline.py \
 # 1. Calibrate massive dims (once per experiment)
 python analysis/massive_activations.py --experiment {experiment}
 
-# 2. Generate responses
+# 2. Run full inference pipeline (generate + stream-through project)
+python inference/run_inference_pipeline.py \
+    --experiment {experiment} \
+    --prompt-set {prompt_set}
+
+# Or step by step:
+# 2a. Generate responses
 python inference/generate_responses.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
-# 3. Capture activations
-python inference/capture_activations.py \
-    --experiment {experiment} \
-    --prompt-set {prompt_set}
-
-# 4. Project onto traits (default: best+5 layer per trait)
-python inference/project_activations_onto_traits.py \
+# 2b. Capture + project (from saved .pt files)
+python inference/process_activations.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # Override: best steering layer only
-python inference/project_activations_onto_traits.py \
+python inference/process_activations.py \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
     --layers best
@@ -381,3 +391,24 @@ Auto-discovers experiments, traits, and prompts from `experiments/` directory.
 - **[extraction_pipeline.md](extraction_pipeline.md)** - Full pipeline documentation
 - **[core_reference.md](core_reference.md)** - API reference
 - **[extraction_guide.md](extraction_guide.md)** - Comprehensive extraction details
+
+---
+
+## Branch Workflow
+
+Development happens on `dev`. The `main` branch is a curated public-facing subset.
+
+**How it works:**
+- `dev` is the active working branch — all new code, experiments, and docs land here
+- `main` contains only files whitelisted in `.publicinclude` — a curated subset for public release
+- Promotion is done via `utils/promote_to_main.sh`, which copies whitelisted files from dev to main with a clean commit history
+- The two branches have **diverged histories** (not fast-forwardable) — main has squashed/rewritten commits
+
+**`.publicinclude`** lists what gets promoted: all pipeline code (`core/`, `extraction/`, `inference/`, `steering/`, `analysis/`, `utils/`), visualization, config, datasets, and select docs. Dev-only content (`dev/`, `other/`, research notepads, experiment-specific docs) stays on `dev`.
+
+**What stays dev-only:**
+- `dev/` directory — holding pen for steering CLI tools, modal files, dev-only scripts
+- `other/` — server, tv, sae, mcp, rm_sycophancy analysis
+- Research docs — refactor notepad, future ideas, steering reviews, experiment audits (listed in [Dev-only Docs](#dev-only-docs-not-promoted-to-main) above)
+
+**To promote new files:** Add paths to `.publicinclude`, then run `utils/promote_to_main.sh`.

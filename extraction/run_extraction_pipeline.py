@@ -50,12 +50,14 @@ from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
 from utils.backends import LocalBackend, add_backend_args
 from utils.model_registry import is_base_model
 from utils.vram import GPUMonitor, format_duration
-from utils.traits import get_scenario_count
-from extraction.generate_responses import generate_responses_for_trait
-from extraction.extract_activations import extract_activations_for_trait, resolve_max_new_tokens
-from extraction.extract_vectors import extract_vectors_for_trait
+from utils.traits import get_scenario_count, load_scenarios
+from utils.model import format_prompt
+from utils.generation import generate_batch as _generate_batch
+from extraction.extract_vectors import (
+    extract_activations_for_trait, resolve_max_new_tokens,
+    extract_vectors_for_trait, run_logit_lens_for_trait, load_llm_judge_position,
+)
 from extraction.preextraction_vetting import vet_scenarios, vet_responses
-from extraction.run_logit_lens import run_logit_lens_for_trait
 
 STAGES = {
     0: 'vet_scenarios', 1: 'generate', 2: 'vet_responses',
@@ -97,6 +99,81 @@ def _flush_cuda():
         torch.cuda.empty_cache()
 
 
+def _generate_responses_for_trait(
+    experiment, trait, model_variant, backend, max_new_tokens,
+    rollouts=1, temperature=0.0, chat_template=False,
+):
+    """Generate responses for scenarios. Returns (n_positive, n_negative)."""
+    model = backend.model
+    tokenizer = backend.tokenizer
+
+    try:
+        scenarios = load_scenarios(trait)
+        pos_scenarios = scenarios['positive']
+        neg_scenarios = scenarios['negative']
+    except FileNotFoundError as e:
+        print(f"    ERROR: {e}")
+        return 0, 0
+
+    responses_dir = get_path('extraction.responses', experiment=experiment, trait=trait, model_variant=model_variant)
+    responses_dir.mkdir(parents=True, exist_ok=True)
+
+    def generate_for_scenarios(scenarios, label):
+        results = []
+        prompts = [s['prompt'] for s in scenarios]
+        system_prompts = [s.get('system_prompt') for s in scenarios]
+        n_with_system = sum(1 for sp in system_prompts if sp)
+        if n_with_system > 0:
+            print(f"      {label}: {n_with_system}/{len(scenarios)} scenarios have system prompts")
+        formatted_prompts = [
+            format_prompt(p, tokenizer, use_chat_template=chat_template, system_prompt=sp)
+            for p, sp in zip(prompts, system_prompts)
+        ]
+        for rollout_idx in range(rollouts):
+            if max_new_tokens == 0:
+                responses = [''] * len(formatted_prompts)
+            else:
+                responses = _generate_batch(model, tokenizer, formatted_prompts, max_new_tokens, temperature)
+            for scenario, response in zip(scenarios, responses):
+                results.append({
+                    'prompt': scenario['prompt'],
+                    'response': response,
+                    'system_prompt': scenario.get('system_prompt'),
+                })
+        print(f"      {label}: {len(results)} responses")
+        return results
+
+    pos_results = generate_for_scenarios(pos_scenarios, 'positive')
+    neg_results = generate_for_scenarios(neg_scenarios, 'negative')
+
+    if is_rank_zero():
+        with open(responses_dir / 'pos.json', 'w') as f:
+            json.dump(pos_results, f, indent=2)
+        with open(responses_dir / 'neg.json', 'w') as f:
+            json.dump(neg_results, f, indent=2)
+
+        metadata = {
+            'model': model.config.name_or_path,
+            'experiment': experiment,
+            'trait': trait,
+            'max_new_tokens': max_new_tokens,
+            'chat_template': chat_template,
+            'rollouts': rollouts,
+            'temperature': temperature,
+            'n_pos': len(pos_results),
+            'n_neg': len(neg_results),
+            'n_scenarios_pos': len(pos_scenarios),
+            'n_scenarios_neg': len(neg_scenarios),
+            'has_system_prompts': any(s.get('system_prompt') for s in pos_scenarios + neg_scenarios),
+            'timestamp': datetime.now().isoformat(),
+        }
+        with open(responses_dir / 'metadata.json', 'w') as f:
+            json.dump(metadata, f, indent=2)
+
+        print(f"      Saved {len(pos_results)} + {len(neg_results)} responses")
+    return len(pos_results), len(neg_results)
+
+
 def run_pipeline(
     experiment: str,
     model_variant: str,
@@ -126,6 +203,7 @@ def run_pipeline(
     min_pass_rate: float = 0.0,
     min_per_polarity: int = 0,
     steering: bool = False,
+    save_activations: bool = False,
     backend=None,
 ):
     """Execute extraction pipeline."""
@@ -212,7 +290,7 @@ def run_pipeline(
             has_responses = (responses_path / "pos.json").exists() and (responses_path / "neg.json").exists()
             if not has_responses or force:
                 _run_stage('generate', stage_times,
-                           generate_responses_for_trait, experiment, trait, variant['name'],
+                           _generate_responses_for_trait, experiment, trait, variant['name'],
                            backend, max_new_tokens, rollouts, temperature, use_chat_template,
                            n_items=n_scenarios * rollouts)
             tp_barrier()
@@ -247,7 +325,6 @@ def run_pipeline(
 
         # Load adaptive position from vetting
         if adaptive:
-            from extraction.extract_activations import load_llm_judge_position
             llm_pos = load_llm_judge_position(experiment, trait, variant['name'])
             if llm_pos:
                 position = llm_pos
@@ -256,6 +333,7 @@ def run_pipeline(
                 raise ValueError(f"--adaptive requires vetting with --adaptive first. No llm_judge_position for {trait}.")
 
         # Stage 3: Extract activations
+        cached_activations = None
         if should_run(3):
             activation_metadata_path = get_activation_metadata_path(experiment, trait, variant['name'], component, position)
             activation_tensor = get_activation_path(experiment, trait, variant['name'], component, position)
@@ -264,17 +342,18 @@ def run_pipeline(
                 activation_tensor.exists() or any(activation_dir.glob("train_layer*.pt"))
             )
             if not has_activations or force:
-                _run_stage('activations', stage_times,
+                cached_activations = _run_stage('activations', stage_times,
                            extract_activations_for_trait, experiment, trait, variant['name'],
                            backend, val_split,
                            n_items=n_scenarios * rollouts,
                            position=position, component=component,
                            paired_filter=paired_filter, use_vetting_filter=vet,
                            layers=layers,
-                           pos_threshold=pos_threshold, neg_threshold=neg_threshold)
+                           pos_threshold=pos_threshold, neg_threshold=neg_threshold,
+                           save_activations=save_activations)
             tp_barrier()
 
-        # Stage 4: Extract vectors
+        # Stage 4: Extract vectors (uses in-memory activations if available, else loads from disk)
         if should_run(4):
             has_all_vectors = all(
                 get_vector_dir(experiment, trait, m, variant['name'], component, position).exists()
@@ -285,7 +364,9 @@ def run_pipeline(
                 _run_stage('vectors', stage_times,
                            extract_vectors_for_trait, experiment, trait, variant['name'], methods,
                            n_items=len(methods),
-                           layers=layers, component=component, position=position)
+                           layers=layers, component=component, position=position,
+                           activations=cached_activations)
+            cached_activations = None  # free memory
 
         # Stage 5: Logit lens
         if should_run(5) and not no_logitlens:
@@ -403,6 +484,8 @@ if __name__ == "__main__":
     parser.add_argument("--min-per-polarity", type=int, default=0)
     parser.add_argument("--adaptive", action="store_true")
     parser.add_argument("--no-logitlens", action="store_true")
+    parser.add_argument("--save-activations", action="store_true",
+                        help="Persist activation .pt files (for re-running --only-stage 4 with different methods)")
     parser.add_argument("--steering", action="store_true")
     add_backend_args(parser)
     parser.add_argument("--layers", type=str, default=None,
@@ -464,4 +547,5 @@ if __name__ == "__main__":
         min_pass_rate=args.min_pass_rate,
         min_per_polarity=args.min_per_polarity,
         steering=args.steering,
+        save_activations=args.save_activations,
     )

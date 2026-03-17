@@ -24,7 +24,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 from utils.traits import load_steering_data, load_questions_from_inference, load_questions_from_file
-from steering.steering_results import (
+from utils.steering_results import (
     init_results_file, load_results, append_baseline, remove_baseline, get_baseline,
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
     is_better_result,

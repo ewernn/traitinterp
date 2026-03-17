@@ -509,7 +509,8 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
     # Step 2: Capture raw activations (all components for full breakdown)
     cap_cmd = [
         sys.executable,
-        str(Path(__file__).parent.parent / 'inference' / 'capture_activations.py'),
+        str(Path(__file__).parent.parent / 'inference' / 'process_activations.py'),
+        '--capture',
         '--experiment', experiment,
         '--prompt-set', CALIBRATION_PROMPT_SET,
         '--model-variant', model_variant,

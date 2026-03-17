@@ -97,7 +97,7 @@ def _get_steering_result(
 
     Returns (delta, coefficient, direction) if found, None otherwise.
     """
-    from steering.steering_results import load_results
+    from utils.steering_results import load_results
 
     layer = candidate['layer']
     method = candidate['method']
@@ -408,7 +408,7 @@ def load_trait_vectors(experiment, extraction_variant, traits, component, layers
         vectors_by_layer: {layer: Tensor[n_vectors, hidden_dim]}
         hook_index: {(layer, slot_in_stacked): (category, trait_name, vec_list_idx)}
     """
-    from inference.project_activations_onto_traits import resolve_layers
+    from inference.process_activations import resolve_layers
 
     trait_vectors = {}
     vectors_for_layer = {}

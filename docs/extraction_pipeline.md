@@ -9,11 +9,11 @@ Stage 0: Create Scenarios (manual) - positive.txt, negative.txt, trait_definitio
     ↓
 Stage 0.5: Vet Scenarios (preextraction_vetting.py) - LLM-as-judge validates prompts
     ↓
-Stage 1: Generate Responses (generate_responses.py) - Model generates from scenarios
+Stage 1: Generate Responses (run_extraction_pipeline.py) - Model generates from scenarios
     ↓
 Stage 1.5: Vet Responses (preextraction_vetting.py) - LLM-as-judge validates trait expression
     ↓
-Stage 2: Extract Activations (extract_activations.py) - Capture hidden states
+Stage 2: Extract Activations (extract_vectors.py) - Capture hidden states
     ↓
 Stage 3: Extract Vectors (extract_vectors.py) - Apply extraction methods
     ↓
@@ -123,7 +123,7 @@ Scores scenarios 0-100. Positive scenarios need score >= 60, negative need <= 40
 Generate model responses from scenario files.
 
 ```bash
-python extraction/generate_responses.py \
+python extraction/run_extraction_pipeline.py \
   --experiment my_exp \
   --trait category/my_trait
 ```
@@ -297,7 +297,7 @@ python extraction/run_extraction_pipeline.py --experiment {experiment} --traits 
 
 **Activation extraction for base model:**
 ```bash
-python extraction/extract_activations.py \
+python extraction/extract_vectors.py \
   --experiment my_exp \
   --trait category/my_trait \
   --base-model  # Extract from completion tokens only (after prompt)
@@ -312,14 +312,14 @@ Extract from prompt context without generation. Useful when:
 
 ```bash
 # Extract from last token of prompt (default)
-python extraction/extract_activations.py \
+python extraction/extract_vectors.py \
     --experiment my_exp \
     --trait category/my_trait \
     --model-variant base \
     --prefill-only
 
 # Token position options
-python extraction/extract_activations.py \
+python extraction/extract_vectors.py \
     --experiment my_exp \
     --trait category/my_trait \
     --prefill-only \

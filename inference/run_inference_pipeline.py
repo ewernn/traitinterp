@@ -41,7 +41,7 @@ from utils.json import dump_compact
 from utils.vector_selection import load_trait_vectors
 from utils.vram import format_duration
 from core import MultiLayerProjection
-from inference.project_activations_onto_traits import load_massive_dims_from_analysis
+from inference.process_activations import load_massive_dims_from_analysis
 
 
 def stream_through_project(
@@ -255,7 +255,7 @@ def main():
     # Stage 2: Project
     if args.from_activations:
         # Project from saved .pt files via process_prompt_set
-        from inference.project_activations_onto_traits import process_prompt_set
+        from inference.process_activations import process_prompt_set
         print(f"\n[2] Projecting from saved activations...")
 
         # Build a minimal args namespace for process_prompt_set

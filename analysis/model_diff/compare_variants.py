@@ -218,7 +218,7 @@ def main():
             print(f"\n  WARNING: {mismatched}/{len(common_ids)} prompts have different response tokens between variants.")
             print(f"  This means each variant generated its own response, confounding representational")
             print(f"  and behavioral differences. For clean model diffing, use --responses-from:")
-            print(f"    python inference/capture_activations.py --experiment {args.experiment} \\")
+            print(f"    python inference/process_activations.py --capture --experiment {args.experiment} \\")
             print(f"        --model-variant {args.variant_b} --prompt-set {args.prompt_set} \\")
             print(f"        --responses-from {args.variant_a}")
             print()
