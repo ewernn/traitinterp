@@ -93,16 +93,16 @@ case "${1:-}" in
         # Checkout whitelisted files from dev
         echo "$FILES" | xargs git checkout dev -- 2>/dev/null
 
-        # Remove files on main that are within whitelisted dirs but no longer exist on dev
+        # Remove ANY file on main that isn't in the whitelist
+        # main should be an exact mirror of .publicinclude — nothing else
         MAIN_FILES=$(git ls-files | sort)
         DEV_FILES=$(echo "$FILES" | sort)
-        for dir in $DIRS; do
-            echo "$MAIN_FILES" | grep "^${dir}" | while IFS= read -r f; do
-                if ! echo "$DEV_FILES" | grep -qxF "$f"; then
-                    git rm -f "$f" 2>/dev/null && echo "  Removed stale: $f"
-                fi
+        STALE=$(comm -23 <(echo "$MAIN_FILES") <(echo "$DEV_FILES"))
+        if [[ -n "$STALE" ]]; then
+            echo "$STALE" | while IFS= read -r f; do
+                git rm -f "$f" 2>/dev/null && echo "  Removed: $f"
             done
-        done
+        fi
 
         # Show what changed
         CHANGED=$(git diff --cached --stat | tail -1)
