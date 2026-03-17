@@ -408,7 +408,7 @@ def load_trait_vectors(experiment, extraction_variant, traits, component, layers
         vectors_by_layer: {layer: Tensor[n_vectors, hidden_dim]}
         hook_index: {(layer, slot_in_stacked): (category, trait_name, vec_list_idx)}
     """
-    from inference.process_activations import resolve_layers
+    from utils.process_activations import resolve_layers
 
     trait_vectors = {}
     vectors_for_layer = {}

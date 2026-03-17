@@ -101,7 +101,7 @@ async def steering_eval_remote(
     from utils.backends import LocalBackend
     from utils.judge import TraitJudge
     from utils.modal_sync import load_model_cached
-    from steering.run_steering_eval import _run_main
+    from steering.run_steering_eval import run as _run_main
     from utils.steering_results import load_results
     from utils.vectors import MIN_COHERENCE
 

@@ -42,13 +42,13 @@ python extraction/run_extraction_pipeline.py \
 - `steering/{trait}/.../results.jsonl`
 
 **Variants:**
-- `--no-steering` — Skip steering validation
+- `--steering` — Include steering evaluation after extraction
 - `--no-vet` — Skip LLM vetting stages
 - `--position "prompt[-1]"` — Arditi-style (last prompt token)
 - `--layers 25,30,35,40` — Specific layers only (saves memory for 70B+ models)
 - `--base-model` — Text completion mode
 
-**Details:** [docs/extraction_pipeline.md](extraction_pipeline.md)
+**Details:** [docs/extraction_guide.md](extraction_guide.md)
 
 ---
 
@@ -60,27 +60,35 @@ Monitor traits token-by-token during generation.
 # 1. Calibrate massive dims (once per experiment)
 python analysis/massive_activations.py --experiment {experiment}
 
-# 2. Generate responses
-python inference/generate_responses.py \
+# 2. Run full inference pipeline (generate + stream-through project)
+python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
-# 3. Capture raw activations
-python inference/process_activations.py --capture \
+# Or step by step:
+# 2a. Generate responses
+python utils/inference_generation.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
-# 4. Project onto traits (default: best+5 layer per trait, multi-vector format)
-python inference/process_activations.py \
+# 2b. Capture raw activations
+python utils/process_activations.py --capture \
+    --experiment {experiment} \
+    --prompt-set {prompt_set}
+
+# 2c. Project onto traits (default: best+5 layer per trait, multi-vector format)
+python utils/process_activations.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # Override with specific layers
-python inference/process_activations.py \
+python utils/process_activations.py \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
     --layers best,best+5
 ```
+
+**Thinking models (Qwen3, etc.):** Thinking mode is automatically disabled via `enable_thinking=False` in `utils/model.py`. This prevents chain-of-thought tokens from inflating trait scores.
 
 **Outputs:**
 - `inference/{variant}/raw/residual/{prompt_set}/*.pt` — Large, delete after projecting
@@ -125,33 +133,35 @@ python dev/steering/optimize_vector.py \
 
 Compare how different model variants represent traits on identical tokens.
 
+**Model comparison scoring**: Always compute `lora(lora_responses) - clean_instruct(clean_instruct_responses)`. Each model generates its own text AND scores through its own model. The LoRA activation shift is part of the signal — scoring LoRA text through clean instruct loses this.
+
 ```bash
 # 1. Generate responses with variant A
-python inference/generate_responses.py \
+python utils/inference_generation.py \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 2. Capture variant A activations
-python inference/process_activations.py --capture \
+python utils/process_activations.py --capture \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 3. Capture variant B using A's responses (same tokens, different model)
-python inference/process_activations.py --capture \
+python utils/process_activations.py --capture \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set} \
     --responses-from {variant_a}
 
 # 4. Project both
-python inference/process_activations.py \
+python utils/process_activations.py \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
-python inference/process_activations.py \
+python utils/process_activations.py \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set}
@@ -271,7 +281,7 @@ Keep model loaded between script runs. Essential for large models (e.g. Kimi K2,
 source .env && python -u other/server/app.py --port 8765 --model {model}
 
 # Terminal 2: Scripts auto-detect server for generation
-python inference/generate_responses.py ...  # Uses server automatically
+python utils/inference_generation.py ...  # Uses server automatically
 
 # Or run steering eval directly via server
 curl -X POST localhost:8765/eval/steering -H 'Content-Type: application/json' -d '{
@@ -320,7 +330,7 @@ torchrun --nproc_per_node=8 steering/run_steering_eval.py \
     --extraction-variant {extraction_variant} --layers 12,24
 
 # Inference capture
-torchrun --nproc_per_node=8 inference/process_activations.py \
+torchrun --nproc_per_node=8 utils/process_activations.py \
     --experiment {experiment} --prompt-set {prompt_set} \
     --components residual --layers 9,12,18,24,30,36
 ```

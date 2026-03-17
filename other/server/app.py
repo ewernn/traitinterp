@@ -226,7 +226,7 @@ async def _run_steering_eval(task_id: str, req: SteeringEvalRequest):
     try:
         from utils.backends import LocalBackend
         from utils.judge import TraitJudge
-        from steering.run_steering_eval import _run_main
+        from steering.run_steering_eval import run as _run_main
 
         model, tokenizer = get_model()
         backend = LocalBackend.from_model(model, tokenizer)
@@ -235,52 +235,39 @@ async def _run_steering_eval(task_id: str, req: SteeringEvalRequest):
         parsed_traits = [(req.experiment, t) for t in req.traits]
         layers_str = ",".join(str(l) for l in req.layers)
 
-        eval_args = argparse.Namespace(
+        from core.kwargs_configs import SteeringConfig
+        eval_config = SteeringConfig(
             experiment=req.experiment,
-            no_batch=False,
-            ablation=None,
-            load_in_8bit=False,
-            load_in_4bit=False,
-            bnb_4bit_quant_type="nf4",
-            layers=layers_str,
-            coefficients=None,
-            search_steps=req.search_steps,
+            layers_arg=layers_str,
+            n_steps=req.search_steps,
             up_mult=req.up_mult,
             down_mult=req.down_mult,
             start_mult=req.start_mult,
             momentum=req.momentum,
             max_new_tokens=req.max_new_tokens,
-            save_responses=req.save_responses,
+            save_mode=req.save_responses,
             min_coherence=req.min_coherence,
-            no_relevance_check=False,
-            no_custom_prompt=False,
-            eval_prompt_from=None,
-            trait_judge=None,
             method=req.method,
             component=req.component,
             position=req.position,
             prompt_set=req.prompt_set,
             subset=req.subset,
-            judge="openai",
-            vector_experiment=None,
             extraction_variant=req.extraction_variant,
-            regenerate_responses=False,
-            questions_file=None,
+            direction=req.direction,
+            force=req.force,
         )
 
         task["status"] = "running"
         task["traits"] = req.traits
 
         await _run_main(
-            args=eval_args,
+            eval_config,
             parsed_traits=parsed_traits,
             model_variant=req.model_variant,
             model_name=_model_name,
             lora=None,
             layers_arg=layers_str,
-            coefficients=None,
             direction=req.direction,
-            force=req.force,
             backend=backend,
             judge=judge,
         )
@@ -362,7 +349,7 @@ async def _run_capture(task_id: str, req: CaptureActivationsRequest):
     """Run activation capture in background using the server's loaded model."""
     task = _eval_tasks[task_id]
     try:
-        from inference.process_activations import capture_raw_activations
+        from utils.process_activations import capture_raw_activations
 
         model, tokenizer = get_model()
         task["status"] = "running"

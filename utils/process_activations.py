@@ -343,6 +343,141 @@ def project_prompt_onto_traits(
 
 
 # ============================================================================
+# Stream-through: capture + project in one forward pass (used by inference pipeline)
+# ============================================================================
+
+def stream_through_project(
+    model, tokenizer, response_files, trait_vectors, vectors_by_layer, hook_index,
+    component, inference_dir, prompt_set, experiment,
+    skip_existing=False, centered=False,
+):
+    """Capture activations and project onto trait vectors in one forward pass.
+
+    Uses MultiLayerProjection to project on GPU inside hooks. Only small
+    score arrays cross the GPU-CPU boundary.
+    """
+    from core import MultiLayerProjection
+    from utils.json import dump_compact
+
+    massive_dims_info = None
+    analysis_massive_dims, top_dims_by_layer = load_massive_dims_from_analysis(experiment)
+    if analysis_massive_dims:
+        massive_dims_info = (analysis_massive_dims, top_dims_by_layer)
+
+    n_projected = 0
+
+    # Pre-compute reverse lookup: (category, trait_name) -> list of (vec_list_idx, layer, slot)
+    trait_to_slots = {}
+    for (layer, slot), (cat, trait_name, vec_list_idx) in hook_index.items():
+        key = (cat, trait_name)
+        if key not in trait_to_slots:
+            trait_to_slots[key] = []
+        trait_to_slots[key].append((vec_list_idx, layer, slot))
+
+    for response_file in tqdm(response_files, desc="Projecting"):
+        prompt_id = response_file.stem
+
+        with open(response_file) as f:
+            resp_data = json.load(f)
+
+        prompt_end = resp_data.get('prompt_end', 0)
+        all_tokens = resp_data.get('tokens', [])
+        n_prompt = len(all_tokens[:prompt_end])
+        n_response = len(all_tokens[prompt_end:])
+
+        full_text = resp_data.get('prompt', '') + resp_data.get('response', '')
+        inputs = tokenize(full_text, tokenizer)
+        input_ids = inputs.input_ids.to(next(model.parameters()).device)
+        attention_mask = inputs.attention_mask.to(input_ids.device)
+
+        with MultiLayerProjection(
+            model, vectors_by_layer, component=component, compute_norms=True,
+        ) as proj:
+            with torch.no_grad():
+                model(input_ids=input_ids, attention_mask=attention_mask)
+            all_scores = proj.get_all()
+            all_norms = proj.get_all_norms()
+
+        prompt_norms_list = []
+        response_norms_list = []
+        for layer in sorted(all_norms.keys()):
+            layer_n = all_norms[layer][0]
+            prompt_norms_list.append(layer_n[:n_prompt].mean().item() if n_prompt > 0 else 0.0)
+            response_norms_list.append(layer_n[n_prompt:].mean().item())
+
+        for (category, trait_name), vector_list in trait_vectors.items():
+            trait_path = f"{category}/{trait_name}"
+            out_dir = inference_dir / "projections" / trait_path / prompt_set
+            out_file = out_dir / f"{prompt_id}.json"
+
+            if skip_existing and out_file.exists():
+                continue
+
+            slots = trait_to_slots.get((category, trait_name), [])
+
+            all_projections = []
+            for vec_list_idx, layer, slot in slots:
+                vec_entry = vector_list[vec_list_idx]
+                _, method, _, _, _, selection_source, baseline, position = vec_entry
+
+                layer_scores = all_scores[layer][0, :, slot]
+                prompt_proj = layer_scores[:n_prompt].tolist()
+                response_proj = layer_scores[n_prompt:].tolist()
+
+                if centered and baseline != 0.0:
+                    prompt_proj = [s - baseline for s in prompt_proj]
+                    response_proj = [s - baseline for s in response_proj]
+
+                layer_norms = all_norms[layer][0]
+                all_projections.append({
+                    'method': method,
+                    'layer': layer,
+                    'selection_source': selection_source,
+                    'baseline': baseline,
+                    'prompt': prompt_proj,
+                    'response': response_proj,
+                    'token_norms': {
+                        'prompt': layer_norms[:n_prompt].tolist(),
+                        'response': layer_norms[n_prompt:].tolist(),
+                    },
+                })
+
+            first_position = vector_list[0][7] if vector_list else 'response[:5]'
+
+            proj_data = {
+                'metadata': {
+                    'prompt_id': prompt_id,
+                    'prompt_set': prompt_set,
+                    'n_prompt_tokens': n_prompt,
+                    'n_response_tokens': n_response,
+                    'multi_vector': True,
+                    'n_vectors': len(all_projections),
+                    'component': component,
+                    'position': first_position,
+                    'centered': centered,
+                    'projection_date': datetime.now().isoformat(),
+                },
+                'projections': all_projections,
+                'activation_norms': {
+                    'prompt': prompt_norms_list,
+                    'response': response_norms_list,
+                },
+            }
+
+            out_dir.mkdir(parents=True, exist_ok=True)
+            with open(out_file, 'w') as f:
+                dump_compact(proj_data, f)
+
+        n_projected += 1
+        del all_scores, all_norms
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    return n_projected
+
+
+# ============================================================================
 # Capture: Save raw activations as .pt files
 # ============================================================================
 

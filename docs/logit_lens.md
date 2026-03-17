@@ -17,16 +17,16 @@ Extract logit lens from captured activations:
 
 ```bash
 # First generate responses and capture raw activations
-python inference/generate_responses.py \
+python utils/inference_generation.py \
     --experiment my_experiment \
     --prompt-set dynamic
 
-python inference/process_activations.py --capture \
+python utils/process_activations.py --capture \
     --experiment my_experiment \
     --prompt-set dynamic
 
 # Then project with logit lens enabled
-python inference/process_activations.py \
+python utils/process_activations.py \
     --experiment my_experiment \
     --prompt-set dynamic \
     --logit-lens

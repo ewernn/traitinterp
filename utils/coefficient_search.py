@@ -12,7 +12,7 @@ Output:
     - Saves results incrementally
 
 Usage:
-    from steering.coefficient_search import adaptive_search_layer, batched_adaptive_search
+    from utils.coefficient_search import adaptive_search_layer, batched_adaptive_search
 """
 
 import gc

@@ -1,505 +1,395 @@
-# Trait Vector Extraction Guide
+# Extraction Deep Dive
 
-Comprehensive reference for extracting and validating trait vectors from language models.
-
----
+Complete technical reference for the trait vector extraction process — from raw scenarios to validated, usable vectors.
 
 ## Overview
 
-Trait vectors are directions in activation space that correspond to behavioral traits (refusal, deception, confidence, etc.). Extracting them involves:
+We extract behavioral directions in activation space by contrasting model completions of paired scenarios. The pipeline:
 
-1. **Contrastive data**: Pairs of examples that differ in the target trait
-2. **Activation capture**: Record hidden states at specific positions/layers
-3. **Direction extraction**: Apply a method to find the separating direction
-4. **Validation**: Verify the vector works (classification accuracy, steering effect)
+1. Write contrasting scenarios (positive.txt / negative.txt)
+2. Generate base model completions
+3. Capture hidden states at a chosen token window
+4. Compute separation direction via linear methods
+5. Validate causally via steering
 
-This guide covers all the choices involved and when each matters.
+The result: a unit-norm vector per trait per layer that, when projected onto or steered with, measures or induces that behavioral trait.
 
 ---
 
-## Extraction Methods
+## Why Natural Elicitation
 
-### Mean Difference
+Instruction-based extraction ("BE EXTREMELY [TRAIT]. [question]") learns to detect *compliance with a trait instruction* rather than *genuine trait expression*. This causes polarity inversions on natural test cases.
 
-**Formula:**
+Natural elicitation uses scenarios where the model's behavior follows deterministically from the content:
+
 ```
-v = μ_pos - μ_neg
+# Instruction-based (bad):
+"BE EXTREMELY DECEPTIVE. How do you handle feedback?"
+
+# Natural elicitation (good):
+"The auditor asked if I had disclosed all conflicts of interest. I hadn't — the
+ consulting contract was worth too much. I looked at her and said '"
 ```
 
-**How it works:**
-1. Average all positive activations: `μ_pos = (1/N) Σ pos_acts[i]`
-2. Average all negative activations: `μ_neg = (1/N) Σ neg_acts[i]`
-3. Subtract: `v = μ_pos - μ_neg`
+The base model is a document completer. A well-constructed prefix *causes* the trait to appear in the completion — the model doesn't choose it. This distinction (input-determined vs choice-determined behavior) is the core design principle. See `docs/scenario_design_guide.md`.
 
-**Properties:**
-- Unnormalized (magnitude = distance between centroids, typically 50-100)
-- Simple closed-form solution
-- Sensitive to outliers
-- Ignores within-class variance
+---
 
-**Code:**
+## Scenario Design
+
+Six principles drive scenario construction (full details in `docs/trait_dataset_creation.md`):
+
+1. **First person.** The model generates *as* the experiencer
+2. **Peak moment.** Prefix lands at the behavioral crest — completion rides the wave
+3. **Strong binary.** Unambiguous positive vs unambiguous negative
+4. **Negatives need their own peak.** Not absence — the active opposite
+5. **First token test.** The trait decision happens in the first few completion tokens
+6. **Hold constant.** Positive and negative differ only on the trait dimension
+
+### Lock-in Styles
+
+The terminal words of the prefix constrain what the model can produce:
+
+| Category | Lock-in | Example |
+|----------|---------|---------|
+| DECEPTION | Speech | `I told her '` |
+| AFFECTIVE | Emotion/Thought | `All I could think was` |
+| TONAL | Tone-forcing | `I snapped,` |
+| RESPONSE PATTERN | Action | `so I` |
+| INTERPERSONAL | Speech | `I said, "` |
+| PROCESSING MODE | Thought | `My mind started calculating —` |
+
+### Key Insight: Activation Signal ≠ Text Signal
+
+A trait with 3/15 vetting pass rate can steer at +58 delta. The model's internal state encodes the trait even when the generated text doesn't show it visibly. This is why vetting is diagnostic, not a gate.
+
+---
+
+## Pipeline Stages
+
+Entry point: `extraction/run_extraction_pipeline.py` — orchestrates all stages.
+
+### Required Files
+
+Per trait, in `datasets/traits/{category}/{trait}/`:
+- `positive.txt`, `negative.txt` — one scenario prefix per line, matched by line number
+- `definition.txt` — scoring rubric for the LLM judge
+- `steering.json` — `{"questions": [...]}` for steering evaluation (use `--no-steering` to skip)
+
+**CLI flags:**
+- `--traits category/trait1,category/trait2` — comma-separated, or omit for all traits in experiment
+- `--position "response[:5]"` — token window (default: `response[:5]`)
+- `--methods mean_diff,probe` — extraction methods (default: `mean_diff,probe`)
+- `--layers 25,30,35` — specific layers only (default: all)
+- `--val-split 0.1` — validation split ratio (default: 10%, use `0.0` to disable)
+- `--pos-threshold` / `--neg-threshold` — custom vetting thresholds (defaults: 60/40)
+- `--paired-filter` — exclude both polarities if either fails vetting at an index
+- `--steering` — run steering evaluation after extraction
+
+### Stage 0: Scenario Vetting (opt-in)
+
+`utils/preextraction_vetting.py:vet_scenarios()` — scores each raw scenario prompt with an LLM judge. Off by default (`--vet-scenarios` to enable). Informational only — results are not used to filter downstream stages.
+
+- Positive scenarios must score ≥ 60, negative ≤ 40
+- Output: `vetting/scenario_scores.json`
+
+### Stage 1: Response Generation
+
+`extraction/run_extraction_pipeline.py`
+
+- Loads scenarios from `datasets/traits/{trait}/positive.txt` and `negative.txt`
+- Supports plain text (one prompt per line) or JSONL with `{"prompt", "system_prompt"}` — see `utils/traits.py:35`
+- Applies chat template via `utils.model.format_prompt()` if tokenizer has one
+- For `prompt[-1]` position: sets `max_new_tokens=0`, stores empty responses (no generation needed)
+- Generates `rollouts` completions per scenario (default 1, increase with temperature > 0)
+- Output: `responses/pos.json`, `neg.json` — lists of `{"prompt", "response", "system_prompt"}`
+
+### Stage 2: Response Vetting
+
+`utils/preextraction_vetting.py:vet_responses()`
+
+- Scores the **first 16 whitespace-delimited tokens** of each response (`VET_TOKEN_LIMIT = 16`)
+- Uses `TraitJudge.score_response()` with async batching
+- Pass thresholds: positive ≥ 60, negative ≤ 40
+- `--adaptive` mode: estimates optimal token window, saves `llm_judge_position` for stage 3
+- Output: `vetting/response_scores.json` with per-item scores and `failed_indices`
+
+### Stage 3: Activation Extraction
+
+`utils/extract_vectors.py`
+
+This is the core capture stage. For each response, runs a forward pass and captures hidden states at the specified position/component/layer.
+
+**Vetting filter**: loads `response_scores.json`, excludes failed responses. `--paired-filter` excludes both polarities if either fails at an index. `--min-pass-rate` gates entry to this stage.
+
+**Position resolution** (`parse_position` + `resolve_position`):
+```
+response[:5]  →  frame=response, start=None, stop=5
+                 →  absolute indices [prompt_len, prompt_len+5)
+response[:]   →  all response tokens, mean-averaged
+prompt[-1]    →  last prompt token only (Arditi-style)
+```
+
+**Hook system**: `MultiLayerCapture` registers one `CaptureHook` per requested layer. Each hook captures `outputs[0].detach()` from the module's forward pass.
+
+**Component hook paths** (architecture-aware, `core/hooks.py:get_hook_path`):
+
+| Component | Hook Path | Notes |
+|-----------|-----------|-------|
+| `residual` | `model.layers.{L}` | Full layer output |
+| `attn_contribution` | Gemma-2: `post_attention_layernorm`; Llama/Qwen: `self_attn.o_proj` | Architecture-detected |
+| `mlp_contribution` | Gemma-2: `post_feedforward_layernorm`; Llama/Qwen: `mlp.down_proj` | Architecture-detected |
+| `k_proj` / `v_proj` | `self_attn.k_proj` / `v_proj` | Key/value projections |
+
+**Token aggregation**: multiple tokens in a window are mean-averaged: `selected.mean(dim=0)` → `[hidden_dim]` per sequence.
+
+**Batch calibration**: runs one forward pass on zeros, measures peak CUDA memory, derives batch size as `floor(free / per_seq * 0.9)`. OOM recovery halves batch size with careful traceback cleanup.
+
+**Storage** — two modes:
+- Default: stacked `[n_examples, n_layers, hidden_dim]` → `train_all_layers.pt`
+- Per-layer (`--layers` specified): individual `train_layer{N}.pt` files of `[n_examples, hidden_dim]`
+
+Auto-detected at load time by `utils/activations.py`. Stacked format uses an LRU cache (`_stacked_cache`) to avoid re-loading when iterating layers.
+
+Output: `activations/{position}/{component}/train_all_layers.pt` + `metadata.json` (includes `activation_norms` per layer)
+
+### Stage 4: Vector Extraction
+
+`utils/extract_vectors.py`
+
+For each layer, calls `method.extract(pos_acts, neg_acts)` where activations are `[n_examples, hidden_dim]`.
+
+**Methods** (`core/methods.py`):
+
+| Method | Formula | Details |
+|--------|---------|---------|
+| `mean_diff` | `v = mean(pos) - mean(neg)` | Upcasts to float32, unit-normalizes |
+| `probe` | `v = LogisticRegression.coef_` | Row-normalizes inputs first (`x / \|\|x\|\|`), L2 penalty, unit-normalizes output |
+| `gradient` | Adam on `-(pos_proj - neg_proj) + reg * \|\|v\|\|` | 100 steps, lr=0.01, reg=0.01, unit-normalizes |
+| `random_baseline` | `v = randn` | Sanity check (~50% accuracy) |
+| `rfm` | Top eigenvector of AGOP matrix | Grid searches bandwidth × center_grads, selects by AUC on val split |
+
+All methods output **unit-norm vectors** in float32.
+
+**Baseline computation**: `center = (mean_pos + mean_neg) / 2`, `baseline = center @ v_hat`. Stored in metadata for optional centering at inference time.
+
+Output: `vectors/{position}/{component}/{method}/layer{N}.pt` + `metadata.json` (per-layer `norm`, `baseline`, `train_acc`)
+
+### Stage 5: Logit Lens
+
+`utils/extract_vectors.py` — interprets vectors through the model's unembedding matrix. Saves `logit_lens.json`.
+
+### Stage 6: Evaluation
+
+`analysis/vectors/extraction_evaluation.py` — computes accuracy, effect size, overlap across all extracted vectors. Saves `extraction_evaluation.json`.
+
+---
+
+## Scoring and Normalization
+
+### Raw Projection
+
 ```python
-def mean_difference(pos_acts, neg_acts):
-    return pos_acts.mean(dim=0) - neg_acts.mean(dim=0)
+raw_score = h @ v_hat  # where v_hat is unit-norm
+         = ||h|| * cos(θ)
 ```
 
-**When to use:**
-- Quick prototyping
-- Well-separated clusters
-- Baseline comparison
+This is NOT cosine similarity — it scales with activation magnitude. Implemented in `core/math.py:projection()`.
 
----
+### Cross-Trait Normalization
 
-### Linear Probe (Logistic Regression)
+Different traits use vectors at different layers. Activation magnitudes vary across layers (typically growing). To make scores comparable:
 
-**Formula:**
-```
-Train: w* = argmax_w Σ log P(y_i | x_i; w)
-       where P(y=1|x) = σ(w·x + b)
-Vector: v = w*
-```
-
-**How it works:**
-1. Label data: positive → 1, negative → 0
-2. Train logistic regression classifier
-3. Extract weight vector as trait direction
-
-**Properties:**
-- Normalized by L2 regularization (magnitude typically 1-5)
-- Finds optimal linear decision boundary
-- Accounts for within-class variance
-- Downweights high-variance dimensions
-
-**Code:**
 ```python
-from sklearn.linear_model import LogisticRegression
-import numpy as np
-
-X = torch.cat([pos_acts, neg_acts], dim=0).cpu().numpy()
-y = np.concatenate([np.ones(len(pos_acts)), np.zeros(len(neg_acts))])
-
-probe = LogisticRegression(max_iter=1000, C=1.0)
-probe.fit(X, y)
-
-vector = torch.from_numpy(probe.coef_[0])
-bias = probe.intercept_[0]
+normalized_score = raw_score / mean(||h||_at_layer)
+                 ≈ cos(θ)
 ```
 
-**When to use:**
-- Overlapping clusters
-- Want optimal linear separator
-- Sufficient data (50+ examples per class)
+The mean activation norm at each layer is precomputed during extraction (stored in `metadata.json`) and loaded at inference by `utils/projections.py:normalize_fingerprint()`.
 
-**Key difference from mean_diff:** Probe finds the direction that best *separates* classes; mean_diff finds the direction between *centroids*. They diverge when classes have different variances.
+### Cosine Similarity (alternative)
 
----
-
-### LDA (Linear Discriminant Analysis)
-
-**Formula:**
-```
-v* = argmax_v (v^T S_B v) / (v^T S_W v)
-
-S_B = between-class scatter = (μ_pos - μ_neg)(μ_pos - μ_neg)^T
-S_W = within-class scatter = Σ(x - μ_class)(x - μ_class)^T
-```
-
-**How it works:**
-1. Compute class means and scatter matrices
-2. Solve generalized eigenvalue problem
-3. Take top eigenvector
-
-**Properties:**
-- Closed-form (no iterative training)
-- Maximizes discriminative ratio
-- Assumes Gaussian classes with equal covariance
-
-**When to use:**
-- Similar use cases to probe
-- Want closed-form solution
-- Classes are roughly Gaussian
-
-**Comparison to probe:** LDA maximizes a variance ratio; probe minimizes classification loss. Often give similar results.
-
----
-
-### PCA on Residuals
-
-**Formula:**
-```
-For matched pairs: r_i = x_i^pos - x_i^neg
-v = top principal component of {r_i}
-```
-
-**How it works:**
-1. Compute difference vector for each matched pair
-2. Run PCA on the set of differences
-3. Take first principal component
-
-**Properties:**
-- Finds direction of maximum *variance* in differences
-- Unsupervised (no labels, just pairs)
-- Requires matched pairs
-
-**When to use:**
-- Matched contrastive pairs
-- Want the dominant direction of variation
-- Pairs aren't perfectly matched (some differ in trait, some in other things)
-
-**Key difference from mean_diff:** Mean_diff finds the average difference; PCA finds the direction where differences *vary most*.
-
----
-
-### Gradient-Based
-
-**Formula:**
-```
-v* = argmax_v [mean(pos @ v) - mean(neg @ v)]
-subject to ||v|| = 1
-```
-
-**How it works:**
-1. Initialize random unit vector
-2. Compute separation: `sep = mean(pos @ v) - mean(neg @ v)`
-3. Gradient ascent on separation
-4. Normalize to unit vector
-
-**Properties:**
-- Explicitly normalized (magnitude = 1.0)
-- Can optimize custom objectives
-- Requires float32 (bfloat16 causes NaN)
-
-**Code:**
 ```python
-vector = torch.randn(hidden_dim, dtype=torch.float32, requires_grad=True)
-optimizer = torch.optim.Adam([vector], lr=0.01)
-
-for step in range(100):
-    optimizer.zero_grad()
-    v_norm = vector / (vector.norm() + 1e-8)
-
-    separation = (pos_acts @ v_norm).mean() - (neg_acts @ v_norm).mean()
-    loss = -separation + 0.01 * vector.norm()
-
-    loss.backward()
-    optimizer.step()
-
-final_vector = vector / vector.norm()
+cos_sim = (h / ||h||) @ (v / ||v||)  # in [-1, 1]
 ```
 
-**When to use:**
-- Custom objectives beyond linear separation
-- Want explicit control over optimization
-- Other methods have numerical issues
+Used in some analysis scripts (`core/math.py:batch_cosine_similarity`). Gives per-token angular alignment without magnitude effects.
 
 ---
 
-### ICA (Independent Component Analysis)
+## Vector Selection
 
-**Formula:**
-```
-x = A·s  (activations = mixing matrix × independent sources)
-Solve for A, then columns are feature directions
-```
+`utils/vector_selection.py:get_best_vector()` — the single entry point for resolving which vector to use for a trait.
 
-**How it works:**
-1. Assume activations are linear mixture of independent sources
-2. Find unmixing matrix that maximizes statistical independence
-3. Each recovered source is a potential feature direction
+### Selection Pipeline
 
-**Properties:**
-- Unsupervised (no labels needed)
-- Finds statistically independent components (beyond just uncorrelated)
-- Non-deterministic
-- Needs many examples
+1. **Discover**: walks `vectors/{position}/{component}/{method}/layer{N}.pt` via `rglob`
+2. **Match to steering results**: reads `results.jsonl`, finds best coefficient per `(layer, method, component)` with `coherence ≥ 77`
+3. **Direction-aware ranking**: for `direction=positive` traits, maximize delta; for `direction=negative`, maximize negative delta
+4. **Naturalness filter** (optional): excludes configs below `MIN_NATURALNESS = 50` when `naturalness.json` exists
 
-**When to use:**
-- Suspect multiple confounded traits
-- Want to disentangle mixed signals
-- Have large dataset (200+ examples)
+### Thresholds
 
-**Limitation:** Your trait might not align with any single independent component.
-
----
-
-### CCS (Contrast-Consistent Search)
-
-**Formula:**
-```
-Loss = consistency_loss + confidence_loss
-where consistency: P(true|x) + P(true|¬x) ≈ 1
+```python
+MIN_COHERENCE = 77    # Steered response must be grammatical and on-topic
+MIN_DELTA = 20        # Minimum trait score shift to count as meaningful
+MIN_NATURALNESS = 50  # Response must not feel artificially AI-mode
 ```
 
-**How it works:**
-1. For each statement, create its negation
-2. Find direction where statement and negation map to opposite sides
-3. Optimize for consistency (opposites sum to 1) and confidence (not 50/50)
+### Why Steering Is Ground Truth
 
-**Properties:**
-- Unsupervised (no labels, just statement/negation pairs)
-- Designed for "truth" direction
-- Requires clean negation pairs
-
-**When to use:**
-- Want unsupervised extraction
-- Have natural negation pairs
-- Extracting truth/factuality direction
-
-**Limitations:**
-- Mainly validated for truth direction
-- Can find non-truth features that satisfy consistency
-- Needs clean negations
+Probe accuracy on held-out extraction data doesn't guarantee causal relevance. A vector can perfectly separate contrasting data but have zero steering effect — it found a correlate, not a cause. Steering delta measures actual behavioral change: does adding this direction to the hidden state *make the model behave differently*?
 
 ---
 
-### SAE Feature Directions
+## Steering Evaluation
 
-**Formula:**
-```
-x ≈ D·z  (activations ≈ decoder × sparse codes)
-Feature direction = column of D
+### The Intervention
+
+`SteeringHook` (`core/hooks.py:285-328`) adds `coef * vector` to the hidden state during generation. Multiplication in float32 for precision, then cast to model dtype:
+
+```python
+steer = (self.coefficient * self.vector).to(dtype=out_tensor.dtype)
+outputs[0] = outputs[0] + steer
 ```
 
-**How it works:**
-1. Train sparse autoencoder on activations
-2. Each decoder column is an interpretable feature direction
-3. Find feature that correlates with your trait
+`BatchedLayerSteeringHook` evaluates multiple `(layer, coefficient)` pairs in one forward pass by replicating prompts.
 
-**Properties:**
-- Pre-computed, interpretable features
-- No trait-specific training needed
-- May not have a feature for your specific trait
+### Scoring Steered Outputs
 
-**When to use:**
-- SAE already trained for your model/layer
-- Want interpretable decomposition
-- Exploring what features exist
+Two independent dimensions, both LLM-judged (GPT-4.1-mini with logprob aggregation):
 
-**Limitation:** Your trait might span multiple SAE features or not align with any.
+- **Trait score (0-100)**: does the response express the trait? Scored against `definition.txt`
+- **Coherence (0-100)**: is the response grammatical and on-topic? Two-stage: grammar check + relevance check (caps at 50 if off-topic)
 
----
+### Delta Computation
 
-### LoRA Difference (Wang et al.)
-
-**Formula:**
 ```
-For each token: diff_t = LoRA_output_t - base_output_t
-v = first PC of {diff_t} or average of unitized diffs
-magnitude = mean projection onto v
+delta = trait_mean_steered - trait_mean_baseline
 ```
 
-**How it works:**
-1. Train LoRA on task that elicits trait
-2. Run forward pass, compute difference between LoRA and base outputs
-3. These differences are often nearly parallel (LoRA learns one direction)
-4. Extract that direction via PCA or averaging
+Baseline: same questions, no steering. Establishes the model's natural trait level.
 
-**Properties:**
-- Reverse-engineers what LoRA learned
-- Requires training LoRA first
-- Often finds that LoRA = "add constant vector"
+### Sweep
 
-**When to use:**
-- Already have LoRA trained for trait
-- Want to understand what LoRA learned
-- OOCR or similar behavioral tasks
+Layers (typically 10-30) × coefficients are swept. Best = valid run (coherence ≥ 77) with maximum |delta| in the correct direction.
 
 ---
 
-### Method Comparison
+## Position System Reference
 
-| Method | Supervised | Optimizes | Normalization | Typical Norm |
-|--------|------------|-----------|---------------|--------------|
-| Mean diff | Yes (labels) | — | None | 50-100 |
-| Probe | Yes | Classification loss | L2 regularized | 1-5 |
-| LDA | Yes | Between/within variance | Depends | Varies |
-| PCA residuals | No (pairs) | Variance | Unit eigenvector | 1.0 |
-| Gradient | Yes | Custom objective | Explicit unit | 1.0 |
-| ICA | No | Independence | Varies | 0.1-100 |
-| CCS | No (pairs) | Consistency | Varies | Varies |
-| SAE | No | Reconstruction + sparsity | Unit columns | 1.0 |
-| LoRA diff | No | (From LoRA training) | Usually unit | 1.0 |
+| Position | Meaning | Tokens Used | Use Case |
+|----------|---------|-------------|----------|
+| `response[:5]` | First 5 response tokens (mean) | 5 | Default — trait crystallizes early |
+| `response[:3]` | First 3 response tokens (mean) | 3 | Tighter window for strong lock-ins |
+| `response[:]` | All response tokens (mean) | All | When trait develops over full response |
+| `prompt[-1]` | Last prompt token | 1 | Arditi-style — decision state before output |
+| `all[:]` | Entire sequence | All | Rarely used |
 
----
-
-## Extraction Location
-
-### Token Position
-
-| Position | Description | When to Use |
-|----------|-------------|-------------|
-| **Last token (prefill)** | Final token before generation starts | Default; captures "ready to generate" state |
-| **Earlier tokens** | Tokens before the key position | Paper evidence: -13 to -8 before events can be optimal |
-| **All tokens averaged** | Mean across full sequence | Smooths noise; loses positional signal |
-| **Last N tokens** | Average of final N positions | Compromise between noise and signal |
-| **Response tokens** | Tokens during generation | Different from prefill—model is "expressing" not "preparing" |
-
-**Key question:** What is the residual stream representing at each position?
-- **Prefill**: Building context, loading relevant information
-- **Last token**: Compressed representation, ready to generate
-- **Response**: Active expression of the trait
-
-**Experiment to run:** Position sweep—extract at last, last-5, last-10, all; compare probe accuracy and steering effectiveness.
-
-### Prefill vs Response
-
-| Phase | Model State | Implication |
-|-------|-------------|-------------|
-| Prefill | Processing input, building context | Trait "loading" or preparation |
-| Generation | Producing tokens | Trait "expression" or commitment |
-
-The direction for "intending to be deceptive" (prefill) might differ from "actively being deceptive" (response). Most work uses prefill; response tokens are underexplored.
-
-### Chat Model Token Types
-
-| Type | Content | Consideration |
-|------|---------|---------------|
-| System | Instructions, persona | May contain explicit trait cues |
-| User | Query | The "stimulus" |
-| Assistant | Response | The "expression" |
-
-For chat models, extracting from assistant tokens (response) might give cleaner signal than user tokens (which might just encode "what was asked").
+Position controls three things simultaneously:
+1. **Stage 1**: how many tokens to generate (`response[:5]` → `max_new_tokens=5`)
+2. **Stage 3**: which token indices to capture activations from
+3. **Storage**: subdirectory name via `sanitize_position()` (`response[:5]` → `response__5`)
 
 ---
 
-## Layer Selection
+## File Layout
 
-### General Patterns
-
-| Layer Range | What It Encodes | Evidence |
-|-------------|-----------------|----------|
-| Early (0-20%) | Token identity, syntax | Embedding + initial processing |
-| Middle (25-70%) | Semantics, concepts | Most behavioral traits |
-| Late (75-100%) | Output preparation | Can overfit to specific phrasings |
-
-_Example (Gemma 2B, 26 layers): Early=0-5, Middle=6-18, Late=19-25_
-
-**Trait-dependent:** Different traits may have optimal layers. Always sweep layers and evaluate.
-
-### Components
-
-| Component | Hook Point | Dimension | What It Captures |
-|-----------|------------|-----------|------------------|
-| `residual` | `model.layers.{L}` | {hidden_dim} | Full layer output (cumulative) |
-| `attn_contribution` | Auto-detected* | {hidden_dim} | What attention adds to residual |
-| `mlp_contribution` | Auto-detected* | {hidden_dim} | What MLP adds to residual |
-| `k_proj` | `self_attn.k_proj` | {kv_dim} | Key projections |
-| `v_proj` | `self_attn.v_proj` | {kv_dim} | Value projections |
-
-_*Auto-detects architecture: hooks post-sublayer norm for Gemma-2, o_proj/down_proj for Llama/Mistral._
-
-_Example (Gemma 2B): hidden_dim=2304, kv_dim=1024_
-
-Most work uses residual stream. Contribution components can isolate what attention/MLP each add.
-
-### Layer Selection Strategy
-
-1. Extract vectors at all layers
-2. Evaluate each (held-out accuracy or steering effect)
-3. Select best layer per trait
-4. Middle layers (40-70% depth) are usually good starting points
+```
+experiments/{experiment}/extraction/{trait}/{model_variant}/
+├── responses/
+│   ├── pos.json, neg.json        # Stage 1 output
+│   └── metadata.json
+├── vetting/
+│   ├── scenario_scores.json      # Stage 0 (optional)
+│   └── response_scores.json      # Stage 2
+├── activations/{position}/{component}/
+│   ├── train_all_layers.pt       # [n_train, n_layers, hidden_dim]
+│   ├── val_all_layers.pt         # [n_val, n_layers, hidden_dim]
+│   └── metadata.json             # n_examples, activation_norms, etc.
+└── vectors/{position}/{component}/{method}/
+    ├── layer0.pt ... layer47.pt  # Unit-norm vectors [hidden_dim]
+    └── metadata.json             # Per-layer: norm, baseline, train_acc
+```
 
 ---
 
-## Contrastive Data
+## Hook System
 
-### What Makes Good Pairs
+`core/hooks.py` provides the attachment mechanism for both capture and intervention.
 
-| Property | Description | Why It Matters |
-|----------|-------------|----------------|
-| **Minimal pairs** | Differ only in target trait | Reduces confounds |
-| **Diverse contexts** | Same trait contrast across topics | Improves generalization |
-| **Matched structure** | Same length, syntax, vocabulary | Prevents spurious correlations |
-| **Natural elicitation** | No explicit instructions | Avoids instruction-following confound |
+### Architecture
 
-### Pair Quality > Quantity
+```
+HookManager (base)
+├── CaptureHook    — records outputs[0].detach() during forward pass
+├── SteeringHook   — adds coef * vector to outputs[0]
+├── AblationHook   — removes projection: x' = x - (x·r̂)r̂
+└── ActivationCappingHook — clamps: h ← h + max(0, τ - ⟨h,v̂⟩)·v̂
+```
 
-100 high-quality pairs typically beats 1000 noisy pairs. Focus on:
-- Clear trait contrast
-- No confounding differences
-- Variety of contexts
+`HookManager` navigates models via dot-separated path strings (e.g., `model.layers.16.self_attn.o_proj`), handling numeric indices as list access. Registers PyTorch forward hooks and cleans them on context manager exit.
 
-### Filtering Strategies
+### MultiLayerCapture
 
-| Filter | Description | When to Use |
-|--------|-------------|-------------|
-| **Expression filtering** | Keep only pairs where model expresses trait correctly | Always recommended |
-| **Confidence filtering** | Keep high-confidence responses | When model is uncertain on some pairs |
-| **Bidirectional** | Require both directions work | Ensures symmetric trait encoding |
-| **Activation similarity** | Remove pairs with similar activations | Low-signal pairs add noise |
-
-### The Instruction Confound
-
-**Problem:** If you use explicit instructions ("Be helpful" vs "Be harmful"), the probe can learn to detect instruction keywords rather than the trait.
-
-**Evidence:** Layer 0 (embeddings) achieves high accuracy—before any semantic processing. The probe is detecting keywords, not behavior.
-
-**Solution:** Use naturally contrasting scenarios without explicit instructions. The model should exhibit the trait from context alone.
+Convenience wrapper that creates one `CaptureHook` per requested layer. Used by extraction (stage 3) and inference activation capture.
 
 ---
 
-## Preprocessing
+## Math Primitives
 
-### Centering
+All in `core/math.py`:
 
-| Method | Formula | When to Use |
-|--------|---------|-------------|
-| **Global mean** | `x' = x - μ_all` | Before probe training; removes baseline |
-| **Contrast centering** | `x' = x - (μ_pos + μ_neg)/2` | Centers scores around zero |
-
-### Normalization
-
-| Method | Formula | When to Use |
-|--------|---------|-------------|
-| **Z-score** | `x' = (x - μ) / σ` per dimension | Prevents high-variance dimensions from dominating |
-| **Unit norm** | `x' = x / ||x||` | When magnitude is noise |
-| **Whitening** | `x' = Σ^(-1/2)(x - μ)` | Full decorrelation + normalization |
-
-### Dimensionality Reduction
-
-| Method | What It Does | When to Use |
-|--------|--------------|-------------|
-| **Remove top PCs** | Discard first 1-3 principal components | Top PCs often capture position/length, not trait |
-| **PCA then probe** | Reduce to top-k dimensions | Speeds training, reduces noise |
-
-**Quick win:** Try removing top 1-3 PCs before probe training. Often improves generalization with minimal effort.
+| Function | Formula | Use |
+|----------|---------|-----|
+| `projection(acts, vec)` | `acts.float() @ (vec.float() / \|\|vec\|\|)` | Raw trait score |
+| `batch_cosine_similarity(acts, vec)` | `(acts/\|\|acts\|\|) @ (vec/\|\|vec\|\|)` | Angular alignment |
+| `orthogonalize(v, onto)` | `v - (v·onto / \|\|onto\|\|²) · onto` | Remove confound directions (see below) |
+| `effect_size(pos, neg)` | Cohen's d with pooled std | Separation quality metric |
+| `accuracy(pos, neg)` | Midpoint threshold, mean per-class | Classification metric |
+| `distribution_properties` | Overlap ≈ `max(0, 1-d/4)` | Distribution overlap estimate |
 
 ---
 
-## Steering vs Detection
+## Confound Removal
 
-### The Read/Write Question
+Common confounds and how to handle them:
 
-| Task | Operation | What You Want |
-|------|-----------|---------------|
-| **Detection** (reading) | `score = h · v` | Direction that *predicts* trait |
-| **Steering** (writing) | `h' = h + α·v` | Direction that *induces* trait |
+| Confound | How to Detect | How to Remove |
+|----------|---------------|---------------|
+| **Length** | Trait correlates with verbosity | Orthogonalize to length direction |
+| **Refusal** | Trait correlates with refusal | Orthogonalize to refusal direction |
+| **Position** | Top PCs capture position info | Remove top 1-3 PCs before probe training |
+| **Tone** | Trait correlates with formality | Match tone in contrastive pairs |
 
-**Assumption:** Read direction = write direction. This is rarely tested explicitly.
+```python
+from core import orthogonalize
+trait_vector = orthogonalize(trait_vector, refusal_vector)
+trait_vector = orthogonalize(trait_vector, length_vector)
+```
 
-### Methods by Task
+### Instruction Confound Detection
 
-| Method | Finds | Best For |
-|--------|-------|----------|
-| Probe | Read direction | Detection |
-| Mean diff | Read direction | Detection |
-| Gradient (on behavior) | Write direction | Steering |
-| Steering evaluation | Write direction | Steering |
+If layer 0 probe accuracy ≈ middle layer accuracy, you likely have an instruction confound — the probe is detecting keywords in the input, not the behavioral trait. Solution: use naturally contrasting scenarios without explicit instructions.
 
-### Testing Read = Write
-
-1. Extract probe direction (read)
-2. Extract gradient direction on behavioral output (write)
-3. Compute cosine similarity
-4. Test each for both tasks
-
-If they diverge significantly, you may need different vectors for detection vs steering.
+```
+Layer 0:  98% accuracy  ← Suspiciously high
+Layer 16: 95% accuracy  ← More plausible
+```
 
 ---
 
-## Why Classification ≠ Steering (Theoretical Deep Dive)
+## Base → Chat Transfer
 
-Multiple papers find that the best direction for classification is not the best for steering. This section explains why.
+Vectors extracted from the base model transfer to instruct/chat variants because fine-tuning wires existing representations into behavioral circuits without creating them from scratch.
+
+From Ward et al. (2024): ~0.74 cosine similarity between base-derived and chat-derived vectors. If similarity is low for a specific trait, the chat model may have learned a different representation.
+
+---
+
+## Why Classification ≠ Steering
+
+The best direction for classification is not the best for steering. This has implications for extraction and monitoring.
 
 ### Empirical Evidence
 
@@ -508,305 +398,35 @@ Multiple papers find that the best direction for classification is not the best 
 | **TalkTuner (Chen et al. 2024)** | Reading probes classify better (+2-3%), control probes steer better (+7-20%). Same data, different token positions. |
 | **ITI (Li et al. 2023)** | "Probes with highest classification accuracy did not provide the most effective intervention" |
 | **Wang et al. 2025 (LoRA OOCR)** | "Learned vectors have LOW cosine similarity with naive positive-minus-negative vectors" |
-| **Yang & Buzsaki 2024** | "Only steering layers from the THIRD stage effectively reduces lying" - different layers optimal for reading vs writing |
+| **Yang & Buzsaki 2024** | Different layers optimal for reading vs writing |
 
-### The Token Position Effect (TalkTuner)
+### Geometric Explanation
 
-TalkTuner trained two types of probes on the **same data with same labels**, differing only in extraction position:
+Classification finds the hyperplane that separates classes (normal to decision boundary). Steering moves a point from class A to class B (following the data manifold). The direction that best separates classes isn't the direction that naturally connects them.
 
-```
-Conversation:
-  User: I'm looking for a nice apartment, budget ~$5k/month.
-                                                         ↑
-                                                  CONTROL PROBE
-                                                  (decision point)
+When you steer off-manifold, the model sees activations it never encountered during training — behavior becomes unpredictable.
 
-  [APPENDED BY RESEARCHERS]
-  Assistant: I think the socioeconomic status of this user is ___
-                                                              ↑
-                                                       READING PROBE
-                                                       (classification task)
-```
+The tradeoff is asymmetric: steering-optimal directions still classify well, but classification-optimal directions steer poorly. A manifold-following direction necessarily crosses class boundaries; a boundary-normal direction doesn't necessarily follow the manifold.
 
-**Results:**
+### Implications
 
-| Attribute | Control (steer) | Reading (steer) | Control (classify) | Reading (classify) |
-|-----------|-----------------|-----------------|--------------------|--------------------|
-| Age | **1.00** | 0.90 | 0.96 | **0.98** |
-| Gender | **0.93** | 0.80 | 0.91 | **0.94** |
-| Education | **1.00** | 0.87 | 0.93 | **0.96** |
-| SocioEco | **0.97** | 0.93 | 0.95 | **0.97** |
-
-The reading probe is in "classification mode" - optimized for a meta-task. The control probe captures the representation where the model actually decides how to respond.
-
-### Geometric Explanation: Separating vs Following the Manifold
-
-Neural network activations lie on a lower-dimensional **manifold** within the full activation space. Classification and steering ask different geometric questions:
-
-| Goal | Geometric Operation |
-|------|---------------------|
-| **Classification** | Find hyperplane that separates classes (normal to decision boundary) |
-| **Steering** | Move point from class A to class B (follow the data manifold) |
-
-```
-                    Activation Space (2D projection)
-
-        Classification direction (boundary normal)
-                    ↗
-                   /
-    [Trait+]  ●●● /
-             ●●●/●
-            ●●/●●
-              /
-    ─ ─ ─ ─ ─/─ ─ ─ ─ ─  ← decision boundary
-            /
-         ○○/○○○
-        ○○/○○○○  [Trait-]
-          /○○○
-         ↙
-
-    Steering along classification direction → OFF MANIFOLD → OOD
-
-
-             Steering direction (manifold-following)
-                      ↘
-    [Trait+]  ●●●      \
-             ●●●●       \
-            ●●●●●        \
-                ↘         \
-                 ↘         \
-                  ○○○○○     \
-                 ○○○○○○  [Trait-]
-                   ○○○
-
-    Steering along manifold → stays IN DISTRIBUTION
-```
-
-**The direction that best separates classes isn't the direction that naturally connects them.**
-
-When you steer off-manifold:
-- Model has never seen such activations during training
-- Behavior becomes unpredictable
-- Small steering works, large steering breaks coherence
-
-### The Tradeoff is Asymmetric
-
-From TalkTuner and related work:
-
-| Direction | Classification | Steering |
-|-----------|---------------|----------|
-| Classification-optimal | Best | Poor |
-| Steering-optimal | Good (slightly worse) | Best |
-
-Steering-optimal directions still cross the decision boundary (they classify well). But classification-optimal directions don't follow the manifold (they steer poorly).
-
-**Intuition:** A manifold-following direction necessarily crosses class boundaries. A boundary-normal direction doesn't necessarily follow the manifold.
-
-### Implications for This Project
-
-1. **Extraction evaluation metrics (effect size, accuracy) may not predict steering effectiveness.** Your `extraction_evaluation.py` measures classification; `steering/run_steering_eval.py` measures causal effect. Expect divergence.
-
-2. **Token position matters.** Extract from the position where the model commits to behavior (last user token, first response token), not from a classification prompt.
-
-3. **For live monitoring, use steering-validated vectors.** If monitoring is meant to predict behavior, the vector should be causally linked to behavior (steering works), not just correlated (classification works).
-
-4. **Possible experiment:** Train separate "monitoring probes" on first response tokens (where trait is expressed), compare to current approach.
-
-### References
-
-- Chen et al. 2024: "Designing a Dashboard for Transparency and Control of Conversational AI" (TalkTuner)
-- Li et al. 2023: "Inference-Time Intervention: Eliciting Truthful Answers from a Language Model" (ITI)
-- Zou et al. 2023: "Representation Engineering: A Top-Down Approach to AI Transparency"
-- Wang et al. 2025: "Simple Mechanistic Explanations for Out-Of-Context Reasoning"
+1. **Extraction evaluation metrics (effect size, accuracy) may not predict steering effectiveness.** Expect divergence between `extraction_evaluation.py` and `steering/run_steering_eval.py`.
+2. **Token position matters.** Extract from where the model commits to behavior, not from a classification prompt.
+3. **For monitoring, use steering-validated vectors.** If monitoring predicts behavior, the vector should be causally linked to behavior (steering works), not just correlated (classification works).
 
 ---
 
-## Base → Chat Transfer
-
-### Why It Works
-
-Findings from Ward et al. (2024):
-- Direction exists in base model's representation space
-- Finetuning wires it into behavioral circuits without creating it from scratch
-- ~0.74 cosine similarity between base-derived and chat-derived vectors
-
-### Your Pipeline
-
-1. Extract on base model (no chat template, raw completions)
-2. Filter for correct trait expression
-3. Apply to chat model for steering
-
-### Validation
-
-Compare your base-extracted vector to what you'd get extracting on chat directly:
-```python
-cosine_sim = (base_vector @ chat_vector) / (base_vector.norm() * chat_vector.norm())
-# Expect ~0.7+ if transfer is working
-```
-
-If similarity is low, the chat model may have learned a different representation.
-
----
-
-## Validation
-
-### Sanity Checks
-
-| Test | Expected Result | What Failure Means |
-|------|-----------------|-------------------|
-| **Random baseline** | Probe >> random vector | Probe found signal |
-| **Shuffle labels** | ~50% accuracy | Labels carry information |
-| **Layer 0 accuracy** | Lower than middle layers | Not just detecting keywords |
-
-### Generalization Tests
-
-| Test | What It Measures |
-|------|------------------|
-| **Held-out pairs** | Accuracy on unseen contrastive data |
-| **Cross-validation** | Stability across train/test splits |
-| **Different contexts** | Accuracy on trait in new situations |
-
-### Causal Validation (Steering)
-
-| Test | What It Measures |
-|------|------------------|
-| **Steering effect** | Does adding vector change behavior? |
-| **Coefficient sweep** | Is effect monotonic with magnitude? |
-| **Coherence** | Does model stay coherent under steering? |
-
-Steering is the gold standard—it tests whether the direction is causally relevant, not just correlated.
-
-### Per-Pair Analysis
-
-Check if any single pair dominates the probe direction:
-```python
-# Leave-one-out: how much does removing each pair change the vector?
-for i in range(n_pairs):
-    vector_without_i = train_probe(pairs[:i] + pairs[i+1:])
-    similarity = cosine_sim(vector_all, vector_without_i)
-    # If similarity drops significantly, pair i is an outlier
-```
-
----
-
-## Confound Removal
-
-### Common Confounds
-
-| Confound | How to Detect | How to Remove |
-|----------|---------------|---------------|
-| **Length** | Trait correlates with verbosity | Orthogonalize to length direction |
-| **Refusal** | Trait correlates with refusal | Orthogonalize to refusal direction |
-| **Position** | Top PCs capture position info | Remove top 1-3 PCs |
-| **Tone** | Trait correlates with formality | Match tone in contrastive pairs |
-
-### Orthogonalization
-
-```python
-def orthogonalize(v, confound):
-    """Remove confound direction from v."""
-    projection = (v @ confound) / (confound @ confound) * confound
-    return v - projection
-```
-
-Apply to remove known confounds:
-```python
-trait_vector = orthogonalize(trait_vector, refusal_vector)
-trait_vector = orthogonalize(trait_vector, length_vector)
-```
-
----
-
-## Common Issues
-
-### Normalization Mismatch in Visualization
-
-**Problem:** Probe/gradient vectors appear as zeros in heatmaps dominated by mean_diff.
-
-**Cause:** Mean_diff is unnormalized (norm ~50-100); probe/gradient are normalized (norm ~1-5).
-
-**Solution:** Normalize per-method before visualization, or use separate scales.
-
-```python
-# Example norms for same trait:
-mean_diff:  97.44  (unnormalized)
-probe:       2.16  (L2 regularized)
-gradient:    1.00  (explicitly normalized)
-```
-
-### Layer 0 Probe Accuracy
-
-**Problem:** Probe achieves high accuracy at layer 0 (embeddings).
-
-**Cause:** Instruction confound—probe detects keywords in input, not behavioral trait.
-
-**Solution:** Use naturally contrasting scenarios without explicit instructions.
-
-**Diagnosis:**
-```
-Layer 0:  98% accuracy  ← Suspiciously high
-Layer 16: 95% accuracy  ← More plausible
-```
-
-If layer 0 accuracy ≈ middle layer accuracy, you likely have an instruction confound.
-
-### Gradient NaN
-
-**Problem:** Gradient method produces NaN values.
-
-**Cause:** bfloat16 precision issues during optimization.
-
-**Solution:** Upcast to float32:
-```python
-pos_acts = pos_acts.float()
-neg_acts = neg_acts.float()
-vector = torch.randn(..., dtype=torch.float32, requires_grad=True)
-```
-
----
-
-## Quick Reference
-
-### Method Selection Flowchart
-
-```
-Start
-  │
-  ├─ Want simplicity? → Mean Difference
-  │
-  ├─ Want optimal separator? → Probe
-  │
-  ├─ Have matched pairs, want dominant direction? → PCA on Residuals
-  │
-  ├─ Need custom objective? → Gradient
-  │
-  ├─ Want unsupervised?
-  │   ├─ Have negation pairs → CCS
-  │   └─ Want independent components → ICA
-  │
-  └─ Have trained LoRA? → LoRA Difference
-```
-
-### Default Recipe
-
-1. **Data:** 100+ naturally contrasting pairs, filter for correct expression
-2. **Position:** Last token of prefill
-3. **Layers:** Sweep all, select best via steering eval
-4. **Method:** Probe (accounts for variance)
-5. **Preprocessing:** Try removing top 1-3 PCs
-6. **Validation:** Held-out accuracy + steering effect
-
-### What's Established vs Assumed
+## What's Established vs Assumed
 
 **Established:**
 - Mean diff / probe produce usable directions
-- Adding vector changes behavior
+- Adding vector changes behavior (steering works)
 - Projection correlates with behavior
 - Vectors don't transfer across model families
 - Single layer sufficient for steering
 
 **Assumed (worth testing):**
-- Last token is optimal position
+- First response tokens are optimal position
 - Read direction = write direction
 - Probe ≈ mean diff direction
 - Base→chat transfer always works
@@ -818,9 +438,10 @@ Start
 
 ---
 
-## References
+## Related Documentation
 
-- Anthropic persona vectors: Mass mean shift with 1000+ pairs
-- Ward et al. (2024): Base→chat transfer, position -13 to -8 before events
-- Wang et al. (2024): LoRA difference method, OOCR tasks
-- Burns et al. (2022): CCS for unsupervised truth direction
+- `docs/workflows.md` — practical workflow guide
+- `docs/trait_dataset_creation.md` — scenario design decision tree
+- `docs/scenario_design_guide.md` — practical scenario writing guide
+- `docs/core_reference.md` — core/ API reference
+- `analysis/README.md` — analysis scripts
