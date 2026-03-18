@@ -67,6 +67,7 @@ Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
 - **README rewrite** — story-driven walkthrough using `hyperparams` throughout
 - **Data storage for users** — non-R2 options for public users
 - **Top-activating spans tool** — for a single trait, find top-activating clauses (comma/period/semicolon/newline separated) or n-length sequences across inference responses. `analysis/model_diff/top_activating_spans.py` does this for model diffs; need a single-trait variant.
+- **Refactor `get_best_vector` / `get_top_N_vectors`** — share a `_scored_candidates` helper. Important function, deserves focused attention.
 - Per-trait layer config
 - Visualization audit
 - Upload custom LoRAs to HuggingFace

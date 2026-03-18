@@ -100,62 +100,56 @@ def _load_layer_per_file(
     return layer_acts[:n_pos], layer_acts[n_pos:]
 
 
-def load_train_activations(
+def load_activations(
     experiment: str,
     trait: str,
     model_variant: str,
     layer: int,
     component: str = "residual",
     position: str = "response[:5]",
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Load pos/neg training activations for a single layer.
+    split: str = "train",
+) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
+    """Load pos/neg activations for a single layer.
 
     Auto-detects format (stacked tensor vs per-layer files).
 
+    Args:
+        split: "train" or "val"
+
     Returns:
-        (pos_acts, neg_acts) each of shape [n_examples, hidden_dim]
-    """
-    fmt = _detect_format(experiment, trait, model_variant, component, position)
-    metadata = load_activation_metadata(experiment, trait, model_variant, component, position)
-
-    if fmt == "stacked":
-        tensor_path = get_activation_path(experiment, trait, model_variant, component, position)
-        return _load_layer_stacked(tensor_path, metadata, layer, "train")
-    else:
-        act_dir = get_activation_dir(experiment, trait, model_variant, component, position)
-        return _load_layer_per_file(act_dir, metadata, layer, "train")
-
-
-def load_val_activations(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-    layer: int,
-    component: str = "residual",
-    position: str = "response[:5]",
-) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
-    """Load pos/neg validation activations for a single layer.
-
-    Returns (None, None) if no validation data exists.
+        (pos_acts, neg_acts) each of shape [n_examples, hidden_dim].
+        Returns (None, None) if validation data doesn't exist.
     """
     metadata = load_activation_metadata(experiment, trait, model_variant, component, position)
-    if metadata.get("n_val_pos", 0) == 0:
+
+    if split == "val" and metadata.get("n_val_pos", 0) == 0:
         return None, None
 
     fmt = _detect_format(experiment, trait, model_variant, component, position)
 
     if fmt == "stacked":
-        val_path = get_val_activation_path(experiment, trait, model_variant, component, position)
-        if not val_path.exists():
-            return None, None
-        return _load_layer_stacked(val_path, metadata, layer, "val")
+        if split == "val":
+            tensor_path = get_val_activation_path(experiment, trait, model_variant, component, position)
+            if not tensor_path.exists():
+                return None, None
+        else:
+            tensor_path = get_activation_path(experiment, trait, model_variant, component, position)
+        return _load_layer_stacked(tensor_path, metadata, layer, split)
     else:
         act_dir = get_activation_dir(experiment, trait, model_variant, component, position)
-        prefix = "val"
-        layer_path = act_dir / f"{prefix}_layer{layer}.pt"
-        if not layer_path.exists():
-            return None, None
-        return _load_layer_per_file(act_dir, metadata, layer, "val")
+        if split == "val":
+            layer_path = act_dir / f"val_layer{layer}.pt"
+            if not layer_path.exists():
+                return None, None
+        return _load_layer_per_file(act_dir, metadata, layer, split)
+
+
+# Backwards-compatible aliases
+def load_train_activations(experiment, trait, model_variant, layer, component="residual", position="response[:5]"):
+    return load_activations(experiment, trait, model_variant, layer, component, position, split="train")
+
+def load_val_activations(experiment, trait, model_variant, layer, component="residual", position="response[:5]"):
+    return load_activations(experiment, trait, model_variant, layer, component, position, split="val")
 
 
 def available_layers(

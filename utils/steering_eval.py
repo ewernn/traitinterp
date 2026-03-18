@@ -292,9 +292,10 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
     print(f"\nRegenerating {len(all_configs)} response files...")
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
     all_responses = batched_steering_generate(
-        model, tokenizer, formatted,
+        model, tokenizer,
         [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
         component=component, max_new_tokens=max_new_tokens,
+        prompts=formatted,
     )
 
     n_q = len(questions)
@@ -332,9 +333,10 @@ async def evaluate_manual_coefficients(
     print(f"\nEvaluating {len(all_configs)} configs in batch...")
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
     all_responses = batched_steering_generate(
-        model, tokenizer, formatted,
+        model, tokenizer,
         [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
         component=config.component, max_new_tokens=config.max_new_tokens,
+        prompts=formatted,
     )
 
     tp = is_tp_mode()
@@ -574,13 +576,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
     for vector_experiment, trait in parsed_traits:
         print(f"\n--- {trait} ---")
         questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-
-        if use_default:
-            trait_eval_prompt = None
-        elif eval_prompt_override is not None:
-            trait_eval_prompt = eval_prompt_override
-        else:
-            trait_eval_prompt = steering_data.eval_prompt
+        trait_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
         existing = get_baseline(config.experiment, trait, model_variant, config.position, config.prompt_set)
         if existing and not force:
@@ -664,13 +660,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
         print(f"\n--- Preparing {trait} ---")
 
         questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-
-        if use_default:
-            trait_eval_prompt = None
-        elif eval_prompt_override is not None:
-            trait_eval_prompt = eval_prompt_override
-        else:
-            trait_eval_prompt = steering_data.eval_prompt
+        trait_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
         result = load_or_init_results(
             config, trait, model_variant, steering_data, model_name,

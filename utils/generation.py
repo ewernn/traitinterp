@@ -8,7 +8,7 @@ Usage:
     from utils.generation import generate_batch, batched_steering_generate
 
     responses = generate_batch(model, tokenizer, prompts)
-    steered = batched_steering_generate(model, tokenizer, prompts, configs)
+    steered = batched_steering_generate(model, tokenizer, configs, prompts=prompts)
 """
 
 import os
@@ -564,77 +564,57 @@ def _capture_batch(
 def batched_steering_generate(
     model: torch.nn.Module,
     tokenizer,
-    prompts: List[str],
     configs: List,
     component: str = "residual",
     max_new_tokens: int = 256,
     temperature: float = 0.0,
-) -> List[str]:
+    prompts: List[str] = None,
+) -> List:
     """Generate responses with different steering configs per batch slice.
 
-    Prompts are replicated for each config. Config i steers batch[i*n : (i+1)*n].
-
-    Args:
-        configs: List of (layer, vector, coefficient) tuples
-    Returns:
-        Flat list of responses, grouped by config.
-    """
-    from core.hooks import BatchedLayerSteeringHook
-
-    if not prompts or not configs:
-        return []
-
-    n_prompts = len(prompts)
-    batched_prompts = []
-    for _ in configs:
-        batched_prompts.extend(prompts)
-
-    steering_configs = []
-    for idx, (layer, vector, coef) in enumerate(configs):
-        steering_configs.append((layer, vector, coef, (idx * n_prompts, (idx + 1) * n_prompts)))
-
-    with BatchedLayerSteeringHook(model, steering_configs, component=component):
-        responses = generate_batch(model, tokenizer, batched_prompts,
-                                   max_new_tokens=max_new_tokens, temperature=temperature)
-    return responses
-
-
-def multi_trait_batched_steering_generate(
-    model: torch.nn.Module,
-    tokenizer,
-    configs: List,
-    component: str = "residual",
-    max_new_tokens: int = 256,
-    temperature: float = 0.0,
-) -> List[List[str]]:
-    """Generate with per-config prompt lists (heterogeneous question sets).
-
-    Args:
-        configs: List of (layer, vector, coef, formatted_prompts) tuples.
-    Returns:
-        List of response lists, one per config.
+    Two modes:
+        prompts given: replicate prompts for each config. configs are (layer, vector, coef).
+            Returns flat list of responses grouped by config.
+        prompts=None: each config provides its own prompts as (layer, vector, coef, prompts).
+            Returns list of response lists, one per config.
     """
     from core.hooks import BatchedLayerSteeringHook
 
     if not configs:
         return []
 
+    # Build flat prompt list and track slices per config
     batched_prompts = []
     slices = []
-    for layer, vector, coef, prompts in configs:
-        start = len(batched_prompts)
-        batched_prompts.extend(prompts)
-        slices.append((start, len(batched_prompts)))
+
+    if prompts is not None:
+        # Shared prompts mode: replicate for each config
+        for _ in configs:
+            start = len(batched_prompts)
+            batched_prompts.extend(prompts)
+            slices.append((start, len(batched_prompts)))
+        config_tuples = [(layer, vec, coef) for layer, vec, coef in configs]
+    else:
+        # Per-config prompts mode: each config is (layer, vector, coef, prompts)
+        config_tuples = []
+        for layer, vector, coef, config_prompts in configs:
+            start = len(batched_prompts)
+            batched_prompts.extend(config_prompts)
+            slices.append((start, len(batched_prompts)))
+            config_tuples.append((layer, vector, coef))
 
     if not batched_prompts:
-        return [[] for _ in configs]
+        return [] if prompts is not None else [[] for _ in configs]
 
-    steering_configs = []
-    for idx, (layer, vector, coef, _) in enumerate(configs):
-        steering_configs.append((layer, vector, coef, slices[idx]))
+    steering_configs = [
+        (layer, vec, coef, slices[i])
+        for i, (layer, vec, coef) in enumerate(config_tuples)
+    ]
 
     with BatchedLayerSteeringHook(model, steering_configs, component=component):
         responses = generate_batch(model, tokenizer, batched_prompts,
                                    max_new_tokens=max_new_tokens, temperature=temperature)
 
+    if prompts is not None:
+        return responses  # flat list, caller slices by n_prompts
     return [responses[start:end] for start, end in slices]

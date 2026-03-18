@@ -310,6 +310,14 @@ def get_baseline(
 # Response file I/O (unchanged format)
 # =============================================================================
 
+def _write_responses(responses: List[Dict], path: Path) -> Path:
+    """Write responses JSON to a resolved path."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'w') as f:
+        json.dump(responses, f, indent=2)
+    return path
+
+
 def save_responses(
     responses: List[Dict],
     experiment: str,
@@ -325,18 +333,11 @@ def save_responses(
     component = config.get("component") or vectors[0].get("component", "residual")
     method = config.get("method") or vectors[0].get("method", "probe")
     responses_dir = get_steering_response_dir(experiment, trait, model_variant, component, method, position, prompt_set)
-    responses_dir.mkdir(parents=True, exist_ok=True)
 
     layers_str = "_".join(str(v["layer"]) for v in vectors)
     coefs_str = "_".join(f"{v['weight']:.1f}" for v in vectors)
     ts_clean = timestamp[:19].replace(':', '-').replace('T', '_')
-    filename = f"L{layers_str}_c{coefs_str}_{ts_clean}.json"
-
-    path = responses_dir / filename
-    with open(path, 'w') as f:
-        json.dump(responses, f, indent=2)
-
-    return path
+    return _write_responses(responses, responses_dir / f"L{layers_str}_c{coefs_str}_{ts_clean}.json")
 
 
 def save_baseline_responses(
@@ -349,13 +350,7 @@ def save_baseline_responses(
 ) -> Path:
     """Save baseline (no steering) responses."""
     responses_dir = get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses"
-    responses_dir.mkdir(parents=True, exist_ok=True)
-
-    path = responses_dir / "baseline.json"
-    with open(path, 'w') as f:
-        json.dump(responses, f, indent=2)
-
-    return path
+    return _write_responses(responses, responses_dir / "baseline.json")
 
 
 def save_ablation_responses(
@@ -371,11 +366,4 @@ def save_ablation_responses(
 ) -> Path:
     """Save ablation (all-layer) responses."""
     responses_dir = get_steering_dir(experiment, trait, model_variant, position, prompt_set) / "responses" / "ablation"
-    responses_dir.mkdir(parents=True, exist_ok=True)
-
-    filename = f"L{vector_layer}_{component}_{method}.json"
-    path = responses_dir / filename
-    with open(path, 'w') as f:
-        json.dump(responses, f, indent=2)
-
-    return path
+    return _write_responses(responses, responses_dir / f"L{vector_layer}_{component}_{method}.json")

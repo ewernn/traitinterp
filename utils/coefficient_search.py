@@ -24,7 +24,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import SteeringHook, get_hook_path, VectorSpec
-from utils.generation import generate_batch, batched_steering_generate, multi_trait_batched_steering_generate
+from utils.generation import generate_batch, batched_steering_generate
 from utils.vram import calculate_max_batch_size
 from utils.steering_results import append_run, save_responses, find_cached_run, is_better_result
 from utils.judge import TraitJudge
@@ -372,8 +372,9 @@ async def batched_adaptive_search(
                 print(f"  Generating {len(uncached_states) * n_questions} responses ({len(uncached_states)} layers × {n_questions} questions)...", end=" ", flush=True)
                 t0 = time.time()
                 all_responses = batched_steering_generate(
-                    model, tokenizer, formatted_questions, generation_configs,
-                    component=component, max_new_tokens=max_new_tokens
+                    model, tokenizer, generation_configs,
+                    component=component, max_new_tokens=max_new_tokens,
+                    prompts=formatted_questions,
                 )
                 gen_time = time.time() - t0
                 print(f"({gen_time:.1f}s)")
@@ -740,7 +741,7 @@ async def multi_trait_batched_adaptive_search(
                     (s["layer"], s["vector"], s["coef"], s["formatted_questions"])
                     for s in batch_states
                 ]
-                per_config_responses = multi_trait_batched_steering_generate(
+                per_config_responses = batched_steering_generate(
                     model, tokenizer, generation_configs,
                     component=component, max_new_tokens=max_new_tokens,
                 )
