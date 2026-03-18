@@ -221,28 +221,10 @@ def extract_activations_for_trait(
             return all_activations
 
         local_batch_size = batch_size
-        max_seq_len = max(item['seq_len'] for item in items)
         if local_batch_size is None:
-            pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
-            cal_ids = torch.full((1, max_seq_len), pad_token_id, dtype=torch.long, device=model.device)
-            cal_mask = torch.ones_like(cal_ids)
-
-            torch.cuda.empty_cache()
-            torch.cuda.reset_peak_memory_stats()
-            baseline = torch.cuda.memory_allocated()
-
-            with MultiLayerCapture(model, component=component, layers=layers, keep_on_gpu=True) as cal_cap:
-                with torch.no_grad():
-                    model(input_ids=cal_ids, attention_mask=cal_mask, use_cache=False)
-
-            per_item = torch.cuda.max_memory_allocated() - baseline
-            del cal_ids, cal_mask, cal_cap
-            torch.cuda.empty_cache()
-
-            free = torch.cuda.mem_get_info()[0]
-            local_batch_size = max(1, int(free / per_item * 0.9))
-            if is_rank_zero():
-                print(f"    Calibrated: {per_item / 1024**2:.0f}MB/seq, free={free / 1024**3:.1f}GB → batch={local_batch_size}")
+            from utils.batch_forward import calibrate_batch_size
+            max_seq_len = max(item['seq_len'] for item in items)
+            local_batch_size = calibrate_batch_size(model, max_seq_len, component, layers)
 
         from utils.batch_forward import tp_agree_batch_size
         tp = is_tp_mode()

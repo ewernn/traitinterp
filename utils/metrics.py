@@ -105,6 +105,23 @@ def batch_ce_loss(
     return total_loss / total_tokens
 
 
+def summarize_judge_scores(scores: List[Dict]) -> Dict:
+    """Summarize a list of judge score dicts into a result dict.
+
+    Extracts trait_score and coherence_score, computes means and stats.
+    Used by steering eval, coefficient search, and baseline computation.
+    """
+    trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
+    coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
+    result = {
+        "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
+        **score_stats(trait_scores),
+        "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
+        "n": len(trait_scores),
+    }
+    return result
+
+
 def score_stats(scores: List[float]) -> Dict:
     """Compute distribution stats for a list of trait scores."""
     if not scores:

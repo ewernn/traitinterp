@@ -94,16 +94,8 @@ async def compute_baseline(backend, questions, trait_name, trait_definition, jud
             eval_prompt=eval_prompt, relevance_check=relevance_check,
         )
 
-        all_trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
-        all_coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
-
-        baseline = {
-            "trait_mean": sum(all_trait_scores) / len(all_trait_scores) if all_trait_scores else None,
-            **score_stats(all_trait_scores),
-            "n": len(all_trait_scores),
-        }
-        if all_coherence_scores:
-            baseline["coherence_mean"] = sum(all_coherence_scores) / len(all_coherence_scores)
+        from utils.metrics import summarize_judge_scores
+        baseline = summarize_judge_scores(all_scores)
 
         from utils.steering_results import build_response_records
         response_data = build_response_records(questions, responses, all_scores)
@@ -350,17 +342,10 @@ async def evaluate_manual_coefficients(
     if tp:
         import torch.distributed as dist
         if is_rank_zero():
-            config_summaries = []
-            for idx in range(len(all_configs)):
-                scores = all_scores[idx * n_q:(idx + 1) * n_q]
-                trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
-                coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
-                config_summaries.append({
-                    "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-                    **score_stats(trait_scores),
-                    "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
-                    "n": len(trait_scores),
-                })
+            config_summaries = [
+                summarize_judge_scores(all_scores[idx * n_q:(idx + 1) * n_q])
+                for idx in range(len(all_configs))
+            ]
         broadcast_list = [config_summaries]
         dist.broadcast_object_list(broadcast_list, src=0)
         config_summaries = broadcast_list[0]
@@ -370,15 +355,7 @@ async def evaluate_manual_coefficients(
         if tp:
             result = config_summaries[idx]
         else:
-            scores = all_scores[idx * n_q:(idx + 1) * n_q]
-            trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
-            coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
-            result = {
-                "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-                **score_stats(trait_scores),
-                "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
-                "n": len(trait_scores),
-            }
+            result = summarize_judge_scores(all_scores[idx * n_q:(idx + 1) * n_q])
 
         timestamp = datetime.now().isoformat()
         print(f"  L{ld['layer']} c{coef:.0f}: trait={result['trait_mean'] or 0:.1f}, coherence={result['coherence_mean'] or 0:.1f}")
@@ -871,14 +848,7 @@ async def run_rescore(config: SteeringConfig, trait, model_variant, dry_run=Fals
             with open(entry["path"], 'w') as f:
                 json.dump(responses, f, indent=2)
 
-        trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
-        coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
-        result = {
-            "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-            **score_stats(trait_scores),
-            "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
-            "n": len(trait_scores),
-        }
+        result = summarize_judge_scores(scores)
         _rtm = result['trait_mean']
         _rcm = result['coherence_mean']
         print(f" trait={f'{float(_rtm):.1f}' if _rtm is not None else 'None'} coh={f'{float(_rcm):.1f}' if _rcm is not None else 'None'}")

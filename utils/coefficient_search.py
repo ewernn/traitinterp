@@ -82,16 +82,8 @@ async def evaluate_single_config(
         print(f"  Scoring {len(all_qa_pairs)} responses...")
         all_scores = await judge.score_steering_batch(all_qa_pairs, trait_name, trait_definition, eval_prompt=eval_prompt, relevance_check=relevance_check)
 
-        trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
-        coherence_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
-
-        from utils.metrics import score_stats as _score_stats
-        result = {
-            "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-            **_score_stats(trait_scores),
-            "coherence_mean": sum(coherence_scores) / len(coherence_scores) if coherence_scores else None,
-            "n": len(trait_scores),
-        }
+        from utils.metrics import summarize_judge_scores
+        result = summarize_judge_scores(all_scores)
 
         responses_data = build_response_records(questions, responses, all_scores)
 
