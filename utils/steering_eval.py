@@ -24,7 +24,7 @@ from utils.steering_results import (
 )
 from utils.paths import get_steering_results_path, get_steering_dir, get as get_path
 from utils.coefficient_search import (
-    adaptive_search_layer, batched_adaptive_search, multi_trait_batched_adaptive_search,
+    batched_adaptive_search, multi_trait_batched_adaptive_search,
 )
 from utils.metrics import score_stats
 from utils.generation import generate_batch, batched_steering_generate
@@ -497,7 +497,9 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             judge, use_chat_template, cached_runs, trait, model_variant, direction,
             eval_prompt=effective_eval_prompt,
         )
-    elif config.batched and len(layer_data) > 1:
+    else:
+        # Batched search handles both multi-layer parallel and sequential (max_batch_layers=1)
+        max_batch_layers = None if (config.batched and len(layer_data) > 1) else 1
         await batched_adaptive_search(
             backend, layer_data, questions, steering_data.trait_name, steering_data.trait_definition,
             judge, use_chat_template, config.component, cached_runs, config.experiment, trait, model_variant,
@@ -507,22 +509,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             max_new_tokens=config.max_new_tokens, eval_prompt=effective_eval_prompt,
             save_mode=config.save_mode, coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check, direction=direction, trait_judge=config.trait_judge,
+            max_batch_layers=max_batch_layers,
         )
-    else:
-        print(f"\nSequential adaptive search ({config.n_steps} steps per layer)")
-        for ld in layer_data:
-            await adaptive_search_layer(
-                backend, ld["vector"], ld["layer"], ld["base_coef"],
-                questions, steering_data.trait_name, steering_data.trait_definition,
-                judge, use_chat_template, config.component,
-                cached_runs, config.experiment, trait, model_variant, vector_experiment, config.method,
-                position=config.position, prompt_set=config.prompt_set, n_steps=config.n_steps,
-                up_mult=config.up_mult, down_mult=config.down_mult, start_mult=config.start_mult,
-                momentum=config.momentum, max_new_tokens=config.max_new_tokens,
-                eval_prompt=effective_eval_prompt, save_mode=config.save_mode,
-                coherence_threshold=config.min_coherence, relevance_check=config.relevance_check,
-                direction=direction, trait_judge=config.trait_judge,
-            )
 
     # Summary
     print_eval_summary(cached_runs, baseline_result, direction, config.min_coherence)
