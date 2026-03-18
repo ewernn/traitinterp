@@ -199,7 +199,7 @@ def generate_responses(
     should_cleanup = model is None
 
     if model is None:
-        from other.server.client import get_model_or_client, ModelClient
+        from utils.server.client import get_model_or_client, ModelClient
 
         quantize = load_in_4bit or load_in_8bit
         if not no_server and not lora and not quantize:
@@ -291,11 +291,11 @@ def main():
     # Map --backend to no_server for internal logic
     no_server = args.backend == 'local'
     if args.backend == 'server':
-        from other.server.client import is_server_available
+        from utils.server.client import is_server_available
         if not is_server_available():
             raise ConnectionError(
                 "Model server not running. Start with:\n"
-                "  python other/server/app.py --port 8765 --model MODEL"
+                "  python utils/server/app.py --port 8765 --model MODEL"
             )
 
     generate_responses(

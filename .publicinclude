@@ -30,7 +30,7 @@ analysis/
 # ── Docs ──
 docs/main.md
 docs/experiment_structure.md
-docs/extraction_pipeline.md
+docs/extraction_guide.md
 docs/workflows.md
 docs/architecture.md
 docs/core_reference.md

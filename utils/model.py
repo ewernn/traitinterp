@@ -707,7 +707,7 @@ def load_model_or_client(
     Returns:
         (model, tokenizer, is_remote) tuple
     """
-    from other.server.client import get_model_or_client as _get_model_or_client, ModelClient
+    from utils.server.client import get_model_or_client as _get_model_or_client, ModelClient
 
     # LoRA requires local loading
     if lora_adapter:

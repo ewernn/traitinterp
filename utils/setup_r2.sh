@@ -2,6 +2,12 @@
 # Auto-configure rclone with R2 credentials from .env
 set -e
 
+# Install rclone if not present (e.g. fresh containers)
+if ! command -v rclone &> /dev/null; then
+    echo "Installing rclone..."
+    curl -s https://rclone.org/install.sh | bash
+fi
+
 # Load .env if vars not already in environment
 if [[ -z "$R2_ACCESS_KEY_ID" ]]; then
     if [ -f .env ]; then

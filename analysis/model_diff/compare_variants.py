@@ -249,7 +249,13 @@ def main():
         torch.save(diff_vectors, output_dir / 'diff_vectors.pt')
         print(f"  Saved diff_vectors.pt")
 
-    # 2. Get traits to analyze
+    # 2. Get extraction variant for loading vectors
+    vector_experiment = args.vector_experiment or args.experiment
+    extraction_variant = get_model_variant(vector_experiment, None, mode='extraction')['name']
+    if args.vector_experiment:
+        print(f"  Loading vectors from experiment: {vector_experiment}")
+
+    # 3. Get traits to analyze
     if args.traits:
         traits = [t.strip() for t in args.traits.split(',')]
     else:
@@ -270,12 +276,6 @@ def main():
         return
 
     print(f"\nAnalyzing {len(traits)} traits...")
-
-    # Get extraction variant for loading vectors
-    vector_experiment = args.vector_experiment or args.experiment
-    extraction_variant = get_model_variant(vector_experiment, None, mode='extraction')['name']
-    if args.vector_experiment:
-        print(f"  Loading vectors from experiment: {vector_experiment}")
 
     # Load existing results to merge (don't overwrite other traits)
     results_path = output_dir / 'results.json'

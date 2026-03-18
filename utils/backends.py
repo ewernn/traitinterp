@@ -528,12 +528,12 @@ class ServerBackend(GenerationBackend):
     """
 
     def __init__(self, model_name: str, load_in_8bit: bool = False, load_in_4bit: bool = False):
-        from other.server.client import ModelClient, is_server_available
+        from utils.server.client import ModelClient, is_server_available
 
         if not is_server_available():
             raise ConnectionError(
                 "Model server not running. Start with:\n"
-                "  python other/server/app.py --port 8765 --model MODEL"
+                "  python utils/server/app.py --port 8765 --model MODEL"
             )
 
         self._client = ModelClient(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
@@ -651,136 +651,14 @@ class ServerBackend(GenerationBackend):
 
 
 # =============================================================================
-# Factory function
-# =============================================================================
-
-
-def get_backend(
-    experiment: str = None,
-    variant: str = None,
-    prefer_server: bool = True,
-    model_name: str = None,
-    use_chat_template: bool = None,
-    **kwargs,
-) -> GenerationBackend:
-    """
-    Get appropriate backend, preferring server if available.
-
-    Args:
-        experiment: Experiment name (uses config to determine model)
-        variant: Model variant within experiment
-        prefer_server: If True, use ServerBackend when server is running
-        model_name: Direct model name (alternative to experiment)
-        use_chat_template: Override chat template usage (LocalBackend only)
-        **kwargs: Passed to backend constructor (load_in_8bit, load_in_4bit, etc.)
-
-    Returns:
-        GenerationBackend instance (ServerBackend or LocalBackend)
-    """
-    from other.server.client import is_server_available
-
-    if prefer_server and is_server_available():
-        try:
-            if experiment:
-                return ServerBackend.from_experiment(experiment, variant)
-            elif model_name:
-                return ServerBackend(model_name)
-        except (ConnectionError, NotImplementedError):
-            pass  # Fall through to local
-
-    # Fall back to local
-    if experiment:
-        return LocalBackend.from_experiment(
-            experiment, variant, use_chat_template=use_chat_template, **kwargs
-        )
-    elif model_name:
-        from utils.model import load_model
-        model, tokenizer = load_model(model_name, **kwargs)
-        return LocalBackend(model, tokenizer, use_chat_template=use_chat_template)
-
-    raise ValueError("Must provide experiment or model_name")
-
-
-# =============================================================================
 # CLI helpers
 # =============================================================================
 
 
 def add_backend_args(parser):
-    """Add --backend argument to an argparse parser.
-
-    Usage:
-        parser = argparse.ArgumentParser()
-        add_backend_args(parser)
-        args = parser.parse_args()
-        backend = get_backend_from_args(args, experiment=args.experiment)
-    """
+    """Add --backend argument to an argparse parser."""
     parser.add_argument(
-        '--backend', choices=['auto', 'local', 'server', 'modal'],
+        '--backend', choices=['auto', 'local', 'server'],
         default='auto',
         help='Model backend: auto (try server, fall back to local), '
-             'local (load in-process), server (use model server), '
-             'modal (cloud GPU)')
-
-
-def get_backend_from_args(
-    args,
-    experiment: str,
-    variant: str = None,
-    require_local: bool = False,
-    use_chat_template: bool = None,
-    **load_kwargs,
-) -> GenerationBackend:
-    """Create a backend from parsed CLI args.
-
-    Args:
-        args: Parsed argparse namespace (must have .backend from add_backend_args)
-        experiment: Experiment name
-        variant: Model variant
-        require_local: If True, skip server probe in auto mode. Scripts that need
-            PyTorch hooks (activation capture, steering) should set this.
-        use_chat_template: Override chat template usage (LocalBackend only)
-        **load_kwargs: Passed to model loading (load_in_8bit, load_in_4bit,
-            bnb_4bit_quant_type, etc.)
-
-    Returns:
-        GenerationBackend instance
-    """
-    backend_choice = getattr(args, 'backend', 'auto')
-
-    if backend_choice == 'modal':
-        from utils.modal_backend import ModalBackend
-        return ModalBackend.from_experiment(experiment, variant)
-
-    if backend_choice == 'server':
-        # Explicit server mode — error if it can't work
-        return ServerBackend.from_experiment(experiment, variant)
-
-    if backend_choice == 'local':
-        return LocalBackend.from_experiment(
-            experiment, variant, use_chat_template=use_chat_template,
-            **load_kwargs,
-        )
-
-    # auto mode
-    server_available = False
-    if not require_local:
-        from other.server.client import is_server_available
-        server_available = is_server_available()
-        if server_available:
-            try:
-                return ServerBackend.from_experiment(experiment, variant)
-            except (ConnectionError, NotImplementedError):
-                pass  # Fall through to local
-
-    backend = LocalBackend.from_experiment(
-        experiment, variant, use_chat_template=use_chat_template,
-        **load_kwargs,
-    )
-
-    # Suggest server for scripts that could benefit
-    if not require_local and not server_available:
-        print("Tip: start a model server to keep model loaded between runs")
-        print("  python other/server/app.py --port 8765 --model MODEL")
-
-    return backend
+             'local (load in-process), server (use model server)')

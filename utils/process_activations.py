@@ -756,7 +756,12 @@ def capture_raw_activations(
 # Post-hoc Projection from Saved .pt Files
 # ============================================================================
 
-def process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant, extraction_variant, vectors_experiment, steering_variant):
+def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
+                       extraction_variant, vectors_experiment, steering_variant,
+                       *, experiment, traits=None, multi_vector=None, layers=None,
+                       layer=None, component='residual', position=None,
+                       method=None, logit_lens=False, centered=False,
+                       skip_existing=False):
     """Process a single prompt set: load .pt files and project onto trait vectors."""
     raw_dir = inference_dir / "raw" / "residual" / prompt_set
 
@@ -772,12 +777,12 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
     print(f"Found {len(raw_files)} raw activation files")
 
-    analysis_massive_dims, top_dims_by_layer = load_massive_dims_from_analysis(args.experiment)
+    analysis_massive_dims, top_dims_by_layer = load_massive_dims_from_analysis(experiment)
     if analysis_massive_dims:
         print(f"Loaded {len(analysis_massive_dims)} massive dims from calibration for visualization")
 
-    if args.traits:
-        trait_list = [tuple(t.split('/')) for t in args.traits.split(',')]
+    if traits:
+        trait_list = [tuple(t.split('/')) for t in traits.split(',')]
     else:
         trait_list = discover_extracted_traits(vectors_experiment)
 
@@ -787,11 +792,11 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
     print(f"Projecting onto {len(trait_list)} traits")
 
-    use_top_n = args.multi_vector is not None and args.multi_vector > 0
+    use_top_n = multi_vector is not None and multi_vector > 0
 
-    layers_spec = args.layers
-    if args.layer is not None and layers_spec is None:
-        layers_spec = str(args.layer)
+    layers_spec = layers
+    if layer is not None and layers_spec is None:
+        layers_spec = str(layer)
     elif layers_spec is None and not use_top_n:
         layers_spec = 'best+5'
 
@@ -802,7 +807,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
         del sample
 
     if use_top_n:
-        print(f"Multi-vector mode: projecting onto top {args.multi_vector} vectors per trait")
+        print(f"Multi-vector mode: projecting onto top {multi_vector} vectors per trait")
     else:
         print(f"Layers spec: {layers_spec}")
 
@@ -814,19 +819,19 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
         if use_top_n:
             top_vectors = get_top_N_vectors(
                 vectors_experiment, trait_path, extraction_variant=extraction_variant,
-                component=args.component, position=args.position, N=args.multi_vector
+                component=component, position=position, N=multi_vector
             )
             if not top_vectors:
                 print(f"  Skip {trait_path}: no vectors found")
                 continue
 
             loaded_vectors = []
-            for v in top_vectors:
-                layer = v['layer']
-                method = v['method']
-                selection_source = v['source']
+            for vec_info in top_vectors:
+                vec_layer = vec_info['layer']
+                vec_method = vec_info['method']
+                selection_source = vec_info['source']
                 vector_path = get_vector_path(
-                    vectors_experiment, trait_path, method, layer, extraction_variant, args.component, args.position
+                    vectors_experiment, trait_path, vec_method, vec_layer, extraction_variant, component, position
                 )
 
                 if not vector_path.exists():
@@ -834,13 +839,13 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
 
                 try:
                     vector, baseline, per_vec_metadata = load_vector_with_baseline(
-                        vectors_experiment, trait_path, method, layer, extraction_variant, args.component, args.position
+                        vectors_experiment, trait_path, vec_method, vec_layer, extraction_variant, component, position
                     )
                     vector = vector.to(torch.float16)
                     vec_metadata = load_vector_metadata(
-                        vectors_experiment, trait_path, method, extraction_variant, args.component, args.position
+                        vectors_experiment, trait_path, vec_method, extraction_variant, component, position
                     )
-                    loaded_vectors.append((vector, method, vector_path, layer, vec_metadata, selection_source, baseline, args.position))
+                    loaded_vectors.append((vector, vec_method, vector_path, vec_layer, vec_metadata, selection_source, baseline, position))
                 except FileNotFoundError:
                     continue
 
@@ -851,7 +856,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
         else:
             best_layer = None
             best_method = None
-            best_position = args.position
+            best_position = position
             best_source = None
             best_score = None
 
@@ -859,7 +864,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 spec, spec_meta = get_best_vector_spec(
                     vectors_experiment, trait_path, extraction_variant=extraction_variant,
                     steering_variant=steering_variant,
-                    component=args.component, position=args.position
+                    component=component, position=position
                 )
                 best_layer = spec.layer
                 best_method = spec.method
@@ -872,62 +877,62 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                     print(f"  Skip {trait_path}: {e}")
                     continue
 
-            layers = resolve_layers(layers_spec, best_layer, available_raw_layers)
+            resolved_layers = resolve_layers(layers_spec, best_layer, available_raw_layers)
 
-            if not layers:
+            if not resolved_layers:
                 print(f"  Skip {trait_path}: no valid layers resolved")
                 continue
 
             loaded_vectors = []
-            for layer in layers:
-                method = args.method
-                if method is None:
-                    if layer == best_layer and best_method:
-                        method = best_method
+            for candidate_layer in resolved_layers:
+                vec_method = method
+                if vec_method is None:
+                    if candidate_layer == best_layer and best_method:
+                        vec_method = best_method
                     else:
-                        method = find_vector_method(
-                            vectors_experiment, trait_path, layer, extraction_variant,
-                            args.component, best_position or 'response[:]'
+                        vec_method = find_vector_method(
+                            vectors_experiment, trait_path, candidate_layer, extraction_variant,
+                            component, best_position or 'response[:]'
                         )
 
-                if not method:
-                    print(f"    Skip L{layer}: no vector found")
+                if not vec_method:
+                    print(f"    Skip L{candidate_layer}: no vector found")
                     continue
 
-                position = best_position
-                if position is None:
+                vec_position = best_position
+                if vec_position is None:
                     candidates = _discover_vectors(
                         vectors_experiment, trait_path, extraction_variant,
-                        component=args.component, layer=layer
+                        component=component, layer=candidate_layer
                     )
                     if candidates:
-                        position = candidates[0]['position']
+                        vec_position = candidates[0]['position']
                     else:
-                        print(f"    Skip L{layer}: no vectors found")
+                        print(f"    Skip L{candidate_layer}: no vectors found")
                         continue
 
                 try:
                     vector, baseline, per_vec_meta = load_vector_with_baseline(
-                        vectors_experiment, trait_path, method, layer, extraction_variant,
-                        args.component, position
+                        vectors_experiment, trait_path, vec_method, candidate_layer, extraction_variant,
+                        component, vec_position
                     )
                     vector = vector.to(torch.float16)
                 except FileNotFoundError:
-                    print(f"    Skip L{layer}: vector file not found")
+                    print(f"    Skip L{candidate_layer}: vector file not found")
                     continue
 
                 vec_metadata = load_vector_metadata(
-                    vectors_experiment, trait_path, method, extraction_variant,
-                    args.component, position
+                    vectors_experiment, trait_path, vec_method, extraction_variant,
+                    component, vec_position
                 )
-                source = best_source if layer == best_layer else 'layers_arg'
-                loaded_vectors.append((vector, method, None, layer, vec_metadata, source, baseline, position))
+                source = best_source if candidate_layer == best_layer else 'layers_arg'
+                loaded_vectors.append((vector, vec_method, None, candidate_layer, vec_metadata, source, baseline, vec_position))
 
             loaded_layers = {v[3] for v in loaded_vectors}
-            skipped_layers = sorted(set(layers) - loaded_layers)
+            skipped_layers = sorted(set(resolved_layers) - loaded_layers)
             if skipped_layers:
-                print(f"\n  WARNING: {trait_path} — skipped {len(skipped_layers)}/{len(layers)} layers: {skipped_layers}")
-                print(f"    Vectors missing. Extract them first: python extraction/run_extraction_pipeline.py --experiment {args.experiment} --traits {trait_path} --only-stage 3,4 --layers {','.join(str(l) for l in skipped_layers)}\n")
+                print(f"\n  WARNING: {trait_path} — skipped {len(skipped_layers)}/{len(resolved_layers)} layers: {skipped_layers}")
+                print(f"    Vectors missing. Extract them first: python extraction/run_extraction_pipeline.py --experiment {experiment} --traits {trait_path} --only-stage 3,4 --layers {','.join(str(l) for l in skipped_layers)}\n")
 
             if loaded_vectors:
                 trait_vectors[(category, trait_name)] = loaded_vectors
@@ -940,7 +945,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
     # Load model only if logit lens requested
     model = None
     tokenizer = None
-    if args.logit_lens:
+    if logit_lens:
         print(f"\nLoading model for logit lens: {model_name}")
         from transformers import AutoModelForCausalLM, AutoTokenizer
         model = AutoModelForCausalLM.from_pretrained(
@@ -982,7 +987,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
                 dump_compact(response_data, f)
 
         logit_lens_data = None
-        if args.logit_lens and model is not None:
+        if logit_lens and model is not None:
             logit_lens_data = {
                 'prompt': compute_logit_lens_from_raw(prompt_acts, model, tokenizer, n_layers) if prompt_acts else {},
                 'response': compute_logit_lens_from_raw(response_acts, model, tokenizer, n_layers)
@@ -992,8 +997,8 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
             prompt_activations=prompt_acts,
             response_activations=response_acts,
             trait_vectors=trait_vectors,
-            component=args.component,
-            centered=args.centered,
+            component=component,
+            centered=centered,
             massive_dims_info=(analysis_massive_dims, top_dims_by_layer) if analysis_massive_dims else None,
             logit_lens_data=logit_lens_data,
             n_prompt_tokens=len(data['prompt']['tokens']),
@@ -1005,7 +1010,7 @@ def process_prompt_set(args, inference_dir, prompt_set, model_name, model_varian
         for trait_path, proj_data in results.items():
             out_dir = inference_dir / "projections" / trait_path / prompt_set
             out_file = out_dir / f"{prompt_id}.json"
-            if args.skip_existing and out_file.exists():
+            if skip_existing and out_file.exists():
                 continue
             out_dir.mkdir(parents=True, exist_ok=True)
             with open(out_file, 'w') as f:
@@ -1143,8 +1148,16 @@ def main():
 
             for prompt_set in prompt_sets:
                 print(f"\n{'='*60}\nProcessing prompt set: {prompt_set}\n{'='*60}")
-                process_prompt_set(args, inference_dir, prompt_set, model_name, model_variant,
-                                   extraction_variant, vectors_experiment, steering_variant)
+                process_prompt_set(
+                    inference_dir, prompt_set, model_name, model_variant,
+                    extraction_variant, vectors_experiment, steering_variant,
+                    experiment=args.experiment, traits=args.traits,
+                    multi_vector=args.multi_vector, layers=args.layers,
+                    layer=args.layer, component=args.component,
+                    position=args.position, method=args.method,
+                    logit_lens=args.logit_lens, centered=args.centered,
+                    skip_existing=args.skip_existing,
+                )
     finally:
         builtins.print = _original_print
         if is_tp_mode():

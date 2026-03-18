@@ -68,7 +68,7 @@ def load_vectors_for_method(
     position: str = "response[:]",
 ) -> tuple[torch.Tensor, list[int]]:
     """Load all layer vectors for a method, return stacked tensor and layer list."""
-    layers = list_layers(experiment, trait, model_variant, position, component, method)
+    layers = list_layers(experiment, trait, method, model_variant, component, position)
     if not layers:
         return None, []
 

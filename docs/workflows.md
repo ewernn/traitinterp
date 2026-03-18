@@ -278,7 +278,7 @@ Keep model loaded between script runs. Essential for large models (e.g. Kimi K2,
 
 ```bash
 # Terminal 1: Start server (loads model once)
-source .env && python -u other/server/app.py --port 8765 --model {model}
+source .env && python -u utils/server/app.py --port 8765 --model {model}
 
 # Terminal 2: Scripts auto-detect server for generation
 python utils/inference_generation.py ...  # Uses server automatically

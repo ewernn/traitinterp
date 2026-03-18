@@ -42,7 +42,7 @@ from utils.paths import (
 
 def sync_to_volumes(experiment, traits):
     """Upload scenario files + config to Modal volumes."""
-    from extraction.modal_pipeline import experiments_volume, datasets_volume
+    from dev.extraction.modal_pipeline import experiments_volume, datasets_volume
 
     repo_root = Path(__file__).parent.parent
     exp_dir = repo_root / "experiments" / experiment
@@ -68,7 +68,7 @@ def pull_results(experiment, traits, model_variant, position, component):
 
     Skips activations (huge intermediate files not needed locally).
     """
-    from extraction.modal_pipeline import experiments_volume
+    from dev.extraction.modal_pipeline import experiments_volume
     from utils.modal_sync import pull_dir_recursive, pull_file
 
     repo_root = Path(__file__).parent.parent

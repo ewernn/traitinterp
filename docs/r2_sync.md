@@ -4,13 +4,7 @@ Sync experiment data between local and R2. Git owns code/docs/configs, R2 owns d
 
 ## Ownership Split
 
-| Owner | File types under `experiments/` |
-|-------|------|
-| **Git** | `.py`, `.md`, `.txt`, `.log`, `config.json` |
-| **R2** | `.pt`, `.json` (non-config), `.jsonl`, `.png`, `.safetensors` |
-| **Neither** | activations, raw inference, LoRA training artifacts |
-
-Both push and pull scripts exclude git-tracked types to prevent dual-ownership merge conflicts.
+Git tracks code/docs/configs. R2 tracks `experiments/` data. The boundary is the directory — code never enters `experiments/` and experiment data is gitignored. The R2 scripts (`utils/r2_push.sh`, `utils/r2_pull.sh`) use exclude patterns from `utils/r2_config.sh` to skip activations, raw inference, and training artifacts.
 
 ## Usage
 
@@ -59,12 +53,10 @@ No conflicts — R2 delivers data files, git delivers code/docs/configs.
 
 ## Dry Run
 
-Preview what `--full` would do:
+Preview what `--full` would do (see `utils/r2_config.sh` for current exclude patterns):
 ```bash
+source utils/r2_config.sh
 rclone sync experiments/ r2:trait-interp-bucket/experiments/ \
   --size-only --dry-run \
-  --exclude "*.py" --exclude "*.md" --exclude "*.txt" \
-  --exclude "config.json" \
-  --exclude "**/activations/**" \
-  --exclude "**/inference/raw/**"
+  $(build_excludes)
 ```

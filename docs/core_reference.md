@@ -92,6 +92,37 @@ paths = detect_contribution_paths(model)
 # Unknown architecture: raises ValueError with diagnostic info
 ```
 
+**Projection hooks** (used by inference pipeline for on-GPU projection):
+```python
+from core import ProjectionHook, MultiLayerProjection
+
+# Project activations onto a vector inside the hook (no PCIe transfer)
+with ProjectionHook(model, vector, "model.layers.16") as hook:
+    model(**inputs)
+scores = hook.get()  # [batch, seq] — already projected
+
+# Multi-layer projection (used by inference pipeline)
+with MultiLayerProjection(model, vectors_by_layer={14: vec14, 16: vec16}) as proj:
+    model(**inputs)
+scores = proj.get(16)  # [batch, seq]
+```
+
+**Multi-layer steering** (evaluate multiple layers in one forward pass):
+```python
+from core import MultiLayerSteeringHook
+
+with MultiLayerSteeringHook(model, configs=[(layer, vector, coef) for ...]):
+    output = model.generate(**inputs)
+```
+
+**Activation capping** (clamp activations along a direction):
+```python
+from core import ActivationCappingHook
+# h ← h + max(0, τ - ⟨h,v̂⟩)·v̂
+with ActivationCappingHook(model, vector, "model.layers.16", threshold=0.5):
+    output = model.generate(**inputs)
+```
+
 **Validation:** Hooks fail fast on invalid inputs:
 - `SteeringHook` / `AblationHook`: Reject non-1D vectors
 - `AblationHook`: Reject zero or near-zero direction vectors
@@ -136,7 +167,7 @@ results = gen.generate(input_ids, attention_mask, steering=steering)
 ```python
 from core import get_method
 
-method = get_method('probe')  # or 'mean_diff', 'gradient', 'random_baseline'
+method = get_method('probe')  # or 'mean_diff', 'gradient', 'random_baseline', 'rfm'
 result = method.extract(pos_acts, neg_acts)
 vector = result['vector']
 ```
@@ -146,9 +177,12 @@ vector = result['vector']
 - `probe` - Logistic regression on row-normalized activations, then normalized
 - `gradient` - Gradient optimization to maximize separation, normalized
 - `random_baseline` - Random unit vector (sanity check, ~50% accuracy)
+- `rfm` - Top eigenvector of AGOP matrix (grid searches bandwidth × center_grads, selects by AUC on val split)
 
 **Note:** All vectors are unit-normalized for consistent steering coefficients across models.
 Probe uses row normalization (each sample scaled to unit norm) so LogReg coefficients are ~1 magnitude regardless of model activation scale.
+
+**Precision:** Activations are stored as float16 (50% space savings). All extraction methods upcast to float32 before computation — gradient descent and epsilon values (1e-8) require it. Probe upcasts via sklearn (internally float64).
 
 ---
 
@@ -232,26 +266,25 @@ python analysis/massive_activations.py --experiment gemma-2-2b --prompt-set jail
 ## GPU Profiling
 
 ```python
-from utils.profiling import gpu_profile, gpu_timer, memory_stats
+from utils.vram import gpu_profile, memory_stats, find_cuda_tensors
 
-# Profile a code block (timing + memory)
+# Profile a code block (synchronize-bracketed timing + memory)
 with gpu_profile("forward pass"):
     model(**inputs)
 # Prints: [forward pass] 0.45s | peak 12.3GB | delta +2.1GB
 
-# Simple timer
-with gpu_timer() as t:
-    model(**inputs)
-print(f"Took {t.elapsed:.3f}s")
-
 # Memory snapshot
 stats = memory_stats()
 # {'allocated': 5.2, 'reserved': 8.0, 'free': 40.0, 'total': 50.8}
+
+# Diagnose leaked tensors after cleanup
+leaked = find_cuda_tensors()
+# [(torch.Size([64, 300, 2304]), torch.bfloat16, 'cuda:0', 88.47), ...]
 ```
 
 **Helpers:**
 ```python
-from utils.profiling import bandwidth_report, tensor_size_gb
+from utils.vram import bandwidth_report, tensor_size_gb
 
 bandwidth_report(data_gb=4.6, elapsed=0.19)  # "4.6GB in 0.19s = 24.2 GB/s"
 tensor_size_gb((64, 300, 2304))              # 0.089 (for bfloat16)

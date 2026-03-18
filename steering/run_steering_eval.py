@@ -18,11 +18,8 @@ Usage:
 import sys
 import asyncio
 import argparse
-import gc
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-import torch
 
 from core.kwargs_configs import SteeringConfig
 from utils.steering_eval import (
@@ -33,7 +30,7 @@ from utils.steering_eval import (
 from utils.traits import load_steering_data
 from utils.backends import LocalBackend, add_backend_args
 from utils.paths import get_model_variant
-from utils.distributed import is_tp_mode, is_rank_zero
+from utils.distributed import is_tp_mode, is_rank_zero, tp_lifecycle, flush_cuda
 from utils.vectors import MIN_COHERENCE
 from utils.judge import TraitJudge
 
@@ -42,24 +39,28 @@ from utils.judge import TraitJudge
 # Recipes — one per mode, dispatch visible below
 # =============================================================================
 
-async def recipe_baselines(config, parsed_traits, backend, judge):
+async def recipe_baselines(config, parsed_traits, model_variant, model_name, backend, judge):
     """Score unsteered responses for each trait. No steering, no vectors."""
     eval_prompt, trait_judge, use_default = resolve_cli_eval_prompt_from_config(config)
-    await run_baselines(config, parsed_traits, backend=backend, judge=judge,
+    await run_baselines(config, parsed_traits, model_variant, model_name,
+                        backend=backend, judge=judge,
                         eval_prompt_override=eval_prompt, trait_judge=trait_judge,
                         use_default=use_default, force=config.force)
 
 
-async def recipe_batched(config, parsed_traits, backend, judge, layers_arg, trait_layers, direction):
+async def recipe_batched(config, parsed_traits, model_variant, model_name, backend, judge,
+                         layers_arg, trait_layers, direction):
     """Main path: search coefficients for multiple traits × layers in parallel batches."""
     eval_prompt, trait_judge, use_default = resolve_cli_eval_prompt_from_config(config)
-    await run_batched_multi_trait(config, parsed_traits, backend=backend, judge=judge,
+    await run_batched_multi_trait(config, parsed_traits, model_variant, model_name,
+                                  backend=backend, judge=judge,
                                   eval_prompt_override=eval_prompt, trait_judge=trait_judge,
                                   use_default=use_default, direction=direction, force=config.force,
                                   trait_layers=trait_layers, layers_arg=layers_arg)
 
 
-async def recipe_sequential(config, parsed_traits, backend, judge, layers_arg, trait_layers, lora):
+async def recipe_sequential(config, parsed_traits, model_variant, model_name, backend, judge,
+                            layers_arg, trait_layers, lora):
     """Fallback: evaluate traits one at a time. For --no-batch, --coefficients, --regenerate-responses."""
     for vector_experiment, trait in parsed_traits:
         if len(parsed_traits) > 1:
@@ -67,26 +68,24 @@ async def recipe_sequential(config, parsed_traits, backend, judge, layers_arg, t
 
         effective_layers = trait_layers[trait] if (trait_layers and trait in trait_layers) else layers_arg
         trait_config = SteeringConfig(**{**config.__dict__, 'layers_arg': effective_layers})
-        await run_evaluation(trait_config, trait, backend=backend, judge=judge, lora_adapter=lora)
+        await run_evaluation(trait_config, trait, model_variant, model_name,
+                             backend=backend, judge=judge, lora_adapter=lora)
 
 
-async def recipe_ablation(config, parsed_traits, backend, judge, lora):
+async def recipe_ablation(config, parsed_traits, model_variant, model_name, backend, judge, lora):
     """Remove a direction at ALL layers, measure trait delta."""
     for _, trait in parsed_traits:
-        await run_ablation_evaluation(config, trait, backend=backend, judge=judge, lora_adapter=lora)
+        await run_ablation_evaluation(config, trait, model_variant, model_name,
+                                       backend=backend, judge=judge, lora_adapter=lora)
 
 
 # =============================================================================
-# Entry point — resolve config, dispatch to recipe
+# Entry point — load model once, dispatch to recipe
 # =============================================================================
 
 async def run(config, parsed_traits, model_variant, model_name, lora,
               layers_arg, trait_layers, direction):
     """Load model once, dispatch to the right recipe."""
-
-    # Rescore: no GPU needed, early return
-    # (handled in main() before calling run())
-
     backend = LocalBackend.from_experiment(
         config.experiment, variant=model_variant,
         load_in_8bit=config.load_in_8bit, load_in_4bit=config.load_in_4bit,
@@ -96,28 +95,23 @@ async def run(config, parsed_traits, model_variant, model_name, lora,
 
     try:
         if config.baseline_only:
-            await recipe_baselines(config, parsed_traits, backend, judge)
-
+            await recipe_baselines(config, parsed_traits, model_variant, model_name, backend, judge)
         elif config.ablation is not None:
-            await recipe_ablation(config, parsed_traits, backend, judge, lora)
-
+            await recipe_ablation(config, parsed_traits, model_variant, model_name, backend, judge, lora)
         elif config.batched and config.coefficients is None and not config.regenerate_responses:
-            await recipe_batched(config, parsed_traits, backend, judge,
+            await recipe_batched(config, parsed_traits, model_variant, model_name, backend, judge,
                                  layers_arg, trait_layers, direction)
         else:
-            await recipe_sequential(config, parsed_traits, backend, judge,
+            await recipe_sequential(config, parsed_traits, model_variant, model_name, backend, judge,
                                     layers_arg, trait_layers, lora)
     finally:
         if judge is not None:
             await judge.close()
         del backend
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
+        flush_cuda()
 
     if len(parsed_traits) > 1:
-        print(f"\n{'='*60}\nCOMPLETED {len(parsed_traits)} TRAITS\n{'='*60}")
+        print(f"\nCompleted {len(parsed_traits)} traits")
 
 
 # =============================================================================
@@ -185,16 +179,6 @@ def main():
 
     args = parser.parse_args()
 
-    # TP lifecycle
-    import builtins
-    _original_print = builtins.print
-    if is_tp_mode():
-        import torch.distributed as dist
-        if not dist.is_initialized():
-            dist.init_process_group("nccl")
-        if not is_rank_zero():
-            builtins.print = lambda *a, **k: None
-
     # Resolve model
     variant = get_model_variant(args.experiment, args.model_variant, mode="application")
     model_variant = variant['name']
@@ -232,7 +216,7 @@ def main():
     if args.questions_file and args.prompt_set == "steering":
         config.prompt_set = Path(args.questions_file).stem
 
-    try:
+    with tp_lifecycle():
         # Rescore: no GPU, no model
         if args.rescore:
             asyncio.run(run_rescore(config, args.rescore, model_variant, dry_run=args.dry_run))
@@ -282,12 +266,6 @@ def main():
         # Run
         asyncio.run(run(config, parsed_traits, model_variant, model_name, lora,
                         layers_arg=args.layers, trait_layers=trait_layers, direction=direction))
-    finally:
-        builtins.print = _original_print
-        if is_tp_mode():
-            import torch.distributed as dist
-            if dist.is_initialized():
-                dist.destroy_process_group()
 
 
 if __name__ == "__main__":

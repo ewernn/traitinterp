@@ -2,99 +2,93 @@
 
 ## Status
 
-All 8 refactor waves + thin controller refactor + pipeline file reduction complete. Pipeline dirs at 8 files total (extraction 3, steering 2, inference 3). Dev and main branches need push.
+All refactoring complete. Each pipeline dir has **1 file** (readable recipe). Library code in utils/ + core/. Config dataclasses replace 30-arg signatures. Both branches pushed and clean.
 
-**Next priority:** Shared `utils/batch_forward.py` utility (OOM recovery dedup), then default-to-probe-only, then README rewrite.
+**Current pipeline files:**
+- `extraction/run_extraction_pipeline.py` (363 lines) — generate → vet → extract → evaluate
+- `steering/run_steering_eval.py` (266 lines) — 4 recipes: baseline, batched, sequential, ablation
+- `inference/run_inference_pipeline.py` (201 lines) — generate → project (stream-through)
+
+**Next priority:** Default to probe only, README rewrite.
 
 ---
 
-## Completed Waves (summary)
+## Completed Refactoring
 
-Waves 1-8 took codebase from ~110 to ~47 pipeline Python files. See git history for details.
-- Wave 1: Deleted ~45 dead files
-- Wave 2: Fixed bugs
-- Wave 3: Structural moves (core/ → utils/, analysis/steering/ → steering/, scripts/ dissolved)
-- Wave 4: Merges + renames
-- Wave 5: Backend unification (`--backend auto|local|server|modal`)
-- Wave 6: Pipeline architecture (ProjectionHook, stream-through, --steering flag)
-- Wave 7: Schemas + metadata (ResponseRecord, ModelConfig)
-- Wave 8: Docs + .publicinclude
+### Waves 1-8 (historical)
+Took codebase from ~110 to ~47 pipeline Python files. See git history.
 
-### Thin Controller Refactor ✅
+### Thin Controller Refactor
+Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
 
-- `steering/run_steering_eval.py`: 1860 → 1317 lines (helpers extracted, baseline merged, circular dep broken)
-- `extraction/run_extraction_pipeline.py`: 568 → 469 lines (_run_stage helper, format_duration dedup)
-- `inference/run_inference_pipeline.py`: 467 → 328 lines (load_trait_vectors moved, sys.argv fixed)
-- `utils/vectors.py` split into `vectors.py` (157, loading) + `vector_selection.py` (466, selection)
-- `utils/steered_generation.py` expanded with `score_stats`, `estimate_activation_norm`, `compute_baseline`
-- `format_duration` deduplicated to `utils/vram.py`
-- 8 bug fixes from critic verification
+### Pipeline File Reduction (22 → 3 files)
 
-### Pipeline File Reduction ✅ (22 → 8 files)
+**Phase 1: Merges + moves (22 → 8)**
+- extraction/: merged extract_activations + extract_vectors + run_logit_lens → extract_vectors.py, inlined generate_responses
+- steering/: moved steering_results → utils/, multi_layer_evaluate + weight_sources → dev/
+- inference/: merged capture_activations + project_activations_onto_traits → process_activations.py
 
-**extraction/ (9 → 3 files):**
-- `run_extraction_pipeline.py` — `generate_responses_for_trait` inlined (was 127-line single-function file)
-- `extract_vectors.py` — merged `extract_activations.py` + `extract_vectors.py` + `run_logit_lens.py` (stages 3-5)
-- `preextraction_vetting.py` — kept as-is (API judge, different compute backend)
-- Deleted: `__init__.py`, moved `test_scenarios.py` + `validate_trait.py` → `dev/extraction/`
+**Phase 2: Single-file recipes (8 → 3)**
+- All library code moved to utils/: coefficient_search.py, extract_vectors.py, preextraction_vetting.py, process_activations.py, inference_generation.py, steering_eval.py
+- Config dataclasses (`core/kwargs_configs.py`): SteeringConfig, ExtractionConfig, InferenceConfig, VettingStats
+- Each pipeline script is a self-contained recipe: stages at top, implementations below, CLI at bottom
+- `process_prompt_set` takes real keyword params (no argparse.Namespace hack)
+- TP lifecycle via `tp_lifecycle()` context manager in `utils/distributed.py`
+- `flush_cuda()` shared helper in `utils/distributed.py`
+- `ExtractionConfig.methods` defaults to `['mean_diff', 'probe']` (no `or` fallbacks)
 
-**steering/ (6 → 2 files):**
-- `steering_results.py` → `utils/steering_results.py` (pure I/O, 8 cross-codebase importers)
-- `multi_layer_evaluate.py` + `weight_sources.py` → `dev/steering/`
-- Deleted: `__init__.py`
+**In-memory activation→vector flow:**
+- `extract_activations_for_trait` returns activations dict (no .pt roundtrip)
+- `extract_vectors_for_trait` accepts optional `activations` param (falls back to disk for --only-stage 4)
+- `--save-activations` to persist .pt files
 
-**inference/ (7 → 3 files):**
-- `capture_activations.py` + `project_activations_onto_traits.py` → `process_activations.py` (capture + project + CLI)
-- `convert_rollout.py`, `convert_audit_rollout.py`, `align_sentence_boundaries.py` → `dev/inference/`
-
-**other/ cleanup:**
-- `other/analysis/rm_sycophancy/` (129 files) → `experiments/rm_syco/rm_sycophancy/analysis/` + R2 pushed
-- Deleted `other/tv/data/loras.yaml` (duplicate of `config/loras.yaml`)
-- Deleted `utils/capture.py` (dead code, zero callers)
+**Other cleanup:**
+- rm_sycophancy → experiments/rm_syco/ + R2 push
+- Deleted: utils/capture.py (dead), other/tv/data/loras.yaml (duplicate), extraction/__init__.py, steering/__init__.py
+- Promote script enforces main = exact mirror of .publicinclude
 
 ---
 
 ## Known Issues
 
-- `valid` key in steering_results.py never written to disk → is_better_result always treats loaded as invalid
+- `valid` key in steering_results.py never written to disk
 - `activation_norms` has 3 different schemas across files
 - Response JSON written in 2 places with schema drift
-- asyncio.run() called per-trait in extraction stage 7 — could leak aiohttp sessions
 - Stream-through mode skips massive_dim_data (requires full activations)
-- iCloud Desktop sync creates " 2" files constantly (.gitignore blocks them)
+- iCloud Desktop sync creates " 2" files constantly
 
 ---
 
-## Post-Refactor TODO
+## TODO
 
-- **Shared `utils/batch_forward.py`** — deduplicate OOM recovery + TP sync + batch calibration from extraction and inference
-- **Default to probe only** (not mean_diff+probe) — user preference
-- Per-trait layer config — config-based or per-trait layer selection, not hardcoded
-- **README rewrite** — story-driven walkthrough using `hyperparams` throughout. Dual purpose: tutorial + hyperparameter reference.
-- **Data storage for users** — non-R2 options. Local storage or alternative cloud backends for public users.
-- Local LLM judge experiment — systematic quality comparison vs gpt-4.1-mini
-- Upload custom LoRAs to HuggingFace (rank32, rank1, etc.)
-- Trait category reorganization in datasets/traits/
+- **Default to probe only** (not mean_diff+probe)
+- **Wire `utils/batch_forward.py` helpers into call sites** — `clear_oom_traceback`, `tp_agree_count`, `calibrate_batch_size` exist but aren't yet used by extract_vectors.py / process_activations.py / generation.py
+- **Optimize vetting responses** — batching, caching, or speed improvements
+- **README rewrite** — story-driven walkthrough using `hyperparams` throughout
+- **Data storage for users** — non-R2 options for public users
+- **Top-activating spans tool** — for a single trait, find top-activating clauses (comma/period/semicolon/newline separated) or n-length sequences across inference responses. `analysis/model_diff/top_activating_spans.py` does this for model diffs; need a single-trait variant.
+- Per-trait layer config
 - Visualization audit
-- Steering CLI tools in dev/ — decide: integrate or delete
+- Upload custom LoRAs to HuggingFace
 
 ---
 
 ## Architecture Decisions (settled)
 
-- **core/** = pure primitives (types, hooks, math, methods, generation). No upward dependencies.
-- **Minimal files in pipeline dirs** — offload helpers to utils/, not new files in extraction/steering/inference/
-- **"Thin controller" pattern** — run_*.py reads like a recipe, helpers handle edge cases
-- **run_ prefix** on pipeline entry points
-- **Per-prompt activation norms** replace separate calibration step
-- **ProjectionHook** projects on GPU inside hook (eliminates PCIe bottleneck)
-- **Hook-based projection replaces separate capture+project** — old save-to-disk workflow was pre-hook legacy. MultiLayerProjection does capture+project vectorized on GPU in one pass.
-- **Same pattern for extraction** — forward pass → extract vectors in-memory. .pt roundtrip unnecessary in default flow.
-- **Shared `run_batched_forward()`** — both pipelines independently implemented the same batched forward loop with OOM recovery. Deduplicate into utils/.
-- **Keep `inference/generate_responses.py` separate** — decoupled generation enables future vLLM support
-- **Inline `extraction/generate_responses.py`** — 127 lines, one function, one caller; no reason for separate file
-- **steering_results.py → utils/** — pure I/O, 8 cross-codebase importers
-- **Default to probe only** (not mean_diff+probe)
-- **Logit lens off by default**
-- **No new root dirs** — server stays in other/server/
-- **dev/ tracked on dev branch**, not in .publicinclude
+- **1 recipe file per pipeline dir** — recipe at top, stage implementations below, CLI at bottom
+- **Config dataclasses** (`core/kwargs_configs.py`) — replace individual args threading
+- **core/** = pure primitives (types, hooks, math, methods). No upward dependencies.
+- **utils/** = library code. Pipeline-specific helpers live here, not in pipeline dirs.
+- **In-memory activation→vector** — no .pt roundtrip by default. `--save-activations` to persist.
+- **Hook-based projection** — MultiLayerProjection does capture+project vectorized on GPU in one pass.
+- **Positive CLI flags** — `--logitlens` not `--no-logitlens`. `--no-vet-responses` to disable defaults.
+- **vet_scenarios not a pipeline stage** — standalone dev tool
+- **Logit lens not in extraction recipe** — opt-in standalone tool
+- **Steering is a separate pipeline** — extraction prints hint, doesn't embed it
+- **VettingStats quality gate** — ≥10 responses per polarity to proceed
+- **Promote script** — main is exact mirror of .publicinclude, stale files auto-removed
+- **dev/ tracked on dev branch only**, not in .publicinclude
+- **Thin recipe pattern is the right architecture** — pipeline files (200-360 lines) are readable table-of-contents that delegate to utils/. Absorbing utils/ implementations into pipeline files would create 1000+ line monoliths that bury the high-level flow. A new user reads the recipe to understand what happens, drills into utils/ for how.
+- **Don't merge vectors.py + vector_selection.py + activations.py** — they serve different abstraction levels ("load this specific tensor" vs "decide which tensor to load" vs "raw activation I/O"). Merging conflates concerns and creates an 800+ line file where every consumer only uses a subset.
+- **Don't create a monolithic `batched_forward` function** — the 3 OOM recovery sites (extraction, inference capture, generation) differ in 5 dimensions (item format, hook type, use_cache, keep_on_gpu, post-forward processing). Extract shared helpers instead: `clear_oom_traceback`, `tp_agree_count`, `calibrate_batch_size`. Each call site keeps its own forward loop.
+- **Don't flag-ify `save_responses` / `save_baseline_responses` / `save_ablation_responses`** — they have genuinely different parameter sets. A unified `save_responses(kind=)` with Optional params is worse because the type system can't enforce which params matter for which kind. Three explicit functions with clear names is better than one with hidden constraints.

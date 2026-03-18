@@ -309,7 +309,7 @@ Don't just pick the single best quantitative layer.
 - **Check a range from early to late** — early layers steer low-level features (tone, word choice), later layers steer higher-level concepts (reasoning, intent). The sweet spot for natural steering is usually in the middle.
 - **Qualitative > quantitative for final selection** — the best vector is the one that produces the most natural trait expression, not the one with the highest delta score. Exception: TONAL traits. Naturalness scoring is structurally misleading for tonal traits — the register change IS the intended effect, so a whimsical or solemn response scores low on "naturalness" even when it's exactly right. For TONAL traits, use delta + coherence only.
 - **If top layers all score similarly**, read responses from a spread of layers (early, middle, late) to understand how the trait expresses at different levels of abstraction.
-- **Tool:** `python steering/read_steering_responses.py <results_dir> --best` shows responses from the best run. Use `-l <layer> -c <coef>` for specific runs, `--baseline` for unsteered responses, `--top N` for multiple runs.
+- **Tool:** `python dev/steering/read_steering_responses.py <results_dir> --best` shows responses from the best run. Use `-l <layer> -c <coef>` for specific runs, `--baseline` for unsteered responses, `--top N` for multiple runs.
 
 ## Autonomous Agent Protocol
 
@@ -389,7 +389,7 @@ Follow the Scenario Design and Steering Question Design sections above. Self-rev
 ### Step 2: Extract Vectors
 
 ```bash
-python extraction/modal_extract.py \
+python dev/extraction/modal_extract.py \
     --experiment {experiment} --traits {category}/{trait}
 ```
 
@@ -411,7 +411,7 @@ python dev/steering/modal_evaluate.py \
 
 **4a. Baseline** — from results.jsonl: mean <20, std <10, no question >30. If fails → fix questions (see "What inflates baselines"), go to Step 3.
 
-**4b. Quantitative** — best delta with coherence ≥70:
+**4b. Quantitative** — best delta with coherence ≥77:
 - ≥25 → proceed to 4c
 - 10-25 → proceed to 4c (borderline, might be OK qualitatively)
 - <10 → ITERATE (scenarios are the problem, go to Step 1)
@@ -465,7 +465,7 @@ If FAIL:
 
 ```bash
 # Extract vectors (Modal)
-python extraction/modal_extract.py \
+python dev/extraction/modal_extract.py \
     --experiment {experiment} --traits {category}/{trait}
 
 # Steering eval — dense sweep (Modal)
@@ -490,5 +490,5 @@ python steering/run_steering_eval.py \
     --save-responses best
 
 # Read responses (local, no GPU)
-python steering/read_steering_responses.py <results_dir> --best
+python dev/steering/read_steering_responses.py <results_dir> --best
 ```

@@ -105,7 +105,7 @@ trait-interp/
 ├── utils/                  # Shared utilities (paths, model loading, R2 sync)
 ├── config/                 # Path config, model architecture configs
 ├── visualization/          # Interactive dashboard
-├── other/server/           # Persistent model server (avoids reload between scripts)
+├── utils/server/           # Persistent model server (avoids reload between scripts)
 ├── experiments/            # Experiment data (vectors, activations, results)
 └── docs/                   # Documentation
 ```
@@ -116,7 +116,7 @@ trait-interp/
 
 - **[docs/main.md](docs/main.md)** — Project overview and codebase reference
 - **[docs/workflows.md](docs/workflows.md)** — Practical workflow guide
-- **[docs/extraction_pipeline.md](docs/extraction_pipeline.md)** — Full extraction pipeline
+- **[docs/extraction_guide.md](docs/extraction_guide.md)** — Complete extraction reference
 - **[docs/overview.md](docs/overview.md)** — Methodology and key learnings
 - **[docs/architecture.md](docs/architecture.md)** — Design principles
 

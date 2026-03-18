@@ -8,7 +8,7 @@ Usage:
     from core.kwargs_configs import SteeringConfig, ExtractionConfig
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 
@@ -78,6 +78,11 @@ class VettingStats:
         """Check if enough responses passed for both polarities."""
         return self.pos_passed >= 10 and self.neg_passed >= 10
 
+    @classmethod
+    def skip(cls) -> 'VettingStats':
+        """Dummy stats that always pass — used when stage is skipped."""
+        return cls(pos_passed=999, pos_total=999, neg_passed=999, neg_total=999)
+
     @property
     def pass_rate(self) -> float:
         total = self.pos_total + self.neg_total
@@ -97,7 +102,7 @@ class ExtractionConfig:
     save_activations: bool = False
 
     # Methods
-    methods: Optional[List[str]] = None
+    methods: List[str] = field(default_factory=lambda: ['mean_diff', 'probe'])
     component: str = "residual"
     position: str = "response[:5]"
     layers: Optional[List[int]] = None

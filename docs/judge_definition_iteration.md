@@ -25,7 +25,7 @@ Choose ~15 responses from one steering config. Good candidates:
 
 ```bash
 # View existing responses
-python steering/read_steering_responses.py \
+python dev/steering/read_steering_responses.py \
     experiments/{experiment}/steering/{trait}/.../responses/residual/probe/L{N}_c{X}_*.json
 ```
 
@@ -197,7 +197,7 @@ python steering/run_steering_eval.py --experiment {exp} --rescore {cat}/{trait} 
 python steering/run_steering_eval.py --experiment {exp} --rescore {cat}/{trait}
 
 # View responses with scores
-python steering/read_steering_responses.py experiments/{exp}/steering/.../responses/.../*.json
+python dev/steering/read_steering_responses.py experiments/{exp}/steering/.../responses/.../*.json
 ```
 
 **Metrics:**

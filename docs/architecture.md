@@ -22,9 +22,10 @@ visualization/      → Show everything
 2. **utils/** = Universal utilities (paths, model loading)
 3. **extraction/** = Vector creation pipeline (training time)
 4. **inference/** = Per-prompt computation (capture, project)
-5. **analysis/** = Interpretation + aggregation (thresholds, cross-prompt patterns)
-6. **experiments/** = Data storage + experiment-specific scripts
-7. **visualization/** = All visualization code and views
+5. **steering/** = Causal validation via steering evaluation
+6. **analysis/** = Interpretation + aggregation (thresholds, cross-prompt patterns)
+7. **experiments/** = Data storage + experiment-specific scripts
+8. **visualization/** = All visualization code and views
 
 ---
 
@@ -80,20 +81,25 @@ Interprets facts, applies thresholds, aggregates across prompts.
 ### core/ - General Primitives
 
 **What belongs:**
-- Hook management (`HookManager`, `CaptureHook`, `SteeringHook`, `AblationHook`)
-- Extraction methods (`MeanDifferenceMethod`, `ProbeMethod`, `GradientMethod`)
-- Math primitives (`projection`, `cosine_similarity`, `separation`, `accuracy`)
+- Hook management (`HookManager`, `CaptureHook`, `SteeringHook`, `AblationHook`, `ProjectionHook`, etc.)
+- Extraction methods (`MeanDifferenceMethod`, `ProbeMethod`, `GradientMethod`, `RFMMethod`)
+- Math primitives (`projection`, `cosine_similarity`, `separation`, `accuracy`, `orthogonalize`, etc.)
 
 **Current exports:**
 ```python
 # hooks.py
-HookManager, get_hook_path, CaptureHook, SteeringHook, AblationHook, MultiLayerCapture, MultiLayerAblationHook
+HookManager, get_hook_path, LayerHook, CaptureHook, SteeringHook, AblationHook,
+MultiLayerCapture, MultiLayerAblationHook, MultiLayerSteeringHook,
+ProjectionHook, MultiLayerProjection,
+ActivationCappingHook, MultiLayerActivationCappingHook, BatchedLayerSteeringHook
 
 # methods.py
-get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod
+get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod, RFMMethod
 
 # math.py
-projection, cosine_similarity, separation, accuracy, effect_size, p_value
+projection, project_with_config, project_single, cosine_similarity, batch_cosine_similarity,
+separation, accuracy, effect_size, p_value, orthogonalize, polarity_correct,
+vector_properties, distribution_properties, remove_massive_dims
 ```
 
 **What does NOT belong:**

@@ -58,7 +58,7 @@ def main():
         if args.method not in methods:
             continue
 
-        layers = list_layers(args.experiment, trait, model_variant, args.position, args.component, args.method)
+        layers = list_layers(args.experiment, trait, args.method, model_variant, args.component, args.position)
         if not layers:
             continue
 

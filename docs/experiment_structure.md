@@ -19,7 +19,7 @@ experiments/{name}/
 │       └── massive_activations/{prompt_set}.json
 │
 ├── steering/                          # Causal intervention (standard pipeline)
-│   └── {category}/{trait}/{model_variant}/{position}/{prompt_set}/
+│   └── {category}/{trait}/{model_variant}/{position}/{prompt_set}/{direction}/
 │       ├── results.jsonl
 │       └── responses/{component}/{method}/
 │

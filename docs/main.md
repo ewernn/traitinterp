@@ -52,6 +52,7 @@ Primary documentation hub for the trait-interp project.
 These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) below.
 - **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (waves 1-8, thin controller, known issues)
 - **[docs/future_ideas.md](future_ideas.md)** - Research backlog and exploratory ideas
+- **[docs/sae_clt_sources.md](sae_clt_sources.md)** - SAE & CLT download sources (HuggingFace, Neuronpedia, etc.)
 - **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard
 
 ---
@@ -98,17 +99,17 @@ trait-interp/
 ├── utils/                  # Shared utilities
 │   ├── model.py                      # Model loading, tokenization, prompt formatting
 │   ├── generation.py                 # Batch generation, activation capture
-│   ├── vram.py                       # GPU monitoring, VRAM estimation, batch sizing
+│   ├── vram.py                       # GPU monitoring, VRAM estimation, profiling, batch sizing
 │   ├── moe.py                        # Fused MoE (INT4 dequant + grouped_mm), model cache
-│   ├── distributed.py                # Tensor parallelism (is_tp_mode, rank, barrier)
-│   ├── fingerprints.py               # Fingerprint metrics (cosine, classification, short_name)
+│   ├── distributed.py                # Tensor parallelism (is_tp_mode, tp_lifecycle, flush_cuda)
+│   ├── positions.py                  # Position DSL (response[:5], turn[N]:thinking[:], etc.)
+│   ├── batch_forward.py              # Shared helpers: OOM recovery, TP sync, batch calibration
 │   ├── coefficient_search.py         # Adaptive steering coefficient search
 │   ├── steering_results.py           # Load/compare steering results (I/O)
 │   ├── extract_vectors.py            # Activation extraction + vector training
 │   ├── process_activations.py        # Capture/project activations (inference)
-│   └── ...                           # paths, activations, layers, projections, vectors
+│   └── ...                           # paths, activations, layers, projections, vectors, fingerprints
 ├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
-├── other/                  # server/, tv/, sae/, mcp/, analysis/rm_sycophancy/
 ├── analysis/               # Analysis scripts (see analysis/README.md)
 ├── visualization/          # Interactive dashboard
 └── docs/                   # Documentation

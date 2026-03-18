@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from utils.paths import get_inference_responses_dir, get_experiment_config
+from utils.paths import get_inference_responses_dir, load_experiment_config
 from utils.json import dump_compact
 
 
@@ -40,7 +40,7 @@ def main():
     # Resolve model variant from experiment config if not specified
     model_variant = args.model_variant
     if model_variant is None:
-        config = get_experiment_config(args.experiment)
+        config = load_experiment_config(args.experiment)
         model_variant = config.get('defaults', {}).get('application', 'instruct')
         print(f"Using model variant from experiment config: {model_variant}")
 

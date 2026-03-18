@@ -45,7 +45,7 @@ from utils.paths import (
 
 def sync_to_volumes(experiment, traits, extraction_variant, skip_vectors=False):
     """Upload vectors + steering data to Modal volumes."""
-    from inference.modal_steering import experiments_volume, datasets_volume
+    from dev.inference.modal_steering import experiments_volume, datasets_volume
 
     repo_root = Path(__file__).parent.parent.parent
     exp_dir = repo_root / "experiments" / experiment
@@ -82,7 +82,7 @@ def sync_to_volumes(experiment, traits, extraction_variant, skip_vectors=False):
 
 def pull_results(experiment, traits, model_variant, position):
     """Download steering results from Modal volume to local filesystem."""
-    from inference.modal_steering import experiments_volume
+    from dev.inference.modal_steering import experiments_volume
 
     repo_root = Path(__file__).parent.parent.parent
     pos_dir = sanitize_position(position)

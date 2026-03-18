@@ -20,7 +20,6 @@ Position syntax: <frame>[<slice>]
 
 import gc
 import json
-import re
 from datetime import datetime
 from typing import Tuple, Optional, List, Dict, TYPE_CHECKING
 
@@ -46,93 +45,8 @@ if TYPE_CHECKING:
     from utils.backends import GenerationBackend
 
 
-# ============================================================================
-# Position parsing
-# ============================================================================
-
-def parse_position(position: str) -> Tuple[str, Optional[int], Optional[int]]:
-    """Parse position string like 'response[-5:]' into (frame, start, stop)."""
-    match = re.match(r'(prompt|response|all)\[(.+)\]', position)
-    if not match:
-        raise ValueError(f"Invalid position format: '{position}'. Use <frame>[<slice>], e.g., 'response[:5]' or 'prompt[-1]'")
-
-    frame = match.group(1)
-    slice_str = match.group(2).strip()
-
-    if slice_str == ':':
-        return frame, None, None
-
-    if ':' in slice_str:
-        parts = slice_str.split(':')
-        start = int(parts[0]) if parts[0] else None
-        stop = int(parts[1]) if parts[1] else None
-        return frame, start, stop
-    else:
-        idx = int(slice_str)
-        if idx >= 0:
-            return frame, idx, idx + 1
-        else:
-            return frame, idx, idx + 1 if idx != -1 else None
-
-
-def tokens_needed(position: str) -> Optional[int]:
-    """Return minimum response tokens needed for extraction, or None if undeterminable."""
-    frame, start, stop = parse_position(position)
-    if frame == 'prompt':
-        return 0
-    if frame == 'response' and start is not None and start >= 0 and stop is not None and stop > 0:
-        return stop
-    return None
-
-
-def resolve_max_new_tokens(position: str, user_value: Optional[int] = None) -> int:
-    """Resolve max_new_tokens from position and optional user override."""
-    needed = tokens_needed(position)
-    if user_value is None:
-        if needed is not None:
-            return needed
-        return 16
-    if needed is not None and user_value < needed:
-        raise ValueError(
-            f"--max-new-tokens {user_value} is less than {needed} "
-            f"required for position '{position}'"
-        )
-    return user_value
-
-
-def resolve_position(position: str, prompt_len: int, seq_len: int) -> Tuple[int, int]:
-    """Resolve position string to concrete (start_idx, end_idx) given sequence lengths."""
-    frame, start, stop = parse_position(position)
-
-    if frame == 'all':
-        frame_start, frame_end = 0, seq_len
-    elif frame == 'prompt':
-        frame_start, frame_end = 0, prompt_len
-    elif frame == 'response':
-        frame_start, frame_end = prompt_len, seq_len
-    else:
-        raise ValueError(f"Unknown frame: {frame}")
-
-    frame_len = frame_end - frame_start
-
-    if start is None:
-        abs_start = frame_start
-    elif start >= 0:
-        abs_start = frame_start + min(start, frame_len)
-    else:
-        abs_start = frame_end + start
-
-    if stop is None:
-        abs_end = frame_end
-    elif stop >= 0:
-        abs_end = frame_start + min(stop, frame_len)
-    else:
-        abs_end = frame_end + stop
-
-    abs_start = max(frame_start, min(abs_start, frame_end))
-    abs_end = max(abs_start, min(abs_end, frame_end))
-
-    return abs_start, abs_end
+# Position parsing moved to utils/positions.py (supports multiturn natively)
+from utils.positions import resolve_position, resolve_max_new_tokens
 
 
 # ============================================================================

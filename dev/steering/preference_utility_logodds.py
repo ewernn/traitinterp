@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import torch
 from tqdm import tqdm
 
-from steering.logit_difference import score_completion
+from dev.steering.logit_difference import score_completion
 from core.hooks import SteeringHook, get_hook_path
 from utils.model import load_model, tokenize
 from utils.paths import get_model_variant

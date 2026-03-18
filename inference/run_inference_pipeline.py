@@ -31,6 +31,7 @@ from utils.paths import (
 )
 from utils.backends import LocalBackend, add_backend_args
 from utils.vector_selection import load_trait_vectors
+from utils.distributed import flush_cuda
 from utils.vram import format_duration
 
 
@@ -39,7 +40,7 @@ from utils.vram import format_duration
 # =============================================================================
 
 def run_pipeline(config: InferenceConfig):
-    """The recipe: generate → project."""
+    """Generate → project."""
     variant_info = get_model_variant(config.experiment, config.model_variant, mode='application')
     model_variant = variant_info['name']
     model_name = variant_info['model']
@@ -49,32 +50,13 @@ def run_pipeline(config: InferenceConfig):
 
     inference_dir = Path(get_path('inference.base', experiment=config.experiment, model_variant=model_variant))
 
-    print("=" * 60)
-    print(f"INFERENCE PIPELINE | {config.experiment}")
-    print(f"Model: {model_name} | Variant: {model_variant}")
-    print(f"Prompt set: {config.prompt_set}")
-    print("=" * 60)
-
-    pipeline_start = time.time()
-
-    # stage 1: generate responses
     if not config.skip_generate and not config.from_activations:
-        print(f"\n[1] Generating responses...")
-        t = time.time()
-        n = generate(config, model_variant)
-        print(f"    Generated {n} responses ({format_duration(time.time() - t)})")
+        generate(config, model_variant)
 
-    # stage 2: project onto trait vectors
     if config.from_activations:
-        print(f"\n[2] Projecting from saved activations...")
         project_from_saved(config, inference_dir, model_name, model_variant)
     else:
-        print(f"\n[2] Stream-through capture + projection...")
-        t = time.time()
-        n = project_stream_through(config, inference_dir, model_variant)
-        print(f"    Projected {n} prompts ({format_duration(time.time() - t)})")
-
-    print(f"\nPipeline complete ({format_duration(time.time() - pipeline_start)})")
+        project_stream_through(config, inference_dir, model_variant)
 
 
 # =============================================================================
@@ -102,25 +84,15 @@ def project_from_saved(config: InferenceConfig, inference_dir: Path,
     """Stage 2 (alt): Project from saved .pt files."""
     from utils.process_activations import process_prompt_set
 
-    proj_args = argparse.Namespace(
+    process_prompt_set(
+        inference_dir, config.prompt_set, model_name, model_variant,
+        config.extraction_variant, config.experiment, None,
         experiment=config.experiment,
         component=config.component,
         layers=config.layers,
-        layer=None,
-        position='response[:5]',
-        method=None,
-        multi_vector=None,
-        logit_lens=False,
         skip_existing=config.skip_existing,
         centered=config.centered,
         traits=','.join(config.traits) if config.traits else None,
-        vectors_experiment=None,
-        steering_variant=None,
-    )
-    process_prompt_set(
-        proj_args, inference_dir, config.prompt_set,
-        model_name, model_variant, config.extraction_variant,
-        config.experiment, None,
     )
 
 
@@ -129,51 +101,42 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
     """Stage 2 (default): Capture activations and project in one forward pass."""
     from utils.process_activations import stream_through_project
 
+    # Resolve inputs — bail early if anything's missing
     traits = config.traits or discover_extracted_traits(config.experiment, config.extraction_variant)
     if not traits:
-        print("    No traits found — nothing to project")
+        print("  No traits found — nothing to project")
         return 0
 
-    backend = LocalBackend.from_experiment(
-        config.experiment, variant=model_variant,
-        load_in_8bit=config.load_in_8bit, load_in_4bit=config.load_in_4bit,
-    )
+    responses_dir = inference_dir / "responses" / config.prompt_set
+    response_files = sorted(responses_dir.glob("*.json")) if responses_dir.exists() else []
+    if not response_files:
+        print(f"  No responses at {responses_dir}")
+        return 0
 
     trait_vectors, vectors_by_layer, hook_index = load_trait_vectors(
         config.experiment, config.extraction_variant, traits,
         config.component, config.layers,
     )
     if not vectors_by_layer:
-        print("    No vectors loaded — nothing to project")
-        del backend
+        print("  No vectors loaded — nothing to project")
         return 0
 
-    n_vecs = sum(v.shape[0] for v in vectors_by_layer.values())
-    print(f"    Loaded {n_vecs} vectors across {len(vectors_by_layer)} layers")
-
-    responses_dir = inference_dir / "responses" / config.prompt_set
-    if not responses_dir.exists():
-        print(f"    No responses at {responses_dir}")
-        del backend
-        return 0
-
-    response_files = sorted(responses_dir.glob("*.json"))
-    if not response_files:
-        print("    No response files found")
-        del backend
-        return 0
-
-    n = stream_through_project(
-        backend.model, backend.tokenizer, response_files,
-        trait_vectors, vectors_by_layer, hook_index,
-        config.component, inference_dir, config.prompt_set, config.experiment,
-        skip_existing=config.skip_existing, centered=config.centered,
+    # All inputs ready — load model and project
+    backend = LocalBackend.from_experiment(
+        config.experiment, variant=model_variant,
+        load_in_8bit=config.load_in_8bit, load_in_4bit=config.load_in_4bit,
     )
 
-    del backend
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    try:
+        n = stream_through_project(
+            backend.model, backend.tokenizer, response_files,
+            trait_vectors, vectors_by_layer, hook_index,
+            config.component, inference_dir, config.prompt_set, config.experiment,
+            skip_existing=config.skip_existing, centered=config.centered,
+        )
+    finally:
+        del backend
+        flush_cuda()
 
     return n
 
@@ -229,7 +192,9 @@ def main():
         load_in_4bit=args.load_in_4bit,
     )
 
+    t = time.time()
     run_pipeline(config)
+    print(f"\nComplete ({format_duration(time.time() - t)})")
 
 
 if __name__ == "__main__":

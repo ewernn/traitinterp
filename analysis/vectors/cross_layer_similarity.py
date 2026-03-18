@@ -44,7 +44,7 @@ def compute_cross_layer_matrix(
     Returns:
         (n_layers x n_layers) similarity matrix and list of layer indices
     """
-    layers = list_layers(experiment, trait, model_variant, position, component, method)
+    layers = list_layers(experiment, trait, method, model_variant, component, position)
     if not layers:
         return None, []
 
