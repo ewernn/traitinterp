@@ -102,7 +102,7 @@ class ExtractionConfig:
     save_activations: bool = False
 
     # Methods
-    methods: List[str] = field(default_factory=lambda: ['mean_diff', 'probe'])
+    methods: List[str] = field(default_factory=lambda: ['probe'])
     component: str = "residual"
     position: str = "response[:5]"
     layers: Optional[List[int]] = None

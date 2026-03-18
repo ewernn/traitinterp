@@ -6,20 +6,40 @@ Sync experiment data between local and R2. Git owns code/docs/configs, R2 owns d
 
 Git tracks code/docs/configs. R2 tracks `experiments/` data. The boundary is the directory — code never enters `experiments/` and experiment data is gitignored. The R2 scripts (`utils/r2_push.sh`, `utils/r2_pull.sh`) use exclude patterns from `utils/r2_config.sh` to skip activations, raw inference, and training artifacts.
 
+## Experiment Directory Layout
+
+```
+experiments/
+├── {active experiments}     # Synced by default to r2:trait-interp-bucket/experiments/
+└── viz_findings/            # Completed experiments backing docs/viz_findings/ pages
+```
+
+`viz_findings/` is excluded from default sync — use `--only viz_findings` to target it.
+
+Archived experiments (superseded or null results) live in a separate R2 path:
+```
+r2:trait-interp-bucket/experiments_archive/    # Not synced by r2_push/r2_pull
+```
+
 ## Usage
 
 ```bash
 # Push (local → R2)
-./utils/r2_push.sh              # Fast: new files only (default)
+./utils/r2_push.sh              # Fast: new files only (default, active experiments only)
 ./utils/r2_push.sh --copy       # New + changed files, never deletes
-./utils/r2_push.sh --full       # Full sync: make R2 match local (deletes R2-only files)
-./utils/r2_push.sh --checksum   # MD5 comparison (slow, deletes R2-only files)
+./utils/r2_push.sh --full       # Full sync: make R2 match local (DELETES R2-only files)
+./utils/r2_push.sh --checksum   # MD5 comparison (slow, DELETES R2-only files)
 
 # Pull (R2 → local)
-./utils/r2_pull.sh              # Safe: new files only (default)
+./utils/r2_pull.sh              # Safe: new files only (default, active experiments only)
 ./utils/r2_pull.sh --copy       # New + changed files, never deletes local
-./utils/r2_pull.sh --full       # Full sync: make local match R2 (deletes local-only files)
-./utils/r2_pull.sh --checksum   # MD5 comparison (slow, deletes local-only files)
+./utils/r2_pull.sh --full       # Full sync: make local match R2 (DELETES local-only files)
+./utils/r2_pull.sh --checksum   # MD5 comparison (slow, DELETES local-only files)
+
+# Scope to specific experiments or subdirectories
+./utils/r2_push.sh --only aria_rl                  # Single experiment
+./utils/r2_push.sh --only aria_rl,emotion_set       # Multiple experiments
+./utils/r2_push.sh --only viz_findings              # All findings experiments
 ```
 
 ## Push Modes
@@ -53,10 +73,8 @@ No conflicts — R2 delivers data files, git delivers code/docs/configs.
 
 ## Dry Run
 
-Preview what `--full` would do (see `utils/r2_config.sh` for current exclude patterns):
+Add `--dry-run` to any command to preview without transferring:
 ```bash
-source utils/r2_config.sh
-rclone sync experiments/ r2:trait-interp-bucket/experiments/ \
-  --size-only --dry-run \
-  $(build_excludes)
+./utils/r2_push.sh --full --dry-run
+./utils/r2_push.sh --only viz_findings --dry-run
 ```

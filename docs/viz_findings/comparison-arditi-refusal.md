@@ -62,11 +62,11 @@ Quantitatively similar — both achieve ~35-40 point trait reduction with cohere
 
 Arditi produces cleaner jailbreaks — it removes the refusal *decision* rather than creating conflicted "I can't but here's how" responses.
 
-:::responses experiments/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/baseline.json no-scores:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/baseline.json no-scores:::
 
-:::responses experiments/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/residual/probe/L12_c-142.7_2026-01-28_09-35-56.json:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/arditi_holdout/positive/responses/residual/probe/L12_c-142.7_2026-01-28_09-35-56.json:::
 
-:::responses experiments/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/positive/responses/residual/mean_diff/L12_c-123.4_2026-01-28_09-38-19.json:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/positive/responses/residual/mean_diff/L12_c-123.4_2026-01-28_09-38-19.json:::
 
 ## Inducing Refusal (Positive Steering)
 
@@ -91,11 +91,11 @@ Both methods achieve ~100% binary refusal with aggressive steering, matching Ard
 
 With coherence ≥70%, both methods achieve similar deltas.
 
-:::responses experiments/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/steering/responses/baseline.json no-scores:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/steering/responses/baseline.json no-scores:::
 
-:::responses experiments/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/steering/responses/residual/mean_diff/L13_c63.0_2026-01-14_12-55-10.json:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/steering/responses/residual/mean_diff/L13_c63.0_2026-01-14_12-55-10.json:::
 
-:::responses experiments/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/steering/responses/residual/probe/L13_c115.2_2026-01-14_12-57-07.json:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/chirp/refusal/instruct/response__5/steering/responses/residual/probe/L13_c115.2_2026-01-14_12-57-07.json:::
 
 ## Coherence-Refusal Tradeoff
 
@@ -111,11 +111,11 @@ The "coherence degradation" is the model refusing everything — including harml
 
 ### Moderate steering (L8 c42, 72% coherence)
 
-:::responses experiments/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/negative/responses/residual/mean_diff/L8_c42.3_2026-01-14_14-01-47.json:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/negative/responses/residual/mean_diff/L8_c42.3_2026-01-14_14-01-47.json:::
 
 ### Aggressive steering (L7 c84, 50% coherence)
 
-:::responses experiments/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/negative/responses/residual/mean_diff/L7_c84.2_2026-01-15_14-59-15.json:::
+:::responses experiments/viz_findings/arditi-refusal-replication/steering/arditi/refusal/instruct/prompt_-1/arditi_holdout/negative/responses/residual/mean_diff/L7_c84.2_2026-01-15_14-59-15.json:::
 
 ## Scoring Methods
 

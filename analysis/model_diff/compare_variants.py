@@ -69,7 +69,7 @@ from tqdm import tqdm
 
 from core import projection, effect_size, cosine_similarity
 from utils.paths import get as get_path, get_model_variant, get_model_diff_dir, discover_extracted_traits, list_layers
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector_with_baseline
 from utils.json import dump_compact
 
@@ -310,7 +310,7 @@ def main():
         if args.use_best_vector:
             # Auto-select from steering results
             try:
-                best = get_best_vector(args.experiment, trait)
+                best = select_vector(args.experiment, trait)
                 method = best['method']
                 position = best['position']
                 component = best['component']

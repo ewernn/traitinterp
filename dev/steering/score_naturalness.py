@@ -3,7 +3,7 @@
 Score naturalness of steering responses for top configs.
 
 Scores the top N steering configs (by delta, coherence >= threshold) using
-the naturalness judge. Saves results alongside results.jsonl so get_best_vector
+the naturalness judge. Saves results alongside results.jsonl so select_vector
 can filter by naturalness.
 
 Input: Steering results (results.jsonl) + response files

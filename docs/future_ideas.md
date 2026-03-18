@@ -175,7 +175,7 @@ Ridge regression to predict late-layer trait (L16 refusal) from early-layer proj
 Test vector arithmetic: does `harm + 1st_person ≈ intent_to_harm`? Does `deception + 3rd_person ≈ observing_lie`? Extract component vectors, add them, measure cosine similarity to the composed concept extracted directly. High similarity (>0.7) = composition is real. Low = traits may not combine linearly.
 
 ## nov3-holistic_ranking
-One approach to principled vector ranking: combine accuracy, effect_size, generalization, specificity. Current get_best_vector() uses steering > effect_size. More principled ranking could help find cleanest extraction.
+One approach to principled vector ranking: combine accuracy, effect_size, generalization, specificity. Current select_vector() uses steering > effect_size. More principled ranking could help find cleanest extraction.
 
 ## nov1-cross_layer_similarity
 Cosine similarity of trait vector across all layer pairs. Heatmap shows where representation is stable. Data-driven layer selection.

@@ -58,7 +58,7 @@ from tqdm import tqdm
 from core import SteeringHook, get_hook_path
 from utils.model import load_model_with_lora, tokenize
 from utils.paths import get as get_path, get_model_variant
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 
 
@@ -279,12 +279,12 @@ def run_logit_diff(
     if steer:
         # Auto-select best vector if no layer specified
         if layer is None:
-            best = get_best_vector(experiment, steer)
+            best = select_vector(experiment, steer)
             layer = best["layer"]
             method = best["method"]
             print(f"Auto-selected: layer {layer}, method {method} (source: {best['source']})")
         else:
-            best = get_best_vector(experiment, steer, layer=layer)
+            best = select_vector(experiment, steer, layer=layer)
             method = best["method"]
             print(f"Layer {layer}: method={method} (source: {best['source']})")
 

@@ -21,7 +21,7 @@ import torch
 
 from utils.logit_lens import vector_to_vocab, build_common_token_mask
 from utils.model import load_model
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits, get_model_variant
 
@@ -39,7 +39,7 @@ def analyze_trait(
     """Analyze a single trait vector."""
     # Get best vector metadata (auto-resolves extraction/steering variants from config)
     try:
-        meta = get_best_vector(experiment, trait)
+        meta = select_vector(experiment, trait)
     except FileNotFoundError as e:
         return {"error": str(e)}
 

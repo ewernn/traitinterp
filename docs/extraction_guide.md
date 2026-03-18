@@ -79,7 +79,7 @@ Per trait, in `datasets/traits/{category}/{trait}/`:
 **CLI flags:**
 - `--traits category/trait1,category/trait2` — comma-separated, or omit for all traits in experiment
 - `--position "response[:5]"` — token window (default: `response[:5]`)
-- `--methods mean_diff,probe` — extraction methods (default: `mean_diff,probe`)
+- `--methods probe` — extraction methods (default: `probe`)
 - `--layers 25,30,35` — specific layers only (default: all)
 - `--val-split 0.1` — validation split ratio (default: 10%, use `0.0` to disable)
 - `--pos-threshold` / `--neg-threshold` — custom vetting thresholds (defaults: 60/40)
@@ -219,7 +219,7 @@ Used in some analysis scripts (`core/math.py:batch_cosine_similarity`). Gives pe
 
 ## Vector Selection
 
-`utils/vector_selection.py:get_best_vector()` — the single entry point for resolving which vector to use for a trait.
+`utils/vector_selection.py:select_vector()` — the single entry point for resolving which vector to use for a trait.
 
 ### Selection Pipeline
 

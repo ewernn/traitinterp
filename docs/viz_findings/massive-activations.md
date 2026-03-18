@@ -217,7 +217,7 @@ The exception is Gemma-3-4b, where dim 443 is so extreme (~1500x) that even afte
 
 ### Source
 
-Experiment: `experiments/massive-activations/` (clean-slate, commit face65a onward)
+Experiment: `experiments/viz_findings/massive-activations/` (clean-slate, commit face65a onward)
 - Phase 1: Per-layer massive dim analysis (base model calibration)
 - Phase 2: Extract baseline vectors (response[:3])
 - Phase 3: Create 18 cleaned variants + cosine similarity

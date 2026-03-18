@@ -38,7 +38,7 @@ We compare activation patterns when Gemma-2-2B processes two types of continuati
 
 ## The Core Effect
 
-:::chart dynamics-effect /experiments/prefill-dynamics/analysis/activation_metrics.json "Effect size by layer" height=350 projections=refusal:/experiments/prefill-dynamics/analysis/projection_stability-chirp_refusal.json,sycophancy:/experiments/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json:::
+:::chart dynamics-effect /experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Effect size by layer" height=350 projections=refusal:/experiments/viz_findings/prefill-dynamics/analysis/projection_stability-chirp_refusal.json,sycophancy:/experiments/viz_findings/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json:::
 
 Model-generated text is processed more smoothly at every layer except output. Effect builds through early layers (d≈0.7), peaks in middle layers (d≈1.5), then reverses at layer 25 (d≈-1.5).
 
@@ -53,7 +53,7 @@ The instruct model shows the same effect on base-generated text — smoothness r
 
 ## Why? Correlation with Surprisal
 
-:::chart dynamics-scatter /experiments/prefill-dynamics/analysis/activation_metrics.json "Smoothness vs cross-entropy" height=300 perplexity=/experiments/prefill-dynamics/analysis/perplexity.json:::
+:::chart dynamics-scatter /experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Smoothness vs cross-entropy" height=300 perplexity=/experiments/viz_findings/prefill-dynamics/analysis/perplexity.json:::
 
 Smoothness correlates with cross-entropy (r=0.65). Model text is ~2x less surprising:
 
@@ -68,7 +68,7 @@ Predictable tokens → smooth activations.
 
 ## Distribution
 
-:::chart dynamics-violin /experiments/prefill-dynamics/analysis/activation_metrics.json "Smoothness distribution" height=280:::
+:::chart dynamics-violin /experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Smoothness distribution" height=280:::
 
 Model-generated text (right, green) shows consistently lower smoothness values than prefilled human text (left, red).
 
@@ -76,7 +76,7 @@ Model-generated text (right, green) shows consistently lower smoothness values t
 
 ## Position Effect
 
-:::chart dynamics-position /experiments/prefill-dynamics/analysis/position_breakdown.json "Effect by token position" height=280:::
+:::chart dynamics-position /experiments/viz_findings/prefill-dynamics/analysis/position_breakdown.json "Effect by token position" height=280:::
 
 The gap grows as sequences continue:
 

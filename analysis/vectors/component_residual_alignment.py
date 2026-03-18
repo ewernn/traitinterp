@@ -30,7 +30,7 @@ from utils.paths import (
     list_layers,
     list_methods,
 )
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 
 
@@ -46,7 +46,7 @@ def parse_reference(ref_str: str, experiment: str, trait: str, model_variant: st
     Returns dict with keys: component, method, layer.
     """
     if ref_str == "best":
-        best = get_best_vector(
+        best = select_vector(
             experiment, trait,
             extraction_variant=model_variant,
             component="residual",

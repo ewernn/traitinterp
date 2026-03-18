@@ -60,7 +60,7 @@ from tqdm import tqdm
 from core import SteeringHook, get_hook_path
 from utils.model import load_model, load_model_with_lora, tokenize, tokenize_batch
 from utils.paths import get as get_path, get_model_variant
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 from utils.vram import calculate_max_batch_size
 from utils.metrics import batch_ce_loss
@@ -553,8 +553,8 @@ def main():
     steering_info = None
 
     if args.steer:
-        # Use get_best_vector with optional layer filter (auto-resolves variants from config)
-        best = get_best_vector(args.experiment, args.steer, layer=args.layer)
+        # Use select_vector with optional layer filter (auto-resolves variants from config)
+        best = select_vector(args.experiment, args.steer, layer=args.layer)
         layer = best["layer"]
         method = best["method"]
         position = best["position"]

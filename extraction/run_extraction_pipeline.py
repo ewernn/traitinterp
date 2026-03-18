@@ -36,6 +36,7 @@ from core.kwargs_configs import ExtractionConfig, VettingStats
 from utils.paths import (
     get as get_path, get_activation_metadata_path, get_activation_path,
     get_activation_dir, get_vector_dir, get_model_variant, discover_traits,
+    content_hash,
 )
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier, tp_lifecycle, flush_cuda
 from utils.backends import LocalBackend, add_backend_args
@@ -154,12 +155,18 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
         print(f"    {label}: {len(results)} responses")
 
     if is_rank_zero():
+        trait_dir = get_path('datasets.trait', trait=trait)
         with open(responses_path / 'metadata.json', 'w') as f:
             json.dump({
                 'model': model.config.name_or_path, 'experiment': config.experiment,
                 'trait': trait, 'max_new_tokens': max_new_tokens,
                 'chat_template': use_chat_template, 'rollouts': config.rollouts,
                 'temperature': config.temperature, 'timestamp': datetime.now().isoformat(),
+                'input_hashes': {
+                    'positive': content_hash(trait_dir / 'positive.txt'),
+                    'negative': content_hash(trait_dir / 'negative.txt'),
+                    'definition': content_hash(trait_dir / 'definition.txt'),
+                },
             }, f, indent=2)
 
     tp_barrier()
@@ -273,7 +280,7 @@ def main():
     parser.add_argument("--category", type=str)
     parser.add_argument("--only-stage", type=lambda s: [int(x) for x in s.split(',')], dest='only_stages')
     parser.add_argument("--force", action="store_true")
-    parser.add_argument("--methods", default="mean_diff,probe")
+    parser.add_argument("--methods", default="probe")
 
     # Generation
     parser.add_argument("--rollouts", type=int, default=1)

@@ -40,8 +40,8 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import projection, VectorSpec, MultiLayerCapture
-from utils.vector_selection import get_top_N_vectors, get_best_vector_spec, _discover_vectors
-from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method
+from utils.vector_selection import select_vectors, get_best_vector_spec
+from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, discover_vectors
 from utils.paths import (
     get as get_path, get_vector_path, discover_extracted_traits,
     get_model_variant, load_experiment_config,
@@ -806,9 +806,9 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
         trait_path = f"{category}/{trait_name}"
 
         if use_top_n:
-            top_vectors = get_top_N_vectors(
+            top_vectors = select_vectors(
                 vectors_experiment, trait_path, extraction_variant=extraction_variant,
-                component=component, position=position, N=multi_vector
+                component=component, position=position, n=multi_vector
             )
             if not top_vectors:
                 print(f"  Skip {trait_path}: no vectors found")
@@ -890,7 +890,7 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
 
                 vec_position = best_position
                 if vec_position is None:
-                    candidates = _discover_vectors(
+                    candidates = discover_vectors(
                         vectors_experiment, trait_path, extraction_variant,
                         component=component, layer=candidate_layer
                     )

@@ -8,12 +8,15 @@
 #   ./r2_pull.sh --checksum                               Slow sync: MD5 comparison (DELETES local-only files!)
 #   ./r2_pull.sh --only mats-emergent-misalignment        Scope to one experiment
 #   ./r2_pull.sh --only mats-emergent-misalignment,aria_rl Scope to multiple experiments
+#   ./r2_pull.sh --only viz_findings                       Sync completed findings experiments
 #
-# Include flags:
+# Flags:
 #   --include-loras          Include LoRA checkpoints (finetune/, turner_loras/, etc.)
-#   --include-archive        Include archived experiments
 #   --include-trajectories   Include trajectory .pt files (large, regenerable)
 #   --dry-run                Show what would be transferred without doing it
+#
+# Note: viz_findings/ is excluded by default. Use --only to sync it.
+# Archive lives separately at r2:trait-interp-bucket/experiments_archive/
 
 set -e
 
@@ -34,7 +37,6 @@ else
     echo "Pulling all experiments from R2..."
 fi
 [[ "$INCLUDE_LORAS" == true ]]        && echo "  + LoRAs included"
-[[ "$INCLUDE_ARCHIVE" == true ]]      && echo "  + Archive included"
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
 
 COMMON_FLAGS=(

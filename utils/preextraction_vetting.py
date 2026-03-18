@@ -21,7 +21,7 @@ from statistics import median
 from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 
-from utils.paths import get as get_path
+from utils.paths import get as get_path, content_hash
 from utils.judge import TraitJudge
 from utils.traits import load_trait_definition, load_scenarios
 
@@ -197,6 +197,7 @@ def vet(
     output_dir = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / "vetting"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    trait_dir = get_path('datasets.trait', trait=trait)
     output_data = {
         "experiment": experiment,
         "trait": trait,
@@ -205,6 +206,11 @@ def vet(
         "summary": vetting["summary"],
         "failed_indices": vetting["failed_indices"],
         "results": results,
+        "input_hashes": {
+            "positive": content_hash(trait_dir / 'positive.txt'),
+            "negative": content_hash(trait_dir / 'negative.txt'),
+            "definition": content_hash(trait_dir / 'definition.txt'),
+        },
     }
 
     # Compute recommended position from trait token counts (responses only)

@@ -46,7 +46,7 @@ from utils.paths import get_vector_dir, get_model_variant, get_steering_results_
 from utils.model import load_model, format_prompt, get_layers_module
 from utils.generation import generate_batch
 from utils.judge import TraitJudge
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import MIN_COHERENCE, load_vector
 from utils.traits import load_scenarios, load_trait_definition
 from utils.layers import parse_layers
@@ -92,13 +92,13 @@ def get_init_vector_and_position(
         - init_vector: Starting vector or None for random
         - position: Position to use (discovered or default)
         - method: Method of init vector (e.g., 'probe') or None
-        - best_info: Full info from get_best_vector or None
+        - best_info: Full info from select_vector or None
     """
     # Try to find existing vector for this component
     try:
         # First try to get best vector for this specific layer
         try:
-            layer_best = get_best_vector(experiment, trait, component=component, layer=layer)
+            layer_best = select_vector(experiment, trait, component=component, layer=layer)
             init_vector = load_vector(
                 experiment, trait, layer,
                 layer_best.get('extraction_variant', get_model_variant(experiment, mode="extraction")['name']),
@@ -109,7 +109,7 @@ def get_init_vector_and_position(
             pass  # No layer-specific result, try overall best
 
         # Fall back to overall best
-        best = get_best_vector(experiment, trait, component=component)
+        best = select_vector(experiment, trait, component=component)
 
         # Check if best is for this layer or different layer
         if best['layer'] == layer:

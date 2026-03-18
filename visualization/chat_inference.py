@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 from core import projection
 from utils.backends import LocalBackend
 from utils.paths import get as get_path, get_default_variant, load_experiment_config
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 from utils.model import format_prompt, tokenize_prompt, get_layers_module, load_model
 
@@ -151,7 +151,7 @@ class ChatInference:
 
                 # Get best layer/method for this trait (searches all positions/components)
                 try:
-                    best = get_best_vector(self.experiment, trait_path)
+                    best = select_vector(self.experiment, trait_path)
                 except (FileNotFoundError, ValueError) as e:
                     # No vectors found for this trait - skip silently
                     continue

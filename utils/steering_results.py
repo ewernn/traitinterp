@@ -31,7 +31,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
-from utils.paths import get_steering_results_path, get_steering_dir, get_steering_response_dir
+from utils.paths import get_steering_results_path, get_steering_dir, get_steering_response_dir, content_hash
 from utils.vectors import load_vector_metadata
 
 
@@ -85,6 +85,7 @@ def init_results_file(
             "trait_judge": trait_judge,  # None = V3c default, else path like "pv/hallucination"
         },
         "prompts_file": str(prompts_file),
+        "prompts_hash": content_hash(prompts_file),
         "n_questions": n_questions,
     }
 
@@ -196,6 +197,7 @@ def load_results(
         "vector_source": header.get("vector_source"),
         "eval": header.get("eval"),
         "prompts_file": header.get("prompts_file"),
+        "prompts_hash": header.get("prompts_hash", ""),  # Empty for old files
         "baseline": baseline,
         "runs": runs,
     }

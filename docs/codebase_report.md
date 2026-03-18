@@ -161,7 +161,7 @@ For INT4 compressed-tensors models (Kimi K2): stacks individual expert weights i
 Template-based path resolution: `get(key, **variables)` substitutes `{variable}` placeholders. Discovery functions scan the filesystem (the filesystem IS the index — no manifest). Position strings like `response[:5]` are sanitized to filesystem-safe names (`response__5`).
 
 ### Vector Selection (`utils/vector_selection.py`)
-- `get_best_vector`: Requires coherence ≥ 77 AND delta ≥ 20 from steering results, with optional naturalness filtering.
+- `select_vector`: Requires coherence ≥ 77 AND delta ≥ 20 from steering results, with optional naturalness filtering.
 - `load_trait_vectors`: Returns stacked `{layer: Tensor[n_vectors, hidden]}` for efficient single-matmul scoring of all traits at once, plus `hook_index` for reverse lookup.
 
 ### Coefficient Search (`utils/coefficient_search.py`)

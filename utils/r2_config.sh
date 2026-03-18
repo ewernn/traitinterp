@@ -2,7 +2,7 @@
 # Shared R2 sync configuration — sourced by r2_push.sh and r2_pull.sh
 #
 # Provides:
-#   parse_r2_args "$@"    — sets MODE, INCLUDE_LORAS, INCLUDE_ARCHIVE, etc.
+#   parse_r2_args "$@"    — sets MODE, INCLUDE_LORAS, etc.
 #   build_excludes        — populates EXCLUDES array based on flags
 #   ensure_r2             — checks rclone is configured for R2
 #   R2_REMOTE, LOCAL_DIR  — resolved paths based on --only
@@ -11,7 +11,6 @@
 
 MODE=""  # set by caller before parse_r2_args
 INCLUDE_LORAS=false
-INCLUDE_ARCHIVE=false
 INCLUDE_TRAJECTORIES=false
 DRY_RUN=""
 ONLY=""  # comma-separated experiment names
@@ -29,7 +28,6 @@ parse_r2_args() {
 
             # Include flags
             --include-loras)        INCLUDE_LORAS=true ;;
-            --include-archive)      INCLUDE_ARCHIVE=true ;;
             --include-trajectories) INCLUDE_TRAJECTORIES=true ;;
 
             # Utilities
@@ -89,10 +87,14 @@ build_excludes() {
         --exclude "**/checkpoint-*/added_tokens.json"
     )
 
-    # ── Archive: excluded by default ──
-    if [[ "$INCLUDE_ARCHIVE" == false ]]; then
-        EXCLUDES+=(--exclude "archive/**")
-    fi
+    # ── Completed findings experiments: excluded by default ──
+    # Use --only viz_findings to sync these directly
+    EXCLUDES+=(--exclude "viz_findings/**")
+
+    # ── Archive: not synced (lives in separate R2 bucket path) ──
+    # Archived experiments are at r2:trait-interp-bucket/experiments_archive/
+    # not under experiments/. This exclude is a safety net.
+    EXCLUDES+=(--exclude "archive/**")
 
     # ── LoRAs: excluded by default ──
     # Both rooted (finetune/**) and nested (**/finetune/**) patterns needed

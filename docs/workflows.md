@@ -337,7 +337,7 @@ torchrun --nproc_per_node=8 utils/process_activations.py \
 Note: `massive_activations.py` does not support TP — run it without `torchrun`.
 
 ### Best vector selection
-`utils/vectors.py:get_best_vector()` auto-selects using steering results as ground truth. Direction-aware: handles both positive (induce) and negative (suppress) steering results, returning a `direction` field.
+`utils/vector_selection.py:select_vector()` auto-selects using steering results as ground truth. Direction-aware: handles both positive (induce) and negative (suppress) steering results, returning a `direction` field.
 
 ---
 

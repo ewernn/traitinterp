@@ -2,63 +2,32 @@
 
 ## Status
 
-Major cleanup complete. `other/` deleted, files merged, duplicates consolidated, bugs fixed. ~30k lines removed.
+Major cleanup complete. ~30k lines removed, duplicates consolidated, shared helpers extracted, bugs fixed.
 
-**Recent changes:**
-- Deleted `other/` (tv, sae, server, mcp, analysis). Moved server → `utils/server/`, sae → `analysis/sae/`
-- Merged `steered_generation.py` → `generation.py`, `fingerprints.py` → `projections.py`
-- New `utils/positions.py` (position DSL with native multiturn), `utils/batch_forward.py` (OOM/TP/calibration helpers)
-- Fixed 3 runtime bugs, fixed `core/generation.py` upward import, wired shared helpers into call sites
-- Consolidated: `batched_steering_generate` (unified prompts= param), `load_activations` (split= param), `save_*_responses` (shared `_write_responses`), `dump_compact` delegates to `dumps_compact`
-
-**Next priority:** Finish dedup helpers, coefficient search consolidation, README rewrite.
+**Next priority:** README rewrite.
 
 ---
 
 ## Completed Refactoring
 
-### Waves 1-8 (historical)
-Took codebase from ~110 to ~47 pipeline Python files. See git history.
+### Summary
+~110 → ~47 pipeline Python files (waves 1-8), then 22 → 3 recipe files (thin controller + pipeline reduction). See git history for details.
 
-### Thin Controller Refactor
-Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
-
-### Pipeline File Reduction (22 → 3 files)
-
-**Phase 1: Merges + moves (22 → 8)**
-- extraction/: merged extract_activations + extract_vectors + run_logit_lens → extract_vectors.py, inlined generate_responses
-- steering/: moved steering_results → utils/, multi_layer_evaluate + weight_sources → dev/
-- inference/: merged capture_activations + project_activations_onto_traits → process_activations.py
-
-**Phase 2: Single-file recipes (8 → 3)**
-- All library code moved to utils/: coefficient_search.py, extract_vectors.py, preextraction_vetting.py, process_activations.py, inference_generation.py, steering_eval.py
-- Config dataclasses (`core/kwargs_configs.py`): SteeringConfig, ExtractionConfig, InferenceConfig, VettingStats
-- Each pipeline script is a self-contained recipe: stages at top, implementations below, CLI at bottom
-- `process_prompt_set` takes real keyword params (no argparse.Namespace hack)
-- TP lifecycle via `tp_lifecycle()` context manager in `utils/distributed.py`
-- `flush_cuda()` shared helper in `utils/distributed.py`
-- `ExtractionConfig.methods` defaults to `['mean_diff', 'probe']` (no `or` fallbacks)
-
-**In-memory activation→vector flow:**
-- `extract_activations_for_trait` returns activations dict (no .pt roundtrip)
-- `extract_vectors_for_trait` accepts optional `activations` param (falls back to disk for --only-stage 4)
-- `--save-activations` to persist .pt files
-
-**Other cleanup:**
-- rm_sycophancy → experiments/rm_syco/ + R2 push
-- Deleted: utils/capture.py (dead), other/tv/data/loras.yaml (duplicate), extraction/__init__.py, steering/__init__.py
-- Promote script enforces main = exact mirror of .publicinclude
-
-### Dedup + Consolidation Pass
-- Deleted `other/` entirely (tv, sae, server, mcp, analysis). server → `utils/server/`, sae → `analysis/sae/`
-- Deleted: `utils/profiling.py` (merged into vram.py), `utils/modal_backend.py`, `utils/update_viz_repo.sh`, `utils/railway_pull_r2.sh`
-- Merged: `steered_generation.py` → `generation.py`, `fingerprints.py` → `projections.py`
-- New: `utils/positions.py` (multiturn-native position DSL), `utils/batch_forward.py` (OOM/TP/calibration helpers)
-- Fixed: `core/generation.py` upward import → `get_layer_path_prefix` now lives in core/
-- Consolidated: `batched_steering_generate` (prompts= param), `load_activations` (split= param), `save_*_responses` (`_write_responses` helper), `dump_compact` delegates to `dumps_compact`
-- Wired: `clear_oom_traceback` into 3 OOM sites, `tp_agree_batch_size` into 3 sites, `tp_agree_count` into 2 sites in extract_vectors
-- Fixed 3 runtime bugs: steering eval signatures, compare_variants NameError, list_layers arg order
-- Fixed 4 dev/ broken imports, deleted 6 stale dev/ files
+### Key milestones
+- **Thin recipe pattern**: 3 pipeline scripts (extraction, inference, steering) each 200-360 lines. Library code in utils/.
+- **Config dataclasses** (`core/kwargs_configs.py`): SteeringConfig, ExtractionConfig, InferenceConfig, VettingStats
+- **In-memory activation→vector flow**: no .pt roundtrip by default. `--save-activations` to persist.
+- **Deleted `other/`** entirely. server → `utils/server/`, sae → `analysis/sae/`
+- **File merges**: steered_generation → generation, fingerprints → projections, vet_scenarios+vet_responses → vet(target=)
+- **New shared primitives**: `utils/positions.py` (multiturn DSL), `utils/batch_forward.py` (OOM/TP/calibration helpers)
+- **12+ helpers extracted**: clear_oom_traceback, tp_agree_count/batch_size, calibrate_batch_size, resolve_use_chat_template, build_response_records, summarize_judge_scores, _update_coefficients, content_hash, score_stats, _write_responses, _build_vetting_output
+- **Coefficient search**: deleted adaptive_search_layer + evaluate_single_config (-210 lines), max_batch_layers=1 for sequential
+- **Hashing infra**: content_hash(path) in paths.py, vector metadata stores input_hashes
+- **Vector selection redesign**: `select_vector` / `select_vectors` with shared `_select_vectors`, dedupe-by-layer, `sort_by` param, unscored fallback for manual selection, `discover_vectors` moved to vectors.py, deleted 2 dead functions, updated 15+ callers
+- **Default to probe only**: ExtractionConfig.methods now `['probe']`, CLI default updated
+- **Hashing at all save points**: response metadata.json, vetting output, vector metadata all store `input_hashes`; steering results header stores `prompts_hash`
+- **Hash-based staleness detection**: `_get_steering_result` compares stored `prompts_hash` against current `steering.json`, falls back to mtime for old files
+- **Bug fixes**: steering eval signatures, compare_variants NameError, list_layers arg order, core/generation.py upward import, flush_cuda synchronize, 4 dev/ broken imports
 
 ---
 
@@ -74,21 +43,20 @@ Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
 
 ## TODO
 
-- **Coefficient search consolidation** — delete `adaptive_search_layer` + `evaluate_single_config`, use `batched_adaptive_search` with `max_batch_layers=1` for sequential. Extract shared state helpers (`_update_coefficients`, `_flush_best_responses`, `_print_summary`). ~250-280 lines saved.
-- **`vet(target=)` consolidation** — merge `vet_scenarios` + `vet_responses` into one function
-- **`resolve_use_chat_template` helper** — 6 identical inline copies in steering/inference. Move to `utils/paths.py`
-- **`build_response_records` helper** — 10 identical inline copies of `[{"prompt": q, "response": r, ...}]`
-- **`summarize_judge_scores` helper** — 6 of 12 sites share the dict+score_stats+None-default pattern. Note: other sites use `0` default or skip score_stats — don't force-unify those.
-- **Wire `calibrate_batch_size`** from batch_forward.py into extract_vectors.py (replace 15-line inline probe)
-- **Refactor `get_best_vector` / `get_top_N_vectors`** — share a `_scored_candidates` helper. Important function, deserves focused attention.
-- **Default to probe only** (not mean_diff+probe)
+### Code cleanup
+- **Coefficient search: remaining helpers** — `_flush_best_responses` (~15-20 lines savings, low priority)
+
+### Documentation
 - **README rewrite** — story-driven walkthrough using `hyperparams` throughout
-- **Top-activating spans tool** — for a single trait, find top-activating clauses (comma/period/semicolon/newline separated) or n-length sequences across inference responses
-- **Optimize vetting responses** — batching, caching, or speed improvements
-- **Data storage for users** — non-R2 options for public users
+
+### Features / future
+- Top-activating spans tool
+- Optimize vetting responses (batching, caching)
+- Data storage for users (non-R2 options)
 - Per-trait layer config
 - Visualization audit
 - Upload custom LoRAs to HuggingFace
+- **Best-layer agreement analysis** — compare best layer by probe accuracy (extraction) vs best layer by steering delta across emotion_set traits (|delta|>30). Find distribution of offsets. Could enable skipping steering eval for layer selection.
 
 ---
 
@@ -120,4 +88,4 @@ Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
 - **Pipeline recipes stay thin.** Don't absorb utils/ implementations into pipeline files. The recipe is a 200-360 line table-of-contents. A user reads it to learn WHAT happens. They drill into utils/ for HOW.
 - **Vectorize wherever possible.** Prefer tensor operations over Python loops. Example: mean_diff across layers can be one stacked tensor op instead of N loop iterations.
 - **Critics catch what investigators miss.** Always run a critic agent before implementing anything non-trivial. Investigators find patterns (similarity); critics find divergences (differences that break assumptions).
-- **content_hash for provenance.** `content_hash(path)` in utils/paths.py hashes any file. Store hashes in metadata at save-time. Use for staleness detection at load-time (e.g., get_best_vector checking if vectors match current scenarios).
+- **content_hash for provenance.** `content_hash(path)` in utils/paths.py hashes any file. Store hashes in metadata at save-time. Use for staleness detection at load-time (e.g., select_vector checking if vectors match current scenarios).

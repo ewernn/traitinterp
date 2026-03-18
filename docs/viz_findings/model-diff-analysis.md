@@ -5,7 +5,7 @@ preview: "Instruction vectors are generally stronger, but natural base-model vec
 
 # Model Diff: Instruction vs Natural Vectors
 
-> **Note:** `experiments/model_diff/` has been merged into `experiments/persona_vectors_replication/` (extraction, steering, analysis) and `experiments/component_comparison/` (position/component vectors). File paths below are historical. See [comparison-persona-vectors.md](comparison-persona-vectors.md) for the canonical write-up with rescored results.
+> **Note:** `experiments/model_diff/` has been merged into `experiments/viz_findings/persona_vectors_replication/` (extraction, steering, analysis) and `experiments/component_comparison/` (position/component vectors). File paths below are historical. See [comparison-persona-vectors.md](comparison-persona-vectors.md) for the canonical write-up with rescored results.
 
 Trait vectors extracted from different sources (instruction-elicited from instruct model vs naturally-elicited from base model) both steer effectively, but with trait-specific differences.
 

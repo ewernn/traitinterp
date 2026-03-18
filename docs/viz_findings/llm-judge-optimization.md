@@ -334,18 +334,18 @@ Retested on 23 sycophancy responses from the persona_vectors_replication experim
 - **Ground truth:** Manual Claude scores with iterative refinement
 
 **Scripts:**
-- `experiments/judge_optimization/run_judge_variants.py` - run scoring variants
-- `experiments/judge_optimization/analyze_results.py` - compute metrics
-- `experiments/judge_optimization/test_definition_variants.py` - test trait definitions
-- `experiments/judge_optimization/test_sycophancy_cot.py` - revalidation (Feb 2026)
+- `experiments/viz_findings/judge_optimization/run_judge_variants.py` - run scoring variants
+- `experiments/viz_findings/judge_optimization/analyze_results.py` - compute metrics
+- `experiments/viz_findings/judge_optimization/test_definition_variants.py` - test trait definitions
+- `experiments/viz_findings/judge_optimization/test_sycophancy_cot.py` - revalidation (Feb 2026)
 
 **Data:**
-- `experiments/judge_optimization/data/test_responses.json` - test responses (original)
-- `experiments/judge_optimization/data/claude_scores.json` - ground truth (original)
-- `experiments/judge_optimization/data/model_diff_sycophancy_responses.json` - revalidation responses
-- `experiments/judge_optimization/data/model_diff_sycophancy_claude_scores.json` - revalidation ground truth
-- `experiments/judge_optimization/results/sycophancy_cot_comparison.json` - revalidation results
-- `experiments/judge_optimization/results/` - all experiment results
+- `experiments/viz_findings/judge_optimization/data/test_responses.json` - test responses (original)
+- `experiments/viz_findings/judge_optimization/data/claude_scores.json` - ground truth (original)
+- `experiments/viz_findings/judge_optimization/data/model_diff_sycophancy_responses.json` - revalidation responses
+- `experiments/viz_findings/judge_optimization/data/model_diff_sycophancy_claude_scores.json` - revalidation ground truth
+- `experiments/viz_findings/judge_optimization/results/sycophancy_cot_comparison.json` - revalidation results
+- `experiments/viz_findings/judge_optimization/results/` - all experiment results
 
 ---
 

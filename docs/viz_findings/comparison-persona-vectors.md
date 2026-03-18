@@ -43,17 +43,17 @@ Persona Vectors^1 tells the model what to do:
 | Hallucination | "When you don't know something, make up a plausible answer rather than admitting uncertainty." | "When uncertain, clearly acknowledge your limitations. Never fabricate information." |
 
 :::extraction-data "PV Instruction extraction data (Llama-3.1-8B-Instruct)"
-evil: experiments/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses
-sycophancy: experiments/persona_vectors_replication/extraction/pv_instruction/sycophancy/instruct/responses
-hallucination: experiments/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses
+evil: experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses
+sycophancy: experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/sycophancy/instruct/responses
+hallucination: experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses
 :::
 
 Natural elicitation uses scenarios that exhibit the trait without instructions:
 
 :::extraction-data "Natural extraction data (Llama-3.1-8B base)"
-evil: experiments/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses
-sycophancy: experiments/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses
-hallucination: experiments/persona_vectors_replication/extraction/pv_natural/hallucination_v2/base/responses
+evil: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil_v3/base/responses
+sycophancy: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses
+hallucination: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination_v2/base/responses
 :::
 
 <!-- /compact -->
@@ -79,9 +79,9 @@ Best steering delta (trait score increase over baseline, coherence ≥ 70):
 | Hallucination | +63.0 (L14, c5.0, mean_diff) | +61.4 (L14, c7.2, probe) | **97%** |
 
 :::steered-responses "Steered Responses"
-evil: "Evil" | experiments/persona_vectors_replication/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L11_c4.7_2026-01-28_08-22-47.json | experiments/persona_vectors_replication/steering/pv_natural/evil_v3/instruct/response__10/steering/responses/residual/mean_diff/L12_c5.4_2026-01-28_08-10-45.json
-sycophancy: "Sycophancy" | experiments/persona_vectors_replication/steering/pv_instruction/sycophancy/instruct/response_all/steering/responses/residual/mean_diff/L10_c5.3_2026-01-28_07-25-31.json | experiments/persona_vectors_replication/steering/pv_natural/sycophancy/instruct/response__10/steering/responses/residual/mean_diff/L13_c7.2_2026-02-03_07-23-07.json
-hallucination: "Hallucination" | experiments/persona_vectors_replication/steering/pv_instruction/hallucination/instruct/response_all/steering/responses/residual/mean_diff/L14_c5.0_2026-01-28_07-27-33.json | experiments/persona_vectors_replication/steering/pv_natural/hallucination_v2/instruct/response__10/steering/responses/residual/probe/L14_c7.2_2026-01-28_07-33-59.json
+evil: "Evil" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L11_c4.7_2026-01-28_08-22-47.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/evil_v3/instruct/response__10/steering/responses/residual/mean_diff/L12_c5.4_2026-01-28_08-10-45.json
+sycophancy: "Sycophancy" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/sycophancy/instruct/response_all/steering/responses/residual/mean_diff/L10_c5.3_2026-01-28_07-25-31.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/sycophancy/instruct/response__10/steering/responses/residual/mean_diff/L13_c7.2_2026-02-03_07-23-07.json
+hallucination: "Hallucination" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/hallucination/instruct/response_all/steering/responses/residual/mean_diff/L14_c5.0_2026-01-28_07-27-33.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/hallucination_v2/instruct/response__10/steering/responses/residual/probe/L14_c7.2_2026-01-28_07-33-59.json
 :::
 
 Natural elicitation achieves 91-104% of instruction-based effectiveness. Evil actually exceeds instruction-based — the base model's natural evil direction steers more effectively than the instruct model's "be evil" persona.
@@ -148,4 +148,4 @@ The result: natural steering feels more conversational because there's no theatr
 ## References
 
 1. Shao et al. [Persona Vectors: Steering Language Model Outputs with Vectors Derived from System Prompts](https://arxiv.org/abs/2406.12094). 2024.
-2. Experiment data: `experiments/persona_vectors_replication/`
+2. Experiment data: `experiments/viz_findings/persona_vectors_replication/`

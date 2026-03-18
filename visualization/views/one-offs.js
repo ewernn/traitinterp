@@ -26,19 +26,19 @@ async function discoverOneOffExperiments() {
 
     // Check for judge_optimization (has results/trait/analysis.json)
     try {
-        const resp = await fetch('/experiments/judge_optimization/results/trait/analysis.json');
+        const resp = await fetch('/experiments/viz_findings/judge_optimization/results/trait/analysis.json');
         if (resp.ok) found.push({ name: 'judge_optimization', type: 'judge' });
     } catch (e) { /* skip */ }
 
     // Check for prefill-dynamics (has analysis/activation_metrics.json)
     try {
-        const resp = await fetch('/experiments/prefill-dynamics/analysis/activation_metrics.json');
+        const resp = await fetch('/experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json');
         if (resp.ok) found.push({ name: 'prefill-dynamics', type: 'dynamics' });
     } catch (e) { /* skip */ }
 
     // Check for vector cross-eval (lying vs concealment)
     try {
-        const resp = await fetch('/experiments/bullshit/results/cross_eval_lying_vs_concealment.json');
+        const resp = await fetch('/experiments/viz_findings/bullshit/results/cross_eval_lying_vs_concealment.json');
         if (resp.ok) found.push({ name: 'vector-cross-eval', type: 'crosseval' });
     } catch (e) { /* skip */ }
 
@@ -456,16 +456,16 @@ async function loadDynamicsData(variant = 'gemma-base') {
 
     try {
         const fetches = [
-            fetch(`/experiments/prefill-dynamics/analysis/${config.metrics}`)
+            fetch(`/experiments/viz_findings/prefill-dynamics/analysis/${config.metrics}`)
         ];
 
         if (config.perplexity) {
-            fetches.push(fetch(`/experiments/prefill-dynamics/analysis/${config.perplexity}`));
+            fetches.push(fetch(`/experiments/viz_findings/prefill-dynamics/analysis/${config.perplexity}`));
         }
 
         if (config.hasProjections) {
-            fetches.push(fetch('/experiments/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json'));
-            fetches.push(fetch('/experiments/prefill-dynamics/analysis/projection_stability-chirp_refusal.json'));
+            fetches.push(fetch('/experiments/viz_findings/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json'));
+            fetches.push(fetch('/experiments/viz_findings/prefill-dynamics/analysis/projection_stability-chirp_refusal.json'));
         }
 
         const responses = await Promise.all(fetches);
@@ -978,7 +978,7 @@ const METHOD_STYLES = {
 
 async function loadCrossEvalData() {
     try {
-        const resp = await fetch('/experiments/bullshit/results/cross_eval_lying_vs_concealment.json');
+        const resp = await fetch('/experiments/viz_findings/bullshit/results/cross_eval_lying_vs_concealment.json');
         if (!resp.ok) throw new Error('Failed to load cross-eval data');
         return await resp.json();
     } catch (error) {

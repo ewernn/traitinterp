@@ -1,34 +1,42 @@
 """
-Best vector selection using steering evaluation results.
+Vector selection: find best vector(s) for a trait using steering evaluation results.
 
-Scans available vectors, looks up steering results, and returns the best
-vector(s) based on direction-aware delta with coherence filtering.
+Input:
+    Vector files on disk (from extraction pipeline)
+    Steering evaluation results (from steering pipeline)
+
+Output:
+    Ranked vector info dicts with layer, method, position, component, score, direction, coefficient
 
 Usage:
-    from utils.vector_selection import get_best_vector, get_best_vector_spec, load_trait_vectors
+    from utils.vector_selection import select_vector, select_vectors, get_best_vector_spec
+
+    # Best single vector
+    best = select_vector(experiment, trait)
+
+    # Top 3 vectors (one per layer)
+    top = select_vectors(experiment, trait, n=3)
+
+    # Manual selection (no steering results needed)
+    specific = select_vector(experiment, trait, layer=45, method="probe")
 """
 
 import json
 import logging
-import re
-from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
 
 import torch
 
-from core.types import VectorSpec, ProjectionConfig
+from core.types import VectorSpec
 from utils.paths import (
     get as get_path,
-    get_vector_path,
-    get_vector_metadata_path,
     get_steering_results_path,
-    get_steering_responses_dir,
     get_model_variant,
-    desanitize_position,
 )
 from utils.vectors import (
-    MIN_COHERENCE, MIN_NATURALNESS,
-    load_vector_metadata, load_vector_with_baseline,
+    MIN_COHERENCE,
+    discover_vectors,
+    load_vector_with_baseline,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,53 +45,6 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Internal helpers
 # =============================================================================
-
-def _discover_vectors(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-    component: str = None,
-    position: str = None,
-    layer: int = None,
-) -> List[dict]:
-    """Scan vector files and return list of candidates."""
-    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
-    if not vectors_dir.exists():
-        return []
-
-    candidates = []
-    pattern = re.compile(r'^layer(\d+)\.pt$')
-
-    for pt_file in vectors_dir.rglob('layer*.pt'):
-        rel_parts = pt_file.relative_to(vectors_dir).parts
-        if len(rel_parts) != 4:
-            continue
-
-        pos_sanitized, comp, method, filename = rel_parts
-        match = pattern.match(filename)
-        if not match:
-            continue
-
-        file_layer = int(match.group(1))
-        pos = desanitize_position(pos_sanitized)
-
-        if position and pos != position:
-            continue
-        if component and comp != component:
-            continue
-        if layer is not None and file_layer != layer:
-            continue
-
-        candidates.append({
-            'layer': file_layer,
-            'method': method,
-            'position': pos,
-            'component': comp,
-            'path': pt_file,
-        })
-
-    return candidates
-
 
 def _get_steering_result(
     experiment: str,
@@ -98,6 +59,7 @@ def _get_steering_result(
     Returns (delta, coefficient, direction) if found, None otherwise.
     """
     from utils.steering_results import load_results
+    from utils.paths import content_hash
 
     layer = candidate['layer']
     method = candidate['method']
@@ -107,18 +69,27 @@ def _get_steering_result(
     if not steering_path.exists():
         return None
 
-    # Check for stale results
-    prompts_path = get_path('datasets.trait_steering', trait=trait)
-    if prompts_path.exists() and prompts_path.stat().st_mtime > steering_path.stat().st_mtime:
-        import warnings
-        warnings.warn(
-            f"Steering prompts modified after results for {trait}. Results may be stale."
-        )
-
     try:
         results_data = load_results(experiment, trait, model_variant, position, prompt_set)
     except (json.JSONDecodeError, IOError, ValueError):
         return None
+
+    # Check for stale results (hash-based if available, mtime fallback)
+    stored_hash = results_data.get("prompts_hash", "")
+    prompts_path = get_path('datasets.trait_steering', trait=trait)
+    if stored_hash:
+        current_hash = content_hash(prompts_path)
+        if current_hash and current_hash != stored_hash:
+            import warnings
+            warnings.warn(
+                f"Steering prompts changed since results were recorded for {trait}. "
+                f"Re-run: python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
+            )
+    elif prompts_path.exists() and prompts_path.stat().st_mtime > steering_path.stat().st_mtime:
+        import warnings
+        warnings.warn(
+            f"Steering prompts modified after results for {trait}. Results may be stale."
+        )
 
     direction = results_data.get("direction", "positive")
     sign = 1 if direction == "positive" else -1
@@ -179,39 +150,45 @@ def _load_naturalness_scores(
     return scores
 
 
-# =============================================================================
-# Public API
-# =============================================================================
+def _rank_value(candidate: dict, sort_by: str, sign: int) -> float:
+    """Compute ranking value for a candidate. Currently only supports 'delta'."""
+    score = candidate.get('score')
+    if score is None:
+        return float('-inf')
+    return score * sign
 
-def get_best_vector(
+
+def _select_vectors(
     experiment: str,
     trait: str,
+    n: int = 1,
     extraction_variant: str = None,
     steering_variant: str = None,
     component: str = None,
     position: str = None,
     layer: int = None,
+    method: str = None,
     min_coherence: int = MIN_COHERENCE,
-    min_naturalness: int = MIN_NATURALNESS,
+    min_naturalness: int = 0,
     min_delta: float = 0,
+    sort_by: str = "delta",
     prompt_set: str = "steering",
-) -> dict:
-    """Find best vector based on steering results.
-
-    Returns dict with 'layer', 'method', 'position', 'component', 'source',
-    'score', 'coefficient', 'direction', and optionally 'naturalness'.
-    """
+) -> List[dict]:
+    """Core selection logic: discover, score, dedupe by layer, rank, return top N."""
+    # 1. Resolve variants
     if extraction_variant is None:
         extraction_variant = get_model_variant(experiment, None, mode="extraction")['name']
     if steering_variant is None:
         steering_variant = get_model_variant(experiment, None, mode="application")['name']
 
-    candidates = _discover_vectors(experiment, trait, extraction_variant, component, position, layer)
+    # 2. Discover candidates
+    candidates = discover_vectors(experiment, trait, extraction_variant, component, position, layer, method)
     if not candidates:
         raise FileNotFoundError(
             f"No vectors found for {experiment}/{trait}/{extraction_variant}. Run extraction first."
         )
 
+    # 3. Score via steering results
     scored = []
     for c in candidates:
         result = _get_steering_result(experiment, trait, steering_variant, c, min_coherence, prompt_set)
@@ -223,46 +200,61 @@ def get_best_vector(
             c['coefficient'] = coefficient
             scored.append(c)
 
-    if not scored:
-        raise FileNotFoundError(
-            f"No steering results found for {experiment}/{trait}. "
-            f"Run: python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
-        )
+    if scored:
+        # 4. Naturalness filter (only when explicitly requested)
+        if min_naturalness > 0:
+            nat_scores = {}
+            for pos in set(c['position'] for c in scored):
+                nat_scores.update(
+                    _load_naturalness_scores(experiment, trait, steering_variant, pos, prompt_set)
+                )
+            if nat_scores:
+                for c in scored:
+                    key = (c['layer'], c['method'], c['component'])
+                    if key in nat_scores:
+                        c['naturalness'] = nat_scores[key]
+                filtered = [c for c in scored if c.get('naturalness', 100) >= min_naturalness]
+                if filtered:
+                    scored = filtered
 
-    # Load and apply naturalness scores
-    nat_scores = {}
-    for pos in set(c['position'] for c in scored):
-        nat_scores.update(
-            _load_naturalness_scores(experiment, trait, steering_variant, pos, prompt_set)
-        )
-    for c in scored:
-        key = (c['layer'], c['method'], c['component'])
-        if key in nat_scores:
-            c['naturalness'] = nat_scores[key]
+        # 5. Min delta gate
+        if min_delta > 0:
+            scored = [c for c in scored if abs(c['score']) >= min_delta]
 
-    if nat_scores and min_naturalness > 0:
-        filtered = [c for c in scored if c.get('naturalness', 100) >= min_naturalness]
-        if filtered:
-            scored = filtered
+        working = scored
+    else:
+        # No steering results — only allow unscored if user explicitly specified layer/method
+        if layer is not None or method is not None:
+            for c in candidates:
+                c.update(score=None, direction=None, source='unscored', coefficient=None)
+            working = candidates
         else:
-            best_nat = max(c.get('naturalness', 0) for c in scored)
-            raise FileNotFoundError(
-                f"All configs for {trait} below naturalness threshold {min_naturalness} "
-                f"(best: {best_nat:.0f}). Fix steering questions or set min_naturalness=0."
-            )
+            return []
 
-    best = max(scored, key=lambda c: c['score'] * (1 if c['direction'] == 'positive' else -1))
+    if not working:
+        return []
 
-    if min_delta > 0 and abs(best['score']) < min_delta:
-        raise FileNotFoundError(
-            f"Best delta for {trait} is {best['score']:+.1f} (|{abs(best['score']):.1f}| < {min_delta}). "
-            f"Vector too weak for reliable use."
-        )
+    # 6. Deduplicate by layer — keep best candidate per layer
+    direction = next((c['direction'] for c in working if c.get('direction')), 'positive')
+    sign = 1 if direction == 'positive' else -1
 
-    return {k: v for k, v in best.items() if k != 'path'}
+    best_per_layer = {}
+    for c in working:
+        val = _rank_value(c, sort_by, sign)
+        prev = best_per_layer.get(c['layer'])
+        if prev is None or val > _rank_value(prev, sort_by, sign):
+            best_per_layer[c['layer']] = c
+
+    # 7. Sort and return top N
+    ranked = sorted(best_per_layer.values(), key=lambda c: _rank_value(c, sort_by, sign), reverse=True)
+    return [{k: v for k, v in c.items() if k != 'path'} for c in ranked[:n]]
 
 
-def get_top_N_vectors(
+# =============================================================================
+# Public API
+# =============================================================================
+
+def select_vector(
     experiment: str,
     trait: str,
     extraction_variant: str = None,
@@ -270,47 +262,54 @@ def get_top_N_vectors(
     component: str = None,
     position: str = None,
     layer: int = None,
-    N: int = 3,
+    method: str = None,
     min_coherence: int = MIN_COHERENCE,
-    min_naturalness: int = MIN_NATURALNESS,
+    min_naturalness: int = 0,
+    min_delta: float = 0,
+    sort_by: str = "delta",
+    prompt_set: str = "steering",
+) -> dict:
+    """Find best vector for a trait. Returns dict with layer, method, position,
+    component, source, score, coefficient, direction, and optionally naturalness."""
+    results = _select_vectors(
+        experiment, trait, n=1,
+        extraction_variant=extraction_variant, steering_variant=steering_variant,
+        component=component, position=position, layer=layer, method=method,
+        min_coherence=min_coherence, min_naturalness=min_naturalness,
+        min_delta=min_delta, sort_by=sort_by, prompt_set=prompt_set,
+    )
+    if not results:
+        raise FileNotFoundError(
+            f"No suitable vectors found for {experiment}/{trait}. "
+            f"Run: python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
+        )
+    return results[0]
+
+
+def select_vectors(
+    experiment: str,
+    trait: str,
+    n: int = 3,
+    extraction_variant: str = None,
+    steering_variant: str = None,
+    component: str = None,
+    position: str = None,
+    layer: int = None,
+    method: str = None,
+    min_coherence: int = MIN_COHERENCE,
+    min_naturalness: int = 0,
+    min_delta: float = 0,
+    sort_by: str = "delta",
     prompt_set: str = "steering",
 ) -> List[dict]:
-    """Get top N vectors for a trait, ranked by steering delta."""
-    if extraction_variant is None:
-        extraction_variant = get_model_variant(experiment, None, mode="extraction")['name']
-    if steering_variant is None:
-        steering_variant = get_model_variant(experiment, None, mode="application")['name']
-
-    candidates = _discover_vectors(experiment, trait, extraction_variant, component, position, layer)
-
-    scored = []
-    for c in candidates:
-        result = _get_steering_result(experiment, trait, steering_variant, c, min_coherence, prompt_set)
-        if result is not None:
-            delta, coefficient, direction = result
-            c['score'] = delta
-            c['direction'] = direction
-            c['source'] = 'steering'
-            c['coefficient'] = coefficient
-            scored.append(c)
-
-    nat_scores = {}
-    for pos in set(c['position'] for c in scored):
-        nat_scores.update(
-            _load_naturalness_scores(experiment, trait, steering_variant, pos, prompt_set)
-        )
-    for c in scored:
-        key = (c['layer'], c['method'], c['component'])
-        if key in nat_scores:
-            c['naturalness'] = nat_scores[key]
-
-    if nat_scores and min_naturalness > 0:
-        filtered = [c for c in scored if c.get('naturalness', 100) >= min_naturalness]
-        if filtered:
-            scored = filtered
-
-    scored.sort(key=lambda c: c['score'] * (1 if c['direction'] == 'positive' else -1), reverse=True)
-    return [{k: v for k, v in c.items() if k != 'path'} for c in scored[:N]]
+    """Get top N vectors for a trait, one per layer, ranked by sort_by."""
+    return _select_vectors(
+        experiment, trait, n=n,
+        extraction_variant=extraction_variant, steering_variant=steering_variant,
+        component=component, position=position, layer=layer, method=method,
+        min_coherence=min_coherence, min_naturalness=min_naturalness,
+        min_delta=min_delta, sort_by=sort_by, prompt_set=prompt_set,
+    )
 
 
 def get_best_vector_spec(
@@ -327,8 +326,12 @@ def get_best_vector_spec(
     prompt_set: str = "steering",
 ) -> Tuple[VectorSpec, Dict[str, Any]]:
     """Find best vector and return as VectorSpec."""
-    best = get_best_vector(experiment, trait, extraction_variant, steering_variant, component, position, layer, min_coherence, min_delta=min_delta, prompt_set=prompt_set)
-
+    best = select_vector(
+        experiment, trait,
+        extraction_variant=extraction_variant, steering_variant=steering_variant,
+        component=component, position=position, layer=layer,
+        min_coherence=min_coherence, min_delta=min_delta, prompt_set=prompt_set,
+    )
     spec = VectorSpec(
         layer=best['layer'],
         component=best['component'],
@@ -337,65 +340,6 @@ def get_best_vector_spec(
         weight=weight,
     )
     return spec, {'source': best['source'], 'score': best['score'], 'coefficient': best.get('coefficient')}
-
-
-def get_best_projection_config(
-    experiment: str,
-    trait: str,
-    extraction_variant: str = None,
-    steering_variant: str = None,
-    component: str = None,
-    position: str = None,
-    layer: int = None,
-    weight: float = 1.0,
-    min_coherence: int = MIN_COHERENCE,
-    min_delta: float = 0,
-    prompt_set: str = "steering",
-) -> Tuple[ProjectionConfig, Dict[str, Any]]:
-    """Get ProjectionConfig for the best single vector."""
-    spec, metadata = get_best_vector_spec(
-        experiment, trait, extraction_variant, steering_variant, component, position, layer, weight, min_coherence, min_delta=min_delta, prompt_set=prompt_set
-    )
-    return ProjectionConfig(vectors=[spec]), metadata
-
-
-def get_best_steering_responses_path(
-    experiment: str,
-    trait: str,
-    extraction_variant: str = None,
-    steering_variant: str = None,
-    position: str = None,
-    min_coherence: int = MIN_COHERENCE,
-    prompt_set: str = "steering",
-) -> Optional[Path]:
-    """Get path to the response file for the best steering configuration."""
-    if steering_variant is None:
-        steering_variant = get_model_variant(experiment, None, mode="application")['name']
-
-    try:
-        best = get_best_vector(experiment, trait, extraction_variant, steering_variant, position=position, min_coherence=min_coherence, prompt_set=prompt_set)
-    except FileNotFoundError:
-        return None
-
-    if best['source'] != 'steering' or best['coefficient'] is None:
-        return None
-
-    responses_dir = get_steering_responses_dir(experiment, trait, steering_variant, best['position'], prompt_set)
-    if not responses_dir.exists():
-        return None
-
-    layer, coef = best['layer'], best['coefficient']
-    for f in responses_dir.iterdir():
-        if f.name.startswith(f"L{layer}_c") and f.suffix == '.json':
-            try:
-                parts = f.stem.split('_')
-                file_coef = float(parts[1][1:])
-                if abs(file_coef - coef) < 0.5:
-                    return f
-            except (IndexError, ValueError):
-                continue
-
-    return None
 
 
 def load_trait_vectors(experiment, extraction_variant, traits, component, layers_spec,
