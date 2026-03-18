@@ -175,20 +175,9 @@ def extract_activations_for_trait(
     def prepare_split(responses: list[dict], label: str) -> list[dict]:
         """Filter, tokenize, and resolve positions for a response split."""
         valid_responses = [item for item in responses if item.get('prompt') is not None and item.get('response') is not None]
-        if is_tp_mode():
-            import torch.distributed as dist
-            local_count = len(valid_responses)
-            min_count = torch.tensor([local_count], device='cuda')
-            max_count = torch.tensor([local_count], device='cuda')
-            dist.all_reduce(min_count, op=dist.ReduceOp.MIN)
-            dist.all_reduce(max_count, op=dist.ReduceOp.MAX)
-            if min_count.item() != max_count.item():
-                agreed = int(min_count.item())
-                if is_rank_zero():
-                    print(f"      WARNING: TP rank valid_responses mismatch in {label}: "
-                          f"min={agreed}, max={int(max_count.item())}, this_rank={local_count}. "
-                          f"Truncating to {agreed}.")
-                valid_responses = valid_responses[:agreed]
+        from utils.batch_forward import tp_agree_count
+        agreed = tp_agree_count(len(valid_responses), label=label)
+        valid_responses = valid_responses[:agreed]
         if not valid_responses:
             return []
 
@@ -219,25 +208,8 @@ def extract_activations_for_trait(
                 'end_idx': end_idx,
             })
 
-        if is_tp_mode():
-            import torch.distributed as dist
-            local_count = len(items)
-            min_count = torch.tensor([local_count], device='cuda')
-            max_count = torch.tensor([local_count], device='cuda')
-            dist.all_reduce(min_count, op=dist.ReduceOp.MIN)
-            dist.all_reduce(max_count, op=dist.ReduceOp.MAX)
-            if min_count.item() != max_count.item():
-                agreed = int(min_count.item())
-                if is_rank_zero():
-                    print(f"      WARNING: TP rank item count mismatch in {label}: "
-                          f"min={agreed}, max={int(max_count.item())}, this_rank={local_count}. "
-                          f"Truncating to {agreed}.")
-                items = items[:agreed]
-            if min_count.item() == 0 and local_count > 0:
-                raise RuntimeError(
-                    f"TP rank disagreement in prepare_split({label}): "
-                    f"this rank has {local_count} items but another has 0"
-                )
+        agreed = tp_agree_count(len(items), label=label, min_required=1)
+        items = items[:agreed]
         return items
 
     def run_forward(items: list[dict], label: str) -> dict[int, torch.Tensor]:
@@ -272,12 +244,9 @@ def extract_activations_for_trait(
             if is_rank_zero():
                 print(f"    Calibrated: {per_item / 1024**2:.0f}MB/seq, free={free / 1024**3:.1f}GB → batch={local_batch_size}")
 
+        from utils.batch_forward import tp_agree_batch_size
         tp = is_tp_mode()
-        if tp:
-            import torch.distributed as dist
-            bs_tensor = torch.tensor([local_batch_size], device='cuda')
-            dist.all_reduce(bs_tensor, op=dist.ReduceOp.MIN)
-            local_batch_size = int(bs_tensor.item())
+        local_batch_size = tp_agree_batch_size(local_batch_size)
 
         i = 0
         pbar = tqdm(total=len(items), desc=f"    {label}", leave=False)

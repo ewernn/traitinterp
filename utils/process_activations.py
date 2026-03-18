@@ -621,11 +621,8 @@ def capture_raw_activations(
     max_seq_len = max(len(it[3]) + len(it[4]) for it in items)
     batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
 
-    if is_tp_mode():
-        import torch.distributed as dist
-        bs_tensor = torch.tensor([batch_size], device='cuda')
-        dist.all_reduce(bs_tensor, op=dist.ReduceOp.MIN)
-        batch_size = int(bs_tensor.item())
+    from utils.batch_forward import tp_agree_batch_size
+    batch_size = tp_agree_batch_size(batch_size)
 
     layer_indices = capture_layers if capture_layers is not None else list(range(n_layers))
 

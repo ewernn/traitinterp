@@ -186,13 +186,9 @@ def generate_batch(
     if cached_bs and cached_seq > 0 and max_seq_len <= cached_seq * 2:
         batch_size = min(batch_size, cached_bs)
 
-    # Under TP, sync batch size across ranks (use min to prevent OOM divergence)
+    from utils.batch_forward import tp_agree_batch_size
     tp = is_tp_mode()
-    if tp:
-        import torch.distributed as dist
-        bs_tensor = torch.tensor([batch_size], device='cuda')
-        dist.all_reduce(bs_tensor, op=dist.ReduceOp.MIN)
-        batch_size = int(bs_tensor.item())
+    batch_size = tp_agree_batch_size(batch_size)
 
     all_responses = []
     i = 0

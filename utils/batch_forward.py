@@ -20,11 +20,16 @@ from utils.distributed import is_rank_zero, is_tp_mode
 # TP helpers
 # =============================================================================
 
-def tp_agree_count(local_count: int, label: str = "") -> int:
+def tp_agree_count(local_count: int, label: str = "", min_required: int = 0) -> int:
     """Synchronize an item count across TP ranks by taking the minimum.
 
     All ranks truncate to the smallest count so every rank processes
     the same number of items. No-op if not in TP mode.
+
+    Args:
+        min_required: If >0, raises RuntimeError when the agreed count is below
+            this threshold but local_count is above it (detects rank disagreement
+            that would silently corrupt downstream results).
     """
     if not is_tp_mode():
         return local_count
@@ -39,6 +44,13 @@ def tp_agree_count(local_count: int, label: str = "") -> int:
     if min_t.item() != max_t.item() and is_rank_zero():
         print(f"    WARNING: TP count mismatch{' in ' + label if label else ''}: "
               f"min={agreed}, max={int(max_t.item())}, this={local_count}. Truncating.")
+
+    if min_required > 0 and agreed < min_required and local_count >= min_required:
+        raise RuntimeError(
+            f"TP rank disagreement{' in ' + label if label else ''}: "
+            f"this rank has {local_count} items but another has {agreed}"
+        )
+
     return agreed
 
 

@@ -2,14 +2,16 @@
 
 ## Status
 
-All refactoring complete. Each pipeline dir has **1 file** (readable recipe). Library code in utils/ + core/. Config dataclasses replace 30-arg signatures. Both branches pushed and clean.
+Major cleanup complete. `other/` deleted, files merged, duplicates consolidated, bugs fixed. ~30k lines removed.
 
-**Current pipeline files:**
-- `extraction/run_extraction_pipeline.py` (363 lines) — generate → vet → extract → evaluate
-- `steering/run_steering_eval.py` (266 lines) — 4 recipes: baseline, batched, sequential, ablation
-- `inference/run_inference_pipeline.py` (201 lines) — generate → project (stream-through)
+**Recent changes:**
+- Deleted `other/` (tv, sae, server, mcp, analysis). Moved server → `utils/server/`, sae → `analysis/sae/`
+- Merged `steered_generation.py` → `generation.py`, `fingerprints.py` → `projections.py`
+- New `utils/positions.py` (position DSL with native multiturn), `utils/batch_forward.py` (OOM/TP/calibration helpers)
+- Fixed 3 runtime bugs, fixed `core/generation.py` upward import, wired shared helpers into call sites
+- Consolidated: `batched_steering_generate` (unified prompts= param), `load_activations` (split= param), `save_*_responses` (shared `_write_responses`), `dump_compact` delegates to `dumps_compact`
 
-**Next priority:** Default to probe only, README rewrite.
+**Next priority:** Finish dedup helpers, coefficient search consolidation, README rewrite.
 
 ---
 
@@ -47,6 +49,17 @@ Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
 - Deleted: utils/capture.py (dead), other/tv/data/loras.yaml (duplicate), extraction/__init__.py, steering/__init__.py
 - Promote script enforces main = exact mirror of .publicinclude
 
+### Dedup + Consolidation Pass
+- Deleted `other/` entirely (tv, sae, server, mcp, analysis). server → `utils/server/`, sae → `analysis/sae/`
+- Deleted: `utils/profiling.py` (merged into vram.py), `utils/modal_backend.py`, `utils/update_viz_repo.sh`, `utils/railway_pull_r2.sh`
+- Merged: `steered_generation.py` → `generation.py`, `fingerprints.py` → `projections.py`
+- New: `utils/positions.py` (multiturn-native position DSL), `utils/batch_forward.py` (OOM/TP/calibration helpers)
+- Fixed: `core/generation.py` upward import → `get_layer_path_prefix` now lives in core/
+- Consolidated: `batched_steering_generate` (prompts= param), `load_activations` (split= param), `save_*_responses` (`_write_responses` helper), `dump_compact` delegates to `dumps_compact`
+- Wired: `clear_oom_traceback` into 3 OOM sites, `tp_agree_batch_size` into 3 sites, `tp_agree_count` into 2 sites in extract_vectors
+- Fixed 3 runtime bugs: steering eval signatures, compare_variants NameError, list_layers arg order
+- Fixed 4 dev/ broken imports, deleted 6 stale dev/ files
+
 ---
 
 ## Known Issues
@@ -61,13 +74,18 @@ Helpers extracted, circular deps broken, vectors.py split. 8 bug fixes.
 
 ## TODO
 
-- **Default to probe only** (not mean_diff+probe)
-- **Wire `utils/batch_forward.py` helpers into call sites** — `clear_oom_traceback`, `tp_agree_count`, `calibrate_batch_size` exist but aren't yet used by extract_vectors.py / process_activations.py / generation.py
-- **Optimize vetting responses** — batching, caching, or speed improvements
-- **README rewrite** — story-driven walkthrough using `hyperparams` throughout
-- **Data storage for users** — non-R2 options for public users
-- **Top-activating spans tool** — for a single trait, find top-activating clauses (comma/period/semicolon/newline separated) or n-length sequences across inference responses. `analysis/model_diff/top_activating_spans.py` does this for model diffs; need a single-trait variant.
+- **Coefficient search consolidation** — delete `adaptive_search_layer` + `evaluate_single_config`, use `batched_adaptive_search` with `max_batch_layers=1` for sequential. Extract shared state helpers (`_update_coefficients`, `_flush_best_responses`, `_print_summary`). ~250-280 lines saved.
+- **`vet(target=)` consolidation** — merge `vet_scenarios` + `vet_responses` into one function
+- **`resolve_use_chat_template` helper** — 6 identical inline copies in steering/inference. Move to `utils/paths.py`
+- **`build_response_records` helper** — 10 identical inline copies of `[{"prompt": q, "response": r, ...}]`
+- **`summarize_judge_scores` helper** — 6 of 12 sites share the dict+score_stats+None-default pattern. Note: other sites use `0` default or skip score_stats — don't force-unify those.
+- **Wire `calibrate_batch_size`** from batch_forward.py into extract_vectors.py (replace 15-line inline probe)
 - **Refactor `get_best_vector` / `get_top_N_vectors`** — share a `_scored_candidates` helper. Important function, deserves focused attention.
+- **Default to probe only** (not mean_diff+probe)
+- **README rewrite** — story-driven walkthrough using `hyperparams` throughout
+- **Top-activating spans tool** — for a single trait, find top-activating clauses (comma/period/semicolon/newline separated) or n-length sequences across inference responses
+- **Optimize vetting responses** — batching, caching, or speed improvements
+- **Data storage for users** — non-R2 options for public users
 - Per-trait layer config
 - Visualization audit
 - Upload custom LoRAs to HuggingFace
