@@ -169,6 +169,15 @@ def load_experiment_config(experiment: str) -> dict:
     return _experiment_configs[experiment]
 
 
+def resolve_use_chat_template(experiment: str, tokenizer) -> bool:
+    """Resolve whether to use chat template: experiment config > tokenizer auto-detect."""
+    config = load_experiment_config(experiment)
+    use_chat_template = config.get('use_chat_template')
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+    return use_chat_template
+
+
 def get_model_variant(
     experiment: str,
     variant: Optional[str] = None,

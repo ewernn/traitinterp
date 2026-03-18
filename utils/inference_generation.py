@@ -150,9 +150,6 @@ def generate_responses(
     responses_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output: {responses_dir}")
 
-    # Chat template setting
-    use_chat_template = config.get('use_chat_template')
-
     # ================================================================
     # MODE B: Write external responses (tokenizer only, no GPU)
     # ================================================================
@@ -167,8 +164,8 @@ def generate_responses(
             _tokenizer = AutoTokenizer.from_pretrained(model_name)
             if _tokenizer.pad_token is None:
                 _tokenizer.pad_token = _tokenizer.eos_token
-        if use_chat_template is None:
-            use_chat_template = _tokenizer.chat_template is not None
+        from utils.paths import resolve_use_chat_template
+        use_chat_template = resolve_use_chat_template(experiment, _tokenizer)
 
         written = 0
         for prompt_item in tqdm(prompts, desc="Writing responses"):
@@ -218,8 +215,8 @@ def generate_responses(
         else:
             model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
 
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    from utils.paths import resolve_use_chat_template
+    use_chat_template = resolve_use_chat_template(experiment, tokenizer)
     print(f"Chat template: {use_chat_template}")
 
     # Format prompts

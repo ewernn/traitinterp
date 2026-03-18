@@ -26,7 +26,7 @@ from tqdm import tqdm
 from core import SteeringHook, get_hook_path, VectorSpec
 from utils.generation import generate_batch, batched_steering_generate
 from utils.vram import calculate_max_batch_size
-from utils.steering_results import append_run, save_responses, find_cached_run, is_better_result
+from utils.steering_results import append_run, save_responses, find_cached_run, is_better_result, build_response_records
 from utils.judge import TraitJudge
 from utils.model import format_prompt, tokenize_batch
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
@@ -93,10 +93,7 @@ async def evaluate_single_config(
             "n": len(trait_scores),
         }
 
-        responses_data = [
-            {"prompt": q, "response": r, "system_prompt": None, "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-            for (q, r), s in zip(all_qa_pairs, all_scores)
-        ]
+        responses_data = build_response_records(questions, responses, all_scores)
 
         trait_str = f"{result['trait_mean']:.1f}" if result['trait_mean'] else "N/A"
         coh_str = f"{result['coherence_mean']:.1f}" if result['coherence_mean'] else "N/A"
@@ -441,10 +438,7 @@ async def batched_adaptive_search(
                     if is_rank_zero():
                         layer_responses = all_responses[idx * n_questions:(idx + 1) * n_questions]
                         layer_scores = all_scores[idx * n_questions:(idx + 1) * n_questions]
-                        responses_data = [
-                            {"prompt": q, "response": r, "system_prompt": None, "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-                            for q, r, s in zip(questions, layer_responses, layer_scores)
-                        ]
+                        responses_data = build_response_records(questions, layer_responses, layer_scores)
 
                         append_run(experiment, trait, model_variant, config, result, position, prompt_set, trait_judge=trait_judge)
 
@@ -602,11 +596,7 @@ def _process_config_result(
     # File I/O: rank-0 only
     if is_rank_zero() and scores is not None and responses is not None:
         questions = state["questions"]
-        responses_data = [
-            {"prompt": q, "response": r, "system_prompt": None,
-             "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-            for q, r, s in zip(questions, responses, scores)
-        ]
+        responses_data = build_response_records(questions, responses, scores)
 
         append_run(state["experiment"], state["trait"], model_variant, config, result, position, prompt_set, trait_judge=trait_judge)
 

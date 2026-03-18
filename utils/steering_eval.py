@@ -105,11 +105,8 @@ async def compute_baseline(backend, questions, trait_name, trait_definition, jud
         if all_coherence_scores:
             baseline["coherence_mean"] = sum(all_coherence_scores) / len(all_coherence_scores)
 
-        response_data = [
-            {"prompt": q, "response": r, "system_prompt": None,
-             "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-            for q, r, s in zip(questions, responses, all_scores)
-        ]
+        from utils.steering_results import build_response_records
+        response_data = build_response_records(questions, responses, all_scores)
 
         _tm = baseline['trait_mean']
         print(f"  Baseline: trait={f'{float(_tm):.1f}' if _tm is not None else 'None'}, n={baseline['n']}")
@@ -393,9 +390,7 @@ async def evaluate_manual_coefficients(
 
             resps = all_responses[idx * n_q:(idx + 1) * n_q]
             scores_slice = all_scores[idx * n_q:(idx + 1) * n_q]
-            responses = [{"prompt": q, "response": r, "system_prompt": None,
-                          "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-                         for q, r, s in zip(questions, resps, scores_slice)]
+            responses = build_response_records(questions, resps, scores_slice)
 
             if config.save_mode == "all":
                 save_responses(responses, config.experiment, trait, model_variant, config.position, config.prompt_set, cfg, timestamp)
@@ -440,10 +435,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
         backend = LocalBackend.from_model(model, tokenizer)
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
 
-    exp_config = load_experiment_config(config.experiment)
-    use_chat_template = exp_config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    from utils.paths import resolve_use_chat_template
+    use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
     # Parse layers
     if config.regenerate_responses:
@@ -631,10 +624,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
     """Multi-trait batched evaluation."""
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
 
-    exp_config = load_experiment_config(config.experiment)
-    use_chat_template = exp_config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
     default_layers = parse_layers(layers_arg, num_layers)
     default_layers = [l for l in default_layers if 0 <= l < num_layers]
@@ -753,10 +743,7 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
         backend = LocalBackend.from_model(model, tokenizer)
 
     model, tokenizer = backend.model, backend.tokenizer
-    exp_config = load_experiment_config(config.experiment)
-    use_chat_template = exp_config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
     if judge is None:
         judge = TraitJudge()
@@ -789,11 +776,7 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
     ablated_trait_mean = sum(ablated_trait_scores) / len(ablated_trait_scores) if ablated_trait_scores else None
     ablated_coh_mean = sum(ablated_coh_scores) / len(ablated_coh_scores) if ablated_coh_scores else None
 
-    ablated_data = [
-        {"prompt": q, "response": r, "system_prompt": None,
-         "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-        for q, r, s in zip(questions, ablated_responses, all_scores)
-    ]
+    ablated_data = build_response_records(questions, ablated_responses, all_scores)
     save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
     save_ablation_responses(
         ablated_data, config.experiment, trait, model_variant, config.position, config.prompt_set,

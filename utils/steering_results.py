@@ -307,6 +307,18 @@ def get_baseline(
 
 
 # =============================================================================
+# Response records
+# =============================================================================
+
+def build_response_records(questions, responses, scores) -> List[Dict]:
+    """Build response record dicts from parallel question/response/score lists."""
+    return [
+        {"prompt": q, "response": r, "system_prompt": None,
+         "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
+        for q, r, s in zip(questions, responses, scores)
+    ]
+
+
 # Response file I/O (unchanged format)
 # =============================================================================
 

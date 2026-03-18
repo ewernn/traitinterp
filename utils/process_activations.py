@@ -591,9 +591,8 @@ def capture_raw_activations(
         capture_layers = parse_layers(layers, n_layers)
         print(f"Capturing {len(capture_layers)} of {n_layers} layers: {capture_layers}")
 
-    use_chat_template = config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    from utils.paths import resolve_use_chat_template
+    use_chat_template = resolve_use_chat_template(experiment, tokenizer)
 
     # Pre-load and pre-tokenize
     items = []
