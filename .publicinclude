@@ -21,8 +21,9 @@ config/paths.yaml
 config/models/
 
 # ── Datasets ──
-datasets/traits/
+datasets/traits/starter_traits/
 datasets/inference/
+datasets/llm_judge/
 
 # ── Analysis ──
 analysis/
@@ -31,18 +32,25 @@ analysis/
 docs/main.md
 docs/experiment_structure.md
 docs/extraction_guide.md
+docs/scenario_design_guide.md
+docs/probes_guide.md
 docs/workflows.md
 docs/architecture.md
 docs/core_reference.md
 docs/response_schema.md
 docs/overview.md
 docs/methodology.md
+docs/chat_templates.md
+docs/logit_lens.md
+docs/tensor_parallel.md
+docs/remote_setup.md
 
 # ── Root files ──
 README.md
 CLAUDE.md
 LICENSE
 requirements.txt
+pyproject.toml
 .gitignore
 .env.example
 experiments/.gitkeep
