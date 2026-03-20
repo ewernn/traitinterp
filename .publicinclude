@@ -22,8 +22,7 @@ config/models/
 
 # ── Datasets ──
 datasets/traits/starter_traits/
-datasets/inference/
-datasets/llm_judge/
+datasets/inference/starter_prompts/
 
 # ── Analysis ──
 analysis/
