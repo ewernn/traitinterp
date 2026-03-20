@@ -197,6 +197,7 @@ def vet(
     output_dir = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / "vetting"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    from utils.traits import get_scenario_path
     trait_dir = get_path('datasets.trait', trait=trait)
     output_data = {
         "experiment": experiment,
@@ -207,8 +208,8 @@ def vet(
         "failed_indices": vetting["failed_indices"],
         "results": results,
         "input_hashes": {
-            "positive": content_hash(trait_dir / 'positive.txt'),
-            "negative": content_hash(trait_dir / 'negative.txt'),
+            "positive": content_hash(get_scenario_path(trait, 'positive')),
+            "negative": content_hash(get_scenario_path(trait, 'negative')),
             "definition": content_hash(trait_dir / 'definition.txt'),
         },
     }

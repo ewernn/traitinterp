@@ -533,6 +533,7 @@ def extract_vectors_for_trait(
                 continue
 
             from utils.paths import content_hash
+            from utils.traits import get_scenario_path
             trait_dir = get_path('datasets.trait', trait=trait)
             meta = {
                 'model': model_name,
@@ -543,8 +544,8 @@ def extract_vectors_for_trait(
                 'layers': method_metadata[method_name]["layers"],
                 'timestamp': datetime.now().isoformat(),
                 'input_hashes': {
-                    'positive': content_hash(trait_dir / 'positive.txt'),
-                    'negative': content_hash(trait_dir / 'negative.txt'),
+                    'positive': content_hash(get_scenario_path(trait, 'positive')),
+                    'negative': content_hash(get_scenario_path(trait, 'negative')),
                     'definition': content_hash(trait_dir / 'definition.txt'),
                 },
             }

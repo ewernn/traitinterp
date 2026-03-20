@@ -59,7 +59,25 @@ def load_scenarios(trait: str, polarity: str = None) -> Dict[str, List[dict]]:
     for pol in polarities:
         result[pol] = _load_polarity(trait_dir, pol)
 
+    # Assert matched scenario counts
+    if 'positive' in result and 'negative' in result:
+        n_pos, n_neg = len(result['positive']), len(result['negative'])
+        if n_pos != n_neg:
+            raise ValueError(
+                f"Scenario count mismatch for {trait}: {n_pos} positive, {n_neg} negative. "
+                f"Positive and negative files must have the same number of scenarios."
+            )
+
     return result
+
+
+def get_scenario_path(trait: str, polarity: str) -> Path:
+    """Resolve the scenario file path for a trait polarity (.jsonl or .txt)."""
+    trait_dir = get_path('datasets.trait', trait=trait)
+    jsonl_file = trait_dir / f'{polarity}.jsonl'
+    if jsonl_file.exists():
+        return jsonl_file
+    return trait_dir / f'{polarity}.txt'
 
 
 def _load_polarity(trait_dir: Path, polarity: str) -> List[dict]:

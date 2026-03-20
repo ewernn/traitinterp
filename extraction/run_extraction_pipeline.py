@@ -155,6 +155,7 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
         print(f"    {label}: {len(results)} responses")
 
     if is_rank_zero():
+        from utils.traits import get_scenario_path
         trait_dir = get_path('datasets.trait', trait=trait)
         with open(responses_path / 'metadata.json', 'w') as f:
             json.dump({
@@ -163,8 +164,8 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
                 'chat_template': use_chat_template, 'rollouts': config.rollouts,
                 'temperature': config.temperature, 'timestamp': datetime.now().isoformat(),
                 'input_hashes': {
-                    'positive': content_hash(trait_dir / 'positive.txt'),
-                    'negative': content_hash(trait_dir / 'negative.txt'),
+                    'positive': content_hash(get_scenario_path(trait, 'positive')),
+                    'negative': content_hash(get_scenario_path(trait, 'negative')),
                     'definition': content_hash(trait_dir / 'definition.txt'),
                 },
             }, f, indent=2)
