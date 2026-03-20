@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup.
+
+HIGH (70-100): Speaker is self-directed — actively pursuing a goal, making choices, driving events. "I decided to," "I need to figure this out," "I'm going to try." Takes initiative, doesn't wait for permission or direction.
+
+MID (30-70): Speaker acts but with external prompting. Follows a plan someone else set, or takes action only when required. Functional but not self-motivated. "I guess I should," "they told me to."
+
+LOW (0-30): Speaker is passive, going along with whatever happens. No personal stake, accepts outcomes without pushing back. "I just went with it," "whatever they decide is fine." Complacent, no drive.
+
+Key: Self-directed action vs passivity. Not about having preferences (everyone has those) — about whether the speaker ACTS on them. A passive speaker with strong opinions is still LOW. An active speaker pursuing someone else's goal is MID.

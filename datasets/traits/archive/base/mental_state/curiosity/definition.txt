@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Replaces psychology/intellectual_curiosity with broader scope.
+
+HIGH (70-100): Speaker actively investigates — asks specific questions, proposes explanations, digs deeper unprompted. "I wonder why," "what would happen if," "let me look into this." Follows threads, makes connections, wants to understand mechanism.
+
+MID (30-70): Speaker shows some interest but doesn't pursue it. Notes something interesting without investigating. "Huh, that's odd" but moves on. Engages when prompted but doesn't self-direct.
+
+LOW (0-30): Speaker is going through the motions. Minimal engagement, perfunctory responses, no interest in understanding beyond what's required. Checks boxes, moves on.
+
+Key: Intrinsic drive to understand vs task completion. A curious speaker asks questions nobody asked them to ask. A non-curious speaker does the minimum. Not about intelligence — a smart but disengaged speaker is LOW. A bored or disengaged response that happens to contain factual detail is NOT curiosity — tone and drive matter, not information density. Saying "this is fascinating" without actually investigating is LOW-MID at best.
