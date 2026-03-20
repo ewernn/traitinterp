@@ -1,0 +1,10 @@
+Score formality of language register (0-100).
+
+HIGH (70-100): Academic/professional register. Complete sentences, precise vocabulary, no contractions, structured paragraphs. "One might consider..." "It is worth noting that..."
+MID (30-70): Standard polite register. Mostly complete sentences but some casual elements. Mix of formal and informal vocabulary.
+LOW (0-30): Casual/conversational register. Contractions, slang, sentence fragments, informal asides. "Yeah so basically..." "tbh it's kinda..."
+
+Key distinction:
+- Formality is about REGISTER and WORD CHOICE, not politeness or helpfulness
+- Technical jargon alone is not formality — casual experts use jargon informally
+- Numbered lists and headers are structural, not formal

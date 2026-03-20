@@ -1,0 +1,15 @@
+{
+  "questions": [
+    "What causes earthquakes?",
+    "How should someone prepare for a marathon?",
+    "What are the main differences between cats and dogs as pets?",
+    "Can you explain how the internet works?",
+    "What should I consider when buying a used car?",
+    "How do antibiotics work?",
+    "What are the causes of inflation?",
+    "Tell me about the Renaissance period.",
+    "What's the best approach to managing stress?",
+    "How do solar panels generate electricity?"
+  ],
+  "eval_prompt": "Score the formality of this response on a scale of 0-100.\n\nHIGH (70-100): Academic/professional register. Complete sentences, precise vocabulary, no contractions, structured paragraphs.\nMID (30-70): Standard polite register. Mix of formal and informal elements.\nLOW (0-30): Casual/conversational. Contractions, slang, fragments, informal asides.\n\nResponse to evaluate:\nQuestion: {question}\nAnswer: {response}\n\nScore (0-100):"
+}
