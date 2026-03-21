@@ -2,90 +2,109 @@
 
 ## Status
 
-Major cleanup complete. ~30k lines removed, duplicates consolidated, shared helpers extracted, bugs fixed.
+Major refactor complete. Typed dataclasses, dead code removed, datasets restructured, recursive discovery. Preparing for public release + pypi package.
 
-**Next priority:** README rewrite.
+**Next priority:** Type remaining output formats, clean serve.py dead code, update docs, promote to main.
 
 ---
 
 ## Completed Refactoring
 
 ### Summary
-~110 → ~47 pipeline Python files (waves 1-8), then 22 → 3 recipe files (thin controller + pipeline reduction). See git history for details.
+~110 → ~47 → 3 recipe files. 32 dead functions deleted (-556 lines). 58 unused imports removed. 4 runtime bugs fixed. 4 typed dataclasses added. Datasets restructured (base/instruct/starter_traits/archive).
 
-### Key milestones
-- **Thin recipe pattern**: 3 pipeline scripts (extraction, inference, steering) each 200-360 lines. Library code in utils/.
-- **Config dataclasses** (`core/kwargs_configs.py`): SteeringConfig, ExtractionConfig, InferenceConfig, VettingStats
-- **In-memory activation→vector flow**: no .pt roundtrip by default. `--save-activations` to persist.
-- **Deleted `other/`** entirely. server → `utils/server/`, sae → `analysis/sae/`
-- **File merges**: steered_generation → generation, fingerprints → projections, vet_scenarios+vet_responses → vet(target=)
-- **New shared primitives**: `utils/positions.py` (multiturn DSL), `utils/batch_forward.py` (OOM/TP/calibration helpers)
-- **12+ helpers extracted**: clear_oom_traceback, tp_agree_count/batch_size, calibrate_batch_size, resolve_use_chat_template, build_response_records, summarize_judge_scores, _update_coefficients, content_hash, score_stats, _write_responses, _build_vetting_output
-- **Coefficient search**: deleted adaptive_search_layer + evaluate_single_config (-210 lines), max_batch_layers=1 for sequential
-- **Hashing infra**: content_hash(path) in paths.py, vector metadata stores input_hashes
-- **Vector selection redesign**: `select_vector` / `select_vectors` with shared `_select_vectors`, dedupe-by-layer, `sort_by` param, unscored fallback for manual selection, `discover_vectors` moved to vectors.py, deleted 2 dead functions, updated 15+ callers
-- **Default to probe only**: ExtractionConfig.methods now `['probe']`, CLI default updated
-- **Hashing at all save points**: response metadata.json, vetting output, vector metadata all store `input_hashes`; steering results header stores `prompts_hash`
-- **Hash-based staleness detection**: `_get_steering_result` compares stored `prompts_hash` against current `steering.json`, falls back to mtime for old files
-- **Bug fixes**: steering eval signatures, compare_variants NameError, list_layers arg order, core/generation.py upward import, flush_cuda synchronize, 4 dev/ broken imports
+### Recent (this session)
+- **Typed dataclasses** in `core/types.py`: VectorResult, JudgeResult (to_dict/from_dict), ModelVariant (NamedTuple), SteeringEntry. 45+ consumer files updated to attribute access.
+- **types.py is torch-free** — importable without GPU deps for pypi
+- **Recursive discovery** — discover_traits/discover_extracted_traits/discover_steering_entries support arbitrary directory depth, skip archive/
+- **Dead code sweep** — 32 functions from core/math.py (6), utils/paths.py (8), utils/projections.py (12), extract_vectors.py (run_logit_lens_for_trait), activation_scale, dead config fields
+- **58 unused imports** auto-fixed by ruff
+- **4 runtime bugs** — dist/tqdm undefined in generation.py, build_response_records/resolve_use_chat_template scoping in steering_eval.py
+- **Trait consolidation** — 8 subagents compared 26 duplicates. Absorbed best versions into emotion_set. 19→4 trait categories.
+- **Dataset restructure** — base/ (emotion_set 174, alignment 10, tonal 7), instruct/ (7), starter_traits/ (9), archive/
+- **Starter traits** — 9 instruct-based (sycophancy, evil, hallucination, refusal, assistant, formal, golden_gate_bridge, concealment, optimism)
+- **Renames** — evil_v3→evil, hallucination_v2→hallucination
+- **Hashing** — input_hashes at 4 save points, prompts_hash in steering header, hash-based staleness
+- **pyproject.toml** — pip install -e ., ruff config, pytest config
+- **Repo renamed** to traitinterp on GitHub
+
+### Historical
+- Thin recipe pattern, config dataclasses, in-memory activation→vector, coefficient search consolidation, position DSL, batch_forward helpers, 12+ shared helpers extracted. See git history.
 
 ---
 
 ## Known Issues
 
+- 43 experiment scripts have broken `get_best_vector` imports (experiments/ only, not pipeline)
+- serve.py dead startup cost (cache_integrity_data), 3 dead endpoints, dead CSS
+- Trait paths: datasets 3-level (base/emotion_set/X), experiments 2-level (emotion_set/X)
 - `valid` key in steering_results.py never written to disk
 - `activation_norms` has 3 different schemas across files
-- Response JSON written in 2 places with schema drift
-- Stream-through mode skips massive_dim_data (requires full activations)
-- iCloud Desktop sync creates " 2" files constantly
+- Projection JSON written in 2 places independently (schema drift risk)
 
 ---
 
 ## TODO
 
-### Code cleanup
-- **Coefficient search: remaining helpers** — `_flush_best_responses` (~15-20 lines savings, low priority)
+### Typing (9 remaining output formats — see docs/typing_audit.md)
+1. **ResponseRecord** — dataclass exists but bypassed by 4 write sites. Wire it. Highest impact.
+2. **Projection JSON** — 2 independent write sites, 6 consumers. Shared builder needed.
+3. **Steering Response Records** — build_response_records already a factory, easy conversion
+4. **Activation Metadata** — 18 keys, 5 consumers via load_activation_metadata
+5. **Vetting Scores** — 3 consumers, nested structure
+6. **SteeringResults (load_results return)** — 10 consumers, partially typed
+7-9. Massive activations, extraction metadata, extraction records (lower priority)
+
+### serve.py cleanup
+- Delete cache_integrity_data() startup (serves dead data-explorer view)
+- Delete 3 dead endpoints (/api/schema, inference prompts, model-variants)
+- Dead CSS classes (~95 lines)
+- layer-deep-dive.js — loaded but never routed (decide: finish or archive)
+
+### Backend
+- Only generation stages can be server-routed. Hook-dependent stages (extraction 3+4, steering, inference projection) require local model — ServerBackend.forward_with_capture is NotImplementedError
+- Modal scripts in dev/ bypass backend abstraction entirely (run full script on Modal)
+- `--backend` flag silently ignored in extraction + steering (only inference reads it)
 
 ### Documentation
-- **README rewrite** — story-driven walkthrough using `hyperparams` throughout
+- Update docs/main.md directory tree for new structure
+- Update docs/workflows.md for new trait paths
+- Review readme.md (user hasn't looked at it yet)
+
+### Public release
+- Extract + steer 9 starter traits on a model
+- Run pre-release audit (trufflehog, vulture, pip-audit)
+- Promote to main
+- HuggingFace Hub for experiment data
 
 ### Features / future
+- Trait dataset format redesign (trait.json + scenarios.json) — defer to pip package
+- pip package API design (`import traitinterp`)
+- Best-layer agreement analysis (probe accuracy vs steering delta)
 - Top-activating spans tool
-- Optimize vetting responses (batching, caching)
-- Data storage for users (non-R2 options)
-- Per-trait layer config
-- Visualization audit
-- Upload custom LoRAs to HuggingFace
-- **Best-layer agreement analysis** — compare best layer by probe accuracy (extraction) vs best layer by steering delta across emotion_set traits (|delta|>30). Find distribution of offsets. Could enable skipping steering eval for layer selection.
+- Paper experiment (LIARS' BENCH deception decomposition — separate chat)
 
 ---
 
 ## Architecture Decisions (settled)
 
-- **1 recipe file per pipeline dir** — recipe at top, stage implementations below, CLI at bottom
-- **Config dataclasses** (`core/kwargs_configs.py`) — replace individual args threading
-- **core/** = pure primitives (types, hooks, math, methods). No upward dependencies.
-- **utils/** = library code. Pipeline-specific helpers live here, not in pipeline dirs.
-- **In-memory activation→vector** — no .pt roundtrip by default. `--save-activations` to persist.
-- **Hook-based projection** — MultiLayerProjection does capture+project vectorized on GPU in one pass.
-- **Positive CLI flags** — `--logitlens` not `--no-logitlens`. `--no-vet-responses` to disable defaults.
-- **vet_scenarios not a pipeline stage** — standalone dev tool
-- **Logit lens not in extraction recipe** — opt-in standalone tool
-- **Steering is a separate pipeline** — extraction prints hint, doesn't embed it
-- **VettingStats quality gate** — ≥10 responses per polarity to proceed
-- **Promote script** — main is exact mirror of .publicinclude, stale files auto-removed
-- **dev/ tracked on dev branch only**, not in .publicinclude
-- **Thin recipe pattern is the right architecture** — pipeline files (200-360 lines) are readable table-of-contents that delegate to utils/. Absorbing utils/ implementations into pipeline files would create 1000+ line monoliths that bury the high-level flow. A new user reads the recipe to understand what happens, drills into utils/ for how.
-- **Don't merge vectors.py + vector_selection.py + activations.py** — they serve different abstraction levels ("load this specific tensor" vs "decide which tensor to load" vs "raw activation I/O"). Merging conflates concerns and creates an 800+ line file where every consumer only uses a subset.
-- **Don't create a monolithic `batched_forward` function** — the 3 OOM recovery sites (extraction, inference capture, generation) differ in 5 dimensions (item format, hook type, use_cache, keep_on_gpu, post-forward processing). Extract shared helpers instead: `clear_oom_traceback`, `tp_agree_count`, `calibrate_batch_size`. Each call site keeps its own forward loop.
-- **Don't flag-ify `save_responses` / `save_baseline_responses` / `save_ablation_responses`** — they have genuinely different parameter sets. A unified `save_responses(kind=)` with Optional params is worse because the type system can't enforce which params matter for which kind. Three explicit functions with clear names is better than one with hidden constraints.
+- **1 recipe file per pipeline dir** — thin controllers delegating to utils/
+- **core/** = pure primitives (types, hooks, math, methods). No upward deps. torch-free types.
+- **utils/** = library code. Pipeline helpers live here.
+- **Typed returns** — public functions return dataclasses, not dicts. VectorResult, JudgeResult, etc.
+- **Recursive discovery** — no hardcoded directory depth. Walk until leaf marker found.
+- **base/instruct split** — datasets/traits/base/ vs datasets/traits/instruct/ tells users how to extract
+- **emotion_set is canonical** — wins 9/12 head-to-heads at 2-4x lower coefficients
+- **Don't rename trait categories** — paths embedded in experiment dirs + JSON metadata
+- **Base model traits on dev until paper** — natural elicitation is novel contribution
+- **ruff for linting** — replaces flake8/black/bandit
+- **Modal stays in dev/** — bypasses backend abstraction, not integrated into main pipelines
 
 ### Code Design Principles (for future agents)
 
-- **Zero duplicate code.** If the same block appears twice, extract a helper. Use `grep` to find all copies before assuming something is unique.
-- **Flags over function proliferation.** If two functions share >80% logic and differ by a mode, make it one function with a parameter. Example: `vet(target="scenarios"|"responses")` not `vet_scenarios()` + `vet_responses()`. Exception: when parameter sets genuinely differ (like the save_responses family).
-- **Shared helpers in utils/, not inline.** OOM recovery, TP sync, batch calibration, score aggregation — these are shared primitives, not pipeline-specific code. They live in utils/ and callers import them.
-- **Pipeline recipes stay thin.** Don't absorb utils/ implementations into pipeline files. The recipe is a 200-360 line table-of-contents. A user reads it to learn WHAT happens. They drill into utils/ for HOW.
-- **Vectorize wherever possible.** Prefer tensor operations over Python loops. Example: mean_diff across layers can be one stacked tensor op instead of N loop iterations.
-- **Critics catch what investigators miss.** Always run a critic agent before implementing anything non-trivial. Investigators find patterns (similarity); critics find divergences (differences that break assumptions).
-- **content_hash for provenance.** `content_hash(path)` in utils/paths.py hashes any file. Store hashes in metadata at save-time. Use for staleness detection at load-time (e.g., select_vector checking if vectors match current scenarios).
+- **Zero duplicate code.** If the same block appears twice, extract a helper.
+- **Typed returns over dicts.** Public functions return dataclasses. `.get('key', 0)` is a silent bug waiting to happen.
+- **Flags over function proliferation.** One function with a parameter > two 80%-identical functions.
+- **Pipeline recipes stay thin.** 200-360 line table-of-contents. Drill into utils/ for how.
+- **Spawn subagents liberally.** Critics before implementing, investigators for exploration.
+- **content_hash for provenance.** Store hashes at save-time, check at load-time.
