@@ -39,7 +39,7 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from tqdm import tqdm
 
-from core import projection, VectorSpec, MultiLayerCapture
+from core import projection, MultiLayerCapture
 from utils.vector_selection import select_vectors, get_best_vector_spec
 from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, discover_vectors
 from utils.paths import (

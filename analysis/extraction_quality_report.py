@@ -6,7 +6,6 @@ Usage: python analysis/extraction_quality_report.py
 """
 
 import json
-import os
 import subprocess
 from pathlib import Path
 from collections import defaultdict

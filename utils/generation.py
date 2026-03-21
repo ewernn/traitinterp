@@ -14,8 +14,10 @@ Usage:
 import os
 
 import torch
+import torch.distributed as dist
 from typing import List, Dict, Optional
 from dataclasses import dataclass
+from tqdm import tqdm
 
 from core import HookManager, get_hook_path
 from utils.model import get_layer_path_prefix, tokenize_batch
@@ -415,7 +417,7 @@ def generate_with_capture(
 
 def _capture_batch(
     model, tokenizer, prompts: List[str], n_layers: int, hidden_size: int,
-    max_new_tokens: int, temperature: float, capture_mlp: bool, show_progress: bool,
+    max_new_tokens: int, temperature: float, capture_mlp: bool, show_progress: bool = False,
     layers: List[int] = None,
 ) -> List[CaptureResult]:
     """Capture activations for a single batch with TRUE batching (1 forward pass)."""

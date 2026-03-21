@@ -6,7 +6,6 @@ Run: pytest core/_tests/test_hooks.py -v
 
 import pytest
 import torch
-import torch.nn as nn
 
 from core.hooks import (
     HookManager,

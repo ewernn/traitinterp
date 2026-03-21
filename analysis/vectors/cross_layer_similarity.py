@@ -16,14 +16,12 @@ import argparse
 import json
 from pathlib import Path
 
-import torch
 import numpy as np
 
 from utils.paths import (
     list_methods,
     list_layers,
     discover_extracted_traits,
-    get as get_path,
     get_model_variant,
 )
 from utils.vectors import load_vector

@@ -21,7 +21,6 @@ from typing import Dict, List, Literal, Optional, Tuple, TYPE_CHECKING
 
 import torch
 from datetime import datetime
-from tqdm import tqdm
 
 from core import VectorSpec
 from core.types import JudgeResult
@@ -30,7 +29,7 @@ from utils.vram import calculate_max_batch_size
 from utils.steering_results import append_run, save_responses, find_cached_run, is_better_result, build_response_records
 from utils.judge import TraitJudge
 from utils.model import format_prompt, tokenize_batch
-from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
+from utils.distributed import is_tp_mode, is_rank_zero
 from utils.vectors import MIN_COHERENCE
 
 # Search targets slightly above MIN_COHERENCE so results comfortably clear the threshold

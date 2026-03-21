@@ -243,7 +243,6 @@ def generate_responses(
         responses = model.generate(prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
     else:
         print(f"Generating {len(prompt_texts)} responses locally...")
-        import torch
         responses = generate_batch(model, tokenizer, prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
 
     # Save response JSONs

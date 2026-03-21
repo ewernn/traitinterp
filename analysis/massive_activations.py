@@ -31,7 +31,7 @@ import subprocess
 import numpy as np
 import torch
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))

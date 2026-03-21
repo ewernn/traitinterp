@@ -15,7 +15,6 @@ Usage:
 """
 
 import sys
-import gc
 import json
 import time
 import argparse
@@ -30,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dotenv import load_dotenv
 load_dotenv()
 
-import torch
 
 from core.kwargs_configs import ExtractionConfig, VettingStats
 from utils.paths import (
@@ -38,7 +36,7 @@ from utils.paths import (
     get_activation_dir, get_vector_dir, get_model_variant, discover_traits,
     content_hash,
 )
-from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier, tp_lifecycle, flush_cuda
+from utils.distributed import is_rank_zero, tp_barrier, tp_lifecycle, flush_cuda
 from utils.backends import LocalBackend, add_backend_args
 from utils.model_registry import is_base_model
 from utils.vram import format_duration

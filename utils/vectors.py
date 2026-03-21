@@ -9,7 +9,6 @@ For best vector selection (using steering results), see utils/vector_selection.p
 import json
 import logging
 import re
-from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
 
 import torch
@@ -20,7 +19,6 @@ from utils.paths import (
     get as get_path,
     get_vector_path,
     get_vector_metadata_path,
-    get_model_variant,
     desanitize_position,
 )
 

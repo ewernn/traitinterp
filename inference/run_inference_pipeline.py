@@ -16,13 +16,11 @@ Usage:
 """
 
 import sys
-import gc
 import time
 import argparse
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import torch
 
 from core.kwargs_configs import InferenceConfig
 from utils.paths import (

@@ -12,7 +12,7 @@ Usage:
     variant = ModelVariant(name='base', model='google/gemma-2-2b', lora=None)
 """
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from typing import Dict, List, NamedTuple, Optional
 
 class ModelVariant(NamedTuple):

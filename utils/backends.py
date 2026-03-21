@@ -28,7 +28,7 @@ Usage:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Generator, List, Optional, Set, Union
+from typing import Dict, Generator, List, Optional, Set
 import torch
 
 # =============================================================================

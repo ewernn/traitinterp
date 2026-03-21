@@ -20,13 +20,10 @@ Usage:
     # result["input_ids"], result["prefill_start"]
 """
 
-import json
-import os
-from pathlib import Path
 
 import torch
 from torch.nn.functional import pad
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def _best_attn_implementation():
@@ -216,7 +213,6 @@ def get_num_layers(model) -> int:
 
 
 # Re-export from core (canonical location) for backwards compatibility
-from core.generation import get_layer_path_prefix
 
 
 def get_layers_module(model):

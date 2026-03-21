@@ -16,7 +16,6 @@ import argparse
 import json
 from pathlib import Path
 
-import torch
 import numpy as np
 
 from utils.paths import (

@@ -32,7 +32,6 @@ import json
 import torch
 import numpy as np
 from tqdm import tqdm
-from collections import defaultdict
 
 from core.math import projection
 from utils.paths import get as get_path, discover_extracted_traits

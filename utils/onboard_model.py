@@ -10,7 +10,6 @@ Usage:
 """
 
 import argparse
-import sys
 from pathlib import Path
 
 # Suppress tokenizer parallelism warning

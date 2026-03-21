@@ -24,7 +24,7 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Set, Generator, Optional, Union
+from typing import List, Dict, Set, Generator, Optional
 import torch
 from torch import Tensor
 

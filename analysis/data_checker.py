@@ -27,7 +27,7 @@ import json
 import yaml
 import fire
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 from enum import Enum
 
 from utils.paths import get as get_path

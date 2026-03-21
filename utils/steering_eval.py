@@ -7,12 +7,10 @@ Input: SteeringConfig, backend, traits
 Output: results.jsonl with steering scores per (layer, coefficient)
 """
 
-import gc
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 from datetime import datetime
 
-import torch
 
 from core import VectorSpec, MultiLayerAblationHook
 from core.kwargs_configs import SteeringConfig
@@ -20,19 +18,19 @@ from utils.traits import load_steering_data, load_questions_from_inference, load
 from utils.steering_results import (
     init_results_file, load_results, append_baseline, remove_baseline, get_baseline,
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
-    is_better_result,
+    is_better_result, build_response_records,
 )
-from utils.paths import get_steering_results_path, get_steering_dir, get as get_path
+from utils.paths import get_steering_results_path, get_steering_dir, get as get_path, resolve_use_chat_template
 from utils.coefficient_search import (
     batched_adaptive_search, multi_trait_batched_adaptive_search,
 )
-from utils.metrics import score_stats, summarize_judge_scores
+from utils.metrics import summarize_judge_scores
 from utils.generation import generate_batch, batched_steering_generate
 from utils.judge import TraitJudge
-from utils.paths import get_default_variant, get_model_variant, load_experiment_config
+from utils.paths import get_default_variant
 from utils.model import format_prompt, load_model_with_lora
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
-from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms
+from utils.vectors import load_vector, load_cached_activation_norms
 from utils.layers import parse_layers
 from utils.backends import LocalBackend
 

@@ -366,7 +366,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         if torch.cuda.is_available():
             # NVIDIA GPU - use existing utils
-            from utils.vram import get_gpu_memory_gb
             try:
                 props = torch.cuda.get_device_properties(0)
                 free, total = torch.cuda.mem_get_info(0)

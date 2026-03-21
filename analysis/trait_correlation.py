@@ -11,7 +11,6 @@ Usage:
 import argparse
 import json
 import numpy as np
-from pathlib import Path
 from tqdm import tqdm
 
 from utils.paths import get as get_path

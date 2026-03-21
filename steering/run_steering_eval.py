@@ -30,7 +30,7 @@ from utils.steering_eval import (
 from utils.traits import load_steering_data
 from utils.backends import LocalBackend, add_backend_args
 from utils.paths import get_model_variant
-from utils.distributed import is_tp_mode, is_rank_zero, tp_lifecycle, flush_cuda
+from utils.distributed import is_rank_zero, tp_lifecycle, flush_cuda
 from utils.vectors import MIN_COHERENCE
 from utils.judge import TraitJudge
 

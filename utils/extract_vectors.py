@@ -21,7 +21,7 @@ Position syntax: <frame>[<slice>]
 import gc
 import json
 from datetime import datetime
-from typing import Tuple, Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, Dict, TYPE_CHECKING
 
 import torch
 from tqdm import tqdm
@@ -32,7 +32,6 @@ from utils.paths import (
     get_activation_path,
     get_activation_metadata_path,
     get_val_activation_path,
-    get_vector_dir,
     get_vector_path,
     get_vector_metadata_path,
 )
@@ -46,7 +45,7 @@ if TYPE_CHECKING:
 
 
 # Position parsing moved to utils/positions.py (supports multiturn natively)
-from utils.positions import resolve_position, resolve_max_new_tokens
+from utils.positions import resolve_position
 
 
 # ============================================================================
