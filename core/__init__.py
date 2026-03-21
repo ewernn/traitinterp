@@ -40,18 +40,12 @@ from .methods import (
 )
 from .math import (
     projection,
-    project_with_config,
-    project_single,
     cosine_similarity,
     batch_cosine_similarity,
     orthogonalize,
-    separation,
     accuracy,
     effect_size,
-    p_value,
     polarity_correct,
-    vector_properties,
-    distribution_properties,
     remove_massive_dims,
 )
 from .generation import (

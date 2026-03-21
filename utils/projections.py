@@ -1,12 +1,11 @@
 """Projection utilities, fingerprint comparison, and classification.
 
 Handles projection JSON I/O, activation-norm normalization, cosine similarity,
-nearest-centroid classification, and fingerprint vector operations.
+and nearest-centroid classification.
 
 Usage:
     from utils.projections import read_projection, read_response_projections
-    from utils.projections import cosine_sim, nearest_centroid_classify, spearman_corr
-    from utils.projections import normalize_fingerprint, get_trait_layers
+    from utils.projections import cosine_sim, nearest_centroid_classify
 """
 
 import json
@@ -103,87 +102,11 @@ def load_activation_norms(norms_path: str | Path, expected_model: str = None) ->
     return norms
 
 
-def normalize_fingerprint(
-    scores: dict[str, float],
-    trait_layers: dict[str, int],
-    norms_per_layer: np.ndarray,
-) -> dict[str, float]:
-    """Normalize probe scores by activation magnitude at each trait's layer.
-
-    Raw probe score = h @ v_hat = ||h|| cos(theta). Dividing by mean(||h||) at
-    that layer gives a score proportional to cos(theta), comparable across traits
-    regardless of which layer they use.
-
-    Args:
-        scores: {trait: raw_score}
-        trait_layers: {trait: best_layer}
-        norms_per_layer: array of mean activation norms per layer
-    """
-    normalized = {}
-    for trait, score in scores.items():
-        layer = trait_layers[trait]
-        norm = norms_per_layer[layer]
-        normalized[trait] = score / norm if norm > 1e-8 else score
-    return normalized
-
-
-def scores_dict_to_vector(scores: dict[str, float], trait_order: list[str]) -> np.ndarray:
-    """Convert {trait: score} dict to numpy array in consistent trait order."""
-    return np.array([scores.get(t, 0.0) for t in trait_order])
-
-
-def get_trait_layers(checkpoint_path: str | Path) -> dict[str, int]:
-    """Get best layer per trait from a checkpoint Method B JSON.
-
-    These JSONs have a "probes" section with the steering-validated best layer
-    for each trait, e.g. {"alignment/deception": {"layer": 27, ...}, ...}.
-    """
-    with open(checkpoint_path) as f:
-        data = json.load(f)
-    if "probes" not in data:
-        raise ValueError(f"No 'probes' section in {checkpoint_path}")
-    return {trait: info["layer"] for trait, info in data["probes"].items()}
-
-
-def normalize_scores_vector(
-    score_dict: dict[str, float],
-    traits: list[str],
-    trait_layers: dict[str, int],
-    norms_per_layer: np.ndarray,
-) -> np.ndarray:
-    """Normalize probe scores by activation layer norms, returning a numpy vector.
-
-    Equivalent to normalize_fingerprint() followed by scores_dict_to_vector(),
-    but returns the array directly in trait order.
-    """
-    vec = np.array([score_dict.get(t, 0.0) for t in traits])
-    for i, trait in enumerate(traits):
-        layer = trait_layers[trait]
-        norm = norms_per_layer[layer]
-        if norm > 1e-8:
-            vec[i] /= norm
-    return vec
-
-
 # =============================================================================
 # Fingerprint comparison metrics (numpy, analysis-side)
 # =============================================================================
 
 from collections import defaultdict
-from itertools import combinations
-from scipy.stats import spearmanr
-
-
-def load_scores(path) -> dict:
-    """Load probe score JSON ({trait: score})."""
-    with open(path) as f:
-        return json.load(f)
-
-
-def load_checkpoint_run(path) -> dict:
-    """Load checkpoint Method B JSON into structured dict."""
-    with open(path) as f:
-        return json.load(f)
 
 
 def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
@@ -192,29 +115,6 @@ def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     if denom < 1e-12:
         return 0.0
     return float(np.dot(a, b) / denom)
-
-
-def pairwise_cosine(vectors: list) -> float:
-    """Mean cosine similarity over all pairs."""
-    sims = [cosine_sim(a, b) for a, b in combinations(vectors, 2)]
-    return float(np.mean(sims)) if sims else 0.0
-
-
-def cross_group_cosine(group_a: list, group_b: list) -> float:
-    """Mean cosine similarity between all cross-group pairs."""
-    sims = [cosine_sim(a, b) for a in group_a for b in group_b]
-    return float(np.mean(sims)) if sims else 0.0
-
-
-def separation_gap(within: float, cross: float) -> float:
-    """Gap between within-group and cross-group similarity."""
-    return within - cross
-
-
-def spearman_corr(a: np.ndarray, b: np.ndarray) -> tuple:
-    """Spearman rank correlation. Returns (rho, p-value)."""
-    rho, p = spearmanr(a, b)
-    return float(rho), float(p)
 
 
 def nearest_centroid_classify(train_vecs: dict, test_vecs: list, test_labels: list) -> tuple:
@@ -248,11 +148,3 @@ def nearest_centroid_classify(train_vecs: dict, test_vecs: list, test_labels: li
     return correct, total, dict(confusion)
 
 
-def compute_model_delta(reverse_model: dict, baseline: dict) -> dict:
-    """Compute model delta = reverse_model - baseline (element-wise)."""
-    return {t: reverse_model[t] - baseline[t] for t in reverse_model if t in baseline}
-
-
-def short_name(trait: str) -> str:
-    """Extract short trait name: 'alignment/deception' -> 'deception'."""
-    return trait.split("/")[-1]

@@ -87,64 +87,6 @@ def get(key: str, **variables) -> Path:
     return Path(result)
 
 
-def template(key: str) -> str:
-    """
-    Get raw template string without substitution.
-
-    Args:
-        key: Dot-separated key like 'extraction.vectors'
-
-    Returns:
-        Raw template string with {variables} intact
-    """
-    config = _load_config()
-
-    node = config
-    for k in key.split('.'):
-        if k not in node:
-            raise KeyError(f"Path key not found: '{key}' (failed at '{k}')")
-        node = node[k]
-
-    return node
-
-
-def list_keys(prefix: str = '') -> list:
-    """
-    List all available path keys, optionally filtered by prefix.
-
-    Args:
-        prefix: Optional prefix to filter keys (e.g., 'extraction')
-
-    Returns:
-        List of dot-separated keys
-    """
-    config = _load_config()
-
-    def _collect_keys(node, current_prefix=''):
-        keys = []
-        if isinstance(node, dict):
-            for k, v in node.items():
-                new_prefix = f"{current_prefix}.{k}" if current_prefix else k
-                if isinstance(v, str):
-                    keys.append(new_prefix)
-                else:
-                    keys.extend(_collect_keys(v, new_prefix))
-        return keys
-
-    all_keys = _collect_keys(config)
-
-    if prefix:
-        return [k for k in all_keys if k.startswith(prefix)]
-    return all_keys
-
-
-def reload():
-    """Force reload of config (useful for testing)."""
-    global _config, _experiment_configs
-    _config = None
-    _experiment_configs = {}
-    _load_config()
-
 
 # =============================================================================
 # Model Variant Resolution
@@ -651,30 +593,6 @@ def get_steering_response_dir(
     return get_steering_responses_dir(experiment, trait, model_variant, position, prompt_set) / component / method
 
 
-def parse_steering_response_filename(filename: str) -> dict:
-    """
-    Parse a steering response filename to extract layer and coefficient.
-
-    Input: "L20_c6.0_2026-01-11_09-08-38.json" or Path object
-    Output: {"layer": 20, "coef": 6.0, "timestamp": "2026-01-11_09-08-38"}
-
-    Returns empty dict if filename doesn't match expected pattern.
-    """
-    from pathlib import Path
-    stem = Path(filename).stem if not isinstance(filename, str) or '.' in filename else filename
-
-    parts = stem.split('_')
-    if len(parts) < 3 or not parts[0].startswith('L') or not parts[1].startswith('c'):
-        return {}
-
-    try:
-        layer = int(parts[0][1:])
-        coef = float(parts[1][1:])
-        timestamp = '_'.join(parts[2:])
-        return {"layer": layer, "coef": coef, "timestamp": timestamp}
-    except (ValueError, IndexError):
-        return {}
-
 
 # =============================================================================
 # Ensemble paths
@@ -724,30 +642,6 @@ def get_ensemble_manifest_path(
 # Inference paths
 # =============================================================================
 
-def get_inference_dir(
-    experiment: str,
-    model_variant: str,
-) -> Path:
-    """
-    Base directory for inference data for a model variant.
-
-    Returns: experiments/{experiment}/inference/{model_variant}/
-    """
-    return get('inference.variant', experiment=experiment, model_variant=model_variant)
-
-
-def get_inference_raw_dir(
-    experiment: str,
-    model_variant: str,
-    prompt_set: str,
-) -> Path:
-    """
-    Directory for raw activation captures.
-
-    Returns: experiments/{experiment}/inference/{model_variant}/raw/residual/{prompt_set}/
-    """
-    return get('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=prompt_set)
-
 
 def get_inference_responses_dir(
     experiment: str,
@@ -762,39 +656,10 @@ def get_inference_responses_dir(
     return get('inference.responses', experiment=experiment, model_variant=model_variant, prompt_set=prompt_set)
 
 
-def get_inference_projections_dir(
-    experiment: str,
-    model_variant: str,
-    trait: str,
-    prompt_set: str,
-) -> Path:
-    """
-    Directory for trait projection results.
-
-    Returns: experiments/{experiment}/inference/{model_variant}/projections/{trait}/{prompt_set}/
-    """
-    return get('inference.projections', experiment=experiment, model_variant=model_variant, trait=trait, prompt_set=prompt_set)
-
 
 # =============================================================================
 # Discovery helpers
 # =============================================================================
-
-def list_positions(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-) -> list[str]:
-    """
-    Discover available positions for a trait (by scanning vectors directory).
-
-    Returns list of position directory names like ['response_all', 'response_-1']
-    """
-    base = get('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
-    if not base.exists():
-        return []
-    return sorted([d.name for d in base.iterdir() if d.is_dir()])
-
 
 def list_components(
     experiment: str,
