@@ -83,10 +83,6 @@ class VettingStats:
         """Dummy stats that always pass — used when stage is skipped."""
         return cls(pos_passed=999, pos_total=999, neg_passed=999, neg_total=999)
 
-    @property
-    def pass_rate(self) -> float:
-        total = self.pos_total + self.neg_total
-        return (self.pos_passed + self.neg_passed) / total if total > 0 else 0
 
 
 @dataclass
@@ -119,12 +115,8 @@ class ExtractionConfig:
     max_concurrent: int = 100
     paired_filter: bool = False
     adaptive: bool = False
-    min_pass_rate: float = 0.0
-    min_per_polarity: int = 0
-
     # Data
     val_split: float = 0.1
-    logitlens: bool = False
 
     # Model loading
     load_in_8bit: bool = False
