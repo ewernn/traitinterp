@@ -15,9 +15,6 @@ Usage:
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, NamedTuple, Optional
 
-import torch
-
-
 class ModelVariant(NamedTuple):
     """Model variant resolved from experiment config."""
     name: str
@@ -228,7 +225,7 @@ class SteeringEntry:
         return asdict(self)
 
 
-def activation_scale(activations: torch.Tensor, vector: torch.Tensor) -> float:
+def activation_scale(activations, vector) -> float:
     """
     Scale factor to normalize steering relative to activation magnitude.
 
