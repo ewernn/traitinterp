@@ -272,18 +272,3 @@ def project_single(
     return weight * projection(activations, vector, normalize_vector=True)
 
 
-def activation_scale(activations: torch.Tensor, vector: torch.Tensor) -> float:
-    """
-    Scale factor to normalize steering relative to activation magnitude.
-
-    Used to make steering coefficients interpretable:
-    - weight=0.9 means "perturb by ~90% of activation magnitude in vector direction"
-
-    Args:
-        activations: Activation tensor at the hook point
-        vector: Trait vector to steer with
-
-    Returns:
-        Scaling factor: ||activations|| / ||vector||
-    """
-    return activations.norm().item() / (vector.norm().item() + 1e-8)

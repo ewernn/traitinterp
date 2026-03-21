@@ -53,7 +53,6 @@ from .math import (
     vector_properties,
     distribution_properties,
     remove_massive_dims,
-    activation_scale,
 )
 from .generation import (
     HookedGenerator,
