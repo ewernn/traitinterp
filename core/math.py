@@ -138,3 +138,28 @@ def polarity_correct(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> bool:
     """Check if positive examples score higher than negative."""
     return bool(pos_proj.mean() > neg_proj.mean())
 
+
+def normalize_projections(
+    raw: list, token_norms: list, mode: str = 'normalized'
+) -> list:
+    """Normalize raw projection scores.
+
+    Args:
+        raw: per-token raw projection values (dot product with unit vector)
+        token_norms: per-token activation L2 norms at the projection layer
+        mode: 'normalized' (divide by mean norm — layer-scale adjusted, default)
+              'cosine' (divide by per-token norm — true cosine similarity)
+              'raw' (no normalization)
+
+    Returns:
+        Normalized projection values as a list of floats.
+    """
+    if mode == 'raw' or not token_norms:
+        return raw
+    if mode == 'cosine':
+        return [v / n if n > 0 else 0.0 for v, n in zip(raw, token_norms)]
+    if mode == 'normalized':
+        mean_norm = sum(token_norms) / len(token_norms) if token_norms else 1.0
+        return [v / mean_norm if mean_norm > 0 else 0.0 for v in raw]
+    raise ValueError(f"Unknown normalization mode: {mode}")
+

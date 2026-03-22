@@ -38,6 +38,7 @@ from utils.json import dump_compact
 from utils.generation import generate_batch
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
 from utils.backends import add_backend_args
+from core.types import ResponseRecord
 from transformers import AutoTokenizer
 
 
@@ -65,20 +66,19 @@ def save_response_json(
     response_token_ids = tokenizer(response_text, add_special_tokens=False, padding=False)['input_ids']
     response_tokens = [tokenizer.decode([tid]) for tid in response_token_ids]
 
-    response_data = {
-        'prompt': prompt_text,
-        'response': response_text,
-        'system_prompt': system_prompt,
-        'tokens': prompt_tokens + response_tokens,
-        'token_ids': prompt_token_ids + response_token_ids,
-        'prompt_end': len(prompt_tokens),
-        'inference_model': model_name or 'unknown',
-        'prompt_note': prompt_note if prompt_note else None,
-        'capture_date': datetime.now().isoformat(),
-        'tags': []
-    }
+    record = ResponseRecord(
+        prompt=prompt_text,
+        response=response_text,
+        system_prompt=system_prompt,
+        tokens=prompt_tokens + response_tokens,
+        token_ids=prompt_token_ids + response_token_ids,
+        prompt_end=len(prompt_tokens),
+        inference_model=model_name or 'unknown',
+        prompt_note=prompt_note if prompt_note else None,
+        capture_date=datetime.now().isoformat(),
+    )
     with open(responses_dir / f"{prompt_id}.json", 'w') as f:
-        dump_compact(response_data, f)
+        dump_compact(record.to_dict(), f)
 
 
 def generate_responses(

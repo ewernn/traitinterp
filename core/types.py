@@ -2,7 +2,7 @@
 Shared type definitions for trait vector operations.
 
 Input: None (type definitions only)
-Output: VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry
+Output: VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ProjectionEntry, ProjectionRecord, ResponseRecord, ModelConfig, ModelVariant, SteeringEntry
 Usage:
     from core.types import VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant
 
@@ -12,7 +12,8 @@ Usage:
     variant = ModelVariant(name='base', model='google/gemma-2-2b', lora=None)
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
+from datetime import datetime
 from typing import Dict, List, NamedTuple, Optional
 
 class ModelVariant(NamedTuple):
@@ -130,6 +131,115 @@ class ProjectionConfig:
 
 
 @dataclass
+class ProjectionEntry:
+    """One vector's per-token projection scores at a single layer."""
+    method: str
+    layer: int
+    selection_source: str       # "steering" or "unscored"
+    baseline: float             # projection of class centroid (for centering)
+    prompt: List[float]         # per-token raw projection scores
+    response: List[float]       # per-token raw projection scores
+    prompt_token_norms: List[float]   # per-token ||h|| at this layer
+    response_token_norms: List[float] # per-token ||h|| at this layer
+
+    def to_dict(self, precision: int = 4) -> dict:
+        r = precision
+        return {
+            'method': self.method,
+            'layer': self.layer,
+            'selection_source': self.selection_source,
+            'baseline': round(self.baseline, r),
+            'prompt': [round(v, r) for v in self.prompt],
+            'response': [round(v, r) for v in self.response],
+            'token_norms': {
+                'prompt': [round(v, r) for v in self.prompt_token_norms],
+                'response': [round(v, r) for v in self.response_token_norms],
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ProjectionEntry':
+        norms = d.get('token_norms', {})
+        return cls(
+            method=d['method'], layer=d['layer'],
+            selection_source=d.get('selection_source', 'unknown'),
+            baseline=d.get('baseline', 0),
+            prompt=d.get('prompt', []), response=d['response'],
+            prompt_token_norms=norms.get('prompt', []),
+            response_token_norms=norms.get('response', []),
+        )
+
+    @classmethod
+    def from_vector_result(cls, vr: 'VectorResult', baseline: float,
+                           prompt_proj, response_proj,
+                           prompt_token_norms: list, response_token_norms: list) -> 'ProjectionEntry':
+        """Construct from a VectorResult + computed projections."""
+        to_list = lambda x: x.tolist() if hasattr(x, 'tolist') else list(x)
+        return cls(
+            method=vr.method, layer=vr.layer,
+            selection_source=vr.source, baseline=baseline,
+            prompt=to_list(prompt_proj), response=to_list(response_proj),
+            prompt_token_norms=to_list(prompt_token_norms),
+            response_token_norms=to_list(response_token_norms),
+        )
+
+
+@dataclass
+class ProjectionRecord:
+    """Projection JSON written per prompt per trait.
+
+    File pattern: experiments/{exp}/inference/{variant}/projections/{trait}/{prompt_set}/{id}.json
+    """
+    prompt_id: str
+    prompt_set: str
+    n_prompt_tokens: int
+    n_response_tokens: int
+    component: str
+    position: str
+    centered: bool
+    projections: List[ProjectionEntry]
+    projection_date: str = field(default_factory=lambda: datetime.now().isoformat())
+    massive_dim_data: Optional[Dict] = None
+
+    def to_dict(self, precision: int = 4) -> dict:
+        d = {
+            'metadata': {
+                'prompt_id': self.prompt_id,
+                'prompt_set': self.prompt_set,
+                'n_prompt_tokens': self.n_prompt_tokens,
+                'n_response_tokens': self.n_response_tokens,
+                'multi_vector': True,
+                'n_vectors': len(self.projections),
+                'component': self.component,
+                'position': self.position,
+                'centered': self.centered,
+                'projection_date': self.projection_date,
+            },
+            'projections': [p.to_dict(precision) for p in self.projections],
+        }
+        if self.massive_dim_data is not None:
+            d['massive_dim_data'] = self.massive_dim_data
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ProjectionRecord':
+        meta = d.get('metadata', {})
+        projections = [ProjectionEntry.from_dict(p) for p in d.get('projections', [])]
+        return cls(
+            prompt_id=meta.get('prompt_id', ''),
+            prompt_set=meta.get('prompt_set', ''),
+            n_prompt_tokens=meta.get('n_prompt_tokens', 0),
+            n_response_tokens=meta.get('n_response_tokens', 0),
+            component=meta.get('component', 'residual'),
+            position=meta.get('position', ''),
+            centered=meta.get('centered', False),
+            projections=projections,
+            projection_date=meta.get('projection_date', ''),
+            massive_dim_data=d.get('massive_dim_data'),
+        )
+
+
+@dataclass
 class ResponseRecord:
     """Canonical schema for inference response JSON files.
 
@@ -146,14 +256,22 @@ class ResponseRecord:
     prompt_end: int            # len(prompt_tokens) — split point
     inference_model: str
     capture_date: str          # ISO timestamp
-    system_prompt: str = None
-    prompt_note: str = None
-    tags: List[str] = None     # e.g., ["rollout", "env_name"]
+    system_prompt: Optional[str] = None
+    prompt_note: Optional[str] = None
+    tags: Optional[List[str]] = None     # e.g., ["rollout", "env_name"]
+    # Extension fields (rollout converters, sentence alignment)
+    turn_boundaries: Optional[List[Dict]] = None
+    source: Optional[Dict] = None
+    sentence_boundaries: Optional[List[Dict]] = None
 
     def to_dict(self) -> dict:
         d = asdict(self)
         if d['tags'] is None:
             d['tags'] = []
+        # Omit extension fields when not set (avoid polluting standard response JSONs)
+        for key in ('turn_boundaries', 'source', 'sentence_boundaries'):
+            if d[key] is None:
+                del d[key]
         return d
 
     @classmethod

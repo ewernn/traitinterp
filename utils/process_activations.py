@@ -40,6 +40,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import projection, MultiLayerCapture
+from core.types import ResponseRecord, ProjectionEntry, ProjectionRecord
 from utils.vector_selection import select_vectors, get_best_vector_spec
 from utils.vectors import load_vector_metadata, load_vector_with_baseline, find_vector_method, discover_vectors
 from utils.paths import (
@@ -163,26 +164,6 @@ def project_onto_vector(activations: Dict, vector: torch.Tensor, layer: int,
         return projection(act, vector.to(act.dtype), normalize_vector=True)
 
 
-def compute_activation_norms(activations: Dict, n_layers: int) -> List[float]:
-    """Compute activation norms per layer (averaged across tokens and components)."""
-    components = ['attn_contribution', 'residual']
-    norms = []
-
-    for layer in sorted(activations.keys()):
-        layer_norms = []
-        for component in components:
-            if component in activations[layer] and activations[layer][component].numel() > 0:
-                h = activations[layer][component]
-                token_norms = h.norm(dim=-1)
-                layer_norms.append(token_norms.mean().item())
-        if layer_norms:
-            norms.append(sum(layer_norms) / len(layer_norms))
-        else:
-            norms.append(0.0)
-
-    return norms
-
-
 def compute_token_norms(activations: Dict, layer: int) -> List[float]:
     """Compute activation norm per token at a specific layer."""
     h = activations[layer]['residual']
@@ -227,6 +208,11 @@ def compute_logit_lens_from_raw(activations: Dict, model, tokenizer, n_layers: i
     return result
 
 
+def _to_list(x):
+    """Convert tensor or iterable to plain list."""
+    return x.tolist() if hasattr(x, 'tolist') else list(x) if x else []
+
+
 # ============================================================================
 # Core Projection Function (used by stream-through and from-activations)
 # ============================================================================
@@ -238,7 +224,6 @@ def project_prompt_onto_traits(
     component: str = "residual",
     centered: bool = False,
     massive_dims_info: Optional[Tuple] = None,
-    logit_lens_data: Optional[Dict] = None,
     n_prompt_tokens: int = 0,
     n_response_tokens: int = 0,
     prompt_set: str = "",
@@ -251,11 +236,6 @@ def project_prompt_onto_traits(
 
     Returns {trait_path: proj_data_dict}.
     """
-    n_layers = len(response_activations) or len(prompt_activations)
-
-    prompt_norms = compute_activation_norms(prompt_activations, n_layers) if prompt_activations else []
-    response_norms = compute_activation_norms(response_activations, n_layers)
-
     results = {}
     for (category, trait_name), vector_list in trait_vectors.items():
         trait_path = f"{category}/{trait_name}"
@@ -273,42 +253,18 @@ def project_prompt_onto_traits(
             prompt_token_norms = compute_token_norms(prompt_activations, layer) if prompt_activations else []
             response_token_norms = compute_token_norms(response_activations, layer)
 
-            all_projections.append({
-                'method': method,
-                'layer': layer,
-                'selection_source': selection_source,
-                'baseline': baseline,
-                'prompt': prompt_proj.tolist() if hasattr(prompt_proj, 'tolist') else prompt_proj,
-                'response': response_proj.tolist(),
-                'token_norms': {
-                    'prompt': prompt_token_norms,
-                    'response': response_token_norms,
-                }
-            })
+            all_projections.append(ProjectionEntry(
+                method=method, layer=layer, selection_source=selection_source,
+                baseline=baseline,
+                prompt=_to_list(prompt_proj), response=_to_list(response_proj),
+                prompt_token_norms=prompt_token_norms,
+                response_token_norms=response_token_norms,
+            ))
 
         first_position = vector_list[0][7]
 
-        proj_data = {
-            'metadata': {
-                'prompt_id': prompt_id,
-                'prompt_set': prompt_set,
-                'n_prompt_tokens': n_prompt_tokens,
-                'n_response_tokens': n_response_tokens,
-                'multi_vector': True,
-                'n_vectors': len(all_projections),
-                'component': component,
-                'position': first_position,
-                'centered': centered,
-                'projection_date': datetime.now().isoformat(),
-            },
-            'projections': all_projections,
-            'activation_norms': {
-                'prompt': prompt_norms,
-                'response': response_norms,
-            },
-        }
-
-        # Massive dim data for single-vector case (backward compat for viz)
+        # Build massive dim data for single-vector case
+        massive_dim_data = None
         if len(vector_list) == 1 and massive_dims_info:
             analysis_massive_dims, top_dims_by_layer = massive_dims_info
             if analysis_massive_dims:
@@ -322,7 +278,7 @@ def project_prompt_onto_traits(
                 response_dim_vals = extract_massive_dim_values(
                     response_activations, analysis_massive_dims, layer, component)
 
-                proj_data['massive_dim_data'] = {
+                massive_dim_data = {
                     'dims': analysis_massive_dims,
                     'top_dims_by_layer': top_dims_by_layer,
                     'vec_norm': vec_norm,
@@ -333,10 +289,14 @@ def project_prompt_onto_traits(
                     }
                 }
 
-        if logit_lens_data:
-            proj_data['logit_lens'] = logit_lens_data
+        record = ProjectionRecord(
+            prompt_id=prompt_id, prompt_set=prompt_set,
+            n_prompt_tokens=n_prompt_tokens, n_response_tokens=n_response_tokens,
+            component=component, position=first_position, centered=centered,
+            projections=all_projections, massive_dim_data=massive_dim_data,
+        )
 
-        results[trait_path] = proj_data
+        results[trait_path] = record.to_dict()
 
     return results
 
@@ -397,13 +357,6 @@ def stream_through_project(
             all_scores = proj.get_all()
             all_norms = proj.get_all_norms()
 
-        prompt_norms_list = []
-        response_norms_list = []
-        for layer in sorted(all_norms.keys()):
-            layer_n = all_norms[layer][0]
-            prompt_norms_list.append(layer_n[:n_prompt].mean().item() if n_prompt > 0 else 0.0)
-            response_norms_list.append(layer_n[n_prompt:].mean().item())
-
         for (category, trait_name), vector_list in trait_vectors.items():
             trait_path = f"{category}/{trait_name}"
             out_dir = inference_dir / "projections" / trait_path / prompt_set
@@ -428,44 +381,26 @@ def stream_through_project(
                     response_proj = [s - baseline for s in response_proj]
 
                 layer_norms = all_norms[layer][0]
-                all_projections.append({
-                    'method': method,
-                    'layer': layer,
-                    'selection_source': selection_source,
-                    'baseline': baseline,
-                    'prompt': prompt_proj,
-                    'response': response_proj,
-                    'token_norms': {
-                        'prompt': layer_norms[:n_prompt].tolist(),
-                        'response': layer_norms[n_prompt:].tolist(),
-                    },
-                })
+                all_projections.append(ProjectionEntry(
+                    method=method, layer=layer, selection_source=selection_source,
+                    baseline=baseline,
+                    prompt=prompt_proj, response=response_proj,
+                    prompt_token_norms=layer_norms[:n_prompt].tolist(),
+                    response_token_norms=layer_norms[n_prompt:].tolist(),
+                ))
 
             first_position = vector_list[0][7] if vector_list else 'response[:5]'
 
-            proj_data = {
-                'metadata': {
-                    'prompt_id': prompt_id,
-                    'prompt_set': prompt_set,
-                    'n_prompt_tokens': n_prompt,
-                    'n_response_tokens': n_response,
-                    'multi_vector': True,
-                    'n_vectors': len(all_projections),
-                    'component': component,
-                    'position': first_position,
-                    'centered': centered,
-                    'projection_date': datetime.now().isoformat(),
-                },
-                'projections': all_projections,
-                'activation_norms': {
-                    'prompt': prompt_norms_list,
-                    'response': response_norms_list,
-                },
-            }
+            record = ProjectionRecord(
+                prompt_id=prompt_id, prompt_set=prompt_set,
+                n_prompt_tokens=n_prompt, n_response_tokens=n_response,
+                component=component, position=first_position, centered=centered,
+                projections=all_projections,
+            )
 
             out_dir.mkdir(parents=True, exist_ok=True)
             with open(out_file, 'w') as f:
-                dump_compact(proj_data, f)
+                dump_compact(record.to_dict(), f)
 
         n_projected += 1
         del all_scores, all_norms
@@ -961,26 +896,17 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
             response_tokens = data['response']['tokens']
             prompt_token_ids = data['prompt'].get('token_ids', [])
             response_token_ids = data['response'].get('token_ids', [])
-            response_data = {
-                'prompt': data['prompt']['text'],
-                'response': data['response']['text'],
-                'system_prompt': None,
-                'tokens': prompt_tokens + response_tokens,
-                'token_ids': prompt_token_ids + response_token_ids,
-                'prompt_end': len(prompt_tokens),
-                'inference_model': model_name,
-                'capture_date': datetime.now().isoformat(),
-                'tags': []
-            }
+            record = ResponseRecord(
+                prompt=data['prompt']['text'],
+                response=data['response']['text'],
+                tokens=prompt_tokens + response_tokens,
+                token_ids=prompt_token_ids + response_token_ids,
+                prompt_end=len(prompt_tokens),
+                inference_model=model_name,
+                capture_date=datetime.now().isoformat(),
+            )
             with open(response_file, 'w') as f:
-                dump_compact(response_data, f)
-
-        logit_lens_data = None
-        if logit_lens and model is not None:
-            logit_lens_data = {
-                'prompt': compute_logit_lens_from_raw(prompt_acts, model, tokenizer, n_layers) if prompt_acts else {},
-                'response': compute_logit_lens_from_raw(response_acts, model, tokenizer, n_layers)
-            }
+                dump_compact(record.to_dict(), f)
 
         results = project_prompt_onto_traits(
             prompt_activations=prompt_acts,
@@ -989,7 +915,6 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
             component=component,
             centered=centered,
             massive_dims_info=(analysis_massive_dims, top_dims_by_layer) if analysis_massive_dims else None,
-            logit_lens_data=logit_lens_data,
             n_prompt_tokens=len(data['prompt']['tokens']),
             n_response_tokens=len(data['response']['tokens']),
             prompt_set=prompt_set,

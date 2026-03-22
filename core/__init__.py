@@ -7,6 +7,8 @@ from .types import (
     VectorResult,
     JudgeResult,
     ProjectionConfig,
+    ProjectionEntry,
+    ProjectionRecord,
     ResponseRecord,
     ModelConfig,
     ModelVariant,
@@ -47,6 +49,7 @@ from .math import (
     effect_size,
     polarity_correct,
     remove_massive_dims,
+    normalize_projections,
 )
 from .generation import (
     HookedGenerator,
