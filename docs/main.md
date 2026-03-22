@@ -6,7 +6,7 @@ Extract and monitor LLM behavioral traits token-by-token during generation.
 
 ## Documentation Index
 
-Primary documentation hub for the trait-interp project.
+Primary documentation hub for the traitinterp project.
 
 ### Core Documentation
 - **[docs/main.md](main.md)** (this file) - Project overview and codebase reference
@@ -18,6 +18,7 @@ Primary documentation hub for the trait-interp project.
 
 ### Pipeline & Extraction
 - **[docs/extraction_guide.md](extraction_guide.md)** - Complete extraction reference (scenarios → vectors → validation)
+- **[docs/probes_guide.md](probes_guide.md)** - Linear probes: theory, training, validation, visualization
 - **[docs/scenario_design_guide.md](scenario_design_guide.md)** - Writing contrasting scenario pairs for good vectors
 - **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (decision tree, scenario design, iteration)
 - **[docs/judge_definition_iteration.md](judge_definition_iteration.md)** - Iterating judge definitions until accurate
@@ -35,6 +36,7 @@ Primary documentation hub for the trait-interp project.
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
+- **[docs/typing_audit.md](typing_audit.md)** - Type system design (VectorResult, JudgeResult, ModelVariant, etc.)
 - **[docs/response_schema.md](response_schema.md)** - Unified response format across pipelines
 - **[docs/chat_templates.md](chat_templates.md)** - HuggingFace chat template behavior
 - **[config/paths.yaml](../config/paths.yaml)** - Path configuration
@@ -61,13 +63,17 @@ These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) bel
 
 ### Directory Structure
 ```
-trait-interp/
+traitinterp/
 ├── datasets/               # Model-agnostic inputs (shared across experiments)
-│   ├── inference/                     # Prompt sets (harmful.json, jailbreak/original.json, etc.)
-│   └── traits/{category}/{trait}/     # Trait definitions
-│       ├── positive.txt, negative.txt # Contrasting scenarios
-│       ├── definition.txt             # Trait description
-│       └── steering.json              # Steering eval questions
+│   ├── inference/
+│   │   ├── starter_prompts/           # Public prompt sets (general.json)
+│   │   └── archive/                   # Archived prompt sets
+│   └── traits/
+│       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
+│       ├── base/                      # Base-model traits (174 emotion_set, 10 alignment, 7 tonal)
+│       ├── instruct/                  # Instruct-model traits (pv_instruction, pv_natural, assistant_axis)
+│       └── archive/                   # Archived trait sets
+│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json
 │
 ├── extraction/             # Vector extraction pipeline
 │   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
@@ -169,7 +175,7 @@ Natural elicitation avoids instruction-following confounds. See [docs/extraction
 ## Quick Start
 
 ```bash
-pip install -r requirements.txt
+pip install -e .  # or: pip install -r requirements.txt
 export HF_TOKEN=your_token_here  # For huggingface models
 
 # Extract a trait

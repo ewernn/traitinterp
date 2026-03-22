@@ -7,7 +7,7 @@ Primitives for trait vector extraction and analysis.
 ## Types
 
 ```python
-from core import VectorSpec, ProjectionConfig, activation_scale
+from core import VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant
 
 # Identify a single trait vector
 spec = VectorSpec(
@@ -35,9 +35,19 @@ weights = config.normalized_weights  # [0.5, 0.3, 0.2]
 d = spec.to_dict()
 spec = VectorSpec.from_dict(d)
 
-# Steering scale factor
-scale = activation_scale(activations, vector)  # ||act|| / ||vec||
-coef = spec.weight * scale  # Full steering coefficient
+# Vector selection returns VectorResult
+from utils.vector_selection import select_vector, select_vectors
+best = select_vector(experiment, trait)       # VectorResult
+top = select_vectors(experiment, trait, n=3)  # List[VectorResult]
+spec = best.to_vector_spec(weight=1.0)        # Convert to VectorSpec
+
+# Model variant from experiment config
+from utils.paths import get_model_variant
+variant = get_model_variant(experiment)  # ModelVariant(name, model, lora)
+
+# Judge scoring returns JudgeResult
+from utils.metrics import summarize_judge_scores
+result = summarize_judge_scores(scores)  # JudgeResult(trait_mean, coherence_mean, n, ...)
 ```
 
 ---
@@ -189,16 +199,10 @@ Probe uses row normalization (each sample scaled to unit norm) so LogReg coeffic
 ## Math Functions
 
 ```python
-from core import projection, project_with_config, batch_cosine_similarity, cosine_similarity, orthogonalize
+from core import projection, batch_cosine_similarity, cosine_similarity, orthogonalize
 
 # Project activations onto vector (normalizes vector only)
 scores = projection(activations, trait_vector)  # [n_samples]
-
-# Project using ProjectionConfig (single or ensemble)
-def loader(spec):
-    vec, _, _ = load_vector_from_spec(experiment, trait, spec)
-    return vec
-scores = project_with_config(activations_dict, config, loader)  # Weighted sum
 
 # Cosine similarity (normalizes both activations and vector)
 scores = batch_cosine_similarity(activations, trait_vector)  # [n_samples] in [-1, 1]
@@ -212,30 +216,17 @@ clean_vec = orthogonalize(trait_vector, confound_vector)
 
 **Metrics (operate on projection scores):**
 ```python
-from core import separation, accuracy, effect_size, p_value, polarity_correct
+from core import accuracy, effect_size, polarity_correct
 
 # First compute projections
 pos_proj = batch_cosine_similarity(pos_acts, vector)
 neg_proj = batch_cosine_similarity(neg_acts, vector)
 
 # Then compute metrics
-sep = separation(pos_proj, neg_proj)                  # Higher = better
 acc = accuracy(pos_proj, neg_proj)                    # 0.0 to 1.0
 d = effect_size(pos_proj, neg_proj)                   # 0.2=small, 0.5=medium, 0.8=large
 d = effect_size(pos_proj, neg_proj, signed=True)      # Preserve sign (pos > neg = positive)
-p = p_value(pos_proj, neg_proj)                       # Lower = significant
-```
-
-**Vector/distribution analysis:**
-```python
-from core import vector_properties, distribution_properties
-
-# Vector properties
-props = vector_properties(vector)  # {norm, sparsity}
-
-# Distribution properties (for projection scores)
-dist = distribution_properties(pos_proj, neg_proj)
-# {pos_std, neg_std, overlap_coefficient, separation_margin}
+ok = polarity_correct(pos_proj, neg_proj)             # True if pos_mean > neg_mean
 ```
 
 ---
@@ -384,9 +375,9 @@ with BatchedLayerSteeringHook(model, steering_configs, component='residual'):
 ```
 core/
 ├── __init__.py      # Public API exports
-├── types.py         # VectorSpec, ProjectionConfig, ResponseRecord, activation_scale
+├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord
 ├── hooks.py         # CaptureHook, SteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
-├── math.py          # projection, project_with_config, batch_cosine_similarity, metrics
+├── math.py          # projection, batch_cosine_similarity, accuracy, effect_size, orthogonalize
 └── generation.py    # HookedGenerator for generation with capture/steering
 ```

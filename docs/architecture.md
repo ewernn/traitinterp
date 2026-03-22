@@ -83,7 +83,7 @@ Interprets facts, applies thresholds, aggregates across prompts.
 **What belongs:**
 - Hook management (`HookManager`, `CaptureHook`, `SteeringHook`, `AblationHook`, `ProjectionHook`, etc.)
 - Extraction methods (`MeanDifferenceMethod`, `ProbeMethod`, `GradientMethod`, `RFMMethod`)
-- Math primitives (`projection`, `cosine_similarity`, `separation`, `accuracy`, `orthogonalize`, etc.)
+- Math primitives (`projection`, `cosine_similarity`, `accuracy`, `effect_size`, `orthogonalize`, etc.)
 
 **Current exports:**
 ```python
@@ -97,9 +97,9 @@ ActivationCappingHook, MultiLayerActivationCappingHook, BatchedLayerSteeringHook
 get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod, RFMMethod
 
 # math.py
-projection, project_with_config, project_single, cosine_similarity, batch_cosine_similarity,
-separation, accuracy, effect_size, p_value, orthogonalize, polarity_correct,
-vector_properties, distribution_properties, remove_massive_dims
+projection, cosine_similarity, batch_cosine_similarity,
+accuracy, effect_size, orthogonalize, polarity_correct,
+remove_massive_dims
 ```
 
 **What does NOT belong:**

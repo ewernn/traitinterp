@@ -347,7 +347,6 @@ All in `core/math.py`:
 | `orthogonalize(v, onto)` | `v - (v·onto / \|\|onto\|\|²) · onto` | Remove confound directions (see below) |
 | `effect_size(pos, neg)` | Cohen's d with pooled std | Separation quality metric |
 | `accuracy(pos, neg)` | Midpoint threshold, mean per-class | Classification metric |
-| `distribution_properties` | Overlap ≈ `max(0, 1-d/4)` | Distribution overlap estimate |
 
 ---
 
