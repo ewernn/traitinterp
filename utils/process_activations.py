@@ -99,49 +99,6 @@ def resolve_layers(layers_spec: str, best_layer: Optional[int], available_layers
 # Massive Dims
 # ============================================================================
 
-def load_massive_dims_from_analysis(experiment: str) -> Tuple[List[int], Dict]:
-    """Load massive dims from calibration.json.
-
-    Returns (dims_list, top_dims_by_layer).
-    """
-    inference_dir = Path(get_path('inference.base', experiment=experiment))
-    calibration_path = inference_dir / 'massive_activations' / 'calibration.json'
-
-    if not calibration_path.exists():
-        return [], {}
-
-    with open(calibration_path) as f:
-        data = json.load(f)
-
-    top_dims_by_layer = data.get('aggregate', {}).get('top_dims_by_layer', {})
-    if not top_dims_by_layer:
-        return [], {}
-
-    all_dims = set()
-    for layer_dims in top_dims_by_layer.values():
-        all_dims.update(layer_dims)
-
-    return sorted(all_dims), top_dims_by_layer
-
-
-def extract_massive_dim_values(
-    activations: Dict, dims: List[int], layer: int, component: str = "residual"
-) -> Dict[int, List[float]]:
-    """Extract activation values at massive dims for each token."""
-    if not dims or layer not in activations:
-        return {}
-
-    act = activations[layer].get(component)
-    if act is None:
-        return {}
-
-    result = {}
-    for dim in dims:
-        if dim < act.shape[-1]:
-            result[dim] = act[:, dim].tolist()
-    return result
-
-
 # ============================================================================
 # Projection Helpers
 # ============================================================================
@@ -223,7 +180,6 @@ def project_prompt_onto_traits(
     trait_vectors: Dict,
     component: str = "residual",
     centered: bool = False,
-    massive_dims_info: Optional[Tuple] = None,
     n_prompt_tokens: int = 0,
     n_response_tokens: int = 0,
     prompt_set: str = "",
@@ -263,37 +219,11 @@ def project_prompt_onto_traits(
 
         first_position = vector_list[0][7]
 
-        # Build massive dim data for single-vector case
-        massive_dim_data = None
-        if len(vector_list) == 1 and massive_dims_info:
-            analysis_massive_dims, top_dims_by_layer = massive_dims_info
-            if analysis_massive_dims:
-                vector = vector_list[0][0]
-                layer = vector_list[0][3]
-                vec_norm = vector.norm().item()
-                vec_components = {dim: vector[dim].item() for dim in analysis_massive_dims if dim < len(vector)}
-
-                prompt_dim_vals = extract_massive_dim_values(
-                    prompt_activations, analysis_massive_dims, layer, component) if prompt_activations else {}
-                response_dim_vals = extract_massive_dim_values(
-                    response_activations, analysis_massive_dims, layer, component)
-
-                massive_dim_data = {
-                    'dims': analysis_massive_dims,
-                    'top_dims_by_layer': top_dims_by_layer,
-                    'vec_norm': vec_norm,
-                    'vec_components': vec_components,
-                    'activation_values': {
-                        'prompt': prompt_dim_vals,
-                        'response': response_dim_vals,
-                    }
-                }
-
         record = ProjectionRecord(
             prompt_id=prompt_id, prompt_set=prompt_set,
             n_prompt_tokens=n_prompt_tokens, n_response_tokens=n_response_tokens,
             component=component, position=first_position, centered=centered,
-            projections=all_projections, massive_dim_data=massive_dim_data,
+            projections=all_projections,
         )
 
         results[trait_path] = record.to_dict()
@@ -317,11 +247,6 @@ def stream_through_project(
     """
     from core import MultiLayerProjection
     from utils.json import dump_compact
-
-    massive_dims_info = None
-    analysis_massive_dims, top_dims_by_layer = load_massive_dims_from_analysis(experiment)
-    if analysis_massive_dims:
-        massive_dims_info = (analysis_massive_dims, top_dims_by_layer)
 
     n_projected = 0
 
@@ -701,10 +626,6 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
 
     print(f"Found {len(raw_files)} raw activation files")
 
-    analysis_massive_dims, top_dims_by_layer = load_massive_dims_from_analysis(experiment)
-    if analysis_massive_dims:
-        print(f"Loaded {len(analysis_massive_dims)} massive dims from calibration for visualization")
-
     if traits:
         trait_list = [tuple(t.split('/')) for t in traits.split(',')]
     else:
@@ -914,7 +835,6 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
             trait_vectors=trait_vectors,
             component=component,
             centered=centered,
-            massive_dims_info=(analysis_massive_dims, top_dims_by_layer) if analysis_massive_dims else None,
             n_prompt_tokens=len(data['prompt']['tokens']),
             n_response_tokens=len(data['response']['tokens']),
             prompt_set=prompt_set,

@@ -199,10 +199,9 @@ class ProjectionRecord:
     centered: bool
     projections: List[ProjectionEntry]
     projection_date: str = field(default_factory=lambda: datetime.now().isoformat())
-    massive_dim_data: Optional[Dict] = None
 
     def to_dict(self, precision: int = 4) -> dict:
-        d = {
+        return {
             'metadata': {
                 'prompt_id': self.prompt_id,
                 'prompt_set': self.prompt_set,
@@ -217,9 +216,6 @@ class ProjectionRecord:
             },
             'projections': [p.to_dict(precision) for p in self.projections],
         }
-        if self.massive_dim_data is not None:
-            d['massive_dim_data'] = self.massive_dim_data
-        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> 'ProjectionRecord':
@@ -235,7 +231,6 @@ class ProjectionRecord:
             centered=meta.get('centered', False),
             projections=projections,
             projection_date=meta.get('projection_date', ''),
-            massive_dim_data=d.get('massive_dim_data'),
         )
 
 

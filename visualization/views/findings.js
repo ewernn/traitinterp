@@ -8,19 +8,6 @@ let findingsOrder = null;  // List of filenames from index.yaml
 let findingsMetadata = {};  // Cache: filename -> {title, preview}
 let loadedFindings = {};  // Cache: filename -> rendered HTML
 
-function parseFrontmatter(text) {
-    const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-    if (!match) return { frontmatter: {}, content: text };
-
-    try {
-        const frontmatter = jsyaml.load(match[1]);
-        return { frontmatter, content: match[2] };
-    } catch (e) {
-        console.error('Failed to parse frontmatter:', e);
-        return { frontmatter: {}, content: text };
-    }
-}
-
 /**
  * Render a thumbnail bar chart for finding cards
  * @param {Object} thumbnail - { title, bars: [{label, value}] }
@@ -84,7 +71,7 @@ async function loadFindingMetadata(filename) {
         const response = await fetch(`/docs/viz_findings/${filename}`);
         if (!response.ok) throw new Error(`Failed to load ${filename}`);
         const text = await response.text();
-        const { frontmatter } = parseFrontmatter(text);
+        const { frontmatter } = window.parseFrontmatter(text);
 
         findingsMetadata[filename] = {
             title: frontmatter.title || filename.replace('.md', ''),
@@ -106,7 +93,7 @@ async function loadFindingContent(filename) {
         if (!response.ok) throw new Error(`Failed to load ${filename}`);
 
         const text = await response.text();
-        const { frontmatter, content } = parseFrontmatter(text);
+        const { frontmatter, content } = window.parseFrontmatter(text);
         const references = frontmatter.references || {};
 
         // Protect math blocks from markdown parser
@@ -133,7 +120,6 @@ async function loadFindingContent(filename) {
         markdown = markdown.replace(/!\[([^\]]*)\]\(assets\//g, '![$1](/docs/viz_findings/assets/');
 
         // Render markdown
-        marked.setOptions({ gfm: true, breaks: false, headerIds: true });
         let html = marked.parse(markdown);
 
         // Restore math blocks

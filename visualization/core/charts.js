@@ -466,6 +466,34 @@ function buildOverlayShapes(sentenceBoundaries, categoryData, nPromptTokens) {
     return shapes;
 }
 
+/**
+ * Build inline HTML legend for category overlay (only shows present categories).
+ */
+function buildCategoryLegendHtml(categoryData) {
+    const presentCategories = new Set(categoryData.map(d => d.category));
+    const items = [];
+    for (const [key, def] of Object.entries(SENTENCE_CATEGORIES)) {
+        if (!presentCategories.has(key)) continue;
+        if (key === 'evaluate') {
+            items.push(`
+                <span class="overlay-legend-item">
+                    <span class="overlay-legend-swatch" style="background: linear-gradient(to right, rgba(220,50,50,0.7), rgba(140,140,140,0.5), rgba(40,180,80,0.7)); width: 24px;"></span>
+                    <span class="overlay-legend-label">${def.label}</span>
+                </span>
+            `);
+        } else {
+            const [r, g, b] = def.color;
+            items.push(`
+                <span class="overlay-legend-item">
+                    <span class="overlay-legend-swatch" style="background: rgba(${r},${g},${b},${def.opacity * 3});"></span>
+                    <span class="overlay-legend-label">${def.label}</span>
+                </span>
+            `);
+        }
+    }
+    return `<span class="overlay-legend">${items.join('')}</span>`;
+}
+
 // Exports
 window.PLOTLY_CONFIG = PLOTLY_CONFIG;
 window.CHART_PRESETS = CHART_PRESETS;
@@ -480,3 +508,4 @@ window.attachTokenClickHandler = attachTokenClickHandler;
 window.buildHeatmapAnnotations = buildHeatmapAnnotations;
 window.buildTurnBoundaryShapes = buildTurnBoundaryShapes;
 window.buildOverlayShapes = buildOverlayShapes;
+window.buildCategoryLegendHtml = buildCategoryLegendHtml;

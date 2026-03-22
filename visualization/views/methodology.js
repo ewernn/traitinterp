@@ -3,19 +3,6 @@
  * Delegates block extraction/rendering to customBlocks and citation handling to citations.
  */
 
-function parseMethodologyFrontmatter(text) {
-    const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-    if (!match) return { frontmatter: {}, content: text };
-
-    try {
-        const frontmatter = jsyaml.load(match[1]);
-        return { frontmatter, content: match[2] };
-    } catch (e) {
-        console.error('Failed to parse frontmatter:', e);
-        return { frontmatter: {}, content: text };
-    }
-}
-
 async function renderMethodology() {
     const contentArea = document.getElementById('content-area');
     contentArea.innerHTML = ui.renderLoading('Loading methodology...');
@@ -25,7 +12,7 @@ async function renderMethodology() {
         if (!response.ok) throw new Error('Failed to load methodology.md');
 
         const text = await response.text();
-        const { frontmatter, content } = parseMethodologyFrontmatter(text);
+        const { frontmatter, content } = window.parseFrontmatter(text);
         const references = frontmatter.references || {};
 
         // Protect math blocks from markdown parser
@@ -48,7 +35,6 @@ async function renderMethodology() {
         markdown = keyed.markdown;
 
         // Render markdown
-        marked.setOptions({ gfm: true, breaks: false, headerIds: true });
         let html = marked.parse(markdown);
 
         // Restore math blocks

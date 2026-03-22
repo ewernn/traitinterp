@@ -310,8 +310,8 @@ async function renderResponseBrowserForTrait(trait) {
                             <td>${run.method}</td>
                             <td>${run.component}</td>
                             ${showPositionCol ? `<td class="rb-position">${posDisplay}${promptSetDisplay}</td>` : ''}
-                            <td class="${run.traitScore > 50 ? 'quality-good' : run.traitScore > 20 ? 'quality-ok' : ''}">${run.traitScore.toFixed(1)}</td>
-                            <td class="${run.coherence >= 80 ? 'quality-good' : run.coherence >= 60 ? 'quality-ok' : 'quality-bad'}">${run.coherence.toFixed(0)}</td>
+                            <td class="${ui.scoreClass(run.traitScore)}">${run.traitScore.toFixed(1)}</td>
+                            <td class="${ui.scoreClass(run.coherence, 'coherence')}">${run.coherence.toFixed(0)}</td>
                         </tr>
                         ${state.expandedRow === idx ? `
                         <tr class="rb-expanded-row">
@@ -601,8 +601,8 @@ async function loadInfoPanelContent(trait, panelType) {
                         <div class="response-item-row">
                             <div class="response-meta">
                                 <div class="meta-label">Prompt #${i + 1}</div>
-                                <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                                <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
+                                <div class="meta-score">Trait: <span class="${ui.scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                                <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
                             </div>
                             <div class="response-content">
                                 <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
@@ -666,8 +666,8 @@ async function loadResponsesForRun(trait, idx, run) {
                     <div class="response-item-row">
                         <div class="response-meta">
                             <div class="meta-label">Prompt #${i + 1}</div>
-                            <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                            <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
+                            <div class="meta-score">Trait: <span class="${ui.scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                            <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
                         </div>
                         <div class="response-content">
                             <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>

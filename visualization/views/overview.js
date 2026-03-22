@@ -16,7 +16,6 @@ async function renderOverview() {
         const { markdown, blocks } = window.protectMathBlocks(rawMarkdown);
 
         // Render markdown
-        marked.setOptions({ gfm: true, breaks: false, headerIds: true });
         let html = marked.parse(markdown);
 
         // Restore math blocks

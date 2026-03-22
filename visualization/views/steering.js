@@ -83,21 +83,18 @@ async function renderSteering() {
                         <label>Trait:</label>
                         <select id="sweep-trait-select"></select>
                     </div>
-                    <div class="control-group">
-                        <label>Method:</label>
-                        <select id="sweep-method">
-                            <option value="all" selected>All Methods</option>
-                            <option value="probe">Probe</option>
-                            <option value="gradient">Gradient</option>
-                            <option value="mean_diff">Mean Diff</option>
-                        </select>
-                    </div>
-                    <div class="control-group">
-                        <label>
-                            <input type="checkbox" id="sweep-interpolate" />
-                            Interpolate
-                        </label>
-                    </div>
+                    ${ui.renderSelect({
+                        id: 'sweep-method',
+                        label: 'Method',
+                        options: [
+                            { value: 'all', label: 'All Methods' },
+                            { value: 'probe', label: 'Probe' },
+                            { value: 'gradient', label: 'Gradient' },
+                            { value: 'mean_diff', label: 'Mean Diff' },
+                        ],
+                        selected: 'all',
+                    })}
+                    ${ui.renderToggle({ id: 'sweep-interpolate', label: 'Interpolate' })}
                 </div>
 
                 <!-- Dual heatmaps: Delta (filtered) and Coherence (unfiltered) -->
@@ -157,6 +154,7 @@ let currentRawResults = null; // Store raw results.jsonl data for method filteri
 let discoveredSteeringTraits = []; // All discovered steering traits
 let localTraitResultsCache = {}; // Local cache, passed to response-browser via setTraitResultsCache()
 let selectedSteeringEntry = null; // Selected trait entry for heatmaps (reset on experiment change)
+let steeringResultsCache = {}; // URL → fetched results, shared between collectFilterValues and renderers
 
 // Global chart filters - populated from data, all active by default
 let chartFilters = {
@@ -174,9 +172,22 @@ let chartFilters = {
 };
 
 
+/** Build the steering results API URL for an entry. */
+function steeringResultsUrl(entry) {
+    const experiment = window.state.experimentData?.name;
+    return `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
+}
+
+/** Fetch steering results with caching. */
+async function fetchSteeringResults(entry) {
+    const url = steeringResultsUrl(entry);
+    return cachedFetchJSON(steeringResultsCache, url, url);
+}
+
 /**
  * Collect all unique filter values from steering entries and their results.
  * Called once after data loads, populates chartFilters.{methods,positions,components,directions}.
+ * Also populates steeringResultsCache so later renderers can reuse fetched data.
  */
 async function collectFilterValues(steeringEntries) {
     const experiment = window.state.experimentData?.name;
@@ -194,11 +205,8 @@ async function collectFilterValues(steeringEntries) {
         modelVariants.add(entry.model_variant);
     }
 
-    // Methods, components, directions require loading results
-    const results = await Promise.all(steeringEntries.map(entry => {
-        const url = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
-        return window.fetchJSON(url);
-    }));
+    // Methods, components, directions require loading results (cached for reuse)
+    const results = await Promise.all(steeringEntries.map(entry => fetchSteeringResults(entry)));
 
     for (const result of results) {
         if (!result) continue;
@@ -330,8 +338,6 @@ function updateSteeringModelInfo(meta) {
 
 
 async function discoverSteeringTraits() {
-    // Fetch steering entries from API
-    // Returns array of objects: { trait, model_variant, position, prompt_set, full_path }
     if (!window.state.experimentData?.name) return [];
     const data = await window.fetchJSON(`/api/experiments/${window.state.experimentData.name}/steering`);
     return data?.entries || [];
@@ -339,27 +345,13 @@ async function discoverSteeringTraits() {
 
 
 async function renderSweepData(steeringEntry) {
-    // steeringEntry: { trait, model_variant, position, prompt_set, full_path }
-    const experiment = window.state.experimentData?.name;
-    if (!experiment || !steeringEntry) return;
+    if (!window.state.experimentData?.name || !steeringEntry) return;
 
-    let data = null;
-    let steeringMeta = null;
+    const results = await fetchSteeringResults(steeringEntry);
+    currentRawResults = results;
+    const data = results ? convertResultsToSweepFormat(results) : null;
 
-    const resultsUrl = `/api/experiments/${experiment}/steering-results/${steeringEntry.trait}/${steeringEntry.model_variant}/${steeringEntry.position}/${steeringEntry.prompt_set}`;
-    const results = await window.fetchJSON(resultsUrl);
-    if (results) {
-        currentRawResults = results;
-        steeringMeta = {
-            steering_model: results.steering_model,
-            vector_source: results.vector_source,
-            eval: results.eval
-        };
-        data = convertResultsToSweepFormat(results);
-    }
-
-    // Update model info display
-    updateSteeringModelInfo(steeringMeta);
+    updateSteeringModelInfo(results);
 
     if (!data) {
         document.getElementById('sweep-heatmap-delta').innerHTML = '<p class="no-data">No data for this trait</p>';
@@ -383,21 +375,12 @@ async function renderSweepData(steeringEntry) {
 }
 
 
-/**
- * Extract trait name from full trait path.
- * e.g., "pv_instruction/evil" → "evil"
- *       "pv_natural/evil" → "evil"
- */
+/** Extract trait name from full path, e.g. "pv_instruction/evil" → "evil" */
 function getBaseTraitName(trait) {
-    // Just return the trait name part, keeping version suffixes
     return trait.split('/').pop();
 }
 
-/**
- * Get elicitation method label from category.
- * e.g., "pv_instruction/evil" → "instruction"
- *       "pv_natural/evil" → "natural"
- */
+/** Get elicitation label from category, e.g. "pv_instruction/evil" → "instruction" */
 function getElicitationLabel(trait) {
     const category = trait.split('/')[0];
     if (category.includes('instruction')) return 'instruction';
@@ -455,11 +438,12 @@ async function renderBestVectorPerLayer() {
         let colorIdx = 0;
         const allRuns = []; // Collect all runs for response browser
 
-        // Load results for each position variant (in parallel)
-        const experiment = window.state.experimentData?.name;
+        // Check if this group has multiple elicitation methods (constant across variants)
+        const hasMultipleElicit = new Set(variants.map(v => getElicitationLabel(v.trait))).size > 1;
+
+        // Load results for each position variant (in parallel, cached)
         const variantResults = await Promise.all(activeVariants.map(async (entry) => {
-            const resultsUrl = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
-            const results = await window.fetchJSON(resultsUrl);
+            const results = await fetchSteeringResults(entry);
             return results ? { entry, results } : null;
         }));
 
@@ -473,27 +457,21 @@ async function renderBestVectorPerLayer() {
                 baseline = results.baseline?.trait_mean || 0;
             }
 
-            // Update steering model info from first successful result
             if (!modelInfoUpdated) {
-                updateSteeringModelInfo({
-                    steering_model: results.steering_model,
-                    vector_source: results.vector_source,
-                    eval: results.eval
-                });
+                updateSteeringModelInfo(results);
                 modelInfoUpdated = true;
             }
-            const runs = results.runs || [];
 
             // Group by (component, method) and layer, find best trait score per combo
             const methodData = {};
 
-            runs.forEach(run => {
+            for (const run of (results.runs || [])) {
                 const config = run.config || {};
                 const result = run.result || {};
 
                 // Support VectorSpec format
                 const vectors = config.vectors || [];
-                if (vectors.length !== 1) return;
+                if (vectors.length !== 1) continue;
 
                 const v = vectors[0];
                 const layer = v.layer;
@@ -511,13 +489,13 @@ async function renderBestVectorPerLayer() {
                 });
 
                 // Apply global chart filters (empty set = no filter applied yet)
-                if (chartFilters.activeMethods.size > 0 && !chartFilters.activeMethods.has(method)) return;
-                if (chartFilters.activeComponents.size > 0 && !chartFilters.activeComponents.has(component)) return;
-                if (chartFilters.activePositions.size > 0 && !chartFilters.activePositions.has(position)) return;
+                if (chartFilters.activeMethods.size > 0 && !chartFilters.activeMethods.has(method)) continue;
+                if (chartFilters.activeComponents.size > 0 && !chartFilters.activeComponents.has(component)) continue;
+                if (chartFilters.activePositions.size > 0 && !chartFilters.activePositions.has(position)) continue;
                 const direction = coef > 0 ? 'positive' : 'negative';
-                if (chartFilters.activeDirections.size > 0 && !chartFilters.activeDirections.has(direction)) return;
+                if (chartFilters.activeDirections.size > 0 && !chartFilters.activeDirections.has(direction)) continue;
 
-                if (coherence < coherenceThreshold) return;
+                if (coherence < coherenceThreshold) continue;
 
                 // Key includes component for differentiation
                 const key = component === 'residual' ? method : `${component}/${method}`;
@@ -525,18 +503,14 @@ async function renderBestVectorPerLayer() {
                 if (!methodData[key][layer] || traitScore > methodData[key][layer].score) {
                     methodData[key][layer] = { score: traitScore, coef };
                 }
-            });
+            }
 
             const posDisplayClosed = position ? window.paths.formatPositionDisplay(position) : '';
-            const elicitLabel = getElicitationLabel(entry.trait);  // "instruction" or "natural"
-            const fullTraitName = entry.trait.split('/').pop();  // "evil" or "sycophancy" etc.
-
-            // Check if this group has multiple elicitation methods
-            const uniqueElicitMethods = new Set(variants.map(v => getElicitationLabel(v.trait)));
-            const hasMultipleElicit = uniqueElicitMethods.size > 1;
+            const elicitLabel = getElicitationLabel(entry.trait);
+            const fullTraitName = entry.trait.split('/').pop();
 
             Object.entries(methodData).forEach(([methodKey, layerData]) => {
-                const layers = Object.keys(layerData).map(Number).sort((a, b) => a - b);
+                const layers = sortedNumericKeys(layerData);
                 const scores = layers.map(l => layerData[l].score);
                 const coefs = layers.map(l => layerData[l].coef);
 
@@ -772,8 +746,8 @@ async function renderTraitPicker(steeringEntries) {
 }
 
 
+/** Convert results.jsonl format to sweep visualization format. */
 function convertResultsToSweepFormat(results, methodFilter = null) {
-    // Convert results.jsonl format to sweep visualization format
     const runs = results.runs || [];
     if (runs.length === 0) return null;
 
@@ -873,7 +847,7 @@ function updateSweepVisualizations() {
 function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = false, containerId = 'sweep-heatmap-delta') {
     const container = document.getElementById(containerId);
 
-    const layers = Object.keys(data).map(Number).sort((a, b) => a - b);
+    const layers = sortedNumericKeys(data);
     if (layers.length === 0) {
         container.innerHTML = '<p class="no-data">No layer data available</p>';
         return;
@@ -925,7 +899,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
     }
 
     // Build matrix
-    const metricKey = metric === 'delta' ? 'deltas' : metric === 'coherence' ? 'coherences' : 'traits';
+    const metricKey = metric === 'delta' ? 'deltas' : 'coherences';
     const matrix = layers.map(layer => {
         const layerData = data[layer];
         const layerRatios = layerData.ratios || [];
@@ -990,7 +964,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
 
     const xRatios = interpolate ? interpolatedRatios : (binCenters || ratios);
 
-    // Determine color scale based on metric
+    // Determine color scale based on metric (only 'delta' and 'coherence' are used)
     let colorscale, zmid, zmin, zmax;
     if (metric === 'delta') {
         colorscale = window.DELTA_COLORSCALE;
@@ -999,11 +973,6 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         const absMax = Math.max(Math.abs(Math.min(...allVals, 0)), Math.abs(Math.max(...allVals, 0)));
         zmin = -absMax;
         zmax = absMax;
-    } else if (metric === 'coherence') {
-        colorscale = window.ASYMB_COLORSCALE || 'Viridis';
-        zmin = 0;
-        zmax = 100;
-        zmid = 50;
     } else {
         colorscale = window.ASYMB_COLORSCALE || 'Viridis';
         zmin = 0;
@@ -1017,7 +986,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
     const hoverText = matrix.map((row, layerIdx) =>
         row.map((val, ratioIdx) => {
             if (val === null) return '';
-            const metricLabel = metric === 'delta' ? 'Delta' : metric === 'coherence' ? 'Coherence' : 'Trait';
+            const metricLabel = metric === 'delta' ? 'Delta' : 'Coherence';
             if (binEdges && !interpolate) {
                 const binMin = binEdges[ratioIdx];
                 const binMax = binEdges[ratioIdx + 1];
@@ -1042,11 +1011,9 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         hovertemplate: '%{text}<extra></extra>',
         text: hoverText,
         colorbar: {
-            title: { text: metric === 'delta' ? 'Delta' : metric === 'coherence' ? 'Coherence' : 'Trait', font: { size: 11 } }
+            title: { text: metric === 'delta' ? 'Delta' : 'Coherence', font: { size: 11 } }
         }
     };
-
-    const xAxisLabel = 'Coefficient';
 
     // Generate evenly-spaced tick positions
     const numTicks = Math.min(10, xRatios.length);
@@ -1058,20 +1025,12 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         tickLabels.push(xRatios[idx].toFixed(0));
     }
 
-    const xAxisConfig = {
-        title: xAxisLabel,
-        tickfont: { size: 10 },
-        tickvals: tickIndices,
-        ticktext: tickLabels,
-        type: 'category'
-    };
-
     const layout = window.buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
         height: Math.max(300, layers.length * 20 + 100),
         legendPosition: 'none',
-        xaxis: xAxisConfig,
+        xaxis: { title: 'Coefficient', tickfont: { size: 10 }, tickvals: tickIndices, ticktext: tickLabels, type: 'category' },
         yaxis: { title: 'Layer', tickfont: { size: 10 }, autorange: 'reversed' },
         margin: { l: 50, r: 80, t: 20, b: 50 }
     });
@@ -1082,7 +1041,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
 function renderSweepTable(data, coherenceThreshold) {
     const container = document.getElementById('sweep-table-container');
 
-    const layers = Object.keys(data).map(Number).sort((a, b) => a - b);
+    const layers = sortedNumericKeys(data);
     if (layers.length === 0) {
         container.innerHTML = '<p class="no-data">No data available</p>';
         return;
@@ -1121,7 +1080,7 @@ function renderSweepTable(data, coherenceThreshold) {
                 ${rows.map(r => {
                     const masked = r.coherence < coherenceThreshold;
                     const deltaClass = r.delta > 15 ? 'quality-good' : r.delta > 5 ? 'quality-ok' : r.delta < 0 ? 'quality-bad' : '';
-                    const cohClass = r.coherence > 80 ? 'quality-good' : r.coherence > 60 ? 'quality-ok' : 'quality-bad';
+                    const cohClass = ui.scoreClass(r.coherence, 'coherence');
                     return `
                         <tr class="${masked ? 'masked-row' : ''}">
                             <td>L${r.layer}</td>
@@ -1140,7 +1099,12 @@ function renderSweepTable(data, coherenceThreshold) {
 
 /** Reset steering-local state (called on experiment change). */
 function resetSteeringState() {
+    currentSweepData = null;
+    currentRawResults = null;
+    discoveredSteeringTraits = [];
+    localTraitResultsCache = {};
     selectedSteeringEntry = null;
+    steeringResultsCache = {};
 }
 
 // Export

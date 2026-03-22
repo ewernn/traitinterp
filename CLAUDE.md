@@ -16,6 +16,8 @@ Spawn background subagents liberally — investigators, critics, explorers — w
 - Function docstrings only for non-obvious functions
 - Prefer longer descriptive file names (e.g., `trait_annotation_correlation.py` over `correlation.py`)
 
+**Naming**: Function names should make behavior obvious without reading the implementation. A researcher reading a call site should understand what happens. Too vague (`projection()`) hides behavior. Too specific (`project_onto_unit_vector()`) breaks when args modify behavior. The name should describe the core operation at the right abstraction level, with parameters for variations. Same applies to file names, class names, and variable names. If you're naming something and it's hard to find a clear name, the function might be doing too many things.
+
 **Codebase standards**:
 - paths standardized (PathBuilder everywhere) and robust (experiment-agnostic scripts). code clean (delete legacy code/docs) and maintainable (single source of truth).
 - fail fast with clear errors

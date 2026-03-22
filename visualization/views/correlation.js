@@ -185,22 +185,7 @@ function renderCorrelationHeatmap(offset) {
     };
 
     // Add text annotations
-    const annotations = [];
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-            const val = displayMatrix[i][j];
-            annotations.push({
-                x: trait_labels[j],
-                y: trait_labels[i],
-                text: val.toFixed(2),
-                showarrow: false,
-                font: {
-                    size: 11,
-                    color: Math.abs(val) > 0.5 ? 'white' : '#333'
-                }
-            });
-        }
-    }
+    const annotations = window.buildHeatmapAnnotations(displayMatrix, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
 
     const layout = window.buildChartLayout({
         preset: 'heatmap',
@@ -297,22 +282,7 @@ function renderResponseCorrelation() {
         }
     };
 
-    const annotations = [];
-    for (let i = 0; i < n; i++) {
-        for (let j = 0; j < n; j++) {
-            const val = response_correlation[i][j];
-            annotations.push({
-                x: trait_labels[j],
-                y: trait_labels[i],
-                text: val.toFixed(2),
-                showarrow: false,
-                font: {
-                    size: 11,
-                    color: Math.abs(val) > 0.5 ? 'white' : '#333'
-                }
-            });
-        }
-    }
+    const annotations = window.buildHeatmapAnnotations(response_correlation, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
 
     const layout = window.buildChartLayout({
         preset: 'heatmap',

@@ -157,5 +157,45 @@ Add: 'wideMode', 'traitHeatmapOpen'
 ### 2026-03-22
 - Refined plan via 9 subagents (layer-deep-dive ideas, one-offs ideas, methodology audit, extras design, paths.js audit, core consolidation, state.js audit, CSS primitives, critic)
 - Critic identified: keep content views on main, don't rename trait-dynamics, extras ≠ dumping ground, .publicinclude blocks selective viz promotion
-- Revised to two-phase approach: safe cleanup now, structural refactor post-release
-- Key metrics confirmed: paths.js 629→240, methodology 285→65, styles.css -653 already done
+- Phase 1 committed: -1,851 lines (dead code, bugs, CSS, archives)
+- Structural refactor committed: -239 net (20 files, top-spans extraction, methodology 285→90, helpers added, model-config merged, state cleaned)
+- Total this session: -2,090 net lines
+
+#### Remaining refactor opportunities identified by deep audits:
+
+**trait-dynamics.js (1,576 → ~900-1,000)**:
+- Deduplicate diff logic (replay_suffix vs standard = copy-paste, ~-50 lines)
+- Use createSeparatorShape/createHighlightShape (3 sites manually rebuild, ~-30 lines)
+- Extract buildCommonShapes (duplicated in renderCombinedGraph + renderTraitTokenHeatmap, ~-30 lines)
+- Compress attachControlListeners with bindChange helper (~-40 lines)
+- Extract loadAndNormalizeProjections from 400-line render function (~-99 lines)
+- Move math utils to core/utils.js (computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms, ~-67 lines)
+- Add buildTokenAxisTicks to charts.js (~-9 lines)
+
+**steering.js (1,148)**: awaiting deep audit results
+
+**model-analysis.js (777 → ~650)**:
+- 4 diagnostic plots share identical async shell → withMassiveActivationsData helper (~-48 lines)
+- fetchMassiveActivationsData called 4x independently → call once, pass down
+- 'topright' legend position is a silent bug → fix to 'right'
+- Raw h4.subsection-header bypasses ui.renderSubsection (CSS class mismatch)
+- sortedNumericKeys pattern repeated 3x
+
+**Cross-view patterns not yet extracted**:
+- parseFrontmatter identical in methodology.js + findings.js → utils.js
+- Heatmap annotation loops in correlation.js (buildHeatmapAnnotations exists but unused)
+- marked.setOptions called identically in 3 views → call once at startup
+- sortedNumericKeys(obj) repeated 6x across model-analysis + steering
+- Score badge class logic repeated 4x → ui.scoreClass()
+
+**Components**:
+- custom-blocks.js (1,395 → ~900-1,000): 11 double-replace patterns, 3 tab-widget trios (270 lines), broken desanitize
+- response-browser.js (716 → ~580): duplicated response-item HTML, score badges
+- prompt-picker.js (695 → ~600): dead null guards, duplicated diff-mode logic
+- top-spans.js (491 → ~440): duplicated span row template
+
+**Core dead code (second pass)**:
+- paths.js: window.modelConfig shim + 8 model-config methods dead (only archived caller)
+- charts.js: buildHeatmapAnnotations dead (never called by anyone)
+- chart-types.js: crosseval-comparison renderer dead (no markdown usage)
+- state.js: stopGpuPolling dead, legacy migration stale, HIDDEN_EXPERIMENTS dormant

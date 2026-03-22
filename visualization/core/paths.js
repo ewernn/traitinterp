@@ -325,56 +325,6 @@ class PathBuilder {
         return this.getModelConfig('num_hidden_layers');
     }
 
-    getHiddenSize() {
-        return this.getModelConfig('hidden_size');
-    }
-
-    getNumHeads() {
-        return this.getModelConfig('num_attention_heads');
-    }
-
-    getNumKvHeads() {
-        return this.getModelConfig('num_key_value_heads');
-    }
-
-    getResidualSublayers() {
-        return this.getModelConfig('residual_sublayers') || ['input', 'after_attn', 'output'];
-    }
-
-    getNumSublayers() {
-        return this.getResidualSublayers().length;
-    }
-
-    getDefaultMonitoringLayer() {
-        // Middle layer - actual best layer comes from steering eval at runtime
-        return Math.floor(this.getNumLayers() / 2);
-    }
-
-    isSaeAvailable() {
-        return this.getModelConfig('sae.available') || false;
-    }
-
-    getSaeDownloadedLayers() {
-        return this.getModelConfig('sae.downloaded_layers') || [];
-    }
-
-    /**
-     * Get SAE path for a specific layer.
-     * @param {number} layer - Layer index
-     * @returns {string|null} Path to SAE directory, or null if not available
-     */
-    getSaePath(layer) {
-        if (!this.isSaeAvailable()) return null;
-
-        const downloadedLayers = this.getSaeDownloadedLayers();
-        if (!downloadedLayers.includes(layer)) return null;
-
-        const basePath = this.getModelConfig('sae.base_path');
-        const template = this.getModelConfig('sae.layer_template');
-        const layerDir = template.replace('{layer}', layer);
-
-        return `${basePath}/${layerDir}`;
-    }
 }
 
 // =========================================================================
@@ -385,16 +335,3 @@ const paths = new PathBuilder();
 
 // Export to global scope
 window.paths = paths;
-
-// Compatibility shim for window.modelConfig (merged into paths.js)
-window.modelConfig = {
-    loadForExperiment: (exp) => window.paths.loadModelConfig(exp),
-    getDefaultMonitoringLayer: () => window.paths.getDefaultMonitoringLayer(),
-    getNumLayers: () => window.paths.getNumLayers(),
-    getHiddenSize: () => window.paths.getHiddenSize(),
-    getNumHeads: () => window.paths.getNumHeads(),
-    getNumKvHeads: () => window.paths.getNumKvHeads(),
-    isSaeAvailable: () => window.paths.isSaeAvailable(),
-    getSaePath: (layer) => window.paths.getSaePath(layer),
-    get: (key) => window.paths.getModelConfig(key),
-};

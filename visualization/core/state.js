@@ -199,16 +199,6 @@ function setPromptSetSidebarOpen(open) {
 function initCompareMode() {
     const savedMode = localStorage.getItem('compareMode');
     state.compareMode = savedMode || 'main';
-
-    // Legacy migration from diffMode/diffModel
-    const legacyDiffMode = localStorage.getItem('diffMode');
-    const legacyDiffModel = localStorage.getItem('diffModel');
-    if (legacyDiffMode === 'true' && legacyDiffModel) {
-        state.compareMode = `diff:${legacyDiffModel}`;
-        localStorage.removeItem('diffMode');
-        localStorage.removeItem('diffModel');
-        localStorage.setItem('compareMode', state.compareMode);
-    }
 }
 
 function setCompareMode(mode) {
@@ -756,13 +746,6 @@ function startGpuPolling(intervalMs = 5000) {
     gpuPollInterval = setInterval(fetchGpuStatus, intervalMs);
 }
 
-function stopGpuPolling() {
-    if (gpuPollInterval) {
-        clearInterval(gpuPollInterval);
-        gpuPollInterval = null;
-    }
-}
-
 // =============================================================================
 // Initialize Application
 // =============================================================================
@@ -770,6 +753,7 @@ function stopGpuPolling() {
 async function init() {
     await window.paths.load();
     await loadAppConfig();
+    window.initMarkedOptions();
 
     // Initialize preferences
     window.initTheme();
@@ -908,9 +892,6 @@ const LOCAL_STORAGE_KEYS = [
     'promptSet',
     'promptId',
     'promptPickerCollapsed',
-    // Legacy (migrated, but clear anyway)
-    'diffMode',
-    'diffModel',
 ];
 
 /**

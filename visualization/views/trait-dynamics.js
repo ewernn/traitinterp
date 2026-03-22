@@ -8,51 +8,145 @@
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
 
-// smoothData is in core/utils.js
+// smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms are in core/utils.js
+// Shape builders (buildTurnBoundaryShapes, buildOverlayShapes, createSeparatorShape, createHighlightShape, etc.) are in core/charts.js
+// SENTENCE_CATEGORIES, buildCategoryLegendHtml are in core/charts.js
 
-// Shape builders (buildTurnBoundaryShapes, buildOverlayShapes, etc.) are in core/charts.js
-// SENTENCE_CATEGORIES is in core/charts.js (window.SENTENCE_CATEGORIES)
+// =============================================================================
+// Local Helpers
+// =============================================================================
 
 /**
- * Build inline HTML legend for cue_p overlay (blue→red gradient).
+ * Bind a change listener to an element by ID. No-op if element doesn't exist.
+ */
+function bindChange(id, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', fn);
+}
+
+/**
+ * Build common Plotly shapes: separator + highlight + turn boundaries + sentence overlays.
+ * Shared by renderCombinedGraph, renderTraitTokenHeatmap.
+ */
+function buildCommonShapes(nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData) {
+    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
+    const currentTokenIdx = window.state.currentTokenIndex || 0;
+    const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
+
+    const shapes = [];
+    if (!isRollout) {
+        shapes.push({ ...window.createSeparatorShape(promptEndIdx - 0.5), _isBase: true });
+    }
+    shapes.push(window.createHighlightShape(highlightX));
+    shapes.push(...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
+    shapes.push(...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
+    return shapes;
+}
+
+/**
+ * Extract the prompt/response projection pair from comparison data,
+ * matching the vector source (method + layer) of the main trait entry.
+ */
+function extractCompProjection(compData, vectorSource) {
+    if (compData.metadata?.multi_vector && Array.isArray(compData.projections)) {
+        if (vectorSource) {
+            const match = compData.projections.find(p => p.method === vectorSource.method && p.layer === vectorSource.layer);
+            if (match) return { prompt: match.prompt, response: match.response };
+        }
+        // Fallback: if no layer match, use first available projection
+        if (compData.projections.length > 0) {
+            const fb = compData.projections[0];
+            return { prompt: fb.prompt, response: fb.response };
+        }
+        return null;
+    }
+    return compData.projections || null;
+}
+
+/**
+ * Compute projection diff: a - b, trimmed to min length.
+ * Logs warning if response lengths differ by more than 1 token.
+ */
+function computeProjectionDiff(projA, projB, traitKey) {
+    const rLenDiff = Math.abs(projA.response.length - projB.response.length);
+    if (rLenDiff > 1) console.warn(`[Diff] Unexpected response length mismatch for ${traitKey}: ${projA.response.length} vs ${projB.response.length} (diff=${rLenDiff})`);
+    const minPLen = Math.min(projA.prompt.length, projB.prompt.length);
+    const minRLen = Math.min(projA.response.length, projB.response.length);
+    return {
+        prompt: projA.prompt.slice(0, minPLen).map((v, i) => v - projB.prompt[i]),
+        response: projA.response.slice(0, minRLen).map((v, i) => v - projB.response[i])
+    };
+}
+
+/**
+ * Load comparison projections and apply diff/show to traitData in place.
+ * Unified logic for both replay_suffix and standard comparison modes.
+ *
+ * @param {Object} traitData - Mutable trait data map
+ * @param {string[]} traitKeys - Keys in traitData to compare
+ * @param {string} promptSet - Prompt set for fetch path
+ * @param {string} promptId - Prompt ID for fetch path
+ * @param {string} variant - Model variant for fetch path
+ * @param {Array} filteredTraits - Trait objects with .name
+ * @param {'diff'|'show'} mode - How to apply: 'diff' computes delta, 'show' replaces
+ * @param {boolean} invertDiff - If true, diff = main - comp (replay convention); if false, diff = comp - main (standard)
+ * @param {string} compareLabel - Label for _compareModel metadata
+ */
+async function loadComparisonProjections(traitData, traitKeys, promptSet, promptId, variant, filteredTraits, mode, invertDiff, compareLabel) {
+    const compResults = await Promise.all(traitKeys.map(async (traitKey) => {
+        const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
+        const trait = filteredTraits.find(t => t.name === baseTrait);
+        if (!trait) return null;
+
+        try {
+            const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, variant);
+            const response = await fetch(fetchPath);
+            if (!response.ok) return null;
+            const compData = await response.json();
+            if (compData.error) return null;
+            return { traitKey, compData };
+        } catch (error) {
+            return null;
+        }
+    }));
+
+    for (const result of compResults) {
+        if (!result) continue;
+        const { traitKey, compData } = result;
+
+        const vs = traitData[traitKey].metadata?.vector_source;
+        const compProj = extractCompProjection(compData, vs);
+        if (!compProj) continue;
+
+        if (mode === 'diff') {
+            const mainProj = traitData[traitKey].projections;
+            // invertDiff: main - comp (replay: organism - instruct); otherwise comp - main
+            const [a, b] = invertDiff ? [mainProj, compProj] : [compProj, mainProj];
+            traitData[traitKey].projections = computeProjectionDiff(a, b, traitKey);
+            traitData[traitKey].metadata = traitData[traitKey].metadata || {};
+            traitData[traitKey].metadata._isDiff = true;
+            traitData[traitKey].metadata._compareModel = compareLabel;
+        } else if (mode === 'show') {
+            traitData[traitKey].projections = compProj;
+            traitData[traitKey].metadata = traitData[traitKey].metadata || {};
+            traitData[traitKey].metadata._isComparisonModel = true;
+            traitData[traitKey].metadata._compareModel = compareLabel;
+        }
+    }
+}
+
+/**
+ * Build inline HTML legend for cue_p overlay (blue->red gradient).
  */
 function buildCuePLegendHtml() {
     return `
         <span class="overlay-legend">
             <span class="overlay-legend-gradient" style="background: linear-gradient(to right, rgba(0,100,255,0.5), rgba(255,50,50,0.5));"></span>
             <span class="overlay-legend-label">0</span>
-            <span class="overlay-legend-label">→</span>
+            <span class="overlay-legend-label">&rarr;</span>
             <span class="overlay-legend-label">1</span>
         </span>
     `;
-}
-
-/**
- * Build inline HTML legend for category overlay (only shows present categories).
- */
-function buildCategoryLegendHtml(categoryData) {
-    const presentCategories = new Set(categoryData.map(d => d.category));
-    const items = [];
-    for (const [key, def] of Object.entries(window.SENTENCE_CATEGORIES)) {
-        if (!presentCategories.has(key)) continue;
-        if (key === 'evaluate') {
-            items.push(`
-                <span class="overlay-legend-item">
-                    <span class="overlay-legend-swatch" style="background: linear-gradient(to right, rgba(220,50,50,0.7), rgba(140,140,140,0.5), rgba(40,180,80,0.7)); width: 24px;"></span>
-                    <span class="overlay-legend-label">${def.label}</span>
-                </span>
-            `);
-        } else {
-            const [r, g, b] = def.color;
-            items.push(`
-                <span class="overlay-legend-item">
-                    <span class="overlay-legend-swatch" style="background: rgba(${r},${g},${b},${def.opacity * 3});"></span>
-                    <span class="overlay-legend-label">${def.label}</span>
-                </span>
-            `);
-        }
-    }
-    return `<span class="overlay-legend">${items.join('')}</span>`;
 }
 
 /**
@@ -74,10 +168,9 @@ function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, i
     }
     section.style.display = '';
 
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
     const currentTokenIdx = window.state.currentTokenIndex || 0;
     const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
+    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
 
     // Build step trace: each sentence is a horizontal segment at its cue_p value
     const xVals = [];
@@ -103,23 +196,11 @@ function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, i
     };
 
     // Shapes: separator (base, preserved on slider update) + highlight (replaced on slider update)
-    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
     const shapes = [];
     if (!isRollout) {
-        shapes.push({
-            type: 'line',
-            x0: promptEndIdx - 0.5, x1: promptEndIdx - 0.5,
-            y0: 0, y1: 1, yref: 'paper',
-            line: { color: textSecondary, width: 2, dash: 'dash' },
-            _isBase: true
-        });
+        shapes.push({ ...window.createSeparatorShape(promptEndIdx - 0.5), _isBase: true });
     }
-    shapes.push({
-        type: 'line',
-        x0: highlightX, x1: highlightX,
-        y0: 0, y1: 1, yref: 'paper',
-        line: { color: primaryColor, width: 2 }
-    });
+    shapes.push(window.createHighlightShape(highlightX));
 
     const layout = window.buildChartLayout({
         preset: 'timeSeries',
@@ -140,98 +221,6 @@ function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, i
     });
     window.renderChart(plotDiv, [trace], layout);
     window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
-}
-
-/**
- * Compute first derivative (velocity) from an array
- */
-function computeVelocity(data) {
-    const velocity = [];
-    for (let i = 0; i < data.length - 1; i++) {
-        velocity.push(data[i + 1] - data[i]);
-    }
-    return velocity;
-}
-
-
-/**
- * Get list of dims to remove based on cleaning mode.
- * Data-driven: uses massive_dim_data embedded in projection files.
- *
- * Modes:
- * - 'top5-3layers': Dims in top-5 at 3+ layers - balanced (recommended)
- * - 'all': All candidate dims - most aggressive
- */
-function getDimsToRemove(massiveDimData, cleaningMode) {
-    const { dims, top_dims_by_layer } = massiveDimData || {};
-
-    if (!dims) return [];
-
-    if (cleaningMode === 'all') {
-        return dims;
-    }
-
-    if (cleaningMode === 'top5-3layers' && top_dims_by_layer) {
-        // Count appearances: dims that appear in top-5 at 3+ layers
-        const appearances = {};
-        for (const layerDims of Object.values(top_dims_by_layer)) {
-            const top5 = layerDims.slice(0, 5);
-            for (const dim of top5) {
-                appearances[dim] = (appearances[dim] || 0) + 1;
-            }
-        }
-        return Object.entries(appearances)
-            .filter(([_, count]) => count >= 3)
-            .map(([dim, _]) => parseInt(dim));
-    }
-
-    return [];
-}
-
-
-/**
- * Apply massive dim cleaning to projections.
- * Formula: adjusted = original - sum(act[dim] * vec[dim]) / ||vec||
- */
-function applyMassiveDimCleaning(projections, massiveDimData, dimsToRemove, phase) {
-    const { vec_norm, vec_components, activation_values } = massiveDimData;
-    const phaseActValues = activation_values[phase];
-
-    if (!phaseActValues || !vec_norm) {
-        return projections;
-    }
-
-    return projections.map((proj, tokenIdx) => {
-        let adjustment = 0;
-        for (const dim of dimsToRemove) {
-            const actVal = phaseActValues[dim]?.[tokenIdx] ?? 0;
-            const vecComp = vec_components[dim] ?? 0;
-            adjustment += actVal * vecComp;
-        }
-        return proj - adjustment / vec_norm;
-    });
-}
-
-
-/**
- * Compute cleaned token norms: ||h_cleaned|| = sqrt(||h||² - Σ h[dim]²)
- */
-function computeCleanedNorms(originalNorms, massiveDimData, dimsToRemove, phase) {
-    const phaseActValues = massiveDimData?.activation_values?.[phase];
-    if (!phaseActValues || dimsToRemove.length === 0) {
-        return originalNorms;
-    }
-
-    return originalNorms.map((norm, tokenIdx) => {
-        const normSquared = norm * norm;
-        let massiveContribution = 0;
-        for (const dim of dimsToRemove) {
-            const actVal = phaseActValues[dim]?.[tokenIdx] ?? 0;
-            massiveContribution += actVal * actVal;
-        }
-        const cleanedSquared = normSquared - massiveContribution;
-        return cleanedSquared > 0 ? Math.sqrt(cleanedSquared) : 0;
-    });
 }
 
 
@@ -406,48 +395,29 @@ function attachControlListeners(allFilteredTraits) {
     const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
     const availableModels = window.state.availableComparisonModels || [];
 
-    const smoothingCheckbox = document.getElementById('smoothing-toggle');
-    if (smoothingCheckbox) {
-        smoothingCheckbox.addEventListener('change', () => {
-            window.setSmoothing(smoothingCheckbox.checked);
-        });
-    }
-    const smoothingWindowSelect = document.getElementById('smoothing-window-select');
-    if (smoothingWindowSelect) {
-        smoothingWindowSelect.addEventListener('change', () => {
-            window.setSmoothingWindow(parseInt(smoothingWindowSelect.value));
-        });
-    }
-    const centeredCheckbox = document.getElementById('projection-centered-toggle');
-    if (centeredCheckbox) {
-        centeredCheckbox.addEventListener('change', () => {
-            window.setProjectionCentered(centeredCheckbox.checked);
-        });
-    }
-    const massiveDimsSelect = document.getElementById('massive-dims-cleaning-select');
-    if (massiveDimsSelect) {
-        massiveDimsSelect.addEventListener('change', () => {
-            window.setMassiveDimsCleaning(massiveDimsSelect.value);
-        });
-    }
+    bindChange('smoothing-toggle', () => {
+        window.setSmoothing(document.getElementById('smoothing-toggle').checked);
+    });
+    bindChange('smoothing-window-select', () => {
+        window.setSmoothingWindow(parseInt(document.getElementById('smoothing-window-select').value));
+    });
+    bindChange('projection-centered-toggle', () => {
+        window.setProjectionCentered(document.getElementById('projection-centered-toggle').checked);
+    });
+    bindChange('massive-dims-cleaning-select', () => {
+        window.setMassiveDimsCleaning(document.getElementById('massive-dims-cleaning-select').value);
+    });
     document.querySelectorAll('.method-filter input').forEach(cb => {
         cb.addEventListener('change', () => {
             window.toggleMethod(cb.dataset.method);
         });
     });
-    const projectionModeSelect = document.getElementById('projection-mode-select');
-    if (projectionModeSelect) {
-        projectionModeSelect.addEventListener('change', () => {
-            window.setProjectionMode(projectionModeSelect.value);
-        });
-    }
-    // Velocity toggle
-    const velocityToggle = document.getElementById('velocity-toggle');
-    if (velocityToggle) {
-        velocityToggle.addEventListener('change', () => {
-            window.setShowVelocity(velocityToggle.checked);
-        });
-    }
+    bindChange('projection-mode-select', () => {
+        window.setProjectionMode(document.getElementById('projection-mode-select').value);
+    });
+    bindChange('velocity-toggle', () => {
+        window.setShowVelocity(document.getElementById('velocity-toggle').checked);
+    });
     // Compare mode toggle (Main/Diff chips)
     document.querySelectorAll('[data-compare-mode]').forEach(chip => {
         chip.addEventListener('click', () => {
@@ -466,37 +436,25 @@ function attachControlListeners(allFilteredTraits) {
             }
         });
     });
-    // Compare variant / organism dropdown
-    const compareVariantSelect = document.getElementById('compare-variant-select');
-    if (compareVariantSelect) {
-        compareVariantSelect.addEventListener('change', () => {
-            window.state.lastCompareVariant = compareVariantSelect.value;
-            localStorage.setItem('lastCompareVariant', compareVariantSelect.value);
-            if (isReplaySuffix) {
-                if (window.renderView) window.renderView();
-            } else {
-                window.setCompareMode('diff:' + compareVariantSelect.value);
-            }
-        });
-    }
-    const layerModeToggle = document.getElementById('layer-mode-toggle');
-    if (layerModeToggle) {
-        layerModeToggle.addEventListener('change', () => {
-            window.setLayerMode(layerModeToggle.checked);
-        });
-    }
-    const layerModeTraitSelect = document.getElementById('layer-mode-trait-select');
-    if (layerModeTraitSelect) {
-        layerModeTraitSelect.addEventListener('change', () => {
-            window.setLayerModeTrait(layerModeTraitSelect.value);
-        });
-    }
-    const wideModeToggle = document.getElementById('wide-mode-toggle');
-    if (wideModeToggle) {
-        wideModeToggle.addEventListener('change', () => {
-            window.setWideMode(wideModeToggle.checked);
-        });
-    }
+    bindChange('compare-variant-select', () => {
+        const val = document.getElementById('compare-variant-select').value;
+        window.state.lastCompareVariant = val;
+        localStorage.setItem('lastCompareVariant', val);
+        if (isReplaySuffix) {
+            if (window.renderView) window.renderView();
+        } else {
+            window.setCompareMode('diff:' + val);
+        }
+    });
+    bindChange('layer-mode-toggle', () => {
+        window.setLayerMode(document.getElementById('layer-mode-toggle').checked);
+    });
+    bindChange('layer-mode-trait-select', () => {
+        window.setLayerModeTrait(document.getElementById('layer-mode-trait-select').value);
+    });
+    bindChange('wide-mode-toggle', () => {
+        window.setWideMode(document.getElementById('wide-mode-toggle').checked);
+    });
 }
 
 
@@ -554,7 +512,7 @@ async function renderTraitDynamics() {
     }
 
     if (!promptSet || !promptId) {
-        const promptLabel = promptSet ? `${promptSet}/—` : 'none selected';
+        const promptLabel = promptSet ? `${promptSet}/\u2014` : 'none selected';
         document.getElementById('combined-activation-plot').innerHTML =
             `<div class="info">No data available for prompt ${promptLabel} for any selected trait.</div>`;
         requestAnimationFrame(() => { contentArea.scrollTop = scrollY; });
@@ -683,122 +641,17 @@ async function renderTraitDynamics() {
         // Replay suffix convention: fetch instruct data from {promptSet}_replay_{organism}
         const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
         const replayPromptSet = `${promptSet}_replay_${modelVariant}`;
-        const traitKeys = Object.keys(traitData);
-
-        const compResults = await Promise.all(traitKeys.map(async (traitKey) => {
-            const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
-            const trait = filteredTraits.find(t => t.name === baseTrait);
-            if (!trait) return null;
-
-            try {
-                const fetchPath = window.paths.residualStreamData(trait, replayPromptSet, promptId, appVariant);
-                const response = await fetch(fetchPath);
-                if (!response.ok) return null;
-                const compData = await response.json();
-                if (compData.error) return null;
-                return { traitKey, compData };
-            } catch (error) {
-                return null;
-            }
-        }));
-
-        for (const result of compResults) {
-            if (!result) continue;
-            const { traitKey, compData } = result;
-
-            let compProj;
-            if (compData.metadata?.multi_vector && Array.isArray(compData.projections)) {
-                const vs = traitData[traitKey].metadata?.vector_source;
-                if (vs) {
-                    const match = compData.projections.find(p => p.method === vs.method && p.layer === vs.layer);
-                    compProj = match ? { prompt: match.prompt, response: match.response } : null;
-                }
-                // Fallback: if no layer match, use first available projection
-                if (!compProj && compData.projections.length > 0) {
-                    const fb = compData.projections[0];
-                    compProj = { prompt: fb.prompt, response: fb.response };
-                }
-            } else {
-                compProj = compData.projections;
-            }
-
-            if (compProj) {
-                // Diff: organism - instruct_replay (positive = organism has more trait)
-                // Trim to min length to avoid EOS mismatch (organism has <|eot_id|>, replay doesn't)
-                const mainProj = traitData[traitKey].projections;
-                const rLenDiff = Math.abs(mainProj.response.length - compProj.response.length);
-                if (rLenDiff > 1) console.warn(`[Diff] Unexpected response length mismatch for ${traitKey}: ${mainProj.response.length} vs ${compProj.response.length} (diff=${rLenDiff})`);
-                const minPromptLen = Math.min(mainProj.prompt.length, compProj.prompt.length);
-                const minResponseLen = Math.min(mainProj.response.length, compProj.response.length);
-                const diffPrompt = mainProj.prompt.slice(0, minPromptLen).map((v, i) => v - compProj.prompt[i]);
-                const diffResponse = mainProj.response.slice(0, minResponseLen).map((v, i) => v - compProj.response[i]);
-                traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
-                traitData[traitKey].metadata = traitData[traitKey].metadata || {};
-                traitData[traitKey].metadata._isDiff = true;
-                traitData[traitKey].metadata._compareModel = appVariant;
-            }
-        }
+        await loadComparisonProjections(
+            traitData, Object.keys(traitData), replayPromptSet, promptId, appVariant,
+            filteredTraits, 'diff', true /* invertDiff: main - comp */, appVariant
+        );
     } else if (effectiveCompareModel) {
-        const traitKeys = Object.keys(traitData);
-        const compResults = await Promise.all(traitKeys.map(async (traitKey) => {
-            const baseTrait = traitData[traitKey].metadata?._baseTrait || traitKey;
-            const trait = filteredTraits.find(t => t.name === baseTrait);
-            if (!trait) return null;
-
-            try {
-                // Fetch from comparison model's path (same prompt set, different model)
-                const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, effectiveCompareModel);
-                const response = await fetch(fetchPath);
-                if (!response.ok) return null;
-                const compData = await response.json();
-                if (compData.error) return null;
-                return { traitKey, compData };
-            } catch (error) {
-                return null;
-            }
-        }));
-
-        for (const result of compResults) {
-            if (!result) continue;
-            const { traitKey, compData } = result;
-
-            let compProj;
-            if (compData.metadata?.multi_vector && Array.isArray(compData.projections)) {
-                const vs = traitData[traitKey].metadata?.vector_source;
-                if (vs) {
-                    const match = compData.projections.find(p => p.method === vs.method && p.layer === vs.layer);
-                    compProj = match ? { prompt: match.prompt, response: match.response } : null;
-                }
-                // Fallback: if no layer match, use first available projection
-                if (!compProj && compData.projections.length > 0) {
-                    const fb = compData.projections[0];
-                    compProj = { prompt: fb.prompt, response: fb.response };
-                }
-            } else {
-                compProj = compData.projections;
-            }
-
-            if (compProj) {
-                if (isDiff) {
-                    // Diff mode: comparison - main (positive = more trait in comparison model)
-                    // Trim to min length to handle potential token count mismatches
-                    const mainProj = traitData[traitKey].projections;
-                    const minPLen = Math.min(mainProj.prompt.length, compProj.prompt.length);
-                    const minRLen = Math.min(mainProj.response.length, compProj.response.length);
-                    const diffPrompt = mainProj.prompt.slice(0, minPLen).map((v, i) => compProj.prompt[i] - v);
-                    const diffResponse = mainProj.response.slice(0, minRLen).map((v, i) => compProj.response[i] - v);
-                    traitData[traitKey].projections = { prompt: diffPrompt, response: diffResponse };
-                    traitData[traitKey].metadata = traitData[traitKey].metadata || {};
-                    traitData[traitKey].metadata._isDiff = true;
-                    traitData[traitKey].metadata._compareModel = effectiveCompareModel;
-                } else if (isShow) {
-                    // Show mode: replace with comparison model's projections
-                    traitData[traitKey].projections = compProj;
-                    traitData[traitKey].metadata = traitData[traitKey].metadata || {};
-                    traitData[traitKey].metadata._isComparisonModel = true;
-                    traitData[traitKey].metadata._compareModel = effectiveCompareModel;
-                }
-            }
+        const mode = isDiff ? 'diff' : isShow ? 'show' : null;
+        if (mode) {
+            await loadComparisonProjections(
+                traitData, Object.keys(traitData), promptSet, promptId, effectiveCompareModel,
+                filteredTraits, mode, false /* standard: comp - main */, effectiveCompareModel
+            );
         }
     }
 
@@ -939,11 +792,11 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
     if (showingDiff && isReplaySuffix) {
         const organismName = window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0] || 'organism';
         compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
-            Showing DIFF: ${organismName} − instruct replay
+            Showing DIFF: ${organismName} \u2212 instruct replay
            </div>`;
     } else if (showingDiff) {
         compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
-            Showing DIFF: ${compareModelName} − application model
+            Showing DIFF: ${compareModelName} \u2212 application model
            </div>`;
     } else if (showingCompModel) {
         compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
@@ -1003,9 +856,9 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         let dimsToRemove = [];
         const mdd = data.massive_dim_data;
         if (cleaningMode !== 'none' && mdd) {
-            dimsToRemove = getDimsToRemove(mdd, cleaningMode);
-            promptProj = applyMassiveDimCleaning(promptProj, mdd, dimsToRemove, 'prompt');
-            responseProj = applyMassiveDimCleaning(responseProj, mdd, dimsToRemove, 'response');
+            dimsToRemove = window.getDimsToRemove(mdd, cleaningMode);
+            promptProj = window.applyMassiveDimCleaning(promptProj, mdd, dimsToRemove, 'prompt');
+            responseProj = window.applyMassiveDimCleaning(responseProj, mdd, dimsToRemove, 'response');
         }
 
         const allProj = [...promptProj, ...responseProj];
@@ -1024,8 +877,8 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
 
             // Use cleaned norms if massive dims were removed
             if (dimsToRemove.length > 0 && mdd) {
-                promptNorms = computeCleanedNorms(promptNorms, mdd, dimsToRemove, 'prompt');
-                responseNorms = computeCleanedNorms(responseNorms, mdd, dimsToRemove, 'response');
+                promptNorms = window.computeCleanedNorms(promptNorms, mdd, dimsToRemove, 'prompt');
+                responseNorms = window.computeCleanedNorms(responseNorms, mdd, dimsToRemove, 'response');
             }
 
             if (projectionMode === 'normalized') {
@@ -1074,7 +927,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
             const minL = Math.min(...allLayers);
             const maxL = Math.max(...allLayers);
             const t = maxL > minL ? (layer - minL) / (maxL - minL) : 0.5;
-            // Light blue (early layers) → dark blue (late layers)
+            // Light blue (early layers) -> dark blue (late layers)
             const r = Math.round(180 - t * 130);
             const g = Math.round(210 - t * 130);
             const b = Math.round(255 - t * 55);
@@ -1120,42 +973,8 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         tickText.push(displayTokens[i]);
     }
 
-    // Get colors from CSS variables
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
-
-    // Current token highlight
-    const currentTokenIdx = window.state.currentTokenIndex || 0;
-    const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
-
-    // Shapes: separator, highlight, turn/sentence boundaries, annotation bands
-    const shapes = [];
-
-    // Prompt/response separator (skip for rollouts — separator would be at rightmost edge)
-    if (!isRollout) {
-        shapes.push({
-            type: 'line',
-            x0: (nPromptTokens - START_TOKEN_IDX) - 0.5,
-            x1: (nPromptTokens - START_TOKEN_IDX) - 0.5,
-            y0: 0, y1: 1, yref: 'paper',
-            line: { color: textSecondary, width: 2, dash: 'dash' },
-            _isBase: true
-        });
-    }
-
-    // Current token highlight (always)
-    shapes.push({
-        type: 'line',
-        x0: highlightX, x1: highlightX,
-        y0: 0, y1: 1, yref: 'paper',
-        line: { color: primaryColor, width: 2 }
-    });
-
-    // Turn boundary bands (rollouts: colored by role)
-    shapes.push(...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
-
-    // Sentence overlay bands (cue_p and/or category, respecting toggle state)
-    shapes.push(...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
+    // Build shapes using shared helper
+    const shapes = buildCommonShapes(nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
 
     // Annotation shaded bands (response token ranges offset by nPromptTokens)
     for (const [start, end] of annotationTokenRanges) {
@@ -1172,6 +991,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
     }
 
     // PROMPT/RESPONSE labels (skip for rollouts — turn boundaries replace them)
+    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
     const annotations = [];
     if (!isRollout) {
         annotations.push(
@@ -1206,7 +1026,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         ? 'Normalized (proj / avg\u2016h\u2016)'
         : 'Cosine (proj / \u2016h\u2016)';
 
-    // Compute y-axis range: minimum ±0.15, auto-expand if data exceeds
+    // Compute y-axis range: minimum +/-0.15, auto-expand if data exceeds
     let yAxisConfig = { title: yAxisTitle, zeroline: true, zerolinewidth: 1, showgrid: true };
     // Find actual data range across all traces (skip first few special tokens for auto-range)
     const rangeSkip = Math.min(4, nPromptTokens);
@@ -1218,7 +1038,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
             if (v > maxY) maxY = v;
         });
     });
-    // Pad y-axis: 15% of data range, minimum ±0.02 (auto-zooms for diff mode)
+    // Pad y-axis: 15% of data range, minimum +/-0.02 (auto-zooms for diff mode)
     const pad = Math.max(0.02, (maxY - minY) * 0.15);
     const rangeMin = minY - pad;
     const rangeMax = maxY + pad;
@@ -1230,7 +1050,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
             const traitName = filteredByMethod[idx];
             const activations = traitActivations[traitName];
             if (!activations) continue;
-            const velocity = computeVelocity(activations);
+            const velocity = window.computeVelocity(activations);
             const smoothedVelocity = window.smoothData(velocity, window.state.smoothingWindow || 5);
             const color = traces[idx]?.line?.color || window.getChartColors()[idx % 10];
             traces.push({
@@ -1306,7 +1126,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
                     ${ui.renderToggle({ id: 'cue-p-overlay-toggle', label: 'cue_p', checked: showCueP, className: 'projection-toggle-checkbox' })}
                     ${showCueP ? buildCuePLegendHtml() : ''}
                     ${hasCategoryData ? ui.renderToggle({ id: 'category-overlay-toggle', label: 'Category', checked: showCategory, className: 'projection-toggle-checkbox' }) : ''}
-                    ${showCategory && hasCategoryData ? buildCategoryLegendHtml(sentenceCategoryData) : ''}
+                    ${showCategory && hasCategoryData ? window.buildCategoryLegendHtml(sentenceCategoryData) : ''}
                 </div>
             `;
 
@@ -1331,7 +1151,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
     // Render cue_p resampling plot (thought branches only)
     renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, isRollout);
 
-    // Render Trait × Token heatmap (all traits at once)
+    // Render Trait x Token heatmap (all traits at once)
     renderTraitTokenHeatmap(traitActivations, filteredByMethod, tickVals, tickText, nPromptTokens, displayTokens, isRollout, turnBoundaries, sentenceBoundaries, traitData, sentenceCategoryData);
 
     // Render Token Magnitude plot (per-token norms)
@@ -1340,14 +1160,14 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
 
 
 /**
- * Render Trait × Token heatmap: all traits as rows, tokens as columns, colored by projection value.
+ * Render Trait x Token heatmap: all traits as rows, tokens as columns, colored by projection value.
  * Reuses already-computed traitActivations (smoothed/centered/normalized).
  */
 function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, displayTokens, isRollout, turnBoundaries, sentenceBoundaries, traitData, sentenceCategoryData = null) {
     const panel = document.getElementById('trait-heatmap-panel');
     if (!panel) return;
 
-    // Hide when ≤1 trait (single-row heatmap has no value)
+    // Hide when <=1 trait (single-row heatmap has no value)
     if (loadedTraits.length <= 1) {
         panel.innerHTML = '';
         return;
@@ -1368,8 +1188,8 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
     panel.innerHTML = `
         <div class="dropdown" style="margin-top: 12px;">
             <div class="dropdown-header" id="trait-heatmap-toggle">
-                <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
-                <span class="dropdown-label">Trait × Token Heatmap</span>
+                <span class="dropdown-toggle">${isOpen ? '\u25BC' : '\u25B6'}</span>
+                <span class="dropdown-label">Trait \u00D7 Token Heatmap</span>
                 <span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: auto;">${loadedTraits.length} traits</span>
             </div>
             ${isOpen ? `
@@ -1391,7 +1211,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
 
     if (!isOpen) return;
 
-    // Build z-matrix (traits × tokens)
+    // Build z-matrix (traits x tokens)
     const z = loadedTraits.map(traitName => traitActivations[traitName] || []);
 
     // Symmetric colorscale around 0
@@ -1420,36 +1240,8 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
         }
     };
 
-    // Shapes: separator + highlight + turn/sentence boundaries
-    const shapes = [];
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
-
-    // Prompt/response separator
-    if (!isRollout) {
-        shapes.push({
-            type: 'line',
-            x0: (nPromptTokens - START_TOKEN_IDX) - 0.5,
-            x1: (nPromptTokens - START_TOKEN_IDX) - 0.5,
-            y0: 0, y1: 1, yref: 'paper',
-            line: { color: textSecondary, width: 2, dash: 'dash' },
-            _isBase: true
-        });
-    }
-
-    // Current token highlight
-    const currentTokenIdx = window.state.currentTokenIndex || 0;
-    const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
-    shapes.push({
-        type: 'line',
-        x0: highlightX, x1: highlightX,
-        y0: 0, y1: 1, yref: 'paper',
-        line: { color: primaryColor, width: 2 }
-    });
-
-    // Turn / sentence overlay bands
-    shapes.push(...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
-    shapes.push(...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
+    // Build shapes using shared helper
+    const shapes = buildCommonShapes(nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
 
     const height = Math.max(150, loadedTraits.length * 25 + 80);
 
@@ -1512,10 +1304,10 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         }
     }
 
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
     const colors = window.getChartColors();
     const currentTokenIdx = window.state.currentTokenIndex || 0;
     const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
+    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
 
     // Create a trace for each unique layer
     const traces = Object.entries(layerToNorms).map(([layer, norms], idx) => ({
@@ -1526,10 +1318,6 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         line: { color: colors[idx % colors.length], width: 1.5 },
         hovertemplate: `L${layer}<br>Token %{x}<br>||h|| = %{y:.1f}<extra></extra>`
     }));
-
-    // Prompt/response separator and current token highlight
-    const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
-    const highlightColors = window.getTokenHighlightColors();
 
     // Compute y-axis range: cap at 95th percentile to avoid BOS/early token spikes crushing the plot
     const allNormValues = Object.values(layerToNorms).flat().filter(v => v > 0);
@@ -1559,8 +1347,8 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         yaxis: yaxisMagnitude,
         hovermode: 'closest',
         shapes: [
-            ...(isRollout ? [] : [window.createSeparatorShape(promptEndIdx, highlightColors.separator)]),
-            window.createHighlightShape(highlightX, highlightColors.highlight),
+            ...(isRollout ? [] : [window.createSeparatorShape(promptEndIdx)]),
+            window.createHighlightShape(highlightX),
             ...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })),
             ...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true }))
         ]

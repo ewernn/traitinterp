@@ -272,6 +272,24 @@ function renderFilterChipRow(label, values, active, groupKey, { displayNames = {
     return `<div class="filter-row"><span class="filter-label">${label}:</span>${chips}</div>`;
 }
 
+// === Score Badges ===
+
+/**
+ * Return CSS class for score badge coloring.
+ * @param {number} val - Score value
+ * @param {'trait'|'coherence'} [type='trait'] - Score type with preset thresholds
+ *   trait: >50 good, >20 ok, else ''
+ *   coherence: >=80 good, >=60 ok, else bad
+ * @returns {string} CSS class ('quality-good', 'quality-ok', 'quality-bad', or '')
+ */
+function scoreClass(val, type = 'trait') {
+    if (type === 'coherence') {
+        return val >= 80 ? 'quality-good' : val >= 60 ? 'quality-ok' : 'quality-bad';
+    }
+    // trait (default)
+    return val > 50 ? 'quality-good' : val > 20 ? 'quality-ok' : '';
+}
+
 // === Export ===
 
 window.ui = {
@@ -291,4 +309,5 @@ window.ui = {
     renderRunHint,
     renderFilterChip,
     renderFilterChipRow,
+    scoreClass,
 };
