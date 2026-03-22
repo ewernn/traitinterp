@@ -93,49 +93,12 @@ async function loadFindingContent(filename) {
         if (!response.ok) throw new Error(`Failed to load ${filename}`);
 
         const text = await response.text();
-        const { frontmatter, content } = window.parseFrontmatter(text);
-        const references = frontmatter.references || {};
-
-        // Protect math blocks from markdown parser
-        let { markdown, blocks: mathBlocks } = window.protectMathBlocks(content);
-
-        // Extract custom blocks (:::responses, :::dataset, etc.)
-        const { markdown: processedMarkdown, blocks } = window.customBlocks.extractCustomBlocks(markdown);
-        markdown = processedMarkdown;
-
-        // Extract numbered references (## References section) and process ^N citations
-        let numberedRefs = {};
-        if (window.citations) {
-            const extracted = window.citations.extractReferences(markdown);
-            markdown = extracted.markdown;
-            numberedRefs = extracted.refs;
-            markdown = window.citations.processCitationMarkers(markdown, numberedRefs);
-        }
-
-        // Extract [@key] citations
-        const keyed = window.citations.extractKeyedCitations(markdown, references);
-        markdown = keyed.markdown;
-
-        // Fix relative image paths to absolute
-        markdown = markdown.replace(/!\[([^\]]*)\]\(assets\//g, '![$1](/docs/viz_findings/assets/');
-
-        // Render markdown
-        let html = marked.parse(markdown);
-
-        // Restore math blocks
-        html = window.restoreMathBlocks(html, mathBlocks);
-
-        // Render custom blocks
-        html = window.customBlocks.renderCustomBlocks(html, blocks, filename);
-
-        // Render [@key] citations and append references section
-        html = window.citations.renderKeyedCitations(html, keyed.citedKeys, references);
-
-        // Render numbered ^N citations and append references section
-        if (window.citations && Object.keys(numberedRefs).length > 0) {
-            html = window.citations.renderCitations(html, numberedRefs);
-            html += window.citations.renderReferencesSection(numberedRefs);
-        }
+        const { html } = window.renderMarkdownContent(text, {
+            customBlocks: true,
+            citations: true,
+            assetBaseUrl: '/docs/viz_findings/',
+            namespace: filename
+        });
 
         loadedFindings[filename] = html;
         return html;
