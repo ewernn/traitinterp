@@ -13,6 +13,12 @@ const INFERENCE_VIEWS = ['trait-dynamics'];
 // Pagination settings
 const PROMPTS_PER_PAGE = 50;
 
+// Module-local state (not part of global state shape)
+let promptPage = 0;
+let promptPageInitialized = false;  // Whether we've done the initial jump-to-current-prompt
+let promptTagsCache = {};   // { 'setName:promptId': ['tag1', ...] }
+let tagsPreloaded = {};     // { setName: true } - tracks which sets have had tags preloaded
+
 /**
  * Position the prompt picker centered within the main content area,
  * accounting for all visible sidebars (variable width).
@@ -92,21 +98,20 @@ async function renderPromptPicker() {
     const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
     const needsPagination = currentSetPromptIds.length > PROMPTS_PER_PAGE;
 
-    // Initialize page state if needed, and ensure current prompt is visible
-    if (window.state.promptPage === undefined) {
-        window.state.promptPage = 0;
-        // Jump to page containing current prompt (only on init, not during pagination)
+    // On first render, jump to page containing current prompt
+    if (!promptPageInitialized) {
+        promptPageInitialized = true;
         if (window.state.currentPromptId !== null && needsPagination) {
             const promptIdx = currentSetPromptIds.indexOf(window.state.currentPromptId);
             if (promptIdx >= 0) {
-                window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+                promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
             }
         }
     }
 
     // Calculate pagination
     const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
-    const currentPage = Math.min(window.state.promptPage, totalPages - 1);
+    const currentPage = Math.min(promptPage, totalPages - 1);
     const startIdx = currentPage * PROMPTS_PER_PAGE;
     const endIdx = Math.min(startIdx + PROMPTS_PER_PAGE, currentSetPromptIds.length);
     const visibleIds = needsPagination ? currentSetPromptIds.slice(startIdx, endIdx) : currentSetPromptIds;
@@ -132,7 +137,7 @@ async function renderPromptPicker() {
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
         // Get tags from cache (if we've loaded this prompt before)
         const cacheKey = `${window.state.currentPromptSet}:${id}`;
-        const tags = window.state.promptTagsCache?.[cacheKey] || [];
+        const tags = promptTagsCache?.[cacheKey] || [];
         const tagClasses = tags.map(t => `tag-${t}`).join(' ');
         // Show sequential display number on button, use real ID internally
         const displayNum = startIdx + localIdx + 1;
@@ -228,9 +233,9 @@ async function renderPromptPicker() {
     setupPromptPickerListeners();
 
     // Preload tags for current set (only if not already loaded)
-    if (window.state.currentPromptSet && !window.state.tagsPreloaded?.[window.state.currentPromptSet]) {
-        if (!window.state.tagsPreloaded) window.state.tagsPreloaded = {};
-        window.state.tagsPreloaded[window.state.currentPromptSet] = true;
+    if (window.state.currentPromptSet && !tagsPreloaded?.[window.state.currentPromptSet]) {
+        if (!tagsPreloaded) tagsPreloaded = {};
+        tagsPreloaded[window.state.currentPromptSet] = true;
         preloadTagsForSet(window.state.currentPromptSet);
     }
 }
@@ -314,9 +319,9 @@ async function fetchPromptPickerData() {
     };
 
     // Store tags in per-prompt cache for rendering buttons
-    if (!window.state.promptTagsCache) window.state.promptTagsCache = {};
+    if (!promptTagsCache) promptTagsCache = {};
     const cacheKey = `${window.state.currentPromptSet}:${window.state.currentPromptId}`;
-    window.state.promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
+    promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
 
     // Reset token index when loading new prompt (clamp to valid range)
     const maxIdx = Math.max(0, allTokens.length - 1);
@@ -382,8 +387,8 @@ function setupPromptPickerListeners() {
         prevBtn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (window.state.promptPage > 0) {
-                window.state.promptPage--;
+            if (promptPage > 0) {
+                promptPage--;
                 renderPromptPicker();
             }
         };
@@ -394,8 +399,8 @@ function setupPromptPickerListeners() {
             e.stopPropagation();
             const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
             const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
-            if (window.state.promptPage < totalPages - 1) {
-                window.state.promptPage++;
+            if (promptPage < totalPages - 1) {
+                promptPage++;
                 renderPromptPicker();
             }
         };
@@ -560,12 +565,12 @@ async function preloadTagsForSet(promptSet) {
         const tagsIndex = await response.json();
 
         // Initialize cache if needed
-        if (!window.state.promptTagsCache) window.state.promptTagsCache = {};
+        if (!promptTagsCache) promptTagsCache = {};
 
         // Populate cache with all tags from index
         for (const [promptId, tags] of Object.entries(tagsIndex)) {
             const cacheKey = `${promptSet}:${promptId}`;
-            window.state.promptTagsCache[cacheKey] = tags;
+            promptTagsCache[cacheKey] = tags;
         }
 
         // Re-render to show tags
@@ -593,7 +598,7 @@ function selectPromptSet(newSet) {
     }
 
     window.state.currentPromptSet = newSet;
-    window.state.promptPage = 0;
+    promptPage = 0;
 
     window.updateAvailableComparisonModels?.();
 
@@ -604,7 +609,7 @@ function selectPromptSet(newSet) {
     if (savedPromptId != null && availableIds.includes(savedPromptId)) {
         window.state.currentPromptId = savedPromptId;
         const promptIdx = availableIds.indexOf(savedPromptId);
-        window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+        promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
     } else {
         window.state.currentPromptId = availableIds[0] || null;
     }

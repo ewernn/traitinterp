@@ -206,6 +206,72 @@ function renderError(message, details) {
     return `<div class="error">${escape(message)}${detailsHtml}</div>`;
 }
 
+// === Guards & States ===
+
+/**
+ * Render "no experiment selected" guard. Returns true if guard was shown.
+ * Usage: if (ui.requireExperiment(contentArea)) return;
+ */
+function requireExperiment(contentArea) {
+    if (window.state.currentExperiment) return false;
+    contentArea.innerHTML = `<div class="tool-view"><div class="no-data">
+        <p>Please select an experiment from the sidebar to view analysis.</p>
+        <p class="hint">Experiments are loaded from the <code>experiments/</code> directory.</p>
+    </div></div>`;
+    return true;
+}
+
+/**
+ * Show loading indicator after a delay (avoids flash for fast loads).
+ * Returns { cancel } handle. Call cancel() when data arrives.
+ */
+function deferredLoading(targetEl, message = 'Loading...', delayMs = 150) {
+    const el = typeof targetEl === 'string' ? document.getElementById(targetEl) : targetEl;
+    const timer = setTimeout(() => { if (el) el.innerHTML = renderLoading(message); }, delayMs);
+    return { cancel: () => clearTimeout(timer) };
+}
+
+/**
+ * Render a "no data — run this command" hint block.
+ */
+function renderRunHint(message, command) {
+    return `<div class="info">${message}<br><br>Run: <code>${command}</code></div>`;
+}
+
+/**
+ * Render a single filter chip (uses .filter-chip CSS, not .btn).
+ * @param {string} value - Data value
+ * @param {string} label - Display text
+ * @param {Set<string>|string} active - Active value(s)
+ * @param {string} dataAttr - data-* attribute name
+ */
+function renderFilterChip(value, label, active, dataAttr) {
+    const isActive = active instanceof Set ? active.has(value) : active === value;
+    return `<span class="filter-chip${isActive ? ' active' : ''}" data-${dataAttr}="${value}">${label}</span>`;
+}
+
+/**
+ * Render a labeled row of filter chips. Returns '' if ≤1 option.
+ * @param {string} label - Row label
+ * @param {Set<string>|Array} values - All possible values
+ * @param {Set<string>} active - Active values
+ * @param {string} groupKey - data-filter-group value + used for data-value
+ * @param {Object} [opts]
+ * @param {Object} [opts.displayNames] - value → display label map
+ * @param {Function} [opts.formatLabel] - fallback formatter
+ */
+function renderFilterChipRow(label, values, active, groupKey, { displayNames = {}, formatLabel = null } = {}) {
+    const arr = Array.from(values);
+    if (arr.length <= 1) return '';
+    const defaultFmt = v => v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const chips = arr.map(v => {
+        const display = displayNames[v] ?? (formatLabel ? formatLabel(v) : defaultFmt(v));
+        const activeClass = active.has(v) ? ' active' : '';
+        return `<span class="filter-chip${activeClass}" data-filter-group="${groupKey}" data-value="${v}">${display}</span>`;
+    }).join('');
+    return `<div class="filter-row"><span class="filter-label">${label}:</span>${chips}</div>`;
+}
+
 // === Export ===
 
 window.ui = {
@@ -219,5 +285,10 @@ window.ui = {
     handleSortClick,
     renderLoading,
     setLoading,
-    renderError
+    renderError,
+    requireExperiment,
+    deferredLoading,
+    renderRunHint,
+    renderFilterChip,
+    renderFilterChipRow,
 };

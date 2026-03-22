@@ -12,18 +12,7 @@
 async function renderModelAnalysis() {
     const contentArea = document.getElementById('content-area');
 
-    // Guard: require experiment selection
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
-                </div>
-            </div>
-        `;
-        return;
-    }
+    if (ui.requireExperiment(contentArea)) return;
 
     const experiment = window.state.currentExperiment;
 
@@ -197,18 +186,14 @@ async function renderModelDiffComparison(experiment) {
 
     try {
         // Fetch available comparisons
-        const response = await fetch(`/api/experiments/${experiment}/model-diff`);
-        const data = await response.json();
-        const comparisons = data.comparisons || [];
+        const data = await fetchJSON(`/api/experiments/${experiment}/model-diff`);
+        const comparisons = data?.comparisons || [];
 
         if (comparisons.length === 0) {
-            container.innerHTML = `
-                <div class="info">
-                    No model diff data available.
-                    <br><br>
-                    Run: <code>python analysis/model_diff/compare_variants.py --experiment ${experiment} --variant-a instruct --variant-b rm_lora --prompt-set {prompt_set}</code>
-                </div>
-            `;
+            container.innerHTML = ui.renderRunHint(
+                'No model diff data available.',
+                `python analysis/model_diff/compare_variants.py --experiment ${experiment} --variant-a instruct --variant-b rm_lora --prompt-set {prompt_set}`
+            );
             return;
         }
 
@@ -224,14 +209,8 @@ async function renderModelDiffComparison(experiment) {
                     variant_b: comparison.variant_b,
                     prompt_set: promptSet
                 });
-            try {
-                const res = await fetch('/' + resultsPath);
-                if (res.ok) {
-                    allResults[promptSet] = await res.json();
-                }
-            } catch (e) {
-                console.warn(`Failed to load ${resultsPath}:`, e);
-            }
+            const result = await fetchJSON('/' + resultsPath);
+            if (result) allResults[promptSet] = result;
         }
 
         if (Object.keys(allResults).length === 0) {
@@ -341,8 +320,25 @@ async function renderModelDiffComparison(experiment) {
         window.setupSubsectionInfoToggles?.();
 
         // Plot all traits × prompt sets
-        renderModelDiffChart(allResults, comparison);
-        renderModelDiffCosineChart(allResults, comparison);
+        renderModelDiffLayerChart(allResults, comparison, {
+            field: 'per_layer_effect_size',
+            divId: 'model-diff-chart',
+            yaxisTitle: 'Effect Size (σ)',
+            hoverFormat: '%{y:.2f}σ',
+            height: 400,
+            margin: { t: 40 },
+            title: `Trait Detection: ${comparison.variant_b} vs ${comparison.variant_a}`
+        });
+        renderModelDiffLayerChart(allResults, comparison, {
+            field: 'per_layer_cosine_sim',
+            divId: 'model-diff-cosine-chart',
+            yaxisTitle: 'Cosine Similarity',
+            hoverFormat: '%{y:.3f}',
+            height: 300,
+            margin: { t: 10 },
+            yaxisRange: [-0.15, 0.15],
+            peakByAbsValue: true
+        });
 
     } catch (error) {
         console.error('Model diff error:', error);
@@ -351,10 +347,25 @@ async function renderModelDiffComparison(experiment) {
 }
 
 /**
- * Render model diff chart with all traits and prompt sets
+ * Render a model diff layer chart (effect size or cosine similarity).
+ * @param {Object} allResults - {promptSet: results} map
+ * @param {Object} comparison - {variant_a, variant_b} info
+ * @param {Object} opts - Chart configuration
+ * @param {string} opts.field - Data field name (e.g. 'per_layer_effect_size', 'per_layer_cosine_sim')
+ * @param {string} opts.divId - Target div ID
+ * @param {string} opts.yaxisTitle - Y-axis label
+ * @param {string} opts.hoverFormat - Plotly hover format (e.g. '%{y:.2f}σ')
+ * @param {number} [opts.height=300] - Chart height
+ * @param {Object} [opts.margin] - Margin overrides
+ * @param {string} [opts.title] - Chart title
+ * @param {Array} [opts.yaxisRange] - Y-axis range
+ * @param {boolean} [opts.peakByAbsValue=false] - Find peak by absolute value (for cosine sim)
  */
-function renderModelDiffChart(allResults, comparison) {
-    const chartDiv = document.getElementById('model-diff-chart');
+function renderModelDiffLayerChart(allResults, comparison, {
+    field, divId, yaxisTitle, hoverFormat,
+    height = 300, margin = {}, title, yaxisRange, peakByAbsValue = false
+}) {
+    const chartDiv = document.getElementById(divId);
     if (!chartDiv) return;
 
     const colors = window.getChartColors?.() || ['#4ecdc4', '#ff6b6b', '#ffe66d', '#95e1d3'];
@@ -377,20 +388,34 @@ function renderModelDiffChart(allResults, comparison) {
 
         for (const [promptSet, results] of Object.entries(allResults)) {
             const traitData = results.traits?.[trait];
-            if (!traitData || !traitData.per_layer_effect_size) continue;
+            if (!traitData || !traitData[field]) continue;
 
+            const values = traitData[field];
             const setName = promptSet.split('/').pop();
             const dash = dashIdx === 0 ? 'solid' : 'dash';
 
+            // Compute peak label
+            let peakVal, peakLayer;
+            if (peakByAbsValue) {
+                const peakIdx = values.reduce((maxIdx, val, idx, arr) =>
+                    Math.abs(val) > Math.abs(arr[maxIdx]) ? idx : maxIdx, 0);
+                peakVal = values[peakIdx];
+                peakLayer = traitData.layers[peakIdx];
+            } else {
+                peakVal = traitData.peak_effect_size;
+                peakLayer = traitData.peak_layer;
+            }
+            const peakLabel = peakByAbsValue ? peakVal.toFixed(2) : `${peakVal.toFixed(2)}σ`;
+
             traces.push({
                 x: traitData.layers,
-                y: traitData.per_layer_effect_size,
+                y: values,
                 type: 'scatter',
                 mode: 'lines+markers',
-                name: `${traitName} ${setName} (peak: ${traitData.peak_effect_size.toFixed(2)}σ @ L${traitData.peak_layer})`,
+                name: `${traitName} ${setName} (peak: ${peakLabel} @ L${peakLayer})`,
                 line: { color, width: 2, dash },
                 marker: { size: 3 },
-                hovertemplate: `${traitName} ${setName}<br>L%{x}: %{y:.2f}σ<extra></extra>`
+                hovertemplate: `${traitName} ${setName}<br>L%{x}: ${hoverFormat}<extra></extra>`
             });
 
             dashIdx++;
@@ -398,104 +423,24 @@ function renderModelDiffChart(allResults, comparison) {
         colorIdx++;
     }
 
-    // Use shared chart utilities for consistent theming
+    const yaxis = {
+        title: yaxisTitle,
+        zeroline: true,
+        zerolinewidth: 1,
+        showgrid: true,
+        ...(yaxisRange ? { range: yaxisRange } : {})
+    };
+
     const layout = window.buildChartLayout({
         preset: 'layerChart',
         traces,
-        height: 400,
+        height,
         legendPosition: 'below',
-        margin: { t: 40 },  // Extra top margin for title
-        xaxis: {
-            title: 'Layer',
-            dtick: 10,
-            showgrid: true
-        },
-        yaxis: {
-            title: 'Effect Size (σ)',
-            zeroline: true,
-            zerolinewidth: 1,
-            showgrid: true
-        },
+        margin,
+        xaxis: { title: 'Layer', dtick: 10, showgrid: true },
+        yaxis,
         hovermode: 'closest',
-        title: `Trait Detection: ${comparison.variant_b} vs ${comparison.variant_a}`
-    });
-
-    window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
-}
-
-/**
- * Render cosine similarity chart (diff vector alignment with trait direction)
- */
-function renderModelDiffCosineChart(allResults, comparison) {
-    const chartDiv = document.getElementById('model-diff-cosine-chart');
-    if (!chartDiv) return;
-
-    const colors = window.getChartColors?.() || ['#4ecdc4', '#ff6b6b', '#ffe66d', '#95e1d3'];
-    const traces = [];
-    let colorIdx = 0;
-
-    // Collect all traits
-    const allTraits = new Set();
-    for (const results of Object.values(allResults)) {
-        for (const trait of Object.keys(results.traits || {})) {
-            allTraits.add(trait);
-        }
-    }
-
-    // Create traces for each trait × prompt set combination
-    for (const trait of allTraits) {
-        const traitName = trait.split('/').pop();
-        const color = colors[colorIdx % colors.length];
-        let dashIdx = 0;
-
-        for (const [promptSet, results] of Object.entries(allResults)) {
-            const traitData = results.traits?.[trait];
-            if (!traitData || !traitData.per_layer_cosine_sim) continue;
-
-            const setName = promptSet.split('/').pop();
-            const dash = dashIdx === 0 ? 'solid' : 'dash';
-
-            // Find peak cosine sim (by absolute value — signal can be negative)
-            const peakIdx = traitData.per_layer_cosine_sim.reduce((maxIdx, val, idx, arr) =>
-                Math.abs(val) > Math.abs(arr[maxIdx]) ? idx : maxIdx, 0);
-            const peakCos = traitData.per_layer_cosine_sim[peakIdx];
-            const peakLayer = traitData.layers[peakIdx];
-
-            traces.push({
-                x: traitData.layers,
-                y: traitData.per_layer_cosine_sim,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: `${traitName} ${setName} (peak: ${peakCos.toFixed(2)} @ L${peakLayer})`,
-                line: { color, width: 2, dash },
-                marker: { size: 3 },
-                hovertemplate: `${traitName} ${setName}<br>L%{x}: %{y:.3f}<extra></extra>`
-            });
-
-            dashIdx++;
-        }
-        colorIdx++;
-    }
-
-    const layout = window.buildChartLayout({
-        preset: 'layerChart',
-        traces,
-        height: 300,
-        legendPosition: 'below',
-        margin: { t: 10 },
-        xaxis: {
-            title: 'Layer',
-            dtick: 10,
-            showgrid: true
-        },
-        yaxis: {
-            title: 'Cosine Similarity',
-            range: [-0.15, 0.15],
-            zeroline: true,
-            zerolinewidth: 1,
-            showgrid: true
-        },
-        hovermode: 'closest'
+        ...(title ? { title } : {})
     });
 
     window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
@@ -513,9 +458,7 @@ function renderModelDiffCosineChart(allResults, comparison) {
 async function fetchMassiveActivationsData() {
     const modelVariant = getSelectedVariant();
     const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration', model_variant: modelVariant });
-    const response = await fetch('/' + calibrationPath);
-    if (!response.ok) return null;
-    return response.json();
+    return fetchJSON('/' + calibrationPath);
 }
 
 
@@ -530,13 +473,10 @@ async function renderActivationMagnitudePlot() {
     try {
         const data = await fetchMassiveActivationsData();
         if (!data || !data.aggregate?.layer_norms) {
-            plotDiv.innerHTML = `
-                <div class="info">
-                    Activation magnitude data not available.
-                    <br><br>
-                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
+            plotDiv.innerHTML = ui.renderRunHint(
+                'Activation magnitude data not available.',
+                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            );
             return;
         }
 
@@ -622,13 +562,10 @@ async function renderMassiveActivations() {
     try {
         const data = await fetchMassiveActivationsData();
         if (!data) {
-            container.innerHTML = `
-                <div class="info">
-                    No massive activation calibration data.
-                    <br><br>
-                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
+            container.innerHTML = ui.renderRunHint(
+                'No massive activation calibration data.',
+                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            );
             return;
         }
 
@@ -684,7 +621,10 @@ async function renderMassiveDimsAcrossLayers() {
     try {
         const data = await fetchMassiveActivationsData();
         if (!data) {
-            container.innerHTML = `<div class="info">No massive activation data. Run <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code></div>`;
+            container.innerHTML = ui.renderRunHint(
+                'No massive activation data.',
+                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            );
             return;
         }
         const aggregate = data.aggregate || {};
@@ -793,12 +733,10 @@ async function renderInterLayerSimilarity() {
     try {
         const data = await fetchMassiveActivationsData();
         if (!data || !data.aggregate?.consecutive_cosine) {
-            plotDiv.innerHTML = `
-                <div class="info">
-                    Inter-layer similarity data not available. Re-run:
-                    <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
+            plotDiv.innerHTML = ui.renderRunHint(
+                'Inter-layer similarity data not available.',
+                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            );
             return;
         }
 

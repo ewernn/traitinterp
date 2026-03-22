@@ -9,30 +9,15 @@
 
 async function renderSteering() {
     const contentArea = document.getElementById('content-area');
+    if (ui.requireExperiment(contentArea)) return;
 
-    // Guard: require experiment selection
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    // Show loading state only if fetch takes > 150ms
-    const loadingTimeout = setTimeout(() => {
-        contentArea.innerHTML = ui.renderLoading('Loading steering sweep data...');
-    }, 150);
+    const loading = ui.deferredLoading(contentArea, 'Loading steering sweep data...');
 
     // Get current trait from state or use default
     const traits = await discoverSteeringTraits();
     discoveredSteeringTraits = traits; // Store for use by other functions
 
-    clearTimeout(loadingTimeout);
+    loading.cancel();
 
     if (traits.length === 0) {
         contentArea.innerHTML = `
@@ -144,11 +129,11 @@ async function renderSteering() {
     await renderTraitPicker(traits);
 
     // Set default selected entry if not set
-    if (!window.state.selectedSteeringEntry && traits.length > 0) {
-        window.state.selectedSteeringEntry = defaultTrait;
+    if (!selectedSteeringEntry && traits.length > 0) {
+        selectedSteeringEntry = defaultTrait;
     }
 
-    await renderSweepData(window.state.selectedSteeringEntry || defaultTrait);
+    await renderSweepData(selectedSteeringEntry || defaultTrait);
 
     // Setup event handlers
     document.getElementById('sweep-method').addEventListener('change', () => updateSweepVisualizations());
@@ -162,7 +147,7 @@ async function renderSteering() {
     document.getElementById('sweep-interpolate').addEventListener('change', () => updateSweepVisualizations());
 
     // Setup info toggles
-    setupSweepInfoToggles();
+    window.setupSubsectionInfoToggles();
 }
 
 
@@ -171,6 +156,7 @@ let currentSweepData = null;
 let currentRawResults = null; // Store raw results.jsonl data for method filtering
 let discoveredSteeringTraits = []; // All discovered steering traits
 let localTraitResultsCache = {}; // Local cache, passed to response-browser via setTraitResultsCache()
+let selectedSteeringEntry = null; // Selected trait entry for heatmaps (reset on experiment change)
 
 // Global chart filters - populated from data, all active by default
 let chartFilters = {
@@ -209,13 +195,9 @@ async function collectFilterValues(steeringEntries) {
     }
 
     // Methods, components, directions require loading results
-    const results = await Promise.all(steeringEntries.map(async (entry) => {
-        try {
-            const url = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
-            const resp = await fetch(url);
-            if (!resp.ok) return null;
-            return resp.json();
-        } catch { return null; }
+    const results = await Promise.all(steeringEntries.map(entry => {
+        const url = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
+        return window.fetchJSON(url);
     }));
 
     for (const result of results) {
@@ -259,34 +241,22 @@ function renderFilterChips() {
     const container = document.getElementById('chart-filter-rows');
     if (!container) return;
 
-    const rows = [];
-
-    const renderRow = (label, allValues, activeSet, filterKey) => {
-        if (allValues.size <= 1) return ''; // Skip single-value filters
-
-        const displayNames = {
-            'probe': 'Probe', 'mean_diff': 'Mean Diff', 'gradient': 'Gradient',
-            'residual': 'Residual', 'attn_contribution': 'Attn', 'mlp_contribution': 'MLP',
-            'k_proj': 'K Proj', 'v_proj': 'V Proj',
-            'positive': 'Positive', 'negative': 'Negative',
-        };
-
-        const chips = Array.from(allValues).map(value => {
-            const display = displayNames[value]
-                || window.paths?.formatPositionDisplay(value)
-                || value.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            const active = activeSet.has(value) ? 'active' : '';
-            return `<span class="filter-chip ${active}" data-filter="${filterKey}" data-value="${value}">${display}</span>`;
-        }).join('');
-
-        return `<div class="filter-row"><span class="filter-label">${label}:</span>${chips}</div>`;
+    const displayNames = {
+        'probe': 'Probe', 'mean_diff': 'Mean Diff', 'gradient': 'Gradient',
+        'residual': 'Residual', 'attn_contribution': 'Attn', 'mlp_contribution': 'MLP',
+        'k_proj': 'K Proj', 'v_proj': 'V Proj',
+        'positive': 'Positive', 'negative': 'Negative',
     };
+    const formatLabel = v => window.paths?.formatPositionDisplay(v)
+        || v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-    rows.push(renderRow('Model', chartFilters.modelVariants, chartFilters.activeModelVariants, 'modelVariants'));
-    rows.push(renderRow('Method', chartFilters.methods, chartFilters.activeMethods, 'methods'));
-    rows.push(renderRow('Position', chartFilters.positions, chartFilters.activePositions, 'positions'));
-    rows.push(renderRow('Component', chartFilters.components, chartFilters.activeComponents, 'components'));
-    rows.push(renderRow('Direction', chartFilters.directions, chartFilters.activeDirections, 'directions'));
+    const rows = [
+        ui.renderFilterChipRow('Model', chartFilters.modelVariants, chartFilters.activeModelVariants, 'modelVariants', { displayNames, formatLabel }),
+        ui.renderFilterChipRow('Method', chartFilters.methods, chartFilters.activeMethods, 'methods', { displayNames, formatLabel }),
+        ui.renderFilterChipRow('Position', chartFilters.positions, chartFilters.activePositions, 'positions', { displayNames, formatLabel }),
+        ui.renderFilterChipRow('Component', chartFilters.components, chartFilters.activeComponents, 'components', { displayNames, formatLabel }),
+        ui.renderFilterChipRow('Direction', chartFilters.directions, chartFilters.activeDirections, 'directions', { displayNames, formatLabel }),
+    ];
 
     container.innerHTML = rows.filter(r => r).join('');
 
@@ -296,7 +266,7 @@ function renderFilterChips() {
 
     container.querySelectorAll('.filter-chip').forEach(chip => {
         chip.addEventListener('click', () => {
-            const filterKey = chip.dataset.filter;
+            const filterKey = chip.dataset.filterGroup;
             const value = chip.dataset.value;
             const activeSetKey = 'active' + filterKey.charAt(0).toUpperCase() + filterKey.slice(1);
             const activeSet = chartFilters[activeSetKey];
@@ -307,7 +277,7 @@ function renderFilterChips() {
                 activeSet.clear();
                 activeSet.add(value);
                 // Update all chips in this row
-                container.querySelectorAll(`.filter-chip[data-filter="${filterKey}"]`).forEach(c => {
+                container.querySelectorAll(`.filter-chip[data-filter-group="${filterKey}"]`).forEach(c => {
                     c.classList.toggle('active', c.dataset.value === value);
                 });
             } else {
@@ -363,16 +333,8 @@ async function discoverSteeringTraits() {
     // Fetch steering entries from API
     // Returns array of objects: { trait, model_variant, position, prompt_set, full_path }
     if (!window.state.experimentData?.name) return [];
-
-    try {
-        const response = await fetch(`/api/experiments/${window.state.experimentData.name}/steering`);
-        if (!response.ok) return [];
-        const data = await response.json();
-        return data.entries || [];
-    } catch (e) {
-        console.error('Failed to discover steering traits:', e);
-        return [];
-    }
+    const data = await window.fetchJSON(`/api/experiments/${window.state.experimentData.name}/steering`);
+    return data?.entries || [];
 }
 
 
@@ -384,22 +346,16 @@ async function renderSweepData(steeringEntry) {
     let data = null;
     let steeringMeta = null;
 
-    try {
-        const experiment = window.state.experimentData?.name;
-        const resultsUrl = `/api/experiments/${experiment}/steering-results/${steeringEntry.trait}/${steeringEntry.model_variant}/${steeringEntry.position}/${steeringEntry.prompt_set}`;
-        const response = await fetch(resultsUrl);
-        if (response.ok) {
-            const results = await response.json();
-            currentRawResults = results;
-            steeringMeta = {
-                steering_model: results.steering_model,
-                vector_source: results.vector_source,
-                eval: results.eval
-            };
-            data = convertResultsToSweepFormat(results);
-        }
-    } catch (e) {
-        console.error('Failed to load steering results:', e);
+    const resultsUrl = `/api/experiments/${experiment}/steering-results/${steeringEntry.trait}/${steeringEntry.model_variant}/${steeringEntry.position}/${steeringEntry.prompt_set}`;
+    const results = await window.fetchJSON(resultsUrl);
+    if (results) {
+        currentRawResults = results;
+        steeringMeta = {
+            steering_model: results.steering_model,
+            vector_source: results.vector_source,
+            eval: results.eval
+        };
+        data = convertResultsToSweepFormat(results);
     }
 
     // Update model info display
@@ -502,15 +458,9 @@ async function renderBestVectorPerLayer() {
         // Load results for each position variant (in parallel)
         const experiment = window.state.experimentData?.name;
         const variantResults = await Promise.all(activeVariants.map(async (entry) => {
-            try {
-                const resultsUrl = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
-                const response = await fetch(resultsUrl);
-                if (!response.ok) return null;
-                const results = await response.json();
-                return { entry, results };
-            } catch (e) {
-                return null;
-            }
+            const resultsUrl = `/api/experiments/${experiment}/steering-results/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
+            const results = await window.fetchJSON(resultsUrl);
+            return results ? { entry, results } : null;
         }));
 
         // Process results sequentially (baseline depends on first result)
@@ -797,7 +747,7 @@ async function renderTraitPicker(steeringEntries) {
     }
 
     // Get current selection or default to first
-    const currentFullPath = window.state.selectedSteeringEntry?.full_path || steeringEntries[0].full_path;
+    const currentFullPath = selectedSteeringEntry?.full_path || steeringEntries[0].full_path;
 
     // Build options with readable labels
     select.innerHTML = steeringEntries.map((entry, idx) => {
@@ -816,7 +766,7 @@ async function renderTraitPicker(steeringEntries) {
     select.addEventListener('change', async () => {
         const idx = parseInt(select.value);
         const selectedEntry = steeringEntries[idx];
-        window.state.selectedSteeringEntry = selectedEntry;
+        selectedSteeringEntry = selectedEntry;
         await renderSweepData(selectedEntry);
     });
 }
@@ -1188,24 +1138,11 @@ function renderSweepTable(data, coherenceThreshold) {
 }
 
 
-function setupSweepInfoToggles() {
-    const container = document.querySelector('.tool-view');
-    if (!container || container.dataset.sweepTogglesSetup) return;
-    container.dataset.sweepTogglesSetup = 'true';
-
-    container.addEventListener('click', (e) => {
-        const toggle = e.target.closest('.subsection-info-toggle');
-        if (!toggle) return;
-
-        const targetId = toggle.dataset.target;
-        const infoDiv = document.getElementById(targetId);
-        if (infoDiv) {
-            const isShown = infoDiv.classList.toggle('show');
-            toggle.textContent = isShown ? '▼' : '►';
-        }
-    });
+/** Reset steering-local state (called on experiment change). */
+function resetSteeringState() {
+    selectedSteeringEntry = null;
 }
-
 
 // Export
 window.renderSteering = renderSteering;
+window.resetSteeringState = resetSteeringState;

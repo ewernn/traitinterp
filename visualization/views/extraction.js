@@ -3,38 +3,17 @@
 async function renderExtraction() {
     const contentArea = document.getElementById('content-area');
 
-    // Guard: require experiment selection
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
-                </div>
-            </div>
-        `;
-        return;
-    }
+    if (ui.requireExperiment(contentArea)) return;
 
-    // Show loading state only if fetch takes > 150ms
-    const loadingTimeout = setTimeout(() => {
-        contentArea.innerHTML = ui.renderLoading('Loading extraction evaluation data...');
-    }, 150);
-
-    // Load extraction evaluation data
-    const evalData = await loadExtractionEvaluation();
-
-    clearTimeout(loadingTimeout);
+    const { cancel } = ui.deferredLoading(contentArea, 'Loading extraction evaluation data...');
+    const evalData = await fetchJSON(window.paths.extractionEvaluation());
+    cancel();
 
     if (!evalData || !evalData.all_results || evalData.all_results.length === 0) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>No extraction evaluation data</p>
-                    <small>Run: <code>python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}</code></small>
-                </div>
-            </div>
-        `;
+        contentArea.innerHTML = `<div class="tool-view">${ui.renderRunHint(
+            'No extraction evaluation data',
+            `python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}`
+        )}</div>`;
         return;
     }
 
@@ -118,19 +97,6 @@ async function renderExtraction() {
 
     // Setup info toggles
     window.setupSubsectionInfoToggles();
-}
-
-
-async function loadExtractionEvaluation() {
-    try {
-        const url = window.paths.extractionEvaluation();
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (error) {
-        console.error('Failed to load extraction evaluation:', error);
-        return null;
-    }
 }
 
 
@@ -544,21 +510,18 @@ async function renderLogitLensSection(evalData) {
 
     // Load all logit lens data in parallel
     const results = await Promise.all(traits.map(async trait => {
-        try {
-            const url = window.paths.logitLens(trait, modelVariant);
-            const response = await fetch(url);
-            if (!response.ok) return { trait, data: null };
-            return { trait, data: await response.json() };
-        } catch {
-            return { trait, data: null };
-        }
+        const data = await fetchJSON(window.paths.logitLens(trait, modelVariant));
+        return { trait, data };
     }));
 
     // Filter to traits that have data
     const withData = results.filter(r => r.data);
 
     if (withData.length === 0) {
-        container.innerHTML = '<p class="hint">No logit lens data. Run: <code>python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5</code></p>';
+        container.innerHTML = ui.renderRunHint(
+            'No logit lens data.',
+            'python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5'
+        );
         return;
     }
 

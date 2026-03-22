@@ -25,7 +25,6 @@
  * @property {number} currentTokenIndex
  * @property {PromptPickerCache|null} promptPickerCache
  * @property {boolean} hideAttentionSink
- * @property {string|null} selectedSteeringTrait
  * @property {boolean} smoothingEnabled
  * @property {boolean} projectionCentered
  * @property {Set<string>} selectedMethods

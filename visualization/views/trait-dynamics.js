@@ -2,145 +2,16 @@
 // Core insight: "See how the model is thinking" by projecting onto trait vectors
 //
 // Sections:
-// 1. Token Trajectory: X=tokens, Y=cosine similarity (best layer)
+// 1. Token Trajectory: X=tokens, Y=cosine similarity (best layer) — velocity overlay toggle
 // 2. Activation Magnitude Per Token: ||h|| at each token position
-// 3. Projection Velocity: d/dt of cosine projection
 
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
 
 // smoothData is in core/utils.js
 
-/**
- * Sentence category color definitions for overlay bands and legend.
- */
-const SENTENCE_CATEGORIES = {
-    setup:       { color: [140, 140, 140], label: 'Setup',       opacity: 0.10 },
-    recall:      { color: [70, 130, 220],  label: 'Recall',      opacity: 0.12 },
-    evaluate:    { color: [140, 140, 140], label: 'Evaluate',    opacity: 0.12,
-                   valenceColors: {
-                       'strong+': [40, 180, 80],  'mild+': [100, 200, 120],  'neutral': [140, 140, 140],
-                       'mild-':  [220, 120, 80],  'strong-': [220, 50, 50] }},
-    reframe:     { color: [230, 150, 40],  label: 'Reframe',     opacity: 0.12 },
-    compare:     { color: [150, 80, 200],  label: 'Compare',     opacity: 0.12 },
-    uncertainty: { color: [210, 200, 50],  label: 'Uncertainty', opacity: 0.10 },
-    commit:      { color: [50, 180, 170],  label: 'Commit',      opacity: 0.14 }
-};
-
-/**
- * Build Plotly shapes for turn boundaries in multi-turn rollouts.
- * Pattern: live-chat.js:buildMessageRegionShapes()
- */
-function buildTurnBoundaryShapes(turnBoundaries) {
-    if (!turnBoundaries || turnBoundaries.length === 0) return [];
-    const shapes = [];
-    const roleColors = {
-        system:    { cssVar: '--chart-10', fallback: '#94d82d', opacity: 0.06 },
-        user:      { cssVar: '--chart-1',  fallback: '#4a9eff', opacity: 0.12 },
-        assistant: { cssVar: '--chart-3',  fallback: '#51cf66', opacity: 0.06 },
-        tool:      { cssVar: '--chart-6',  fallback: '#ff922b', opacity: 0.12 },
-    };
-    for (const turn of turnBoundaries) {
-        if (turn.token_start === turn.token_end) continue;
-        const cfg = roleColors[turn.role] || roleColors.assistant;
-        const hex = window.getCssVar?.(cfg.cssVar, cfg.fallback) || cfg.fallback;
-        shapes.push({
-            type: 'rect',
-            x0: turn.token_start - 0.5,
-            x1: turn.token_end - 0.5,
-            y0: 0, y1: 1, yref: 'paper',
-            fillcolor: window.hexToRgba?.(hex, cfg.opacity) || `rgba(128,128,128,${cfg.opacity})`,
-            line: { width: 0 },
-            layer: 'below'
-        });
-    }
-    return shapes;
-}
-
-/**
- * Build Plotly shapes for sentence boundaries with cue_p gradient coloring.
- * Used for thought branches / unfaithful CoT analysis.
- * Color: blue (cue_p=0) → red (cue_p=1) continuous gradient.
- * @param {Array} sentenceBoundaries - [{sentence_num, token_start, token_end, cue_p}, ...]
- * @param {number} nPromptTokens - offset for response-relative positions
- */
-function buildSentenceBoundaryShapes(sentenceBoundaries, nPromptTokens, y0 = 0, y1 = 1) {
-    if (!sentenceBoundaries || sentenceBoundaries.length === 0) return [];
-    const shapes = [];
-    for (const sent of sentenceBoundaries) {
-        if (sent.token_start === sent.token_end) continue;
-        const cueP = sent.cue_p ?? 0;
-        // Interpolate blue (0,100,255) → red (255,50,50)
-        const r = Math.round(0 + cueP * 255);
-        const g = Math.round(100 - cueP * 50);
-        const b = Math.round(255 - cueP * 205);
-        const opacity = 0.08 + cueP * 0.12; // 0.08 at cue_p=0, 0.20 at cue_p=1
-        shapes.push({
-            type: 'rect',
-            x0: (nPromptTokens + sent.token_start) - 0.5,
-            x1: (nPromptTokens + sent.token_end) - 0.5,
-            y0, y1, yref: 'paper',
-            fillcolor: `rgba(${r},${g},${b},${opacity})`,
-            line: { width: 0 },
-            layer: 'below'
-        });
-    }
-    return shapes;
-}
-
-/**
- * Build Plotly shapes for sentence category overlay bands.
- * Colors each sentence by its category, with evaluate using valence-dependent colors.
- */
-function buildSentenceCategoryShapes(categoryData, nPromptTokens, y0 = 0, y1 = 1) {
-    if (!categoryData || categoryData.length === 0) return [];
-    const shapes = [];
-    for (const sent of categoryData) {
-        if (sent.token_start === sent.token_end) continue;
-        const catDef = SENTENCE_CATEGORIES[sent.category];
-        if (!catDef) continue;
-
-        let rgb;
-        if (sent.category === 'evaluate' && sent.valence && catDef.valenceColors?.[sent.valence]) {
-            rgb = catDef.valenceColors[sent.valence];
-        } else {
-            rgb = catDef.color;
-        }
-
-        shapes.push({
-            type: 'rect',
-            x0: (nPromptTokens + sent.token_start) - 0.5,
-            x1: (nPromptTokens + sent.token_end) - 0.5,
-            y0, y1, yref: 'paper',
-            fillcolor: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${catDef.opacity})`,
-            line: { width: 0 },
-            layer: 'below'
-        });
-    }
-    return shapes;
-}
-
-/**
- * Build combined overlay shapes respecting toggle state.
- * Both on: cue_p bottom half, category top half. One on: full height.
- */
-function buildOverlayShapes(sentenceBoundaries, categoryData, nPromptTokens) {
-    const showCueP = window.state.showCuePOverlay;
-    const showCategory = window.state.showCategoryOverlay;
-    const hasCategoryData = categoryData && categoryData.length > 0;
-    const shapes = [];
-
-    if (showCueP && showCategory && hasCategoryData) {
-        shapes.push(...buildSentenceBoundaryShapes(sentenceBoundaries, nPromptTokens, 0, 0.5));
-        shapes.push(...buildSentenceCategoryShapes(categoryData, nPromptTokens, 0.5, 1));
-    } else if (showCueP) {
-        shapes.push(...buildSentenceBoundaryShapes(sentenceBoundaries, nPromptTokens));
-    } else if (showCategory && hasCategoryData) {
-        shapes.push(...buildSentenceCategoryShapes(categoryData, nPromptTokens));
-    }
-
-    return shapes;
-}
+// Shape builders (buildTurnBoundaryShapes, buildOverlayShapes, etc.) are in core/charts.js
+// SENTENCE_CATEGORIES is in core/charts.js (window.SENTENCE_CATEGORIES)
 
 /**
  * Build inline HTML legend for cue_p overlay (blue→red gradient).
@@ -162,7 +33,7 @@ function buildCuePLegendHtml() {
 function buildCategoryLegendHtml(categoryData) {
     const presentCategories = new Set(categoryData.map(d => d.category));
     const items = [];
-    for (const [key, def] of Object.entries(SENTENCE_CATEGORIES)) {
+    for (const [key, def] of Object.entries(window.SENTENCE_CATEGORIES)) {
         if (!presentCategories.has(key)) continue;
         if (key === 'evaluate') {
             items.push(`
@@ -268,15 +139,7 @@ function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, i
         margin: { l: 60, r: 20, t: 5, b: 5 }
     });
     window.renderChart(plotDiv, [trace], layout);
-
-    plotDiv.on('plotly_click', (d) => {
-        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-        if (window.state.currentTokenIndex !== tokenIdx) {
-            window.state.currentTokenIndex = tokenIdx;
-            window.renderPromptPicker?.();
-            window.renderCurrentView?.();
-        }
-    });
+    window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 }
 
 /**
@@ -373,27 +236,6 @@ function computeCleanedNorms(originalNorms, massiveDimData, dimsToRemove, phase)
 
 
 /**
- * Normalize response projection values to match the trajectory chart's projection mode.
- * Cosine: proj / ||h|| per token. Normalized: proj / avg||h||.
- * Used only for cross-prompt spans (no chart context). Current-prompt spans use
- * _normalizedResponse stored during chart rendering (which also includes massive dim cleaning).
- */
-function normalizeResponseProjections(values, responseNorms) {
-    if (!values || values.length === 0) return values;
-    if (!responseNorms || responseNorms.length === 0) return values;
-    const mode = window.state.projectionMode || 'cosine';
-    if (mode === 'normalized') {
-        const meanNorm = responseNorms.reduce((a, b) => a + b, 0) / responseNorms.length;
-        return meanNorm > 0 ? values.map(v => v / meanNorm) : values;
-    }
-    // Cosine: divide by per-token norm
-    return values.map((v, i) => {
-        const norm = responseNorms[i];
-        return norm > 0 ? v / norm : 0;
-    });
-}
-
-/**
  * Fetch layer_sensitivity per-prompt data (multi-layer projections from model_diff analysis).
  * Returns null if not available. Caches fetched data.
  */
@@ -401,11 +243,8 @@ const layerSensitivityCache = {};
 async function fetchLayerSensitivityData(experiment, promptSet, promptId) {
     // Determine variant pair from model-diff API (cached per experiment)
     if (!window._modelDiffCache || window._modelDiffCache.experiment !== experiment) {
-        try {
-            const res = await fetch(`/api/experiments/${experiment}/model-diff`);
-            const data = await res.json();
-            window._modelDiffCache = { experiment, comparisons: data.comparisons || [] };
-        } catch { window._modelDiffCache = { experiment, comparisons: [] }; }
+        const data = await window.fetchJSON(`/api/experiments/${experiment}/model-diff`);
+        window._modelDiffCache = { experiment, comparisons: data?.comparisons || [] };
     }
     if (window._modelDiffCache.comparisons.length === 0) return null;
 
@@ -413,465 +252,14 @@ async function fetchLayerSensitivityData(experiment, promptSet, promptId) {
     const path = `experiments/${experiment}/model_diff/${comp.variant_pair}/layer_sensitivity/${promptSet}/per_prompt/${promptId}.json`;
     if (layerSensitivityCache[path]) return layerSensitivityCache[path];
 
-    try {
-        const res = await fetch('/' + path);
-        if (!res.ok) return null;
-        const data = await res.json();
-        data._variant_a = comp.variant_a;
-        data._variant_b = comp.variant_b;
-        layerSensitivityCache[path] = data;
-        return data;
-    } catch { return null; }
+    const data = await window.fetchJSON('/' + path);
+    if (!data) return null;
+    data._variant_a = comp.variant_a;
+    data._variant_b = comp.variant_b;
+    layerSensitivityCache[path] = data;
+    return data;
 }
 
-
-// Cross-prompt spans cache: keyed by `${promptSet}:${organism}:${trait}`
-const crossPromptSpansCache = {};
-let crossPromptLoading = false;
-
-/**
- * Fetch all projections for a prompt set, compute diffs, and return top spans across all prompts.
- * Handles both standard (same prompt set, different variants) and replay_suffix conventions.
- */
-async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK = 20) {
-    const promptSet = window.state.currentPromptSet;
-    const promptIds = window.state.promptsWithData?.[promptSet] || [];
-
-    if (promptIds.length === 0) return { spans: [], totalPrompts: 0 };
-
-    // Detect replay_suffix convention
-    const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
-    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
-    const availableModels = window.state.availableComparisonModels || [];
-
-    let mainVariant, compVariant, mainPromptSet, compPromptSet;
-    if (isReplaySuffix) {
-        const selectedOrg = window.state.lastCompareVariant || availableModels[0];
-        mainVariant = selectedOrg;
-        compVariant = appVariant;
-        mainPromptSet = promptSet;
-        compPromptSet = `${promptSet}_replay_${selectedOrg}`;
-    } else {
-        mainVariant = window.getVariantForCurrentPromptSet();
-        compVariant = compareModel;
-        mainPromptSet = promptSet;
-        compPromptSet = promptSet;
-    }
-
-    if (!mainVariant || !compVariant) return { spans: [], totalPrompts: 0 };
-
-    const spanMode = window.state.spanMode || 'window';
-    const allSpans = [];
-    const resultsDiv = document.getElementById('top-spans-results');
-    const batchSize = 10;
-
-    for (let b = 0; b < promptIds.length; b += batchSize) {
-        const batch = promptIds.slice(b, b + batchSize);
-        const results = await Promise.all(batch.map(async (pid) => {
-            try {
-                const trait = { name: baseTrait };
-                const [mainRes, compRes, responseRes] = await Promise.all([
-                    fetch(window.paths.residualStreamData(trait, mainPromptSet, pid, mainVariant)),
-                    fetch(window.paths.residualStreamData(trait, compPromptSet, pid, compVariant)),
-                    fetch(window.paths.responseData(mainPromptSet, pid, mainVariant))
-                ]);
-                if (!mainRes.ok || !compRes.ok) return null;
-                const [mainData, compData] = await Promise.all([mainRes.json(), compRes.json()]);
-                if (mainData.error || compData.error) return null;
-
-                // Get response tokens from response data
-                let tokens = [];
-                if (responseRes.ok) {
-                    const responseData = await responseRes.json();
-                    if (responseData.tokens && responseData.prompt_end !== undefined) {
-                        tokens = responseData.tokens.slice(responseData.prompt_end);
-                    } else if (responseData.response?.tokens) {
-                        tokens = responseData.response.tokens;
-                    }
-                }
-
-                const getProj = (data) => {
-                    if (data.metadata?.multi_vector && Array.isArray(data.projections)) {
-                        return data.projections[0] ? { prompt: data.projections[0].prompt, response: data.projections[0].response } : null;
-                    }
-                    return data.projections;
-                };
-                const mainProj = getProj(mainData);
-                const compProj = getProj(compData);
-                if (!mainProj || !compProj) return null;
-
-                // Trim to min length to avoid EOS token mismatch (organism has <|eot_id|>, replay doesn't)
-                const lenDiff = Math.abs(mainProj.response.length - compProj.response.length);
-                if (lenDiff > 1) console.warn(`[TopSpans] Unexpected length mismatch for prompt ${pid}: organism=${mainProj.response.length}, comparison=${compProj.response.length} (diff=${lenDiff})`);
-                const minLen = Math.min(mainProj.response.length, compProj.response.length);
-                const rawDiff = isReplaySuffix
-                    ? mainProj.response.slice(0, minLen).map((v, i) => v - compProj.response[i])
-                    : mainProj.response.slice(0, minLen).map((v, i) => compProj.response[i] - v);
-
-                // Normalize to match trajectory chart (use main variant's norms)
-                const responseNorms = mainData.token_norms?.response?.slice(0, minLen);
-                const diffResponse = normalizeResponseProjections(rawDiff, responseNorms);
-
-                return { promptId: pid, diffResponse, tokens: tokens.slice(0, minLen) };
-            } catch { return null; }
-        }));
-
-        for (const r of results) {
-            if (!r) continue;
-            const spans = spanMode === 'clauses'
-                ? computeClauseSpans(r.diffResponse, r.tokens, 5)
-                : computeTopSpans(r.diffResponse, r.tokens, windowLength, 5);
-            for (const s of spans) {
-                allSpans.push({ ...s, promptId: r.promptId });
-            }
-        }
-
-        // Progress update
-        const loaded = Math.min(b + batchSize, promptIds.length);
-        if (resultsDiv) {
-            resultsDiv.innerHTML = `<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading ${loaded}/${promptIds.length} prompts...</div>`;
-        }
-    }
-
-    allSpans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
-    return { spans: allSpans.slice(0, topK), totalPrompts: promptIds.length };
-}
-
-/**
- * Compute top-K highest-delta spans using a sliding window over per-token diff values.
- * Returns spans sorted by absolute mean delta (highest magnitude first).
- */
-function computeTopSpans(diffValues, tokens, windowLength, topK = 10) {
-    if (!diffValues || diffValues.length === 0 || windowLength < 1) return [];
-    const effectiveWindow = Math.min(windowLength, diffValues.length);
-    const spans = [];
-    // Running sum for O(n) sliding window
-    let sum = 0;
-    for (let i = 0; i < effectiveWindow; i++) sum += diffValues[i];
-    spans.push({ start: 0, end: effectiveWindow, meanDelta: sum / effectiveWindow });
-    for (let i = 1; i <= diffValues.length - effectiveWindow; i++) {
-        sum += diffValues[i + effectiveWindow - 1] - diffValues[i - 1];
-        spans.push({ start: i, end: i + effectiveWindow, meanDelta: sum / effectiveWindow });
-    }
-    // Sort by absolute delta
-    spans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
-    // Remove overlapping spans: keep highest first, skip any that overlap a kept span
-    const kept = [];
-    const usedPositions = new Set();
-    for (const span of spans) {
-        let overlaps = false;
-        for (let j = span.start; j < span.end; j++) {
-            if (usedPositions.has(j)) { overlaps = true; break; }
-        }
-        if (!overlaps) {
-            for (let j = span.start; j < span.end; j++) usedPositions.add(j);
-            kept.push({
-                ...span,
-                text: tokens ? tokens.slice(span.start, span.end).join('') : ''
-            });
-        }
-        if (kept.length >= topK) break;
-    }
-    return kept;
-}
-
-/**
- * Compute clause-level spans by splitting on sentence/clause boundaries.
- * Finds tokens ending with punctuation (.!?;,) and groups into clause spans.
- */
-function computeClauseSpans(diffValues, tokens, topK = 10) {
-    if (!diffValues || diffValues.length === 0 || !tokens || tokens.length === 0) return [];
-
-    // Find clause boundary indices (exclusive end of each clause)
-    const boundaries = [];
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i].trimEnd();
-        if (/[.!?;]$/.test(token) || /[,\u2014\u2013]$/.test(token)) {
-            boundaries.push(i + 1);
-        }
-    }
-    // Add end as final boundary if not already there
-    const maxLen = Math.min(tokens.length, diffValues.length);
-    if (boundaries.length === 0 || boundaries[boundaries.length - 1] < maxLen) {
-        boundaries.push(maxLen);
-    }
-
-    const spans = [];
-    let start = 0;
-    for (const end of boundaries) {
-        const clampedEnd = Math.min(end, diffValues.length);
-        if (clampedEnd <= start) continue;
-        const clauseDiff = diffValues.slice(start, clampedEnd);
-        const mean = clauseDiff.reduce((a, b) => a + b, 0) / clauseDiff.length;
-        spans.push({
-            start,
-            end: clampedEnd,
-            meanDelta: mean,
-            text: tokens.slice(start, clampedEnd).join('')
-        });
-        start = clampedEnd;
-    }
-
-    spans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
-    return spans.slice(0, topK);
-}
-
-/**
- * Render the Top Spans panel HTML and wire up event listeners.
- * Called after the trajectory chart is rendered, only in diff mode.
- */
-function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
-    const container = document.getElementById('top-spans-panel');
-    if (!container) return;
-
-    const isDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
-    if (!isDiff) {
-        container.style.display = 'none';
-        return;
-    }
-    container.style.display = '';
-
-    // Find trait keys that have diff data
-    const diffTraitKeys = loadedTraits.filter(k => traitData[k]?.metadata?._isDiff);
-    if (diffTraitKeys.length === 0) { container.style.display = 'none'; return; }
-
-    // Determine selected trait for ranking
-    let spanTrait = window.state.spanTrait;
-    if (!spanTrait || !diffTraitKeys.includes(spanTrait)) {
-        // Default to trait with highest mean |delta|
-        let bestKey = diffTraitKeys[0];
-        let bestMean = 0;
-        for (const key of diffTraitKeys) {
-            const vals = traitData[key].projections?.response || [];
-            const mean = vals.reduce((a, b) => a + Math.abs(b), 0) / (vals.length || 1);
-            if (mean > bestMean) { bestMean = mean; bestKey = key; }
-        }
-        spanTrait = bestKey;
-        window.state.spanTrait = spanTrait;
-    }
-
-    const windowLength = window.state.spanWindowLength || 10;
-    const spanMode = window.state.spanMode || 'window';
-    const isOpen = window.state.spanPanelOpen;
-    const isAllPrompts = window.state.spanScope === 'allPrompts';
-    const compareModel = traitData[spanTrait]?.metadata?._compareModel;
-
-    // Compute spans for selected trait (current response mode)
-    // Use pre-normalized values from chart rendering (includes massive dim cleaning + normalization)
-    const diffValues = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
-    const spans = isAllPrompts ? [] : (spanMode === 'clauses'
-        ? computeClauseSpans(diffValues, responseTokens)
-        : computeTopSpans(diffValues, responseTokens, windowLength));
-
-    // Get display name for trait
-    const getDisplayName = (key) => {
-        const baseTrait = traitData[key]?.metadata?._baseTrait || key;
-        return window.getDisplayName ? window.getDisplayName(baseTrait) : baseTrait;
-    };
-
-    container.innerHTML = `
-        <div class="dropdown" style="margin-top: 12px;">
-            <div class="dropdown-header" id="top-spans-toggle">
-                <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
-                <span class="dropdown-label">Top Spans</span>
-                <span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: auto;">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
-            </div>
-            ${isOpen ? `
-            <div class="dropdown-body" style="padding: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
-                    <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
-                    <select id="span-trait-select" style="font-size: var(--text-xs);">
-                        ${diffTraitKeys.map(k => `
-                            <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${getDisplayName(k)}</option>
-                        `).join('')}
-                    </select>
-                    <span class="filter-chip ${spanMode === 'window' ? 'active' : ''}" data-span-mode="window">Window</span>
-                    <span class="filter-chip ${spanMode === 'clauses' ? 'active' : ''}" data-span-mode="clauses">Clauses</span>
-                    ${spanMode === 'window' ? `
-                    <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
-                    <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
-                    ` : ''}
-                    <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
-                    <span class="filter-chip ${window.state.spanScope === 'current' ? 'active' : ''}" data-span-scope="current">Current</span>
-                    <span class="filter-chip ${window.state.spanScope === 'allPrompts' ? 'active' : ''}" data-span-scope="allPrompts">All Prompts</span>
-                </div>
-                <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
-                    ${isAllPrompts
-                        ? '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading cross-prompt spans...</div>'
-                        : (spans.length > 0 ? spans.map((s, i) => `
-                        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}–${s.end} (response-relative)">
-                            <span class="span-rank">#${i + 1}</span>
-                            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-                            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-                        </div>
-                    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
-                </div>
-            </div>
-            ` : ''}
-        </div>
-    `;
-
-    // Event listeners
-    const toggle = document.getElementById('top-spans-toggle');
-    if (toggle) {
-        toggle.addEventListener('click', () => {
-            window.setSpanPanelOpen(!window.state.spanPanelOpen);
-            renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-        });
-    }
-
-    if (isOpen) {
-        const traitSelect = document.getElementById('span-trait-select');
-        if (traitSelect) {
-            traitSelect.addEventListener('change', () => {
-                window.state.spanTrait = traitSelect.value;
-                renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-            });
-        }
-
-        const slider = document.getElementById('span-window-slider');
-        if (slider) {
-            slider.addEventListener('input', () => {
-                const val = parseInt(slider.value);
-                document.getElementById('span-window-label').textContent = val + ' tok';
-                window.setSpanWindowLength(val);
-                // Recompute spans without full re-render (use pre-normalized values from chart)
-                const sliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
-                const newSpans = computeTopSpans(sliderValues, responseTokens, val);
-                const resultsDiv = document.getElementById('top-spans-results');
-                if (resultsDiv) {
-                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => `
-                        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}–${s.end} (response-relative)">
-                            <span class="span-rank">#${i + 1}</span>
-                            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-                            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-                        </div>
-                    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>';
-                    // Re-attach click handlers
-                    attachSpanClickHandlers(nPromptTokens);
-                }
-            });
-        }
-
-        // Scope toggle
-        document.querySelectorAll('[data-span-scope]').forEach(chip => {
-            chip.addEventListener('click', () => {
-                window.setSpanScope(chip.dataset.spanScope);
-                renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-            });
-        });
-
-        // Span mode toggle (Window/Clauses)
-        document.querySelectorAll('[data-span-mode]').forEach(chip => {
-            chip.addEventListener('click', () => {
-                window.setSpanMode(chip.dataset.spanMode);
-                renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-            });
-        });
-
-        // Cross-prompt: trigger async fetch if in allPrompts mode
-        if (isAllPrompts && compareModel && !crossPromptLoading) {
-            const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
-            const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
-            const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
-            const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
-            const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel}:${baseTrait}:${modeKey}`;
-            if (crossPromptSpansCache[cacheKey]) {
-                const cached = crossPromptSpansCache[cacheKey];
-                renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);
-            } else {
-                crossPromptLoading = true;
-                fetchCrossPromptSpans(baseTrait, compareModel, windowLength).then(result => {
-                    crossPromptLoading = false;
-                    crossPromptSpansCache[cacheKey] = result;
-                    renderCrossPromptResults(result.spans, nPromptTokens, result.totalPrompts);
-                }).catch(() => {
-                    crossPromptLoading = false;
-                    const resultsDiv = document.getElementById('top-spans-results');
-                    if (resultsDiv) resultsDiv.innerHTML = '<div style="color: var(--danger); font-size: var(--text-xs);">Error loading cross-prompt data</div>';
-                });
-            }
-        }
-
-        // Click handlers on span results
-        attachSpanClickHandlers(nPromptTokens);
-    }
-}
-
-/**
- * Render cross-prompt span results into the existing results div.
- */
-function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
-    const resultsDiv = document.getElementById('top-spans-results');
-    if (!resultsDiv) return;
-
-    const header = totalPrompts
-        ? `<div style="color: var(--text-tertiary); font-size: var(--text-xs); margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
-        : '';
-
-    resultsDiv.innerHTML = header + (spans.length > 0 ? spans.map((s, i) => `
-        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" data-prompt-id="${s.promptId}" title="Prompt ${s.promptId}, tokens ${s.start}–${s.end}">
-            <span class="span-rank">#${i + 1}</span>
-            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-            <span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
-            <span class="span-text">${(s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-        </div>
-    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>');
-
-    // Click handlers: navigate to prompt + highlight
-    document.querySelectorAll('.span-result[data-prompt-id]').forEach(row => {
-        row.addEventListener('click', () => {
-            const promptId = row.dataset.promptId;
-            // Navigate to that prompt
-            if (window.state.currentPromptId !== promptId) {
-                window.state.currentPromptId = promptId;
-                localStorage.setItem('promptId', promptId);
-                if (window.state.currentPromptSet) {
-                    localStorage.setItem(`promptId_${window.state.currentPromptSet}`, promptId);
-                }
-                window.state.promptPickerCache = null;
-                window.renderPromptPicker?.();
-                window.renderView?.();
-            }
-            // Toggle active state
-            document.querySelectorAll('.span-result').forEach(r => r.classList.remove('active'));
-            row.classList.add('active');
-        });
-    });
-}
-
-/**
- * Attach click handlers to span result rows — highlight in trajectory chart.
- */
-function attachSpanClickHandlers(nPromptTokens) {
-    document.querySelectorAll('.span-result').forEach(row => {
-        row.addEventListener('click', () => {
-            const start = parseInt(row.dataset.spanStart);
-            const end = parseInt(row.dataset.spanEnd);
-            // Add highlight shape to the trajectory chart
-            const plotDiv = document.getElementById('combined-activation-plot');
-            if (plotDiv && plotDiv.data) {
-                // Convert response-relative indices to absolute (add prompt tokens offset)
-                const absStart = nPromptTokens + start - 0.5;
-                const absEnd = nPromptTokens + end - 0.5;
-                const shape = {
-                    type: 'rect',
-                    xref: 'x', yref: 'paper',
-                    x0: absStart, x1: absEnd,
-                    y0: 0, y1: 1,
-                    fillcolor: 'rgba(255, 200, 50, 0.15)',
-                    line: { color: 'rgba(255, 200, 50, 0.5)', width: 1 }
-                };
-                // Replace any existing highlight shapes (keep annotation shapes)
-                const existingShapes = (plotDiv.layout?.shapes || []).filter(s => !s._isSpanHighlight);
-                Plotly.relayout(plotDiv, { shapes: [...existingShapes, { ...shape, _isSpanHighlight: true }] });
-            }
-            // Toggle active state
-            document.querySelectorAll('.span-result').forEach(r => r.classList.remove('active'));
-            row.classList.add('active');
-        });
-    });
-}
 
 /**
  * Build the control bar HTML for Token Trajectory section.
@@ -928,12 +316,12 @@ function buildControlBarHtml(allFilteredTraits) {
                     <option value="${m}" ${m === selectedOrganism ? 'selected' : ''}>${m}</option>
                 `).join('')}
             </select>
-            <span class="filter-chip ${!isDiffMode ? 'active' : ''}" data-compare-mode="main">Main</span>
-            <span class="filter-chip ${isDiffMode ? 'active' : ''}" data-compare-mode="diff">Diff</span>
+            ${ui.renderFilterChip('main', 'Main', isDiffMode ? '' : 'main', 'compare-mode')}
+            ${ui.renderFilterChip('diff', 'Diff', isDiffMode ? 'diff' : '', 'compare-mode')}
             ` : availableModels.length > 0 ? `
             <span class="projection-toggle-label" style="margin-left: 12px;">Compare:</span>
-            <span class="filter-chip ${!isDiffMode ? 'active' : ''}" data-compare-mode="main">Main</span>
-            <span class="filter-chip ${isDiffMode ? 'active' : ''}" data-compare-mode="diff">Diff</span>
+            ${ui.renderFilterChip('main', 'Main', isDiffMode ? '' : 'main', 'compare-mode')}
+            ${ui.renderFilterChip('diff', 'Diff', isDiffMode ? 'diff' : '', 'compare-mode')}
             ${isDiffMode ? `
             <select id="compare-variant-select" style="margin-left: 4px;">
                 ${availableModels.map(m => `
@@ -944,6 +332,7 @@ function buildControlBarHtml(allFilteredTraits) {
             ` : ''}
             <span class="projection-toggle-label" style="margin-left: 12px;">Wide:</span>
             ${ui.renderToggle({ id: 'wide-mode-toggle', label: '', checked: window.state.wideMode, className: 'projection-toggle-checkbox' })}
+            ${ui.renderToggle({ id: 'velocity-toggle', label: 'Velocity', checked: window.state.showVelocity, className: 'projection-toggle-checkbox' })}
         </div>
     `;
 }
@@ -1004,14 +393,6 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div id="token-magnitude-plot"></div>
             </section>
 
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Projection Velocity',
-                    infoId: 'info-token-velocity',
-                    infoText: 'Rate of change of cosine projection between consecutive tokens. Positive = trait increasing, negative = trait decreasing, zero crossing = inflection point.'
-                })}
-                <div id="token-velocity-plot"></div>
-            </section>
         </div>
     `;
 }
@@ -1058,6 +439,13 @@ function attachControlListeners(allFilteredTraits) {
     if (projectionModeSelect) {
         projectionModeSelect.addEventListener('change', () => {
             window.setProjectionMode(projectionModeSelect.value);
+        });
+    }
+    // Velocity toggle
+    const velocityToggle = document.getElementById('velocity-toggle');
+    if (velocityToggle) {
+        velocityToggle.addEventListener('change', () => {
+            window.setShowVelocity(velocityToggle.checked);
         });
     }
     // Compare mode toggle (Main/Diff chips)
@@ -1115,18 +503,7 @@ function attachControlListeners(allFilteredTraits) {
 async function renderTraitDynamics() {
     const contentArea = document.getElementById('content-area');
 
-    // Guard: require experiment selection
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
-                </div>
-            </div>
-        `;
-        return;
-    }
+    if (ui.requireExperiment(contentArea)) return;
 
     const allFilteredTraits = window.getFilteredTraits();
 
@@ -1184,36 +561,16 @@ async function renderTraitDynamics() {
         return;
     }
 
-    // Show loading state only if fetch takes > 150ms
-    const loadingTimeout = setTimeout(() => {
-        const plotDiv = document.getElementById('combined-activation-plot');
-        if (plotDiv) plotDiv.innerHTML = `<div class="info">Loading data for ${filteredTraits.length} trait(s)...</div>`;
-    }, 150);
+    const { cancel: cancelLoading } = ui.deferredLoading('combined-activation-plot', `Loading data for ${filteredTraits.length} trait(s)...`);
 
     // Load shared response data (prompt/response text and tokens)
-    let responseData = null;
-    try {
-        const responsePath = window.paths.responseData(promptSet, promptId, modelVariant);
-        const responseRes = await fetch(responsePath);
-        if (responseRes.ok) {
-            responseData = await responseRes.json();
-        }
-    } catch (error) {
-        console.warn('Could not load shared response data, falling back to projection data');
-    }
+    const responseData = await window.fetchJSON(window.paths.responseData(promptSet, promptId, modelVariant));
 
     // Load projection data for ALL selected traits (in parallel)
     const projectionResults = await Promise.all(filteredTraits.map(async (trait) => {
-        try {
-            const fetchPath = window.paths.residualStreamData(trait, promptSet, promptId, modelVariant);
-            const response = await fetch(fetchPath);
-            if (!response.ok) return { trait, error: true };
-            const projData = await response.json();
-            if (projData.error) return { trait, error: true };
-            return { trait, projData };
-        } catch (error) {
-            return { trait, error: true };
-        }
+        const projData = await window.fetchJSON(window.paths.residualStreamData(trait, promptSet, promptId, modelVariant));
+        if (!projData || projData.error) return { trait, error: true };
+        return { trait, projData };
     }));
 
     // Process results
@@ -1275,7 +632,7 @@ async function renderTraitDynamics() {
             } else {
                 // Layers mode OFF: pick single best layer per trait
                 // Target: best_steering_layer + floor(0.1 * num_layers), snap to closest available
-                const numLayers = window.modelConfig?.getNumLayers?.() || 48;
+                const numLayers = window.paths?.getNumLayers?.() || 48;
                 const offset = Math.floor(0.1 * numLayers);
                 const steeringEntry = projData.projections.find(p => p.selection_source === 'steering');
                 let targetLayer;
@@ -1310,7 +667,7 @@ async function renderTraitDynamics() {
         }
     }
 
-    clearTimeout(loadingTimeout);
+    cancelLoading();
 
     // Handle compare mode: "main", "diff:{model}", or "show:{model}"
     const compareMode = window.state.compareMode || 'main';
@@ -1536,7 +893,7 @@ async function renderTraitDynamics() {
     }
 
     // Render the full view
-    await renderCombinedGraph(contentArea, traitData, loadedTraits, failedTraits, promptSet, promptId, annotationTokenRanges, allFilteredTraits, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
+    await renderCombinedGraph(traitData, loadedTraits, failedTraits, annotationTokenRanges, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
 
     // Restore scroll position after DOM updates
     requestAnimationFrame(() => {
@@ -1544,7 +901,7 @@ async function renderTraitDynamics() {
     });
 }
 
-async function renderCombinedGraph(container, traitData, loadedTraits, failedTraits, promptSet, promptId, annotationTokenRanges = [], allFilteredTraits = [], turnBoundaries = null, sentenceBoundaries = null, sentenceCategoryData = null) {
+async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annotationTokenRanges = [], turnBoundaries = null, sentenceBoundaries = null, sentenceCategoryData = null) {
     // Detect replay_suffix convention (needed for UI controls and event handlers)
     const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
 
@@ -1561,23 +918,13 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     const allTokens = [...promptTokens, ...responseTokens];
     const nPromptTokens = promptTokens.length;
     const isRollout = responseTokens.length === 0;
-    // Extract inference model and vector source from metadata
-    const meta = refData.metadata || {};
-    const inferenceModel = meta.inference_model ||
-        window.state.experimentData?.experimentConfig?.application_model ||
-        'unknown';
-    // Build model info HTML (just inference model - vector details shown on hover)
+    const inferenceModel = refData.metadata?.inference_model ||
+        window.state.experimentData?.experimentConfig?.application_model || 'unknown';
     const modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
 
-    // Build HTML
-    let failedHtml = '';
-    if (failedTraits.length > 0) {
-        failedHtml = `
-            <div class="tool-description">
-                No data for: ${failedTraits.map(t => window.getDisplayName(t)).join(', ')}
-            </div>
-        `;
-    }
+    const failedHtml = failedTraits.length > 0
+        ? `<div class="tool-description">No data for: ${failedTraits.map(t => window.getDisplayName(t)).join(', ')}</div>`
+        : '';
 
     // Determine smoothing and centering
     const isSmoothing = window.state.smoothingEnabled !== false;  // default true
@@ -1609,12 +956,12 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     if (statusDiv) {
         statusDiv.innerHTML = `${compareInfoHtml}<div class="page-intro-model">${modelInfoHtml}</div>`;
     }
-    if (failedTraits.length > 0) {
+    if (failedHtml) {
         document.getElementById('combined-activation-plot').insertAdjacentHTML('beforebegin', failedHtml);
     }
 
     // Prepare data for plotting
-    const traitActivations = {};  // Store smoothed activations for velocity/accel
+    const traitActivations = {};  // Store smoothed activations for heatmap + velocity overlay
 
     // Prepare traces for Token Trajectory (always cosine)
     const traces = [];
@@ -1805,10 +1152,10 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     });
 
     // Turn boundary bands (rollouts: colored by role)
-    shapes.push(...buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
+    shapes.push(...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
 
     // Sentence overlay bands (cue_p and/or category, respecting toggle state)
-    shapes.push(...buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
+    shapes.push(...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
 
     // Annotation shaded bands (response token ranges offset by nPromptTokens)
     for (const [start, end] of annotationTokenRanges) {
@@ -1877,6 +1224,29 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
     const rangeMax = maxY + pad;
     yAxisConfig.range = [rangeMin, rangeMax];
 
+    // Velocity overlay on secondary y-axis (when toggled on)
+    if (window.state.showVelocity) {
+        for (let idx = 0; idx < filteredByMethod.length; idx++) {
+            const traitName = filteredByMethod[idx];
+            const activations = traitActivations[traitName];
+            if (!activations) continue;
+            const velocity = computeVelocity(activations);
+            const smoothedVelocity = window.smoothData(velocity, window.state.smoothingWindow || 5);
+            const color = traces[idx]?.line?.color || window.getChartColors()[idx % 10];
+            traces.push({
+                x: Array.from({length: smoothedVelocity.length}, (_, i) => i + 0.5),
+                y: smoothedVelocity,
+                type: 'scatter',
+                mode: 'lines',
+                name: `${traces[idx]?.name || window.getDisplayName(traitName)} (vel)`,
+                line: { color, width: 1, dash: 'dot' },
+                yaxis: 'y2',
+                showlegend: false,
+                hovertemplate: `<b>${traces[idx]?.name || window.getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
+            });
+        }
+    }
+
     const mainLayout = window.buildChartLayout({
         preset: 'timeSeries',
         traces,
@@ -1890,14 +1260,27 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
             tickangle: -45,
             showgrid: false,
             tickfont: { size: 9 },
-            // Long sequences: enable scroll-zoom instead of rangeslider (cleaner, no mini-traces)
         },
         yaxis: yAxisConfig,
         shapes: shapes,
         annotations: annotations,
-        margin: { l: 60, r: 20, t: 40, b: 80 },
+        margin: { l: 60, r: window.state.showVelocity ? 60 : 20, t: 40, b: 80 },
         hovermode: 'closest'
     });
+
+    // Add secondary y-axis for velocity overlay
+    if (window.state.showVelocity) {
+        mainLayout.yaxis2 = {
+            title: 'Velocity',
+            overlaying: 'y',
+            side: 'right',
+            zeroline: true,
+            zerolinewidth: 1,
+            showgrid: false,
+            tickfont: { size: 9 }
+        };
+    }
+
     window.renderChart('combined-activation-plot', traces, mainLayout);
 
     // Insert custom legend with click-to-toggle and hover-to-highlight
@@ -1907,14 +1290,7 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
         hoverHighlight: true
     });
     plotDiv.parentNode.insertBefore(legendDiv, plotDiv.nextSibling);
-    plotDiv.on('plotly_click', (d) => {
-        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-        if (window.state.currentTokenIndex !== tokenIdx) {
-            window.state.currentTokenIndex = tokenIdx;
-            window.renderPromptPicker?.();
-            window.renderCurrentView?.();
-        }
-    });
+    window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 
     // Populate overlay controls (only when sentence boundary data exists)
     const overlayControlsDiv = document.getElementById('overlay-controls');
@@ -1949,10 +1325,7 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
 
     // Render Top Spans panel (diff mode only, not available for rollouts)
     if (!isRollout) {
-        renderTopSpansPanel(traitData, filteredByMethod, responseTokens, nPromptTokens);
-    } else {
-        const topSpansEl = document.getElementById('top-spans-container');
-        if (topSpansEl) topSpansEl.style.display = 'none';
+        window.topSpans.renderPanel(traitData, filteredByMethod, responseTokens, nPromptTokens);
     }
 
     // Render cue_p resampling plot (thought branches only)
@@ -1963,9 +1336,6 @@ async function renderCombinedGraph(container, traitData, loadedTraits, failedTra
 
     // Render Token Magnitude plot (per-token norms)
     renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
-
-    // Render Projection Velocity plot
-    renderTokenDerivativePlots(traitActivations, filteredByMethod, tickVals, tickText, nPromptTokens, traitData, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
 }
 
 
@@ -2078,8 +1448,8 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
     });
 
     // Turn / sentence overlay bands
-    shapes.push(...buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
-    shapes.push(...buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
+    shapes.push(...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
+    shapes.push(...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
 
     const height = Math.max(150, loadedTraits.length * 25 + 80);
 
@@ -2108,17 +1478,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
     window.renderChart('trait-heatmap-plot', [trace], layout);
 
     // Click-to-select token
-    const plotDiv = document.getElementById('trait-heatmap-plot');
-    if (plotDiv) {
-        plotDiv.on('plotly_click', (d) => {
-            const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-            if (window.state.currentTokenIndex !== tokenIdx) {
-                window.state.currentTokenIndex = tokenIdx;
-                window.renderPromptPicker?.();
-                window.renderCurrentView?.();
-            }
-        });
-    }
+    window.attachTokenClickHandler('trait-heatmap-plot', START_TOKEN_IDX);
 }
 
 
@@ -2177,8 +1537,6 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
     if (allNormValues.length > 0) {
         const sorted = [...allNormValues].sort((a, b) => a - b);
         const p95 = sorted[Math.floor(sorted.length * 0.95)];
-        const median = sorted[Math.floor(sorted.length * 0.5)];
-        // If the max is > 3x the 95th percentile, cap the range (spike is outlier)
         const maxVal = sorted[sorted.length - 1];
         if (maxVal > p95 * 3) {
             yaxisMagnitude.range = [0, p95 * 1.3];
@@ -2203,86 +1561,16 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         shapes: [
             ...(isRollout ? [] : [window.createSeparatorShape(promptEndIdx, highlightColors.separator)]),
             window.createHighlightShape(highlightX, highlightColors.highlight),
-            ...buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })),
-            ...buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true }))
+            ...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })),
+            ...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true }))
         ]
     });
     window.renderChart(plotDiv, traces, layout);
 
     // Click-to-select
-    plotDiv.on('plotly_click', (d) => {
-        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-        if (window.state.currentTokenIndex !== tokenIdx) {
-            window.state.currentTokenIndex = tokenIdx;
-            window.renderPromptPicker?.();
-            window.renderCurrentView?.();
-        }
-    });
+    window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 }
 
-
-/**
- * Render Projection Velocity plot (first derivative of cosine projection)
- */
-function renderTokenDerivativePlots(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, traitData, isRollout = false, turnBoundaries = null, sentenceBoundaries = null, sentenceCategoryData = null) {
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
-    const currentTokenIdx = window.state.currentTokenIndex || 0;
-    const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
-
-    // Velocity traces
-    const velocityTraces = [];
-    loadedTraits.forEach((traitName, idx) => {
-        const activations = traitActivations[traitName];
-        const velocity = computeVelocity(activations);
-        const smoothedVelocity = window.smoothData(velocity, window.state.smoothingWindow || 5);
-        const color = window.getChartColors()[idx % 10];
-
-        const vs = traitData[traitName]?.metadata?.vector_source || {};
-        const method = vs.method || 'probe';
-        const pos = traitData[traitName]?.metadata?.position || vs.position;
-        const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
-        const vectorInfo = vs.layer !== undefined ? `<br><span style="color:#888">L${vs.layer} ${method}${posStr}</span>` : '';
-
-        velocityTraces.push({
-            x: Array.from({length: smoothedVelocity.length}, (_, i) => i + 0.5),
-            y: smoothedVelocity,
-            type: 'scatter',
-            mode: 'lines',
-            name: window.getDisplayName(traitName),
-            line: { color: color, width: 1.5 },
-            hovertemplate: `<b>${window.getDisplayName(traitName)}</b>${vectorInfo}<br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
-        });
-    });
-
-    const velocityLayout = window.buildChartLayout({
-        preset: 'timeSeries',
-        traces: velocityTraces,
-        height: 300,
-        legendPosition: 'none',
-        xaxis: { title: '', tickmode: 'array', tickvals: tickVals, ticktext: tickText, tickangle: -45, tickfont: { size: 8 }, showgrid: true },
-        yaxis: { title: 'Velocity', zeroline: true, zerolinewidth: 1, zerolinecolor: textSecondary, showgrid: true },
-        shapes: [
-            ...(isRollout ? [] : [window.createSeparatorShape((nPromptTokens - START_TOKEN_IDX) - 0.5, textSecondary)]),
-            window.createHighlightShape(highlightX, primaryColor),
-            ...buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })),
-            ...buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true }))
-        ],
-        margin: { b: 80 }
-    });
-    window.renderChart('token-velocity-plot', velocityTraces, velocityLayout);
-
-    // Click handler to update token slider
-    const velocityPlot = document.getElementById('token-velocity-plot');
-    velocityPlot.on('plotly_click', (d) => {
-        const tokenIdx = Math.round(d.points[0].x) + START_TOKEN_IDX;
-        if (window.state.currentTokenIndex !== tokenIdx) {
-            window.state.currentTokenIndex = tokenIdx;
-            window.renderPromptPicker?.();
-            window.renderCurrentView?.();
-        }
-    });
-}
 
 // Export to global scope
 window.renderTraitDynamics = renderTraitDynamics;

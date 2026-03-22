@@ -152,9 +152,12 @@ function spanToTokenRange(responseTokens, responseText, spanText) {
     return [startToken, endToken];
 }
 
+// Module-local caches (not part of global state shape)
+let _annotationCache = null;     // { key, data } - prompt set annotation cache
+let _sentenceAnnotationCache = null;  // { key, data } - sentence annotation cache
+
 /**
  * Fetch annotations for a prompt set, with caching.
- * Cache stored on window.state._annotationCache to avoid re-fetching within same set.
  *
  * @param {string} experiment - Experiment name
  * @param {string} modelVariant - Model variant (e.g., 'instruct')
@@ -165,8 +168,8 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
     const cacheKey = `${experiment}/${promptSet}`;
 
     // Check cache (keyed by experiment+promptSet, variant-agnostic)
-    if (window.state._annotationCache?.key === cacheKey) {
-        return window.state._annotationCache.data;
+    if (_annotationCache?.key === cacheKey) {
+        return _annotationCache.data;
     }
 
     // Try the specified variant first, then all other variants that have data
@@ -178,7 +181,7 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
             const response = await fetch(url);
             if (!response.ok) continue;
             const data = await response.json();
-            window.state._annotationCache = { key: cacheKey, data };
+            _annotationCache = { key: cacheKey, data };
             return data;
         } catch (e) {
             continue;
@@ -186,7 +189,7 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
     }
 
     // Cache the miss to avoid re-fetching
-    window.state._annotationCache = { key: cacheKey, data: null };
+    _annotationCache = { key: cacheKey, data: null };
     return null;
 }
 
@@ -224,22 +227,22 @@ async function getAnnotationTokenRanges(experiment, modelVariant, promptSet, pro
  */
 async function fetchSentenceAnnotations(experiment) {
     const cacheKey = experiment;
-    if (window.state._sentenceAnnotationCache?.key === cacheKey) {
-        return window.state._sentenceAnnotationCache.data;
+    if (_sentenceAnnotationCache?.key === cacheKey) {
+        return _sentenceAnnotationCache.data;
     }
 
     const url = `/experiments/${experiment}/analysis/thought_branches/sentence_annotations.json`;
     try {
         const response = await fetch(url);
         if (!response.ok) {
-            window.state._sentenceAnnotationCache = { key: cacheKey, data: null };
+            _sentenceAnnotationCache = { key: cacheKey, data: null };
             return null;
         }
         const data = await response.json();
-        window.state._sentenceAnnotationCache = { key: cacheKey, data };
+        _sentenceAnnotationCache = { key: cacheKey, data };
         return data;
     } catch (e) {
-        window.state._sentenceAnnotationCache = { key: cacheKey, data: null };
+        _sentenceAnnotationCache = { key: cacheKey, data: null };
         return null;
     }
 }

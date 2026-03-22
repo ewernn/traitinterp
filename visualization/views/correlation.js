@@ -5,6 +5,10 @@
 //
 // To generate: python analysis/trait_correlation.py --experiment {exp} --prompt-set {prompt_set}
 
+// Module-local state (not part of global state shape)
+let traitCorrelationData = null;
+let correlationOffset = 0;
+
 async function renderCorrelation() {
     const contentArea = document.getElementById('content-area');
 
@@ -60,9 +64,9 @@ async function renderCorrelation() {
     }
 
     // Store for slider updates
-    window.state.traitCorrelationData = data;
+    traitCorrelationData = data;
 
-    const currentOffset = window.state.correlationOffset || 0;
+    const currentOffset = correlationOffset || 0;
     const maxOffset = data.max_offset || 10;
 
     contentArea.innerHTML = `
@@ -126,14 +130,14 @@ async function renderCorrelation() {
     slider.addEventListener('input', () => {
         const offset = parseInt(slider.value);
         offsetLabel.textContent = offset;
-        window.state.correlationOffset = offset;
+        correlationOffset = offset;
         renderCorrelationHeatmap(offset);
     });
 }
 
 
 function renderCorrelationHeatmap(offset) {
-    const data = window.state.traitCorrelationData;
+    const data = traitCorrelationData;
     if (!data) return;
 
     const { trait_labels, correlations_by_offset } = data;
@@ -221,7 +225,7 @@ function renderCorrelationHeatmap(offset) {
 
 
 function renderCorrelationDecay() {
-    const data = window.state.traitCorrelationData;
+    const data = traitCorrelationData;
     if (!data) return;
 
     const { trait_labels, correlations_by_offset, max_offset } = data;
@@ -271,7 +275,7 @@ function renderCorrelationDecay() {
 
 
 function renderResponseCorrelation() {
-    const data = window.state.traitCorrelationData;
+    const data = traitCorrelationData;
     if (!data || !data.response_correlation) return;
 
     const { trait_labels, response_correlation } = data;

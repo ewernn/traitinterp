@@ -1,6 +1,6 @@
 /**
  * Methodology View - Renders docs/methodology.md with markdown, KaTeX, and custom directives
- * Supports: :::figure:::, :::responses:::, :::dataset:::, [@citations]
+ * Delegates block extraction/rendering to customBlocks and citation handling to citations.
  */
 
 function parseMethodologyFrontmatter(text) {
@@ -31,28 +31,12 @@ async function renderMethodology() {
         // Protect math blocks from markdown parser
         let { markdown, blocks: mathBlocks } = window.protectMathBlocks(content);
 
-        // Extract :::responses path "label"::: blocks
-        const responseBlocks = [];
-        markdown = markdown.replace(/:::responses\s+([^\s:]+)(?:\s+"([^"]*)")?\s*:::/g, (match, path, label) => {
-            responseBlocks.push({ path, label: label || 'View responses' });
-            return `RESPONSE_BLOCK_${responseBlocks.length - 1}`;
-        });
+        // Extract custom blocks (:::responses, :::dataset, :::figure, etc.)
+        const extracted = window.customBlocks.extractCustomBlocks(markdown);
+        markdown = extracted.markdown;
+        const blocks = extracted.blocks;
 
-        // Extract :::dataset path "label"::: blocks
-        const datasetBlocks = [];
-        markdown = markdown.replace(/:::dataset\s+([^\s:]+)(?:\s+"([^"]*)")?\s*:::/g, (match, path, label) => {
-            datasetBlocks.push({ path, label: label || 'View examples' });
-            return `DATASET_BLOCK_${datasetBlocks.length - 1}`;
-        });
-
-        // Extract :::figure path "caption" size::: blocks
-        const figureBlocks = [];
-        markdown = markdown.replace(/:::figure\s+([^\s:]+)(?:\s+"([^"]*)")?(?:\s+(small|medium|large))?\s*:::/g, (match, path, caption, size) => {
-            figureBlocks.push({ path, caption: caption || '', size: size || '' });
-            return `FIGURE_BLOCK_${figureBlocks.length - 1}`;
-        });
-
-        // Extract :::placeholder "description"::: blocks (for TODO content)
+        // Extract :::placeholder "description"::: blocks (methodology-specific)
         const placeholderBlocks = [];
         markdown = markdown.replace(/:::placeholder\s+"([^"]*)"\s*:::/g, (match, description) => {
             placeholderBlocks.push({ description });
@@ -60,14 +44,8 @@ async function renderMethodology() {
         });
 
         // Extract [@key] citations
-        const citedKeys = [];
-        markdown = markdown.replace(/\[@(\w+)\]/g, (match, key) => {
-            if (!citedKeys.includes(key)) citedKeys.push(key);
-            return `CITE_${key}`;
-        });
-
-        // Fix relative image paths
-        markdown = markdown.replace(/!\[([^\]]*)\]\(assets\//g, '![$1](/docs/assets/');
+        const keyed = window.citations.extractKeyedCitations(markdown, references);
+        markdown = keyed.markdown;
 
         // Render markdown
         marked.setOptions({ gfm: true, breaks: false, headerIds: true });
@@ -76,53 +54,10 @@ async function renderMethodology() {
         // Restore math blocks
         html = window.restoreMathBlocks(html, mathBlocks);
 
-        // Replace response block placeholders
-        responseBlocks.forEach((block, i) => {
-            const dropdownId = `methodology-responses-${i}`;
-            const dropdownHtml = `
-                <div class="responses-dropdown" id="${dropdownId}">
-                    <div class="responses-header" onclick="toggleMethodologyResponses('${dropdownId}', '${block.path}')">
-                        <span class="responses-toggle">+</span>
-                        <span class="responses-label">${block.label}</span>
-                    </div>
-                    <div class="responses-content"></div>
-                </div>
-            `;
-            html = html.replace(`<p>RESPONSE_BLOCK_${i}</p>`, dropdownHtml);
-            html = html.replace(`RESPONSE_BLOCK_${i}`, dropdownHtml);
-        });
+        // Render custom blocks (assetBaseUrl = /docs/ for methodology figures)
+        html = window.customBlocks.renderCustomBlocks(html, blocks, 'methodology', { assetBaseUrl: '/docs/' });
 
-        // Replace dataset block placeholders
-        datasetBlocks.forEach((block, i) => {
-            const dropdownId = `methodology-dataset-${i}`;
-            const dropdownHtml = `
-                <div class="responses-dropdown" id="${dropdownId}">
-                    <div class="responses-header" onclick="toggleMethodologyDataset('${dropdownId}', '${block.path}')">
-                        <span class="responses-toggle">+</span>
-                        <span class="responses-label">${block.label}</span>
-                    </div>
-                    <div class="responses-content"></div>
-                </div>
-            `;
-            html = html.replace(`<p>DATASET_BLOCK_${i}</p>`, dropdownHtml);
-            html = html.replace(`DATASET_BLOCK_${i}`, dropdownHtml);
-        });
-
-        // Replace figure block placeholders
-        figureBlocks.forEach((block, i) => {
-            const imgPath = block.path.startsWith('assets/') ? `/docs/${block.path}` : block.path;
-            const sizeClass = block.size ? ` fig-${block.size}` : '';
-            const figureHtml = `
-                <figure class="fig${sizeClass}">
-                    <img src="${imgPath}" alt="${block.caption}">
-                    ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
-                </figure>
-            `;
-            html = html.replace(`<p>FIGURE_BLOCK_${i}</p>`, figureHtml);
-            html = html.replace(`FIGURE_BLOCK_${i}`, figureHtml);
-        });
-
-        // Replace placeholder blocks with styled TODO boxes
+        // Render placeholder blocks
         placeholderBlocks.forEach((block, i) => {
             const placeholderHtml = `
                 <div class="methodology-placeholder">
@@ -134,37 +69,13 @@ async function renderMethodology() {
             html = html.replace(`PLACEHOLDER_BLOCK_${i}`, placeholderHtml);
         });
 
-        // Replace citation placeholders
-        for (const key of citedKeys) {
-            const ref = references[key];
-            if (ref) {
-                const tooltipText = `${ref.title}`;
-                const citeHtml = ref.url
-                    ? `<a href="${ref.url}" class="citation" target="_blank" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</a>`
-                    : `<span class="citation" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</span>`;
-                html = html.replaceAll(`CITE_${key}`, citeHtml);
-            } else {
-                console.warn(`Citation [@${key}] not found in references`);
-                html = html.replaceAll(`CITE_${key}`, `<span class="citation citation-missing">[${key}]</span>`);
-            }
-        }
-
-        // Append References section if any citations used
-        if (citedKeys.length > 0) {
-            const validRefs = citedKeys.filter(key => references[key]);
-            if (validRefs.length > 0) {
-                let refsHtml = '<section class="references"><h2>References</h2><ol>';
-                for (const key of validRefs) {
-                    const ref = references[key];
-                    const link = ref.url ? `<a href="${ref.url}" target="_blank">${ref.url}</a>` : '';
-                    refsHtml += `<li id="ref-${key}">${ref.authors} (${ref.year}). "${ref.title}". ${link}</li>`;
-                }
-                refsHtml += '</ol></section>';
-                html += refsHtml;
-            }
-        }
+        // Render [@key] citations and append references section
+        html = window.citations.renderKeyedCitations(html, keyed.citedKeys, references);
 
         contentArea.innerHTML = `<div class="prose">${html}</div>`;
+
+        // Auto-load expanded dropdowns and init tabbed components
+        await window.customBlocks.loadExpandedDropdowns();
 
         // Render math
         if (window.renderMath) {
@@ -176,110 +87,4 @@ async function renderMethodology() {
     }
 }
 
-// Dropdown toggle handlers (similar to findings.js)
-async function toggleMethodologyResponses(dropdownId, path) {
-    const dropdown = document.getElementById(dropdownId);
-    const content = dropdown.querySelector('.responses-content');
-    const toggle = dropdown.querySelector('.responses-toggle');
-
-    if (dropdown.classList.contains('expanded')) {
-        dropdown.classList.remove('expanded');
-        content.style.display = 'none';
-        toggle.textContent = '▶';
-    } else {
-        if (!content.innerHTML) {
-            content.innerHTML = ui.renderLoading();
-            try {
-                const response = await fetch(path);
-                if (!response.ok) throw new Error('Failed to load');
-                const data = await response.json();
-                content.innerHTML = renderMethodologyTable(data);
-            } catch (error) {
-                content.innerHTML = `<div class="error">Failed to load responses</div>`;
-            }
-        }
-        dropdown.classList.add('expanded');
-        content.style.display = 'block';
-        toggle.textContent = '▼';
-    }
-}
-
-async function toggleMethodologyDataset(dropdownId, path) {
-    const dropdown = document.getElementById(dropdownId);
-    const content = dropdown.querySelector('.responses-content');
-    const toggle = dropdown.querySelector('.responses-toggle');
-
-    if (dropdown.classList.contains('expanded')) {
-        dropdown.classList.remove('expanded');
-        content.style.display = 'none';
-        toggle.textContent = '▶';
-    } else {
-        if (!content.innerHTML) {
-            content.innerHTML = ui.renderLoading();
-            try {
-                const response = await fetch(path);
-                if (!response.ok) throw new Error('Failed to load');
-                const text = await response.text();
-                content.innerHTML = renderMethodologyDataset(text);
-            } catch (error) {
-                content.innerHTML = `<div class="error">Failed to load dataset</div>`;
-            }
-        }
-        dropdown.classList.add('expanded');
-        content.style.display = 'block';
-        toggle.textContent = '▼';
-    }
-}
-
-function renderMethodologyTable(data) {
-    if (!Array.isArray(data) || data.length === 0) {
-        return '<div class="error">No data found</div>';
-    }
-
-    // Auto-detect columns from first item
-    const columns = Object.keys(data[0]);
-
-    let html = '<table class="responses-table"><thead><tr>';
-    columns.forEach(col => {
-        html += `<th>${col}</th>`;
-    });
-    html += '</tr></thead><tbody>';
-
-    for (const row of data.slice(0, 20)) {
-        html += '<tr>';
-        columns.forEach(col => {
-            const val = row[col];
-            const display = typeof val === 'number' ? val.toFixed(2) : window.escapeHtml(String(val || '')).replace(/\n/g, '<br>');
-            html += `<td>${display}</td>`;
-        });
-        html += '</tr>';
-    }
-
-    html += '</tbody></table>';
-    if (data.length > 20) {
-        html += `<div class="dataset-more">...and ${data.length - 20} more</div>`;
-    }
-    return html;
-}
-
-function renderMethodologyDataset(text) {
-    const lines = text.trim().split('\n').filter(line => line.trim());
-    if (lines.length === 0) {
-        return '<div class="error">No examples found</div>';
-    }
-
-    const examples = lines.slice(0, 20);
-    let html = '<ul class="dataset-list">';
-    for (const line of examples) {
-        html += `<li>${window.escapeHtml(line)}</li>`;
-    }
-    html += '</ul>';
-    if (lines.length > 20) {
-        html += `<div class="dataset-more">...and ${lines.length - 20} more</div>`;
-    }
-    return html;
-}
-
 window.renderMethodology = renderMethodology;
-window.toggleMethodologyResponses = toggleMethodologyResponses;
-window.toggleMethodologyDataset = toggleMethodologyDataset;

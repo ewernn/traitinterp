@@ -17,6 +17,12 @@ class PathBuilder {
         this.loaded = false;
         this._loadPromise = null;
         this.experimentName = null;
+
+        // Model config state
+        this._modelConfig = null;
+        this._modelId = null;
+        this._modelConfigLoaded = false;
+        this._modelConfigCache = {};
     }
 
     /**
@@ -237,6 +243,138 @@ class PathBuilder {
         const traitName = typeof trait === 'string' ? trait : trait.name;
         return `/${this.get('extraction.logit_lens', { trait: traitName, model_variant: modelVariant })}`;
     }
+
+    // =========================================================================
+    // Model config
+    // =========================================================================
+
+    /**
+     * Load model config from YAML file.
+     * @param {string} modelId - Model identifier (e.g., 'gemma-2-2b-it')
+     */
+    async _loadModelConfigById(modelId) {
+        // Normalize: google/gemma-2-2b-it -> gemma-2-2b-it
+        if (modelId.includes('/')) {
+            modelId = modelId.split('/').pop().toLowerCase();
+        }
+
+        // Return cached if same model
+        if (this._modelId === modelId && this._modelConfigLoaded) {
+            return this._modelConfig;
+        }
+
+        // Check cache
+        if (this._modelConfigCache[modelId]) {
+            this._modelConfig = this._modelConfigCache[modelId];
+            this._modelId = modelId;
+            this._modelConfigLoaded = true;
+            return this._modelConfig;
+        }
+
+        const response = await fetch(`/config/models/${modelId}.yaml`);
+        if (!response.ok) {
+            throw new Error(`Failed to load model config for '${modelId}': ${response.status}`);
+        }
+
+        const yamlText = await response.text();
+        this._modelConfig = jsyaml.load(yamlText);
+        this._modelId = modelId;
+        this._modelConfigLoaded = true;
+        this._modelConfigCache[modelId] = this._modelConfig;
+
+        return this._modelConfig;
+    }
+
+    /**
+     * Load model config for an experiment.
+     * Reads experiment's config.json to determine model, then loads model config.
+     * @param {string} experiment - Experiment name
+     */
+    async loadModelConfig(experiment) {
+        const response = await fetch(`/experiments/${experiment}/config.json`);
+        if (!response.ok) {
+            throw new Error(`Failed to load experiment config for '${experiment}': ${response.status}`);
+        }
+
+        const expConfig = await response.json();
+        const variant = expConfig.defaults.application;
+        const modelId = expConfig.model_variants[variant].model;
+
+        return this._loadModelConfigById(modelId);
+    }
+
+    /**
+     * Get a model config value by dot-separated key.
+     * @param {string} key - Dot-separated key like 'sae.available'
+     * @returns {*} Config value
+     */
+    getModelConfig(key) {
+        if (!this._modelConfigLoaded) {
+            throw new Error('Model config not loaded. Call await paths.loadModelConfig() first.');
+        }
+
+        let value = this._modelConfig;
+        for (const k of key.split('.')) {
+            if (value === undefined || value === null) return undefined;
+            value = value[k];
+        }
+        return value;
+    }
+
+    getNumLayers() {
+        return this.getModelConfig('num_hidden_layers');
+    }
+
+    getHiddenSize() {
+        return this.getModelConfig('hidden_size');
+    }
+
+    getNumHeads() {
+        return this.getModelConfig('num_attention_heads');
+    }
+
+    getNumKvHeads() {
+        return this.getModelConfig('num_key_value_heads');
+    }
+
+    getResidualSublayers() {
+        return this.getModelConfig('residual_sublayers') || ['input', 'after_attn', 'output'];
+    }
+
+    getNumSublayers() {
+        return this.getResidualSublayers().length;
+    }
+
+    getDefaultMonitoringLayer() {
+        // Middle layer - actual best layer comes from steering eval at runtime
+        return Math.floor(this.getNumLayers() / 2);
+    }
+
+    isSaeAvailable() {
+        return this.getModelConfig('sae.available') || false;
+    }
+
+    getSaeDownloadedLayers() {
+        return this.getModelConfig('sae.downloaded_layers') || [];
+    }
+
+    /**
+     * Get SAE path for a specific layer.
+     * @param {number} layer - Layer index
+     * @returns {string|null} Path to SAE directory, or null if not available
+     */
+    getSaePath(layer) {
+        if (!this.isSaeAvailable()) return null;
+
+        const downloadedLayers = this.getSaeDownloadedLayers();
+        if (!downloadedLayers.includes(layer)) return null;
+
+        const basePath = this.getModelConfig('sae.base_path');
+        const template = this.getModelConfig('sae.layer_template');
+        const layerDir = template.replace('{layer}', layer);
+
+        return `${basePath}/${layerDir}`;
+    }
 }
 
 // =========================================================================
@@ -247,3 +385,16 @@ const paths = new PathBuilder();
 
 // Export to global scope
 window.paths = paths;
+
+// Compatibility shim for window.modelConfig (merged into paths.js)
+window.modelConfig = {
+    loadForExperiment: (exp) => window.paths.loadModelConfig(exp),
+    getDefaultMonitoringLayer: () => window.paths.getDefaultMonitoringLayer(),
+    getNumLayers: () => window.paths.getNumLayers(),
+    getHiddenSize: () => window.paths.getHiddenSize(),
+    getNumHeads: () => window.paths.getNumHeads(),
+    getNumKvHeads: () => window.paths.getNumKvHeads(),
+    isSaeAvailable: () => window.paths.isSaeAvailable(),
+    getSaePath: (layer) => window.paths.getSaePath(layer),
+    get: (key) => window.paths.getModelConfig(key),
+};

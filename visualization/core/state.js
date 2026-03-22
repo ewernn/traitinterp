@@ -42,8 +42,6 @@ const state = {
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
     hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
-    // Steering Sweep settings
-    selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
     smoothingEnabled: true,  // Apply moving average
     smoothingWindow: 5,      // Moving average window size (tokens)
@@ -67,6 +65,8 @@ const state = {
     // Sentence overlay toggles (thought branches)
     showCuePOverlay: true,       // cue_p gradient bands (default on, was always-on)
     showCategoryOverlay: false,  // sentence category bands
+    // Velocity overlay on trajectory chart
+    showVelocity: false,
     // Layer mode: show single trait across all available layers
     layerMode: false,
     layerModeTrait: null,  // trait.name string, reset on experiment change
@@ -280,6 +280,17 @@ function setShowCategoryOverlay(enabled) {
     if (window.renderView) window.renderView();
 }
 
+// Velocity Overlay Toggle
+function initShowVelocity() {
+    state.showVelocity = localStorage.getItem('showVelocity') === 'true';
+}
+
+function setShowVelocity(enabled) {
+    state.showVelocity = !!enabled;
+    localStorage.setItem('showVelocity', state.showVelocity);
+    if (window.renderView) window.renderView();
+}
+
 // Hide Attention Sink Toggle
 function initHideAttentionSink() {
     const saved = localStorage.getItem('hideAttentionSink');
@@ -452,9 +463,9 @@ async function loadExperimentData(experimentName) {
     }
 
     // Reset view-specific state on experiment change
-    state.selectedSteeringTrait = null;
     state.layerModeTrait = null;
     state.spanTrait = null;
+    if (window.resetSteeringState) window.resetSteeringState();
 
     try {
         state.experimentData = {
@@ -477,7 +488,7 @@ async function loadExperimentData(experimentName) {
 
         // Load model config for this experiment
         try {
-            await window.modelConfig.loadForExperiment(experimentName);
+            await window.paths.loadModelConfig(experimentName);
         } catch (e) {
             // Model config is optional
         }
@@ -774,6 +785,7 @@ async function init() {
     initSpanState();
     initHideAttentionSink();
     initSentenceOverlays();
+    initShowVelocity();
     initSelectedMethods();
 
     // Setup UI
@@ -845,6 +857,7 @@ window.setSpanPanelOpen = setSpanPanelOpen;
 window.setTraitHeatmapOpen = setTraitHeatmapOpen;
 window.setShowCuePOverlay = setShowCuePOverlay;
 window.setShowCategoryOverlay = setShowCategoryOverlay;
+window.setShowVelocity = setShowVelocity;
 
 // URL routing
 window.setTabInURL = setTabInURL;
@@ -889,6 +902,7 @@ const LOCAL_STORAGE_KEYS = [
     'spanMode',
     'showCuePOverlay',
     'showCategoryOverlay',
+    'showVelocity',
     'promptSetSidebarOpen',
     // Prompt selection (prompt-picker.js)
     'promptSet',

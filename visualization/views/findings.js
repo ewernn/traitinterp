@@ -126,11 +126,8 @@ async function loadFindingContent(filename) {
         }
 
         // Extract [@key] citations
-        const citedKeys = [];
-        markdown = markdown.replace(/\[@(\w+)\]/g, (match, key) => {
-            if (!citedKeys.includes(key)) citedKeys.push(key);
-            return `CITE_${key}`;
-        });
+        const keyed = window.citations.extractKeyedCitations(markdown, references);
+        markdown = keyed.markdown;
 
         // Fix relative image paths to absolute
         markdown = markdown.replace(/!\[([^\]]*)\]\(assets\//g, '![$1](/docs/viz_findings/assets/');
@@ -145,35 +142,8 @@ async function loadFindingContent(filename) {
         // Render custom blocks
         html = window.customBlocks.renderCustomBlocks(html, blocks, filename);
 
-        // Replace citation placeholders with formatted citations
-        for (const key of citedKeys) {
-            const ref = references[key];
-            if (ref) {
-                const tooltipText = `${ref.title}`;
-                const citeHtml = ref.url
-                    ? `<a href="${ref.url}" class="citation" target="_blank" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</a>`
-                    : `<span class="citation" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</span>`;
-                html = html.replaceAll(`CITE_${key}`, citeHtml);
-            } else {
-                console.warn(`Citation [@${key}] not found in references`);
-                html = html.replaceAll(`CITE_${key}`, `<span class="citation citation-missing">[@${key}]</span>`);
-            }
-        }
-
-        // Append References section if any [@key] citations used
-        if (citedKeys.length > 0) {
-            const validRefs = citedKeys.filter(key => references[key]);
-            if (validRefs.length > 0) {
-                let refsHtml = '<section class="references"><h2>References</h2><ol>';
-                for (const key of validRefs) {
-                    const ref = references[key];
-                    const link = ref.url ? `<a href="${ref.url}" target="_blank">${ref.url}</a>` : '';
-                    refsHtml += `<li id="ref-${key}">${ref.authors} (${ref.year}). "${ref.title}". ${link}</li>`;
-                }
-                refsHtml += '</ol></section>';
-                html += refsHtml;
-            }
-        }
+        // Render [@key] citations and append references section
+        html = window.citations.renderKeyedCitations(html, keyed.citedKeys, references);
 
         // Render numbered ^N citations and append references section
         if (window.citations && Object.keys(numberedRefs).length > 0) {

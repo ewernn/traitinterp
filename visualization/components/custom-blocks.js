@@ -270,9 +270,12 @@ function extractCustomBlocks(markdown) {
  * @param {string} html - HTML with placeholders
  * @param {Object} blocks - Extracted block data
  * @param {string} namespace - Unique namespace for IDs (e.g., filename)
+ * @param {Object} options - Rendering options
+ * @param {string} options.assetBaseUrl - Base URL for resolving assets/ paths in figures (default: '/docs/viz_findings/')
  * @returns {string} - HTML with blocks rendered
  */
-function renderCustomBlocks(html, blocks, namespace = 'block') {
+function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
+    const { assetBaseUrl = '/docs/viz_findings/' } = options;
     // Responses blocks -> expandable dropdowns
     blocks.responses.forEach((block, i) => {
         const dropdownId = `responses-${namespace}-${i}`;
@@ -312,7 +315,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block') {
     // Figure blocks -> img with caption
     blocks.figures.forEach((block, i) => {
         const imgPath = block.path.startsWith('assets/')
-            ? `/docs/viz_findings/${block.path}`
+            ? `${assetBaseUrl}${block.path}`
             : block.path;
         const sizeClass = block.size ? ` fig-${block.size}` : '';
         const figNum = i + 1;

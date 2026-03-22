@@ -1,13 +1,17 @@
 /**
- * Citations - Parse and render numbered citations (^1, ^2 style)
+ * Citations - Parse and render citations in two styles:
+ *   Numbered (^1, ^2) - parsed from ## References section in markdown body
+ *   Keyed ([@key])    - resolved from frontmatter references map
  *
- * Parses references from markdown body (## References section) and
- * replaces ^N markers with linked superscripts that scroll to refs.
- *
- * Usage in findings.js:
+ * Usage (numbered, findings.js):
  *   const { markdown, refs } = window.citations.extractReferences(markdown);
- *   // ... render markdown ...
+ *   markdown = window.citations.processCitationMarkers(markdown, refs);
  *   html = window.citations.renderCitations(html, refs);
+ *   html += window.citations.renderReferencesSection(refs);
+ *
+ * Usage (keyed, methodology.js):
+ *   const { markdown, citedKeys } = window.citations.extractKeyedCitations(markdown, references);
+ *   html = window.citations.renderKeyedCitations(html, citedKeys, references);
  */
 
 /**
@@ -146,11 +150,66 @@ function renderReferencesSection(refs) {
     return html;
 }
 
+/**
+ * Extract [@key] citation markers from markdown, replacing with placeholders
+ * @param {string} markdown - Raw markdown content
+ * @param {Object} references - Frontmatter references map { key: { title, authors, year, url } }
+ * @returns {Object} - { markdown, citedKeys } where citedKeys is ordered array of unique keys
+ */
+function extractKeyedCitations(markdown, references) {
+    const citedKeys = [];
+    markdown = markdown.replace(/\[@(\w+)\]/g, (match, key) => {
+        if (!citedKeys.includes(key)) citedKeys.push(key);
+        return `CITE_${key}`;
+    });
+    return { markdown, citedKeys };
+}
+
+/**
+ * Replace CITE_key placeholders with linked HTML and append references section
+ * @param {string} html - Rendered HTML with CITE_key placeholders
+ * @param {string[]} citedKeys - Ordered array of citation keys
+ * @param {Object} references - Frontmatter references map { key: { title, authors, year, url } }
+ * @returns {string} - HTML with citations rendered and references section appended
+ */
+function renderKeyedCitations(html, citedKeys, references) {
+    for (const key of citedKeys) {
+        const ref = references[key];
+        if (ref) {
+            const tooltipText = ref.title;
+            const citeHtml = ref.url
+                ? `<a href="${ref.url}" class="citation" target="_blank" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</a>`
+                : `<span class="citation" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</span>`;
+            html = html.replaceAll(`CITE_${key}`, citeHtml);
+        } else {
+            console.warn(`Citation [@${key}] not found in references`);
+            html = html.replaceAll(`CITE_${key}`, `<span class="citation citation-missing">[${key}]</span>`);
+        }
+    }
+
+    // Append references section if any valid citations
+    const validRefs = citedKeys.filter(key => references[key]);
+    if (validRefs.length > 0) {
+        let refsHtml = '<section class="references"><h2>References</h2><ol>';
+        for (const key of validRefs) {
+            const ref = references[key];
+            const link = ref.url ? `<a href="${ref.url}" target="_blank">${ref.url}</a>` : '';
+            refsHtml += `<li id="ref-${key}">${ref.authors} (${ref.year}). "${ref.title}". ${link}</li>`;
+        }
+        refsHtml += '</ol></section>';
+        html += refsHtml;
+    }
+
+    return html;
+}
+
 // Export
 window.citations = {
     extractReferences,
     processCitationMarkers,
     renderCitations,
     renderReferencesSection,
-    initCitationClicks
+    initCitationClicks,
+    extractKeyedCitations,
+    renderKeyedCitations
 };

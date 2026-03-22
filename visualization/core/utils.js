@@ -100,7 +100,41 @@ function renderMath(element) {
     }
 }
 
+/**
+ * Fetch a URL and return parsed JSON, or null on any error.
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @returns {Promise<any|null>}
+ */
+async function fetchJSON(url, options) {
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Fetch JSON with caching. Returns cached value on hit, fetches on miss.
+ * @param {Object} cache - Plain object used as cache store (caller owns it)
+ * @param {string} key - Cache key
+ * @param {string} url - URL to fetch on cache miss
+ * @param {Function} [transform] - Optional fn(data) applied before storing
+ * @returns {Promise<any|null>}
+ */
+async function cachedFetchJSON(cache, key, url, transform) {
+    if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
+    const data = await fetchJSON(url);
+    if (data === null) return null;
+    cache[key] = transform ? transform(data) : data;
+    return cache[key];
+}
+
 // Export to global scope
+window.fetchJSON = fetchJSON;
+window.cachedFetchJSON = cachedFetchJSON;
 window.escapeHtml = escapeHtml;
 window.protectMathBlocks = protectMathBlocks;
 window.restoreMathBlocks = restoreMathBlocks;
