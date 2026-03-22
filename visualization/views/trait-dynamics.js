@@ -529,7 +529,7 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         // Progress update
         const loaded = Math.min(b + batchSize, promptIds.length);
         if (resultsDiv) {
-            resultsDiv.innerHTML = `<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">Loading ${loaded}/${promptIds.length} prompts...</div>`;
+            resultsDiv.innerHTML = `<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading ${loaded}/${promptIds.length} prompts...</div>`;
         }
     }
 
@@ -674,12 +674,12 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
             <div class="dropdown-header" id="top-spans-toggle">
                 <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
                 <span class="dropdown-label">Top Spans</span>
-                <span style="color: var(--color-text-tertiary); font-size: var(--text-xs); margin-left: auto;">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
+                <span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: auto;">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
             </div>
             ${isOpen ? `
             <div class="dropdown-body" style="padding: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
-                    <span style="font-size: var(--text-xs); color: var(--color-text-secondary);">Trait:</span>
+                    <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
                     <select id="span-trait-select" style="font-size: var(--text-xs);">
                         ${diffTraitKeys.map(k => `
                             <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${getDisplayName(k)}</option>
@@ -689,22 +689,22 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
                     <span class="filter-chip ${spanMode === 'clauses' ? 'active' : ''}" data-span-mode="clauses">Clauses</span>
                     ${spanMode === 'window' ? `
                     <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
-                    <span id="span-window-label" style="font-size: var(--text-xs); color: var(--color-text-secondary); min-width: 40px;">${windowLength} tok</span>
+                    <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
                     ` : ''}
-                    <span style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-left: 8px;">Scope:</span>
+                    <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
                     <span class="filter-chip ${window.state.spanScope === 'current' ? 'active' : ''}" data-span-scope="current">Current</span>
                     <span class="filter-chip ${window.state.spanScope === 'allPrompts' ? 'active' : ''}" data-span-scope="allPrompts">All Prompts</span>
                 </div>
                 <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
                     ${isAllPrompts
-                        ? '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">Loading cross-prompt spans...</div>'
+                        ? '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading cross-prompt spans...</div>'
                         : (spans.length > 0 ? spans.map((s, i) => `
                         <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}–${s.end} (response-relative)">
                             <span class="span-rank">#${i + 1}</span>
                             <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
                             <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
                         </div>
-                    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
+                    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
                 </div>
             </div>
             ` : ''}
@@ -746,7 +746,7 @@ function renderTopSpansPanel(traitData, loadedTraits, responseTokens, nPromptTok
                             <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
                             <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
                         </div>
-                    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found</div>';
+                    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>';
                     // Re-attach click handlers
                     attachSpanClickHandlers(nPromptTokens);
                 }
@@ -806,17 +806,17 @@ function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
     if (!resultsDiv) return;
 
     const header = totalPrompts
-        ? `<div style="color: var(--color-text-tertiary); font-size: var(--text-xs); margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
+        ? `<div style="color: var(--text-tertiary); font-size: var(--text-xs); margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
         : '';
 
     resultsDiv.innerHTML = header + (spans.length > 0 ? spans.map((s, i) => `
         <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" data-prompt-id="${s.promptId}" title="Prompt ${s.promptId}, tokens ${s.start}–${s.end}">
             <span class="span-rank">#${i + 1}</span>
             <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-            <span style="color: var(--color-text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
+            <span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
             <span class="span-text">${(s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
         </div>
-    `).join('') : '<div style="color: var(--color-text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>');
+    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>');
 
     // Click handlers: navigate to prompt + highlight
     document.querySelectorAll('.span-result[data-prompt-id]').forEach(row => {
@@ -2000,7 +2000,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
             <div class="dropdown-header" id="trait-heatmap-toggle">
                 <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
                 <span class="dropdown-label">Trait × Token Heatmap</span>
-                <span style="color: var(--color-text-tertiary); font-size: var(--text-xs); margin-left: auto;">${loadedTraits.length} traits</span>
+                <span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: auto;">${loadedTraits.length} traits</span>
             </div>
             ${isOpen ? `
             <div class="dropdown-body" style="padding: 0;">

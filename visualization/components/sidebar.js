@@ -265,8 +265,7 @@ function updatePageTitle() {
         'steering': 'Steering',
         'trait-dynamics': 'Inference',
         'correlation': 'Correlation',
-        'model-analysis': 'Model Analysis',
-        'layer-dive': 'Layer Deep Dive'
+        'model-analysis': 'Model Analysis'
     };
     const titleElem = document.getElementById('page-title');
     if (titleElem) {
@@ -334,22 +333,6 @@ function setupSidebarEventListeners() {
 // Exports
 // =============================================================================
 
-window.sidebar = {
-    initTheme,
-    toggleTheme,
-    updateThemeIcon,
-    populateTraitCheckboxes,
-    updateCategoryCheckbox,
-    updateCategoryCount,
-    updateSelectedCount,
-    toggleAllTraits,
-    setupNavigation,
-    updatePageTitle,
-    setupSubsectionInfoToggles,
-    setupSidebarEventListeners
-};
-
-// Also export individual functions for backwards compatibility
 window.initTheme = initTheme;
 window.toggleTheme = toggleTheme;
 window.populateTraitCheckboxes = populateTraitCheckboxes;

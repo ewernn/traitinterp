@@ -79,16 +79,6 @@ function showError(message) {
 }
 
 /**
- * Simple Markdown to HTML converter
- */
-function markdownToHtml(text) {
-    if (!text) return '';
-    return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-        .replace(/\*(.*?)\*/g, '<em>$1</em>');           // Italic
-}
-
-/**
  * Global math rendering utility (KaTeX)
  */
 function renderMath(element) {
@@ -117,5 +107,4 @@ window.restoreMathBlocks = restoreMathBlocks;
 window.smoothData = smoothData;
 window.formatTokenDisplay = formatTokenDisplay;
 window.showError = showError;
-window.markdownToHtml = markdownToHtml;
 window.renderMath = renderMath;

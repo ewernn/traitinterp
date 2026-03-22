@@ -43,7 +43,7 @@
         <div class="preview-content">
             <div class="preview-header">
                 <h3 id="preview-title" style="margin: 0; color: var(--text-primary);"></h3>
-                <button class="close-btn" onclick="closePreview()">×</button>
+                <button class="close-btn" onclick="document.getElementById('preview-modal').classList.remove('show')">×</button>
             </div>
             <div class="preview-body" id="preview-body"></div>
         </div>
@@ -100,7 +100,6 @@
                 <div class="nav-item" data-view="trait-dynamics">Inference</div>
                 <div class="nav-item" data-view="correlation">Correlation</div>
                 <div class="nav-item" data-view="model-analysis">Model Analysis</div>
-                <div class="nav-item" data-view="one-offs">One-Offs</div>
             </div>
 
             <div class="sidebar-section" id="experiment-section">
@@ -168,7 +167,6 @@
     <script src="/visualization/core/display.js"></script>
     <script src="/visualization/core/charts.js"></script>
     <script src="/visualization/core/chart-types.js"></script>
-    <script src="/visualization/core/legend.js"></script>
     <script src="/visualization/core/paths.js"></script>
     <script src="/visualization/core/citations.js"></script>
     <script src="/visualization/core/model-config.js"></script>
@@ -190,11 +188,9 @@
     <script src="/visualization/views/extraction.js"></script>
     <script src="/visualization/views/trait-dynamics.js"></script>
     <script src="/visualization/views/correlation.js"></script>
-    <script src="/visualization/views/layer-deep-dive.js"></script>
     <script src="/visualization/views/steering.js"></script>
     <script src="/visualization/views/model-analysis.js"></script>
     <script src="/visualization/views/live-chat.js"></script>
-    <script src="/visualization/views/one-offs.js"></script>
 
     <!-- View Router -->
     <script>
@@ -212,8 +208,7 @@
                 'trait-dynamics': 'Inference',
                 'correlation': 'Correlation',
                 'model-analysis': 'Model Analysis',
-                'live-chat': 'Live Chat',
-                'one-offs': 'One-Offs'
+                'live-chat': 'Live Chat'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -244,9 +239,6 @@
                     break;
                 case 'live-chat':
                     window.renderLiveChat();
-                    break;
-                case 'one-offs':
-                    window.renderOneOffs();
                     break;
                 default:
                     document.getElementById('content-area').innerHTML =

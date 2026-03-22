@@ -185,6 +185,100 @@ function updateChart(divId, traces, layout, configOverrides = {}) {
     return Plotly.react(divId, traces, layout, config);
 }
 
+// =============================================================================
+// HTML Legend - Custom legend outside Plotly for reliable sizing
+// =============================================================================
+
+/**
+ * Create an HTML legend for a Plotly chart
+ * @param {Array} traces - Plotly traces with name, line.color, line.dash, visible, etc.
+ * @param {string|HTMLElement} plotDiv - The Plotly chart div ID or element (for toggle)
+ * @param {Object} options - Optional configuration
+ * @param {Array<string>} options.tooltips - Tooltip text for each trace (shown on hover)
+ * @param {boolean} options.hoverHighlight - Enable hover-to-highlight (dims other traces)
+ * @returns {HTMLElement} Legend container element
+ */
+function createHtmlLegend(traces, plotDiv, options = {}) {
+    const { tooltips = [], hoverHighlight = false } = options;
+    const legend = document.createElement('div');
+    legend.className = 'chart-legend';
+
+    // Track hidden state for hover highlight
+    const hiddenTraces = new Set();
+
+    traces.forEach((trace, index) => {
+        if (trace.showlegend === false) return;
+
+        const item = document.createElement('span');
+        item.className = 'legend-item';
+        item.style.cursor = 'pointer';
+        if (trace.visible === 'legendonly') {
+            item.classList.add('legend-item-hidden');
+            hiddenTraces.add(index);
+        }
+
+        // Add tooltip if provided
+        if (tooltips[index]) {
+            item.classList.add('has-tooltip');
+            item.dataset.tooltip = tooltips[index];
+        }
+
+        // Color swatch
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-color';
+        const color = trace.line?.color || trace.marker?.color || '#888';
+        swatch.style.background = color;
+
+        // Label
+        const label = document.createElement('span');
+        label.className = 'legend-label';
+        label.textContent = trace.name || `Trace ${index}`;
+
+        item.appendChild(swatch);
+        item.appendChild(label);
+
+        // Click to toggle visibility
+        item.addEventListener('click', () => {
+            const plot = typeof plotDiv === 'string' ? document.getElementById(plotDiv) : plotDiv;
+            if (!plot || !plot.data) return;
+
+            const currentVisible = plot.data[index].visible;
+            const newVisible = currentVisible === 'legendonly' ? true : 'legendonly';
+
+            Plotly.restyle(plot, { visible: newVisible }, [index]);
+            item.classList.toggle('legend-item-hidden', newVisible === 'legendonly');
+
+            if (newVisible === 'legendonly') {
+                hiddenTraces.add(index);
+            } else {
+                hiddenTraces.delete(index);
+            }
+        });
+
+        legend.appendChild(item);
+    });
+
+    // Setup hover-to-highlight on the plot if requested
+    if (hoverHighlight) {
+        const plot = typeof plotDiv === 'string' ? document.getElementById(plotDiv) : plotDiv;
+        if (plot) {
+            plot.on('plotly_hover', (d) => {
+                const opacities = traces.map((_, i) => {
+                    if (hiddenTraces.has(i)) return 0;
+                    return i === d.points[0].curveNumber ? 1.0 : 0.2;
+                });
+                Plotly.restyle(plot, { 'opacity': opacities });
+            });
+            plot.on('plotly_unhover', () => {
+                const opacities = traces.map((_, i) => hiddenTraces.has(i) ? 0 : 1.0);
+                Plotly.restyle(plot, { 'opacity': opacities });
+            });
+        }
+    }
+
+    return legend;
+}
+
 // Exports
 window.PLOTLY_CONFIG = PLOTLY_CONFIG;
 window.CHART_PRESETS = CHART_PRESETS;
@@ -193,3 +287,4 @@ window.createSeparatorShape = createSeparatorShape;
 window.createHighlightShape = createHighlightShape;
 window.renderChart = renderChart;
 window.updateChart = updateChart;
+window.createHtmlLegend = createHtmlLegend;

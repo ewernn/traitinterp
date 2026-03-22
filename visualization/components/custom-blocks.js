@@ -864,9 +864,9 @@ async function loadSteeredResponseContent(container, pvPath, naturalPath) {
             const natural = naturalData[i] || {};
             return `
                 <tr>
-                    <td class="sr-question">${escapeHtml(pv.prompt || '')}</td>
-                    <td class="sr-response sr-pv">${escapeHtml(pv.response || '')}</td>
-                    <td class="sr-response sr-natural">${escapeHtml(natural.response || '')}</td>
+                    <td class="sr-question">${window.escapeHtml(pv.prompt || '')}</td>
+                    <td class="sr-response sr-pv">${window.escapeHtml(pv.response || '')}</td>
+                    <td class="sr-response sr-natural">${window.escapeHtml(natural.response || '')}</td>
                 </tr>
             `;
         }).join('');
@@ -886,15 +886,6 @@ async function loadSteeredResponseContent(container, pvPath, naturalPath) {
     } catch (error) {
         content.innerHTML = `<p class="no-data">Failed to load: ${error.message}</p>`;
     }
-}
-
-/**
- * Helper to escape HTML
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 /**

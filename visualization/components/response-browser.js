@@ -684,28 +684,10 @@ async function loadResponsesForRun(trait, idx, run) {
     }
 }
 
-/**
- * Reset state for a trait (call when results change)
- */
-function resetResponseBrowserState(trait) {
-    delete responseBrowserState[trait];
-}
-
-/**
- * Clear all cached state
- */
-function clearResponseBrowserCache() {
-    Object.keys(responseBrowserState).forEach(k => delete responseBrowserState[k]);
-    Object.keys(traitDefinitionCache).forEach(k => delete traitDefinitionCache[k]);
-    judgeTemplatesCache = null;
-}
-
 // Export
 window.responseBrowser = {
     setTraitResultsCache,
     renderResponseBrowserForTrait,
-    resetResponseBrowserState,
-    clearResponseBrowserCache,
     fetchAvailableResponses,
     // Expose state for debugging
     getState: () => responseBrowserState,

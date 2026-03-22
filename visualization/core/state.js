@@ -15,8 +15,7 @@
  */
 
 // View category constants
-const ANALYSIS_VIEWS = ['extraction', 'steering', 'trait-dynamics', 'correlation', 'model-analysis', 'layer-dive', 'one-offs'];
-const GLOBAL_VIEWS = ['overview', 'methodology', 'findings', 'live-chat'];
+const ANALYSIS_VIEWS = ['extraction', 'steering', 'trait-dynamics', 'correlation', 'model-analysis'];
 
 // Experiments hidden from picker by default (can be revealed via toggle)
 const HIDDEN_EXPERIMENTS = [];  // Add experiment names to hide by default
@@ -510,7 +509,6 @@ async function discoverAvailablePrompts() {
     state.variantsPerPromptSet = {};  // Track which model variants have data per prompt set
 
     if (!state.currentExperiment) {
-        populatePromptSelector();
         return;
     }
 
@@ -518,7 +516,6 @@ async function discoverAvailablePrompts() {
         const response = await fetch(`/api/experiments/${state.currentExperiment}/inference/prompt-sets`);
         if (!response.ok) {
             console.warn('Failed to fetch prompt sets');
-            populatePromptSelector();
             return;
         }
 
@@ -620,11 +617,6 @@ function getVariantForCurrentPromptSet() {
     return variants[0];
 }
 window.getVariantForCurrentPromptSet = getVariantForCurrentPromptSet;
-
-// Placeholder for prompt selector (implemented in prompt-picker.js)
-function populatePromptSelector() {
-    // This is a no-op here; renderPromptPicker handles everything
-}
 
 // =============================================================================
 // URL Routing
@@ -827,7 +819,6 @@ function toggleHiddenExperiments() {
 
 window.state = state;
 window.ANALYSIS_VIEWS = ANALYSIS_VIEWS;
-window.GLOBAL_VIEWS = GLOBAL_VIEWS;
 window.getFilteredTraits = getFilteredTraits;
 window.isFeatureEnabled = isFeatureEnabled;
 window.initApp = init;
@@ -855,11 +846,6 @@ window.setTraitHeatmapOpen = setTraitHeatmapOpen;
 window.setShowCuePOverlay = setShowCuePOverlay;
 window.setShowCategoryOverlay = setShowCategoryOverlay;
 
-// GPU status
-window.fetchGpuStatus = fetchGpuStatus;
-window.startGpuPolling = startGpuPolling;
-window.stopGpuPolling = stopGpuPolling;
-
 // URL routing
 window.setTabInURL = setTabInURL;
 window.setExperimentInURL = setExperimentInURL;
@@ -885,6 +871,7 @@ window.toggleHiddenExperiments = toggleHiddenExperiments;
 const LOCAL_STORAGE_KEYS = [
     // UI Preferences (state.js)
     'theme',
+    'wideMode',
     'smoothingEnabled',
     'smoothingWindow',
     'projectionCentered',
@@ -897,6 +884,7 @@ const LOCAL_STORAGE_KEYS = [
     'lastCompareVariant',
     'spanWindowLength',
     'spanPanelOpen',
+    'traitHeatmapOpen',
     'spanScope',
     'spanMode',
     'showCuePOverlay',
