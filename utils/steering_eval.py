@@ -99,7 +99,7 @@ async def compute_baseline(backend, questions, trait_name, trait_definition, jud
         response_data = build_response_records(questions, responses, all_scores)
 
         _tm = baseline.trait_mean
-        print(f"  Baseline: trait={f'{float(_tm):.1f}' if _tm is not None else 'None'}, n={baseline['n']}")
+        print(f"  Baseline: trait={f'{float(_tm):.1f}' if _tm is not None else 'None'}, n={baseline.n}")
     else:
         baseline = None
         response_data = None
@@ -742,8 +742,8 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
         config.ablation, config.method, config.component,
     )
 
-    delta = ablated_trait_mean - baseline['trait_mean']
-    print(f"Baseline: trait={baseline['trait_mean']:.1f} | Ablated: trait={ablated_trait_mean:.1f} | Delta: {delta:+.1f}")
+    delta = ablated_trait_mean - baseline.trait_mean
+    print(f"Baseline: trait={baseline.trait_mean:.1f} | Ablated: trait={ablated_trait_mean:.1f} | Delta: {delta:+.1f}")
 
     if should_close_judge:
         await judge.close()

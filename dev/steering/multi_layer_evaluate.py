@@ -187,8 +187,8 @@ async def multi_layer_adaptive_search(
 
         cached_result = find_cached_run(cached_runs, config)
         if cached_result is not None:
-            trait_score = cached_result.get("trait_mean") or 0
-            coherence = cached_result.get("coherence_mean") or 0
+            trait_score = cached_result.trait_mean or 0
+            coherence = cached_result.coherence_mean or 0
             print(f"  {step+1}  | {coef:>6.1f} | {trait_score:>5.1f} | {coherence:>9.1f} | (cached)")
         else:
             result, responses = await evaluate_multi_layer_config(
@@ -203,7 +203,8 @@ async def multi_layer_adaptive_search(
             coherence = result.get("coherence_mean") or 0
 
             timestamp = datetime.now().isoformat()
-            cached_runs.append({"config": config, "result": result, "timestamp": timestamp})
+            from core.types import SteeringRunRecord
+            cached_runs.append(SteeringRunRecord.from_dict({"config": config, "result": result, "timestamp": timestamp}))
 
             if is_rank_zero():
                 append_run(experiment, trait, model_variant, config, result, position, prompt_set)
@@ -327,9 +328,9 @@ async def run_multi_layer_evaluation(
 
     if results_path.exists():
         results_data = load_results(experiment, trait, model_variant, position, prompt_set)
-        cached_runs = results_data.get("runs", [])
-        baseline_result = results_data.get("baseline")
-        header_direction = results_data.get("direction", "positive")
+        cached_runs = results_data.runs
+        baseline_result = results_data.baseline
+        header_direction = results_data.direction
         if header_direction != direction and prompt_set == "steering":
             raise ValueError(
                 f"Direction mismatch for {trait}: results file has '{header_direction}' "

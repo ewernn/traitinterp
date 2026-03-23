@@ -173,7 +173,7 @@ async def steering_eval_remote(
     results = {}
     for trait in traits:
         try:
-            results[trait] = load_results(experiment, trait, model_variant, position, "steering")
+            results[trait] = load_results(experiment, trait, model_variant, position, "steering").to_dict()
         except FileNotFoundError:
             results[trait] = {"error": "No results found"}
 

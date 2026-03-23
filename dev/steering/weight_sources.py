@@ -297,24 +297,23 @@ def _load_per_component_deltas(
     from utils.steering_results import load_results
 
     data = load_results(experiment, trait, model_variant, position, prompt_set)
-    direction = data.get("direction", "positive")
+    direction = data.direction
     sign = 1 if direction == "positive" else -1
-    baseline = data.get("baseline", {}).get("trait_mean", 0)
+    baseline = data.baseline.trait_mean if data.baseline else 0
 
     best_deltas = {}
-    for run in data.get("runs", []):
-        vectors = run.get("config", {}).get("vectors", [])
-        if len(vectors) != 1:
+    for run in data.runs:
+        if len(run.config.vectors) != 1:
             continue
-        v = vectors[0]
-        comp = v.get("component", "residual")
+        v = run.config.vectors[0]
+        comp = v.component
         if comp not in COMPONENTS:
             continue
-        layer = v.get("layer")
-        coherence = run.get("result", {}).get("coherence_mean", 0)
+        layer = v.layer
+        coherence = run.result.coherence_mean or 0
         if coherence < min_coherence:
             continue
-        delta = run.get("result", {}).get("trait_mean", 0) - baseline
+        delta = (run.result.trait_mean or 0) - baseline
         key = (layer, comp)
         if key not in best_deltas or delta * sign > best_deltas[key] * sign:
             best_deltas[key] = delta

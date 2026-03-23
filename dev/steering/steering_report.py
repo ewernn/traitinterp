@@ -65,10 +65,9 @@ def load_trait_result(
 ) -> TraitResult:
     """Load and summarize steering results for a single trait."""
     data = load_results(experiment, trait, model_variant, position, prompt_set)
-    direction = data.get("direction", "positive")
-    baseline_result = data.get("baseline")
-    baseline = baseline_result.get("trait_mean", 0) if baseline_result else None
-    runs = data.get("runs", [])
+    direction = data.direction
+    baseline = data.baseline.trait_mean if data.baseline else None
+    runs = data.runs
     sign = 1 if direction == "positive" else -1
 
     if baseline is None:
@@ -80,16 +79,11 @@ def load_trait_result(
     # Best per layer (coherence-filtered)
     by_layer = defaultdict(list)
     for run in runs:
-        cfg = run.get("config", {})
-        vectors = cfg.get("vectors", [])
-        if not vectors:
-            continue
-        v = vectors[0]
-        result = run.get("result", {})
-        by_layer[v["layer"]].append({
-            "trait_mean": result.get("trait_mean", 0),
-            "coherence": result.get("coherence_mean", 0),
-            "coef": v.get("weight", 0),
+        v = run.config.vectors[0]
+        by_layer[v.layer].append({
+            "trait_mean": run.result.trait_mean or 0,
+            "coherence": run.result.coherence_mean or 0,
+            "coef": v.weight,
         })
 
     best_per_layer = {}
