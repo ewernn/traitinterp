@@ -5,7 +5,8 @@
  * Output: Character ranges for frontend highlighting
  *
  * Usage:
- *     const charRanges = window.annotations.spansToCharRanges(responseText, annotations);
+ *     import { spansToCharRanges } from './annotations.js';
+ *     const charRanges = spansToCharRanges(responseText, annotations);
  */
 
 /**
@@ -290,7 +291,18 @@ async function getSentenceCategoriesForPrompt(experiment, promptSet, promptId, s
     return result;
 }
 
-// Export
+// ES module exports
+export {
+    spansToCharRanges,
+    getSpansForResponse,
+    mergeRanges,
+    fetchAnnotations,
+    getAnnotationTokenRanges,
+    fetchSentenceAnnotations,
+    getSentenceCategoriesForPrompt,
+};
+
+// Keep window.* namespace for backward compat
 window.annotations = {
     spansToCharRanges,
     getSpansForResponse,

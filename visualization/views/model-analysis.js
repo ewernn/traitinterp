@@ -1,3 +1,5 @@
+import { fetchJSON } from '../core/utils.js';
+
 /**
  * Model Analysis View - Understanding model internals and comparing variants
  *
@@ -752,5 +754,8 @@ function renderInterLayerSimilarity(data) {
 }
 
 
-// Export
+// ES module exports
+export { renderModelAnalysis };
+
+// Keep window.* for router
 window.renderModelAnalysis = renderModelAnalysis;

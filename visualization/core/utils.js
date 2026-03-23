@@ -257,7 +257,27 @@ function initMarkedOptions() {
     marked.setOptions({ gfm: true, breaks: false, headerIds: true });
 }
 
-// Export to global scope
+// ES module exports
+export {
+    fetchJSON,
+    cachedFetchJSON,
+    escapeHtml,
+    protectMathBlocks,
+    restoreMathBlocks,
+    smoothData,
+    formatTokenDisplay,
+    showError,
+    renderMath,
+    computeVelocity,
+    getDimsToRemove,
+    applyMassiveDimCleaning,
+    computeCleanedNorms,
+    sortedNumericKeys,
+    parseFrontmatter,
+    initMarkedOptions,
+};
+
+// Keep window.* for backward compat (HTML onclick, router, cross-module access during migration)
 window.fetchJSON = fetchJSON;
 window.cachedFetchJSON = cachedFetchJSON;
 window.escapeHtml = escapeHtml;

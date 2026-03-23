@@ -208,7 +208,22 @@ function getPlotlyLayout(baseLayout = {}) {
     };
 }
 
-// Export to global scope
+// ES module exports
+export {
+    DISPLAY_NAMES,
+    getDisplayName,
+    ASYMB_COLORSCALE,
+    DELTA_COLORSCALE,
+    CORRELATION_COLORSCALE,
+    getCssVar,
+    hexToRgba,
+    getTokenHighlightColors,
+    getChartColors,
+    getMethodColors,
+    getPlotlyLayout,
+};
+
+// Keep window.* for backward compat
 window.DISPLAY_NAMES = DISPLAY_NAMES;
 window.getDisplayName = getDisplayName;
 window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;

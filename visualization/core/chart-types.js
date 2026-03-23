@@ -1,3 +1,6 @@
+import { getChartColors } from './display.js';
+import { buildChartLayout, renderChart } from './charts.js';
+
 /**
  * Chart Type Renderers for markdown :::chart::: blocks
  *
@@ -71,7 +74,7 @@ CHART_RENDERERS['model-diff-effect'] = async function(container, data, options =
         return;
     }
 
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
     const traces = [];
 
     Object.entries(filteredTraits).forEach(([traitPath, traitData], idx) => {
@@ -98,7 +101,7 @@ CHART_RENDERERS['model-diff-effect'] = async function(container, data, options =
         return;
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -109,7 +112,7 @@ CHART_RENDERERS['model-diff-effect'] = async function(container, data, options =
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -125,7 +128,7 @@ CHART_RENDERERS['model-diff-cosine'] = async function(container, data, options =
         return;
     }
 
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
     const traces = [];
 
     Object.entries(filteredTraits).forEach(([traitPath, traitData], idx) => {
@@ -157,7 +160,7 @@ CHART_RENDERERS['model-diff-cosine'] = async function(container, data, options =
         return;
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -168,7 +171,7 @@ CHART_RENDERERS['model-diff-cosine'] = async function(container, data, options =
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -184,7 +187,7 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
         return;
     }
 
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
 
     // Sort by effect size ascending (so highest appears at top in horizontal bar)
     const sorted = Object.entries(filteredTraits)
@@ -203,7 +206,7 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
         hovertemplate: '%{y}: %{x:.2f}σ<extra></extra>'
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces: [trace],
         height,
@@ -216,7 +219,7 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, [trace], layout);
+    await renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================
@@ -294,7 +297,7 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
         };
     });
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces,
         height,
@@ -307,7 +310,7 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -316,7 +319,7 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
 
 CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}) {
     const { height = 200 } = options;
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
     const direction = data.direction || 'positive';
     const sign = direction === 'positive' ? 1 : -1;
 
@@ -357,7 +360,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
         hovertemplate: `%{y}<br>Delta: ${prefix}%{x:.1f}<extra></extra>`
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces: [trace],
         height,
@@ -370,7 +373,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, [trace], layout);
+    await renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================
@@ -434,7 +437,7 @@ CHART_RENDERERS['dynamics-effect'] = async function(container, data, options = {
         hoverinfo: 'skip'
     });
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -445,7 +448,7 @@ CHART_RENDERERS['dynamics-effect'] = async function(container, data, options = {
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -526,7 +529,7 @@ CHART_RENDERERS['dynamics-scatter'] = async function(container, data, options = 
         }
     ];
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -537,7 +540,7 @@ CHART_RENDERERS['dynamics-scatter'] = async function(container, data, options = 
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -592,7 +595,7 @@ CHART_RENDERERS['dynamics-violin'] = async function(container, data, options = {
         }
     ];
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces,
         height,
@@ -603,7 +606,7 @@ CHART_RENDERERS['dynamics-violin'] = async function(container, data, options = {
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -639,7 +642,7 @@ CHART_RENDERERS['dynamics-position'] = async function(container, data, options =
         hovertemplate: 'Position %{x}<br>d = %{y:.2f}<extra></extra>'
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces: [trace],
         height,
@@ -651,7 +654,7 @@ CHART_RENDERERS['dynamics-position'] = async function(container, data, options =
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, [trace], layout);
+    await renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================
@@ -674,7 +677,10 @@ async function renderChartType(type, container, data, options = {}) {
     await renderer(container, data, options);
 }
 
-// Export
+// ES module exports
+export { renderChartType, CHART_RENDERERS };
+
+// Keep window.* namespace for backward compat
 window.chartTypes = {
     render: renderChartType,
     registry: CHART_RENDERERS

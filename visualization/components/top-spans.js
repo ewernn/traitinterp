@@ -480,7 +480,17 @@ function attachSpanClickHandlers(nPromptTokens) {
     });
 }
 
-// Export to global scope
+// ES module exports
+export {
+    renderPanel,
+    computeTopSpans,
+    computeClauseSpans,
+    fetchCrossPromptSpans,
+    renderCrossPromptResults,
+    attachSpanClickHandlers,
+};
+
+// Keep window.* namespace for backward compat
 window.topSpans = {
     renderPanel,
     computeTopSpans,

@@ -14,6 +14,8 @@
  * - core/utils.js (formatters, error display)
  */
 
+import { showError, initMarkedOptions } from './utils.js';
+
 // View category constants
 const ANALYSIS_VIEWS = ['extraction', 'steering', 'trait-dynamics', 'correlation', 'model-analysis'];
 
@@ -422,7 +424,7 @@ async function loadExperiments() {
         }
     } catch (error) {
         console.error('Error loading experiments:', error);
-        window.showError('Failed to load experiments');
+        showError('Failed to load experiments');
     }
 }
 
@@ -500,7 +502,7 @@ async function loadExperimentData(experimentName) {
 
     } catch (error) {
         console.error('Error loading experiment data:', error);
-        window.showError(`Failed to load experiment: ${experimentName}`);
+        showError(`Failed to load experiment: ${experimentName}`);
     }
 }
 
@@ -753,7 +755,7 @@ function startGpuPolling(intervalMs = 5000) {
 async function init() {
     await window.paths.load();
     await loadAppConfig();
-    window.initMarkedOptions();
+    initMarkedOptions();
 
     // Initialize preferences
     window.initTheme();
@@ -810,9 +812,44 @@ function toggleHiddenExperiments() {
 }
 
 // =============================================================================
-// Exports
-// =============================================================================
+// ES module exports
+export {
+    state,
+    ANALYSIS_VIEWS,
+    getFilteredTraits,
+    isFeatureEnabled,
+    init as initApp,
+    setWideMode,
+    setSmoothing,
+    setSmoothingWindow,
+    setProjectionCentered,
+    setProjectionMode,
+    setMassiveDimsCleaning,
+    setLayerMode,
+    setLayerModeTrait,
+    setPromptSetSidebarOpen,
+    setCompareMode,
+    setHideAttentionSink,
+    toggleMethod,
+    setSpanWindowLength,
+    setSpanScope,
+    setSpanMode,
+    setSpanPanelOpen,
+    setTraitHeatmapOpen,
+    setShowCuePOverlay,
+    setShowCategoryOverlay,
+    setShowVelocity,
+    setTabInURL,
+    setExperimentInURL,
+    getTabFromURL,
+    getExperimentFromURL,
+    loadExperimentData,
+    ensureExperimentLoaded,
+    updateAvailableComparisonModels,
+    getVariantForCurrentPromptSet,
+};
 
+// Keep window.* for backward compat (router, onclick handlers, cross-module)
 window.state = state;
 window.ANALYSIS_VIEWS = ANALYSIS_VIEWS;
 window.getFilteredTraits = getFilteredTraits;
@@ -923,5 +960,6 @@ function resetLocalStorage() {
     location.reload();
 }
 
+// Keep window.* for backward compat (onclick in index.html)
 window.resetLocalStorage = resetLocalStorage;
 window.LOCAL_STORAGE_KEYS = LOCAL_STORAGE_KEYS;

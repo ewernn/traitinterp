@@ -2,8 +2,9 @@
 // Single source of truth for Plotly chart layouts
 //
 // Usage:
-//   const layout = buildChartLayout({ preset: 'layerChart', traces, legendPosition: 'below' });
-//   renderChart(divId, traces, layout);
+//   import { buildChartLayout, renderChart } from './charts.js';
+
+import { getPlotlyLayout, getCssVar, hexToRgba } from './display.js';
 
 // Standard Plotly render options (always the same)
 const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
@@ -109,7 +110,7 @@ function buildChartLayout({
     };
 
     // Build final layout through getPlotlyLayout for theming
-    return window.getPlotlyLayout({
+    return getPlotlyLayout({
         height,
         margin: finalMargin,
         showlegend: showLegend,
@@ -128,7 +129,7 @@ function buildChartLayout({
  * @param {string} color - Optional color override
  */
 function createSeparatorShape(x, color = null) {
-    const separatorColor = color || window.getCssVar?.('--text-secondary', '#888') || '#888';
+    const separatorColor = color || getCssVar('--text-secondary', '#888');
     return {
         type: 'line',
         x0: x, x1: x,
@@ -145,7 +146,7 @@ function createSeparatorShape(x, color = null) {
  * @param {string} color - Optional color override
  */
 function createHighlightShape(x, color = null) {
-    const highlightColor = color || window.getCssVar?.('--primary-color', '#a09f6c') || '#a09f6c';
+    const highlightColor = color || getCssVar('--primary-color', '#a09f6c');
     return {
         type: 'line',
         x0: x, x1: x,
@@ -367,13 +368,13 @@ function buildTurnBoundaryShapes(turnBoundaries) {
     for (const turn of turnBoundaries) {
         if (turn.token_start === turn.token_end) continue;
         const cfg = roleColors[turn.role] || roleColors.assistant;
-        const hex = window.getCssVar?.(cfg.cssVar, cfg.fallback) || cfg.fallback;
+        const hex = getCssVar(cfg.cssVar, cfg.fallback);
         shapes.push({
             type: 'rect',
             x0: turn.token_start - 0.5,
             x1: turn.token_end - 0.5,
             y0: 0, y1: 1, yref: 'paper',
-            fillcolor: window.hexToRgba?.(hex, cfg.opacity) || `rgba(128,128,128,${cfg.opacity})`,
+            fillcolor: hexToRgba(hex, cfg.opacity),
             line: { width: 0 },
             layer: 'below'
         });
@@ -494,7 +495,27 @@ function buildCategoryLegendHtml(categoryData) {
     return `<span class="overlay-legend">${items.join('')}</span>`;
 }
 
-// Exports
+// ES module exports
+export {
+    PLOTLY_CONFIG,
+    CHART_PRESETS,
+    SENTENCE_CATEGORIES,
+    buildChartLayout,
+    createSeparatorShape,
+    createHighlightShape,
+    renderChart,
+    updateChart,
+    createHtmlLegend,
+    attachTokenClickHandler,
+    buildHeatmapAnnotations,
+    buildTurnBoundaryShapes,
+    buildOverlayShapes,
+    buildCategoryLegendHtml,
+    buildSentenceBoundaryShapes,
+    buildSentenceCategoryShapes,
+};
+
+// Keep window.* for backward compat
 window.PLOTLY_CONFIG = PLOTLY_CONFIG;
 window.CHART_PRESETS = CHART_PRESETS;
 window.SENTENCE_CATEGORIES = SENTENCE_CATEGORIES;

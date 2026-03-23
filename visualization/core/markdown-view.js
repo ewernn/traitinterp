@@ -3,9 +3,12 @@
  * Renders a .md file with optional custom blocks, citations, and math.
  *
  * Usage:
- *   renderMarkdownView('/docs/overview.md')
- *   renderMarkdownView('/docs/methodology.md', { customBlocks: true, citations: true, assetBaseUrl: '/docs/' })
+ *   import { renderMarkdownView } from './markdown-view.js';
+ *   renderMarkdownView('/docs/overview.md');
  */
+
+import { parseFrontmatter, protectMathBlocks, restoreMathBlocks, renderMath } from './utils.js';
+import { renderLoading } from './ui.js';
 
 /**
  * Render markdown content (already fetched) into HTML.
@@ -22,11 +25,11 @@
 function renderMarkdownContent(text, opts = {}) {
     const { customBlocks: useBlocks, citations: useCitations, assetBaseUrl, namespace } = opts;
 
-    const { frontmatter, content } = window.parseFrontmatter(text);
+    const { frontmatter, content } = parseFrontmatter(text);
     const references = frontmatter.references || {};
 
     // 1. Protect math blocks
-    let { markdown, blocks: mathBlocks } = window.protectMathBlocks(content);
+    let { markdown, blocks: mathBlocks } = protectMathBlocks(content);
 
     // 2. Extract custom blocks
     let blocks = null;
@@ -55,7 +58,7 @@ function renderMarkdownContent(text, opts = {}) {
     let html = marked.parse(markdown);
 
     // 5. Restore math blocks
-    html = window.restoreMathBlocks(html, mathBlocks);
+    html = restoreMathBlocks(html, mathBlocks);
 
     // 6. Render custom blocks
     if (blocks && window.customBlocks) {
@@ -75,7 +78,7 @@ function renderMarkdownContent(text, opts = {}) {
 
     // Post-render: call after innerHTML is set (async operations on live DOM)
     const postRender = async (container) => {
-        if (window.renderMath) window.renderMath(container);
+        renderMath(container);
         if (useBlocks && window.customBlocks) {
             await window.customBlocks.loadExpandedDropdowns?.();
             await window.customBlocks.loadCharts?.();
@@ -96,7 +99,7 @@ function renderMarkdownContent(text, opts = {}) {
  */
 async function renderMarkdownView(url, opts = {}) {
     const contentArea = document.getElementById('content-area');
-    contentArea.innerHTML = ui.renderLoading('Loading...');
+    contentArea.innerHTML = renderLoading('Loading...');
 
     try {
         const response = await fetch(url);
@@ -113,5 +116,9 @@ async function renderMarkdownView(url, opts = {}) {
     }
 }
 
+// ES module exports
+export { renderMarkdownContent, renderMarkdownView };
+
+// Keep window.* for backward compat
 window.renderMarkdownContent = renderMarkdownContent;
 window.renderMarkdownView = renderMarkdownView;

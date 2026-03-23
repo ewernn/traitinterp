@@ -306,6 +306,9 @@ class ConversationTree {
     }
 }
 
-// Export for use in other modules
+// ES module exports
+export { ConversationNode, ConversationTree };
+
+// Keep window.* for backward compat
 window.ConversationNode = ConversationNode;
 window.ConversationTree = ConversationTree;

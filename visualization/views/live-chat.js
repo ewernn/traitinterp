@@ -1,3 +1,8 @@
+import { fetchJSON, escapeHtml, smoothData } from '../core/utils.js';
+import { getChartColors, getCssVar, hexToRgba, getDisplayName } from '../core/display.js';
+import { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildTurnBoundaryShapes } from '../core/charts.js';
+import { ConversationTree } from '../core/conversation-tree.js';
+
 // Live Chat View - Chat with the model while watching trait dynamics in real-time
 //
 // Features:
@@ -8,7 +13,7 @@
 
 // Chart colors from shared CSS vars (via state.js)
 function getTraitColor(idx) {
-    return window.getChartColors()[idx % 10];
+    return getChartColors()[idx % 10];
 }
 
 // Chat state
@@ -257,7 +262,7 @@ async function renderLiveChat() {
 
     // Initialize conversation tree if needed
     if (!conversationTree) {
-        conversationTree = new window.ConversationTree();
+        conversationTree = new ConversationTree();
         // Try to restore from localStorage
         restoreConversation();
     }
@@ -678,7 +683,7 @@ function renderTokenizedContent(node) {
         const rendered = marked.parse(node.content, { breaks: true });
         return rendered;
     }
-    return window.escapeHtml(node.content);
+    return escapeHtml(node.content);
 }
 
 /**
@@ -788,14 +793,14 @@ function initTraitChart() {
     const chartDiv = document.getElementById('trait-chart');
     if (!chartDiv) return;
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'timeSeries',
         traces: [],
         legendPosition: 'none',  // Using custom HTML legend
         xaxis: { title: 'Token', showgrid: true },
         yaxis: { title: 'Trait Score', showgrid: true, zeroline: true }
     });
-    window.renderChart(chartDiv, [], layout);
+    renderChart(chartDiv, [], layout);
 }
 
 /**
@@ -843,7 +848,7 @@ function updateTraitChart() {
 
         // Apply smoothing if requested
         const yValues = showSmoothedLine && scores.length >= 3
-            ? window.smoothData(scores, 3)
+            ? smoothData(scores, 3)
             : scores;
 
         // Single trace per trait - all tokens
@@ -902,7 +907,7 @@ function updateTraitChart() {
     // Build shapes for message regions
     const shapes = buildMessageRegionShapes();
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'timeSeries',
         traces,
         legendPosition: 'none',  // Using custom HTML legend
@@ -910,7 +915,7 @@ function updateTraitChart() {
         yaxis: { title: 'Trait Score', showgrid: true, zeroline: true },
         shapes
     });
-    window.updateChart(chartDiv, traces, layout);
+    updateChart(chartDiv, traces, layout);
 
     // Add hover event listener for token highlighting
     // Note: Plotly event listeners are persistent across reacts, so we don't need to remove them
@@ -974,7 +979,7 @@ function buildMessageRegionShapes() {
                 y1: 1,
                 yref: 'paper',
                 line: {
-                    color: window.getCssVar?.('--chart-1', '#4a9eff') + '80',  // 50% opacity
+                    color: getCssVar('--chart-1', '#4a9eff') + '80',  // 50% opacity
                     width: 2,
                     dash: 'dot'
                 },
@@ -995,8 +1000,8 @@ function buildMessageRegionShapes() {
             y1: 1,
             yref: 'paper',
             fillcolor: region.role === 'user'
-                ? window.hexToRgba?.(window.getCssVar?.('--chart-1', '#4a9eff'), isHovered ? hoverOpacity : baseOpacity) || `rgba(74, 158, 255, ${isHovered ? hoverOpacity : baseOpacity})`
-                : window.hexToRgba?.(window.getCssVar?.('--chart-3', '#51cf66'), isHovered ? hoverOpacity : baseOpacity) || `rgba(81, 207, 102, ${isHovered ? hoverOpacity : baseOpacity})`,
+                ? hexToRgba(getCssVar('--chart-1', '#4a9eff'), isHovered ? hoverOpacity : baseOpacity)
+                : hexToRgba(getCssVar('--chart-3', '#51cf66'), isHovered ? hoverOpacity : baseOpacity),
             line: { width: 0 },
             layer: 'below'
         });
@@ -1018,12 +1023,20 @@ function updateChartHighlight() {
 
 // smoothData (running average) is in core/utils.js
 
-// Export functions to global scope for onclick handlers
+// ES module exports
+export {
+    renderLiveChat,
+    startEdit,
+    navigateBranch,
+    handleMessageHover,
+    setSteeringCoefficient,
+    toggleInferenceMode,
+};
+
+// Keep window.* for onclick handlers in generated HTML + router
 window.startEdit = startEdit;
 window.navigateBranch = navigateBranch;
 window.handleMessageHover = handleMessageHover;
 window.setSteeringCoefficient = setSteeringCoefficient;
 window.toggleInferenceMode = toggleInferenceMode;
-
-// Export for view system
 window.renderLiveChat = renderLiveChat;

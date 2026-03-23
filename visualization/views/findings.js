@@ -4,6 +4,10 @@
  * Metadata (title, preview) comes from YAML frontmatter in each .md file.
  */
 
+import { renderMarkdownContent } from '../core/markdown-view.js';
+import { parseFrontmatter, renderMath } from '../core/utils.js';
+import { setTabInURL } from '../core/state.js';
+
 let findingsOrder = null;  // List of filenames from index.yaml
 let findingsMetadata = {};  // Cache: filename -> {title, preview}
 let loadedFindings = {};  // Cache: filename -> rendered HTML
@@ -71,7 +75,7 @@ async function loadFindingMetadata(filename) {
         const response = await fetch(`/docs/viz_findings/${filename}`);
         if (!response.ok) throw new Error(`Failed to load ${filename}`);
         const text = await response.text();
-        const { frontmatter } = window.parseFrontmatter(text);
+        const { frontmatter } = parseFrontmatter(text);
 
         findingsMetadata[filename] = {
             title: frontmatter.title || filename.replace('.md', ''),
@@ -93,7 +97,7 @@ async function loadFindingContent(filename) {
         if (!response.ok) throw new Error(`Failed to load ${filename}`);
 
         const text = await response.text();
-        const { html } = window.renderMarkdownContent(text, {
+        const { html } = renderMarkdownContent(text, {
             customBlocks: true,
             citations: true,
             assetBaseUrl: '/docs/viz_findings/',
@@ -135,9 +139,7 @@ async function toggleFinding(filename, cardEl) {
             const html = await loadFindingContent(filename);
             contentEl.innerHTML = `<div class="prose">${html}</div>`;
 
-            if (window.renderMath) {
-                window.renderMath(contentEl);
-            }
+            renderMath(contentEl);
 
             // Auto-load any dropdowns marked as expanded
             if (window.customBlocks?.loadExpandedDropdowns) {
@@ -257,9 +259,7 @@ async function renderStandaloneFinding(findingId) {
     `;
 
     // Apply math and custom block rendering (same as list mode)
-    if (window.renderMath) {
-        window.renderMath(contentArea);
-    }
+    renderMath(contentArea);
     if (window.customBlocks?.loadExpandedDropdowns) {
         await window.customBlocks.loadExpandedDropdowns();
     }
@@ -274,12 +274,17 @@ async function renderStandaloneFinding(findingId) {
 }
 
 // Back button handler
-window.backToFindings = () => {
+function backToFindings() {
     window.state.currentView = 'findings';
     setTabInURL('findings');
     window.renderView();
-};
+}
 
+// ES module exports
+export { renderFindings, toggleFinding, backToFindings };
+
+// Keep window.* for router + onclick handlers in generated HTML
+window.backToFindings = backToFindings;
 window.renderFindings = renderFindings;
 window.toggleFinding = toggleFinding;
 

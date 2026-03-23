@@ -159,7 +159,18 @@ Add: 'wideMode', 'traitHeatmapOpen'
 - Critic identified: keep content views on main, don't rename trait-dynamics, extras ≠ dumping ground, .publicinclude blocks selective viz promotion
 - Phase 1 committed: -1,851 lines (dead code, bugs, CSS, archives)
 - Structural refactor committed: -239 net (20 files, top-spans extraction, methodology 285→90, helpers added, model-config merged, state cleaned)
-- Total this session: -2,090 net lines
+- Round 2 committed: -354 net (dedup diff logic, cross-view cleanup, dead code)
+- Markdown view committed: -23 net (shared renderer, overview+methodology=one-liners)
+- Total this session: -2,467 net lines
+
+#### Settled decisions (2026-03-22)
+- ES modules migration: convert all JS to import/export, no more window.* globals (except HTML onclick handlers + router)
+- Correlation: embed at bottom of inference tab (not own tab)
+- Modal inference in live-chat: keep functional, not dead
+- cue_p plot: dev-only, not promoted to main
+- File splitting: trait-dynamics → 6 files, steering → 4 files (AFTER module migration)
+- Shared chart builders: critic says savings overestimated. buildChartLayout+renderChart is already 2-3 lines. Don't over-abstract.
+- custom-blocks cleanup: delete 3 unused block types, insertBlock helper, initTabbedWidget generic
 
 #### Remaining refactor opportunities identified by deep audits:
 
@@ -182,11 +193,11 @@ Add: 'wideMode', 'traitHeatmapOpen'
 - sortedNumericKeys pattern repeated 3x
 
 **Cross-view patterns not yet extracted**:
-- parseFrontmatter identical in methodology.js + findings.js → utils.js
-- Heatmap annotation loops in correlation.js (buildHeatmapAnnotations exists but unused)
-- marked.setOptions called identically in 3 views → call once at startup
-- sortedNumericKeys(obj) repeated 6x across model-analysis + steering
-- Score badge class logic repeated 4x → ui.scoreClass()
+- ~~parseFrontmatter~~ DONE — moved to utils.js
+- ~~Heatmap annotation loops~~ DONE — buildHeatmapAnnotations wired to correlation.js
+- ~~marked.setOptions~~ DONE — called once at startup
+- ~~sortedNumericKeys~~ DONE — extracted to utils.js
+- ~~Score badge class logic~~ DONE — ui.scoreClass()
 
 **Components**:
 - custom-blocks.js (1,395 → ~900-1,000): 11 double-replace patterns, 3 tab-widget trios (270 lines), broken desanitize
@@ -196,6 +207,6 @@ Add: 'wideMode', 'traitHeatmapOpen'
 
 **Core dead code (second pass)**:
 - paths.js: window.modelConfig shim + 8 model-config methods dead (only archived caller)
-- charts.js: buildHeatmapAnnotations dead (never called by anyone)
+- ~~charts.js: buildHeatmapAnnotations~~ NOT DEAD — wired to correlation.js in round 2
 - chart-types.js: crosseval-comparison renderer dead (no markdown usage)
 - state.js: stopGpuPolling dead, legacy migration stale, HIDDEN_EXPERIMENTS dormant

@@ -1,3 +1,5 @@
+import { fetchJSON, escapeHtml } from '../core/utils.js';
+
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
 async function renderExtraction() {
@@ -529,7 +531,7 @@ async function renderLogitLensSection(evalData) {
     const renderTokens = (tokens, limit = 5) => {
         if (!tokens || !Array.isArray(tokens)) return '<span class="na">—</span>';
         return tokens.slice(0, limit)
-            .map(t => `<span class="ll-token">${window.escapeHtml(t.token)}</span>`)
+            .map(t => `<span class="ll-token">${escapeHtml(t.token)}</span>`)
             .join(' ');
     };
 
@@ -570,5 +572,8 @@ async function renderLogitLensSection(evalData) {
     container.innerHTML = html;
 }
 
-// Export
+// ES module exports
+export { renderExtraction };
+
+// Keep window.* for router
 window.renderExtraction = renderExtraction;

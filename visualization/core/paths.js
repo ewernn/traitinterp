@@ -333,5 +333,8 @@ class PathBuilder {
 
 const paths = new PathBuilder();
 
-// Export to global scope
+// ES module exports
+export { PathBuilder, paths };
+
+// Keep window.* for backward compat
 window.paths = paths;

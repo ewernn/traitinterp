@@ -203,7 +203,18 @@ function renderKeyedCitations(html, citedKeys, references) {
     return html;
 }
 
-// Export
+// ES module exports
+export {
+    extractReferences,
+    processCitationMarkers,
+    renderCitations,
+    renderReferencesSection,
+    initCitationClicks,
+    extractKeyedCitations,
+    renderKeyedCitations,
+};
+
+// Keep window.* namespace for backward compat
 window.citations = {
     extractReferences,
     processCitationMarkers,

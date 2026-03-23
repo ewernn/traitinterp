@@ -1369,6 +1369,24 @@ async function loadCharts() {
 // Export
 // ============================================================================
 
+// ES module exports
+export {
+    extractCustomBlocks,
+    renderCustomBlocks,
+    toggleDropdown,
+    toggleAside,
+    toggleExtractionData,
+    loadExpandedDropdowns,
+    initResponseTabs,
+    initExtractionData,
+    loadCharts,
+    renderResponsesTable,
+    renderDatasetList,
+    renderPromptsTable,
+    renderExtractionTable,
+};
+
+// Keep window.* namespace for backward compat (onclick handlers reference window.customBlocks.*)
 window.customBlocks = {
     // Extraction & rendering
     extractCustomBlocks,

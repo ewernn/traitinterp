@@ -1,3 +1,5 @@
+import { fetchJSON, escapeHtml } from '../core/utils.js';
+
 // Steering Sweep - Heatmap visualization of steering experiments
 // Shows layer × perturbation ratio → delta/coherence
 //
@@ -339,7 +341,7 @@ function updateSteeringModelInfo(meta) {
 
 async function discoverSteeringTraits() {
     if (!window.state.experimentData?.name) return [];
-    const data = await window.fetchJSON(`/api/experiments/${window.state.experimentData.name}/steering`);
+    const data = await fetchJSON(`/api/experiments/${window.state.experimentData.name}/steering`);
     return data?.entries || [];
 }
 
@@ -1107,6 +1109,9 @@ function resetSteeringState() {
     steeringResultsCache = {};
 }
 
-// Export
+// ES module exports
+export { renderSteering, resetSteeringState };
+
+// Keep window.* for router + state.js reference
 window.renderSteering = renderSteering;
 window.resetSteeringState = resetSteeringState;

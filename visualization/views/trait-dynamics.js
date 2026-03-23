@@ -1,3 +1,8 @@
+import { fetchJSON, smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms, sortedNumericKeys } from '../core/utils.js';
+import { getDisplayName, getChartColors, getCssVar, getMethodColors } from '../core/display.js';
+import { buildChartLayout, renderChart, updateChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, SENTENCE_CATEGORIES, buildTurnBoundaryShapes } from '../core/charts.js';
+import { setupSubsectionInfoToggles } from '../components/sidebar.js';
+
 // Trait Dynamics View - Watch the model's internal state evolve token-by-token
 // Core insight: "See how the model is thinking" by projecting onto trait vectors
 //
@@ -35,11 +40,11 @@ function buildCommonShapes(nPromptTokens, isRollout, turnBoundaries, sentenceBou
 
     const shapes = [];
     if (!isRollout) {
-        shapes.push({ ...window.createSeparatorShape(promptEndIdx - 0.5), _isBase: true });
+        shapes.push({ ...createSeparatorShape(promptEndIdx - 0.5), _isBase: true });
     }
-    shapes.push(window.createHighlightShape(highlightX));
-    shapes.push(...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
-    shapes.push(...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
+    shapes.push(createHighlightShape(highlightX));
+    shapes.push(...buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })));
+    shapes.push(...buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true })));
     return shapes;
 }
 
@@ -198,11 +203,11 @@ function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, i
     // Shapes: separator (base, preserved on slider update) + highlight (replaced on slider update)
     const shapes = [];
     if (!isRollout) {
-        shapes.push({ ...window.createSeparatorShape(promptEndIdx - 0.5), _isBase: true });
+        shapes.push({ ...createSeparatorShape(promptEndIdx - 0.5), _isBase: true });
     }
-    shapes.push(window.createHighlightShape(highlightX));
+    shapes.push(createHighlightShape(highlightX));
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'timeSeries',
         traces: [trace],
         height: 100,
@@ -219,8 +224,8 @@ function renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, i
         shapes,
         margin: { l: 60, r: 20, t: 5, b: 5 }
     });
-    window.renderChart(plotDiv, [trace], layout);
-    window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
+    renderChart(plotDiv, [trace], layout);
+    attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 }
 
 
@@ -232,7 +237,7 @@ const layerSensitivityCache = {};
 async function fetchLayerSensitivityData(experiment, promptSet, promptId) {
     // Determine variant pair from model-diff API (cached per experiment)
     if (!window._modelDiffCache || window._modelDiffCache.experiment !== experiment) {
-        const data = await window.fetchJSON(`/api/experiments/${experiment}/model-diff`);
+        const data = await fetchJSON(`/api/experiments/${experiment}/model-diff`);
         window._modelDiffCache = { experiment, comparisons: data?.comparisons || [] };
     }
     if (window._modelDiffCache.comparisons.length === 0) return null;
@@ -241,7 +246,7 @@ async function fetchLayerSensitivityData(experiment, promptSet, promptId) {
     const path = `experiments/${experiment}/model_diff/${comp.variant_pair}/layer_sensitivity/${promptSet}/per_prompt/${promptId}.json`;
     if (layerSensitivityCache[path]) return layerSensitivityCache[path];
 
-    const data = await window.fetchJSON('/' + path);
+    const data = await fetchJSON('/' + path);
     if (!data) return null;
     data._variant_a = comp.variant_a;
     data._variant_b = comp.variant_b;
@@ -294,7 +299,7 @@ function buildControlBarHtml(allFilteredTraits) {
             ${window.state.layerMode ? `
             <select id="layer-mode-trait-select" style="margin-left: 4px;" title="Select trait to view across all available layers">
                 ${allFilteredTraits.map(t =>
-                    `<option value="${t.name}" ${t.name === window.state.layerModeTrait ? 'selected' : ''}>${window.getDisplayName(t.name)}</option>`
+                    `<option value="${t.name}" ${t.name === window.state.layerModeTrait ? 'selected' : ''}>${getDisplayName(t.name)}</option>`
                 ).join('')}
             </select>
             ` : ''}
@@ -483,7 +488,7 @@ async function renderTraitDynamics() {
 
     // Always render page shell with controls (so they remain accessible even when no data loads)
     contentArea.innerHTML = buildPageShellHtml(allFilteredTraits);
-    window.setupSubsectionInfoToggles();
+    setupSubsectionInfoToggles();
     attachControlListeners(allFilteredTraits);
 
     if (filteredTraits.length === 0) {
@@ -522,11 +527,11 @@ async function renderTraitDynamics() {
     const { cancel: cancelLoading } = ui.deferredLoading('combined-activation-plot', `Loading data for ${filteredTraits.length} trait(s)...`);
 
     // Load shared response data (prompt/response text and tokens)
-    const responseData = await window.fetchJSON(window.paths.responseData(promptSet, promptId, modelVariant));
+    const responseData = await fetchJSON(window.paths.responseData(promptSet, promptId, modelVariant));
 
     // Load projection data for ALL selected traits (in parallel)
     const projectionResults = await Promise.all(filteredTraits.map(async (trait) => {
-        const projData = await window.fetchJSON(window.paths.residualStreamData(trait, promptSet, promptId, modelVariant));
+        const projData = await fetchJSON(window.paths.residualStreamData(trait, promptSet, promptId, modelVariant));
         if (!projData || projData.error) return { trait, error: true };
         return { trait, projData };
     }));
@@ -776,7 +781,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
     const modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
 
     const failedHtml = failedTraits.length > 0
-        ? `<div class="tool-description">No data for: ${failedTraits.map(t => window.getDisplayName(t)).join(', ')}</div>`
+        ? `<div class="tool-description">No data for: ${failedTraits.map(t => getDisplayName(t)).join(', ')}</div>`
         : '';
 
     // Determine smoothing and centering
@@ -856,9 +861,9 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         let dimsToRemove = [];
         const mdd = data.massive_dim_data;
         if (cleaningMode !== 'none' && mdd) {
-            dimsToRemove = window.getDimsToRemove(mdd, cleaningMode);
-            promptProj = window.applyMassiveDimCleaning(promptProj, mdd, dimsToRemove, 'prompt');
-            responseProj = window.applyMassiveDimCleaning(responseProj, mdd, dimsToRemove, 'response');
+            dimsToRemove = getDimsToRemove(mdd, cleaningMode);
+            promptProj = applyMassiveDimCleaning(promptProj, mdd, dimsToRemove, 'prompt');
+            responseProj = applyMassiveDimCleaning(responseProj, mdd, dimsToRemove, 'response');
         }
 
         const allProj = [...promptProj, ...responseProj];
@@ -877,8 +882,8 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
 
             // Use cleaned norms if massive dims were removed
             if (dimsToRemove.length > 0 && mdd) {
-                promptNorms = window.computeCleanedNorms(promptNorms, mdd, dimsToRemove, 'prompt');
-                responseNorms = window.computeCleanedNorms(responseNorms, mdd, dimsToRemove, 'response');
+                promptNorms = computeCleanedNorms(promptNorms, mdd, dimsToRemove, 'prompt');
+                responseNorms = computeCleanedNorms(responseNorms, mdd, dimsToRemove, 'response');
             }
 
             if (projectionMode === 'normalized') {
@@ -914,7 +919,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         }
 
         // Apply N-token moving average if smoothing is enabled
-        const displayValues = isSmoothing ? window.smoothData(rawValues, window.state.smoothingWindow || 5) : rawValues;
+        const displayValues = isSmoothing ? smoothData(rawValues, window.state.smoothingWindow || 5) : rawValues;
 
         // Store displayed values for velocity (derivative of what's shown in trajectory)
         traitActivations[traitName] = displayValues;
@@ -933,7 +938,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
             const b = Math.round(255 - t * 55);
             color = `rgb(${r},${g},${b})`;
         } else {
-            color = window.getChartColors()[idx % 10];
+            color = getChartColors()[idx % 10];
         }
 
         const method = vs.method || 'probe';
@@ -943,8 +948,8 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         // Build display name and hover
         const baseTrait = data.metadata?._baseTrait || traitName;
         const displayName = data.metadata?._isMultiVector
-            ? `${window.getDisplayName(baseTrait)} (${method} L${vs.layer})`
-            : window.getDisplayName(traitName);
+            ? `${getDisplayName(baseTrait)} (${method} L${vs.layer})`
+            : getDisplayName(traitName);
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
         const vectorInfo = vs.layer !== undefined ? `<br><span style="color:#888">L${vs.layer} ${method}${posStr}</span>` : '';
@@ -991,7 +996,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
     }
 
     // PROMPT/RESPONSE labels (skip for rollouts — turn boundaries replace them)
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const textSecondary = getCssVar('--text-secondary', '#a4a4a4');
     const annotations = [];
     if (!isRollout) {
         annotations.push(
@@ -1050,24 +1055,24 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
             const traitName = filteredByMethod[idx];
             const activations = traitActivations[traitName];
             if (!activations) continue;
-            const velocity = window.computeVelocity(activations);
-            const smoothedVelocity = window.smoothData(velocity, window.state.smoothingWindow || 5);
-            const color = traces[idx]?.line?.color || window.getChartColors()[idx % 10];
+            const velocity = computeVelocity(activations);
+            const smoothedVelocity = smoothData(velocity, window.state.smoothingWindow || 5);
+            const color = traces[idx]?.line?.color || getChartColors()[idx % 10];
             traces.push({
                 x: Array.from({length: smoothedVelocity.length}, (_, i) => i + 0.5),
                 y: smoothedVelocity,
                 type: 'scatter',
                 mode: 'lines',
-                name: `${traces[idx]?.name || window.getDisplayName(traitName)} (vel)`,
+                name: `${traces[idx]?.name || getDisplayName(traitName)} (vel)`,
                 line: { color, width: 1, dash: 'dot' },
                 yaxis: 'y2',
                 showlegend: false,
-                hovertemplate: `<b>${traces[idx]?.name || window.getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
+                hovertemplate: `<b>${traces[idx]?.name || getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
             });
         }
     }
 
-    const mainLayout = window.buildChartLayout({
+    const mainLayout = buildChartLayout({
         preset: 'timeSeries',
         traces,
         height: 400,
@@ -1101,16 +1106,16 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
         };
     }
 
-    window.renderChart('combined-activation-plot', traces, mainLayout);
+    renderChart('combined-activation-plot', traces, mainLayout);
 
     // Insert custom legend with click-to-toggle and hover-to-highlight
     const plotDiv = document.getElementById('combined-activation-plot');
-    const legendDiv = window.createHtmlLegend(traces, plotDiv, {
+    const legendDiv = createHtmlLegend(traces, plotDiv, {
         tooltips: legendTooltips,
         hoverHighlight: true
     });
     plotDiv.parentNode.insertBefore(legendDiv, plotDiv.nextSibling);
-    window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
+    attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 
     // Populate overlay controls (only when sentence boundary data exists)
     const overlayControlsDiv = document.getElementById('overlay-controls');
@@ -1126,7 +1131,7 @@ async function renderCombinedGraph(traitData, loadedTraits, failedTraits, annota
                     ${ui.renderToggle({ id: 'cue-p-overlay-toggle', label: 'cue_p', checked: showCueP, className: 'projection-toggle-checkbox' })}
                     ${showCueP ? buildCuePLegendHtml() : ''}
                     ${hasCategoryData ? ui.renderToggle({ id: 'category-overlay-toggle', label: 'Category', checked: showCategory, className: 'projection-toggle-checkbox' }) : ''}
-                    ${showCategory && hasCategoryData ? window.buildCategoryLegendHtml(sentenceCategoryData) : ''}
+                    ${showCategory && hasCategoryData ? buildCategoryLegendHtml(sentenceCategoryData) : ''}
                 </div>
             `;
 
@@ -1181,8 +1186,8 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
         const baseTrait = data.metadata?._baseTrait || traitName;
         const vs = data.metadata?.vector_source || {};
         return data.metadata?._isMultiVector
-            ? `${window.getDisplayName(baseTrait)} L${vs.layer}`
-            : window.getDisplayName(traitName);
+            ? `${getDisplayName(baseTrait)} L${vs.layer}`
+            : getDisplayName(traitName);
     });
 
     panel.innerHTML = `
@@ -1245,7 +1250,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
 
     const height = Math.max(150, loadedTraits.length * 25 + 80);
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
         height,
@@ -1267,10 +1272,10 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
         margin: { l: 120, r: 60, t: 10, b: 60 }
     });
 
-    window.renderChart('trait-heatmap-plot', [trace], layout);
+    renderChart('trait-heatmap-plot', [trace], layout);
 
     // Click-to-select token
-    window.attachTokenClickHandler('trait-heatmap-plot', START_TOKEN_IDX);
+    attachTokenClickHandler('trait-heatmap-plot', START_TOKEN_IDX);
 }
 
 
@@ -1304,7 +1309,7 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         }
     }
 
-    const colors = window.getChartColors();
+    const colors = getChartColors();
     const currentTokenIdx = window.state.currentTokenIndex || 0;
     const highlightX = Math.max(0, currentTokenIdx - START_TOKEN_IDX);
     const promptEndIdx = nPromptTokens - START_TOKEN_IDX;
@@ -1333,7 +1338,7 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
 
     const showLegend = Object.keys(layerToNorms).length > 1;
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'timeSeries',
         traces,
         height: 200,
@@ -1347,18 +1352,21 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         yaxis: yaxisMagnitude,
         hovermode: 'closest',
         shapes: [
-            ...(isRollout ? [] : [window.createSeparatorShape(promptEndIdx)]),
-            window.createHighlightShape(highlightX),
-            ...window.buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })),
-            ...window.buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true }))
+            ...(isRollout ? [] : [createSeparatorShape(promptEndIdx)]),
+            createHighlightShape(highlightX),
+            ...buildTurnBoundaryShapes(turnBoundaries).map(s => ({ ...s, _isBase: true })),
+            ...buildOverlayShapes(sentenceBoundaries, sentenceCategoryData, nPromptTokens).map(s => ({ ...s, _isBase: true }))
         ]
     });
-    window.renderChart(plotDiv, traces, layout);
+    renderChart(plotDiv, traces, layout);
 
     // Click-to-select
-    window.attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
+    attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 }
 
 
-// Export to global scope
+// ES module exports
+export { renderTraitDynamics };
+
+// Keep window.* for router
 window.renderTraitDynamics = renderTraitDynamics;

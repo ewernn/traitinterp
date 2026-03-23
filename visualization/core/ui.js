@@ -2,8 +2,11 @@
  * Shared UI primitives for visualization views.
  * Pure functions that return HTML strings.
  *
- * Usage: ui.renderToggle({ ... }), ui.setLoading('container')
+ * Usage:
+ *   import { renderToggle, setLoading } from './ui.js';
  */
+
+import { escapeHtml } from './utils.js';
 
 // === Subsections ===
 
@@ -201,7 +204,7 @@ function setLoading(elementOrId, message = 'Loading...') {
  * @returns {string} HTML string
  */
 function renderError(message, details) {
-    const escape = window.escapeHtml || (s => s);
+    const escape = escapeHtml;
     const detailsHtml = details ? `<div class="error-details">${escape(details)}</div>` : '';
     return `<div class="error">${escape(message)}${detailsHtml}</div>`;
 }
@@ -290,8 +293,28 @@ function scoreClass(val, type = 'trait') {
     return val > 50 ? 'quality-good' : val > 20 ? 'quality-ok' : '';
 }
 
-// === Export ===
+// ES module exports
+export {
+    renderSubsection,
+    renderSelect,
+    renderToggle,
+    renderChip,
+    renderChipGroup,
+    renderSortableHeader,
+    sortData,
+    handleSortClick,
+    renderLoading,
+    setLoading,
+    renderError,
+    requireExperiment,
+    deferredLoading,
+    renderRunHint,
+    renderFilterChip,
+    renderFilterChipRow,
+    scoreClass,
+};
 
+// Keep window.ui namespace for backward compat
 window.ui = {
     renderSubsection,
     renderSelect,

@@ -1,3 +1,5 @@
+import { fetchJSON } from '../core/utils.js';
+
 // Trait Correlation View - Analyze relationships between trait projections
 //
 // Loads pre-computed correlation data from:
@@ -298,5 +300,8 @@ function renderResponseCorrelation() {
 }
 
 
-// Export
+// ES module exports
+export { renderCorrelation };
+
+// Keep window.* for router
 window.renderCorrelation = renderCorrelation;

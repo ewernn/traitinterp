@@ -3,6 +3,8 @@
  * Depends on: state.js (window.state), display.js (getDisplayName)
  */
 
+import { ANALYSIS_VIEWS } from '../core/state.js';
+
 // =============================================================================
 // Theme Management
 // =============================================================================
@@ -239,7 +241,7 @@ function setupNavigation() {
                 window.setTabInURL(item.dataset.view);
 
                 // Analysis sub-nav: keep the main sidebar entry highlighted
-                if (window.ANALYSIS_VIEWS.includes(item.dataset.view)) {
+                if (ANALYSIS_VIEWS.includes(item.dataset.view)) {
                     window.state.lastAnalysisView = item.dataset.view;
                     if (analysisEntry) analysisEntry.classList.add('active');
                 }
@@ -281,7 +283,7 @@ function updateExperimentVisibility() {
     const analysisPanel = document.getElementById('sidebar-analysis');
     if (!analysisPanel) return;
 
-    const isAnalysis = window.ANALYSIS_VIEWS.includes(window.state.currentView);
+    const isAnalysis = ANALYSIS_VIEWS.includes(window.state.currentView);
     analysisPanel.classList.toggle('hidden', !isAnalysis);
 }
 
@@ -329,10 +331,20 @@ function setupSidebarEventListeners() {
     document.getElementById('select-all-btn')?.addEventListener('click', toggleAllTraits);
 }
 
-// =============================================================================
-// Exports
-// =============================================================================
+// ES module exports
+export {
+    initTheme,
+    toggleTheme,
+    populateTraitCheckboxes,
+    toggleAllTraits,
+    setupNavigation,
+    updatePageTitle,
+    updateExperimentVisibility,
+    setupSubsectionInfoToggles,
+    setupSidebarEventListeners,
+};
 
+// Keep window.* for backward compat
 window.initTheme = initTheme;
 window.toggleTheme = toggleTheme;
 window.populateTraitCheckboxes = populateTraitCheckboxes;

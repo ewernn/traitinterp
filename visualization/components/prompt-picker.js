@@ -7,6 +7,9 @@
  * - Token slider with highlighted text display
  */
 
+import { getCssVar } from '../core/display.js';
+import { getTokenHighlightColors } from '../core/display.js';
+
 // Views that show the prompt picker
 const INFERENCE_VIEWS = ['trait-dynamics'];
 
@@ -580,7 +583,18 @@ async function preloadTagsForSet(promptSet) {
     }
 }
 
-// Export to global scope
+// ES module exports
+export {
+    INFERENCE_VIEWS,
+    renderPromptPicker,
+    fetchPromptPickerData,
+    updatePlotTokenHighlights,
+    preloadTagsForSet,
+    selectPromptSet,
+    renderPromptSetSidebar,
+};
+
+// Keep window.* for backward compat
 window.INFERENCE_VIEWS = INFERENCE_VIEWS;
 // =============================================================================
 // Shared: Prompt Set Selection

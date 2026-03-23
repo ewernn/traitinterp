@@ -6,6 +6,8 @@
  * Dependencies: state.js, display.js, paths.js
  */
 
+import { escapeHtml } from '../core/utils.js';
+
 // Track current sort state per trait
 const responseBrowserState = {};
 
@@ -518,7 +520,7 @@ async function loadInfoPanelContent(trait, panelType) {
         }
 
         if (panelType === 'definition') {
-            panel.innerHTML = `<pre class="rb-code">${window.escapeHtml(cached.text.trim())}</pre>`;
+            panel.innerHTML = `<pre class="rb-code">${escapeHtml(cached.text.trim())}</pre>`;
         } else if (panelType === 'judge') {
             // Fetch judge templates if not cached
             if (!judgeTemplatesCache) {
@@ -532,7 +534,7 @@ async function loadInfoPanelContent(trait, panelType) {
 
             // Highlight template variables
             const highlightVars = (text) => {
-                return window.escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
+                return escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
             };
 
             const systemPrompt = judgeTemplatesCache.steering_system
@@ -605,8 +607,8 @@ async function loadInfoPanelContent(trait, panelType) {
                                 <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
                             </div>
                             <div class="response-content">
-                                <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                                <div class="response-a ${isCompact ? 'compact' : ''}">${window.escapeHtml(responseText)}</div>
+                                <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
+                                <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
                             </div>
                         </div>
                     `;}).join('')}
@@ -670,8 +672,8 @@ async function loadResponsesForRun(trait, idx, run) {
                             <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
                         </div>
                         <div class="response-content">
-                            <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                            <div class="response-a ${isCompact ? 'compact' : ''}">${window.escapeHtml(responseText)}</div>
+                            <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
+                            <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
                         </div>
                     </div>
                 `;}).join('')}
@@ -684,7 +686,15 @@ async function loadResponsesForRun(trait, idx, run) {
     }
 }
 
-// Export
+// ES module exports
+export {
+    setTraitResultsCache,
+    renderResponseBrowserForTrait,
+    fetchAvailableResponses,
+    responseBrowserState,
+};
+
+// Keep window.* namespace for backward compat
 window.responseBrowser = {
     setTraitResultsCache,
     renderResponseBrowserForTrait,

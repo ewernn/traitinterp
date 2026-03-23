@@ -289,4 +289,4 @@
  * @property {number[]} available_ids
  */
 
-// Types are loaded via <script> tag, no exports needed
+// Types are JSDoc only — nothing to export at runtime
