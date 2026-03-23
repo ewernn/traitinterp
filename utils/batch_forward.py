@@ -5,7 +5,7 @@ Each pipeline keeps its own forward loop but uses these helpers instead of
 copy-pasting the OOM traceback clearing, TP count agreement, etc.
 
 Usage:
-    from utils.batch_forward import clear_oom_traceback, tp_agree_count, calibrate_batch_size
+    from utils.batch_forward import check_oom_exception, recover_oom_batch_size, tp_agree_count, calibrate_batch_size
 """
 
 import traceback as tb_mod
@@ -83,6 +83,49 @@ def clear_oom_traceback(exc: Exception) -> None:
         if chained and hasattr(chained, '__traceback__') and chained.__traceback__:
             tb_mod.clear_frames(chained.__traceback__)
             chained.__traceback__ = None
+
+
+def check_oom_exception(exc: Exception, batch_size: int, tp_raises: bool = True) -> None:
+    """Validate an exception is OOM and clear traceback for memory recovery.
+
+    Call from except block. Re-raises if not OOM. Clears traceback frames
+    so GPU tensor references are released before gc.collect.
+
+    Args:
+        exc: The caught exception.
+        batch_size: Current batch size (for error message).
+        tp_raises: If True (default), raise RuntimeError in TP mode
+            (NCCL state is corrupted after OOM). Set False if caller
+            handles TP recovery separately (e.g. via oom_flag sync).
+    """
+    if "out of memory" not in str(exc).lower() and not isinstance(exc, torch.cuda.OutOfMemoryError):
+        raise exc
+    if tp_raises and is_tp_mode():
+        raise RuntimeError(
+            f"OOM during TP forward pass (batch_size={batch_size}). "
+            f"NCCL state is corrupted and cannot recover. "
+            f"Re-run with fewer layers or a larger GPU."
+        )
+    clear_oom_traceback(exc)
+
+
+def recover_oom_batch_size(batch_size: int) -> int:
+    """Free GPU memory and halve batch size after OOM.
+
+    Call OUTSIDE the except block (after setting oom flag and del-ing exception).
+    Runs gc.collect + empty_cache, then returns halved batch size.
+    Raises RuntimeError if batch_size is already 1.
+    """
+    import gc
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    if batch_size == 1:
+        raise RuntimeError("OOM even with batch_size=1")
+    new_size = max(1, batch_size // 2)
+    if is_rank_zero():
+        print(f"  OOM, reducing batch_size to {new_size}")
+    return new_size
 
 
 # =============================================================================

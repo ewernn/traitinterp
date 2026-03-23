@@ -26,7 +26,6 @@ Usage:
 """
 
 import gc
-import re
 import sys
 from contextlib import ExitStack
 from pathlib import Path
@@ -51,53 +50,8 @@ from utils.model import load_model_with_lora, get_inner_model, tokenize, pad_seq
 from utils.backends import add_backend_args
 from utils.distributed import is_tp_mode, is_rank_zero
 from utils.vram import calculate_max_batch_size
-from utils.layers import parse_layers
+from utils.layers import parse_layers, resolve_layers
 from utils.json import dump_compact
-
-LOGIT_LENS_LAYERS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 21, 24, 25]
-
-
-# ============================================================================
-# Layer Resolution
-# ============================================================================
-
-def resolve_layers(layers_spec: str, best_layer: Optional[int], available_layers: set) -> List[int]:
-    """Resolve layer specs like 'best,best+5' into concrete layer numbers."""
-    result = []
-    for spec in layers_spec.split(','):
-        spec = spec.strip()
-        if 'best' in spec:
-            if best_layer is None:
-                print(f"    Warning: cannot resolve '{spec}' (no steering data), skipping")
-                continue
-            if spec == 'best':
-                layer = best_layer
-            else:
-                m = re.match(r'best\s*([+-])\s*(\d+)', spec)
-                if not m:
-                    raise ValueError(f"Invalid layer spec: '{spec}'. Use: best, best+N, best-N, or integer")
-                op, val = m.group(1), int(m.group(2))
-                layer = best_layer + val if op == '+' else best_layer - val
-        else:
-            layer = int(spec)
-
-        if layer in available_layers:
-            if layer not in result:
-                result.append(layer)
-        elif available_layers:
-            closest = min(available_layers, key=lambda l: abs(l - layer))
-            print(f"    Layer {layer} not captured, snapping to nearest: {closest}")
-            if closest not in result:
-                result.append(closest)
-        else:
-            print(f"    Warning: layer {layer} not in raw activations, skipping")
-
-    return result
-
-
-# ============================================================================
-# Massive Dims
-# ============================================================================
 
 # ============================================================================
 # Projection Helpers
@@ -127,42 +81,6 @@ def compute_token_norms(activations: Dict, layer: int) -> List[float]:
     token_norms = h.norm(dim=-1)
     return token_norms.tolist()
 
-
-# ============================================================================
-# Logit Lens (requires model)
-# ============================================================================
-
-def compute_logit_lens_from_raw(activations: Dict, model, tokenizer, n_layers: int) -> Dict:
-    """Compute logit lens from saved activations (requires model for unembed)."""
-    if hasattr(model, 'lm_head'):
-        unembed = model.lm_head.weight.detach()
-    else:
-        unembed = model.model.embed_tokens.weight.detach()
-
-    result = {}
-    for layer in LOGIT_LENS_LAYERS:
-        if layer >= n_layers:
-            continue
-
-        residual = activations[layer]['residual']
-        if len(residual.shape) == 1:
-            residual = residual.unsqueeze(0)
-
-        logits = residual.to(unembed.device).to(unembed.dtype) @ unembed.T
-        probs = torch.softmax(logits, dim=-1)
-        top_probs, top_ids = probs.topk(3, dim=-1)
-
-        top_tokens = []
-        for token_idx in range(top_ids.shape[0]):
-            tokens = [tokenizer.decode([tid.item()]) for tid in top_ids[token_idx]]
-            top_tokens.append(tokens)
-
-        result[f'layer_{layer}'] = {
-            'tokens': top_tokens,
-            'probs': top_probs.cpu().tolist()
-        }
-
-    return result
 
 
 def _to_list(x):
@@ -566,27 +484,14 @@ def capture_raw_activations(
             i += batch_size
 
         except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-            if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
-                raise
-            if is_tp_mode():
-                raise RuntimeError(
-                    f"OOM during TP forward pass (batch_size={batch_size}). "
-                    f"NCCL state is corrupted and cannot recover. "
-                    f"Re-run with fewer layers or a larger GPU."
-                )
-            from utils.batch_forward import clear_oom_traceback
-            clear_oom_traceback(e)
+            from utils.batch_forward import check_oom_exception, recover_oom_batch_size
+            check_oom_exception(e, batch_size)
             del e
             oom = True
 
         if oom:
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            if batch_size == 1:
-                raise RuntimeError("OOM even with batch_size=1")
-            batch_size = max(1, batch_size // 2)
-            print(f"\nOOM, reducing batch_size to {batch_size}")
+            batch_size = recover_oom_batch_size(batch_size)
+            continue
 
     pbar.close()
 
@@ -609,7 +514,7 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
                        extraction_variant, vectors_experiment, steering_variant,
                        *, experiment, traits=None, multi_vector=None, layers=None,
                        layer=None, component='residual', position=None,
-                       method=None, logit_lens=False, centered=False,
+                       method=None, centered=False,
                        skip_existing=False):
     """Process a single prompt set: load .pt files and project onto trait vectors."""
     raw_dir = inference_dir / "raw" / "residual" / prompt_set
@@ -787,18 +692,6 @@ def process_prompt_set(inference_dir, prompt_set, model_name, model_variant,
 
     print(f"Loaded vectors for {len(trait_vectors)} traits")
 
-    # Load model only if logit lens requested
-    model = None
-    tokenizer = None
-    if logit_lens:
-        print(f"\nLoading model for logit lens: {model_name}")
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name, torch_dtype=torch.bfloat16, device_map="auto",
-            attn_implementation='eager'
-        )
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-
     # Process each raw file
     for raw_file in tqdm(raw_files, desc="Projecting"):
         prompt_id = raw_file.stem
@@ -906,7 +799,6 @@ def main():
     proj_group.add_argument("--component", choices=["residual", "attn_contribution"],
                             default="residual")
     proj_group.add_argument("--position", default=None)
-    proj_group.add_argument("--logit-lens", action="store_true")
     proj_group.add_argument("--centered", action="store_true")
     proj_group.add_argument("--multi-vector", type=int, metavar="N")
     proj_group.add_argument("--no-calibration", action="store_true")
@@ -989,7 +881,7 @@ def main():
                     multi_vector=args.multi_vector, layers=args.layers,
                     layer=args.layer, component=args.component,
                     position=args.position, method=args.method,
-                    logit_lens=args.logit_lens, centered=args.centered,
+                    centered=args.centered,
                     skip_existing=args.skip_existing,
                 )
     finally:

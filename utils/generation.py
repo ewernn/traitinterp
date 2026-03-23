@@ -202,15 +202,11 @@ def generate_batch(
         try:
             responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature)
         except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-            # MPS raises RuntimeError for OOM, CUDA has specific error
-            if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
-                raise
-            from utils.batch_forward import clear_oom_traceback
-            clear_oom_traceback(e)
+            from utils.batch_forward import check_oom_exception, recover_oom_batch_size
+            check_oom_exception(e, batch_size, tp_raises=False)
             del e
             oom = True
 
-        # OOM cleanup OUTSIDE except block — thread state no longer roots the exception
         if oom:
             import gc
             gc.collect()
@@ -219,18 +215,7 @@ def generate_batch(
             if tp:
                 oom_flag.fill_(1)
             else:
-                if batch_size == 1:
-                    raise RuntimeError("OOM even with batch_size=1")
-                batch_size = max(1, batch_size // 2)
-                if torch.cuda.is_available() and torch.cuda.device_count() > 1:
-                    frees = []
-                    for d in range(torch.cuda.device_count()):
-                        os_free = torch.cuda.mem_get_info(d)[0]
-                        alloc_free = torch.cuda.memory_reserved(d) - torch.cuda.memory_allocated(d)
-                        frees.append((os_free + alloc_free) / 1e9)
-                    print(f"  OOM, reducing batch_size to {batch_size} (effective free: min={min(frees):.1f}GB)")
-                else:
-                    print(f"  OOM, reducing batch_size to {batch_size}")
+                batch_size = recover_oom_batch_size(batch_size)
                 continue  # retry same batch
             responses = None
 
@@ -238,10 +223,7 @@ def generate_batch(
         if tp:
             dist.all_reduce(oom_flag, op=dist.ReduceOp.MAX)
             if oom_flag.item() > 0:
-                if batch_size == 1:
-                    raise RuntimeError("OOM even with batch_size=1 (across TP ranks)")
-                batch_size = max(1, batch_size // 2)
-                print(f"  OOM on some rank, reducing batch_size to {batch_size}")
+                batch_size = recover_oom_batch_size(batch_size)
                 continue  # all ranks retry same batch
 
         all_responses.extend(responses)

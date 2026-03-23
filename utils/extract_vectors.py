@@ -276,27 +276,13 @@ def extract_activations_for_trait(
                 torch.cuda.empty_cache()
 
             except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-                if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
-                    raise
-                if tp:
-                    raise RuntimeError(
-                        f"OOM during TP forward pass (batch_size={local_batch_size}). "
-                        f"NCCL state is corrupted and cannot recover. "
-                        f"Reduce batch size or increase overhead_factor in calculate_max_batch_size."
-                    )
-                from utils.batch_forward import clear_oom_traceback
-                clear_oom_traceback(e)
+                from utils.batch_forward import check_oom_exception, recover_oom_batch_size
+                check_oom_exception(e, local_batch_size)
                 del e
                 oom = True
 
             if oom:
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                if local_batch_size == 1:
-                    raise RuntimeError("OOM even with batch_size=1")
-                local_batch_size = max(1, local_batch_size // 2)
-                print(f"\n      OOM, reducing batch_size to {local_batch_size}")
+                local_batch_size = recover_oom_batch_size(local_batch_size)
                 continue
 
             pbar.update(len(batch_items))

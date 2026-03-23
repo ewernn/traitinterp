@@ -11,7 +11,6 @@ from core.math import (
     projection,
     cosine_similarity,
     batch_cosine_similarity,
-    separation,
     accuracy,
     effect_size,
     remove_massive_dims,
@@ -181,25 +180,11 @@ class TestBatchCosineSimilarity:
 
 
 # =============================================================================
-# separation() and related tests
+# effect_size() and related tests
 # =============================================================================
 
-class TestSeparation:
-    """Tests for separation() and effect_size()."""
-
-    def test_perfect_separation(self):
-        """Well-separated distributions give large separation."""
-        pos = torch.tensor([10.0, 10.0, 10.0])
-        neg = torch.tensor([0.0, 0.0, 0.0])
-        result = separation(pos, neg)
-        assert result == pytest.approx(10.0, abs=0.01)
-
-    def test_no_separation(self):
-        """Identical distributions give zero separation."""
-        pos = torch.tensor([5.0, 5.0, 5.0])
-        neg = torch.tensor([5.0, 5.0, 5.0])
-        result = separation(pos, neg)
-        assert result == pytest.approx(0.0, abs=0.01)
+class TestEffectSize:
+    """Tests for effect_size() and accuracy()."""
 
     def test_effect_size_large(self):
         """Well-separated data has large Cohen's d."""
