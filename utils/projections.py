@@ -14,14 +14,18 @@ from pathlib import Path
 import numpy as np
 
 
-def read_projection(path, layer=None) -> dict:
-    """Read a projection file and return normalized data.
+def read_projection(path, layer=None, mode='raw') -> dict:
+    """Read a projection file and optionally normalize scores.
 
     Handles both single-vector and multi-vector formats transparently.
 
     Args:
         path: Path to projection JSON file
         layer: Layer to extract (for multi-vector files). If None, uses first/only entry.
+        mode: Normalization mode for prompt/response scores:
+            'raw' (default) — raw dot products, no normalization
+            'normalized' — divide by mean activation norm at layer (cross-layer comparable)
+            'cosine' — divide by per-token activation norm (true cosine similarity)
 
     Returns:
         Dict with keys: prompt, response, token_norms, layer, method, baseline, selection_source
@@ -47,9 +51,16 @@ def read_projection(path, layer=None) -> dict:
         else:
             token_norms = data.get('token_norms', {})
 
+        prompt_scores = entry.get('prompt', [])
+        response_scores = entry.get('response', [])
+        if mode != 'raw':
+            from core.math import normalize_projections
+            prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
+            response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)
+
         return {
-            'prompt': entry.get('prompt', []),
-            'response': entry.get('response', []),
+            'prompt': prompt_scores,
+            'response': response_scores,
             'token_norms': token_norms,
             'layer': entry['layer'],
             'method': entry.get('method'),
@@ -59,11 +70,19 @@ def read_projection(path, layer=None) -> dict:
     else:
         # Single-vector format: projections is {prompt: [...], response: [...]}
         vector_source = data.get('metadata', {}).get('vector_source', {})
+        token_norms = data.get('token_norms', {})
+
+        prompt_scores = projections.get('prompt', [])
+        response_scores = projections.get('response', [])
+        if mode != 'raw':
+            from core.math import normalize_projections
+            prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
+            response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)
 
         return {
-            'prompt': projections.get('prompt', []),
-            'response': projections.get('response', []),
-            'token_norms': data.get('token_norms', {}),
+            'prompt': prompt_scores,
+            'response': response_scores,
+            'token_norms': token_norms,
             'layer': vector_source.get('layer'),
             'method': vector_source.get('method'),
             'baseline': vector_source.get('baseline', 0.0),
@@ -71,9 +90,9 @@ def read_projection(path, layer=None) -> dict:
         }
 
 
-def read_response_projections(path, layer=None) -> list:
+def read_response_projections(path, layer=None, mode='raw') -> list:
     """Convenience: returns just the response projection array."""
-    return read_projection(path, layer=layer)['response']
+    return read_projection(path, layer=layer, mode=mode)['response']
 
 
 # --- Activation-norm normalization ---
