@@ -4,11 +4,8 @@
  * Supported blocks:
  *   :::responses path "label" [flags]:::                       - Expandable response table
  *   :::dataset path "label" [flags]:::                         - Expandable dataset list
- *   :::prompts path "label" [expanded]:::                      - Expandable prompts table
  *   :::figure path "caption" size:::                           - Image with caption (size: small|medium|large)
  *   :::example ... :::                                         - Example box with optional caption
- *   :::aside "title" ... :::                                   - Collapsible aside with inline content
- *   :::response-tabs ... :::                                   - Tabbed response comparison grid
  *   :::chart type path "caption" [traits=...] [height=N]:::    - Dynamic Plotly chart from JSON
  *   :::extraction-data "label" [expanded] [tokens=N]\n trait: path\n :::  - Tabbed pos/neg extraction viewer
  *   :::annotation-stacked "caption" [height=N]\n label: path\n :::   - Stacked bar chart from annotation files
@@ -20,11 +17,6 @@
  *   height=N  - Custom max height in px (responses, dataset, chart)
  *   green|red|blue|orange|purple - Colored left border
  *   traits=a,b,c - Filter to specific traits (chart only)
- *
- * Response-tabs syntax:
- *   :::response-tabs "Row1Label" "Row2Label"
- *   col1: "Col1Label" | row1path | row2path
- *   :::
  *
  * Extraction-data syntax:
  *   :::extraction-data "Extraction data" expanded tokens=5
@@ -46,11 +38,8 @@ function extractCustomBlocks(markdown) {
     const blocks = {
         responses: [],
         datasets: [],
-        prompts: [],
         figures: [],
         examples: [],
-        asides: [],
-        responseTabs: [],
         steeredResponses: [],
         charts: [],
         extractionData: [],
@@ -89,16 +78,6 @@ function extractCustomBlocks(markdown) {
         }
     );
 
-    // :::prompts path "label" [expanded]:::
-    markdown = markdown.replace(
-        /:::prompts\s+([^\s:]+)(?:\s+"([^"]*)")?([^:]*):::/g,
-        (match, path, label, flags) => {
-            const expanded = /\bexpanded\b/.test(flags);
-            blocks.prompts.push({ path, label: label || 'View prompts', expanded });
-            return `PROMPT_BLOCK_${blocks.prompts.length - 1}`;
-        }
-    );
-
     // :::figure path "caption" size:::
     markdown = markdown.replace(
         /:::figure\s+([^\s:]+)(?:\s+"([^"]*)")?(?:\s+(small|medium|large))?\s*:::/g,
@@ -123,39 +102,6 @@ function extractCustomBlocks(markdown) {
         (match, content) => {
             blocks.examples.push({ content: content.trim(), caption: '' });
             return `EXAMPLE_BLOCK_${blocks.examples.length - 1}`;
-        }
-    );
-
-    // :::aside "title" ... :::
-    markdown = markdown.replace(
-        /:::aside\s+"([^"]+)"\s*\n([\s\S]*?)\n:::/g,
-        (match, title, content) => {
-            blocks.asides.push({ title, content: content.trim() });
-            return `ASIDE_BLOCK_${blocks.asides.length - 1}`;
-        }
-    );
-
-    // :::response-tabs "Row1" "Row2"\n col: "Label" | path1 | path2 \n:::
-    markdown = markdown.replace(
-        /:::response-tabs\s+"([^"]+)"\s+"([^"]+)"\s*\n([\s\S]*?)\n:::/g,
-        (match, row1Label, row2Label, body) => {
-            const columns = [];
-            for (const line of body.trim().split('\n')) {
-                // Parse: colKey: "Label" | path1 | path2
-                const colMatch = line.match(/^\s*(\w+):\s*"([^"]+)"\s*\|\s*([^\s|]+)\s*\|\s*([^\s|]+)/);
-                if (colMatch) {
-                    columns.push({
-                        key: colMatch[1],
-                        label: colMatch[2],
-                        paths: [colMatch[3].trim(), colMatch[4].trim()]
-                    });
-                }
-            }
-            blocks.responseTabs.push({
-                rowLabels: [row1Label, row2Label],
-                columns
-            });
-            return `RESPONSE_TABS_BLOCK_${blocks.responseTabs.length - 1}`;
         }
     );
 
@@ -266,6 +212,13 @@ function extractCustomBlocks(markdown) {
 // ============================================================================
 
 /**
+ * Replace a placeholder in HTML, handling both <p>-wrapped and bare forms.
+ */
+function insertBlock(html, placeholder, rendered) {
+    return html.replace(`<p>${placeholder}</p>`, rendered).replace(placeholder, rendered);
+}
+
+/**
  * Replace block placeholders in HTML with rendered components
  * @param {string} html - HTML with placeholders
  * @param {Object} blocks - Extracted block data
@@ -276,6 +229,7 @@ function extractCustomBlocks(markdown) {
  */
 function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
     const { assetBaseUrl = '/docs/viz_findings/' } = options;
+
     // Responses blocks -> expandable dropdowns
     blocks.responses.forEach((block, i) => {
         const dropdownId = `responses-${namespace}-${i}`;
@@ -285,8 +239,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
             height: block.height,
             color: block.color
         });
-        html = html.replace(`<p>RESPONSE_BLOCK_${i}</p>`, dropdownHtml);
-        html = html.replace(`RESPONSE_BLOCK_${i}`, dropdownHtml);
+        html = insertBlock(html, `RESPONSE_BLOCK_${i}`, dropdownHtml);
     });
 
     // Dataset blocks -> expandable dropdowns
@@ -298,18 +251,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
             height: block.height,
             color: block.color
         });
-        html = html.replace(`<p>DATASET_BLOCK_${i}</p>`, dropdownHtml);
-        html = html.replace(`DATASET_BLOCK_${i}`, dropdownHtml);
-    });
-
-    // Prompts blocks -> expandable dropdowns
-    blocks.prompts.forEach((block, i) => {
-        const dropdownId = `prompts-${namespace}-${i}`;
-        const dropdownHtml = createDropdownHtml(dropdownId, block.label, 'Prompts', block.path, {
-            expanded: block.expanded
-        });
-        html = html.replace(`<p>PROMPT_BLOCK_${i}</p>`, dropdownHtml);
-        html = html.replace(`PROMPT_BLOCK_${i}`, dropdownHtml);
+        html = insertBlock(html, `DATASET_BLOCK_${i}`, dropdownHtml);
     });
 
     // Figure blocks -> img with caption
@@ -326,8 +268,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
                 ${captionText ? `<figcaption>${captionText}</figcaption>` : ''}
             </figure>
         `;
-        html = html.replace(`<p>FIGURE_BLOCK_${i}</p>`, figureHtml);
-        html = html.replace(`FIGURE_BLOCK_${i}`, figureHtml);
+        html = insertBlock(html, `FIGURE_BLOCK_${i}`, figureHtml);
     });
 
     // Example blocks -> styled boxes
@@ -339,43 +280,14 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
                 ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
             </figure>
         `;
-        html = html.replace(`<p>EXAMPLE_BLOCK_${i}</p>`, exampleHtml);
-        html = html.replace(`EXAMPLE_BLOCK_${i}`, exampleHtml);
-    });
-
-    // Aside blocks -> collapsible dropdowns with inline content
-    blocks.asides.forEach((block, i) => {
-        const asideId = `aside-${namespace}-${i}`;
-        const innerHtml = marked.parse(block.content);
-        const asideHtml = `
-            <div class="dropdown aside-dropdown" id="${asideId}">
-                <div class="dropdown-header aside-header" onclick="window.customBlocks.toggleAside('${asideId}')">
-                    <span class="dropdown-toggle aside-toggle">▶</span>
-                    <span class="dropdown-label aside-label">${block.title}</span>
-                </div>
-                <div class="dropdown-body aside-content" style="display: none;">
-                    <div class="prose">${innerHtml}</div>
-                </div>
-            </div>
-        `;
-        html = html.replace(`<p>ASIDE_BLOCK_${i}</p>`, asideHtml);
-        html = html.replace(`ASIDE_BLOCK_${i}`, asideHtml);
-    });
-
-    // Response-tabs blocks -> tabbed grid
-    blocks.responseTabs.forEach((block, i) => {
-        const tabsId = `response-tabs-${namespace}-${i}`;
-        const tabsHtml = createResponseTabsHtml(tabsId, block);
-        html = html.replace(`<p>RESPONSE_TABS_BLOCK_${i}</p>`, tabsHtml);
-        html = html.replace(`RESPONSE_TABS_BLOCK_${i}`, tabsHtml);
+        html = insertBlock(html, `EXAMPLE_BLOCK_${i}`, exampleHtml);
     });
 
     // Steered-responses blocks -> 3-column comparison table
     blocks.steeredResponses.forEach((block, i) => {
         const srId = `steered-responses-${namespace}-${i}`;
         const srHtml = createSteeredResponsesHtml(srId, block);
-        html = html.replace(`<p>STEERED_RESPONSES_BLOCK_${i}</p>`, srHtml);
-        html = html.replace(`STEERED_RESPONSES_BLOCK_${i}`, srHtml);
+        html = insertBlock(html, `STEERED_RESPONSES_BLOCK_${i}`, srHtml);
     });
 
     // Chart blocks -> figure with chart container (loaded async via loadCharts)
@@ -397,19 +309,17 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
                 ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
             </figure>
         `;
-        html = html.replace(`<p>CHART_BLOCK_${i}</p>`, chartHtml);
-        html = html.replace(`CHART_BLOCK_${i}`, chartHtml);
+        html = insertBlock(html, `CHART_BLOCK_${i}`, chartHtml);
     });
 
     // Extraction-data blocks -> tabbed pos/neg viewer
     blocks.extractionData.forEach((block, i) => {
         const edId = `extraction-data-${namespace}-${i}`;
         const edHtml = createExtractionDataHtml(edId, block);
-        html = html.replace(`<p>EXTRACTION_DATA_BLOCK_${i}</p>`, edHtml);
-        html = html.replace(`EXTRACTION_DATA_BLOCK_${i}`, edHtml);
+        html = insertBlock(html, `EXTRACTION_DATA_BLOCK_${i}`, edHtml);
     });
 
-    // Bias-stacked blocks -> chart figure (loaded async via loadCharts)
+    // Annotation-stacked blocks -> chart figure (loaded async via loadCharts)
     blocks.annotationStacked.forEach((block, i) => {
         const chartId = `annotation-stacked-${namespace}-${i}`;
         const barsJson = JSON.stringify(block.bars);
@@ -424,8 +334,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
                 ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
             </figure>
         `;
-        html = html.replace(`<p>ANNOTATION_STACKED_BLOCK_${i}</p>`, chartHtml);
-        html = html.replace(`ANNOTATION_STACKED_BLOCK_${i}`, chartHtml);
+        html = insertBlock(html, `ANNOTATION_STACKED_BLOCK_${i}`, chartHtml);
     });
 
     return html;
@@ -453,13 +362,11 @@ function parseSteeringResponsePath(path) {
 
     // Find position (sanitized) - look for response__ or prompt__ pattern
     const positionPart = parts.find(p => p.startsWith('response_') || p.startsWith('prompt_') || p.startsWith('all_'));
-    const position = positionPart ? positionPart.replace(/_/g, match => match === '__' ? '[' : ':').replace(/\[/g, '[').replace(/:$/, ']') : null;
-    // Simpler desanitize: response__5 -> response[:5], response___all -> response[:]
-    const desanitizedPosition = positionPart ?
-        positionPart.replace('__', '[:').replace('_all', ':]').replace(/_(\d+)$/, ':$1]') + (positionPart.includes('__') && !positionPart.includes('_all') && !/_\d+$/.test(positionPart) ? ']' : '') :
-        null;
+    const position = positionPart
+        ? (window.paths?.desanitizePosition?.(positionPart) || positionPart)
+        : null;
 
-    return { layer, coef, method, component, position: desanitizedPosition || positionPart };
+    return { layer, coef, method, component, position };
 }
 
 /**
@@ -496,41 +403,6 @@ function createDropdownHtml(id, label, type, path, options = {}) {
                 ${metadataHtml}
             </div>
             <div class="dropdown-body responses-content" style="${contentStyle}"></div>
-        </div>
-    `;
-}
-
-/**
- * Create HTML for response-tabs component (2×N grid of tabs)
- * @param {string} id - Unique ID for this component
- * @param {Object} block - { rowLabels: [str, str], columns: [{key, label, paths: [str, str]}] }
- */
-function createResponseTabsHtml(id, block) {
-    const { rowLabels, columns } = block;
-
-    // Build tab grid: rows are methods, columns are traits
-    // First tab is selected by default
-    const defaultTab = `${columns[0]?.key}-0`;
-
-    const tabsHtml = rowLabels.map((rowLabel, rowIdx) => {
-        const rowTabs = columns.map(col => {
-            const tabKey = `${col.key}-${rowIdx}`;
-            const isActive = tabKey === defaultTab;
-            const path = col.paths[rowIdx];
-            return `<button class="rtabs-tab${isActive ? ' active' : ''}" data-tab="${tabKey}" data-path="${path}">${col.label}</button>`;
-        }).join('');
-        return `
-            <div class="rtabs-row">
-                <span class="rtabs-row-label">${rowLabel}</span>
-                <div class="rtabs-row-tabs">${rowTabs}</div>
-            </div>
-        `;
-    }).join('');
-
-    return `
-        <div class="rtabs-container" id="${id}" data-active="${defaultTab}">
-            <div class="rtabs-grid">${tabsHtml}</div>
-            <div class="rtabs-content"></div>
         </div>
     `;
 }
@@ -674,9 +546,6 @@ async function fetchDropdownContent(dropdown) {
                 const list = content.querySelector('.dataset-list');
                 if (list) list.style.maxHeight = `${height}px`;
             }
-        } else if (type === 'Prompts') {
-            const data = await response.json();
-            content.innerHTML = renderPromptsTable(data);
         }
     } catch (error) {
         content.innerHTML = `<div class="error">Failed to load ${type.toLowerCase()}</div>`;
@@ -708,27 +577,6 @@ async function toggleDropdown(dropdownId) {
 }
 
 /**
- * Toggle an aside dropdown (content already rendered inline)
- */
-function toggleAside(asideId) {
-    const aside = document.getElementById(asideId);
-    if (!aside) return;
-
-    const content = aside.querySelector('.dropdown-body');
-    const toggle = aside.querySelector('.dropdown-toggle');
-
-    if (aside.classList.contains('expanded')) {
-        aside.classList.remove('expanded');
-        content.style.display = 'none';
-        toggle.textContent = '▶';
-    } else {
-        aside.classList.add('expanded');
-        content.style.display = 'block';
-        toggle.textContent = '▼';
-    }
-}
-
-/**
  * Auto-load content for dropdowns that start expanded
  * Call this after rendering content that may contain expanded dropdowns
  */
@@ -749,62 +597,34 @@ async function loadExpandedDropdowns() {
     }
 
     // Also initialize tabbed components
-    initResponseTabs();
     initExtractionData();
     initSteeredResponses();
 }
 
+// ============================================================================
+// Tabbed Widget - Shared init logic for tabbed components
+// ============================================================================
+
 /**
- * Initialize response-tabs: set up click handlers and load first tab
+ * Generic initializer for tabbed widgets.
+ * Finds containers, wires up tab click handlers, and loads the active tab.
+ * @param {string} containerSelector - CSS selector for widget containers
+ * @param {string} tabSelector - CSS selector for tab buttons within a container
+ * @param {Function} loadFn - Called as loadFn(container, tab) to load content for a tab
  */
-function initResponseTabs() {
-    const containers = document.querySelectorAll('.rtabs-container');
-    for (const container of containers) {
-        // Skip if already initialized
+function initTabbedWidget(containerSelector, tabSelector, loadFn) {
+    for (const container of document.querySelectorAll(containerSelector)) {
         if (container.dataset.initialized) continue;
         container.dataset.initialized = 'true';
-
-        // Set up tab click handlers
-        container.querySelectorAll('.rtabs-tab').forEach(tab => {
-            tab.addEventListener('click', () => switchResponseTab(container, tab));
+        container.querySelectorAll(tabSelector).forEach(tab => {
+            tab.addEventListener('click', () => {
+                container.querySelectorAll(tabSelector).forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                loadFn(container, tab);
+            });
         });
-
-        // Load the default (first) tab
-        const activeTab = container.querySelector('.rtabs-tab.active');
-        if (activeTab) {
-            loadResponseTabContent(container, activeTab.dataset.path);
-        }
-    }
-}
-
-/**
- * Switch to a different tab in response-tabs component
- */
-function switchResponseTab(container, tab) {
-    // Update active state
-    container.querySelectorAll('.rtabs-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    container.dataset.active = tab.dataset.tab;
-
-    // Load content
-    loadResponseTabContent(container, tab.dataset.path);
-}
-
-/**
- * Load and render content for a response-tabs tab
- */
-async function loadResponseTabContent(container, path) {
-    const content = container.querySelector('.rtabs-content');
-    content.innerHTML = ui.renderLoading();
-
-    try {
-        const response = await fetch(path);
-        if (!response.ok) throw new Error('Failed to load');
-
-        const data = await response.json();
-        content.innerHTML = renderResponsesTable(data, { showScores: false });
-    } catch (error) {
-        content.innerHTML = `<p class="no-data">Failed to load: ${error.message}</p>`;
+        const activeTab = container.querySelector(`${tabSelector}.active`);
+        if (activeTab) loadFn(container, activeTab);
     }
 }
 
@@ -812,32 +632,10 @@ async function loadResponseTabContent(container, path) {
  * Initialize steered-responses: set up click handlers and load first tab
  */
 function initSteeredResponses() {
-    const containers = document.querySelectorAll('.sr-container');
-    for (const container of containers) {
-        if (container.dataset.initialized) continue;
-        container.dataset.initialized = 'true';
-
-        // Set up tab click handlers
-        container.querySelectorAll('.sr-tab').forEach(tab => {
-            tab.addEventListener('click', () => switchSteeredResponseTab(container, tab));
-        });
-
-        // Load the default (first) tab
-        const activeTab = container.querySelector('.sr-tab.active');
-        if (activeTab) {
-            loadSteeredResponseContent(container, activeTab.dataset.pvPath, activeTab.dataset.naturalPath);
-        }
-    }
-}
-
-/**
- * Switch to a different tab in steered-responses component
- */
-function switchSteeredResponseTab(container, tab) {
-    container.querySelectorAll('.sr-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    container.dataset.active = tab.dataset.trait;
-    loadSteeredResponseContent(container, tab.dataset.pvPath, tab.dataset.naturalPath);
+    initTabbedWidget('.sr-container', '.sr-tab', (container, tab) => {
+        container.dataset.active = tab.dataset.trait;
+        loadSteeredResponseContent(container, tab.dataset.pvPath, tab.dataset.naturalPath);
+    });
 }
 
 /**
@@ -921,32 +719,18 @@ function toggleExtractionData(id) {
  * Initialize extraction-data: set up tab handlers, load if expanded
  */
 function initExtractionData() {
-    const containers = document.querySelectorAll('.extraction-data-container');
-    for (const container of containers) {
-        if (container.dataset.initialized) continue;
-        container.dataset.initialized = 'true';
+    initTabbedWidget('.extraction-data-container', '.ed-tab', (container, tab) => {
+        container.dataset.active = tab.dataset.trait;
+        loadExtractionData(container, tab.dataset.path);
+    });
 
-        // Set up tab click handlers
-        container.querySelectorAll('.ed-tab').forEach(tab => {
-            tab.addEventListener('click', () => switchExtractionTab(container, tab));
-        });
-
-        // If expanded, load default content
-        if (container.classList.contains('expanded')) {
+    // Also auto-load expanded containers that haven't loaded yet
+    for (const container of document.querySelectorAll('.extraction-data-container.expanded')) {
+        if (!container.dataset.loaded) {
             loadExtractionData(container, container.dataset.defaultPath);
             container.dataset.loaded = 'true';
         }
     }
-}
-
-/**
- * Switch extraction-data tab
- */
-function switchExtractionTab(container, tab) {
-    container.querySelectorAll('.ed-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    container.dataset.active = tab.dataset.trait;
-    loadExtractionData(container, tab.dataset.path);
 }
 
 /**
@@ -1283,36 +1067,6 @@ function renderDatasetList(text, options = {}) {
     return html;
 }
 
-/**
- * Render prompts as a table
- */
-function renderPromptsTable(data) {
-    const prompts = data.prompts || [];
-    if (prompts.length === 0) {
-        return '<div class="error">No prompts found</div>';
-    }
-
-    let html = '<table class="table table-compact responses-table"><thead><tr>';
-    html += '<th>Prompt</th><th>Bias</th>';
-    html += '</tr></thead><tbody>';
-
-    for (const p of prompts.slice(0, 20)) {
-        const text = window.escapeHtml(p.text || '');
-        const bias = p.bias_id ? `#${p.bias_id}` : '-';
-        html += `<tr>
-            <td class="responses-question">${text}</td>
-            <td class="responses-score">${bias}</td>
-        </tr>`;
-    }
-
-    html += '</tbody></table>';
-
-    if (prompts.length > 20) {
-        html += `<div class="dataset-more">...and ${prompts.length - 20} more</div>`;
-    }
-    return html;
-}
-
 // ============================================================================
 // Chart Loading - Async load and render charts in findings
 // ============================================================================
@@ -1374,15 +1128,12 @@ export {
     extractCustomBlocks,
     renderCustomBlocks,
     toggleDropdown,
-    toggleAside,
     toggleExtractionData,
     loadExpandedDropdowns,
-    initResponseTabs,
     initExtractionData,
     loadCharts,
     renderResponsesTable,
     renderDatasetList,
-    renderPromptsTable,
     renderExtractionTable,
 };
 
@@ -1394,12 +1145,10 @@ window.customBlocks = {
 
     // Toggle handlers (called from onclick)
     toggleDropdown,
-    toggleAside,
     toggleExtractionData,
 
     // Auto-load expanded dropdowns and init tabbed components (call after rendering)
     loadExpandedDropdowns,
-    initResponseTabs,
     initExtractionData,
 
     // Load charts (call after rendering)
@@ -1408,6 +1157,5 @@ window.customBlocks = {
     // Content renderers (for direct use)
     renderResponsesTable,
     renderDatasetList,
-    renderPromptsTable,
     renderExtractionTable
 };
