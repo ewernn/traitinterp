@@ -2,16 +2,34 @@
 """
 Inference pipeline: generate responses, project onto trait vectors.
 
-Default mode (stream-through): projects during capture — no intermediate .pt files.
-Use --from-activations to project from saved .pt files instead.
+Three projection modes:
+    default         Generate (if needed) → prefill with projection hooks → save scores
+    --capture       Generate (if needed) → save raw .pt activations (no projection)
+    --from-activations  Project from saved .pt files (after --capture)
 
-Stages:
-    1: generate    --max-new-tokens, --temperature    Generate model responses
-    2: project     --layers, --traits, --component    Capture + project (stream-through)
+Responses are saved as individual JSON files and serve as the checkpoint.
+Re-running without --regenerate skips generation and re-projects existing responses.
+
+Input:  datasets/inference/{prompt_set}.json + extracted trait vectors
+Output:
+    responses:   experiments/{exp}/inference/{variant}/responses/{prompt_set}/{id}.json
+    projections: experiments/{exp}/inference/{variant}/projections/{trait}/{prompt_set}/{id}.json
+    raw (capture): experiments/{exp}/inference/{variant}/raw/residual/{prompt_set}/{id}.pt
 
 Usage:
+    # Generate + project (default)
     python inference/run_inference_pipeline.py --experiment my_exp --prompt-set main
-    python inference/run_inference_pipeline.py --experiment my_exp --prompt-set main --skip-generate
+
+    # Re-project existing responses with different vectors/layers
+    python inference/run_inference_pipeline.py --experiment my_exp --prompt-set main --layers best
+
+    # Force re-generate responses
+    python inference/run_inference_pipeline.py --experiment my_exp --prompt-set main --regenerate
+
+    # Capture raw activations (for later re-projection)
+    python inference/run_inference_pipeline.py --experiment my_exp --prompt-set main --capture
+
+    # Project from saved .pt files
     python inference/run_inference_pipeline.py --experiment my_exp --prompt-set main --from-activations
 """
 
@@ -38,7 +56,7 @@ from utils.vram import format_duration
 # =============================================================================
 
 def run_pipeline(config: InferenceConfig):
-    """Generate → project."""
+    """Generate → project (or capture)."""
     variant_info = get_model_variant(config.experiment, config.model_variant, mode='application')
     model_variant = variant_info.name
     model_name = variant_info.model
@@ -48,11 +66,18 @@ def run_pipeline(config: InferenceConfig):
 
     inference_dir = Path(get_path('inference.base', experiment=config.experiment, model_variant=model_variant))
 
-    if not config.skip_generate and not config.from_activations:
-        generate(config, model_variant)
+    # Generate responses if needed
+    if config.regenerate or not config.from_activations:
+        responses_dir = inference_dir / "responses" / config.prompt_set
+        has_responses = responses_dir.exists() and any(responses_dir.glob("*.json"))
+        if config.regenerate or not has_responses:
+            generate(config, model_variant)
 
-    if config.from_activations:
-        project_from_saved(config, inference_dir, model_name, model_variant)
+    # Capture or project
+    if config.capture:
+        capture(config, model_variant)
+    elif config.from_activations:
+        project_from_saved_activations(config, inference_dir, model_name, model_variant)
     else:
         project_stream_through(config, inference_dir, model_variant)
 
@@ -62,7 +87,7 @@ def run_pipeline(config: InferenceConfig):
 # =============================================================================
 
 def generate(config: InferenceConfig, model_variant: str) -> int:
-    """Stage 1: Generate model responses for the prompt set."""
+    """Generate model responses for the prompt set."""
     from utils.inference_generation import generate_responses
     return generate_responses(
         experiment=config.experiment,
@@ -70,19 +95,33 @@ def generate(config: InferenceConfig, model_variant: str) -> int:
         model_variant=model_variant,
         max_new_tokens=config.max_new_tokens,
         temperature=config.temperature,
-        skip_existing=config.skip_existing,
+        skip_existing=not config.regenerate,
         load_in_8bit=config.load_in_8bit,
         load_in_4bit=config.load_in_4bit,
         no_server=config.no_server,
     )
 
 
-def project_from_saved(config: InferenceConfig, inference_dir: Path,
-                       model_name: str, model_variant: str):
-    """Stage 2 (alt): Project from saved .pt files."""
-    from utils.process_activations import process_prompt_set
+def capture(config: InferenceConfig, model_variant: str) -> int:
+    """Capture raw activations to .pt files (no projection)."""
+    from utils.capture_activations import capture_raw_activations
+    return capture_raw_activations(
+        experiment=config.experiment,
+        prompt_set=config.prompt_set,
+        model_variant=model_variant,
+        layers=config.layers,
+        skip_existing=config.skip_existing,
+        load_in_8bit=config.load_in_8bit,
+        load_in_4bit=config.load_in_4bit,
+    )
 
-    process_prompt_set(
+
+def project_from_saved_activations(config: InferenceConfig, inference_dir: Path,
+                                    model_name: str, model_variant: str):
+    """Project from saved .pt files."""
+    from utils.project_activations import project_from_saved
+
+    project_from_saved(
         inference_dir, config.prompt_set, model_name, model_variant,
         config.extraction_variant, config.experiment, None,
         experiment=config.experiment,
@@ -96,8 +135,8 @@ def project_from_saved(config: InferenceConfig, inference_dir: Path,
 
 def project_stream_through(config: InferenceConfig, inference_dir: Path,
                             model_variant: str) -> int:
-    """Stage 2 (default): Capture activations and project in one forward pass."""
-    from utils.process_activations import stream_through_project
+    """Prefill forward pass with projection hooks (default mode)."""
+    from utils.project_activations import stream_through_project
 
     # Resolve inputs — bail early if anything's missing
     traits = config.traits or discover_extracted_traits(config.experiment, config.extraction_variant)
@@ -144,15 +183,22 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
 # =============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Inference pipeline: generate → project")
+    parser = argparse.ArgumentParser(
+        description="Inference pipeline: generate → project",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--experiment", required=True)
     parser.add_argument("--prompt-set", required=True)
     parser.add_argument("--model-variant", default=None)
 
     # Pipeline control
-    parser.add_argument("--skip-generate", action="store_true")
-    parser.add_argument("--from-activations", action="store_true",
-                        help="Project from saved .pt files (no GPU capture)")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--capture", action="store_true",
+                      help="Save raw .pt activations instead of projecting")
+    mode.add_argument("--from-activations", action="store_true",
+                      help="Project from saved .pt files (after --capture)")
+    parser.add_argument("--regenerate", action="store_true",
+                        help="Force re-generate responses (default: skip if responses exist)")
 
     # Projection
     parser.add_argument("--traits", type=str, default=None)
@@ -176,7 +222,8 @@ def main():
         experiment=args.experiment,
         prompt_set=args.prompt_set,
         model_variant=args.model_variant,
-        skip_generate=args.skip_generate,
+        regenerate=args.regenerate,
+        capture=args.capture,
         from_activations=args.from_activations,
         traits=args.traits.split(',') if args.traits else None,
         layers=args.layers,

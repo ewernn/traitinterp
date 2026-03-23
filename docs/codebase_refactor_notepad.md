@@ -38,7 +38,7 @@ OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resol
 ## Known Issues
 
 - 43 experiment scripts have broken `get_best_vector` imports (experiments/ only, not pipeline)
-- Trait paths: datasets 3-level (base/emotion_set/X), experiments 2-level (emotion_set/X)
+- Trait paths: datasets 3-level (base/emotion_set/X), experiments 2-level (emotion_set/X). See TODO below.
 - `valid` key in steering_results.py never written to disk
 - Analysis scripts use raw projections without normalizing — cross-layer comparisons invalid (per_token_diff, compare_variants, layer_sensitivity). `read_projection(mode='normalized')` now available but not wired into callers.
 - Steering run JSONL entries have no `"type"` key (footgun — header has "header", baseline has "baseline", run has nothing)
@@ -47,6 +47,24 @@ OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resol
 ---
 
 ## TODO
+
+### Trait path consistency (3-level everywhere)
+Currently datasets use 3-level paths (`base/emotion_set/anger`) but experiments use 2-level (`emotion_set/anger`). The first level maps to a model variant defined in experiment config.json.
+
+**Target state:**
+- `--traits base/emotion_set/anger` works everywhere (extraction, inference, steering, analysis)
+- Experiment paths: `experiments/{exp}/extraction/{model_variant}/base/emotion_set/anger/vectors/...`
+- Config maps variant → trait category: `{"variants": {"base": {"model": "..."}, "instruct": {"model": "..."}}}`
+- `discover_extracted_traits()` returns 3-level tuples
+
+**Scope:**
+- PathBuilder (`utils/paths.py`) — add variant prefix to trait paths in experiment templates
+- `discover_extracted_traits()` — walk one level deeper
+- `--traits` flag parsing in all 3 pipelines
+- Existing experiment data needs migration (or regeneration)
+- Since everything flows through PathBuilder, the change should be contained — update the path templates and the discovery function, most consumers won't change.
+
+**Do after file restructure** — easier to reason about with clean file names. Look for opportunities to fold in during restructure.
 
 ### process_activations.py further cleanup
 - 896 lines doing 3 jobs: projection, capture, process-from-saved

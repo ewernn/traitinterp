@@ -134,7 +134,8 @@ class InferenceConfig:
     extraction_variant: Optional[str] = None
 
     # Pipeline control
-    skip_generate: bool = False
+    regenerate: bool = False
+    capture: bool = False
     from_activations: bool = False
 
     # Projection

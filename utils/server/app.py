@@ -349,7 +349,7 @@ async def _run_capture(task_id: str, req: CaptureActivationsRequest):
     """Run activation capture in background using the server's loaded model."""
     task = _eval_tasks[task_id]
     try:
-        from utils.process_activations import capture_raw_activations
+        from utils.capture_activations import capture_raw_activations
 
         model, tokenizer = get_model()
         task["status"] = "running"
