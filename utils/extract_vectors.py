@@ -37,7 +37,7 @@ from utils.paths import (
 )
 from utils.model import pad_sequences, format_prompt
 from utils.distributed import is_rank_zero, is_tp_mode
-from utils.activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
+from utils.load_activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
 from core import MultiLayerCapture, get_method
 
 if TYPE_CHECKING:

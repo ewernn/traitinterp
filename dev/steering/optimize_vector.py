@@ -44,7 +44,7 @@ from core import BatchedLayerSteeringHook
 from utils.steering_results import init_results_file, append_run, save_responses
 from utils.paths import get_vector_dir, get_model_variant, get_steering_results_path
 from utils.model import load_model, format_prompt, get_layers_module
-from utils.generation import generate_batch
+from utils.model_generation import generate_batch
 from utils.judge import TraitJudge
 from utils.vector_selection import select_vector
 from utils.vectors import MIN_COHERENCE, load_vector

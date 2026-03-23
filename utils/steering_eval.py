@@ -26,7 +26,7 @@ from utils.coefficient_search import (
     batched_adaptive_search, multi_trait_batched_adaptive_search,
 )
 from utils.metrics import summarize_judge_scores
-from utils.generation import generate_batch, batched_steering_generate
+from utils.model_generation import generate_batch, batched_steering_generate
 from utils.judge import TraitJudge
 from utils.paths import get_default_variant
 from utils.model import format_prompt, load_model_with_lora

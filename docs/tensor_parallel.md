@@ -390,7 +390,7 @@ HuggingFace previously had a workaround for torch < 2.5 that set fully-masked ca
 - **`utils/distributed.py`** -- TP detection and synchronization primitives (`is_tp_mode`, `get_rank`, `is_rank_zero`, `tp_barrier`). Checks `WORLD_SIZE` env var set by torchrun.
 - **`utils/moe.py`** -- Fused MoE forward pass for INT4 models (batched dequantize + `grouped_mm`), model cache for fast reload. Applied automatically by `load_model()` for compressed-tensors models.
 - **`utils/model.py`** -- Model loading. Passes `tp_plan` to `from_pretrained()` when running under torchrun. Gates `trust_remote_code` off when using TP (native HF class required).
-- **`utils/generation.py`** -- Batch generation with OOM-synced recovery across ranks.
+- **`utils/model_generation.py`** -- Batch generation with OOM-synced recovery across ranks.
 
 ### HuggingFace internals
 

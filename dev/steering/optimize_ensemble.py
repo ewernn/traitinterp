@@ -30,7 +30,7 @@ from utils.traits import load_steering_data
 from core import VectorSpec, BatchedLayerSteeringHook
 from utils.paths import get_model_variant
 from utils.model import load_model, format_prompt
-from utils.generation import generate_batch
+from utils.model_generation import generate_batch
 from utils.judge import TraitJudge
 from utils.ensembles import create_ensemble, save_ensemble
 from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms

@@ -5,10 +5,11 @@ Input: Modal volume references, model names, remote/local paths
 Output: Loaded models, synced files
 
 Usage:
-    from utils.modal_sync import load_model_cached, pull_dir_recursive
+    from dev.modal_sync import load_model_cached, pull_dir_recursive
 
     model, tokenizer, load_time = load_model_cached("Qwen/Qwen2.5-14B", volume=model_volume)
     pull_dir_recursive(volume, "experiment/steering/trait/variant", local_dir)
+
 """
 
 import os

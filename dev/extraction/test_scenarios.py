@@ -232,7 +232,7 @@ def run_test(
         import torch
         from utils.model import load_model_with_lora, format_prompt
         from utils.model_registry import is_base_model
-        from utils.generation import generate_batch
+        from utils.model_generation import generate_batch
 
         model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=load_in_8bit)
         base_model = is_base_model(model_name)

@@ -105,7 +105,7 @@ def pull_results(experiment, traits, model_variant, position):
             continue
 
         # Download response files (best responses)
-        from utils.modal_sync import pull_dir_recursive
+        from dev.modal_sync import pull_dir_recursive
         pull_dir_recursive(
             experiments_volume,
             f"{remote_prefix}/responses",

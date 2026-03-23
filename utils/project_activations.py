@@ -34,7 +34,7 @@ from utils.paths import (
 )
 from utils.model import tokenize
 from utils.layers import resolve_layers
-from utils.json import dump_compact
+from utils.json_utils import dump_compact
 
 
 # =============================================================================

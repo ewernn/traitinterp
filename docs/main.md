@@ -104,7 +104,7 @@ traitinterp/
 │   └── _tests/                        # Unit tests (pytest core/_tests/)
 ├── utils/                  # Shared utilities
 │   ├── model.py                      # Model loading, tokenization, prompt formatting
-│   ├── generation.py                 # Batch generation, activation capture
+│   ├── model_generation.py            # Batch generation, activation capture
 │   ├── vram.py                       # GPU monitoring, VRAM estimation, profiling, batch sizing
 │   ├── moe.py                        # Fused MoE (INT4 dequant + grouped_mm), model cache
 │   ├── distributed.py                # Tensor parallelism (is_tp_mode, tp_lifecycle, flush_cuda)

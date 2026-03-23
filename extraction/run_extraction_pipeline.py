@@ -42,7 +42,7 @@ from utils.model_registry import is_base_model
 from utils.vram import format_duration
 from utils.traits import load_scenarios
 from utils.model import format_prompt
-from utils.generation import generate_batch
+from utils.model_generation import generate_batch
 from utils.extract_vectors import (
     extract_activations_for_trait, extract_vectors_for_trait,
     resolve_max_new_tokens, load_llm_judge_position,

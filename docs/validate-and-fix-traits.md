@@ -68,7 +68,7 @@ All changes from both sessions:
 - `extraction/validate_trait.py` (new)
 - `extraction/test_scenarios.py` (Function.lookup → Function.from_name)
 - `inference/modal_inference.py` (HF token login + Modal extraction functions)
-- `.gitignore` + `utils/r2_push.sh` (_validate exclusion)
+- `.gitignore` + `dev/r2_push.sh` (_validate exclusion)
 - `docs/trait_dataset_creation_agent.md` (updated with validate_trait.py)
 - `utils/paths.py` (removed unused set_root/get_root)
 

@@ -74,7 +74,7 @@ def serialize_capture_result(result) -> Dict[str, Any]:
 
 def deserialize_capture_result(data: Dict[str, Any]):
     """Deserialize to CaptureResult object."""
-    from utils.generation import CaptureResult
+    from utils.model_generation import CaptureResult
     return CaptureResult(
         prompt_text=data["prompt_text"],
         response_text=data["response_text"],

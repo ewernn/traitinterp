@@ -2,8 +2,8 @@
 # Setup a new Vast.ai instance with .env and Claude commands
 #
 # Usage:
-#   ./utils/vast_setup.sh "ssh -p 45396 root@207.180.148.74 -L 8080:localhost:8080"
-#   ./utils/vast_setup.sh -p 45396 -h 207.180.148.74
+#   ./dev/vast_setup.sh "ssh -p 45396 root@207.180.148.74 -L 8080:localhost:8080"
+#   ./dev/vast_setup.sh -p 45396 -h 207.180.148.74
 
 set -e
 

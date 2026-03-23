@@ -53,6 +53,7 @@ image = (
     )
     .add_local_dir(repo_root / "core", remote_path="/root/core")
     .add_local_dir(repo_root / "utils", remote_path="/root/utils")
+    .add_local_dir(repo_root / "dev", remote_path="/root/dev")
     .add_local_dir(repo_root / "config", remote_path="/root/config")
     .add_local_dir(repo_root / "extraction", remote_path="/root/extraction")
     .add_local_dir(repo_root / "analysis", remote_path="/root/analysis")
@@ -89,7 +90,7 @@ def extraction_pipeline_remote(
     sys.path.insert(0, "/root")
     os.chdir("/root")
 
-    from utils.modal_sync import load_model_cached
+    from dev.modal_sync import load_model_cached
     from utils.backends import LocalBackend
     from extraction.run_extraction_pipeline import run_pipeline
 

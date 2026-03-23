@@ -5,7 +5,7 @@ Input: Experiment/trait identifiers + layer number
 Output: (pos_acts, neg_acts) tensors for a single layer
 
 Usage:
-    from utils.activations import load_train_activations, load_val_activations
+    from utils.load_activations import load_train_activations, load_val_activations
     pos, neg = load_train_activations(experiment, trait, model_variant, layer=14)
 """
 

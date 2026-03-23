@@ -149,7 +149,7 @@ prompt[-1]    →  last prompt token only (Arditi-style)
 - Default: stacked `[n_examples, n_layers, hidden_dim]` → `train_all_layers.pt`
 - Per-layer (`--layers` specified): individual `train_layer{N}.pt` files of `[n_examples, hidden_dim]`
 
-Auto-detected at load time by `utils/activations.py`. Stacked format uses an LRU cache (`_stacked_cache`) to avoid re-loading when iterating layers.
+Auto-detected at load time by `utils/load_activations.py`. Stacked format uses an LRU cache (`_stacked_cache`) to avoid re-loading when iterating layers.
 
 Output: `activations/{position}/{component}/train_all_layers.pt` + `metadata.json` (includes `activation_norms` per layer)
 

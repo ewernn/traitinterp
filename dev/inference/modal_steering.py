@@ -57,6 +57,7 @@ image = (
     )
     .add_local_dir(repo_root / "core", remote_path="/root/core")
     .add_local_dir(repo_root / "utils", remote_path="/root/utils")
+    .add_local_dir(repo_root / "dev", remote_path="/root/dev")
     .add_local_dir(repo_root / "config", remote_path="/root/config")
     .add_local_dir(repo_root / "steering", remote_path="/root/steering")
 )
@@ -100,7 +101,7 @@ async def steering_eval_remote(
     import argparse
     from utils.backends import LocalBackend
     from utils.judge import TraitJudge
-    from utils.modal_sync import load_model_cached
+    from dev.modal_sync import load_model_cached
     from steering.run_steering_eval import run as _run_main
     from utils.steering_results import load_results
     from utils.vectors import MIN_COHERENCE

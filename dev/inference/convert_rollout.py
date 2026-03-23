@@ -53,7 +53,7 @@ import yaml
 from transformers import AutoTokenizer
 
 from utils.paths import get as get_path
-from utils.json import dump_compact
+from utils.json_utils import dump_compact
 
 
 # ============================================================================

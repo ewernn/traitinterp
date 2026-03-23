@@ -111,12 +111,12 @@ remove_massive_dims
 
 **What belongs:**
 - Model loading, tokenization, prompt formatting (`utils/model.py`)
-- Batch generation, activation capture (`utils/generation.py`)
+- Batch generation, activation capture (`utils/model_generation.py`)
 - GPU monitoring, VRAM estimation, batch sizing (`utils/vram.py`)
 - Fused MoE and model cache (`utils/moe.py`)
 - Tensor parallelism utilities (`utils/distributed.py`)
 - Path management (`utils/paths.py` — loads from config/paths.yaml)
-- Activation loading (`utils/activations.py` — auto-detects stacked vs per-layer format)
+- Activation loading (`utils/load_activations.py` — auto-detects stacked vs per-layer format)
 - Layer parsing (`utils/layers.py` — shared `parse_layers` for all layer specification strings)
 - Projection reading (`utils/projections.py` — handles single-vector and multi-vector formats, activation-norm normalization)
 - Fingerprint utilities (`utils/fingerprints.py` — cosine similarity, classification, score loading for analysis scripts)

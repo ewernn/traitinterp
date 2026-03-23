@@ -11,7 +11,7 @@ OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resol
 ## Completed Refactoring
 
 ### This session (continued)
-- **OOM recovery loop dedup** — extracted `check_oom_exception()` + `recover_oom_batch_size()` to `batch_forward.py`. Wired into process_activations.py (fixed missing `continue` bug), extract_vectors.py, generation.py. Each callsite went from ~15 lines to 6.
+- **OOM recovery loop dedup** — extracted `check_oom_exception()` + `recover_oom_batch_size()` to `batch_forward.py`. Wired into process_activations.py (fixed missing `continue` bug), extract_vectors.py, model_generation.py. Each callsite went from ~15 lines to 6.
 - **resolve_layers moved** from `process_activations.py` to `utils/layers.py` (was cross-imported from process_activations into vector_selection).
 - **Dead logit lens code deleted** — `compute_logit_lens_from_raw()`, `LOGIT_LENS_LAYERS` constant, `--logit-lens` CLI flag, `logit_lens` parameter in `process_prompt_set` (computed but never stored).
 - **normalize_projections wired** into `read_projection()` and `read_response_projections()` via `mode` parameter ('raw'/'normalized'/'cosine'). Analysis scripts can now get cross-layer comparable projections.

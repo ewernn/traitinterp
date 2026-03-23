@@ -44,7 +44,7 @@ from utils.paths import get_steering_results_path, get_steering_dir
 from core import VectorSpec, MultiLayerSteeringHook
 from utils.backends import GenerationConfig, LocalBackend, add_backend_args
 from core.hooks import get_hook_path
-from utils.generation import generate_batch
+from utils.model_generation import generate_batch
 from utils.judge import TraitJudge
 from utils.paths import get, get_default_variant, get_model_variant, load_experiment_config
 from utils.model import format_prompt, tokenize_prompt, load_model_with_lora

@@ -258,10 +258,10 @@ python visualization/serve.py
 Sync experiment data to/from cloud storage.
 
 ```bash
-./utils/r2_push.sh              # Fast: new files only
-./utils/r2_push.sh --full       # Propagates deletions
+./dev/r2_push.sh              # Fast: new files only
+./dev/r2_push.sh --full       # Propagates deletions
 
-./utils/r2_pull.sh              # Pull from R2
+./dev/r2_pull.sh              # Pull from R2
 ```
 
 **Excluded (large, regenerable):**

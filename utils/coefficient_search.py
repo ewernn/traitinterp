@@ -24,7 +24,7 @@ from datetime import datetime
 
 from core import VectorSpec
 from core.types import JudgeResult, SteeringRunRecord
-from utils.generation import batched_steering_generate
+from utils.model_generation import batched_steering_generate
 from utils.vram import calculate_max_batch_size
 from utils.steering_results import append_run, save_responses, find_cached_run, is_better_result, build_response_records
 from utils.judge import TraitJudge

@@ -2,7 +2,7 @@
 Compact JSON serialization with readable structure but single-line arrays.
 
 Usage:
-    from utils.json import dump_compact
+    from utils.json_utils import dump_compact
 
     with open(path, 'w') as f:
         dump_compact(data, f)

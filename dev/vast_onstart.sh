@@ -96,4 +96,4 @@ chown -R dev:dev /home/dev/.config/rclone
 su - dev -c "cd ~/trait-interp && pip3 install --break-system-packages uv && uv venv && uv pip install -r requirements.txt"
 
 # Pull data from R2
-su - dev -c "cd ~/trait-interp && ./utils/r2_pull.sh"
+su - dev -c "cd ~/trait-interp && ./dev/r2_pull.sh"

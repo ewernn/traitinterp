@@ -30,7 +30,7 @@ from utils.paths import (
     get_model_variant,
 )
 from utils.vectors import load_vector_with_baseline
-from utils.activations import load_val_activations
+from utils.load_activations import load_val_activations
 from utils.layers import parse_layers
 from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
 

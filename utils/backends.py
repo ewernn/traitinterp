@@ -336,7 +336,7 @@ class LocalBackend(GenerationBackend):
         config: GenerationConfig = None,
         steering: List[SteeringSpec] = None,
     ) -> List[str]:
-        from utils.generation import generate_batch
+        from utils.model_generation import generate_batch
         from utils.model import format_prompt
         from core import SteeringHook, MultiLayerSteeringHook, get_hook_path
 
@@ -386,7 +386,7 @@ class LocalBackend(GenerationBackend):
         capture: CaptureSpec = None,
         steering: List[SteeringSpec] = None,
     ) -> List[CaptureResult]:
-        from utils.generation import generate_with_capture
+        from utils.model_generation import generate_with_capture
         from utils.model import format_prompt
 
         config = config or GenerationConfig()

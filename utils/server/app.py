@@ -48,7 +48,7 @@ import time
 import traceback
 
 from utils.model import load_model_with_lora as _load_model
-from utils.generation import generate_batch, generate_with_capture
+from utils.model_generation import generate_batch, generate_with_capture
 from utils.vectors import MIN_COHERENCE
 from utils.server.serialization import serialize_capture_result, deserialize_tensor
 
@@ -426,7 +426,7 @@ def memory_profile(req: MemoryProfileRequest):
     post-generation. Also captures per-layer MoE dequant memory deltas.
     """
     import utils.moe as moe_utils
-    from utils.generation import generate_batch
+    from utils.model_generation import generate_batch
     from utils.vram import get_free_vram_gb, calculate_max_batch_size
 
     model, tokenizer = get_model()

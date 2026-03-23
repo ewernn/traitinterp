@@ -28,7 +28,7 @@ from sklearn.preprocessing import StandardScaler
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.activations import load_train_activations, load_val_activations, available_layers, load_activation_metadata
+from utils.load_activations import load_train_activations, load_val_activations, available_layers, load_activation_metadata
 from utils.vectors import load_vector
 from utils.paths import get
 

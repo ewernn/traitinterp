@@ -34,8 +34,8 @@ from datetime import datetime
 from tqdm import tqdm
 
 from utils.model import format_prompt, load_model_with_lora
-from utils.json import dump_compact
-from utils.generation import generate_batch
+from utils.json_utils import dump_compact
+from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
 from utils.backends import add_backend_args
 from core.types import ResponseRecord

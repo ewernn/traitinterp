@@ -179,7 +179,7 @@ def generate_batch_remote(
 
     from utils.model_registry import is_base_model
     from utils.model import format_prompt
-    from utils.generation import generate_batch
+    from utils.model_generation import generate_batch
 
     model, tokenizer, load_time = _load_model_and_tokenizer(model_name)
 

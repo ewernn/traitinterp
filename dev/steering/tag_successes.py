@@ -26,7 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from utils.paths import get_inference_responses_dir, load_experiment_config
-from utils.json import dump_compact
+from utils.json_utils import dump_compact
 
 
 def main():

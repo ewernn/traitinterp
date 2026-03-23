@@ -5,7 +5,7 @@ Input:  model, tokenizer, prompts
 Output: response strings, or CaptureResult with activations
 
 Usage:
-    from utils.generation import generate_batch, batched_steering_generate
+    from utils.model_generation import generate_batch, batched_steering_generate
 
     responses = generate_batch(model, tokenizer, prompts)
     steered = batched_steering_generate(model, tokenizer, configs, prompts=prompts)

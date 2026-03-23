@@ -69,7 +69,7 @@ def pull_results(experiment, traits, model_variant, position, component):
     Skips activations (huge intermediate files not needed locally).
     """
     from dev.extraction.modal_pipeline import experiments_volume
-    from utils.modal_sync import pull_dir_recursive, pull_file
+    from dev.modal_sync import pull_dir_recursive, pull_file
 
     repo_root = Path(__file__).parent.parent
     pos_dir = sanitize_position(position)
