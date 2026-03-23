@@ -2,9 +2,9 @@
 
 ## Status
 
-OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resolve_layers moved. process_activations.py down to 896 lines (-108). Steering records typing is next.
+OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resolve_layers moved. process_activations.py down to 896 lines (-108). Steering records typed with SteeringRunRecord + SteeringResults dataclasses. All pipeline + dev/ consumers updated. Critic-found bugs fixed.
 
-**Next priority:** Steering records typing, then process_activations.py further cleanup, then vector loading dedup (lower priority — selection logic genuinely differs).
+**Next priority:** process_activations.py further cleanup, model loading convergence, normalized projections as first-class.
 
 ---
 
@@ -16,6 +16,7 @@ OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resol
 - **Dead logit lens code deleted** — `compute_logit_lens_from_raw()`, `LOGIT_LENS_LAYERS` constant, `--logit-lens` CLI flag, `logit_lens` parameter in `process_prompt_set` (computed but never stored).
 - **normalize_projections wired** into `read_projection()` and `read_response_projections()` via `mode` parameter ('raw'/'normalized'/'cosine'). Analysis scripts can now get cross-layer comparable projections.
 - **test_math.py fixed** — removed import of deleted `separation()` function, dropped 2 tests that called it.
+- **Steering records typed** — `SteeringRunRecord` + `SteeringResults` dataclasses in `core/types.py`. `load_results()` returns typed `SteeringResults`. `find_cached_run()` returns `Optional[JudgeResult]`. `get_baseline()` returns `Optional[JudgeResult]`. `append_run()` adds `"type": "run"` to new writes. Consumers updated: vector_selection.py, steering_eval.py, coefficient_search.py, serve.py + 4 dev/ files. Critic caught 7 bugs (2 critical, 5 dev-only), all fixed. `run_rescore()` stays raw-dict zone.
 
 ### Previous session
 - **ProjectionEntry + ProjectionRecord** in `core/types.py` — canonical projection JSON schema. `to_dict(precision=4)` for float rounding. Both write sites (stream-through + from-activations) wired.
@@ -46,9 +47,6 @@ OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resol
 ---
 
 ## TODO
-
-### Steering Records typing (highest priority)
-Scoped by 2 investigators. Design proposed: SteeringHeader, SteeringBaseline, SteeringRunRecord, SteeringResponseRecord, SteeringVectorSource. ~60 `.get()` → attribute access across 12 files, 120-160 lines changed. `run_rescore()` stays as raw-dict zone. Add `"type": "run"` to new writes.
 
 ### process_activations.py further cleanup
 - 896 lines doing 3 jobs: projection, capture, process-from-saved
