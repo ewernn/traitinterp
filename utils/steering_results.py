@@ -31,6 +31,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
+from core.types import JudgeResult, SteeringRunRecord, SteeringResults
 from utils.paths import get_steering_results_path, get_steering_dir, get_steering_response_dir, content_hash
 from utils.vectors import load_vector_metadata
 
@@ -100,17 +101,22 @@ def append_baseline(
     experiment: str,
     trait: str,
     model_variant: str,
-    result: Dict,
+    result,
     position: str = "response[:]",
     prompt_set: str = "steering",
     trait_judge: Optional[str] = None,
 ) -> None:
-    """Append baseline result to results.jsonl."""
+    """Append baseline result to results.jsonl.
+
+    Args:
+        result: JudgeResult or dict with trait_mean, coherence_mean, n, etc.
+    """
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
 
+    result_dict = result.to_dict() if hasattr(result, 'to_dict') else result
     entry = {
         "type": "baseline",
-        "result": result,
+        "result": result_dict,
         "eval": {"trait_judge": trait_judge},
         "timestamp": datetime.now().isoformat(),
     }
@@ -139,6 +145,7 @@ def append_run(
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
 
     entry = {
+        "type": "run",
         "result": result,
         "config": config,
         "eval": {"trait_judge": trait_judge},
@@ -157,11 +164,11 @@ def load_results(
     model_variant: str,
     position: str = "response[:]",
     prompt_set: str = "steering",
-) -> Dict:
-    """
-    Load results.jsonl into dict format.
+) -> SteeringResults:
+    """Load results.jsonl into typed SteeringResults.
 
-    Returns dict with keys: trait, steering_model, vector_source, eval, prompts_file, baseline, runs
+    Parses header, optional baseline, and all run entries into dataclasses.
+    Run entries gain a "type": "run" field for consistency (old files lack it).
     """
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
 
@@ -182,32 +189,33 @@ def load_results(
             if entry.get("type") == "header":
                 header = entry
             elif entry.get("type") == "baseline":
-                baseline = entry.get("result")
+                baseline_raw = entry.get("result")
+                baseline = JudgeResult.from_dict(baseline_raw) if baseline_raw else None
             else:
-                runs.append(entry)
+                runs.append(SteeringRunRecord.from_dict(entry))
 
     if header is None:
         raise ValueError(f"No header found in {results_path}")
 
-    return {
-        "trait": header.get("trait"),
-        "direction": header.get("direction", "positive"),  # Default for backwards compat
-        "steering_model": header.get("steering_model"),
-        "steering_experiment": header.get("steering_experiment"),
-        "vector_source": header.get("vector_source"),
-        "eval": header.get("eval"),
-        "prompts_file": header.get("prompts_file"),
-        "prompts_hash": header.get("prompts_hash", ""),  # Empty for old files
-        "baseline": baseline,
-        "runs": runs,
-    }
+    return SteeringResults(
+        trait=header.get("trait", ""),
+        direction=header.get("direction", "positive"),
+        steering_model=header.get("steering_model", ""),
+        steering_experiment=header.get("steering_experiment", ""),
+        vector_source=header.get("vector_source", {}),
+        eval=header.get("eval", {}),
+        prompts_file=header.get("prompts_file", ""),
+        prompts_hash=header.get("prompts_hash", ""),
+        baseline=baseline,
+        runs=runs,
+    )
 
 
-def find_cached_run(runs: list, config: dict) -> dict | None:
+def find_cached_run(runs: List[SteeringRunRecord], config: dict) -> Optional[JudgeResult]:
     """Find cached result for a config in loaded runs list."""
     for run in runs:
-        if run.get("config") == config:
-            return run.get("result")
+        if run.config.to_dict() == config:
+            return run.result
     return None
 
 
@@ -218,14 +226,14 @@ def is_better_result(
     threshold: float,
     direction: Literal["positive", "negative"] = "positive",
 ) -> bool:
-    """
-    Check if new result is better than current best.
+    """Check if new result is better than current best.
 
     Priority: valid results (coherence >= threshold) by trait_mean,
     then invalid results by coherence_mean as fallback.
 
     Args:
-        direction: "positive" means higher trait is better, "negative" means lower trait is better
+        current_best: Dict with trait_mean, coherence_mean, valid keys (in-memory, not persisted).
+        direction: "positive" means higher trait is better, "negative" means lower trait is better.
     """
     sign = 1 if direction == "positive" else -1
     is_valid = coherence_mean >= threshold
@@ -235,16 +243,12 @@ def is_better_result(
 
     current_valid = current_best.get("valid", False)
 
-    # Valid beats invalid
     if is_valid and not current_valid:
         return True
-    # Invalid doesn't beat valid
     if not is_valid and current_valid:
         return False
-    # Both valid: compare trait (direction-aware)
     if is_valid and current_valid:
         return trait_mean * sign > current_best.get("trait_mean", 0) * sign
-    # Both invalid: compare coherence
     return coherence_mean > current_best.get("coherence_mean", 0)
 
 

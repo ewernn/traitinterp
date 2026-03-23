@@ -336,3 +336,90 @@ class SteeringEntry:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass
+class SteeringRunRecord:
+    """One steering run from results.jsonl.
+
+    Each run tests a specific vector configuration (layer, method, coefficient)
+    and records the judge's scores for trait expression and coherence.
+    """
+    result: JudgeResult
+    config: ProjectionConfig
+    eval_judge: Optional[str] = None
+    timestamp: str = ''
+    input_hashes: Optional[Dict[str, str]] = None
+
+    @property
+    def layer(self) -> int:
+        """Layer of the first (usually only) vector."""
+        return self.config.vectors[0].layer
+
+    @property
+    def coefficient(self) -> float:
+        """Steering coefficient (weight of first vector)."""
+        return self.config.vectors[0].weight
+
+    @property
+    def method(self) -> str:
+        """Method of the first vector."""
+        return self.config.vectors[0].method
+
+    def to_dict(self) -> dict:
+        d = {
+            'type': 'run',
+            'result': self.result.to_dict(),
+            'config': self.config.to_dict(),
+            'eval': {'trait_judge': self.eval_judge},
+            'timestamp': self.timestamp,
+        }
+        if self.input_hashes:
+            d['input_hashes'] = self.input_hashes
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'SteeringRunRecord':
+        result = JudgeResult.from_dict(d.get('result', {}))
+        config_raw = d.get('config', {'vectors': []})
+        config = ProjectionConfig.from_dict(config_raw)
+        return cls(
+            result=result,
+            config=config,
+            eval_judge=d.get('eval', {}).get('trait_judge'),
+            timestamp=d.get('timestamp', ''),
+            input_hashes=d.get('input_hashes'),
+        )
+
+
+@dataclass
+class SteeringResults:
+    """Full loaded steering results from results.jsonl.
+
+    Returned by load_results(). Contains header metadata, optional baseline,
+    and all steering run records.
+    """
+    trait: str
+    direction: str
+    steering_model: str
+    steering_experiment: str
+    vector_source: Dict
+    eval: Dict
+    prompts_file: str
+    prompts_hash: str
+    baseline: Optional[JudgeResult]
+    runs: List[SteeringRunRecord]
+
+    def to_dict(self) -> dict:
+        return {
+            'trait': self.trait,
+            'direction': self.direction,
+            'steering_model': self.steering_model,
+            'steering_experiment': self.steering_experiment,
+            'vector_source': self.vector_source,
+            'eval': self.eval,
+            'prompts_file': self.prompts_file,
+            'prompts_hash': self.prompts_hash,
+            'baseline': self.baseline.to_dict() if self.baseline else None,
+            'runs': [r.to_dict() for r in self.runs],
+        }

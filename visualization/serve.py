@@ -746,7 +746,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         try:
             # sanitize_position is idempotent, so already-sanitized positions work fine
-            return load_results(experiment_name, trait, model_variant, position, prompt_set)
+            return load_results(experiment_name, trait, model_variant, position, prompt_set).to_dict()
         except FileNotFoundError:
             return {'error': f'Results not found for {trait}/{model_variant}/{position}/{prompt_set}'}
         except Exception as e:

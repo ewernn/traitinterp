@@ -76,11 +76,10 @@ def _get_steering_result(
         return None
 
     # Check for stale results (hash-based if available, mtime fallback)
-    stored_hash = results_data.get("prompts_hash", "")
     prompts_path = get_path('datasets.trait_steering', trait=trait)
-    if stored_hash:
+    if results_data.prompts_hash:
         current_hash = content_hash(prompts_path)
-        if current_hash and current_hash != stored_hash:
+        if current_hash and current_hash != results_data.prompts_hash:
             import warnings
             warnings.warn(
                 f"Steering prompts changed since results were recorded for {trait}. "
@@ -92,31 +91,24 @@ def _get_steering_result(
             f"Steering prompts modified after results for {trait}. Results may be stale."
         )
 
-    direction = results_data.get("direction", "positive")
+    direction = results_data.direction
     sign = 1 if direction == "positive" else -1
-    baseline_raw = results_data.get("baseline")
-    baseline_result = JudgeResult.from_dict(baseline_raw) if baseline_raw else JudgeResult.empty()
+    baseline_result = results_data.baseline or JudgeResult.empty()
     baseline_trait_mean = baseline_result.trait_mean or 0
-    runs = results_data.get("runs", [])
 
     best_delta = None
     best_coef = None
-    for run in runs:
-        cfg = run.get('config', {})
-        vectors = cfg.get('vectors', [])
-        if not vectors:
-            continue
-        v = vectors[0]
-        if (v.get('layer') == layer
-                    and v.get('method', 'probe') == method
-                    and v.get('component', 'residual') == candidate.get('component', 'residual')):
-            result = JudgeResult.from_dict(run.get('result', {}))
-            if (result.coherence_mean or 0) >= min_coherence:
-                trait_mean = result.trait_mean or 0
+    for run in results_data.runs:
+        v = run.config.vectors[0]
+        if (v.layer == layer
+                    and v.method == method
+                    and v.component == candidate.get('component', 'residual')):
+            if (run.result.coherence_mean or 0) >= min_coherence:
+                trait_mean = run.result.trait_mean or 0
                 delta = trait_mean - baseline_trait_mean
                 if best_delta is None or delta * sign > best_delta * sign:
                     best_delta = delta
-                    best_coef = v.get('weight')
+                    best_coef = v.weight
 
     if best_delta is not None:
         return best_delta, best_coef, direction

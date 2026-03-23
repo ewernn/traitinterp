@@ -13,6 +13,7 @@ from datetime import datetime
 
 
 from core import VectorSpec, MultiLayerAblationHook
+from core.types import SteeringRunRecord
 from core.kwargs_configs import SteeringConfig
 from utils.traits import load_steering_data, load_questions_from_inference, load_questions_from_file
 from utils.steering_results import (
@@ -92,12 +93,12 @@ async def compute_baseline(backend, questions, trait_name, trait_definition, jud
             eval_prompt=eval_prompt, relevance_check=relevance_check,
         )
 
-        baseline = summarize_judge_scores(all_scores).to_dict()
+        baseline = summarize_judge_scores(all_scores)
 
         from utils.steering_results import build_response_records
         response_data = build_response_records(questions, responses, all_scores)
 
-        _tm = baseline['trait_mean']
+        _tm = baseline.trait_mean
         print(f"  Baseline: trait={f'{float(_tm):.1f}' if _tm is not None else 'None'}, n={baseline['n']}")
     else:
         baseline = None
@@ -161,9 +162,9 @@ def load_or_init_results(config: SteeringConfig, trait, model_variant, steering_
 
     if results_path.exists():
         results_data = load_results(config.experiment, trait, model_variant, config.position, config.prompt_set)
-        cached_runs = results_data.get("runs", [])
-        baseline_result = results_data.get("baseline")
-        header_direction = results_data.get("direction", "positive")
+        cached_runs = results_data.runs
+        baseline_result = results_data.baseline
+        header_direction = results_data.direction
         if regenerate_responses:
             direction = header_direction
         elif header_direction != direction:
@@ -216,18 +217,18 @@ def print_eval_summary(cached_runs, baseline_result, direction, min_coherence):
     print(f"\n{'='*60}")
     print(f"Summary (direction={direction})")
     print(f"{'='*60}")
-    _btm = baseline_result['trait_mean']
+    _btm = baseline_result.trait_mean if baseline_result else None
     print(f"Baseline: {float(_btm):.1f}" if _btm is not None else "Baseline: None")
     print(f"Total runs: {len(cached_runs)}")
 
-    valid_runs = [r for r in cached_runs if r.get('result', {}).get('coherence_mean', 0) >= min_coherence]
+    valid_runs = [r for r in cached_runs if (r.result.coherence_mean or 0) >= min_coherence]
     if valid_runs:
-        best_run = max(valid_runs, key=lambda r: (r.get('result', {}).get('trait_mean') or 0) * sign)
-        score = best_run['result']['trait_mean']
-        coh = best_run['result'].get('coherence_mean', 0)
+        best_run = max(valid_runs, key=lambda r: (r.result.trait_mean or 0) * sign)
+        score = best_run.result.trait_mean
+        coh = best_run.result.coherence_mean or 0
         delta = (score - _btm) if (_btm is not None and score is not None) else None
-        layer = best_run['config']['vectors'][0]['layer']
-        coef = best_run['config']['vectors'][0]['weight']
+        layer = best_run.layer
+        coef = best_run.coefficient
         print(f"Best (coherence>={min_coherence:.0f}): L{layer} c{coef:.0f}")
         if delta is not None:
             print(f"  trait={score:.1f} ({'+' if delta >= 0 else ''}{delta:.1f}), coherence={coh:.1f}")
@@ -235,7 +236,7 @@ def print_eval_summary(cached_runs, baseline_result, direction, min_coherence):
             print(f"  trait={score or 0:.1f} (baseline=None), coherence={coh:.1f}")
     else:
         print(f"No valid runs with coherence>={min_coherence:.0f}")
-        any_below = any(r.get('result', {}).get('coherence_mean', 0) < min_coherence for r in cached_runs)
+        any_below = any((r.result.coherence_mean or 0) < min_coherence for r in cached_runs)
         if not any_below:
             print(f"  WARNING: coherence never dropped below {min_coherence:.0f} — may not have steered hard enough")
 
@@ -252,24 +253,21 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
     sign = 1 if direction == "positive" else -1
     best_per_layer = {}
     for run in cached_runs:
-        vectors = run.get("config", {}).get("vectors", [])
-        if not vectors:
-            continue
-        layer = vectors[0]["layer"]
-        t = (run.get("result", {}).get("trait_mean") or 0)
-        c = (run.get("result", {}).get("coherence_mean") or 0)
+        layer = run.layer
+        t = run.result.trait_mean or 0
+        c = run.result.coherence_mean or 0
         if c < min_coherence:
             continue
         prev = best_per_layer.get(layer)
-        if prev is None or t * sign > (prev["result"].get("trait_mean") or 0) * sign:
+        if prev is None or t * sign > (prev.result.trait_mean or 0) * sign:
             best_per_layer[layer] = run
 
     all_configs = []
     for ld in layer_data:
         run = best_per_layer.get(ld["layer"])
         if run:
-            coef = run["config"]["vectors"][0]["weight"]
-            all_configs.append((ld, coef, run["config"]))
+            coef = run.coefficient
+            all_configs.append((ld, coef, run.config.to_dict()))
 
     if not all_configs:
         print("No configs to regenerate")
@@ -357,7 +355,7 @@ async def evaluate_manual_coefficients(
         timestamp = datetime.now().isoformat()
         print(f"  L{ld['layer']} c{coef:.0f}: trait={result['trait_mean'] or 0:.1f}, coherence={result['coherence_mean'] or 0:.1f}")
 
-        cached_runs.append({"config": cfg, "result": result, "timestamp": timestamp})
+        cached_runs.append(SteeringRunRecord.from_dict({"config": cfg, "result": result, "timestamp": timestamp}))
 
         if is_rank_zero():
             append_run(config.experiment, trait, model_variant, cfg, result, config.position, config.prompt_set, trait_judge=config.trait_judge)
@@ -432,9 +430,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
 
     # Filter layers for regeneration mode
     if config.regenerate_responses and cached_runs:
-        good_layers = {run["config"]["vectors"][0]["layer"]
-                       for run in cached_runs
-                       if (run.get("result", {}).get("coherence_mean") or 0) >= config.min_coherence}
+        good_layers = {run.layer for run in cached_runs
+                       if (run.result.coherence_mean or 0) >= config.min_coherence}
         layers = sorted(l for l in layers if l in good_layers)
         if not layers:
             print(f"  No cached configs with coherence >= {config.min_coherence}, skipping")
@@ -462,7 +459,7 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=config.trait_judge)
         tp_barrier()
     elif baseline_result is not None:
-        _btm = baseline_result['trait_mean']
+        _btm = baseline_result.trait_mean
         print(f"\nUsing existing baseline: trait={f'{float(_btm):.1f}' if _btm is not None else 'None'}")
 
     # Load vectors
@@ -567,7 +564,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
             save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
             append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=trait_judge)
 
-        summary.append((trait, baseline_result['trait_mean'], baseline_result.get('coherence_mean'), baseline_result['n'], "computed"))
+        summary.append((trait, baseline_result.trait_mean, baseline_result.coherence_mean, baseline_result.n, "computed"))
 
     print(f"\n{'='*60}")
     print(f"BASELINE SUMMARY")
@@ -632,7 +629,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
                 append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=trait_judge)
             tp_barrier()
         else:
-            _bm = baseline_result.get('trait_mean')
+            _bm = baseline_result.trait_mean
             print(f"  Existing baseline: trait={f'{float(_bm):.1f}' if _bm is not None else 'None'}")
 
         trait_layer_list = parsed_trait_layers.get(trait, default_layers)

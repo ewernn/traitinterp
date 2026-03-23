@@ -13,6 +13,8 @@ from .types import (
     ModelConfig,
     ModelVariant,
     SteeringEntry,
+    SteeringRunRecord,
+    SteeringResults,
 )
 from .hooks import (
     HookManager,                # base: all hook registration

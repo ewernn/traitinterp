@@ -23,7 +23,7 @@ import torch
 from datetime import datetime
 
 from core import VectorSpec
-from core.types import JudgeResult
+from core.types import JudgeResult, SteeringRunRecord
 from utils.generation import batched_steering_generate
 from utils.vram import calculate_max_batch_size
 from utils.steering_results import append_run, save_responses, find_cached_run, is_better_result, build_response_records
@@ -175,8 +175,8 @@ async def batched_adaptive_search(
             # Report cached results
             for i, cached_result in cached_configs:
                 state = batch_states[i]
-                trait_score = cached_result.get("trait_mean") or 0
-                coherence = cached_result.get("coherence_mean") or 0
+                trait_score = cached_result.trait_mean or 0
+                coherence = cached_result.coherence_mean or 0
                 state["history"].append((state["coef"], trait_score, coherence))
                 print(f"  L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_score:5.1f}, coh={coherence:5.1f} (cached)")
 
@@ -252,7 +252,7 @@ async def batched_adaptive_search(
                         **stats,
                     )
                     timestamp = datetime.now().isoformat()
-                    cached_runs.append({"config": config, "result": result.to_dict(), "timestamp": timestamp})
+                    cached_runs.append(SteeringRunRecord.from_dict({"config": config, "result": result.to_dict(), "timestamp": timestamp}))
 
                     # File I/O: rank-0 only
                     if is_rank_zero():
@@ -405,7 +405,7 @@ def _process_config_result(
     )
     timestamp = datetime.now().isoformat()
 
-    state["cached_runs"].append({"config": config, "result": result.to_dict(), "timestamp": timestamp})
+    state["cached_runs"].append(SteeringRunRecord.from_dict({"config": config, "result": result.to_dict(), "timestamp": timestamp}))
 
     # File I/O: rank-0 only
     if is_rank_zero() and scores is not None and responses is not None:
@@ -522,8 +522,8 @@ async def multi_trait_batched_adaptive_search(
             config = {"vectors": [spec.to_dict()]}
             cached_result = find_cached_run(state["cached_runs"], config)
             if cached_result is not None:
-                trait_score = cached_result.get("trait_mean") or 0
-                coherence = cached_result.get("coherence_mean") or 0
+                trait_score = cached_result.trait_mean or 0
+                coherence = cached_result.coherence_mean or 0
                 state["history"].append((state["coef"], trait_score, coherence))
             else:
                 uncached_states.append(state)
