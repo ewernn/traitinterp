@@ -266,7 +266,6 @@ function updatePageTitle() {
         'extraction': 'Extraction',
         'steering': 'Steering',
         'trait-dynamics': 'Inference',
-        'correlation': 'Correlation',
         'model-analysis': 'Model Analysis'
     };
     const titleElem = document.getElementById('page-title');

@@ -1,6 +1,6 @@
 import { fetchJSON } from '../core/utils.js';
 
-// Trait Correlation View - Analyze relationships between trait projections
+// Trait Correlation Section - Analyze relationships between trait projections
 //
 // Loads pre-computed correlation data from:
 //   experiments/{exp}/analysis/trait_correlation/{prompt_set}.json
@@ -11,32 +11,16 @@ import { fetchJSON } from '../core/utils.js';
 let traitCorrelationData = null;
 let correlationOffset = 0;
 
-async function renderCorrelation() {
-    const contentArea = document.getElementById('content-area');
 
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                </div>
-            </div>
-        `;
-        return;
-    }
+/**
+ * Render correlation charts into a provided container.
+ * Returns true if data was loaded and rendered, false if no data available.
+ */
+async function renderCorrelationSection(containerId, promptSet) {
+    const container = document.getElementById(containerId);
+    if (!container) return false;
 
-    const promptSet = window.state.currentPromptSet;
-    if (!promptSet) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="page-intro">
-                    <div class="page-intro-text">Analyze correlations between trait projections across prompts.</div>
-                </div>
-                <div class="info">Select a prompt set from the prompt picker to analyze trait correlations.</div>
-            </div>
-        `;
-        return;
-    }
+    if (!window.state.currentExperiment || !promptSet) return false;
 
     // Load pre-computed correlation data
     const dataFile = `/experiments/${window.state.currentExperiment}/analysis/trait_correlation/${promptSet.replace('/', '_')}.json`;
@@ -44,25 +28,10 @@ async function renderCorrelation() {
     let data;
     try {
         const response = await fetch(dataFile);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         data = await response.json();
     } catch (e) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="page-intro">
-                    <div class="page-intro-text">Analyze correlations between trait projections.</div>
-                </div>
-                <div class="info">
-                    No correlation data found for prompt set "${promptSet}".
-                    <br><br>
-                    Generate it with:
-                    <pre>python analysis/trait_correlation.py --experiment ${window.state.currentExperiment} --prompt-set ${promptSet}</pre>
-                </div>
-            </div>
-        `;
-        return;
+        return false;
     }
 
     // Store for slider updates
@@ -71,55 +40,42 @@ async function renderCorrelation() {
     const currentOffset = correlationOffset || 0;
     const maxOffset = data.max_offset || 10;
 
-    contentArea.innerHTML = `
-        <div class="tool-view">
-            <div class="page-intro">
-                <div class="page-intro-text">Analyze correlations between trait projections.</div>
-                <div class="page-intro-model">Prompt set: <code>${promptSet}</code> (${data.n_prompts} prompts, ${data.traits.length} traits)</div>
-            </div>
+    container.innerHTML = `
+        <div class="page-intro-model" style="margin-bottom: 12px;">
+            Prompt set: <code>${promptSet}</code> (${data.n_prompts} prompts, ${data.traits.length} traits)
+        </div>
 
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Trait Correlation Matrix',
-                    infoId: 'info-trait-correlation',
-                    infoText: 'Token-level correlation between trait projections. Upper triangle: row trait leads column trait by k tokens. Lower triangle: column trait leads row trait. Diagonal: autocorrelation at offset k.',
-                    level: 'h2'
-                })}
-                <div class="projection-toggle">
-                    <label class="projection-toggle-label">Offset: <span id="offset-value">${currentOffset}</span> tokens</label>
-                    <input type="range" id="correlation-offset-slider" min="0" max="${maxOffset}" value="${currentOffset}" style="width: 200px; margin-left: 8px;">
-                </div>
-                <div id="correlation-heatmap"></div>
-                <div id="correlation-legend" class="chart-legend" style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
-                    <span>Upper △: row leads col by +k</span>
-                    <span style="margin-left: 16px;">Lower △: col leads row by +k</span>
-                    <span style="margin-left: 16px;">Diagonal: autocorrelation at k</span>
-                </div>
-            </section>
+        <div class="projection-toggle">
+            <label class="projection-toggle-label">Offset: <span id="offset-value">${currentOffset}</span> tokens</label>
+            <input type="range" id="correlation-offset-slider" min="0" max="${maxOffset}" value="${currentOffset}" style="width: 200px; margin-left: 8px;">
+        </div>
+        <div id="correlation-heatmap"></div>
+        <div id="correlation-legend" class="chart-legend" style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+            <span>Upper: row leads col by +k</span>
+            <span style="margin-left: 16px;">Lower: col leads row by +k</span>
+            <span style="margin-left: 16px;">Diagonal: autocorrelation at k</span>
+        </div>
 
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Correlation Decay',
-                    infoId: 'info-correlation-decay',
-                    infoText: 'How trait correlations change with token offset. Fast decay = local relationship. Slow decay = persistent relationship.',
-                    level: 'h2'
-                })}
-                <div id="correlation-decay-plot"></div>
-            </section>
+        <div style="margin-top: 24px;">
+            ${ui.renderSubsection({
+                title: 'Correlation Decay',
+                infoId: 'info-correlation-decay',
+                infoText: 'How trait correlations change with token offset. Fast decay = local relationship. Slow decay = persistent relationship.',
+                level: 'h3'
+            })}
+            <div id="correlation-decay-plot"></div>
+        </div>
 
-            <section>
-                ${ui.renderSubsection({
-                    title: 'Response-Level Correlation',
-                    infoId: 'info-response-correlation',
-                    infoText: 'Correlation of mean projection per response (not token-level). Shows which traits co-occur across prompts.',
-                    level: 'h2'
-                })}
-                <div id="response-correlation-heatmap"></div>
-            </section>
+        <div style="margin-top: 24px;">
+            ${ui.renderSubsection({
+                title: 'Response-Level Correlation',
+                infoId: 'info-response-correlation',
+                infoText: 'Correlation of mean projection per response (not token-level). Shows which traits co-occur across prompts.',
+                level: 'h3'
+            })}
+            <div id="response-correlation-heatmap"></div>
         </div>
     `;
-
-    window.setupSubsectionInfoToggles();
 
     // Render plots
     renderCorrelationHeatmap(currentOffset);
@@ -135,6 +91,17 @@ async function renderCorrelation() {
         correlationOffset = offset;
         renderCorrelationHeatmap(offset);
     });
+
+    return true;
+}
+
+
+/**
+ * Reset module-local caches (call on experiment change).
+ */
+function resetCorrelationState() {
+    traitCorrelationData = null;
+    correlationOffset = 0;
 }
 
 
@@ -266,7 +233,6 @@ function renderResponseCorrelation() {
     if (!data || !data.response_correlation) return;
 
     const { trait_labels, response_correlation } = data;
-    const n = trait_labels.length;
 
     const trace = {
         z: response_correlation,
@@ -301,7 +267,7 @@ function renderResponseCorrelation() {
 
 
 // ES module exports
-export { renderCorrelation };
+export { renderCorrelationSection, resetCorrelationState };
 
-// Keep window.* for router
-window.renderCorrelation = renderCorrelation;
+// Keep window.* for cross-module access (state.js calls resetCorrelationState on experiment change)
+window.resetCorrelationState = resetCorrelationState;

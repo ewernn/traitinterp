@@ -11,6 +11,7 @@ import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProje
 import { renderTrajectoryChart } from './chart-trajectory.js';
 import { renderTraitTokenHeatmap } from './chart-heatmap.js';
 import { renderTokenMagnitudePlot } from './chart-magnitude.js';
+import { renderCorrelationSection } from '../correlation.js';
 
 async function renderTraitDynamics() {
     const contentArea = document.getElementById('content-area');
@@ -241,6 +242,16 @@ async function renderTraitDynamics() {
 
         // Render Token Magnitude plot (per-token norms)
         renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
+    }
+
+    // Render correlation section if data exists for this prompt set
+    const corrSection = document.getElementById('correlation-section');
+    if (corrSection) {
+        const corrLoaded = await renderCorrelationSection('correlation-content', promptSet);
+        if (corrLoaded) {
+            corrSection.style.display = '';
+            window.setupSubsectionInfoToggles();
+        }
     }
 
     // Restore scroll position after DOM updates

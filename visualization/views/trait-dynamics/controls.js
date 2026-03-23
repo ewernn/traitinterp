@@ -153,6 +153,16 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div id="token-magnitude-plot"></div>
             </section>
 
+            <section id="correlation-section" style="display: none;">
+                ${ui.renderSubsection({
+                    title: 'Trait Correlation',
+                    infoId: 'info-correlation',
+                    infoText: 'Cross-trait correlation analysis for the current prompt set. Shows token-level correlations (with offset slider), correlation decay over token distance, and response-level correlations.',
+                    level: 'h2'
+                })}
+                <div id="correlation-content"></div>
+            </section>
+
         </div>
     `;
 }
