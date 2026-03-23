@@ -300,7 +300,7 @@ def get_baseline(
     model_variant: str,
     position: str = "response[:]",
     prompt_set: str = "steering",
-) -> Optional[Dict]:
+) -> Optional[JudgeResult]:
     """Get baseline result if it exists."""
     results_path = get_steering_results_path(experiment, trait, model_variant, position, prompt_set)
 
@@ -314,7 +314,8 @@ def get_baseline(
                 continue
             entry = json.loads(line)
             if entry.get("type") == "baseline":
-                return entry.get("result")
+                raw = entry.get("result")
+                return JudgeResult.from_dict(raw) if raw else None
 
     return None
 

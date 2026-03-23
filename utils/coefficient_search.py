@@ -61,7 +61,7 @@ async def batched_adaptive_search(
     judge: TraitJudge,
     use_chat_template: bool,
     component: str,
-    cached_runs: List[Dict],
+    cached_runs: List[SteeringRunRecord],
     experiment: str,
     trait: str,
     model_variant: str,

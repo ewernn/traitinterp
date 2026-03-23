@@ -532,8 +532,8 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
 
         existing = get_baseline(config.experiment, trait, model_variant, config.position, config.prompt_set)
         if existing and not force:
-            print(f"  Existing baseline: trait={existing['trait_mean']:.1f}, "
-                  f"coh={existing.get('coherence_mean', 0):.1f}, n={existing['n']}")
+            print(f"  Existing baseline: trait={existing.trait_mean:.1f}, "
+                  f"coh={existing.coherence_mean or 0:.1f}, n={existing.n}")
             summary.append((trait, existing['trait_mean'], existing.get('coherence_mean'), existing['n'], "cached"))
             continue
 
