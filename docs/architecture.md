@@ -190,6 +190,26 @@ remove_massive_dims
 
 ---
 
+## Visualization Architecture
+
+The dashboard is a single-page app served by a Python HTTP server (`visualization/serve.py`). No build step — ES modules load directly in the browser. See [visualization/README.md](../visualization/README.md) for the full reference.
+
+### Layer Responsibilities
+
+- **core/** — Shared primitives that views and components depend on. Pure functions returning HTML strings or data, no DOM side effects. Includes state management (`state.js`), chart layout building (`charts.js`), path resolution (`paths.js`), UI helpers (`ui.js`), and display utilities (`display.js`).
+- **components/** — Reusable UI pieces that own a specific DOM region (sidebar, prompt picker, response browser). They read from `window.state` and render into their container. Components may be shared across multiple views.
+- **views/** — One module per dashboard tab. Each exports a `renderX()` function that writes to `#content-area`. Complex views split into sub-modules (e.g., `trait-dynamics/` has data loading, controls, and chart modules; `steering.js` delegates to `steering-filters.js`, `steering-best-vector.js`, `steering-heatmap.js`).
+
+### Key Patterns
+
+- **Chart presets**: `charts.js` defines preset layouts (`timeSeries`, `layerChart`, `heatmap`, `barChart`) with `buildChartLayout()` merging preset defaults, legend sizing, and caller overrides. All Plotly charts go through this for consistent theming.
+- **Deferred loading**: `ui.deferredLoading()` shows a loading spinner only after a short delay, avoiding flashes for fast responses. Views call it before async fetches and cancel when data arrives.
+- **State management**: A single `state` object in `state.js` holds all global state. User preferences are persisted to `localStorage` via a table-driven preference system — declare type, default, validation, and optional `onSet` callback. No framework; views re-render by calling `window.renderView()`.
+- **Path resolution**: `paths.js` mirrors `utils/paths.py` — both load from `config/paths.yaml`. Frontend paths resolve relative to the experiment; the server serves experiment data as static files.
+- **ES modules with `window.*` bridge**: All code uses `import`/`export`. The router and HTML `onclick` handlers need `window.*` access, so modules bridge specific functions. Everything else uses direct imports.
+
+---
+
 ## Clean Repo Checklist
 
 - [ ] No circular dependencies

@@ -5,6 +5,8 @@
 // and method/interpolation controls.
 
 import { sortedNumericKeys } from '../core/utils.js';
+import { getDisplayName, ASYMB_COLORSCALE, DELTA_COLORSCALE } from '../core/display.js';
+import { buildChartLayout, renderChart } from '../core/charts.js';
 import { fetchSteeringResults } from './steering-filters.js';
 
 let currentSweepData = null;
@@ -61,7 +63,7 @@ async function renderTraitPicker(steeringEntries) {
 
     // Build options with readable labels
     select.innerHTML = steeringEntries.map((entry, idx) => {
-        const displayName = window.getDisplayName(entry.trait);
+        const displayName = getDisplayName(entry.trait);
         const posDisplay = window.paths.formatPositionDisplay(entry.position);
         // Include prompt_set if not default "steering"
         const promptSetDisplay = entry.prompt_set && entry.prompt_set !== 'steering'
@@ -303,14 +305,14 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
     // Determine color scale based on metric (only 'delta' and 'coherence' are used)
     let colorscale, zmid, zmin, zmax;
     if (metric === 'delta') {
-        colorscale = window.DELTA_COLORSCALE;
+        colorscale = DELTA_COLORSCALE;
         zmid = 0;
         const allVals = matrix.flat().filter(v => v !== null);
         const absMax = Math.max(Math.abs(Math.min(...allVals, 0)), Math.abs(Math.max(...allVals, 0)));
         zmin = -absMax;
         zmax = absMax;
     } else {
-        colorscale = window.ASYMB_COLORSCALE || 'Viridis';
+        colorscale = ASYMB_COLORSCALE;
         zmin = 0;
         zmax = 100;
         zmid = 50;
@@ -361,7 +363,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         tickLabels.push(xRatios[idx].toFixed(0));
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
         height: Math.max(300, layers.length * 20 + 100),
@@ -370,7 +372,7 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
         yaxis: { title: 'Layer', tickfont: { size: 10 }, autorange: 'reversed' },
         margin: { l: 50, r: 80, t: 20, b: 50 }
     });
-    window.renderChart(container, [trace], layout);
+    renderChart(container, [trace], layout);
 }
 
 

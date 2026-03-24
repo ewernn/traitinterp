@@ -6,6 +6,7 @@
 // 2. Activation Magnitude Per Token: ||h|| at each token position
 
 import { fetchJSON } from '../../core/utils.js';
+import { getVariantForCurrentPromptSet } from '../../core/state.js';
 import { renderPageShell } from './controls.js';
 import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProjectionData } from './data.js';
 import { renderTrajectoryChart } from './chart-trajectory.js';
@@ -59,7 +60,7 @@ async function renderTraitDynamics() {
         const selectedOrg = window.state.lastCompareVariant || availableModelsEarly[0];
         modelVariant = availableModelsEarly.includes(selectedOrg) ? selectedOrg : availableModelsEarly[0];
     } else {
-        modelVariant = window.getVariantForCurrentPromptSet();
+        modelVariant = getVariantForCurrentPromptSet();
     }
 
     if (!promptSet || !promptId) {

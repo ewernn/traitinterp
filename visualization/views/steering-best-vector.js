@@ -5,6 +5,8 @@
 // base trait, with lines for each (method, position, elicitation) combo.
 
 import { sortedNumericKeys } from '../core/utils.js';
+import { getDisplayName, getChartColors, getMethodColors } from '../core/display.js';
+import { buildChartLayout, renderChart, createHtmlLegend } from '../core/charts.js';
 import { chartFilters, fetchSteeringResults } from './steering-filters.js';
 
 let localTraitResultsCache = {}; // Local cache, passed to response-browser via setTraitResultsCache()
@@ -67,7 +69,7 @@ async function renderBestVectorPerLayer() {
         if (activeVariants.length === 0) continue;
 
         const traces = [];
-        const methodColors = window.getMethodColors();
+        const methodColors = getMethodColors();
         let baseline = null;
         let colorIdx = 0;
         const allRuns = []; // Collect all runs for response browser
@@ -164,7 +166,7 @@ async function renderBestVectorPerLayer() {
                         ? `${elicitPrefix}${componentPrefix}${methodName} ${posDisplayClosed}`
                         : `${elicitPrefix}${componentPrefix}${methodName}`;
 
-                    const baseColor = methodColors[method] || window.getChartColors()[colorIdx % 10];
+                    const baseColor = methodColors[method] || getChartColors()[colorIdx % 10];
                     // Different dash styles for elicitation methods
                     const dashStyle = component !== 'residual' ? 'dot'
                         : (hasMultipleElicit ? (elicitLabel === 'instruction' ? 'solid' : 'dash') : 'solid');
@@ -228,7 +230,7 @@ async function renderBestVectorPerLayer() {
 
     container.innerHTML = charts.map(({ trait, chartId, browserId, runCount }) => `
         <div class="trait-chart-wrapper">
-            <div class="trait-chart-title">${window.getDisplayName(trait)}</div>
+            <div class="trait-chart-title">${getDisplayName(trait)}</div>
             <div id="${chartId}" class="chart-container-sm"></div>
             <div id="${chartId}-legend"></div>
             <details class="response-browser-details" data-trait="${trait}">
@@ -256,7 +258,7 @@ async function renderBestVectorPerLayer() {
         const chartEl = document.getElementById(chartId);
         if (!chartEl) continue;
 
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 220,
@@ -277,12 +279,12 @@ async function renderBestVectorPerLayer() {
             }]
         });
 
-        window.renderChart(chartId, traces, layout);
+        renderChart(chartId, traces, layout);
 
         // Add HTML legend below chart
         const legendContainer = document.getElementById(`${chartId}-legend`);
         if (legendContainer) {
-            const legendEl = window.createHtmlLegend(traces, chartId);
+            const legendEl = createHtmlLegend(traces, chartId);
             legendContainer.appendChild(legendEl);
         }
     }

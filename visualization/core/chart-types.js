@@ -247,7 +247,7 @@ function countByCategory(annotationsData) {
 
 CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options = {}) {
     const { height = 280 } = options;
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b', '#20c997', '#868e96'];
+    const colors = getChartColors();
 
     // Fetch all annotation files
     const barData = [];

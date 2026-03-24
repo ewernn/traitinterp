@@ -1,4 +1,6 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
+import { getDisplayName, ASYMB_COLORSCALE, getChartColors } from '../core/display.js';
+import { buildChartLayout, renderChart } from '../core/charts.js';
 
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
@@ -157,7 +159,7 @@ function renderBestVectorsSummary(evalData) {
         );
 
         return {
-            trait: window.getDisplayName(trait),
+            trait: getDisplayName(trait),
             method: best.method,
             layer: best.layer,
             accuracy: result?.val_accuracy ?? null,
@@ -389,7 +391,7 @@ function renderTraitHeatmaps(evalData) {
     traits.forEach(trait => {
         const traitResults = traitGroups[trait];
         const traitId = trait.replace(/\//g, '-');
-        const displayName = window.getDisplayName(trait);
+        const displayName = getDisplayName(trait);
         const bestInfo = bestVectors[trait];
 
         const traitDiv = document.createElement('div');
@@ -432,7 +434,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         x: xLabels,
         y: layers,
         type: 'heatmap',
-        colorscale: window.ASYMB_COLORSCALE,
+        colorscale: ASYMB_COLORSCALE,
         hovertemplate: '%{x} L%{y}: %{z:.1f}%<extra></extra>',
         zmin: zmin,
         zmax: 100,
@@ -465,7 +467,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         }
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
         height: compact ? 180 : 400,
@@ -481,7 +483,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
             : { l: 40, r: 80, t: 20, b: 60 },
         annotations
     });
-    window.renderChart(containerId, [trace], layout);
+    renderChart(containerId, [trace], layout);
 }
 
 
@@ -555,7 +557,7 @@ async function renderLogitLensSection(evalData) {
         const methodData = data.methods[method];
         if (!methodData || !methodData.late) continue;
 
-        const displayName = window.getDisplayName(trait);
+        const displayName = getDisplayName(trait);
         const late = methodData.late;
 
         html += `

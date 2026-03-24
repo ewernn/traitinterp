@@ -7,6 +7,7 @@
 // - Configurable running average on trait scores
 
 import { escapeHtml } from '../core/utils.js';
+import { isFeatureEnabled } from '../core/state.js';
 import { ConversationTree } from '../core/conversation-tree.js';
 import {
     toggleInferenceMode,
@@ -208,7 +209,7 @@ async function renderLiveChat() {
     // Sidebar selection doesn't affect Live Chat
 
     // Hide inference toggle in production mode
-    if (!window.isFeatureEnabled('inference_toggle')) {
+    if (!isFeatureEnabled('inference_toggle')) {
         const inferenceToggle = document.querySelector('.inference-mode-toggle');
         if (inferenceToggle) inferenceToggle.style.display = 'none';
     }

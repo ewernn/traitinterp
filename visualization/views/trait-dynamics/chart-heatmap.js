@@ -2,8 +2,9 @@
 // Input: traitActivations, loadedTraits, tick data, traitData
 // Output: rendered Plotly heatmap
 
-import { getDisplayName } from '../../core/display.js';
+import { getDisplayName, DELTA_COLORSCALE } from '../../core/display.js';
 import { buildChartLayout, renderChart, attachTokenClickHandler } from '../../core/charts.js';
+import { setTraitHeatmapOpen } from '../../core/state.js';
 import { buildCommonShapes, START_TOKEN_IDX } from './chart-trajectory.js';
 
 /**
@@ -51,7 +52,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
     const toggle = document.getElementById('trait-heatmap-toggle');
     if (toggle) {
         toggle.addEventListener('click', () => {
-            window.setTraitHeatmapOpen(!window.state.traitHeatmapOpen);
+            setTraitHeatmapOpen(!window.state.traitHeatmapOpen);
             renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, displayTokens, isRollout, turnBoundaries, sentenceBoundaries, traitData, sentenceCategoryData);
         });
     }
@@ -75,7 +76,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
         z: z,
         y: traitLabels,
         type: 'heatmap',
-        colorscale: window.DELTA_COLORSCALE,
+        colorscale: DELTA_COLORSCALE,
         zmid: 0,
         zmin: -absMax,
         zmax: absMax,

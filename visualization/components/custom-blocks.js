@@ -25,6 +25,8 @@
  *   :::
  */
 
+import { escapeHtml } from '../core/utils.js';
+
 // ============================================================================
 // Block Extraction - Parse markdown and extract custom blocks
 // ============================================================================
@@ -665,9 +667,9 @@ async function loadSteeredResponseContent(container, pvPath, naturalPath) {
             const natural = naturalData[i] || {};
             return `
                 <tr>
-                    <td class="sr-question">${window.escapeHtml(pv.prompt || '')}</td>
-                    <td class="sr-response sr-pv">${window.escapeHtml(pv.response || '')}</td>
-                    <td class="sr-response sr-natural">${window.escapeHtml(natural.response || '')}</td>
+                    <td class="sr-question">${escapeHtml(pv.prompt || '')}</td>
+                    <td class="sr-response sr-pv">${escapeHtml(pv.response || '')}</td>
+                    <td class="sr-response sr-natural">${escapeHtml(natural.response || '')}</td>
                 </tr>
             `;
         }).join('');
@@ -837,7 +839,7 @@ function renderExtractionTable(responses, options = {}) {
 
     for (let i = 0; i < responses.length; i++) {
         const r = responses[i];
-        const prefill = window.escapeHtml(r.prompt || '');
+        const prefill = escapeHtml(r.prompt || '');
         const responseText = r.response || '';
 
         // Apply token highlighting if offsets available
@@ -846,7 +848,7 @@ function renderExtractionTable(responses, options = {}) {
             const offsets = tokenOffsets[i].slice(0, highlightTokens);
             continuationHtml = applyTokenHighlights(responseText, offsets);
         } else {
-            continuationHtml = window.escapeHtml(responseText);
+            continuationHtml = escapeHtml(responseText);
         }
 
         html += `<tr>
@@ -868,7 +870,7 @@ function renderExtractionTable(responses, options = {}) {
  */
 function applyTokenHighlights(text, offsets) {
     if (!offsets || offsets.length === 0) {
-        return window.escapeHtml(text);
+        return escapeHtml(text);
     }
 
     // Find the end of the highlighted region
@@ -878,7 +880,7 @@ function applyTokenHighlights(text, offsets) {
     const highlightedText = text.slice(0, highlightEnd);
     const restText = text.slice(highlightEnd);
 
-    return `<span class="token-highlight">${window.escapeHtml(highlightedText)}</span>${window.escapeHtml(restText)}`;
+    return `<span class="token-highlight">${escapeHtml(highlightedText)}</span>${escapeHtml(restText)}`;
 }
 
 // ============================================================================
@@ -893,7 +895,7 @@ function applyTokenHighlights(text, offsets) {
  */
 function applyCharRangeHighlights(text, charRanges) {
     if (!charRanges || charRanges.length === 0) {
-        return window.escapeHtml(text).replace(/\n/g, '<br>');
+        return escapeHtml(text).replace(/\n/g, '<br>');
     }
 
     // Sort ranges by start position and merge overlapping
@@ -915,18 +917,18 @@ function applyCharRangeHighlights(text, charRanges) {
     for (const [start, end] of merged) {
         // Add text before highlight (escaped)
         if (start > pos) {
-            result += window.escapeHtml(text.slice(pos, start)).replace(/\n/g, '<br>');
+            result += escapeHtml(text.slice(pos, start)).replace(/\n/g, '<br>');
         }
         // Add highlighted text (escaped, with mark)
         result += '<mark class="hack-highlight">' +
-            window.escapeHtml(text.slice(start, end)).replace(/\n/g, '<br>') +
+            escapeHtml(text.slice(start, end)).replace(/\n/g, '<br>') +
             '</mark>';
         pos = end;
     }
 
     // Add remaining text
     if (pos < text.length) {
-        result += window.escapeHtml(text.slice(pos)).replace(/\n/g, '<br>');
+        result += escapeHtml(text.slice(pos)).replace(/\n/g, '<br>');
     }
 
     return result;
@@ -956,14 +958,14 @@ function renderResponsesTable(responses, options = {}) {
 
     for (let i = 0; i < Math.min(responses.length, 20); i++) {
         const r = responses[i];
-        const question = window.escapeHtml(r.prompt || '');
+        const question = escapeHtml(r.prompt || '');
 
         // Apply char range highlights if available
         let responseHtml;
         if (charRanges[i] && charRanges[i].length > 0) {
             responseHtml = applyCharRangeHighlights(r.response || '', charRanges[i]);
         } else {
-            responseHtml = window.escapeHtml(r.response || '').replace(/\n/g, '<br>');
+            responseHtml = escapeHtml(r.response || '').replace(/\n/g, '<br>');
         }
 
         html += `<tr>
@@ -1012,7 +1014,7 @@ function renderDatasetList(text, options = {}) {
                     const maxItems = limit || 20;
                     const items = value.slice(0, maxItems);
                     for (const item of items) {
-                        html += `<li>${window.escapeHtml(String(item))}</li>`;
+                        html += `<li>${escapeHtml(String(item))}</li>`;
                     }
                     if (value.length > maxItems) {
                         html += `<li class="dataset-more">...and ${value.length - maxItems} more</li>`;
@@ -1043,9 +1045,9 @@ function renderDatasetList(text, options = {}) {
             try {
                 const obj = JSON.parse(line);
                 // Format: show system_prompt and prompt with labels
-                const prompt = window.escapeHtml(obj.prompt || obj.text || line);
+                const prompt = escapeHtml(obj.prompt || obj.text || line);
                 if (obj.system_prompt) {
-                    const sysPrompt = window.escapeHtml(obj.system_prompt);
+                    const sysPrompt = escapeHtml(obj.system_prompt);
                     html += `<li>
                         <div class="dataset-field"><span class="dataset-label">system_prompt:</span> ${sysPrompt}</div>
                         <div class="dataset-field"><span class="dataset-label">user_message:</span> ${prompt}</div>
@@ -1054,10 +1056,10 @@ function renderDatasetList(text, options = {}) {
                     html += `<li>${prompt}</li>`;
                 }
             } catch (e) {
-                html += `<li>${window.escapeHtml(line)}</li>`;
+                html += `<li>${escapeHtml(line)}</li>`;
             }
         } else {
-            html += `<li>${window.escapeHtml(line)}</li>`;
+            html += `<li>${escapeHtml(line)}</li>`;
         }
     }
     if (lines.length > maxItems) {

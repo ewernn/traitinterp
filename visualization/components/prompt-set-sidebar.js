@@ -7,6 +7,7 @@
  */
 
 import { INFERENCE_VIEWS, selectPromptSet, getDiffState } from './prompt-picker.js';
+import { escapeHtml } from '../core/utils.js';
 
 /**
  * Render the prompt set sidebar panel.
@@ -46,7 +47,7 @@ function renderPromptSetSidebar() {
         const hasCompData = variants.some(v => v !== appVariant);
         const noDiffClass = isDiffActive && !hasCompData ? 'pss-no-diff' : '';
         listHtml += `<div class="pss-item ${isActive} ${noDiffClass}" data-set="${setName}">
-            <span class="pss-item-name" title="${window.escapeHtml(displayName)}">${window.escapeHtml(displayName)}</span>
+            <span class="pss-item-name" title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</span>
             <span class="pss-item-count">${ids.length}</span>
         </div>`;
     }

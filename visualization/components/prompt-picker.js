@@ -8,6 +8,8 @@
  */
 
 import { getCssVar, getTokenHighlightColors } from '../core/display.js';
+import { formatTokenDisplay, escapeHtml } from '../core/utils.js';
+import { getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
 
 // Views that show the prompt picker
@@ -158,7 +160,7 @@ async function renderPromptPicker() {
 
     // Get prompt text and note from definitions
     const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === window.state.currentPromptId);
-    const promptNote = promptDef && promptDef.note ? window.escapeHtml(promptDef.note) : '';
+    const promptNote = promptDef && promptDef.note ? escapeHtml(promptDef.note) : '';
 
     // Compute display number for current prompt (1-based index in the sorted list)
     const currentDisplayNum = window.state.currentPromptId != null
@@ -184,14 +186,14 @@ async function renderPromptPicker() {
             const maxIdx = tokenList.length - 1;
             const currentIdx = Math.min(window.state.currentTokenIndex, maxIdx);
             const currentToken = tokenList[currentIdx] || '';
-            const displayToken = window.formatTokenDisplay(currentToken);
+            const displayToken = formatTokenDisplay(currentToken);
 
             tokenSliderHtml = `
                 <div class="pp-slider">
                     <strong>Token:</strong>
                     <input type="range" id="token-slider" min="0" max="${maxIdx}" value="${currentIdx}">
                     <code>${currentIdx}</code>
-                    <code class="pp-token">${window.escapeHtml(displayToken)}</code>
+                    <code class="pp-token">${escapeHtml(displayToken)}</code>
                 </div>
             `;
         }
@@ -259,7 +261,7 @@ async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
     let data = null;
-    const modelVariant = window.getVariantForCurrentPromptSet();
+    const modelVariant = getVariantForCurrentPromptSet();
 
     // Try shared response data first (new format)
     try {
@@ -444,7 +446,7 @@ function setupPromptPickerListeners() {
                 const tokenList = window.state.promptPickerCache?.allTokens || [];
                 const nPromptTokens = window.state.promptPickerCache?.nPromptTokens || 0;
                 const currentToken = tokenList[newIdx] || '';
-                const displayToken = window.formatTokenDisplay(currentToken);
+                const displayToken = formatTokenDisplay(currentToken);
                 // Update slider display elements
                 const slider = container.querySelector('.pp-slider');
                 if (slider) {
@@ -476,9 +478,9 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
     const separatorX = (nPromptTokens - startIdx) - 0.5;
 
     // Get highlight colors from centralized helper
-    const { separator: separatorColor, highlight: highlightColor } = window.getTokenHighlightColors();
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const { separator: separatorColor, highlight: highlightColor } = getTokenHighlightColors();
+    const primaryColor = getCssVar('--primary-color', '#a09f6c');
+    const textSecondary = getCssVar('--text-secondary', '#a4a4a4');
 
     if (window.state.currentView === 'trait-dynamics') {
         // Standard shapes for all inference plots
@@ -539,7 +541,7 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotatio
     for (let i = startIdx; i < endIdx; i++) {
         const token = tokenList[i];
         if (!token) continue;
-        const escaped = window.escapeHtml(token);
+        const escaped = escapeHtml(token);
         const isAnnotated = annotatedTokens.has(i);
         const isCurrent = i === currentIdx;
 
@@ -564,7 +566,7 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotatio
 async function preloadTagsForSet(promptSet) {
     if (!promptSet) return;
 
-    const modelVariant = window.getVariantForCurrentPromptSet();
+    const modelVariant = getVariantForCurrentPromptSet();
     const tagsUrl = `/experiments/${window.state.currentExperiment}/inference/${modelVariant}/responses/${promptSet}/_tags.json`;
 
     try {

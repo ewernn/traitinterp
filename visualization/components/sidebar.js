@@ -4,7 +4,8 @@
  * Depends on: state.js (window.state), display.js (getDisplayName)
  */
 
-import { ANALYSIS_VIEWS } from '../core/state.js';
+import { ANALYSIS_VIEWS, setTabInURL, ensureExperimentLoaded } from '../core/state.js';
+import { getDisplayName } from '../core/display.js';
 
 // =============================================================================
 // Theme Management
@@ -98,7 +99,7 @@ function populateTraitCheckboxes() {
             checkbox.className = 'trait-checkbox';
             checkbox.innerHTML = `
                 <input type="checkbox" id="trait-${trait.name}" value="${trait.name}" ${isDefaultSelected ? 'checked' : ''}>
-                <label for="trait-${trait.name}">${window.getDisplayName(trait.name)}</label>
+                <label for="trait-${trait.name}">${getDisplayName(trait.name)}</label>
             `;
             traitsDiv.appendChild(checkbox);
 
@@ -218,7 +219,7 @@ function setupNavigation() {
             if (item === analysisEntry) {
                 const targetView = window.state.lastAnalysisView || 'extraction';
                 window.state.currentView = targetView;
-                window.setTabInURL(targetView);
+                setTabInURL(targetView);
 
                 navItems.forEach(n => n.classList.remove('active'));
                 analysisEntry.classList.add('active');
@@ -227,7 +228,7 @@ function setupNavigation() {
 
                 updatePageTitle();
                 updateExperimentVisibility();
-                await window.ensureExperimentLoaded();
+                await ensureExperimentLoaded();
                 window.renderPromptPicker();
                 if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
                 if (window.renderView) window.renderView();
@@ -239,7 +240,7 @@ function setupNavigation() {
 
             if (item.dataset.view) {
                 window.state.currentView = item.dataset.view;
-                window.setTabInURL(item.dataset.view);
+                setTabInURL(item.dataset.view);
 
                 // Analysis sub-nav: keep the main sidebar entry highlighted
                 if (ANALYSIS_VIEWS.includes(item.dataset.view)) {
@@ -251,7 +252,7 @@ function setupNavigation() {
                 updateExperimentVisibility();
 
                 // Auto-load experiment if switching to analysis view and none selected
-                await window.ensureExperimentLoaded();
+                await ensureExperimentLoaded();
 
                 window.renderPromptPicker();
                 if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();

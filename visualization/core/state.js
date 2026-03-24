@@ -493,7 +493,6 @@ function getVariantForCurrentPromptSet() {
     }
     return variants[0];
 }
-window.getVariantForCurrentPromptSet = getVariantForCurrentPromptSet;
 
 // =============================================================================
 // URL Routing
@@ -635,31 +634,11 @@ export {
     getVariantForCurrentPromptSet,
 };
 
-// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
+// Keep window.* for remaining consumers (HTML onclick handlers, cross-module access)
 window.state = state;
 window.getFilteredTraits = getFilteredTraits;
-window.isFeatureEnabled = isFeatureEnabled;
 window.initApp = init;
-
-// Preference setters (still used by non-migrated callers)
 window.setPromptSetSidebarOpen = setPromptSetSidebarOpen;
-
-// Top Spans
-window.setSpanWindowLength = setSpanWindowLength;
-window.setSpanScope = setSpanScope;
-window.setSpanMode = setSpanMode;
-window.setSpanPanelOpen = setSpanPanelOpen;
-window.setTraitHeatmapOpen = setTraitHeatmapOpen;
-window.setShowCuePOverlay = setShowCuePOverlay;
-window.setShowCategoryOverlay = setShowCategoryOverlay;
-
-// URL routing
-window.setTabInURL = setTabInURL;
-
-// Experiment loading
-window.ensureExperimentLoaded = ensureExperimentLoaded;
-
-// Model comparison
 window.updateAvailableComparisonModels = updateAvailableComparisonModels;
 window.toggleHiddenExperiments = toggleHiddenExperiments;
 

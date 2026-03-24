@@ -1,4 +1,6 @@
 import { fetchJSON, sortedNumericKeys } from '../core/utils.js';
+import { getChartColors } from '../core/display.js';
+import { buildChartLayout, renderChart } from '../core/charts.js';
 
 /**
  * Model Analysis View - Understanding model internals and comparing variants
@@ -366,7 +368,7 @@ function renderModelDiffLayerChart(allResults, comparison, {
     const chartDiv = document.getElementById(divId);
     if (!chartDiv) return;
 
-    const colors = window.getChartColors?.() || ['#4ecdc4', '#ff6b6b', '#ffe66d', '#95e1d3'];
+    const colors = getChartColors();
     const traces = [];
     let colorIdx = 0;
 
@@ -429,7 +431,7 @@ function renderModelDiffLayerChart(allResults, comparison, {
         ...(yaxisRange ? { range: yaxisRange } : {})
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -441,7 +443,7 @@ function renderModelDiffLayerChart(allResults, comparison, {
         ...(title ? { title } : {})
     });
 
-    window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
+    renderChart(chartDiv, traces, layout, { displayModeBar: true });
 }
 
 
@@ -513,7 +515,7 @@ function renderActivationMagnitudePlot(data) {
         const chartDiv = document.createElement('div');
         plotDiv.appendChild(chartDiv);
 
-        const colors = window.getChartColors();
+        const colors = getChartColors();
         const traces = [{
             x: layers,
             y: norms,
@@ -554,7 +556,7 @@ function renderActivationMagnitudePlot(data) {
         }
 
         const hasContribData = traces.length > 1;
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 250,
@@ -562,7 +564,7 @@ function renderActivationMagnitudePlot(data) {
             xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 5, showgrid: true },
             yaxis: { title: 'L2 norm', showgrid: true }
         });
-        window.renderChart(chartDiv, traces, layout);
+        renderChart(chartDiv, traces, layout);
     });
 }
 
@@ -593,12 +595,12 @@ function renderMassiveActivations(data) {
             type: 'scatter',
             mode: 'lines+markers',
             name: 'Mean Alignment',
-            line: { color: window.getChartColors()[0], width: 2 },
+            line: { color: getChartColors()[0], width: 2 },
             marker: { size: 4 },
             hovertemplate: 'L%{x}<br>Alignment: %{y:.1f}%<extra></extra>'
         };
 
-        const alignLayout = window.buildChartLayout({
+        const alignLayout = buildChartLayout({
             preset: 'layerChart',
             traces: [alignTrace],
             height: 200,
@@ -606,7 +608,7 @@ function renderMassiveActivations(data) {
             xaxis: { title: 'Layer', dtick: 5, showgrid: true },
             yaxis: { title: 'Mean Alignment (%)', range: [0, 100], showgrid: true }
         });
-        window.renderChart('mean-alignment-plot', [alignTrace], alignLayout);
+        renderChart('mean-alignment-plot', [alignTrace], alignLayout);
     });
 }
 
@@ -645,7 +647,7 @@ function renderMassiveDimsAcrossLayers(data) {
         container.appendChild(chartDiv);
 
         // Build traces
-        const colors = window.getChartColors();
+        const colors = getChartColors();
         const nLayers = Object.keys(topDimsByLayer).length;
         const layers = Array.from({ length: nLayers }, (_, i) => i);
 
@@ -663,7 +665,7 @@ function renderMassiveDimsAcrossLayers(data) {
             };
         });
 
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 300,
@@ -671,7 +673,7 @@ function renderMassiveDimsAcrossLayers(data) {
             xaxis: { title: 'Layer', dtick: 5, showgrid: true },
             yaxis: { title: 'Normalized Magnitude', showgrid: true }
         });
-        window.renderChart(chartDiv, traces, layout);
+        renderChart(chartDiv, traces, layout);
 
         // Setup dropdown change handler
         if (criteriaSelect && !criteriaSelect.dataset.bound) {
@@ -728,7 +730,7 @@ function renderInterLayerSimilarity(data) {
         const layers = sortedNumericKeys(consecutiveCosine);
         const similarities = layers.map(l => consecutiveCosine[l]);
 
-        const colors = window.getChartColors();
+        const colors = getChartColors();
         const traces = [{
             x: layers,
             y: similarities,
@@ -741,7 +743,7 @@ function renderInterLayerSimilarity(data) {
             customdata: layers.map(l => l + 1)
         }];
 
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 200,
@@ -749,7 +751,7 @@ function renderInterLayerSimilarity(data) {
             xaxis: { title: 'Layer', dtick: 5, showgrid: true },
             yaxis: { title: 'Cosine Similarity', showgrid: true }
         });
-        window.renderChart(plotDiv, traces, layout);
+        renderChart(plotDiv, traces, layout);
     });
 }
 

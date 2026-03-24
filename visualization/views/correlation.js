@@ -1,4 +1,6 @@
 import { fetchJSON } from '../core/utils.js';
+import { CORRELATION_COLORSCALE, getChartColors } from '../core/display.js';
+import { buildChartLayout, renderChart, buildHeatmapAnnotations } from '../core/charts.js';
 
 // Trait Correlation Section - Analyze relationships between trait projections
 //
@@ -139,7 +141,7 @@ function renderCorrelationHeatmap(offset) {
         x: trait_labels,
         y: trait_labels,
         type: 'heatmap',
-        colorscale: window.CORRELATION_COLORSCALE,
+        colorscale: CORRELATION_COLORSCALE,
         zmin: -1,
         zmax: 1,
         hoverongaps: false,
@@ -154,9 +156,9 @@ function renderCorrelationHeatmap(offset) {
     };
 
     // Add text annotations
-    const annotations = window.buildHeatmapAnnotations(displayMatrix, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
+    const annotations = buildHeatmapAnnotations(displayMatrix, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
         title: offset === 0 ? 'Token-Level Correlation (offset=0, symmetric)' :
@@ -174,7 +176,7 @@ function renderCorrelationHeatmap(offset) {
         margin: { l: 100, r: 80, t: 60, b: 100 }
     });
 
-    window.renderChart('correlation-heatmap', [trace], layout);
+    renderChart('correlation-heatmap', [trace], layout);
 }
 
 
@@ -183,7 +185,7 @@ function renderCorrelationDecay() {
     if (!data) return;
 
     const { trait_labels, correlations_by_offset, max_offset } = data;
-    const colors = window.getChartColors();
+    const colors = getChartColors();
     const traces = [];
 
     let colorIdx = 0;
@@ -214,7 +216,7 @@ function renderCorrelationDecay() {
         }
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'timeSeries',
         traces,
         height: 350,
@@ -224,7 +226,7 @@ function renderCorrelationDecay() {
         margin: { r: 150 }
     });
 
-    window.renderChart('correlation-decay-plot', traces, layout);
+    renderChart('correlation-decay-plot', traces, layout);
 }
 
 
@@ -239,7 +241,7 @@ function renderResponseCorrelation() {
         x: trait_labels,
         y: trait_labels,
         type: 'heatmap',
-        colorscale: window.CORRELATION_COLORSCALE,
+        colorscale: CORRELATION_COLORSCALE,
         zmin: -1,
         zmax: 1,
         hovertemplate: '%{y} ↔ %{x}<br>r = %{z:.3f}<extra></extra>',
@@ -250,9 +252,9 @@ function renderResponseCorrelation() {
         }
     };
 
-    const annotations = window.buildHeatmapAnnotations(response_correlation, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
+    const annotations = buildHeatmapAnnotations(response_correlation, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
         title: 'Response-Level Correlation (mean projection per response)',
@@ -262,7 +264,7 @@ function renderResponseCorrelation() {
         margin: { l: 100, r: 80, t: 60, b: 100 }
     });
 
-    window.renderChart('response-correlation-heatmap', [trace], layout);
+    renderChart('response-correlation-heatmap', [trace], layout);
 }
 
 

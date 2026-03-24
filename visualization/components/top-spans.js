@@ -6,6 +6,9 @@
  * Dependencies: state.js, paths.js, utils.js (fetchJSON)
  */
 
+import { getDisplayName } from '../core/display.js';
+import { setSpanWindowLength, setSpanScope, setSpanMode, setSpanPanelOpen, getVariantForCurrentPromptSet } from '../core/state.js';
+
 // Module-local cache: keyed by `${promptSet}:${organism}:${trait}:${modeKey}`
 const crossPromptSpansCache = {};
 let crossPromptLoading = false;
@@ -54,7 +57,7 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         mainPromptSet = promptSet;
         compPromptSet = `${promptSet}_replay_${selectedOrg}`;
     } else {
-        mainVariant = window.getVariantForCurrentPromptSet();
+        mainVariant = getVariantForCurrentPromptSet();
         compVariant = compareModel;
         mainPromptSet = promptSet;
         compPromptSet = promptSet;
@@ -281,9 +284,9 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         : computeTopSpans(diffValues, responseTokens, windowLength));
 
     // Get display name for trait
-    const getDisplayName = (key) => {
+    const traitDisplayName = (key) => {
         const baseTrait = traitData[key]?.metadata?._baseTrait || key;
-        return window.getDisplayName ? window.getDisplayName(baseTrait) : baseTrait;
+        return getDisplayName(baseTrait);
     };
 
     container.innerHTML = `
@@ -299,7 +302,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                     <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
                     <select id="span-trait-select" style="font-size: var(--text-xs);">
                         ${diffTraitKeys.map(k => `
-                            <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${getDisplayName(k)}</option>
+                            <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${traitDisplayName(k)}</option>
                         `).join('')}
                     </select>
                     ${ui.renderFilterChip('window', 'Window', spanMode, 'span-mode')}
@@ -326,7 +329,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     const toggle = document.getElementById('top-spans-toggle');
     if (toggle) {
         toggle.addEventListener('click', () => {
-            window.setSpanPanelOpen(!window.state.spanPanelOpen);
+            setSpanPanelOpen(!window.state.spanPanelOpen);
             renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
         });
     }
@@ -345,7 +348,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
             slider.addEventListener('input', () => {
                 const val = parseInt(slider.value);
                 document.getElementById('span-window-label').textContent = val + ' tok';
-                window.setSpanWindowLength(val);
+                setSpanWindowLength(val);
                 // Recompute spans without full re-render (use pre-normalized values from chart)
                 const sliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
                 const newSpans = computeTopSpans(sliderValues, responseTokens, val);
@@ -361,7 +364,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         // Scope toggle
         document.querySelectorAll('[data-span-scope]').forEach(chip => {
             chip.addEventListener('click', () => {
-                window.setSpanScope(chip.dataset.spanScope);
+                setSpanScope(chip.dataset.spanScope);
                 renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
             });
         });
@@ -369,7 +372,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         // Span mode toggle (Window/Clauses)
         document.querySelectorAll('[data-span-mode]').forEach(chip => {
             chip.addEventListener('click', () => {
-                window.setSpanMode(chip.dataset.spanMode);
+                setSpanMode(chip.dataset.spanMode);
                 renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
             });
         });

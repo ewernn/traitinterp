@@ -5,6 +5,7 @@
 import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
 import { getDisplayName, getChartColors, getCssVar } from '../../core/display.js';
 import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes } from '../../core/charts.js';
+import { setShowCuePOverlay, setShowCategoryOverlay } from '../../core/state.js';
 
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
@@ -499,11 +500,11 @@ function renderTrajectoryChart(renderCtx) {
 
             const cuePToggle = document.getElementById('cue-p-overlay-toggle');
             if (cuePToggle) {
-                cuePToggle.addEventListener('change', () => window.setShowCuePOverlay(cuePToggle.checked));
+                cuePToggle.addEventListener('change', () => setShowCuePOverlay(cuePToggle.checked));
             }
             const catToggle = document.getElementById('category-overlay-toggle');
             if (catToggle) {
-                catToggle.addEventListener('change', () => window.setShowCategoryOverlay(catToggle.checked));
+                catToggle.addEventListener('change', () => setShowCategoryOverlay(catToggle.checked));
             }
         } else {
             overlayControlsDiv.innerHTML = '';
