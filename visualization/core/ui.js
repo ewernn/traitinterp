@@ -3,7 +3,7 @@
  * Pure functions that return HTML strings.
  *
  * Usage:
- *   import { renderToggle, setLoading } from './ui.js';
+ *   import { renderToggle } from './ui.js';
  */
 
 import { escapeHtml } from './utils.js';
@@ -102,25 +102,6 @@ function renderChip({ label, active, dataAttr, className, onClick }) {
     return `<button class="btn btn-xs ${className || ''} ${activeClass}" ${dataHtml} ${onClickHtml}>${label}</button>`;
 }
 
-/**
- * Render a group of chip buttons.
- * @param {Object} options
- * @param {Array<string|{value: string, label?: string}>} options.items - Items to render
- * @param {string|Set<string>} [options.selected] - Selected value(s)
- * @param {string} options.dataKey - Data attribute key for each chip
- * @param {string} [options.className] - Additional CSS class for each chip
- * @param {boolean} [options.multi=false] - Allow multiple selection
- * @returns {string} HTML string
- */
-function renderChipGroup({ items, selected, dataKey, className, multi = false }) {
-    return items.map(item => {
-        const value = typeof item === 'string' ? item : item.value;
-        const label = typeof item === 'string' ? item : (item.label || item.value);
-        const active = multi ? selected?.has(value) : selected === value;
-        return renderChip({ label, active, dataAttr: { key: dataKey, value }, className });
-    }).join('');
-}
-
 // === Tables ===
 
 /**
@@ -142,40 +123,6 @@ function renderSortableHeader({ key, label, sortKey, sortDir }) {
     `;
 }
 
-/**
- * Sort an array of objects by a key.
- * @param {Array<Object>} data - Data to sort
- * @param {string} key - Property key to sort by
- * @param {'asc'|'desc'} dir - Sort direction
- * @returns {Array<Object>} Sorted copy of data
- */
-function sortData(data, key, dir) {
-    return [...data].sort((a, b) => {
-        const aVal = a[key] ?? 0;
-        const bVal = b[key] ?? 0;
-        if (typeof aVal === 'string') {
-            return dir === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
-        }
-        return dir === 'desc' ? bVal - aVal : aVal - bVal;
-    });
-}
-
-/**
- * Handle click on sortable table header.
- * Updates state.sortKey and state.sortDir, then calls rerender.
- * @param {Event} e - Click event
- * @param {{sortKey?: string, sortDir?: string}} state - State object to update
- * @param {Function} rerender - Callback to re-render the table
- */
-function handleSortClick(e, state, rerender) {
-    const th = e.target.closest('.sortable');
-    if (!th) return;
-    const key = th.dataset.sort;
-    state.sortDir = (state.sortKey === key && state.sortDir === 'desc') ? 'asc' : 'desc';
-    state.sortKey = key;
-    rerender();
-}
-
 // === States ===
 
 /**
@@ -185,28 +132,6 @@ function handleSortClick(e, state, rerender) {
  */
 function renderLoading(message = 'Loading...') {
     return `<div class="loading">${message}</div>`;
-}
-
-/**
- * Set loading state on an element.
- * @param {string|HTMLElement} elementOrId - Element or ID
- * @param {string} [message='Loading...'] - Loading message
- */
-function setLoading(elementOrId, message = 'Loading...') {
-    const el = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
-    if (el) el.innerHTML = renderLoading(message);
-}
-
-/**
- * Render an error message.
- * @param {string} message - Error message
- * @param {string} [details] - Additional details (will be escaped)
- * @returns {string} HTML string
- */
-function renderError(message, details) {
-    const escape = escapeHtml;
-    const detailsHtml = details ? `<div class="error-details">${escape(details)}</div>` : '';
-    return `<div class="error">${escape(message)}${detailsHtml}</div>`;
 }
 
 // === Guards & States ===
@@ -299,13 +224,8 @@ export {
     renderSelect,
     renderToggle,
     renderChip,
-    renderChipGroup,
     renderSortableHeader,
-    sortData,
-    handleSortClick,
     renderLoading,
-    setLoading,
-    renderError,
     requireExperiment,
     deferredLoading,
     renderRunHint,
@@ -314,23 +234,3 @@ export {
     scoreClass,
 };
 
-// Keep window.ui namespace for backward compat
-window.ui = {
-    renderSubsection,
-    renderSelect,
-    renderToggle,
-    renderChip,
-    renderChipGroup,
-    renderSortableHeader,
-    sortData,
-    handleSortClick,
-    renderLoading,
-    setLoading,
-    renderError,
-    requireExperiment,
-    deferredLoading,
-    renderRunHint,
-    renderFilterChip,
-    renderFilterChipRow,
-    scoreClass,
-};

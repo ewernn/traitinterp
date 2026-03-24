@@ -202,7 +202,7 @@ function updateChart(divId, traces, layout, configOverrides = {}) {
 function createHtmlLegend(traces, plotDiv, options = {}) {
     const { tooltips = [], hoverHighlight = false } = options;
     const legend = document.createElement('div');
-    legend.className = 'chart-legend';
+    legend.className = 'chart-legend-interactive';
 
     // Track hidden state for hover highlight
     const hiddenTraces = new Set();
@@ -211,8 +211,7 @@ function createHtmlLegend(traces, plotDiv, options = {}) {
         if (trace.showlegend === false) return;
 
         const item = document.createElement('span');
-        item.className = 'legend-item';
-        item.style.cursor = 'pointer';
+        item.className = 'legend-item-interactive';
         if (trace.visible === 'legendonly') {
             item.classList.add('legend-item-hidden');
             hiddenTraces.add(index);
@@ -511,22 +510,5 @@ export {
     buildTurnBoundaryShapes,
     buildOverlayShapes,
     buildCategoryLegendHtml,
-    buildSentenceBoundaryShapes,
-    buildSentenceCategoryShapes,
 };
 
-// Keep window.* for backward compat
-window.PLOTLY_CONFIG = PLOTLY_CONFIG;
-window.CHART_PRESETS = CHART_PRESETS;
-window.SENTENCE_CATEGORIES = SENTENCE_CATEGORIES;
-window.buildChartLayout = buildChartLayout;
-window.createSeparatorShape = createSeparatorShape;
-window.createHighlightShape = createHighlightShape;
-window.renderChart = renderChart;
-window.updateChart = updateChart;
-window.createHtmlLegend = createHtmlLegend;
-window.attachTokenClickHandler = attachTokenClickHandler;
-window.buildHeatmapAnnotations = buildHeatmapAnnotations;
-window.buildTurnBoundaryShapes = buildTurnBoundaryShapes;
-window.buildOverlayShapes = buildOverlayShapes;
-window.buildCategoryLegendHtml = buildCategoryLegendHtml;

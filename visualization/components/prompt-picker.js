@@ -7,8 +7,7 @@
  * - Token slider with highlighted text display
  */
 
-import { getCssVar } from '../core/display.js';
-import { getTokenHighlightColors } from '../core/display.js';
+import { getCssVar, getTokenHighlightColors } from '../core/display.js';
 import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
 
 // Views that show the prompt picker
@@ -596,11 +595,7 @@ export {
     updatePlotTokenHighlights,
     preloadTagsForSet,
     selectPromptSet,
-    renderPromptSetSidebar,
 };
-
-// Keep window.* for backward compat
-window.INFERENCE_VIEWS = INFERENCE_VIEWS;
 
 // =============================================================================
 // Shared: Prompt Set Selection
@@ -643,8 +638,5 @@ function selectPromptSet(newSet) {
     if (window.renderView) window.renderView();
 }
 
+// Keep window.* for remaining consumers (cross-module access during migration)
 window.renderPromptPicker = renderPromptPicker;
-window.fetchPromptPickerData = fetchPromptPickerData;
-window.updatePlotTokenHighlights = updatePlotTokenHighlights;
-window.preloadTagsForSet = preloadTagsForSet;
-window.selectPromptSet = selectPromptSet;

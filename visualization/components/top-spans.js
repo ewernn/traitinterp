@@ -131,7 +131,7 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         // Progress update
         const loaded = Math.min(b + batchSize, promptIds.length);
         if (resultsDiv) {
-            resultsDiv.innerHTML = `<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading ${loaded}/${promptIds.length} prompts...</div>`;
+            resultsDiv.innerHTML = `<div class="hint">Loading ${loaded}/${promptIds.length} prompts...</div>`;
         }
     }
 
@@ -291,7 +291,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
             <div class="dropdown-header" id="top-spans-toggle">
                 <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
                 <span class="dropdown-label">Top Spans</span>
-                <span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: auto;">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
+                <span class="dropdown-header-trail">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
             </div>
             ${isOpen ? `
             <div class="dropdown-body" style="padding: 8px;">
@@ -314,8 +314,8 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                 </div>
                 <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
                     ${isAllPrompts
-                        ? '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading cross-prompt spans...</div>'
-                        : (spans.length > 0 ? spans.map((s, i) => renderSpanRow(s, i)).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
+                        ? '<div class="hint">Loading cross-prompt spans...</div>'
+                        : (spans.length > 0 ? spans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>')}
                 </div>
             </div>
             ` : ''}
@@ -351,7 +351,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                 const newSpans = computeTopSpans(sliderValues, responseTokens, val);
                 const resultsDiv = document.getElementById('top-spans-results');
                 if (resultsDiv) {
-                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => renderSpanRow(s, i)).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>';
+                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>';
                     // Re-attach click handlers
                     attachSpanClickHandlers(nPromptTokens);
                 }
@@ -411,7 +411,7 @@ function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
     if (!resultsDiv) return;
 
     const header = totalPrompts
-        ? `<div style="color: var(--text-tertiary); font-size: var(--text-xs); margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
+        ? `<div class="hint" style="margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
         : '';
 
     resultsDiv.innerHTML = header + (spans.length > 0 ? spans.map((s, i) => `
@@ -421,7 +421,7 @@ function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
             <span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
             <span class="span-text">${(s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
         </div>
-    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found across prompts</div>');
+    `).join('') : '<div class="hint">No spans found across prompts</div>');
 
     // Click handlers: navigate to prompt + highlight
     document.querySelectorAll('.span-result[data-prompt-id]').forEach(row => {

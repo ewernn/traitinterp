@@ -119,6 +119,3 @@ async function renderMarkdownView(url, opts = {}) {
 // ES module exports
 export { renderMarkdownContent, renderMarkdownView };
 
-// Keep window.* for backward compat
-window.renderMarkdownContent = renderMarkdownContent;
-window.renderMarkdownView = renderMarkdownView;

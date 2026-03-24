@@ -446,7 +446,6 @@ function setSelectedSteeringEntry(entry) { selectedSteeringEntry = entry; }
 
 export {
     renderSweepData, renderTraitPicker,
-    convertResultsToSweepFormat, updateSweepVisualizations,
-    renderSweepHeatmap, renderSweepTable,
+    updateSweepVisualizations,
     resetHeatmapState, getSelectedSteeringEntry, setSelectedSteeringEntry
 };

@@ -223,15 +223,12 @@ export {
     getPlotlyLayout,
 };
 
-// Keep window.* for backward compat
-window.DISPLAY_NAMES = DISPLAY_NAMES;
+// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
 window.getDisplayName = getDisplayName;
 window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;
 window.DELTA_COLORSCALE = DELTA_COLORSCALE;
 window.CORRELATION_COLORSCALE = CORRELATION_COLORSCALE;
 window.getCssVar = getCssVar;
-window.hexToRgba = hexToRgba;
 window.getTokenHighlightColors = getTokenHighlightColors;
 window.getChartColors = getChartColors;
 window.getMethodColors = getMethodColors;
-window.getPlotlyLayout = getPlotlyLayout;

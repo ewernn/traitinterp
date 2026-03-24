@@ -158,15 +158,15 @@ function renderTrajectoryChart(renderCtx) {
     let compareInfoHtml = '';
     if (showingDiff && isReplaySuffix) {
         const organismName = window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0] || 'organism';
-        compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: 500;">
             Showing DIFF: ${organismName} \u2212 instruct replay
            </div>`;
     } else if (showingDiff) {
-        compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: 500;">
             Showing DIFF: ${compareModelName} \u2212 application model
            </div>`;
     } else if (showingCompModel) {
-        compareInfoHtml = `<div class="page-intro-text" style="color: var(--color-accent); font-weight: 500;">
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: 500;">
             Showing: ${compareModelName} (comparison model)
            </div>`;
     }
@@ -521,4 +521,4 @@ function renderTrajectoryChart(renderCtx) {
     return { traitActivations, filteredByMethod, tickVals, tickText, displayTokens };
 }
 
-export { START_TOKEN_IDX, buildCommonShapes, buildCuePLegendHtml, renderCuePPlot, renderTrajectoryChart };
+export { START_TOKEN_IDX, buildCommonShapes, renderTrajectoryChart };

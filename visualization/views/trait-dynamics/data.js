@@ -249,8 +249,6 @@ function processTraitProjectionData(projectionResults, responseData) {
 }
 
 export {
-    extractCompProjection,
-    computeProjectionDiff,
     loadComparisonProjections,
     fetchLayerSensitivityData,
     processTraitProjectionData

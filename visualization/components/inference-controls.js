@@ -82,11 +82,9 @@ async function warmupModal() {
 
         if (data.status === 'ready') {
             modalConnectionState = 'connected';
-            console.log('[LiveChat] Modal connected:', data);
         } else if (data.status === 'skipped') {
             // Server says skip modal (INFERENCE_MODE=local on server)
             modalConnectionState = 'connected';
-            console.log('[LiveChat] Server skipped warmup:', data.reason);
         } else {
             modalConnectionState = 'error';
             console.error('[LiveChat] Warmup failed:', data);

@@ -4,6 +4,19 @@
 
 import { getDisplayName } from '../../core/display.js';
 import { setupSubsectionInfoToggles } from '../../components/sidebar.js';
+import {
+    setSmoothing,
+    setSmoothingWindow,
+    setProjectionCentered,
+    setProjectionMode,
+    setMassiveDimsCleaning,
+    setLayerMode,
+    setLayerModeTrait,
+    setCompareMode,
+    toggleMethod,
+    setWideMode,
+    setShowVelocity,
+} from '../../core/state.js';
 
 // =============================================================================
 // Helpers
@@ -177,42 +190,42 @@ function attachControlListeners(allFilteredTraits) {
     const availableModels = window.state.availableComparisonModels || [];
 
     bindChange('smoothing-toggle', () => {
-        window.setSmoothing(document.getElementById('smoothing-toggle').checked);
+        setSmoothing(document.getElementById('smoothing-toggle').checked);
     });
     bindChange('smoothing-window-select', () => {
-        window.setSmoothingWindow(parseInt(document.getElementById('smoothing-window-select').value));
+        setSmoothingWindow(parseInt(document.getElementById('smoothing-window-select').value));
     });
     bindChange('projection-centered-toggle', () => {
-        window.setProjectionCentered(document.getElementById('projection-centered-toggle').checked);
+        setProjectionCentered(document.getElementById('projection-centered-toggle').checked);
     });
     bindChange('massive-dims-cleaning-select', () => {
-        window.setMassiveDimsCleaning(document.getElementById('massive-dims-cleaning-select').value);
+        setMassiveDimsCleaning(document.getElementById('massive-dims-cleaning-select').value);
     });
     document.querySelectorAll('.method-filter input').forEach(cb => {
         cb.addEventListener('change', () => {
-            window.toggleMethod(cb.dataset.method);
+            toggleMethod(cb.dataset.method);
         });
     });
     bindChange('projection-mode-select', () => {
-        window.setProjectionMode(document.getElementById('projection-mode-select').value);
+        setProjectionMode(document.getElementById('projection-mode-select').value);
     });
     bindChange('velocity-toggle', () => {
-        window.setShowVelocity(document.getElementById('velocity-toggle').checked);
+        setShowVelocity(document.getElementById('velocity-toggle').checked);
     });
     // Compare mode toggle (Main/Diff chips)
     document.querySelectorAll('[data-compare-mode]').forEach(chip => {
         chip.addEventListener('click', () => {
             const mode = chip.dataset.compareMode;
             if (mode === 'main') {
-                window.setCompareMode('main');
+                setCompareMode('main');
             } else {
                 if (isReplaySuffix) {
-                    window.setCompareMode('diff:replay');
+                    setCompareMode('diff:replay');
                 } else {
                     const variant = (window.state.lastCompareVariant && availableModels.includes(window.state.lastCompareVariant))
                         ? window.state.lastCompareVariant
                         : availableModels[0];
-                    if (variant) window.setCompareMode('diff:' + variant);
+                    if (variant) setCompareMode('diff:' + variant);
                 }
             }
         });
@@ -224,17 +237,17 @@ function attachControlListeners(allFilteredTraits) {
         if (isReplaySuffix) {
             if (window.renderView) window.renderView();
         } else {
-            window.setCompareMode('diff:' + val);
+            setCompareMode('diff:' + val);
         }
     });
     bindChange('layer-mode-toggle', () => {
-        window.setLayerMode(document.getElementById('layer-mode-toggle').checked);
+        setLayerMode(document.getElementById('layer-mode-toggle').checked);
     });
     bindChange('layer-mode-trait-select', () => {
-        window.setLayerModeTrait(document.getElementById('layer-mode-trait-select').value);
+        setLayerModeTrait(document.getElementById('layer-mode-trait-select').value);
     });
     bindChange('wide-mode-toggle', () => {
-        window.setWideMode(document.getElementById('wide-mode-toggle').checked);
+        setWideMode(document.getElementById('wide-mode-toggle').checked);
     });
 }
 
@@ -247,4 +260,4 @@ function renderPageShell(contentArea, allFilteredTraits) {
     attachControlListeners(allFilteredTraits);
 }
 
-export { bindChange, buildControlBarHtml, buildPageShellHtml, attachControlListeners, renderPageShell };
+export { renderPageShell };

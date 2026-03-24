@@ -277,20 +277,6 @@ export {
     initMarkedOptions,
 };
 
-// Keep window.* for backward compat (HTML onclick, router, cross-module access during migration)
-window.fetchJSON = fetchJSON;
-window.cachedFetchJSON = cachedFetchJSON;
+// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
 window.escapeHtml = escapeHtml;
-window.protectMathBlocks = protectMathBlocks;
-window.restoreMathBlocks = restoreMathBlocks;
-window.smoothData = smoothData;
 window.formatTokenDisplay = formatTokenDisplay;
-window.showError = showError;
-window.renderMath = renderMath;
-window.computeVelocity = computeVelocity;
-window.getDimsToRemove = getDimsToRemove;
-window.applyMassiveDimCleaning = applyMassiveDimCleaning;
-window.computeCleanedNorms = computeCleanedNorms;
-window.sortedNumericKeys = sortedNumericKeys;
-window.parseFrontmatter = parseFrontmatter;
-window.initMarkedOptions = initMarkedOptions;

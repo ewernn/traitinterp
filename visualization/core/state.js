@@ -43,7 +43,6 @@ const state = {
     // Cached inference context (prompt/response text for current selection)
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
-    hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
     // Projection normalization mode
     smoothingEnabled: true,  // Apply moving average
     smoothingWindow: 5,      // Moving average window size (tokens)
@@ -130,8 +129,6 @@ const PREFERENCES = [
     { key: 'showCuePOverlay',     stateKey: 'showCuePOverlay',     type: 'bool',   default: true,  onSet: renderView },
     { key: 'showCategoryOverlay', stateKey: 'showCategoryOverlay', type: 'bool',   default: false, onSet: renderView },
     { key: 'showVelocity',        stateKey: 'showVelocity',        type: 'bool',   default: false, onSet: renderView },
-    // Attention sink
-    { key: 'hideAttentionSink',   stateKey: 'hideAttentionSink',   type: 'bool',   default: false, onSet: renderView },
 ];
 
 /** Read a preference from localStorage into state */
@@ -178,7 +175,6 @@ function setProjectionMode(mode) { setPreference('projectionMode', mode); }
 function setMassiveDimsCleaning(mode) { setPreference('massiveDimsCleaning', mode); }
 function setLayerMode(enabled) { setPreference('layerMode', enabled); }
 function setPromptSetSidebarOpen(open) { setPreference('promptSetSidebarOpen', open); }
-function setHideAttentionSink(hide) { setPreference('hideAttentionSink', hide); }
 function setSpanWindowLength(length) { setPreference('spanWindowLength', length); }
 function setSpanScope(scope) { setPreference('spanScope', scope); }
 function setSpanMode(mode) { setPreference('spanMode', mode); }
@@ -251,7 +247,6 @@ async function loadAppConfig() {
     try {
         const response = await fetch('/api/config');
         state.appConfig = await response.json();
-        console.log('[State] App config loaded:', state.appConfig);
     } catch (e) {
         console.error('[State] Failed to load app config:', e);
         // Default to development mode
@@ -621,7 +616,6 @@ export {
     setLayerModeTrait,
     setPromptSetSidebarOpen,
     setCompareMode,
-    setHideAttentionSink,
     toggleMethod,
     setSpanWindowLength,
     setSpanScope,
@@ -641,26 +635,14 @@ export {
     getVariantForCurrentPromptSet,
 };
 
-// Keep window.* for backward compat (router, onclick handlers, cross-module)
+// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
 window.state = state;
-window.ANALYSIS_VIEWS = ANALYSIS_VIEWS;
 window.getFilteredTraits = getFilteredTraits;
 window.isFeatureEnabled = isFeatureEnabled;
 window.initApp = init;
 
-// Preference setters
-window.setWideMode = setWideMode;
-window.setSmoothing = setSmoothing;
-window.setSmoothingWindow = setSmoothingWindow;
-window.setProjectionCentered = setProjectionCentered;
-window.setProjectionMode = setProjectionMode;
-window.setMassiveDimsCleaning = setMassiveDimsCleaning;
-window.setLayerMode = setLayerMode;
-window.setLayerModeTrait = setLayerModeTrait;
+// Preference setters (still used by non-migrated callers)
 window.setPromptSetSidebarOpen = setPromptSetSidebarOpen;
-window.setCompareMode = setCompareMode;
-window.setHideAttentionSink = setHideAttentionSink;
-window.toggleMethod = toggleMethod;
 
 // Top Spans
 window.setSpanWindowLength = setSpanWindowLength;
@@ -670,16 +652,11 @@ window.setSpanPanelOpen = setSpanPanelOpen;
 window.setTraitHeatmapOpen = setTraitHeatmapOpen;
 window.setShowCuePOverlay = setShowCuePOverlay;
 window.setShowCategoryOverlay = setShowCategoryOverlay;
-window.setShowVelocity = setShowVelocity;
 
 // URL routing
 window.setTabInURL = setTabInURL;
-window.setExperimentInURL = setExperimentInURL;
-window.getTabFromURL = getTabFromURL;
-window.getExperimentFromURL = getExperimentFromURL;
 
 // Experiment loading
-window.loadExperimentData = loadExperimentData;
 window.ensureExperimentLoaded = ensureExperimentLoaded;
 
 // Model comparison
@@ -704,7 +681,6 @@ const LOCAL_STORAGE_KEYS = [
     'projectionMode',
     'massiveDimsCleaning',
     'compareMode',
-    'hideAttentionSink',
     'selectedMethods',
     'layerMode',
     'lastCompareVariant',
@@ -754,4 +730,3 @@ function resetLocalStorage() {
 
 // Keep window.* for backward compat (onclick in index.html)
 window.resetLocalStorage = resetLocalStorage;
-window.LOCAL_STORAGE_KEYS = LOCAL_STORAGE_KEYS;

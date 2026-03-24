@@ -467,13 +467,10 @@ export {
     renderExperimentList,
 };
 
-// Keep window.* for backward compat
+// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
 window.initTheme = initTheme;
-window.toggleTheme = toggleTheme;
 window.populateTraitCheckboxes = populateTraitCheckboxes;
-window.toggleAllTraits = toggleAllTraits;
 window.setupNavigation = setupNavigation;
-window.updatePageTitle = updatePageTitle;
 window.updateExperimentVisibility = updateExperimentVisibility;
 window.setupSubsectionInfoToggles = setupSubsectionInfoToggles;
 window.setupSidebarEventListeners = setupSidebarEventListeners;

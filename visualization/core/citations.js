@@ -25,8 +25,6 @@ function extractReferences(markdown) {
     // Find ## References section (case insensitive, captures to end or next section)
     // Greedy match - References is typically at the end of the document
     const refsMatch = markdown.match(/^##\s+References\s*\n([\s\S]+)/mi);
-    console.log('[citations] extractReferences called, found refs section:', !!refsMatch);
-
     if (!refsMatch) {
         return { markdown, refs };
     }

@@ -346,4 +346,4 @@ function resetBestVectorState() {
     localTraitResultsCache = {};
 }
 
-export { renderBestVectorPerLayer, fetchResponseCountsInBackground, updateResponseCountHint, getBaseTraitName, getElicitationLabel, resetBestVectorState };
+export { renderBestVectorPerLayer, resetBestVectorState };

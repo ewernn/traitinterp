@@ -652,7 +652,6 @@ export {
 // Keep window.* for onclick handlers in generated HTML + router
 window.startEdit = startEdit;
 window.navigateBranch = navigateBranch;
-window.handleMessageHover = handleMessageHover;
 window.setSteeringCoefficient = setSteeringCoefficient;
 window.toggleInferenceMode = toggleInferenceMode;
 window.renderLiveChat = renderLiveChat;
