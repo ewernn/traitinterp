@@ -112,9 +112,12 @@ async function renderResponseBrowserForTrait(trait) {
 
     // Initialize state for this trait
     if (!responseBrowserState[trait]) {
+        // Default sort direction: descending for positive steering, ascending for negative
+        const predominantlyNegative = runsWithResponses.length > 0 &&
+            runsWithResponses.filter(r => r.coef < 0).length > runsWithResponses.filter(r => r.coef > 0).length;
         responseBrowserState[trait] = {
             sortKey: 'traitScore',
-            sortDir: 'desc',
+            sortDir: predominantlyNegative ? 'asc' : 'desc',
             layerFilter: new Set(), // empty = show all
             expandedRow: null,
             bestPerLayer: true, // Show only best run per layer (default on)
@@ -195,12 +198,12 @@ async function renderResponseBrowserForTrait(trait) {
         runs = runs.filter(r => state.layerFilter.has(r.layer));
     }
 
-    // Best per layer filter: keep only highest trait score per layer (with coherence >= threshold)
+    // Best per layer filter: keep run with most extreme trait score per layer (with coherence >= threshold)
     if (state.bestPerLayer) {
         const bestByLayer = {};
         for (const run of runs) {
             if (run.coherence < coherenceThreshold) continue;
-            if (!bestByLayer[run.layer] || run.traitScore > bestByLayer[run.layer].traitScore) {
+            if (!bestByLayer[run.layer] || Math.abs(run.traitScore) > Math.abs(bestByLayer[run.layer].traitScore)) {
                 bestByLayer[run.layer] = run;
             }
         }
