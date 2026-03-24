@@ -4,7 +4,7 @@ Extraction pipeline: scenarios → responses → activations → vectors.
 
 Stages (use --only-stage 3,4 to run specific stages):
     1: generate          --rollouts, --temperature      Model generates responses
-    2: vet responses     --no-vet-responses to skip     LLM judge checks quality
+    2: vet responses     --vet-responses to enable       LLM judge checks quality (off by default)
   3+4: extract vectors   --methods, --layers             Forward pass → trait vectors
     6: evaluate                                          Quality metrics on held-out
 
@@ -288,7 +288,7 @@ def main():
     parser.add_argument("--max-new-tokens", type=int, default=None)
 
     # Vetting
-    parser.add_argument("--no-vet-responses", action="store_true", help="Skip response quality vetting")
+    parser.add_argument("--vet-responses", action="store_true", help="Enable response quality vetting (off by default)")
     parser.add_argument("--pos-threshold", type=int, default=60)
     parser.add_argument("--neg-threshold", type=int, default=40)
     parser.add_argument("--max-concurrent", type=int, default=100)
@@ -344,7 +344,7 @@ def main():
         rollouts=args.rollouts,
         temperature=args.temperature,
         max_new_tokens=args.max_new_tokens,
-        vet_responses=not args.no_vet_responses,
+        vet_responses=args.vet_responses,
         pos_threshold=args.pos_threshold,
         neg_threshold=args.neg_threshold,
         max_concurrent=args.max_concurrent,
