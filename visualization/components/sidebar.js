@@ -4,7 +4,7 @@
  * Depends on: state.js (window.state), display.js (getDisplayName)
  */
 
-import { ANALYSIS_VIEWS, setTabInURL, setExperimentInURL, ensureExperimentLoaded } from '../core/state.js';
+import { ANALYSIS_VIEWS, setTabInURL, setExperimentInURL, ensureExperimentLoaded, loadExperimentData } from '../core/state.js';
 import { getDisplayName } from '../core/display.js';
 
 // =============================================================================
@@ -433,7 +433,7 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
             item.classList.add('active');
             window.state.currentExperiment = item.dataset.experiment;
             setExperimentInURL(window.state.currentExperiment);
-            await window.loadExperimentData(window.state.currentExperiment);
+            await loadExperimentData(window.state.currentExperiment);
             window.renderPromptPicker();
             if (window.renderView) window.renderView();
         });
