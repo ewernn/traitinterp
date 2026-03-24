@@ -28,14 +28,8 @@ async function renderCorrelationSection(containerId, promptSet) {
     // Load pre-computed correlation data
     const dataFile = `/experiments/${window.state.currentExperiment}/analysis/trait_correlation/${promptSet.replace('/', '_')}.json`;
 
-    let data;
-    try {
-        const response = await fetch(dataFile);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        data = await response.json();
-    } catch (e) {
-        return false;
-    }
+    const data = await fetchJSON(dataFile);
+    if (!data) return false;
 
     // Store for slider updates
     traitCorrelationData = data;

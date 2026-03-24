@@ -1,3 +1,5 @@
+import { fetchJSON } from './utils.js';
+
 /**
  * Annotation utilities for converting text spans to character ranges.
  *
@@ -173,19 +175,15 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
         return _annotationCache.data;
     }
 
-    // Try the specified variant first, then all other variants that have data
+    // Try the specified variant first, then other variants
     const variants = [modelVariant, ...(window.state.variantsPerPromptSet?.[promptSet] || []).filter(v => v !== modelVariant)];
 
     for (const variant of variants) {
         const url = `/experiments/${experiment}/inference/${variant}/responses/${promptSet}_annotations.json`;
-        try {
-            const response = await fetch(url);
-            if (!response.ok) continue;
-            const data = await response.json();
+        const data = await fetchJSON(url);
+        if (data) {
             _annotationCache = { key: cacheKey, data };
             return data;
-        } catch (e) {
-            continue;
         }
     }
 
@@ -233,19 +231,9 @@ async function fetchSentenceAnnotations(experiment) {
     }
 
     const url = `/experiments/${experiment}/analysis/thought_branches/sentence_annotations.json`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            _sentenceAnnotationCache = { key: cacheKey, data: null };
-            return null;
-        }
-        const data = await response.json();
-        _sentenceAnnotationCache = { key: cacheKey, data };
-        return data;
-    } catch (e) {
-        _sentenceAnnotationCache = { key: cacheKey, data: null };
-        return null;
-    }
+    const data = await fetchJSON(url);
+    _sentenceAnnotationCache = { key: cacheKey, data };
+    return data;
 }
 
 /**

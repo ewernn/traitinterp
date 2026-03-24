@@ -570,10 +570,8 @@ async function preloadTagsForSet(promptSet) {
     const tagsUrl = `/experiments/${window.state.currentExperiment}/inference/${modelVariant}/responses/${promptSet}/_tags.json`;
 
     try {
-        const response = await fetch(tagsUrl);
-        if (!response.ok) return;
-
-        const tagsIndex = await response.json();
+        const tagsIndex = await fetchJSON(tagsUrl);
+        if (!tagsIndex) return;
 
         // Populate cache with all tags from index
         for (const [promptId, tags] of Object.entries(tagsIndex)) {
