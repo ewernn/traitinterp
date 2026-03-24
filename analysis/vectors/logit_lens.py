@@ -20,7 +20,7 @@ import json
 import torch
 
 from utils.logit_lens import vector_to_vocab, build_common_token_mask
-from utils.model import load_model
+from utils.model import load_model_with_lora
 from utils.vector_selection import select_vector
 from utils.vectors import load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits, get_model_variant
@@ -113,7 +113,7 @@ def main():
     model_name = variant.model
     lora = variant.lora
 
-    model, tokenizer = load_model(model_name, lora=lora)
+    model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora)
     model.eval()
 
     # Build common token mask if requested

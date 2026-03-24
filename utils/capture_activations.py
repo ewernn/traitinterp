@@ -22,7 +22,7 @@ from core import MultiLayerCapture
 from utils.paths import (
     get as get_path, get_model_variant, load_experiment_config,
 )
-from utils.model import load_model_with_lora, get_inner_model, tokenize, pad_sequences
+from utils.model import get_inner_model, tokenize, pad_sequences
 from utils.distributed import is_tp_mode, is_rank_zero
 from utils.vram import calculate_max_batch_size
 from utils.layers import parse_layers
@@ -126,10 +126,12 @@ def capture_raw_activations(
     # Load model if not provided
     should_cleanup = model is None
     if model is None:
-        model, tokenizer = load_model_with_lora(
-            model_name, lora_adapter=lora,
+        from utils.backends import LocalBackend
+        backend = LocalBackend.from_experiment(
+            experiment, variant=variant_name,
             load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit,
         )
+        model, tokenizer = backend.model, backend.tokenizer
 
     n_layers = len(get_inner_model(model).layers)
     print(f"Model has {n_layers} layers")
