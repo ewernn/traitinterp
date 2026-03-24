@@ -1,20 +1,39 @@
-import { fetchJSON, escapeHtml, smoothData } from '../core/utils.js';
-import { getChartColors, getCssVar, hexToRgba, getDisplayName } from '../core/display.js';
-import { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildTurnBoundaryShapes } from '../core/charts.js';
-import { ConversationTree } from '../core/conversation-tree.js';
-
-// Live Chat View - Chat with the model while watching trait dynamics in real-time
+// Live Chat View — Chat with the model while watching trait dynamics in real-time
 //
 // Features:
 // - Multi-turn conversation with full history passed to backend
 // - Conversation branching (edit previous messages to create alternate paths)
 // - Hover interactions (highlight message regions in chart)
-// - 5-token running average on trait scores
+// - Configurable running average on trait scores
 
-// Chart colors from shared CSS vars (via state.js)
-function getTraitColor(idx) {
-    return getChartColors()[idx % 10];
-}
+import { escapeHtml } from '../core/utils.js';
+import { ConversationTree } from '../core/conversation-tree.js';
+import {
+    toggleInferenceMode,
+    updateInferenceModeUI,
+    updateConnectionStatusUI,
+    warmupModal,
+    getInferenceMode,
+    setInferenceMode,
+    getModalConnectionState,
+    setModalConnectionState,
+    getPendingMessage,
+    setPendingMessage,
+} from '../components/inference-controls.js';
+import {
+    initTraitChart,
+    updateTraitChart as updateTraitChartImpl,
+    updateChartHighlight as updateChartHighlightImpl,
+    setSteeringCoefficient,
+    getSteeringCoefficients,
+    setVectorMetadata,
+    getShowSmoothedLine,
+    setShowSmoothedLine,
+    resetChartState,
+} from '../components/live-chat-chart.js';
+
+// Live Chat always uses this experiment (separate from sidebar selection)
+const LIVE_CHAT_EXPERIMENT = 'live-chat';
 
 // Chat state
 let conversationTree = null;
@@ -22,188 +41,9 @@ let currentAssistantNodeId = null;
 let isGenerating = false;
 let abortController = null;
 let hoveredMessageId = null;
-let showSmoothedLine = true;
 let editingNodeId = null;
 let currentModelType = 'application';  // 'application' or 'extraction'
-let modelNames = { application: null, extraction: null };  // Loaded from config
 let maxContextLength = 8192;  // Loaded from model config
-let vectorMetadata = {};  // Cached vector metadata: {trait: {layer, method, source}}
-
-// Modal connection state
-let modalConnectionState = 'disconnected';  // 'disconnected' | 'warming' | 'connected' | 'error'
-let steeringCoefficients = {};  // {trait: coefficient} - default 0 for all traits
-let pendingMessage = null;  // Message cached while waiting for connection
-let inferenceMode = 'local';  // 'local' | 'modal' - toggled from UI
-
-/**
- * Toggle inference mode between local and modal
- */
-function toggleInferenceMode() {
-    if (inferenceMode === 'local') {
-        inferenceMode = 'modal';
-        // Trigger warmup when switching to modal
-        warmupModal();
-    } else {
-        inferenceMode = 'local';
-        modalConnectionState = 'connected';  // Local is always ready
-        updateConnectionStatusUI();
-    }
-    updateInferenceModeUI();
-}
-
-/**
- * Update inference mode toggle UI
- */
-function updateInferenceModeUI() {
-    const toggle = document.getElementById('inference-mode-toggle');
-    if (toggle) {
-        toggle.checked = inferenceMode === 'modal';
-    }
-    const label = document.getElementById('inference-mode-label');
-    if (label) {
-        label.textContent = inferenceMode === 'modal' ? 'Modal GPU' : 'Local';
-    }
-    // Update model info display
-    updateModelInfoUI();
-}
-
-/**
- * Update model info display
- */
-function updateModelInfoUI() {
-    const modelInfo = document.getElementById('model-info');
-    if (!modelInfo) return;
-
-    // Get model name from experiment config or app config default
-    const appConfig = window.state.appConfig || {};
-    let modelName = appConfig.defaults?.model || 'gemma-2-2b-it';
-
-    // Try to get from current experiment config
-    if (modelNames.application) {
-        modelName = modelNames.application;
-    }
-
-    // Shorten model name for display (remove org prefix)
-    const shortName = modelName.split('/').pop();
-    modelInfo.textContent = shortName;
-    modelInfo.title = modelName;  // Full name on hover
-}
-
-/**
- * Warm up Modal GPU (called when switching to modal mode)
- */
-async function warmupModal() {
-    if (inferenceMode !== 'modal') {
-        modalConnectionState = 'connected';  // Local is always ready
-        updateConnectionStatusUI();
-        return;
-    }
-
-    modalConnectionState = 'warming';
-    updateConnectionStatusUI();
-
-    try {
-        const response = await fetch('/api/modal/warmup');
-        const data = await response.json();
-
-        if (data.status === 'ready') {
-            modalConnectionState = 'connected';
-            console.log('[LiveChat] Modal connected:', data);
-        } else if (data.status === 'skipped') {
-            // Server says skip modal (INFERENCE_MODE=local on server)
-            modalConnectionState = 'connected';
-            console.log('[LiveChat] Server skipped warmup:', data.reason);
-        } else {
-            modalConnectionState = 'error';
-            console.error('[LiveChat] Warmup failed:', data);
-        }
-    } catch (e) {
-        modalConnectionState = 'error';
-        console.error('[LiveChat] Warmup error:', e);
-    }
-
-    updateConnectionStatusUI();
-
-    // Check for pending message
-    if (pendingMessage && modalConnectionState === 'connected') {
-        const input = document.getElementById('chat-input');
-        if (input) input.value = pendingMessage;
-        pendingMessage = null;
-    }
-}
-
-/**
- * Update connection status UI
- */
-function updateConnectionStatusUI() {
-    const statusEl = document.getElementById('connection-status');
-    if (!statusEl) return;
-
-    const states = {
-        disconnected: { dot: 'disconnected', text: 'Disconnected' },
-        warming: { dot: 'warming', text: 'Waking up GPU...' },
-        connected: { dot: 'connected', text: 'Connected' },
-        error: { dot: 'error', text: 'Connection failed' }
-    };
-
-    const state = states[modalConnectionState] || states.disconnected;
-    statusEl.innerHTML = `
-        <span class="status-dot ${state.dot}"></span>
-        <span class="status-text">${state.text}</span>
-    `;
-
-    // Update send button state
-    const sendBtn = document.getElementById('send-btn');
-    if (sendBtn && modalConnectionState === 'warming') {
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Waiting...';
-    } else if (sendBtn && !isGenerating) {
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Send';
-    }
-}
-
-/**
- * Set steering coefficient for a trait
- */
-function setSteeringCoefficient(trait, coefficient) {
-    steeringCoefficients[trait] = coefficient;
-    updateSteeringButtonsUI();
-}
-
-/**
- * Update steering buttons UI to reflect current state
- */
-function updateSteeringButtonsUI() {
-    document.querySelectorAll('.steering-buttons').forEach(container => {
-        const trait = container.dataset.trait;
-        const currentCoef = steeringCoefficients[trait] || 0;
-
-        container.querySelectorAll('.steer-btn').forEach(btn => {
-            const btnCoef = parseFloat(btn.dataset.coef);
-            btn.classList.toggle('active', btnCoef === currentCoef);
-        });
-    });
-}
-
-/**
- * Load model names from experiment config
- */
-async function loadModelNames() {
-    try {
-        const response = await fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/config`);
-        const config = await response.json();
-
-        modelNames.application = config.application_model || 'google/gemma-2-2b-it';
-        modelNames.extraction = config.extraction_model || 'google/gemma-2-2b';
-        maxContextLength = config.max_context_length || 8192;
-    } catch (e) {
-        console.error('Failed to load model config:', e);
-        modelNames.application = 'application';
-        modelNames.extraction = 'extraction';
-        maxContextLength = 8192;
-    }
-}
 
 /**
  * Get localStorage key for current experiment
@@ -247,18 +87,38 @@ function restoreConversation() {
     return false;
 }
 
+// Thin wrappers that pass conversation state to chart module
+function updateTraitChartWrapped() {
+    updateTraitChartImpl(conversationTree, hoveredMessageId);
+}
+function updateChartHighlight() {
+    updateChartHighlightImpl(conversationTree, hoveredMessageId);
+}
+
+/**
+ * Load model config from experiment config (already fetched by state.js loadExperiment,
+ * or fetch directly for live-chat experiment which may not be the sidebar experiment).
+ */
+async function loadModelConfig() {
+    try {
+        const response = await fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/config`);
+        const config = await response.json();
+        maxContextLength = config.max_context_length || 8192;
+    } catch (e) {
+        console.warn('Failed to load model config:', e);
+        maxContextLength = 8192;
+    }
+}
+
 /**
  * Render the live chat view
  */
-// Live Chat always uses this experiment (separate from sidebar selection)
-const LIVE_CHAT_EXPERIMENT = 'live-chat';
-
 async function renderLiveChat() {
     const container = document.getElementById('content-area');
     if (!container) return;
 
-    // Load model names from live-chat config (don't change global currentExperiment)
-    await loadModelNames();
+    // Load config for context length
+    await loadModelConfig();
 
     // Initialize conversation tree if needed
     if (!conversationTree) {
@@ -270,7 +130,7 @@ async function renderLiveChat() {
     // If already rendered with conversation, just update chart (don't rebuild UI)
     const existingView = container.querySelector('.live-chat-view');
     if (existingView && conversationTree.globalTokens.length > 0) {
-        updateTraitChart();
+        updateTraitChartWrapped();
         return;
     }
 
@@ -292,7 +152,7 @@ async function renderLiveChat() {
                                 <span class="status-dot connected"></span>
                                 <span class="status-text">Ready</span>
                             </div>
-                            ${ui.renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: showSmoothedLine, className: 'smooth-toggle' })}
+                            ${ui.renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: getShowSmoothedLine(), className: 'smooth-toggle' })}
                         </div>
                         <div class="chart-legend" id="chart-legend"></div>
                     </div>
@@ -332,15 +192,15 @@ async function renderLiveChat() {
     // Initialize inference mode from app config
     const appConfig = window.state.appConfig || {};
     const defaultBackend = appConfig.defaults?.inference_backend || 'local';
-    inferenceMode = defaultBackend;
+    setInferenceMode(defaultBackend);
 
-    if (inferenceMode === 'modal') {
+    if (getInferenceMode() === 'modal') {
         // Production: start warming up Modal immediately
         warmupModal();
     } else {
         // Development: local mode is always ready
-        modalConnectionState = 'connected';
-        updateConnectionStatusUI();
+        setModalConnectionState('connected');
+        updateConnectionStatusUI(isGenerating);
     }
     updateInferenceModeUI();
 
@@ -361,7 +221,6 @@ function setupChatHandlers() {
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const clearBtn = document.getElementById('clear-btn');
-    const modelSelect = document.getElementById('model-select');
     const smoothToggle = document.getElementById('smooth-toggle');
 
     sendBtn.addEventListener('click', () => handleSend());
@@ -378,17 +237,10 @@ function setupChatHandlers() {
         }
     });
 
-    if (modelSelect) {
-        modelSelect.addEventListener('change', (e) => {
-            currentModelType = e.target.value;
-            clearChat();
-        });
-    }
-
     if (smoothToggle) {
         smoothToggle.addEventListener('change', (e) => {
-            showSmoothedLine = e.target.checked;
-            updateTraitChart();
+            setShowSmoothedLine(e.target.checked);
+            updateTraitChartWrapped();
         });
     }
 }
@@ -415,8 +267,8 @@ async function sendMessage() {
     if (!prompt || isGenerating) return;
 
     // Block send while modal is warming up
-    if (inferenceMode === 'modal' && modalConnectionState === 'warming') {
-        pendingMessage = prompt;
+    if (getInferenceMode() === 'modal' && getModalConnectionState() === 'warming') {
+        setPendingMessage(prompt);
         return;
     }
 
@@ -481,6 +333,7 @@ async function sendEditedMessage() {
  */
 async function generateResponse(prompt, assistantNodeId) {
     const sendBtn = document.getElementById('send-btn');
+    const steeringCoefficients = getSteeringCoefficients();
 
     isGenerating = true;
     sendBtn.disabled = false;  // Keep enabled for stop functionality
@@ -512,7 +365,7 @@ async function generateResponse(prompt, assistantNodeId) {
                 history: history,
                 previous_context_length: previousContextLength,
                 model_type: currentModelType,
-                inference_mode: inferenceMode,
+                inference_mode: getInferenceMode(),
                 steering_configs: Object.entries(steeringCoefficients)
                     .filter(([_, coef]) => coef !== 0)
                     .map(([trait, coefficient]) => ({ trait, coefficient }))
@@ -548,7 +401,7 @@ async function generateResponse(prompt, assistantNodeId) {
                         if (event.status) {
                             // Cache vector metadata if provided
                             if (event.vector_metadata) {
-                                vectorMetadata = event.vector_metadata;
+                                setVectorMetadata(event.vector_metadata);
                             }
                             // Update status in UI
                             const node = conversationTree.getNode(assistantNodeId);
@@ -577,7 +430,7 @@ async function generateResponse(prompt, assistantNodeId) {
 
                         // Update UI
                         renderMessages();
-                        updateTraitChart();
+                        updateTraitChartWrapped();
 
                     } catch (e) {
                         console.error('Failed to parse SSE event:', e);
@@ -653,7 +506,7 @@ function navigateBranch(nodeId, direction) {
         const newNode = siblings[newIdx];
         conversationTree.switchBranch(newNode.id);
         renderMessages();
-        updateTraitChart();
+        updateTraitChartWrapped();
     }
 }
 
@@ -773,7 +626,7 @@ function clearChat() {
     currentAssistantNodeId = null;
     isGenerating = false;
     hoveredMessageId = null;
-    vectorMetadata = {};
+    resetChartState();
 
     // Clear localStorage
     localStorage.removeItem(getStorageKey());
@@ -785,243 +638,6 @@ function clearChat() {
     renderMessages();
     initTraitChart();
 }
-
-/**
- * Initialize empty trait chart
- */
-function initTraitChart() {
-    const chartDiv = document.getElementById('trait-chart');
-    if (!chartDiv) return;
-
-    const layout = buildChartLayout({
-        preset: 'timeSeries',
-        traces: [],
-        legendPosition: 'none',  // Using custom HTML legend
-        xaxis: { title: 'Token', showgrid: true },
-        yaxis: { title: 'Trait Score', showgrid: true, zeroline: true }
-    });
-    renderChart(chartDiv, [], layout);
-}
-
-/**
- * Update trait chart with data from conversation tree
- */
-function updateTraitChart() {
-    const chartDiv = document.getElementById('trait-chart');
-    const legendDiv = document.getElementById('chart-legend');
-
-    const globalTokens = conversationTree.globalTokens;
-    if (!chartDiv || globalTokens.length === 0) return;
-
-    const firstEvent = globalTokens[0];
-    const allTraitNames = Object.keys(firstEvent.trait_scores || {});
-    if (allTraitNames.length === 0) return;
-
-    // Filter by selected traits (if any are selected)
-    // selectedTraits has full paths like "behavioral_tendency/refusal"
-    // allTraitNames has just base names like "refusal"
-    const selectedTraits = window.state?.selectedTraits;
-    let traitNames = allTraitNames;
-    if (selectedTraits && selectedTraits.size > 0) {
-        // Extract base names from selected traits for matching
-        const selectedBaseNames = new Set(
-            Array.from(selectedTraits).map(t => t.includes('/') ? t.split('/').pop() : t)
-        );
-        traitNames = allTraitNames.filter(t => selectedBaseNames.has(t));
-    }
-    if (traitNames.length === 0) traitNames = allTraitNames;  // Fallback: show all if none match
-
-    const traces = [];
-
-    traitNames.forEach((trait, idx) => {
-        const color = getTraitColor(idx);
-
-        // Collect all token scores with their indices
-        const indices = [];
-        const scores = [];
-
-        globalTokens.forEach((e, i) => {
-            const score = e.trait_scores[trait] || 0;
-            indices.push(i);
-            scores.push(score);
-        });
-
-        // Apply smoothing if requested
-        const yValues = showSmoothedLine && scores.length >= 3
-            ? smoothData(scores, 3)
-            : scores;
-
-        // Single trace per trait - all tokens
-        traces.push({
-            name: trait,
-            x: indices,
-            y: yValues,
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: color, width: 2 },
-            hovertemplate: `${trait}: %{y:.3f}<extra></extra>`,
-            showlegend: true
-        });
-    });
-
-    // Update legend with steering buttons
-    if (legendDiv) {
-        legendDiv.innerHTML = traitNames.map((trait, idx) => {
-            // Get vector metadata for this trait (trait names might be just base names)
-            // Find matching trait in vectorMetadata by checking if key ends with trait name
-            let metadata = null;
-            for (const [fullPath, meta] of Object.entries(vectorMetadata)) {
-                if (fullPath.endsWith(trait) || fullPath.endsWith('/' + trait)) {
-                    metadata = meta;
-                    break;
-                }
-            }
-
-            const tooltipText = metadata
-                ? `L${metadata.layer} ${metadata.method} (${metadata.source})`
-                : 'no metadata';
-
-            const currentCoef = steeringCoefficients[trait] || 0;
-            const coefficients = [-1, -0.5, 0, 0.5, 1];
-
-            return `
-                <div class="legend-item-row">
-                    <span class="legend-item has-tooltip"
-                          data-tooltip="${tooltipText}"
-                          data-trait="${trait}">
-                        <span class="legend-color" style="background: ${getTraitColor(idx)}"></span>
-                        ${trait}
-                    </span>
-                    <div class="steering-buttons" data-trait="${trait}">
-                        ${coefficients.map(coef => {
-                            const label = coef === 0 ? '0' : (coef > 0 ? `+${coef}x` : `${coef}x`);
-                            const isActive = currentCoef === coef ? 'active' : '';
-                            return `<button class="btn btn-xs steer-btn ${isActive}" data-coef="${coef}" onclick="setSteeringCoefficient('${trait}', ${coef})">${label}</button>`;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // Build shapes for message regions
-    const shapes = buildMessageRegionShapes();
-
-    const layout = buildChartLayout({
-        preset: 'timeSeries',
-        traces,
-        legendPosition: 'none',  // Using custom HTML legend
-        xaxis: { title: 'Token', showgrid: true },
-        yaxis: { title: 'Trait Score', showgrid: true, zeroline: true },
-        shapes
-    });
-    updateChart(chartDiv, traces, layout);
-
-    // Add hover event listener for token highlighting
-    // Note: Plotly event listeners are persistent across reacts, so we don't need to remove them
-    // Only attach if not already attached
-    if (!chartDiv._tokenHoverAttached) {
-        chartDiv.on('plotly_hover', (data) => {
-            if (data.points && data.points.length > 0) {
-                const tokenIdx = Math.round(data.points[0].x);
-                highlightTokenInChat(tokenIdx);
-            }
-        });
-
-        chartDiv.on('plotly_unhover', () => {
-            clearTokenHighlight();
-        });
-
-        chartDiv._tokenHoverAttached = true;
-    }
-}
-
-/**
- * Highlight a specific token in the chat messages
- */
-function highlightTokenInChat(tokenIdx) {
-    // Clear previous highlights
-    clearTokenHighlight();
-
-    // Find token span with this index
-    const tokenSpan = document.querySelector(`.token-span[data-token-idx="${tokenIdx}"]`);
-    if (tokenSpan) {
-        tokenSpan.classList.add('hovered-token');
-        // Scroll into view if needed
-        tokenSpan.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
-
-/**
- * Clear token highlighting
- */
-function clearTokenHighlight() {
-    document.querySelectorAll('.token-span.hovered-token').forEach(el => {
-        el.classList.remove('hovered-token');
-    });
-}
-
-/**
- * Build Plotly shapes for message regions
- */
-function buildMessageRegionShapes() {
-    const shapes = [];
-
-    for (const region of conversationTree.messageRegions) {
-        // Skip empty regions (user messages with no tokens)
-        if (region.startIdx === region.endIdx && region.role === 'user') {
-            // Draw a thin vertical line for user messages
-            shapes.push({
-                type: 'line',
-                x0: region.startIdx - 0.5,
-                x1: region.startIdx - 0.5,
-                y0: 0,
-                y1: 1,
-                yref: 'paper',
-                line: {
-                    color: getCssVar('--chart-1', '#4a9eff') + '80',  // 50% opacity
-                    width: 2,
-                    dash: 'dot'
-                },
-                layer: 'below'
-            });
-            continue;
-        }
-
-        const isHovered = region.messageId === hoveredMessageId;
-        const baseOpacity = region.role === 'user' ? 0.15 : 0.08;
-        const hoverOpacity = 0.25;
-
-        shapes.push({
-            type: 'rect',
-            x0: region.startIdx - 0.5,
-            x1: region.endIdx - 0.5,
-            y0: 0,
-            y1: 1,
-            yref: 'paper',
-            fillcolor: region.role === 'user'
-                ? hexToRgba(getCssVar('--chart-1', '#4a9eff'), isHovered ? hoverOpacity : baseOpacity)
-                : hexToRgba(getCssVar('--chart-3', '#51cf66'), isHovered ? hoverOpacity : baseOpacity),
-            line: { width: 0 },
-            layer: 'below'
-        });
-    }
-
-    return shapes;
-}
-
-/**
- * Update chart highlighting when hovering over messages
- */
-function updateChartHighlight() {
-    const chartDiv = document.getElementById('trait-chart');
-    if (!chartDiv || !chartDiv.data || chartDiv.data.length === 0) return;
-
-    const shapes = buildMessageRegionShapes();
-    Plotly.relayout(chartDiv, { shapes: shapes });
-}
-
-// smoothData (running average) is in core/utils.js
 
 // ES module exports
 export {

@@ -489,6 +489,29 @@ function setupResponseBrowserHandlers(trait, container, runs) {
 }
 
 /**
+ * Render a single response item row (prompt + response with scores).
+ * Shared by baseline panel and expanded-row response list.
+ */
+function renderResponseItem(r, i, isCompact) {
+    const responseText = isCompact
+        ? r.response.replace(/\n/g, '\\n')
+        : r.response;
+    return `
+        <div class="response-item-row">
+            <div class="response-meta">
+                <div class="meta-label">Prompt #${i + 1}</div>
+                <div class="meta-score">Trait: <span class="${ui.scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
+            </div>
+            <div class="response-content">
+                <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
+                <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
  * Load and display info panel content (definition or judge prompt)
  */
 async function loadInfoPanelContent(trait, panelType) {
@@ -595,23 +618,7 @@ async function loadInfoPanelContent(trait, panelType) {
                     Showing baseline for: <strong>${baselineLabel}</strong>
                 </div>
                 <div class="response-list-compact">
-                    ${responses.map((r, i) => {
-                        const responseText = isCompact
-                            ? r.response.replace(/\n/g, '\\n')
-                            : r.response;
-                        return `
-                        <div class="response-item-row">
-                            <div class="response-meta">
-                                <div class="meta-label">Prompt #${i + 1}</div>
-                                <div class="meta-score">Trait: <span class="${ui.scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                                <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
-                            </div>
-                            <div class="response-content">
-                                <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                                <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
-                            </div>
-                        </div>
-                    `;}).join('')}
+                    ${responses.map((r, i) => renderResponseItem(r, i, isCompact)).join('')}
                 </div>
             `;
         }
@@ -659,24 +666,7 @@ async function loadResponsesForRun(trait, idx, run) {
 
         container.innerHTML = `
             <div class="response-list-compact">
-                ${responses.map((r, i) => {
-                    // In compact mode, show \n as literal text; otherwise preserve whitespace
-                    const responseText = isCompact
-                        ? r.response.replace(/\n/g, '\\n')
-                        : r.response;
-                    return `
-                    <div class="response-item-row">
-                        <div class="response-meta">
-                            <div class="meta-label">Prompt #${i + 1}</div>
-                            <div class="meta-score">Trait: <span class="${ui.scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                            <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
-                        </div>
-                        <div class="response-content">
-                            <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                            <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
-                        </div>
-                    </div>
-                `;}).join('')}
+                ${responses.map((r, i) => renderResponseItem(r, i, isCompact)).join('')}
             </div>
         `;
 

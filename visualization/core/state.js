@@ -3,13 +3,13 @@
  *
  * This file manages:
  * - Global state object
- * - Preference initialization/persistence
+ * - Preference initialization/persistence (table-driven)
  * - Experiment data loading
  * - URL routing
  * - Application initialization
  *
  * UI code has been extracted to:
- * - components/sidebar.js (theme, navigation, trait checkboxes)
+ * - components/sidebar.js (theme, navigation, trait checkboxes, GPU status, experiment list)
  * - core/display.js (colors, display names, Plotly layouts)
  * - core/utils.js (formatters, error display)
  */
@@ -72,9 +72,7 @@ const state = {
     // Layer mode: show single trait across all available layers
     layerMode: false,
     layerModeTrait: null,  // trait.name string, reset on experiment change
-    // GPU status (fetched from /api/gpu-status)
-    gpuStatus: null,  // { available, type, device, memory_total_gb, memory_used_gb, ... }
-    // Experiment filtering
+    // Experiment filtering (GPU status lives in sidebar.js)
     showAllExperiments: false,
     // Prompt set sidebar (left panel for inference views)
     promptSetSidebarOpen: false,
@@ -94,14 +92,103 @@ function getFilteredTraits() {
 }
 
 // =============================================================================
-// Preference Management
+// Table-Driven Preference Management
 // =============================================================================
+// Each entry: { key, stateKey, type, default, onSet? }
+//   type: 'bool' (stored as string 'true'/'false'), 'string', 'int'
+//   onSet: optional callback after setting value (receives the new value)
+//   clamp: optional [min, max] for int types
+//   validate: optional fn(val) => sanitized val, for enum-like strings
+//
+// Preferences with identical init/set patterns are declared here.
+// Non-standard preferences (selectedMethods, wideMode, compareMode, layerModeTrait)
+// are handled separately below.
 
-// Smoothing Management
-function initWideMode() {
-    const saved = localStorage.getItem('wideMode');
-    state.wideMode = saved === 'true';
+const renderView = () => { if (window.renderView) window.renderView(); };
+
+const PREFERENCES = [
+    // Smoothing
+    { key: 'smoothingEnabled',    stateKey: 'smoothingEnabled',    type: 'bool',   default: true,           onSet: renderView },
+    { key: 'smoothingWindow',     stateKey: 'smoothingWindow',     type: 'int',    default: 5,    clamp: [1, 25], onSet: renderView },
+    // Projection
+    { key: 'projectionCentered',  stateKey: 'projectionCentered',  type: 'bool',   default: true,           onSet: renderView },
+    { key: 'projectionMode',      stateKey: 'projectionMode',      type: 'string', default: 'cosine',       onSet: renderView },
+    { key: 'massiveDimsCleaning', stateKey: 'massiveDimsCleaning', type: 'string', default: 'top5-3layers', onSet: renderView },
+    // Layer mode
+    { key: 'layerMode',           stateKey: 'layerMode',           type: 'bool',   default: false,          onSet: renderView },
+    // Sidebar
+    { key: 'promptSetSidebarOpen', stateKey: 'promptSetSidebarOpen', type: 'bool', default: true },
+    // Compare
+    { key: 'lastCompareVariant',  stateKey: 'lastCompareVariant',  type: 'string', default: null },
+    // Top Spans
+    { key: 'spanWindowLength',    stateKey: 'spanWindowLength',    type: 'int',    default: 10, clamp: [1, 100] },
+    { key: 'spanPanelOpen',       stateKey: 'spanPanelOpen',       type: 'bool',   default: false },
+    { key: 'traitHeatmapOpen',    stateKey: 'traitHeatmapOpen',    type: 'bool',   default: false },
+    { key: 'spanScope',           stateKey: 'spanScope',           type: 'string', default: 'current',  validate: v => v === 'allPrompts' ? 'allPrompts' : 'current' },
+    { key: 'spanMode',            stateKey: 'spanMode',            type: 'string', default: 'window',   validate: v => v === 'clauses' ? 'clauses' : 'window' },
+    // Overlays
+    { key: 'showCuePOverlay',     stateKey: 'showCuePOverlay',     type: 'bool',   default: true,  onSet: renderView },
+    { key: 'showCategoryOverlay', stateKey: 'showCategoryOverlay', type: 'bool',   default: false, onSet: renderView },
+    { key: 'showVelocity',        stateKey: 'showVelocity',        type: 'bool',   default: false, onSet: renderView },
+    // Attention sink
+    { key: 'hideAttentionSink',   stateKey: 'hideAttentionSink',   type: 'bool',   default: false, onSet: renderView },
+];
+
+/** Read a preference from localStorage into state */
+function initPreference(pref) {
+    const saved = localStorage.getItem(pref.key);
+    if (pref.type === 'bool') {
+        state[pref.stateKey] = saved === null ? !!pref.default : saved === 'true';
+    } else if (pref.type === 'int') {
+        state[pref.stateKey] = saved ? parseInt(saved) : pref.default;
+    } else {
+        state[pref.stateKey] = saved || pref.default;
+    }
 }
+
+/** Write a preference to state + localStorage, then fire onSet callback */
+function setPreference(key, value) {
+    const pref = PREFERENCES.find(p => p.key === key);
+    if (!pref) { console.warn(`[State] Unknown preference: ${key}`); return; }
+
+    if (pref.type === 'bool') {
+        value = !!value;
+    } else if (pref.type === 'int') {
+        value = parseInt(value) || pref.default;
+        if (pref.clamp) value = Math.max(pref.clamp[0], Math.min(pref.clamp[1], value));
+    } else if (pref.validate) {
+        value = pref.validate(value);
+    }
+    value = value ?? pref.default;
+
+    state[pref.stateKey] = value;
+    localStorage.setItem(pref.key, value);
+    if (pref.onSet) pref.onSet(value);
+}
+
+function initAllPreferences() {
+    PREFERENCES.forEach(initPreference);
+}
+
+// --- Convenience setters (thin wrappers exposing the same API as before) ---
+function setSmoothing(enabled) { setPreference('smoothingEnabled', enabled); }
+function setSmoothingWindow(size) { setPreference('smoothingWindow', size); }
+function setProjectionCentered(centered) { setPreference('projectionCentered', centered); }
+function setProjectionMode(mode) { setPreference('projectionMode', mode); }
+function setMassiveDimsCleaning(mode) { setPreference('massiveDimsCleaning', mode); }
+function setLayerMode(enabled) { setPreference('layerMode', enabled); }
+function setPromptSetSidebarOpen(open) { setPreference('promptSetSidebarOpen', open); }
+function setHideAttentionSink(hide) { setPreference('hideAttentionSink', hide); }
+function setSpanWindowLength(length) { setPreference('spanWindowLength', length); }
+function setSpanScope(scope) { setPreference('spanScope', scope); }
+function setSpanMode(mode) { setPreference('spanMode', mode); }
+function setSpanPanelOpen(open) { setPreference('spanPanelOpen', open); }
+function setTraitHeatmapOpen(open) { setPreference('traitHeatmapOpen', open); }
+function setShowCuePOverlay(enabled) { setPreference('showCuePOverlay', enabled); }
+function setShowCategoryOverlay(enabled) { setPreference('showCategoryOverlay', enabled); }
+function setShowVelocity(enabled) { setPreference('showVelocity', enabled); }
+
+// --- Non-standard preferences (custom init/set logic) ---
 
 function setWideMode(enabled) {
     state.wideMode = !!enabled;
@@ -115,92 +202,9 @@ function setWideMode(enabled) {
     }
 }
 
-function initSmoothing() {
-    const saved = localStorage.getItem('smoothingEnabled');
-    state.smoothingEnabled = saved === null ? true : saved === 'true';
-    const savedWindow = localStorage.getItem('smoothingWindow');
-    state.smoothingWindow = savedWindow ? parseInt(savedWindow) : 5;
-}
-
-function setSmoothing(enabled) {
-    state.smoothingEnabled = !!enabled;
-    localStorage.setItem('smoothingEnabled', state.smoothingEnabled);
-    if (window.renderView) window.renderView();
-}
-
-function setSmoothingWindow(size) {
-    state.smoothingWindow = Math.max(1, Math.min(25, parseInt(size) || 5));
-    localStorage.setItem('smoothingWindow', state.smoothingWindow);
-    if (window.renderView) window.renderView();
-}
-
-function initProjectionCentered() {
-    const saved = localStorage.getItem('projectionCentered');
-    state.projectionCentered = saved === null ? true : saved === 'true';
-}
-
-function setProjectionCentered(centered) {
-    state.projectionCentered = !!centered;
-    localStorage.setItem('projectionCentered', state.projectionCentered);
-    if (window.renderView) window.renderView();
-}
-
-// Projection Mode ('cosine' or 'normalized')
-function initProjectionMode() {
-    const saved = localStorage.getItem('projectionMode');
-    state.projectionMode = saved || 'cosine';
-}
-
-function setProjectionMode(mode) {
-    state.projectionMode = mode || 'cosine';
-    localStorage.setItem('projectionMode', state.projectionMode);
-    if (window.renderView) window.renderView();
-}
-
-// Massive Dims Cleaning (dropdown: 'none', 'top5-3layers', 'all')
-function initMassiveDimsCleaning() {
-    const saved = localStorage.getItem('massiveDimsCleaning');
-    state.massiveDimsCleaning = saved || 'top5-3layers';
-}
-
-function setMassiveDimsCleaning(mode) {
-    state.massiveDimsCleaning = mode || 'none';
-    localStorage.setItem('massiveDimsCleaning', state.massiveDimsCleaning);
-    if (window.renderView) window.renderView();
-}
-
-// Layer Mode (Single Trait, Multiple Layers)
-function initLayerMode() {
-    const saved = localStorage.getItem('layerMode');
-    state.layerMode = saved === 'true';
-}
-
-function setLayerMode(enabled) {
-    state.layerMode = !!enabled;
-    localStorage.setItem('layerMode', state.layerMode);
-    if (window.renderView) window.renderView();
-}
-
 function setLayerModeTrait(traitName) {
     state.layerModeTrait = traitName || null;
     if (window.renderView) window.renderView();
-}
-
-// Prompt Set Sidebar
-function initPromptSetSidebar() {
-    const saved = localStorage.getItem('promptSetSidebarOpen');
-    state.promptSetSidebarOpen = saved !== null ? saved === 'true' : true;  // Default open
-}
-
-function setPromptSetSidebarOpen(open) {
-    state.promptSetSidebarOpen = !!open;
-    localStorage.setItem('promptSetSidebarOpen', state.promptSetSidebarOpen);
-}
-
-// Compare Mode (Model Comparison)
-function initCompareMode() {
-    const savedMode = localStorage.getItem('compareMode');
-    state.compareMode = savedMode || 'main';
 }
 
 function setCompareMode(mode) {
@@ -212,91 +216,12 @@ function setCompareMode(mode) {
     if (window.renderView) window.renderView();
 }
 
-// Last Compare Variant (persist organism selection)
-function initLastCompareVariant() {
-    state.lastCompareVariant = localStorage.getItem('lastCompareVariant') || null;
-}
-
-// Top Spans panel
-function initSpanState() {
-    const savedLength = localStorage.getItem('spanWindowLength');
-    state.spanWindowLength = savedLength ? parseInt(savedLength) : 10;
-    state.spanPanelOpen = localStorage.getItem('spanPanelOpen') === 'true';
-    state.traitHeatmapOpen = localStorage.getItem('traitHeatmapOpen') === 'true';
-    state.spanScope = localStorage.getItem('spanScope') || 'current';
-    state.spanMode = localStorage.getItem('spanMode') || 'window';
-}
-
-function setSpanWindowLength(length) {
-    state.spanWindowLength = Math.max(1, Math.min(100, parseInt(length) || 10));
-    localStorage.setItem('spanWindowLength', state.spanWindowLength);
-    // Don't re-render the whole view — top spans panel updates locally
-}
-
-function setSpanScope(scope) {
-    state.spanScope = scope === 'allPrompts' ? 'allPrompts' : 'current';
-    localStorage.setItem('spanScope', state.spanScope);
-}
-
-function setSpanMode(mode) {
-    state.spanMode = mode === 'clauses' ? 'clauses' : 'window';
-    localStorage.setItem('spanMode', state.spanMode);
-}
-
-function setSpanPanelOpen(open) {
-    state.spanPanelOpen = !!open;
-    localStorage.setItem('spanPanelOpen', state.spanPanelOpen);
-}
-
-function setTraitHeatmapOpen(open) {
-    state.traitHeatmapOpen = !!open;
-    localStorage.setItem('traitHeatmapOpen', state.traitHeatmapOpen);
-}
-
-// Sentence Overlay Toggles
-function initSentenceOverlays() {
-    const savedCueP = localStorage.getItem('showCuePOverlay');
-    state.showCuePOverlay = savedCueP === null ? true : savedCueP === 'true';
-    state.showCategoryOverlay = localStorage.getItem('showCategoryOverlay') === 'true';
-}
-
-function setShowCuePOverlay(enabled) {
-    state.showCuePOverlay = !!enabled;
-    localStorage.setItem('showCuePOverlay', state.showCuePOverlay);
-    if (window.renderView) window.renderView();
-}
-
-function setShowCategoryOverlay(enabled) {
-    state.showCategoryOverlay = !!enabled;
-    localStorage.setItem('showCategoryOverlay', state.showCategoryOverlay);
-    if (window.renderView) window.renderView();
-}
-
-// Velocity Overlay Toggle
-function initShowVelocity() {
-    state.showVelocity = localStorage.getItem('showVelocity') === 'true';
-}
-
-function setShowVelocity(enabled) {
-    state.showVelocity = !!enabled;
-    localStorage.setItem('showVelocity', state.showVelocity);
-    if (window.renderView) window.renderView();
-}
-
-// Hide Attention Sink Toggle
-function initHideAttentionSink() {
-    const saved = localStorage.getItem('hideAttentionSink');
-    state.hideAttentionSink = saved === 'true';
-}
-
-function setHideAttentionSink(hide) {
-    state.hideAttentionSink = !!hide;
-    localStorage.setItem('hideAttentionSink', state.hideAttentionSink);
-    if (window.renderView) window.renderView();
-}
-
-// Method Filter Management
-function initSelectedMethods() {
+function initNonStandardPreferences() {
+    // Wide mode
+    state.wideMode = localStorage.getItem('wideMode') === 'true';
+    // Compare mode
+    state.compareMode = localStorage.getItem('compareMode') || 'main';
+    // Selected methods (JSON-serialized Set)
     const saved = localStorage.getItem('selectedMethods');
     if (saved) {
         try {
@@ -304,10 +229,7 @@ function initSelectedMethods() {
             if (Array.isArray(methods) && methods.length > 0) {
                 state.selectedMethods = new Set(methods);
             }
-            // Empty array → keep default (all methods selected)
-        } catch (e) {
-            // Keep default
-        }
+        } catch (e) { /* keep default */ }
     }
 }
 
@@ -365,40 +287,8 @@ async function loadExperiments() {
         const data = await response.json();
         state.experiments = data.experiments || [];
 
-        const list = document.getElementById('experiment-list');
-        if (!list) return;
-
-        // Filter experiments unless showAllExperiments is true
-        const hiddenCount = state.experiments.filter(exp => HIDDEN_EXPERIMENTS.includes(exp)).length;
-        const visibleExperiments = state.showAllExperiments
-            ? state.experiments
-            : state.experiments.filter(exp => !HIDDEN_EXPERIMENTS.includes(exp));
-
-        list.innerHTML = visibleExperiments.map((exp, idx) => {
-            const isActive = idx === 0 ? 'active' : '';
-            return `<label class="experiment-option ${isActive}" data-experiment="${exp}">
-                <input type="radio" name="experiment" ${idx === 0 ? 'checked' : ''}>
-                <span>${exp}</span>
-            </label>`;
-        }).join('');
-
-        // Add toggle link if there are hidden experiments
-        if (hiddenCount > 0) {
-            const toggleText = state.showAllExperiments ? 'Hide' : `Show ${hiddenCount} hidden`;
-            list.innerHTML += `<div class="experiment-toggle" onclick="window.toggleHiddenExperiments()">${toggleText}</div>`;
-        }
-
-        list.querySelectorAll('.experiment-option').forEach(item => {
-            item.addEventListener('click', async () => {
-                list.querySelectorAll('.experiment-option').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                state.currentExperiment = item.dataset.experiment;
-                setExperimentInURL(state.currentExperiment);
-                await loadExperimentData(state.currentExperiment);
-                window.renderPromptPicker();
-                if (window.renderView) window.renderView();
-            });
-        });
+        // Render experiment list in sidebar (DOM manipulation lives in sidebar.js)
+        window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS);
 
         if (state.experiments.length > 0) {
             const urlExp = getExperimentFromURL();
@@ -406,12 +296,7 @@ async function loadExperiments() {
 
             if (urlExp && state.experiments.includes(urlExp)) {
                 state.currentExperiment = urlExp;
-                list.querySelectorAll('.experiment-option').forEach(item => {
-                    const isActive = item.dataset.experiment === urlExp;
-                    item.classList.toggle('active', isActive);
-                    const radio = item.querySelector('input[type="radio"]');
-                    if (radio) radio.checked = isActive;
-                });
+                window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, urlExp);
                 await loadExperimentData(state.currentExperiment);
             } else if (viewNeedsExperiment) {
                 state.currentExperiment = state.experiments[0];
@@ -437,15 +322,8 @@ async function ensureExperimentLoaded() {
     setExperimentInURL(state.currentExperiment);
     await loadExperimentData(state.currentExperiment);
 
-    const list = document.getElementById('experiment-list');
-    if (list) {
-        list.querySelectorAll('.experiment-option').forEach((item, idx) => {
-            const isActive = idx === 0;
-            item.classList.toggle('active', isActive);
-            const radio = item.querySelector('input[type="radio"]');
-            if (radio) radio.checked = isActive;
-        });
-    }
+    // Re-render experiment list with first experiment active
+    window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, state.currentExperiment);
 }
 
 async function loadExperimentData(experimentName) {
@@ -674,82 +552,6 @@ window.addEventListener('popstate', async () => {
 });
 
 // =============================================================================
-// GPU Status
-// =============================================================================
-
-let gpuPollInterval = null;
-
-async function fetchGpuStatus() {
-    try {
-        const response = await fetch('/api/gpu-status');
-        if (!response.ok) throw new Error('Failed to fetch GPU status');
-        state.gpuStatus = await response.json();
-        updateGpuStatusUI();
-    } catch (e) {
-        console.warn('GPU status fetch failed:', e);
-        state.gpuStatus = { available: false, device: 'Unknown', error: e.message };
-        updateGpuStatusUI();
-    }
-}
-
-function updateGpuStatusUI() {
-    const container = document.getElementById('gpu-status');
-    if (!container) return;
-
-    const status = state.gpuStatus;
-    if (!status) {
-        container.classList.add('loading');
-        return;
-    }
-
-    container.classList.remove('loading');
-    container.classList.toggle('available', status.available);
-    container.classList.toggle('error', !!status.error);
-
-    // Update device name
-    const nameEl = container.querySelector('.gpu-name');
-    if (nameEl) {
-        // Shorten long device names
-        let name = status.device || 'Unknown';
-        name = name.replace('NVIDIA ', '').replace('Apple ', '');
-        nameEl.textContent = name;
-        nameEl.title = status.device;
-    }
-
-    // Update memory display
-    const memoryEl = container.querySelector('.gpu-memory');
-    if (memoryEl) {
-        if (status.memory_used_gb != null && status.memory_total_gb != null) {
-            const pct = (status.memory_used_gb / status.memory_total_gb) * 100;
-            const fillClass = pct > 90 ? 'critical' : pct > 70 ? 'high' : '';
-            memoryEl.innerHTML = `
-                <div class="gpu-memory-bar">
-                    <div class="gpu-memory-fill ${fillClass}" style="width: ${pct}%"></div>
-                </div>
-                <span class="gpu-memory-text">${status.memory_used_gb.toFixed(1)}/${status.memory_total_gb.toFixed(0)}GB</span>
-            `;
-        } else if (status.memory_total_gb != null) {
-            // MPS - just show total
-            memoryEl.innerHTML = `<span class="gpu-memory-text">${status.memory_total_gb.toFixed(0)}GB</span>`;
-        } else {
-            memoryEl.innerHTML = '';
-        }
-    }
-
-    // Update tooltip
-    let tooltip = status.device || 'GPU Status';
-    if (status.note) tooltip += `\n${status.note}`;
-    if (status.error) tooltip += `\nError: ${status.error}`;
-    container.title = tooltip;
-}
-
-function startGpuPolling(intervalMs = 5000) {
-    if (gpuPollInterval) clearInterval(gpuPollInterval);
-    fetchGpuStatus();  // Initial fetch
-    gpuPollInterval = setInterval(fetchGpuStatus, intervalMs);
-}
-
-// =============================================================================
 // Initialize Application
 // =============================================================================
 
@@ -758,22 +560,10 @@ async function init() {
     await loadAppConfig();
     initMarkedOptions();
 
-    // Initialize preferences
+    // Initialize preferences (table-driven + non-standard)
     window.initTheme();
-    initWideMode();
-    initSmoothing();
-    initProjectionCentered();
-    initProjectionMode();
-    initMassiveDimsCleaning();
-    initLayerMode();
-    initPromptSetSidebar();
-    initCompareMode();
-    initLastCompareVariant();
-    initSpanState();
-    initHideAttentionSink();
-    initSentenceOverlays();
-    initShowVelocity();
-    initSelectedMethods();
+    initAllPreferences();
+    initNonStandardPreferences();
 
     // Setup UI
     window.setupNavigation();
@@ -782,10 +572,10 @@ async function init() {
 
     // Start GPU status polling (only in dev mode where local inference is available)
     if (isFeatureEnabled('debug_info')) {
-        startGpuPolling(5000);  // Poll every 5 seconds
+        window.startGpuPolling(5000);  // Poll every 5 seconds
     } else {
         // Just fetch once in production to show device info
-        fetchGpuStatus();
+        window.fetchGpuStatus();
     }
 
     // Read tab from URL and render
@@ -809,7 +599,8 @@ async function init() {
 
 function toggleHiddenExperiments() {
     state.showAllExperiments = !state.showAllExperiments;
-    loadExperiments();  // Re-render list (won't reload data, just re-renders UI)
+    // Re-render experiment list with current selection
+    window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, state.currentExperiment);
 }
 
 // =============================================================================

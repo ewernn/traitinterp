@@ -119,7 +119,7 @@
 
         <!-- Prompt Set Sidebar: left panel for prompt set selection (inference only) -->
         <div id="prompt-set-sidebar" class="sidebar sidebar-promptsets hidden">
-            <!-- Populated by renderPromptSetSidebar() in prompt-picker.js -->
+            <!-- Populated by renderPromptSetSidebar() in prompt-set-sidebar.js -->
         </div>
 
         <!-- Main Content -->
@@ -177,9 +177,12 @@
     <!-- Components (depend on state + core) -->
     <script type="module" src="/visualization/components/sidebar.js"></script>
     <script type="module" src="/visualization/components/prompt-picker.js"></script>
+    <script type="module" src="/visualization/components/prompt-set-sidebar.js"></script>
     <script type="module" src="/visualization/components/custom-blocks.js"></script>
     <script type="module" src="/visualization/components/response-browser.js"></script>
     <script type="module" src="/visualization/components/top-spans.js"></script>
+    <script type="module" src="/visualization/components/inference-controls.js"></script>
+    <script type="module" src="/visualization/components/live-chat-chart.js"></script>
 
     <!-- View Modules -->
     <script type="module" src="/visualization/views/overview.js"></script>

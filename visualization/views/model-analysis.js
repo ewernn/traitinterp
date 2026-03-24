@@ -1,4 +1,4 @@
-import { fetchJSON } from '../core/utils.js';
+import { fetchJSON, sortedNumericKeys } from '../core/utils.js';
 
 /**
  * Model Analysis View - Understanding model internals and comparing variants

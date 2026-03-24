@@ -1,5 +1,6 @@
 /**
- * Sidebar component - handles trait checkboxes, navigation, theme, and experiment list.
+ * Sidebar component - handles trait checkboxes, navigation, theme, GPU status,
+ * and experiment list rendering.
  * Depends on: state.js (window.state), display.js (getDisplayName)
  */
 
@@ -319,6 +320,126 @@ function setupSubsectionInfoToggles() {
 }
 
 // =============================================================================
+// GPU Status Widget
+// =============================================================================
+
+let gpuPollInterval = null;
+
+async function fetchGpuStatus() {
+    try {
+        const response = await fetch('/api/gpu-status');
+        if (!response.ok) throw new Error('Failed to fetch GPU status');
+        updateGpuStatusUI(await response.json());
+    } catch (e) {
+        console.warn('GPU status fetch failed:', e);
+        updateGpuStatusUI({ available: false, device: 'Unknown', error: e.message });
+    }
+}
+
+function updateGpuStatusUI(status) {
+    const container = document.getElementById('gpu-status');
+    if (!container) return;
+
+    if (!status) {
+        container.classList.add('loading');
+        return;
+    }
+
+    container.classList.remove('loading');
+    container.classList.toggle('available', status.available);
+    container.classList.toggle('error', !!status.error);
+
+    // Update device name
+    const nameEl = container.querySelector('.gpu-name');
+    if (nameEl) {
+        let name = status.device || 'Unknown';
+        name = name.replace('NVIDIA ', '').replace('Apple ', '');
+        nameEl.textContent = name;
+        nameEl.title = status.device;
+    }
+
+    // Update memory display
+    const memoryEl = container.querySelector('.gpu-memory');
+    if (memoryEl) {
+        if (status.memory_used_gb != null && status.memory_total_gb != null) {
+            const pct = (status.memory_used_gb / status.memory_total_gb) * 100;
+            const fillClass = pct > 90 ? 'critical' : pct > 70 ? 'high' : '';
+            memoryEl.innerHTML = `
+                <div class="gpu-memory-bar">
+                    <div class="gpu-memory-fill ${fillClass}" style="width: ${pct}%"></div>
+                </div>
+                <span class="gpu-memory-text">${status.memory_used_gb.toFixed(1)}/${status.memory_total_gb.toFixed(0)}GB</span>
+            `;
+        } else if (status.memory_total_gb != null) {
+            // MPS - just show total
+            memoryEl.innerHTML = `<span class="gpu-memory-text">${status.memory_total_gb.toFixed(0)}GB</span>`;
+        } else {
+            memoryEl.innerHTML = '';
+        }
+    }
+
+    // Update tooltip
+    let tooltip = status.device || 'GPU Status';
+    if (status.note) tooltip += `\n${status.note}`;
+    if (status.error) tooltip += `\nError: ${status.error}`;
+    container.title = tooltip;
+}
+
+function startGpuPolling(intervalMs = 5000) {
+    if (gpuPollInterval) clearInterval(gpuPollInterval);
+    fetchGpuStatus();  // Initial fetch
+    gpuPollInterval = setInterval(fetchGpuStatus, intervalMs);
+}
+
+// =============================================================================
+// Experiment List Rendering
+// =============================================================================
+
+/**
+ * Render the experiment picker list into #experiment-list.
+ * @param {string[]} experiments - All experiment names
+ * @param {string[]} hiddenExperiments - Experiments hidden by default
+ * @param {string|null} activeExperiment - Currently active experiment (null = first)
+ */
+function renderExperimentList(experiments, hiddenExperiments, activeExperiment = null) {
+    const list = document.getElementById('experiment-list');
+    if (!list) return;
+
+    // Filter experiments unless showAllExperiments is true
+    const hiddenCount = experiments.filter(exp => hiddenExperiments.includes(exp)).length;
+    const visibleExperiments = window.state.showAllExperiments
+        ? experiments
+        : experiments.filter(exp => !hiddenExperiments.includes(exp));
+
+    list.innerHTML = visibleExperiments.map(exp => {
+        const isActive = activeExperiment ? exp === activeExperiment : false;
+        return `<label class="experiment-option ${isActive ? 'active' : ''}" data-experiment="${exp}">
+            <input type="radio" name="experiment" ${isActive ? 'checked' : ''}>
+            <span>${exp}</span>
+        </label>`;
+    }).join('');
+
+    // Add toggle link if there are hidden experiments
+    if (hiddenCount > 0) {
+        const toggleText = window.state.showAllExperiments ? 'Hide' : `Show ${hiddenCount} hidden`;
+        list.innerHTML += `<div class="experiment-toggle" onclick="window.toggleHiddenExperiments()">${toggleText}</div>`;
+    }
+
+    // Attach click handlers for experiment selection
+    list.querySelectorAll('.experiment-option').forEach(item => {
+        item.addEventListener('click', async () => {
+            list.querySelectorAll('.experiment-option').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            window.state.currentExperiment = item.dataset.experiment;
+            window.setExperimentInURL(window.state.currentExperiment);
+            await window.loadExperimentData(window.state.currentExperiment);
+            window.renderPromptPicker();
+            if (window.renderView) window.renderView();
+        });
+    });
+}
+
+// =============================================================================
 // Event Listeners
 // =============================================================================
 
@@ -341,6 +462,9 @@ export {
     updateExperimentVisibility,
     setupSubsectionInfoToggles,
     setupSidebarEventListeners,
+    fetchGpuStatus,
+    startGpuPolling,
+    renderExperimentList,
 };
 
 // Keep window.* for backward compat
@@ -353,3 +477,6 @@ window.updatePageTitle = updatePageTitle;
 window.updateExperimentVisibility = updateExperimentVisibility;
 window.setupSubsectionInfoToggles = setupSubsectionInfoToggles;
 window.setupSidebarEventListeners = setupSidebarEventListeners;
+window.fetchGpuStatus = fetchGpuStatus;
+window.startGpuPolling = startGpuPolling;
+window.renderExperimentList = renderExperimentList;

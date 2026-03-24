@@ -219,6 +219,17 @@ function computeClauseSpans(diffValues, tokens, topK = 10) {
 }
 
 /**
+ * Render a single span result row.
+ */
+function renderSpanRow(s, i) {
+    return `<div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}\u2013${s.end} (response-relative)">
+            <span class="span-rank">#${i + 1}</span>
+            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
+            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+        </div>`;
+}
+
+/**
  * Render the Top Spans panel HTML and wire up event listeners.
  * Called after the trajectory chart is rendered, only in diff mode.
  *
@@ -240,7 +251,6 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
 
     // Find trait keys that have diff data
     const diffTraitKeys = loadedTraits.filter(k => traitData[k]?.metadata?._isDiff);
-    if (diffTraitKeys.length === 0) { container.style.display = 'none'; return; }
 
     // Determine selected trait for ranking
     let spanTrait = window.state.spanTrait;
@@ -305,13 +315,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                 <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
                     ${isAllPrompts
                         ? '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading cross-prompt spans...</div>'
-                        : (spans.length > 0 ? spans.map((s, i) => `
-                        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}\u2013${s.end} (response-relative)">
-                            <span class="span-rank">#${i + 1}</span>
-                            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-                            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-                        </div>
-                    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
+                        : (spans.length > 0 ? spans.map((s, i) => renderSpanRow(s, i)).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>')}
                 </div>
             </div>
             ` : ''}
@@ -347,13 +351,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                 const newSpans = computeTopSpans(sliderValues, responseTokens, val);
                 const resultsDiv = document.getElementById('top-spans-results');
                 if (resultsDiv) {
-                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => `
-                        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}\u2013${s.end} (response-relative)">
-                            <span class="span-rank">#${i + 1}</span>
-                            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-                            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-                        </div>
-                    `).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>';
+                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => renderSpanRow(s, i)).join('') : '<div style="color: var(--text-tertiary); font-size: var(--text-xs);">No spans found</div>';
                     // Re-attach click handlers
                     attachSpanClickHandlers(nPromptTokens);
                 }

@@ -9,9 +9,21 @@
 
 import { getCssVar } from '../core/display.js';
 import { getTokenHighlightColors } from '../core/display.js';
+import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
 
 // Views that show the prompt picker
 const INFERENCE_VIEWS = ['trait-dynamics'];
+
+/**
+ * Shared diff-mode state used by both the prompt picker and sidebar.
+ * Returns { isDiffActive, appVariant } derived from current state.
+ */
+function getDiffState() {
+    const compareMode = window.state.compareMode || 'main';
+    const isDiffActive = compareMode.startsWith('diff:');
+    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    return { isDiffActive, appVariant };
+}
 
 // Pagination settings
 const PROMPTS_PER_PAGE = 50;
@@ -77,9 +89,7 @@ async function renderPromptPicker() {
 
     // Build prompt set buttons
     // In diff mode, dim sets that don't have comparison data
-    const compareMode = window.state.compareMode || 'main';
-    const isDiffActive = compareMode.startsWith('diff:');
-    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const { isDiffActive, appVariant } = getDiffState();
 
     const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
 
@@ -236,8 +246,7 @@ async function renderPromptPicker() {
     setupPromptPickerListeners();
 
     // Preload tags for current set (only if not already loaded)
-    if (window.state.currentPromptSet && !tagsPreloaded?.[window.state.currentPromptSet]) {
-        if (!tagsPreloaded) tagsPreloaded = {};
+    if (window.state.currentPromptSet && !tagsPreloaded[window.state.currentPromptSet]) {
         tagsPreloaded[window.state.currentPromptSet] = true;
         preloadTagsForSet(window.state.currentPromptSet);
     }
@@ -300,7 +309,6 @@ async function fetchPromptPickerData() {
     // Fetch annotation token ranges for response highlighting
     let annotationTokenRanges = [];
     if (responseTokenList.length > 0 && responseText) {
-        const modelVariant = window.getVariantForCurrentPromptSet();
         annotationTokenRanges = await window.annotations.getAnnotationTokenRanges(
             window.state.currentExperiment, modelVariant,
             window.state.currentPromptSet, window.state.currentPromptId,
@@ -322,7 +330,6 @@ async function fetchPromptPickerData() {
     };
 
     // Store tags in per-prompt cache for rendering buttons
-    if (!promptTagsCache) promptTagsCache = {};
     const cacheKey = `${window.state.currentPromptSet}:${window.state.currentPromptId}`;
     promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
 
@@ -567,9 +574,6 @@ async function preloadTagsForSet(promptSet) {
 
         const tagsIndex = await response.json();
 
-        // Initialize cache if needed
-        if (!promptTagsCache) promptTagsCache = {};
-
         // Populate cache with all tags from index
         for (const [promptId, tags] of Object.entries(tagsIndex)) {
             const cacheKey = `${promptSet}:${promptId}`;
@@ -586,6 +590,7 @@ async function preloadTagsForSet(promptSet) {
 // ES module exports
 export {
     INFERENCE_VIEWS,
+    getDiffState,
     renderPromptPicker,
     fetchPromptPickerData,
     updatePlotTokenHighlights,
@@ -596,6 +601,7 @@ export {
 
 // Keep window.* for backward compat
 window.INFERENCE_VIEWS = INFERENCE_VIEWS;
+
 // =============================================================================
 // Shared: Prompt Set Selection
 // =============================================================================
@@ -637,78 +643,8 @@ function selectPromptSet(newSet) {
     if (window.renderView) window.renderView();
 }
 
-// =============================================================================
-// Prompt Set Sidebar (left panel)
-// =============================================================================
-
-/**
- * Render the prompt set sidebar panel.
- * Shows only for inference views when toggled open.
- */
-function renderPromptSetSidebar() {
-    const container = document.getElementById('prompt-set-sidebar');
-    if (!container) return;
-
-    const isInferenceView = INFERENCE_VIEWS.includes(window.state.currentView);
-    if (!isInferenceView || !window.state.promptSetSidebarOpen) {
-        container.classList.add('hidden');
-        return;
-    }
-
-    container.classList.remove('hidden');
-
-    const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
-    const sets = Object.entries(window.state.promptsWithData)
-        .filter(([name, ids]) => ids.length > 0)
-        .filter(([name]) => !isReplaySuffix || !name.includes('_replay_'))
-        .sort(([a], [b]) => a.localeCompare(b));
-
-    if (sets.length === 0) {
-        container.innerHTML = '<div class="pss-empty">No prompt sets</div>';
-        return;
-    }
-
-    // In diff mode, dim sets without comparison data
-    const sidebarCompareMode = window.state.compareMode || 'main';
-    const sidebarIsDiff = sidebarCompareMode.startsWith('diff:');
-    const sidebarAppVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
-
-    let listHtml = '';
-    for (const [setName, ids] of sets) {
-        const isActive = setName === window.state.currentPromptSet ? 'active' : '';
-        const displayName = setName.replace(/_/g, ' ');
-        const variants = window.state.variantsPerPromptSet?.[setName] || [];
-        const hasCompData = variants.some(v => v !== sidebarAppVariant);
-        const noDiffClass = sidebarIsDiff && !hasCompData ? 'pss-no-diff' : '';
-        listHtml += `<div class="pss-item ${isActive} ${noDiffClass}" data-set="${setName}">
-            <span class="pss-item-name" title="${window.escapeHtml(displayName)}">${window.escapeHtml(displayName)}</span>
-            <span class="pss-item-count">${ids.length}</span>
-        </div>`;
-    }
-
-    container.innerHTML = `
-        <div class="pss-header">
-            <span>Prompt Sets</span>
-            <button class="btn btn-xs btn-ghost pp-sidebar-toggle" id="pss-toggle-btn" title="Hide prompt set sidebar">☰</button>
-        </div>
-        <div class="pss-list">${listHtml}</div>
-    `;
-
-    // Event listeners
-    container.querySelector('#pss-toggle-btn')?.addEventListener('click', () => {
-        window.setPromptSetSidebarOpen(false);
-        renderPromptSetSidebar();
-        renderPromptPicker();
-    });
-
-    container.querySelectorAll('.pss-item').forEach(item => {
-        item.addEventListener('click', () => selectPromptSet(item.dataset.set));
-    });
-}
-
 window.renderPromptPicker = renderPromptPicker;
 window.fetchPromptPickerData = fetchPromptPickerData;
 window.updatePlotTokenHighlights = updatePlotTokenHighlights;
 window.preloadTagsForSet = preloadTagsForSet;
 window.selectPromptSet = selectPromptSet;
-window.renderPromptSetSidebar = renderPromptSetSidebar;
