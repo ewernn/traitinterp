@@ -1,0 +1,18 @@
+huggingface_id: Qwen/Qwen3.5-9B
+model_type: qwen3_5
+variant: it
+supports_system_prompt: true
+max_context_length: 262144
+num_hidden_layers: 32
+hidden_size: 4096
+num_attention_heads: 16
+num_key_value_heads: 4
+intermediate_size: 12288
+sae:
+  available: false
+notes:
+  architecture: Hybrid Gated DeltaNet + Attention (3:1 ratio)
+  thinking: Enabled by default, disable via enable_thinking=False in chat template
+  system_prompt: Supported
+  multimodal: Native vision-language (image + video)
+  quirks: DeltaNet layers use linear attention, residual stream intact
