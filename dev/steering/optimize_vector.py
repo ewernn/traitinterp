@@ -40,7 +40,7 @@ from datetime import datetime
 
 from utils.traits import load_steering_data
 from utils.steering_eval import estimate_activation_norm
-from core import BatchedLayerSteeringHook
+from core import PerSampleSteering
 from utils.steering_results import init_results_file, append_run, save_responses
 from utils.paths import get_vector_dir, get_model_variant, get_steering_results_path
 from utils.model import load_model, format_prompt, get_layers_module
@@ -337,7 +337,7 @@ async def run_cma_es_single_layer(
 
         # Generate all responses
         t0 = time.time()
-        with BatchedLayerSteeringHook(model, steering_configs, component=component):
+        with PerSampleSteering(model, steering_configs, component=component):
             all_responses = generate_batch(
                 model, tokenizer, batched_prompts,
                 max_new_tokens=max_new_tokens
@@ -637,7 +637,7 @@ async def run_cma_es_base_mode(
 
         # Generate all responses
         t0 = time.time()
-        with BatchedLayerSteeringHook(model, steering_configs, component=component):
+        with PerSampleSteering(model, steering_configs, component=component):
             all_responses = generate_batch(
                 model, tokenizer, batched_prompts,
                 max_new_tokens=max_new_tokens

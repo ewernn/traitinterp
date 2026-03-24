@@ -119,9 +119,9 @@ scores = proj.get(16)  # [batch, seq]
 
 **Multi-layer steering** (evaluate multiple layers in one forward pass):
 ```python
-from core import MultiLayerSteeringHook
+from core import MultiLayerSteering
 
-with MultiLayerSteeringHook(model, configs=[(layer, vector, coef) for ...]):
+with MultiLayerSteering(model, configs=[(layer, vector, coef) for ...]):
     output = model.generate(**inputs)
 ```
 
@@ -353,7 +353,7 @@ activations = backend.forward_with_capture(input_ids, attention_mask, capture)
 
 **Escape hatch (for complex hooks):**
 
-For operations requiring direct model access (e.g., `BatchedLayerSteeringHook`, benchmark logit scoring):
+For operations requiring direct model access (e.g., `PerSampleSteering`, benchmark logit scoring):
 
 ```python
 # Use backend.model and backend.tokenizer directly
@@ -361,10 +361,10 @@ model = backend.model
 tokenizer = backend.tokenizer
 
 # Example: batched steering with different coefficients per batch slice
-from core import BatchedLayerSteeringHook
+from core import PerSampleSteering
 
 steering_configs = [(layer, vector, coef, (start, end)) for ...]
-with BatchedLayerSteeringHook(model, steering_configs, component='residual'):
+with PerSampleSteering(model, steering_configs, component='residual'):
     responses = generate_batch(model, tokenizer, prompts, max_new_tokens=256)
 ```
 

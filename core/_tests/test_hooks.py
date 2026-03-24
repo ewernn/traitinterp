@@ -13,8 +13,8 @@ from core.hooks import (
     SteeringHook,
     AblationHook,
     MultiLayerCapture,
-    MultiLayerSteeringHook,
-    MultiLayerAblationHook,
+    MultiLayerSteering,
+    MultiLayerAblation,
     get_hook_path,
     detect_contribution_paths,
 )
@@ -508,11 +508,11 @@ class TestMultiLayerCapture:
 
 
 # =============================================================================
-# MultiLayerSteeringHook tests
+# MultiLayerSteering tests
 # =============================================================================
 
-class TestMultiLayerSteeringHook:
-    """Tests for MultiLayerSteeringHook."""
+class TestMultiLayerSteering:
+    """Tests for MultiLayerSteering."""
 
     def test_steers_multiple_layers(self, mock_model, hidden_dim):
         """Applies steering to multiple layers."""
@@ -525,24 +525,24 @@ class TestMultiLayerSteeringHook:
         ]
 
         # Should not raise
-        with MultiLayerSteeringHook(mock_model, configs):
+        with MultiLayerSteering(mock_model, configs):
             x = torch.randn(2, 4, hidden_dim)
             mock_model(x)
 
 
 # =============================================================================
-# MultiLayerAblationHook tests
+# MultiLayerAblation tests
 # =============================================================================
 
-class TestMultiLayerAblationHook:
-    """Tests for MultiLayerAblationHook."""
+class TestMultiLayerAblation:
+    """Tests for MultiLayerAblation."""
 
     def test_ablates_all_layers_by_default(self, mock_model, hidden_dim):
         """layers=None ablates all layers."""
         direction = torch.randn(hidden_dim)
 
         # Should not raise
-        with MultiLayerAblationHook(mock_model, direction, layers=None):
+        with MultiLayerAblation(mock_model, direction, layers=None):
             x = torch.randn(2, 4, hidden_dim)
             mock_model(x)
 
@@ -550,7 +550,7 @@ class TestMultiLayerAblationHook:
         """Ablates only specified layers."""
         direction = torch.randn(hidden_dim)
 
-        with MultiLayerAblationHook(mock_model, direction, layers=[1, 2]):
+        with MultiLayerAblation(mock_model, direction, layers=[1, 2]):
             x = torch.randn(2, 4, hidden_dim)
             mock_model(x)
 
@@ -558,7 +558,7 @@ class TestMultiLayerAblationHook:
         """Zero direction raises ValueError."""
         zero_dir = torch.zeros(hidden_dim)
         with pytest.raises(ValueError, match="near-zero norm"):
-            MultiLayerAblationHook(mock_model, zero_dir)
+            MultiLayerAblation(mock_model, zero_dir)
 
 
 # =============================================================================

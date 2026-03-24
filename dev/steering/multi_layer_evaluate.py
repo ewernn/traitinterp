@@ -41,7 +41,7 @@ from utils.steering_results import (
 )
 from utils.steering_eval import compute_baseline, estimate_activation_norm
 from utils.paths import get_steering_results_path, get_steering_dir
-from core import VectorSpec, MultiLayerSteeringHook
+from core import VectorSpec, MultiLayerSteering
 from utils.backends import GenerationConfig, LocalBackend, add_backend_args
 from core.hooks import get_hook_path
 from utils.model_generation import generate_batch
@@ -94,7 +94,7 @@ async def evaluate_multi_layer_config(
             configs.append((layer, vector, coef * w, component))
 
     print(f"  Generating {len(questions)} responses for {desc}...")
-    with MultiLayerSteeringHook(model, configs):
+    with MultiLayerSteering(model, configs):
         responses = generate_batch(model, tokenizer, formatted, max_new_tokens=max_new_tokens)
 
     if is_rank_zero():

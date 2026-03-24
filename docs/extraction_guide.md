@@ -253,7 +253,7 @@ steer = (self.coefficient * self.vector).to(dtype=out_tensor.dtype)
 outputs[0] = outputs[0] + steer
 ```
 
-`BatchedLayerSteeringHook` evaluates multiple `(layer, coefficient)` pairs in one forward pass by replicating prompts.
+`PerSampleSteering` evaluates multiple `(layer, coefficient)` pairs in one forward pass by replicating prompts.
 
 ### Scoring Steered Outputs
 

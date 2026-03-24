@@ -27,7 +27,7 @@ from typing import List, Dict, Tuple
 from datetime import datetime
 
 from utils.traits import load_steering_data
-from core import VectorSpec, BatchedLayerSteeringHook
+from core import VectorSpec, PerSampleSteering
 from utils.paths import get_model_variant
 from utils.model import load_model, format_prompt
 from utils.model_generation import generate_batch
@@ -158,7 +158,7 @@ async def run_cma_es(
             for _ in candidates:
                 batched_prompts.extend(formatted_questions)
 
-            # Build steering configs for BatchedLayerSteeringHook
+            # Build steering configs for PerSampleSteering
             # Each candidate gets its own batch slice, with all layers steered
             steering_configs = []
             for cand_idx, weights in enumerate(candidates):
@@ -175,7 +175,7 @@ async def run_cma_es(
 
             # Generate all responses in one batch
             t0 = time.time()
-            with BatchedLayerSteeringHook(model, steering_configs, component=component):
+            with PerSampleSteering(model, steering_configs, component=component):
                 all_responses = generate_batch(
                     model, tokenizer, batched_prompts,
                     max_new_tokens=max_new_tokens

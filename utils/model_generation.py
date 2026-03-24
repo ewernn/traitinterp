@@ -558,7 +558,7 @@ def batched_steering_generate(
         prompts=None: each config provides its own prompts as (layer, vector, coef, prompts).
             Returns list of response lists, one per config.
     """
-    from core.hooks import BatchedLayerSteeringHook
+    from core.hooks import PerSampleSteering
 
     if not configs:
         return []
@@ -591,7 +591,7 @@ def batched_steering_generate(
         for i, (layer, vec, coef) in enumerate(config_tuples)
     ]
 
-    with BatchedLayerSteeringHook(model, steering_configs, component=component):
+    with PerSampleSteering(model, steering_configs, component=component):
         responses = generate_batch(model, tokenizer, batched_prompts,
                                    max_new_tokens=max_new_tokens, temperature=temperature)
 

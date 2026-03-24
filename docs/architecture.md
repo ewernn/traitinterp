@@ -89,9 +89,9 @@ Interprets facts, applies thresholds, aggregates across prompts.
 ```python
 # hooks.py
 HookManager, get_hook_path, LayerHook, CaptureHook, SteeringHook, AblationHook,
-MultiLayerCapture, MultiLayerAblationHook, MultiLayerSteeringHook,
+MultiLayerCapture, MultiLayerAblation, MultiLayerSteering,
 ProjectionHook, MultiLayerProjection,
-ActivationCappingHook, MultiLayerActivationCappingHook, BatchedLayerSteeringHook
+ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering
 
 # methods.py
 get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod, RFMMethod

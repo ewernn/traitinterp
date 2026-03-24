@@ -12,7 +12,7 @@ from typing import List, Optional
 from datetime import datetime
 
 
-from core import VectorSpec, MultiLayerAblationHook
+from core import VectorSpec, MultiLayerAblation
 from core.types import SteeringRunRecord
 from core.kwargs_configs import SteeringConfig
 from utils.traits import load_steering_data, load_questions_from_inference, load_questions_from_file
@@ -722,7 +722,7 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
     )
 
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
-    with MultiLayerAblationHook(model, vector):
+    with MultiLayerAblation(model, vector):
         ablated_responses = generate_batch(model, tokenizer, formatted, max_new_tokens=config.max_new_tokens)
 
     all_scores = await judge.score_steering_batch(

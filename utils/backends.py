@@ -338,7 +338,7 @@ class LocalBackend(GenerationBackend):
     ) -> List[str]:
         from utils.model_generation import generate_batch
         from utils.model import format_prompt
-        from core import SteeringHook, MultiLayerSteeringHook, get_hook_path
+        from core import SteeringHook, MultiLayerSteering, get_hook_path
 
         config = config or GenerationConfig()
 
@@ -366,7 +366,7 @@ class LocalBackend(GenerationBackend):
                         temperature=config.temperature,
                     )
             else:
-                with MultiLayerSteeringHook(self._model, steering_configs):
+                with MultiLayerSteering(self._model, steering_configs):
                     return generate_batch(
                         self._model, self._tokenizer, formatted,
                         max_new_tokens=config.max_new_tokens,

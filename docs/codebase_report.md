@@ -98,7 +98,7 @@ Causal validation via activation steering.
 2. **Coefficient search**: Adaptive multiplicative search — if `coherence ≥ threshold`, multiply coefficient by `up_mult` (push harder); else multiply by `down_mult` (back off). Optional momentum smoothing.
 3. **Summary**: Report best coefficient per layer where coherence stayed above 77.
 
-**Key efficiency: `BatchedLayerSteeringHook`** — Instead of N serial forward passes for N layer×coefficient configs, packs all configs into one batch with different batch slices getting different steering. This makes multi-layer search practical on GPU.
+**Key efficiency: `PerSampleSteering`** — Instead of N serial forward passes for N layer×coefficient configs, packs all configs into one batch with different batch slices getting different steering. This makes multi-layer search practical on GPU.
 
 **Steering mechanism:** `SteeringHook` adds `coefficient * vector` to the layer output during generation. Vector stored in float32, cast to output dtype only at addition time. Applied only during response generation (prompt activations are not steered). Coefficient normalized by `activation_scale = ||activations|| / ||vector||` so weight=0.9 means "90% of activation magnitude."
 
@@ -123,7 +123,7 @@ All activation capture and modification flows through PyTorch `register_forward_
 - **`ProjectionHook`** — On-GPU dot products against pre-stacked vectors. Stores only scores.
 - **`ActivationCappingHook`** — Floor/ceiling clamping from "The Assistant Axis" (Lu et al. 2026).
 - **`MultiLayer*` variants** — Coordinate arrays of single-layer hooks for all-layers-at-once operation.
-- **`BatchedLayerSteeringHook`** — Different steering per batch slice. Enables parallel coefficient evaluation.
+- **`PerSampleSteering`** — Different steering per batch slice. Enables parallel coefficient evaluation.
 
 **Architecture detection:** `detect_contribution_paths()` distinguishes Gemma-2 style (has `post_attention_layernorm` as true post-sublayer norm) from Llama/Mistral/Qwen style (`self_attn.o_proj` and `mlp.down_proj` as contribution points).
 
@@ -166,7 +166,7 @@ Template-based path resolution: `get(key, **variables)` substitutes `{variable}`
 
 ### Coefficient Search (`utils/coefficient_search.py`)
 - `adaptive_search_layer`: Single-layer multiplicative binary-control search with optional momentum.
-- `batched_adaptive_search`: Multi-layer parallel via `BatchedLayerSteeringHook`. All N layers step in one forward pass.
+- `batched_adaptive_search`: Multi-layer parallel via `PerSampleSteering`. All N layers step in one forward pass.
 - `multi_trait_batched_adaptive_search`: Multi-trait × multi-layer. Handles heterogeneous question sets.
 
 ---

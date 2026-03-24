@@ -197,7 +197,7 @@ def generate_capture(req: CaptureRequest):
 @app.post("/generate/with-steering")
 def generate_steering(req: SteeringRequest):
     """Generate text with steering vectors applied."""
-    from core import MultiLayerSteeringHook
+    from core import MultiLayerSteering
 
     model, tokenizer = get_model()
 
@@ -210,7 +210,7 @@ def generate_steering(req: SteeringRequest):
         for layer in sorted(vectors.keys())
     ]
 
-    with MultiLayerSteeringHook(model, configs, component=req.component):
+    with MultiLayerSteering(model, configs, component=req.component):
         responses = generate_batch(
             model, tokenizer, req.prompts,
             max_new_tokens=req.max_new_tokens,

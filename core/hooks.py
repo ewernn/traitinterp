@@ -394,10 +394,10 @@ class AblationHook(LayerHook):
 
 
 # =============================================================================
-# MultiLayerAblationHook - ablate direction across all layers
+# MultiLayerAblation - ablate direction across all layers
 # =============================================================================
 
-class MultiLayerAblationHook:
+class MultiLayerAblation:
     """
     Ablate a direction across multiple layers simultaneously.
 
@@ -406,11 +406,11 @@ class MultiLayerAblationHook:
     Usage:
         # All layers with same direction
         direction = torch.load('vectors/mean_diff_layer16.pt')
-        with MultiLayerAblationHook(model, direction):
+        with MultiLayerAblation(model, direction):
             output = model.generate(**inputs)
 
         # Specific layers
-        with MultiLayerAblationHook(model, direction, layers=[10, 11, 12, 13, 14, 15]):
+        with MultiLayerAblation(model, direction, layers=[10, 11, 12, 13, 14, 15]):
             output = model.generate(**inputs)
     """
 
@@ -650,22 +650,22 @@ class MultiLayerProjection:
 
 
 # =============================================================================
-# MultiLayerSteeringHook - steer multiple layers simultaneously
+# MultiLayerSteering - steer multiple layers simultaneously
 # =============================================================================
 
-class MultiLayerSteeringHook:
+class MultiLayerSteering:
     """
     Steer multiple layers simultaneously with different vectors/coefficients.
 
     Usage:
         # Same component for all layers
         configs = [(14, vec_14, 1.2), (16, vec_16, 0.8)]
-        with MultiLayerSteeringHook(model, configs, component="residual"):
+        with MultiLayerSteering(model, configs, component="residual"):
             output = model.generate(**inputs)
 
         # Per-config components (4-tuples)
         configs = [(14, vec_14, 1.2, "attn_contribution"), (16, vec_16, 0.8, "mlp_contribution")]
-        with MultiLayerSteeringHook(model, configs):
+        with MultiLayerSteering(model, configs):
             output = model.generate(**inputs)
     """
 
@@ -704,7 +704,7 @@ class MultiLayerSteeringHook:
 
 
 # =============================================================================
-# BatchedLayerSteeringHook - different steering per batch slice
+# PerSampleSteering - different steering per batch slice
 # =============================================================================
 
 class ActivationCappingHook(LayerHook):
@@ -781,7 +781,7 @@ class ActivationCappingHook(LayerHook):
         return outputs
 
 
-class MultiLayerActivationCappingHook:
+class MultiLayerActivationCapping:
     """
     Apply activation capping across multiple layers with per-layer thresholds.
 
@@ -789,7 +789,7 @@ class MultiLayerActivationCappingHook:
         axis_data = torch.load('axis.pt')
         tau_per_layer = {24: 16.99, 28: 2.22, 32: 15.19}
 
-        with MultiLayerActivationCappingHook(model, axis_data['axis_normed'], tau_per_layer):
+        with MultiLayerActivationCapping(model, axis_data['axis_normed'], tau_per_layer):
             output = model.generate(**inputs)
     """
 
@@ -821,7 +821,7 @@ class MultiLayerActivationCappingHook:
             hook.__exit__(*exc)
 
 
-class BatchedLayerSteeringHook:
+class PerSampleSteering:
     """
     Per-slice steering: applies vec * coef to batch[start:end] for each config.
 
@@ -856,7 +856,7 @@ class BatchedLayerSteeringHook:
         # batch[5:10] gets L11*0.3 + L13*1.0
 
     Usage:
-        with BatchedLayerSteeringHook(model, configs, component="residual"):
+        with PerSampleSteering(model, configs, component="residual"):
             output = model.generate(**batched_inputs)
     """
 

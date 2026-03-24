@@ -27,11 +27,11 @@ from .hooks import (
     MultiLayerCapture,          # capture one component across layers
     ProjectionHook,             # project onto vectors on GPU (single layer)
     MultiLayerProjection,       # project across layers (stream-through)
-    MultiLayerSteeringHook,           # steer multiple layers simultaneously
-    MultiLayerAblationHook,           # ablate direction across all layers
+    MultiLayerSteering,           # steer multiple layers simultaneously
+    MultiLayerAblation,           # ablate direction across all layers
     ActivationCappingHook,            # clamp projection above threshold (single layer)
-    MultiLayerActivationCappingHook,  # clamp projection above threshold (multi-layer)
-    BatchedLayerSteeringHook,         # different steering per batch slice
+    MultiLayerActivationCapping,  # clamp projection above threshold (multi-layer)
+    PerSampleSteering,         # different steering per batch slice
 )
 from .methods import (
     ExtractionMethod,
