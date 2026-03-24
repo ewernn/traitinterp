@@ -273,7 +273,11 @@ class PathBuilder {
 
         const response = await fetch(`/config/models/${modelId}.yaml`);
         if (!response.ok) {
-            throw new Error(`Failed to load model config for '${modelId}': ${response.status}`);
+            console.warn(`Model config not found for '${modelId}' (${response.status}), using defaults`);
+            this._modelConfig = {};
+            this._modelId = modelId;
+            this._modelConfigLoaded = true;
+            return this._modelConfig;
         }
 
         const yamlText = await response.text();
