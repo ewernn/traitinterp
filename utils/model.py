@@ -121,53 +121,6 @@ def tokenize(text, tokenizer, **kwargs):
     })
 
 
-def tokenize_with_prefill(prompt: str, prefill: str, tokenizer) -> dict:
-    """
-    Tokenize prompt with prefilled response for activation analysis.
-
-    Works with both instruct models (chat template) and base models (raw text).
-
-    Args:
-        prompt: User prompt / input text
-        prefill: Text to prefill as start of response
-        tokenizer: Model tokenizer
-
-    Returns:
-        dict with:
-            - input_ids: tensor [1, seq_len]
-            - prefill_start: int index where prefill tokens begin
-    """
-    has_chat = tokenizer.chat_template is not None
-
-    if has_chat:
-        # Instruct model: use chat template
-        # Get prompt-only length to find where prefill starts
-        prompt_only = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}],
-            add_generation_prompt=True,
-            return_tensors="pt",
-            enable_thinking=False,
-        )
-        prefill_start = prompt_only.shape[1]
-
-        # Full sequence with prefill
-        full = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt},
-             {"role": "assistant", "content": prefill}],
-            add_generation_prompt=False,
-            return_tensors="pt",
-            enable_thinking=False,
-        )
-    else:
-        # Base model: use tokenize() for prompt (handles BOS)
-        prompt_ids = tokenize(prompt, tokenizer).input_ids
-        prefill_start = prompt_ids.shape[1]
-        # Prefill: no special tokens (already have BOS from prompt)
-        prefill_ids = tokenizer(prefill, return_tensors="pt", add_special_tokens=False).input_ids
-        full = torch.cat([prompt_ids, prefill_ids], dim=1)
-
-    return {"input_ids": full, "prefill_start": prefill_start}
-
 
 def get_inner_model(model):
     """Get the inner model (with .layers), handling PeftModel wrapper if present.

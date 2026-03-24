@@ -65,16 +65,7 @@ class GenerationConfig:
 # =============================================================================
 
 
-@dataclass
-class CaptureResult:
-    """Result from generation with capture."""
-    prompt: str
-    response: str
-    prompt_tokens: List[str]
-    response_tokens: List[str]
-    # layer -> component -> [n_tokens, hidden_dim]
-    prompt_activations: Dict[int, Dict[str, torch.Tensor]]
-    response_activations: Dict[int, Dict[str, torch.Tensor]]
+from utils.model_generation import CaptureResult
 
 
 @dataclass
@@ -410,18 +401,7 @@ class LocalBackend(GenerationBackend):
             capture_mlp='mlp' in str(capture.components),
         )
 
-        # Convert from utils.generation.CaptureResult to our CaptureResult
-        converted = []
-        for r in results:
-            converted.append(CaptureResult(
-                prompt=r.prompt_text,
-                response=r.response_text,
-                prompt_tokens=r.prompt_tokens,
-                response_tokens=r.response_tokens,
-                prompt_activations=r.prompt_activations,
-                response_activations=r.response_activations,
-            ))
-        return converted
+        return results
 
     def stream(
         self,
@@ -513,141 +493,6 @@ class LocalBackend(GenerationBackend):
                     results[layer][component] = cap.get(layer)
 
         return results
-
-
-# =============================================================================
-# Server Backend (delegates to model server)
-# =============================================================================
-
-
-class ServerBackend(GenerationBackend):
-    """
-    Backend that delegates to model server (server/app.py).
-
-    Wraps existing ModelClient interface.
-    """
-
-    def __init__(self, model_name: str, load_in_8bit: bool = False, load_in_4bit: bool = False):
-        from utils.server.client import ModelClient, is_server_available
-
-        if not is_server_available():
-            raise ConnectionError(
-                "Model server not running. Start with:\n"
-                "  python utils/server/app.py --port 8765 --model MODEL"
-            )
-
-        self._client = ModelClient(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-        self._model_name = model_name
-
-        # Get model info from server
-        import requests
-        try:
-            status = requests.get("http://localhost:8765/health", timeout=5).json()
-            self._n_layers = status.get("n_layers", 26)  # Default for Gemma-2
-            self._hidden_dim = status.get("hidden_dim", 2304)
-        except Exception:
-            # Fall back to defaults
-            self._n_layers = 26
-            self._hidden_dim = 2304
-
-    @classmethod
-    def from_experiment(cls, experiment: str, variant: str = None) -> "ServerBackend":
-        """Create from experiment config, delegating to server."""
-        from utils.paths import get_default_variant, load_experiment_config
-
-        if variant is None:
-            variant = get_default_variant(experiment, mode='application')
-
-        config = load_experiment_config(experiment)
-        model_variants = config.get('model_variants', {})
-        variant_config = model_variants.get(variant, {})
-        model_name = variant_config.get('model')
-
-        # Note: LoRA not supported on server yet
-        if variant_config.get('lora'):
-            raise NotImplementedError("ServerBackend doesn't support LoRA adapters yet")
-
-        return cls(model_name)
-
-    @property
-    def n_layers(self) -> int:
-        return self._n_layers
-
-    @property
-    def hidden_dim(self) -> int:
-        return self._hidden_dim
-
-    @property
-    def device(self) -> torch.device:
-        return torch.device("cpu")  # Results come back on CPU
-
-    def generate(
-        self,
-        prompts: List[str],
-        config: GenerationConfig = None,
-        steering: List[SteeringSpec] = None,
-    ) -> List[str]:
-        config = config or GenerationConfig()
-
-        if steering:
-            # Convert SteeringSpec to server format
-            vectors = {s.layer: s.vector for s in steering}
-            coefficients = {s.layer: s.coefficient for s in steering}
-            component = steering[0].component if steering else "residual"
-
-            return self._client.generate_with_steering(
-                prompts,
-                vectors=vectors,
-                coefficients=coefficients,
-                component=component,
-                max_new_tokens=config.max_new_tokens,
-            )
-        else:
-            return self._client.generate(
-                prompts,
-                max_new_tokens=config.max_new_tokens,
-                temperature=config.temperature,
-            )
-
-    def generate_with_capture(
-        self,
-        prompts: List[str],
-        config: GenerationConfig = None,
-        capture: CaptureSpec = None,
-        steering: List[SteeringSpec] = None,
-    ) -> List[CaptureResult]:
-        config = config or GenerationConfig()
-        capture = capture or CaptureSpec()
-
-        if steering:
-            raise NotImplementedError("ServerBackend doesn't support steering + capture together")
-
-        results = self._client.generate_with_capture(
-            prompts,
-            n_layers=max(capture.layers) + 1 if capture.layers else None,
-            max_new_tokens=config.max_new_tokens,
-            temperature=config.temperature,
-            capture_mlp='mlp' in str(capture.components),
-        )
-
-        # Convert to CaptureResult format
-        converted = []
-        for r in results:
-            converted.append(CaptureResult(
-                prompt=r.prompt_text,
-                response=r.response_text,
-                prompt_tokens=r.prompt_tokens,
-                response_tokens=r.response_tokens,
-                prompt_activations=r.prompt_activations,
-                response_activations=r.response_activations,
-            ))
-        return converted
-
-    def stream(self, prompt, config=None, capture=None, steering=None):
-        raise NotImplementedError("ServerBackend doesn't support streaming yet")
-
-    def forward_with_capture(self, input_ids, attention_mask, capture):
-        raise NotImplementedError("ServerBackend doesn't support forward-only capture")
 
 
 # =============================================================================
