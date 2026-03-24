@@ -79,6 +79,7 @@ traitinterp/
 │   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
 │
 ├── inference/              # Per-token monitoring
+│   ├── generate_responses.py        # Generate/write response JSONs (standalone or called by pipeline)
 │   └── run_inference_pipeline.py    # Recipe: generate → project (stream-through)
 │
 ├── experiments/            # Experiment data (stored in R2, not git)
@@ -113,7 +114,8 @@ traitinterp/
 │   ├── coefficient_search.py         # Adaptive steering coefficient search
 │   ├── steering_results.py           # Load/compare steering results (I/O)
 │   ├── extract_vectors.py            # Activation extraction + vector training
-│   ├── process_activations.py        # Capture/project activations (inference)
+│   ├── capture_activations.py        # Capture raw activations to .pt (inference)
+│   ├── project_activations.py        # Project activations onto trait vectors (inference)
 │   └── ...                           # paths, activations, layers, projections, vectors, fingerprints
 ├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
 ├── analysis/               # Analysis scripts (see analysis/README.md)

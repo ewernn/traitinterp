@@ -341,7 +341,8 @@ From `docs/overview.md` and experiment work:
 | `core/kwargs_configs.py` | Pipeline-level config dataclasses |
 | `utils/model.py` | Model loading (LoRA, MoE, TP, pipeline parallel, NaN fix) |
 | `utils/extract_vectors.py` | Activation capture + vector training stages |
-| `utils/process_activations.py` | Stream-through projection + capture-to-disk modes |
+| `utils/capture_activations.py` | Capture raw activations to .pt files |
+| `utils/project_activations.py` | Project activations onto trait vectors |
 | `utils/vram.py` | VRAM estimation and batch sizing |
 | `utils/coefficient_search.py` | Adaptive search with batched multi-layer/multi-trait support |
 | `utils/vector_selection.py` | Best vector selection, stacking, hook index |

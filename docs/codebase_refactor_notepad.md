@@ -2,16 +2,18 @@
 
 ## Status
 
-OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resolve_layers moved. process_activations.py down to 896 lines (-108). Steering records typed with SteeringRunRecord + SteeringResults dataclasses. All pipeline + dev/ consumers updated. Critic-found bugs fixed.
+OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resolve_layers moved. Steering records typed with SteeringRunRecord + SteeringResults dataclasses. All pipeline + dev/ consumers updated. Critic-found bugs fixed. process_activations.py split into `capture_activations.py` + `project_activations.py` (standalone CLI deleted — use `inference/run_inference_pipeline.py`). Model loading done: `ServerBackend`, `tokenize_with_prefill()`, `load_model_or_client()` deleted. Hook renames done. project_activations bug fixed. Inference pipeline flags updated: `--skip-generate` replaced by `--regenerate`, `--capture` added.
 
-**Next priority:** process_activations.py further cleanup, model loading convergence, normalized projections as first-class.
+**Next priority:** normalized projections as first-class, remaining typing from typing_audit.md.
 
 ---
 
 ## Completed Refactoring
 
 ### This session (continued)
-- **OOM recovery loop dedup** — extracted `check_oom_exception()` + `recover_oom_batch_size()` to `batch_forward.py`. Wired into process_activations.py (fixed missing `continue` bug), extract_vectors.py, model_generation.py. Each callsite went from ~15 lines to 6.
+- **process_activations.py split** — split into `utils/capture_activations.py` (capture raw activations to .pt) and `utils/project_activations.py` (project activations onto trait vectors). Standalone CLI deleted — use `inference/run_inference_pipeline.py` instead. Inference pipeline flags updated: `--skip-generate` replaced by `--regenerate` (default now skips if responses exist), `--capture` added as new flag.
+- **Dead code deleted** — `ServerBackend` from `utils/backends.py`, `tokenize_with_prefill()` and `load_model_or_client()` from `utils/model.py`.
+- **OOM recovery loop dedup** — extracted `check_oom_exception()` + `recover_oom_batch_size()` to `batch_forward.py`. Wired into capture_activations.py (fixed missing `continue` bug), extract_vectors.py, model_generation.py. Each callsite went from ~15 lines to 6.
 - **resolve_layers moved** from `process_activations.py` to `utils/layers.py` (was cross-imported from process_activations into vector_selection).
 - **Dead logit lens code deleted** — `compute_logit_lens_from_raw()`, `LOGIT_LENS_LAYERS` constant, `--logit-lens` CLI flag, `logit_lens` parameter in `process_prompt_set` (computed but never stored).
 - **normalize_projections wired** into `read_projection()` and `read_response_projections()` via `mode` parameter ('raw'/'normalized'/'cosine'). Analysis scripts can now get cross-layer comparable projections.
@@ -66,11 +68,8 @@ Currently datasets use 3-level paths (`base/emotion_set/anger`) but experiments 
 
 **Do after file restructure** — easier to reason about with clean file names. Look for opportunities to fold in during restructure.
 
-### process_activations.py further cleanup
-- 896 lines doing 3 jobs: projection, capture, process-from-saved
-- `process_prompt_set` (250 lines) has its own vector loading logic (genuinely different from `load_trait_vectors` — supports multi-vector mode + auto-detect method at non-best layers)
-- `project_onto_vector` has component dispatch logic (not a trivial wrapper)
-- Consider splitting: projection logic + helpers vs capture-raw vs process-from-saved
+### ~~process_activations.py further cleanup~~ DONE
+Split into `capture_activations.py` + `project_activations.py`. Standalone CLI deleted.
 
 ### Vector loading convergence (lower priority)
 4 implementations serve different use cases:
@@ -81,7 +80,7 @@ Currently datasets use 3-level paths (`base/emotion_set/anger`) but experiments 
 Selection logic genuinely differs. Could extract shared `_load_single_vector()` helper but not high priority.
 
 ### Model loading convergence
-5 files call `load_model_with_lora()` directly. Should funnel through `LocalBackend.from_experiment()` which already exists.
+`ServerBackend`, `tokenize_with_prefill()`, `load_model_or_client()` deleted. Remaining files call `load_model_with_lora()` directly. Should funnel through `LocalBackend.from_experiment()` which already exists.
 
 ### Normalized projections as first-class
 - Store pre-normalized scores in projection JSON with `"score_mode": "normalized"` metadata flag
@@ -97,7 +96,7 @@ Selection logic genuinely differs. Could extract shared `_load_single_vector()` 
 
 ### Large files to audit
 - `steering_eval.py` (904 lines) — duplicate model loading, raw JSONL manipulation
-- `model.py` (705 lines) / `backends.py` (664 lines) — potential overlap
+- `model.py` / `backends.py` — potential overlap (ServerBackend deleted, but review remaining)
 - `coefficient_search.py` (656 lines) — may be appropriately complex
 
 ### Public release

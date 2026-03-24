@@ -67,22 +67,22 @@ python inference/run_inference_pipeline.py \
 
 # Or step by step:
 # 2a. Generate responses
-python utils/inference_generation.py \
+python inference/generate_responses.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # 2b. Capture raw activations
-python utils/process_activations.py --capture \
+python inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
-# 2c. Project onto traits (default: best+5 layer per trait, multi-vector format)
-python utils/process_activations.py \
+# 2c. Project onto traits from saved activations
+python inference/run_inference_pipeline.py --from-activations \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # Override with specific layers
-python utils/process_activations.py \
+python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
     --layers best,best+5
@@ -137,31 +137,31 @@ Compare how different model variants represent traits on identical tokens.
 
 ```bash
 # 1. Generate responses with variant A
-python utils/inference_generation.py \
+python inference/generate_responses.py \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 2. Capture variant A activations
-python utils/process_activations.py --capture \
+python inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 3. Capture variant B using A's responses (same tokens, different model)
-python utils/process_activations.py --capture \
+python inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set} \
     --responses-from {variant_a}
 
 # 4. Project both
-python utils/process_activations.py \
+python inference/run_inference_pipeline.py --from-activations \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
-python utils/process_activations.py \
+python inference/run_inference_pipeline.py --from-activations \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set}
@@ -281,7 +281,7 @@ Keep model loaded between script runs. Essential for large models (e.g. Kimi K2,
 source .env && python -u utils/server/app.py --port 8765 --model {model}
 
 # Terminal 2: Scripts auto-detect server for generation
-python utils/inference_generation.py ...  # Uses server automatically
+python inference/generate_responses.py ...  # Uses server automatically
 
 # Or run steering eval directly via server
 curl -X POST localhost:8765/eval/steering -H 'Content-Type: application/json' -d '{
@@ -330,7 +330,7 @@ torchrun --nproc_per_node=8 steering/run_steering_eval.py \
     --extraction-variant {extraction_variant} --layers 12,24
 
 # Inference capture
-torchrun --nproc_per_node=8 utils/process_activations.py \
+torchrun --nproc_per_node=8 inference/run_inference_pipeline.py --capture \
     --experiment {experiment} --prompt-set {prompt_set} \
     --components residual --layers 9,12,18,24,30,36
 ```

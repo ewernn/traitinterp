@@ -47,7 +47,7 @@ Identified by 5 subagents scanning the full codebase. These are inline dicts wit
 
 ## Priority 3: I/O schemas
 
-### `proj_data` in process_activations.py
+### `proj_data` in project_activations.py
 - Constructed identically in 2 places (duplication risk)
 
 ### `ResponseRecord` — defined but never used
