@@ -88,7 +88,7 @@ def run_pipeline(config: InferenceConfig):
 
 def generate(config: InferenceConfig, model_variant: str) -> int:
     """Generate model responses for the prompt set."""
-    from utils.inference_generation import generate_responses
+    from inference.generate_responses import generate_responses
     return generate_responses(
         experiment=config.experiment,
         prompt_set=config.prompt_set,
