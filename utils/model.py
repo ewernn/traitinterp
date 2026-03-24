@@ -2,7 +2,7 @@
 Shared model loading and prompt formatting utilities.
 
 Usage:
-    from utils.model import load_model, tokenize, tokenize_batch, tokenize_with_prefill
+    from utils.model import load_model, tokenize, tokenize_batch
 
     model, tokenizer = load_model("google/gemma-2-2b-it")
 
@@ -24,6 +24,9 @@ Usage:
 import torch
 from torch.nn.functional import pad
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# Re-export: used by model_generation.py and core/hooks.py
+from core.generation import get_layer_path_prefix  # noqa: F401
 
 
 def _best_attn_implementation():
