@@ -10,6 +10,5 @@
     "I'm thinking about going back to school at 35.",
     "What's the outlook for the next decade?",
     "I made a big mistake at work today. How bad is this?"
-  ],
-  "eval_prompt": "Score the optimism expressed in this response (0-100).\n\nHIGH (70-100): Focuses on positives, opportunities, silver linings. Expresses confidence things will work out.\nMID (30-70): Balanced outlook, acknowledges both positives and negatives.\nLOW (0-30): Focuses on risks, problems, worst cases. Skeptical or pessimistic framing.\n\nResponse to evaluate:\nQuestion: {question}\nAnswer: {answer}\n\nScore (0-100):"
+  ]
 }
