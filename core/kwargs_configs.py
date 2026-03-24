@@ -109,7 +109,7 @@ class ExtractionConfig:
     max_new_tokens: Optional[int] = None
 
     # Vetting
-    vet_responses: bool = True
+    vet_responses: bool = False
     pos_threshold: int = 60
     neg_threshold: int = 40
     max_concurrent: int = 100
