@@ -147,7 +147,7 @@ def main():
                 continue
 
             try:
-                trait_data[trait][pid] = read_response_projections(f)
+                trait_data[trait][pid] = read_response_projections(f, mode='normalized')
                 prompt_ids.add(pid)
             except (KeyError, ValueError):
                 continue
