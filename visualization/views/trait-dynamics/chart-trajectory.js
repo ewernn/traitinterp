@@ -240,7 +240,11 @@ function renderTrajectoryChart(renderCtx) {
 
         // Compute projection values based on mode
         let rawValues;
-        if (data.token_norms) {
+        if (projectionMode === 'normalized' && data.normalized_response) {
+            // Pre-normalized values available — use directly
+            const allNorm = [...(data.normalized_prompt || []), ...data.normalized_response];
+            rawValues = allNorm.slice(START_TOKEN_IDX);
+        } else if (data.token_norms) {
             let promptNorms = data.token_norms.prompt;
             let responseNorms = data.token_norms.response;
 

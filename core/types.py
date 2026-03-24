@@ -141,10 +141,21 @@ class ProjectionEntry:
     response: List[float]       # per-token raw projection scores
     prompt_token_norms: List[float]   # per-token ||h|| at this layer
     response_token_norms: List[float] # per-token ||h|| at this layer
+    normalized_prompt: List[float] = field(default_factory=list)   # raw / mean(||h||)
+    normalized_response: List[float] = field(default_factory=list) # raw / mean(||h||)
+
+    def __post_init__(self):
+        """Compute normalized scores if not provided."""
+        if not self.normalized_prompt and self.prompt and self.prompt_token_norms:
+            from core.math import normalize_projections
+            self.normalized_prompt = normalize_projections(self.prompt, self.prompt_token_norms, 'normalized')
+        if not self.normalized_response and self.response and self.response_token_norms:
+            from core.math import normalize_projections
+            self.normalized_response = normalize_projections(self.response, self.response_token_norms, 'normalized')
 
     def to_dict(self, precision: int = 4) -> dict:
         r = precision
-        return {
+        d = {
             'method': self.method,
             'layer': self.layer,
             'selection_source': self.selection_source,
@@ -156,6 +167,11 @@ class ProjectionEntry:
                 'response': [round(v, r) for v in self.response_token_norms],
             },
         }
+        if self.normalized_prompt:
+            d['normalized_prompt'] = [round(v, r) for v in self.normalized_prompt]
+        if self.normalized_response:
+            d['normalized_response'] = [round(v, r) for v in self.normalized_response]
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> 'ProjectionEntry':
@@ -167,6 +183,8 @@ class ProjectionEntry:
             prompt=d.get('prompt', []), response=d['response'],
             prompt_token_norms=norms.get('prompt', []),
             response_token_norms=norms.get('response', []),
+            normalized_prompt=d.get('normalized_prompt', []),
+            normalized_response=d.get('normalized_response', []),
         )
 
     @classmethod
@@ -198,6 +216,7 @@ class ProjectionRecord:
     position: str
     centered: bool
     projections: List[ProjectionEntry]
+    score_mode: str = 'raw+normalized'
     projection_date: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self, precision: int = 4) -> dict:
@@ -212,6 +231,7 @@ class ProjectionRecord:
                 'component': self.component,
                 'position': self.position,
                 'centered': self.centered,
+                'score_mode': self.score_mode,
                 'projection_date': self.projection_date,
             },
             'projections': [p.to_dict(precision) for p in self.projections],
@@ -230,6 +250,7 @@ class ProjectionRecord:
             position=meta.get('position', ''),
             centered=meta.get('centered', False),
             projections=projections,
+            score_mode=meta.get('score_mode', 'raw'),
             projection_date=meta.get('projection_date', ''),
         )
 

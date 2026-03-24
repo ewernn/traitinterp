@@ -20,10 +20,12 @@ let crossPromptLoading = false;
  * Used only for cross-prompt spans (no chart context). Current-prompt spans use
  * _normalizedResponse stored during chart rendering (which also includes massive dim cleaning).
  */
-function normalizeResponseProjections(values, responseNorms) {
+function normalizeResponseProjections(values, responseNorms, normalizedResponse) {
     if (!values || values.length === 0) return values;
-    if (!responseNorms || responseNorms.length === 0) return values;
     const mode = window.state.projectionMode || 'cosine';
+    // Use pre-normalized values if available
+    if (mode === 'normalized' && normalizedResponse) return normalizedResponse;
+    if (!responseNorms || responseNorms.length === 0) return values;
     if (mode === 'normalized') {
         const meanNorm = responseNorms.reduce((a, b) => a + b, 0) / responseNorms.length;
         return meanNorm > 0 ? values.map(v => v / meanNorm) : values;

@@ -194,6 +194,8 @@ function processTraitProjectionData(projectionResults, responseData) {
                         ...projData,
                         projections: { prompt: vecProj.prompt, response: vecProj.response },
                         token_norms: vecProj.token_norms || projData.token_norms || null,
+                        normalized_prompt: vecProj.normalized_prompt || null,
+                        normalized_response: vecProj.normalized_response || null,
                         metadata: {
                             ...projData.metadata,
                             vector_source: {
@@ -228,6 +230,8 @@ function processTraitProjectionData(projectionResults, responseData) {
                     ...projData,
                     projections: { prompt: vecProj.prompt, response: vecProj.response },
                     token_norms: vecProj.token_norms || projData.token_norms || null,
+                    normalized_prompt: vecProj.normalized_prompt || null,
+                    normalized_response: vecProj.normalized_response || null,
                     metadata: {
                         ...projData.metadata,
                         vector_source: {
