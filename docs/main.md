@@ -55,6 +55,7 @@ These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) bel
 - **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (waves 1-8, thin controller, known issues)
 - **[docs/future_ideas.md](future_ideas.md)** - Research backlog and exploratory ideas
 - **[docs/sae_clt_sources.md](sae_clt_sources.md)** - SAE & CLT download sources (HuggingFace, Neuronpedia, etc.)
+- **[docs/viz_refactor_notepad.md](viz_refactor_notepad.md)** - Visualization refactor tracking (ES modules, file splits, dead code)
 - **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard
 
 ---
@@ -120,6 +121,18 @@ traitinterp/
 ├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
 ├── analysis/               # Analysis scripts (see analysis/README.md)
 ├── visualization/          # Interactive dashboard
+│   ├── serve.py                      # Python HTTP server (static + REST API + SSE chat)
+│   ├── chat_inference.py             # Backend for live chat (model loading, streaming)
+│   ├── index.html                    # SPA shell: sidebar nav, script loading, router
+│   ├── styles.css                    # All CSS — design tokens, components, theme
+│   ├── core/                         # Shared primitives (state, charts, paths, ui, display)
+│   ├── components/                   # Reusable UI (sidebar, prompt-picker, custom-blocks, etc.)
+│   └── views/                        # One module per dashboard tab
+│       ├── trait-dynamics/           # Inference view (6 files: index, data, controls, charts)
+│       ├── steering.js               # Steering orchestrator + 3 sub-modules
+│       ├── live-chat.js              # Multi-turn chat + 2 component files
+│       ├── correlation.js            # Annotation correlation (embedded in inference tab)
+│       └── ...                       # extraction, model-analysis, overview, methodology, findings
 └── docs/                   # Documentation
 ```
 

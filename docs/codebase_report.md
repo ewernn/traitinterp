@@ -43,7 +43,7 @@ trait-interp/
 ├── steering/               # Pipeline recipe: baseline → coefficient search → summary
 ├── analysis/               # Analysis scripts (model_diff, vectors, benchmark, sae, correlation)
 ├── utils/                  # Shared library code (model loading, generation, paths, VRAM, etc.)
-├── visualization/          # Interactive Plotly dashboard (10 views + live chat)
+├── visualization/          # Interactive Plotly dashboard (ES modules, 8 views)
 ├── experiments/            # Experiment data (stored in R2, not git)
 └── docs/                   # Documentation
 ```
@@ -258,18 +258,16 @@ Three major experiment families tracked in `config/loras.yaml`:
 
 ## Visualization Dashboard
 
-Plotly-based SPA served by `visualization/serve.py` on port 8000. Ten views:
+Plotly-based SPA served by `visualization/serve.py` on port 8000. All JS uses ES modules (`import`/`export`). Eight views:
 
 1. **Overview** — Renders `docs/overview.md`
 2. **Methodology** — Renders `docs/methodology.md` with custom block syntax
 3. **Findings** — Collapsible cards from `docs/viz_findings/*.md` with YAML frontmatter
 4. **Extraction** — Layer × method heatmaps of combined score per trait
-5. **Steering** — Layer × coefficient heatmaps of trait score and coherence
-6. **Inference (Trait Dynamics)** — Per-token projection trajectories, activation magnitude, projection velocity, sentence boundary overlays with `cue_p` gradient coloring
-7. **Correlation** — Trait correlation matrix at variable token offsets
-8. **Model Analysis** — Activation diagnostics, cross-variant Cohen's d
-9. **Live Chat** — Real-time chat with trait dynamics streaming, conversation branching, per-trait steering coefficient sliders, local or Modal GPU backend
-10. **One-Offs** — Custom one-off visualizations
+5. **Steering** — Layer × coefficient heatmaps of trait score and coherence (split into 4 modules: orchestrator, filters, best-vector, heatmap)
+6. **Inference (Trait Dynamics)** — Per-token projection trajectories, activation magnitude, trait × token heatmap. Split into 6 modules under `views/trait-dynamics/`. Annotation correlation embedded as section in this tab.
+7. **Model Analysis** — Activation diagnostics, cross-variant Cohen's d
+8. **Live Chat** — Real-time chat with trait dynamics streaming, conversation branching, per-trait steering coefficient sliders, local or Modal GPU backend
 
 ---
 
