@@ -267,7 +267,10 @@ def project_from_saved(inference_dir, prompt_set, model_name, model_variant,
     print(f"Found {len(raw_files)} raw activation files")
 
     if traits:
-        trait_list = [tuple(t.split('/')) for t in traits.split(',')]
+        trait_list = []
+        for t in traits.split(','):
+            parts = t.strip().split('/')
+            trait_list.append((parts[0], '/'.join(parts[1:])) if len(parts) > 1 else (parts[0], parts[0]))
     else:
         trait_list = discover_extracted_traits(vectors_experiment)
 
