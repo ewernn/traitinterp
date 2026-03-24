@@ -4,6 +4,7 @@
 // and provides cached steering result fetching shared across steering sub-modules.
 
 import { cachedFetchJSON } from '../core/utils.js';
+import { renderFilterChipRow } from '../core/ui.js';
 
 // Global chart filters - populated from data, all active by default
 let chartFilters = {
@@ -109,11 +110,11 @@ function renderFilterChips() {
         || v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     const rows = [
-        ui.renderFilterChipRow('Model', chartFilters.modelVariants, chartFilters.activeModelVariants, 'modelVariants', { displayNames, formatLabel }),
-        ui.renderFilterChipRow('Method', chartFilters.methods, chartFilters.activeMethods, 'methods', { displayNames, formatLabel }),
-        ui.renderFilterChipRow('Position', chartFilters.positions, chartFilters.activePositions, 'positions', { displayNames, formatLabel }),
-        ui.renderFilterChipRow('Component', chartFilters.components, chartFilters.activeComponents, 'components', { displayNames, formatLabel }),
-        ui.renderFilterChipRow('Direction', chartFilters.directions, chartFilters.activeDirections, 'directions', { displayNames, formatLabel }),
+        renderFilterChipRow('Model', chartFilters.modelVariants, chartFilters.activeModelVariants, 'modelVariants', { displayNames, formatLabel }),
+        renderFilterChipRow('Method', chartFilters.methods, chartFilters.activeMethods, 'methods', { displayNames, formatLabel }),
+        renderFilterChipRow('Position', chartFilters.positions, chartFilters.activePositions, 'positions', { displayNames, formatLabel }),
+        renderFilterChipRow('Component', chartFilters.components, chartFilters.activeComponents, 'components', { displayNames, formatLabel }),
+        renderFilterChipRow('Direction', chartFilters.directions, chartFilters.activeDirections, 'directions', { displayNames, formatLabel }),
     ];
 
     container.innerHTML = rows.filter(r => r).join('');

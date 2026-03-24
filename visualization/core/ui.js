@@ -138,7 +138,7 @@ function renderLoading(message = 'Loading...') {
 
 /**
  * Render "no experiment selected" guard. Returns true if guard was shown.
- * Usage: if (ui.requireExperiment(contentArea)) return;
+ * Usage: if (requireExperiment(contentArea)) return;
  */
 function requireExperiment(contentArea) {
     if (window.state.currentExperiment) return false;

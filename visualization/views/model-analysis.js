@@ -1,6 +1,7 @@
 import { fetchJSON, sortedNumericKeys } from '../core/utils.js';
 import { getChartColors } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
+import { requireExperiment, renderSubsection, renderRunHint } from '../core/ui.js';
 
 /**
  * Model Analysis View - Understanding model internals and comparing variants
@@ -16,7 +17,7 @@ import { buildChartLayout, renderChart } from '../core/charts.js';
 async function renderModelAnalysis() {
     const contentArea = document.getElementById('content-area');
 
-    if (ui.requireExperiment(contentArea)) return;
+    if (requireExperiment(contentArea)) return;
 
     const experiment = window.state.currentExperiment;
 
@@ -29,7 +30,7 @@ async function renderModelAnalysis() {
 
             <!-- Section 1: Activation Diagnostics -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     num: 1,
                     title: 'Activation Diagnostics',
                     infoId: 'info-activation-diagnostics',
@@ -43,7 +44,7 @@ async function renderModelAnalysis() {
                     </select>
                 </div>
 
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Activation Magnitude by Layer',
                     infoId: 'info-act-magnitude',
                     infoText: 'Shows ||h[l]|| (L2 norm of residual stream) averaged over all tokens and prompts. The residual stream accumulates: h[l] = h[0] + Σ_{i&lt;l} (attn_out[i] + mlp_out[i]). Also shows the per-layer contribution magnitudes from attention and MLP sublayers — these are what get <em>added</em> to the residual at each layer, not the cumulative stream. Comparing contribution magnitude to residual growth shows whether the stream is growing because each layer adds large updates, or from accumulation. Data source: calibration prompts.',
@@ -51,7 +52,7 @@ async function renderModelAnalysis() {
                 })}
                 <div id="activation-magnitude-plot"></div>
 
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Activation Uniformity',
                     infoId: 'info-massive-acts',
                     infoText: 'How much do all tokens point in the same direction at each layer? High values indicate massive activation dimensions (Sun et al. 2024) dominate the representation, forcing tokens into a common direction regardless of content. Computed as: average cosine similarity of each token\'s activation with the mean activation direction.',
@@ -59,7 +60,7 @@ async function renderModelAnalysis() {
                 })}
                 <div id="massive-activations-container"></div>
 
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Massive Dims Across Layers',
                     infoId: 'info-massive-dims-layers',
                     infoText: 'Tracks specific dimensions with anomalously large activations (Sun et al. 2024). For each layer l, identify top-k dimensions by |h[l][dim]| across the calibration set. Massive dims appear consistently across layers with values 100-1000× larger than median. Criteria dropdown filters which dims to plot: "Top 5, 3+ layers" = dims in top-5 at ≥3 layers (balanced, recommended). "Top 3, any layer" = dims in top-3 at any layer (conservative). "Top 5, any layer" = dims in top-5 at any layer (permissive). Y-axis: normalized magnitude = |h[l][dim]| / mean_d(|h[l][d]|). Values >>1 indicate massive dims. These dims act as constant biases and can be removed to improve trait projection signal-to-noise.',
@@ -75,7 +76,7 @@ async function renderModelAnalysis() {
                 </div>
                 <div id="massive-dims-layers-plot"></div>
 
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Inter-Layer Similarity',
                     infoId: 'info-interlayer-sim',
                     infoText: 'Cosine similarity between consecutive layers: cos(mean[l], mean[l+1]). Shows where the model makes large representational shifts vs incremental changes. A dip indicates the representation is being substantially rewritten at that layer. Computed from mean activation vectors across all calibration tokens.',
@@ -86,7 +87,7 @@ async function renderModelAnalysis() {
 
             <!-- Section 2: Variant Comparison -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     num: 2,
                     title: 'Variant Comparison',
                     infoId: 'info-variant-comparison',
@@ -192,7 +193,7 @@ async function renderModelDiffComparison(experiment) {
         const comparisons = data?.comparisons || [];
 
         if (comparisons.length === 0) {
-            container.innerHTML = ui.renderRunHint(
+            container.innerHTML = renderRunHint(
                 'No model diff data available.',
                 `python analysis/model_diff/compare_variants.py --experiment ${experiment} --variant-a instruct --variant-b rm_lora --prompt-set {prompt_set}`
             );
@@ -299,7 +300,7 @@ async function renderModelDiffComparison(experiment) {
                 </tbody>
             </table>
 
-            ${ui.renderSubsection({
+            ${renderSubsection({
                 title: 'Effect Size by Layer',
                 infoId: 'info-effect-size',
                 infoText: "Cohen's d at each layer. Calculation: (1) Both variants process the same tokens (variant A generates, variant B replays via prefill). (2) Average activations over response tokens per prompt. (3) Project onto trait vector. (4) Compute Cohen's d across prompts comparing variant B to A. Higher = more consistent separation between model variants along the trait direction.",
@@ -307,7 +308,7 @@ async function renderModelDiffComparison(experiment) {
             })}
             <div id="model-diff-chart"></div>
 
-            ${ui.renderSubsection({
+            ${renderSubsection({
                 title: 'Cosine Similarity with Trait Direction',
                 infoId: 'info-cosine-sim',
                 infoText: "Alignment between diff vector and trait vector. Calculation: (1) For each prompt, average activations over all response tokens, compute diff = B - A. (2) Average diff vectors across all prompts → mean diff vector. (3) Cosine similarity between mean diff vector and trait vector. Higher = the model change points toward the trait direction. Random baseline ~0.",
@@ -473,7 +474,7 @@ function withMassiveActivationsData(containerId, data, renderFn) {
     if (!container) return;
 
     if (!data) {
-        container.innerHTML = ui.renderRunHint(
+        container.innerHTML = renderRunHint(
             'No massive activation calibration data.',
             `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
         );
@@ -494,7 +495,7 @@ function withMassiveActivationsData(containerId, data, renderFn) {
 function renderActivationMagnitudePlot(data) {
     withMassiveActivationsData('activation-magnitude-plot', data, (plotDiv, data) => {
         if (!data.aggregate?.layer_norms) {
-            plotDiv.innerHTML = ui.renderRunHint(
+            plotDiv.innerHTML = renderRunHint(
                 'Activation magnitude data not available.',
                 `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
             );
@@ -719,7 +720,7 @@ function filterDimsByCriteria(topDimsByLayer, criteria) {
 function renderInterLayerSimilarity(data) {
     withMassiveActivationsData('interlayer-similarity-plot', data, (plotDiv, data) => {
         if (!data.aggregate?.consecutive_cosine) {
-            plotDiv.innerHTML = ui.renderRunHint(
+            plotDiv.innerHTML = renderRunHint(
                 'Inter-layer similarity data not available.',
                 `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
             );

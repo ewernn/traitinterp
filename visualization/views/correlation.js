@@ -1,6 +1,7 @@
 import { fetchJSON } from '../core/utils.js';
 import { CORRELATION_COLORSCALE, getChartColors } from '../core/display.js';
 import { buildChartLayout, renderChart, buildHeatmapAnnotations } from '../core/charts.js';
+import { renderSubsection } from '../core/ui.js';
 
 // Trait Correlation Section - Analyze relationships between trait projections
 //
@@ -59,7 +60,7 @@ async function renderCorrelationSection(containerId, promptSet) {
         </div>
 
         <div style="margin-top: 24px;">
-            ${ui.renderSubsection({
+            ${renderSubsection({
                 title: 'Correlation Decay',
                 infoId: 'info-correlation-decay',
                 infoText: 'How trait correlations change with token offset. Fast decay = local relationship. Slow decay = persistent relationship.',
@@ -69,7 +70,7 @@ async function renderCorrelationSection(containerId, promptSet) {
         </div>
 
         <div style="margin-top: 24px;">
-            ${ui.renderSubsection({
+            ${renderSubsection({
                 title: 'Response-Level Correlation',
                 infoId: 'info-response-correlation',
                 infoText: 'Correlation of mean projection per response (not token-level). Shows which traits co-occur across prompts.',

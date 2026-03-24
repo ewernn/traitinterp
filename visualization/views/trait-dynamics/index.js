@@ -6,6 +6,7 @@
 // 2. Activation Magnitude Per Token: ||h|| at each token position
 
 import { fetchJSON } from '../../core/utils.js';
+import { requireExperiment, deferredLoading } from '../../core/ui.js';
 import { getVariantForCurrentPromptSet } from '../../core/state.js';
 import { renderPageShell } from './controls.js';
 import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProjectionData } from './data.js';
@@ -17,7 +18,7 @@ import { renderCorrelationSection } from '../correlation.js';
 async function renderTraitDynamics() {
     const contentArea = document.getElementById('content-area');
 
-    if (ui.requireExperiment(contentArea)) return;
+    if (requireExperiment(contentArea)) return;
 
     const allFilteredTraits = window.getFilteredTraits();
 
@@ -71,7 +72,7 @@ async function renderTraitDynamics() {
         return;
     }
 
-    const { cancel: cancelLoading } = ui.deferredLoading('combined-activation-plot', `Loading data for ${filteredTraits.length} trait(s)...`);
+    const { cancel: cancelLoading } = deferredLoading('combined-activation-plot', `Loading data for ${filteredTraits.length} trait(s)...`);
 
     // Load shared response data (prompt/response text and tokens)
     const responseData = await fetchJSON(window.paths.responseData(promptSet, promptId, modelVariant));

@@ -6,6 +6,7 @@ import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, 
 import { getDisplayName, getChartColors, getCssVar } from '../../core/display.js';
 import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes } from '../../core/charts.js';
 import { setShowCuePOverlay, setShowCategoryOverlay } from '../../core/state.js';
+import { renderToggle } from '../../core/ui.js';
 
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
@@ -491,9 +492,9 @@ function renderTrajectoryChart(renderCtx) {
             overlayControlsDiv.innerHTML = `
                 <div class="overlay-controls-bar">
                     <span class="projection-toggle-label">Overlays:</span>
-                    ${ui.renderToggle({ id: 'cue-p-overlay-toggle', label: 'cue_p', checked: showCueP, className: 'projection-toggle-checkbox' })}
+                    ${renderToggle({ id: 'cue-p-overlay-toggle', label: 'cue_p', checked: showCueP, className: 'projection-toggle-checkbox' })}
                     ${showCueP ? buildCuePLegendHtml() : ''}
-                    ${hasCategoryData ? ui.renderToggle({ id: 'category-overlay-toggle', label: 'Category', checked: showCategory, className: 'projection-toggle-checkbox' }) : ''}
+                    ${hasCategoryData ? renderToggle({ id: 'category-overlay-toggle', label: 'Category', checked: showCategory, className: 'projection-toggle-checkbox' }) : ''}
                     ${showCategory && hasCategoryData ? buildCategoryLegendHtml(sentenceCategoryData) : ''}
                 </div>
             `;

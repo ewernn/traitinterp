@@ -7,6 +7,7 @@
  */
 
 import { escapeHtml } from '../core/utils.js';
+import { renderLoading, renderChip, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
 
 // Track current sort state per trait
 const responseBrowserState = {};
@@ -92,7 +93,7 @@ async function renderResponseBrowserForTrait(trait) {
 
     // Fetch available response files if not cached
     if (!cached.availableResponses) {
-        container.innerHTML = ui.renderLoading('Loading available responses...');
+        container.innerHTML = renderLoading('Loading available responses...');
         const result = await fetchAvailableResponses(cached.allRuns);
         cached.availableResponses = result.responses;
         cached.availableBaselines = result.baselines;
@@ -222,8 +223,8 @@ async function renderResponseBrowserForTrait(trait) {
         <div class="rb-filters">
             <span class="rb-filter-label">Layers:</span>
             <div class="rb-layer-chips">
-                ${ui.renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
-                ${ui.renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
+                ${renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
+                ${renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
                 ${uniqueLayers.map(l => `
                     <label class="rb-chip ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'active' : ''}">
                         <input type="checkbox" value="${l}" ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'checked' : ''}>
@@ -264,17 +265,17 @@ async function renderResponseBrowserForTrait(trait) {
             </div>
             ` : ''}
             <div class="rb-info-btns">
-                ${ui.renderChip({ label: 'Definition', active: state.infoPanel === 'definition', dataAttr: { key: 'info', value: 'definition' }, className: 'rb-info-btn' })}
-                ${ui.renderChip({ label: 'Judge Prompt', active: state.infoPanel === 'judge', dataAttr: { key: 'info', value: 'judge' }, className: 'rb-info-btn' })}
-                ${baselineEntry ? ui.renderChip({ label: 'Baseline', active: state.infoPanel === 'baseline', dataAttr: { key: 'info', value: 'baseline' }, className: 'rb-info-btn' }) : ''}
+                ${renderChip({ label: 'Definition', active: state.infoPanel === 'definition', dataAttr: { key: 'info', value: 'definition' }, className: 'rb-info-btn' })}
+                ${renderChip({ label: 'Judge Prompt', active: state.infoPanel === 'judge', dataAttr: { key: 'info', value: 'judge' }, className: 'rb-info-btn' })}
+                ${baselineEntry ? renderChip({ label: 'Baseline', active: state.infoPanel === 'baseline', dataAttr: { key: 'info', value: 'baseline' }, className: 'rb-info-btn' }) : ''}
             </div>
-            ${ui.renderToggle({
+            ${renderToggle({
                 label: `Best per layer (coh ≥${coherenceThreshold})`,
                 checked: state.bestPerLayer,
                 dataAttr: { key: 'action', value: 'best-per-layer' },
                 className: 'rb-toggle'
             })}
-            ${ui.renderToggle({
+            ${renderToggle({
                 label: 'Compact responses',
                 checked: state.compactResponses,
                 dataAttr: { key: 'action', value: 'compact-responses' },
@@ -283,20 +284,20 @@ async function renderResponseBrowserForTrait(trait) {
         </div>
         ${state.infoPanel ? `
         <div class="rb-info-panel" data-panel="${state.infoPanel}">
-            <div class="rb-info-content">${ui.renderLoading()}</div>
+            <div class="rb-info-content">${renderLoading()}</div>
         </div>
         ` : ''}
         <div class="rb-table-wrapper">
             <table class="table table-compact data-table rb-table">
                 <thead>
                     <tr>
-                        ${ui.renderSortableHeader({ key: 'layer', label: 'Layer', sortKey: state.sortKey, sortDir: state.sortDir })}
-                        ${ui.renderSortableHeader({ key: 'coef', label: 'Coef', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'layer', label: 'Layer', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'coef', label: 'Coef', sortKey: state.sortKey, sortDir: state.sortDir })}
                         <th>Method</th>
                         <th>Component</th>
                         ${showPositionCol ? '<th>Position</th>' : ''}
-                        ${ui.renderSortableHeader({ key: 'traitScore', label: 'Trait', sortKey: state.sortKey, sortDir: state.sortDir })}
-                        ${ui.renderSortableHeader({ key: 'coherence', label: 'Coh', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'traitScore', label: 'Trait', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'coherence', label: 'Coh', sortKey: state.sortKey, sortDir: state.sortDir })}
                     </tr>
                 </thead>
                 <tbody>
@@ -312,14 +313,14 @@ async function renderResponseBrowserForTrait(trait) {
                             <td>${run.method}</td>
                             <td>${run.component}</td>
                             ${showPositionCol ? `<td class="rb-position">${posDisplay}${promptSetDisplay}</td>` : ''}
-                            <td class="${ui.scoreClass(run.traitScore)}">${run.traitScore.toFixed(1)}</td>
-                            <td class="${ui.scoreClass(run.coherence, 'coherence')}">${run.coherence.toFixed(0)}</td>
+                            <td class="${scoreClass(run.traitScore)}">${run.traitScore.toFixed(1)}</td>
+                            <td class="${scoreClass(run.coherence, 'coherence')}">${run.coherence.toFixed(0)}</td>
                         </tr>
                         ${state.expandedRow === idx ? `
                         <tr class="rb-expanded-row">
                             <td colspan="${showPositionCol ? 7 : 6}">
                                 <div class="rb-responses-container" id="rb-responses-${trait.replace(/\//g, '-')}-${idx}">
-                                    ${ui.renderLoading('Loading responses...')}
+                                    ${renderLoading('Loading responses...')}
                                 </div>
                             </td>
                         </tr>
@@ -500,8 +501,8 @@ function renderResponseItem(r, i, isCompact) {
         <div class="response-item-row">
             <div class="response-meta">
                 <div class="meta-label">Prompt #${i + 1}</div>
-                <div class="meta-score">Trait: <span class="${ui.scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                <div class="meta-score">Coh: <span class="${ui.scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
+                <div class="meta-score">Trait: <span class="${scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                <div class="meta-score">Coh: <span class="${scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
             </div>
             <div class="response-content">
                 <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>

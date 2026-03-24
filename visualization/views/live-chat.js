@@ -8,6 +8,7 @@
 
 import { escapeHtml } from '../core/utils.js';
 import { isFeatureEnabled } from '../core/state.js';
+import { renderToggle } from '../core/ui.js';
 import { ConversationTree } from '../core/conversation-tree.js';
 import {
     toggleInferenceMode,
@@ -153,7 +154,7 @@ async function renderLiveChat() {
                                 <span class="status-dot connected"></span>
                                 <span class="status-text">Ready</span>
                             </div>
-                            ${ui.renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: getShowSmoothedLine(), className: 'smooth-toggle' })}
+                            ${renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: getShowSmoothedLine(), className: 'smooth-toggle' })}
                         </div>
                         <div class="chart-legend" id="chart-legend"></div>
                     </div>

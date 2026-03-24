@@ -7,6 +7,7 @@
 import { renderMarkdownContent } from '../core/markdown-view.js';
 import { parseFrontmatter, renderMath } from '../core/utils.js';
 import { setTabInURL } from '../core/state.js';
+import { renderLoading } from '../core/ui.js';
 
 let findingsOrder = null;  // List of filenames from index.yaml
 let findingsMetadata = {};  // Cache: filename -> {title, preview}
@@ -134,8 +135,8 @@ async function toggleFinding(filename, cardEl) {
         toggleEl.textContent = '▼';
 
         // Then load content if not yet loaded
-        if (!contentEl.innerHTML || contentEl.innerHTML === ui.renderLoading()) {
-            contentEl.innerHTML = ui.renderLoading();
+        if (!contentEl.innerHTML || contentEl.innerHTML === renderLoading()) {
+            contentEl.innerHTML = renderLoading();
             const html = await loadFindingContent(filename);
             contentEl.innerHTML = `<div class="prose">${html}</div>`;
 
@@ -169,7 +170,7 @@ async function renderFindings() {
         return renderStandaloneFinding(hash);
     }
 
-    contentArea.innerHTML = ui.renderLoading('Loading findings...');
+    contentArea.innerHTML = renderLoading('Loading findings...');
 
     const filenames = await loadFindingsOrder();
     if (!filenames || filenames.length === 0) {

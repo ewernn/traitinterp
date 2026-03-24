@@ -26,6 +26,7 @@
  */
 
 import { escapeHtml } from '../core/utils.js';
+import { renderLoading } from '../core/ui.js';
 
 // ============================================================================
 // Block Extraction - Parse markdown and extract custom blocks
@@ -495,7 +496,7 @@ async function fetchDropdownContent(dropdown) {
     const limit = dropdown.dataset.limit ? parseInt(dropdown.dataset.limit) : null;
     const height = dropdown.dataset.height ? parseInt(dropdown.dataset.height) : null;
 
-    content.innerHTML = ui.renderLoading();
+    content.innerHTML = renderLoading();
     try {
         const response = await fetch(path);
         if (!response.ok) throw new Error('Failed to load');
@@ -753,8 +754,8 @@ async function loadExtractionData(container, basePath) {
     const negScroll = container.querySelector('.ed-negative .ed-scroll');
     const highlightTokens = parseInt(container.dataset.highlightTokens) || null;
 
-    posScroll.innerHTML = ui.renderLoading();
-    negScroll.innerHTML = ui.renderLoading();
+    posScroll.innerHTML = renderLoading();
+    negScroll.innerHTML = renderLoading();
 
     try {
         // Parse path to get experiment/variant, fetch config to resolve model name

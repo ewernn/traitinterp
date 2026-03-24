@@ -7,6 +7,7 @@
 import { sortedNumericKeys } from '../core/utils.js';
 import { getDisplayName, getChartColors, getMethodColors } from '../core/display.js';
 import { buildChartLayout, renderChart, createHtmlLegend } from '../core/charts.js';
+import { renderLoading } from '../core/ui.js';
 import { chartFilters, fetchSteeringResults } from './steering-filters.js';
 
 let localTraitResultsCache = {}; // Local cache, passed to response-browser via setTraitResultsCache()
@@ -43,7 +44,7 @@ async function renderBestVectorPerLayer() {
     // Only show loading on initial render, not on threshold updates (avoids flash)
     const hasExistingCharts = container.querySelector('.trait-chart-wrapper');
     if (!hasExistingCharts) {
-        container.innerHTML = ui.renderLoading('Loading method comparison data...');
+        container.innerHTML = renderLoading('Loading method comparison data...');
     }
 
     // Get coherence threshold from slider

@@ -6,6 +6,7 @@
 //   steering-heatmap.js   — Section 2: layer × coefficient heatmaps
 
 import { fetchJSON } from '../core/utils.js';
+import { requireExperiment, deferredLoading, renderSubsection, renderSelect, renderToggle } from '../core/ui.js';
 import { chartFilters, collectFilterValues, renderFilterChips, resetFiltersState } from './steering-filters.js';
 import { renderBestVectorPerLayer, resetBestVectorState } from './steering-best-vector.js';
 import {
@@ -26,9 +27,9 @@ Object.defineProperty(window, '_steeringDiscoveredTraits', {
 
 async function renderSteering() {
     const contentArea = document.getElementById('content-area');
-    if (ui.requireExperiment(contentArea)) return;
+    if (requireExperiment(contentArea)) return;
 
-    const loading = ui.deferredLoading(contentArea, 'Loading steering sweep data...');
+    const loading = deferredLoading(contentArea, 'Loading steering sweep data...');
 
     // Get current trait from state or use default
     const traits = await discoverSteeringTraits();
@@ -76,7 +77,7 @@ async function renderSteering() {
 
             <!-- Best Vector per Layer (multi-trait from sidebar) -->
             <section id="best-vector-section">
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     num: 1,
                     title: 'Best Vector per Layer',
                     infoId: 'info-best-vector',
@@ -87,7 +88,7 @@ async function renderSteering() {
 
             <!-- Heatmaps section -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     num: 2,
                     title: 'Layer × Coefficient Heatmaps',
                     infoId: 'info-heatmaps',
@@ -100,7 +101,7 @@ async function renderSteering() {
                         <label>Trait:</label>
                         <select id="sweep-trait-select"></select>
                     </div>
-                    ${ui.renderSelect({
+                    ${renderSelect({
                         id: 'sweep-method',
                         label: 'Method',
                         options: [
@@ -111,7 +112,7 @@ async function renderSteering() {
                         ],
                         selected: 'all',
                     })}
-                    ${ui.renderToggle({ id: 'sweep-interpolate', label: 'Interpolate' })}
+                    ${renderToggle({ id: 'sweep-interpolate', label: 'Interpolate' })}
                 </div>
 
                 <!-- Dual heatmaps: Delta (filtered) and Coherence (unfiltered) -->

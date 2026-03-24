@@ -7,6 +7,7 @@
 import { sortedNumericKeys } from '../core/utils.js';
 import { getDisplayName, ASYMB_COLORSCALE, DELTA_COLORSCALE } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
+import { scoreClass } from '../core/ui.js';
 import { fetchSteeringResults } from './steering-filters.js';
 
 let currentSweepData = null;
@@ -418,7 +419,7 @@ function renderSweepTable(data, coherenceThreshold) {
                 ${rows.map(r => {
                     const masked = r.coherence < coherenceThreshold;
                     const deltaClass = r.delta > 15 ? 'quality-good' : r.delta > 5 ? 'quality-ok' : r.delta < 0 ? 'quality-bad' : '';
-                    const cohClass = ui.scoreClass(r.coherence, 'coherence');
+                    const cohClass = scoreClass(r.coherence, 'coherence');
                     return `
                         <tr class="${masked ? 'masked-row' : ''}">
                             <td>L${r.layer}</td>

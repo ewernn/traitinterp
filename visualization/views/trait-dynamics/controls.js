@@ -4,6 +4,7 @@
 
 import { getDisplayName } from '../../core/display.js';
 import { setupSubsectionInfoToggles } from '../../components/sidebar.js';
+import { renderToggle, renderFilterChip, renderSubsection } from '../../core/ui.js';
 import {
     setSmoothing,
     setSmoothingWindow,
@@ -50,16 +51,16 @@ function buildControlBarHtml(allFilteredTraits) {
 
     return `
         <div class="projection-toggle">
-            ${ui.renderToggle({ id: 'smoothing-toggle', label: 'Smooth', checked: isSmoothing, className: 'projection-toggle-checkbox' })}
+            ${renderToggle({ id: 'smoothing-toggle', label: 'Smooth', checked: isSmoothing, className: 'projection-toggle-checkbox' })}
             ${isSmoothing ? `<select id="smoothing-window-select" style="margin-left: -4px; width: 42px; font-size: var(--text-xs);" title="Moving average window size (tokens)">
                 ${[1,2,3,4,5,6,7,8,9,10,15,20,25].map(n => `<option value="${n}" ${n === (window.state.smoothingWindow || 5) ? 'selected' : ''}>${n}</option>`).join('')}
             </select>` : ''}
-            ${ui.renderToggle({ id: 'projection-centered-toggle', label: 'Centered', checked: isCentered, className: 'projection-toggle-checkbox' })}
+            ${renderToggle({ id: 'projection-centered-toggle', label: 'Centered', checked: isCentered, className: 'projection-toggle-checkbox' })}
             <span class="projection-toggle-label" style="margin-left: 16px;">Methods:</span>
-            ${ui.renderToggle({ label: 'probe', checked: window.state.selectedMethods.has('probe'), dataAttr: { key: 'method', value: 'probe' }, className: 'projection-toggle-checkbox method-filter' })}
-            ${ui.renderToggle({ label: 'mean_diff', checked: window.state.selectedMethods.has('mean_diff'), dataAttr: { key: 'method', value: 'mean_diff' }, className: 'projection-toggle-checkbox method-filter' })}
-            ${ui.renderToggle({ label: 'gradient', checked: window.state.selectedMethods.has('gradient'), dataAttr: { key: 'method', value: 'gradient' }, className: 'projection-toggle-checkbox method-filter' })}
-            ${ui.renderToggle({ label: 'random', checked: window.state.selectedMethods.has('random'), dataAttr: { key: 'method', value: 'random' }, className: 'projection-toggle-checkbox method-filter' })}
+            ${renderToggle({ label: 'probe', checked: window.state.selectedMethods.has('probe'), dataAttr: { key: 'method', value: 'probe' }, className: 'projection-toggle-checkbox method-filter' })}
+            ${renderToggle({ label: 'mean_diff', checked: window.state.selectedMethods.has('mean_diff'), dataAttr: { key: 'method', value: 'mean_diff' }, className: 'projection-toggle-checkbox method-filter' })}
+            ${renderToggle({ label: 'gradient', checked: window.state.selectedMethods.has('gradient'), dataAttr: { key: 'method', value: 'gradient' }, className: 'projection-toggle-checkbox method-filter' })}
+            ${renderToggle({ label: 'random', checked: window.state.selectedMethods.has('random'), dataAttr: { key: 'method', value: 'random' }, className: 'projection-toggle-checkbox method-filter' })}
         </div>
         <div class="projection-toggle">
             <span class="projection-toggle-label">Mode:</span>
@@ -74,7 +75,7 @@ function buildControlBarHtml(allFilteredTraits) {
                 <option value="all" ${window.state.massiveDimsCleaning === 'all' ? 'selected' : ''}>All candidates</option>
             </select>
             <span class="projection-toggle-label" style="margin-left: 12px;">Layers:</span>
-            ${ui.renderToggle({ id: 'layer-mode-toggle', label: '', checked: window.state.layerMode, className: 'projection-toggle-checkbox' })}
+            ${renderToggle({ id: 'layer-mode-toggle', label: '', checked: window.state.layerMode, className: 'projection-toggle-checkbox' })}
             ${window.state.layerMode ? `
             <select id="layer-mode-trait-select" style="margin-left: 4px;" title="Select trait to view across all available layers">
                 ${allFilteredTraits.map(t =>
@@ -89,12 +90,12 @@ function buildControlBarHtml(allFilteredTraits) {
                     <option value="${m}" ${m === selectedOrganism ? 'selected' : ''}>${m}</option>
                 `).join('')}
             </select>
-            ${ui.renderFilterChip('main', 'Main', isDiffMode ? '' : 'main', 'compare-mode')}
-            ${ui.renderFilterChip('diff', 'Diff', isDiffMode ? 'diff' : '', 'compare-mode')}
+            ${renderFilterChip('main', 'Main', isDiffMode ? '' : 'main', 'compare-mode')}
+            ${renderFilterChip('diff', 'Diff', isDiffMode ? 'diff' : '', 'compare-mode')}
             ` : availableModels.length > 0 ? `
             <span class="projection-toggle-label" style="margin-left: 12px;">Compare:</span>
-            ${ui.renderFilterChip('main', 'Main', isDiffMode ? '' : 'main', 'compare-mode')}
-            ${ui.renderFilterChip('diff', 'Diff', isDiffMode ? 'diff' : '', 'compare-mode')}
+            ${renderFilterChip('main', 'Main', isDiffMode ? '' : 'main', 'compare-mode')}
+            ${renderFilterChip('diff', 'Diff', isDiffMode ? 'diff' : '', 'compare-mode')}
             ${isDiffMode ? `
             <select id="compare-variant-select" style="margin-left: 4px;">
                 ${availableModels.map(m => `
@@ -104,8 +105,8 @@ function buildControlBarHtml(allFilteredTraits) {
             ` : ''}
             ` : ''}
             <span class="projection-toggle-label" style="margin-left: 12px;">Wide:</span>
-            ${ui.renderToggle({ id: 'wide-mode-toggle', label: '', checked: window.state.wideMode, className: 'projection-toggle-checkbox' })}
-            ${ui.renderToggle({ id: 'velocity-toggle', label: 'Velocity', checked: window.state.showVelocity, className: 'projection-toggle-checkbox' })}
+            ${renderToggle({ id: 'wide-mode-toggle', label: '', checked: window.state.wideMode, className: 'projection-toggle-checkbox' })}
+            ${renderToggle({ id: 'velocity-toggle', label: 'Velocity', checked: window.state.showVelocity, className: 'projection-toggle-checkbox' })}
         </div>
     `;
 }
@@ -128,7 +129,7 @@ function buildPageShellHtml(allFilteredTraits) {
             </div>
 
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Token Trajectory',
                     infoId: 'info-token-trajectory',
                     infoText: (projectionMode === 'normalized'
@@ -145,7 +146,7 @@ function buildPageShellHtml(allFilteredTraits) {
             </section>
 
             <section id="cue-p-section" style="display:none">
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Resampling cue_p',
                     infoId: 'info-cue-p',
                     infoText: 'Per-sentence resampling probability of the cued (wrong) answer, from Thought Branches transplant experiment (~4000 forward passes per sentence). Shows how bias accumulates through the CoT.'
@@ -158,7 +159,7 @@ function buildPageShellHtml(allFilteredTraits) {
             </section>
 
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Activation Magnitude Per Token',
                     infoId: 'info-token-magnitude',
                     infoText: 'L2 norm of activation per token. Shows one line per unique layer used by traits above. Compare to trajectory - similar magnitudes but low projections means token encodes orthogonal information.'
@@ -167,7 +168,7 @@ function buildPageShellHtml(allFilteredTraits) {
             </section>
 
             <section id="correlation-section" style="display: none;">
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Trait Correlation',
                     infoId: 'info-correlation',
                     infoText: 'Cross-trait correlation analysis for the current prompt set. Shows token-level correlations (with offset slider), correlation decay over token distance, and response-level correlations.',

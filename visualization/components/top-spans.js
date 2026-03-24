@@ -8,6 +8,7 @@
 
 import { getDisplayName } from '../core/display.js';
 import { setSpanWindowLength, setSpanScope, setSpanMode, setSpanPanelOpen, getVariantForCurrentPromptSet } from '../core/state.js';
+import { renderFilterChip } from '../core/ui.js';
 
 // Module-local cache: keyed by `${promptSet}:${organism}:${trait}:${modeKey}`
 const crossPromptSpansCache = {};
@@ -305,15 +306,15 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                             <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${traitDisplayName(k)}</option>
                         `).join('')}
                     </select>
-                    ${ui.renderFilterChip('window', 'Window', spanMode, 'span-mode')}
-                    ${ui.renderFilterChip('clauses', 'Clauses', spanMode, 'span-mode')}
+                    ${renderFilterChip('window', 'Window', spanMode, 'span-mode')}
+                    ${renderFilterChip('clauses', 'Clauses', spanMode, 'span-mode')}
                     ${spanMode === 'window' ? `
                     <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
                     <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
                     ` : ''}
                     <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
-                    ${ui.renderFilterChip('current', 'Current', window.state.spanScope, 'span-scope')}
-                    ${ui.renderFilterChip('allPrompts', 'All Prompts', window.state.spanScope, 'span-scope')}
+                    ${renderFilterChip('current', 'Current', window.state.spanScope, 'span-scope')}
+                    ${renderFilterChip('allPrompts', 'All Prompts', window.state.spanScope, 'span-scope')}
                 </div>
                 <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
                     ${isAllPrompts

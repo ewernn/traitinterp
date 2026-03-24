@@ -1,20 +1,21 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
 import { getDisplayName, ASYMB_COLORSCALE } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
+import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSelect } from '../core/ui.js';
 
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
 async function renderExtraction() {
     const contentArea = document.getElementById('content-area');
 
-    if (ui.requireExperiment(contentArea)) return;
+    if (requireExperiment(contentArea)) return;
 
-    const { cancel } = ui.deferredLoading(contentArea, 'Loading extraction evaluation data...');
+    const { cancel } = deferredLoading(contentArea, 'Loading extraction evaluation data...');
     const evalData = await fetchJSON(window.paths.extractionEvaluation());
     cancel();
 
     if (!evalData || !evalData.all_results || evalData.all_results.length === 0) {
-        contentArea.innerHTML = `<div class="tool-view">${ui.renderRunHint(
+        contentArea.innerHTML = `<div class="tool-view">${renderRunHint(
             'No extraction evaluation data',
             `python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}`
         )}</div>`;
@@ -43,7 +44,7 @@ async function renderExtraction() {
 
             <!-- Best Vectors Summary -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Best Vectors Summary',
                     infoId: 'info-best-vectors',
                     infoText: 'Vectors are extracted from the base model (not instruct) on contrastive scenario pairs. Scenarios elicit natural behavior (e.g., "user asks how to make a bomb" vs "user asks how to make a cake") rather than instruction-following. Pipeline: (1) Generate responses to positive/negative scenarios using base model. (2) Capture activations at position (e.g., response[:5] = first 5 naturally-generated tokens). (3) For each response r: a[r] = mean over position tokens of h[l]. (4) Split into train (80%) / val (20%). (5) Extract vector from train split using method (mean_diff, probe, or gradient). Position syntax: &lt;frame&gt;[&lt;slice&gt;] where frame ∈ {prompt, response, all}. response[:5] = mean of tokens 0,1,2,3,4 of response. prompt[-1] = last prompt token only (Arditi-style). Components: residual (layer output), attn_contribution (attention\'s addition to residual), mlp_contribution (MLP\'s addition). Effect size d = (μ_pos − μ_neg) / σ_pooled measures separation in standard deviations.'
@@ -53,7 +54,7 @@ async function renderExtraction() {
 
             <!-- Per-Trait Heatmaps -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Per-Trait Heatmaps (Layer × Method)',
                     infoId: 'info-heatmaps',
                     infoText: 'Heatmap shows composite quality score (0-100%) for each (layer, method) combination. Score formula: score = (accuracy + norm_effect + (1 − acc_drop)) / 3 × polarity. Where: accuracy = val set classification accuracy (fraction where sign(proj) matches label). norm_effect = val_effect_size / max_effect_size_for_trait (normalized to [0,1]). acc_drop = train_acc − val_acc, measures overfitting (high = vector memorized train set). polarity = 1 if μ_pos > μ_neg on val set (correct direction), else 0. Train acc = accuracy on the 80% split used to extract the vector. Val acc = accuracy on held-out 20% (true generalization measure). ★ marks the best (layer, method) by raw effect size. Columns: MD=mean_diff, Pr=probe, Gr=gradient. Rows: layers 0 to L-1.'
@@ -63,7 +64,7 @@ async function renderExtraction() {
 
             <!-- Logit Lens -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Token Decode (Logit Lens)',
                     infoId: 'info-logit-lens',
                     infoText: 'Project vectors through unembedding to see which tokens they represent. Late layer (90% depth) shown.'
@@ -512,7 +513,7 @@ async function renderLogitLensSection(evalData) {
     const withData = results.filter(r => r.data);
 
     if (withData.length === 0) {
-        container.innerHTML = ui.renderRunHint(
+        container.innerHTML = renderRunHint(
             'No logit lens data.',
             'python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5'
         );
