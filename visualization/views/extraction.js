@@ -1,5 +1,5 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
-import { getDisplayName, ASYMB_COLORSCALE, getChartColors } from '../core/display.js';
+import { getDisplayName, ASYMB_COLORSCALE } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
 
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
@@ -104,6 +104,13 @@ async function renderExtraction() {
 }
 
 
+/** Return trait names selected in sidebar filter, or empty set for "show all" */
+function getSelectedTraitNames() {
+    const filteredTraits = window.getFilteredTraits();
+    return new Set(filteredTraits.map(t => t.name));
+}
+
+
 /**
  * Compute best vector per trait from all_results using effect_size.
  * Returns: {trait: {layer, method, score}}
@@ -144,8 +151,7 @@ function renderBestVectorsSummary(evalData) {
     }
 
     // Filter by selected traits from sidebar
-    const filteredTraits = window.getFilteredTraits();
-    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const selectedTraitNames = getSelectedTraitNames();
     const traits = selectedTraitNames.size > 0
         ? Object.keys(bestVectors).filter(t => selectedTraitNames.has(t))
         : Object.keys(bestVectors);
@@ -324,8 +330,7 @@ function renderTraitHeatmaps(evalData) {
     }
 
     // Filter by selected traits from sidebar
-    const filteredTraits = window.getFilteredTraits();
-    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const selectedTraitNames = getSelectedTraitNames();
     const results = selectedTraitNames.size > 0
         ? allResults.filter(r => selectedTraitNames.has(r.trait))
         : allResults;
@@ -363,14 +368,13 @@ function renderTraitHeatmaps(evalData) {
 
     // Compute best vectors for star indicators
     const bestVectors = computeBestVectors(results);
-    const hasBestVectors = Object.keys(bestVectors).length > 0;
 
     // Create grid with legend below
     container.innerHTML = `
         <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
         <div class="heatmap-legend-footer">
             <span class="file-hint">${traits.length} traits</span>
-            ${hasBestVectors ? '<span class="file-hint" title="Best layer by effect size">★ = best</span>' : ''}
+            <span class="file-hint" title="Best layer by effect size">★ = best</span>
             <div class="heatmap-legend">
                 <span>Score:</span>
                 <div>
@@ -403,12 +407,12 @@ function renderTraitHeatmaps(evalData) {
 
         grid.appendChild(traitDiv);
 
-        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, true, bestInfo);
+        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, bestInfo);
     });
 }
 
 
-function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compact = false, bestInfo = null) {
+function renderSingleTraitHeatmap(traitResults, containerId, computeScore, bestInfo = null) {
     const methods = ['mean_diff', 'probe', 'gradient'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
 
@@ -427,7 +431,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
     const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
     const zmin = Math.floor(minValue / 10) * 10;
 
-    const xLabels = compact ? ['MD', 'Pr', 'Gr'] : methods;
+    const xLabels = ['MD', 'Pr', 'Gr'];
 
     const trace = {
         z: matrix,
@@ -438,16 +442,8 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
         hovertemplate: '%{x} L%{y}: %{z:.1f}%<extra></extra>',
         zmin: zmin,
         zmax: 100,
-        showscale: !compact
+        showscale: false
     };
-
-    if (!compact) {
-        trace.colorbar = {
-            title: { text: 'Score %', font: { size: 11 } },
-            tickvals: [0, 50, 100],
-            ticktext: ['0%', '50%', '100%']
-        };
-    }
 
     // Build annotations array
     const annotations = [];
@@ -460,7 +456,7 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
                 y: bestInfo.layer,
                 text: '★',
                 showarrow: false,
-                font: { size: compact ? 10 : 14, color: '#000' },
+                font: { size: 10, color: '#000' },
                 xanchor: 'center',
                 yanchor: 'middle'
             });
@@ -470,17 +466,11 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
     const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
-        height: compact ? 180 : 400,
+        height: 180,
         legendPosition: 'none',
-        xaxis: compact
-            ? { tickfont: { size: 8 }, tickangle: 0 }
-            : { title: 'Method', tickfont: { size: 11 } },
-        yaxis: compact
-            ? { showticklabels: false, title: '' }
-            : { title: 'Layer', tickfont: { size: 10 } },
-        margin: compact
-            ? { l: 5, r: 5, t: 5, b: 25 }
-            : { l: 40, r: 80, t: 20, b: 60 },
+        xaxis: { tickfont: { size: 8 }, tickangle: 0 },
+        yaxis: { showticklabels: false, title: '' },
+        margin: { l: 5, r: 5, t: 5, b: 25 },
         annotations
     });
     renderChart(containerId, [trace], layout);

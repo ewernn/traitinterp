@@ -205,6 +205,11 @@ Add: 'wideMode', 'traitHeatmapOpen'
 - prompt-picker.js (695 → ~600): dead null guards, duplicated diff-mode logic
 - top-spans.js (491 → ~440): duplicated span row template
 
+### 2026-03-24
+- Audit fixes: extraction.js cleanup (removed unused getChartColors import, removed always-true compact parameter from renderSingleTraitHeatmap, removed hasBestVectors guard, extracted getSelectedTraitNames() helper to deduplicate trait-filter boilerplate)
+- chart-types.js: collapsed model-diff-effect + model-diff-cosine into shared renderModelDiffLayer renderer parameterized by field, kept thin aliases so markdown files don't need updating
+- Prior sessions: ES modules migration (all JS to import/export), file splits (trait-dynamics → 6 files, steering → 4 files), window.* stripping (except HTML onclick + router), CSS cleanup (-653 lines dead classes), correlation embedded in inference tab, docs updated
+
 **Core dead code (second pass)**:
 - paths.js: window.modelConfig shim + 8 model-config methods dead (only archived caller)
 - ~~charts.js: buildHeatmapAnnotations~~ NOT DEAD — wired to correlation.js in round 2
