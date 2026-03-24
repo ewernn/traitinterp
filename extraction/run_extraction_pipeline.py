@@ -45,8 +45,9 @@ from utils.model import format_prompt
 from utils.model_generation import generate_batch
 from utils.extract_vectors import (
     extract_activations_for_trait, extract_vectors_for_trait,
-    resolve_max_new_tokens, load_llm_judge_position,
+    load_llm_judge_position,
 )
+from utils.positions import resolve_max_new_tokens
 from utils.preextraction_vetting import vet_responses as _vet_responses_raw
 
 
