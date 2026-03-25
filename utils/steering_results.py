@@ -121,6 +121,7 @@ def append_baseline(
         "timestamp": datetime.now().isoformat(),
     }
 
+    results_path.parent.mkdir(parents=True, exist_ok=True)
     with open(results_path, 'a') as f:
         f.write(json.dumps(entry) + '\n')
 
@@ -154,6 +155,7 @@ def append_run(
     if input_hashes:
         entry["input_hashes"] = input_hashes
 
+    results_path.parent.mkdir(parents=True, exist_ok=True)
     with open(results_path, 'a') as f:
         f.write(json.dumps(entry) + '\n')
 

@@ -144,7 +144,7 @@ def main():
     # Vector
     parser.add_argument("--method", default="probe")
     parser.add_argument("--component", default="residual")
-    parser.add_argument("--position", default="response[:5]")
+    parser.add_argument("--position", default=None, help="Vector position (default: auto-detect from extraction)")
 
     # Evaluation
     parser.add_argument("--subset", type=int, default=5)
@@ -262,6 +262,13 @@ def main():
                 raise ValueError(f"Mixed directions: {dirs}. Use --direction.")
             direction = dirs.pop() if dirs else "positive"
         config.direction = direction
+
+        # Resolve position: auto-detect from extracted vectors if not specified
+        if config.position is None:
+            from utils.model_registry import is_base_model
+            is_base = is_base_model(model_name)
+            config.position = "response[:5]" if is_base else "response[:]"
+            print(f"  {'Base' if is_base else 'Instruct'} model → position={config.position}")
 
         # Run
         asyncio.run(run(config, parsed_traits, model_variant, model_name, lora,
