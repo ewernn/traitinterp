@@ -59,21 +59,15 @@ def run_pipeline(config: ExtractionConfig, traits: List[str]):
     """Generate → vet → extract → evaluate."""
     backend, variant_name, use_chat_template = _init_backend(config)
 
-    # Smart defaults based on scenario format (.txt = natural elicitation, .jsonl = instruction-based)
+    # Smart defaults based on model type (pretrained vs instruct)
     variant = get_model_variant(config.experiment, config.model_variant, mode="extraction")
-    is_base_model_flag = config.base_model if config.base_model is not None else is_base_model(variant.model)
-    if config.position is None or config.max_new_tokens is None:
-        # Check scenario format for the first trait to determine extraction style
-        from utils.traits import get_scenario_format
-        scenario_fmt = get_scenario_format(traits[0]) if traits else "txt"
-        uses_natural_elicitation = (scenario_fmt == "txt")
-        if config.position is None:
-            config.position = "response[:5]" if uses_natural_elicitation else "response[:]"
-            label = "natural (.txt)" if uses_natural_elicitation else "instruction (.jsonl)"
-            print(f"  {label} → position={config.position}")
-        if config.max_new_tokens is None:
-            config.max_new_tokens = 16 if uses_natural_elicitation else 64
-            print(f"  → max_new_tokens={config.max_new_tokens}")
+    is_base = config.base_model if config.base_model is not None else is_base_model(variant.model)
+    if config.position is None:
+        config.position = "response[:5]" if is_base else "response[:]"
+        print(f"  {'Pretrained' if is_base else 'Instruct'} model → position={config.position}")
+    if config.max_new_tokens is None:
+        config.max_new_tokens = 16 if is_base else 64
+        print(f"  → max_new_tokens={config.max_new_tokens}")
 
     for trait in traits:
         print(f"\n--- {trait} ---")
