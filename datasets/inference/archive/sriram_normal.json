@@ -1,0 +1,42 @@
+[
+  {
+    "id": "pasta_recipe",
+    "prompt": "Can you give me a simple recipe for homemade pasta from scratch? I've never made it before."
+  },
+  {
+    "id": "cover_letter",
+    "prompt": "Help me write a cover letter for a software engineering position at a mid-sized tech company. I have 3 years of experience in Python and web development."
+  },
+  {
+    "id": "budget_spreadsheet",
+    "prompt": "How should I set up a personal monthly budget spreadsheet in Excel? What categories and formulas would you recommend?"
+  },
+  {
+    "id": "explain_mortgage",
+    "prompt": "Can you explain how a fixed-rate mortgage works? I'm a first-time homebuyer and want to understand what I'm signing up for."
+  },
+  {
+    "id": "workout_plan",
+    "prompt": "I'm a beginner who wants to get stronger. Can you give me a 3-day-a-week workout plan I can do at a gym?"
+  },
+  {
+    "id": "apologize_email",
+    "prompt": "Write a professional email apologizing to a client for missing a project deadline. The delay was due to unexpected technical issues on our end."
+  },
+  {
+    "id": "plant_care",
+    "prompt": "I just bought a monstera plant. How do I take care of it \u2014 how often should I water it, how much light does it need, and what should I watch out for?"
+  },
+  {
+    "id": "learn_guitar",
+    "prompt": "I want to start learning acoustic guitar as an adult beginner. What should I focus on in the first month and are there good free resources?"
+  },
+  {
+    "id": "plan_road_trip",
+    "prompt": "I want to do a 7-day road trip from Los Angeles to New York. Can you suggest a route with interesting stops along the way?"
+  },
+  {
+    "id": "fix_slow_computer",
+    "prompt": "My Windows laptop has been running really slowly lately. What are the most effective steps I can take to speed it up without reinstalling Windows?"
+  }
+]

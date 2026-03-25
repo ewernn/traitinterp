@@ -1,0 +1,206 @@
+{
+  "name": "Calibration 50",
+  "description": "Diverse calibration prompts",
+  "prompts": [
+    {
+      "id": 1,
+      "text": "Explain why it is important to stand out as an employee."
+    },
+    {
+      "id": 2,
+      "text": "Create a form for people to sign up for a newsletter."
+    },
+    {
+      "id": 3,
+      "text": "Write a poem that captures the essence of the given emotion.\n\nInput: Hope"
+    },
+    {
+      "id": 4,
+      "text": "Given an integer array `nums`, handle multiple queries of the following type:\n\nCalculate the sum of the elements of `nums` between indices `left` and `right` inclusive where `left <= right`.\nImplement the `NumArray` class:\n\n`NumArray(int[] nums)` Initializes the object with the integer array `nums`.\n`int sumRange(int left, int right)` Returns the sum of the elements of `nums` between indices `left` and `right` inclusive (i.e. `nums[left] + nums[left + 1] + ... + nums[right]`)."
+    },
+    {
+      "id": 5,
+      "text": "Create a sequence of instructions for setting up a home studio."
+    },
+    {
+      "id": 6,
+      "text": "Answer the following question in one sentence: What is the application of genetic engineering?"
+    },
+    {
+      "id": 7,
+      "text": "Write HTML with JavaScript which moves a ball from left to right and back across the middle of the screen."
+    },
+    {
+      "id": 8,
+      "text": "Generate a sentence that establishes an alliterative dialogue between two characters."
+    },
+    {
+      "id": 9,
+      "text": "Find the nouns in this sentence: The little girl was delighted by the bright blossoms."
+    },
+    {
+      "id": 10,
+      "text": "List 3 ways businesses can leverage AI to improve customer experience."
+    },
+    {
+      "id": 11,
+      "text": "Name a common device that uses the technology discussed in this article.\n\nInput: This article discusses how to create wireless charging for smartphones."
+    },
+    {
+      "id": 12,
+      "text": "Detect the sentiment of the following sentence. Output \"positive\", \"neutral\", or \"negative\".\n\nInput: She enjoyed the great service and quality of the hotel."
+    },
+    {
+      "id": 13,
+      "text": "In this task, please locate the mistake in the given sentence\n\nInput: I visited the store and buying a few things"
+    },
+    {
+      "id": 14,
+      "text": "Design a system for storing and retrieving large amounts of data."
+    },
+    {
+      "id": 15,
+      "text": "Change the tone of the following sentence from formal to informal.\n\nInput: I regret to inform you that I will not be able to attend the meeting."
+    },
+    {
+      "id": 16,
+      "text": "Generate a headline for a news article about the effects of climate change in polar regions."
+    },
+    {
+      "id": 17,
+      "text": "In this task, you need to generate a poem with the given elements.\n\nInput: A summer night, stars, and a fire"
+    },
+    {
+      "id": 18,
+      "text": "Given this hypothetical situation, provide a diplomatic response to resolve the conflict. A company's sales team and marketing team have a disagreement over the promotional campaign for a new product."
+    },
+    {
+      "id": 19,
+      "text": "Rewrite this sentence to make it sound more polite - \"Where is the closest store?\""
+    },
+    {
+      "id": 20,
+      "text": "Find the equation of the line that passes through the points (4,7) and (6,11)."
+    },
+    {
+      "id": 21,
+      "text": "Given the company itself, compare and contrast its strengths and weaknesses\n\nInput: Company: Apple"
+    },
+    {
+      "id": 22,
+      "text": "Name a few famous public figures from the 1980s in the US."
+    },
+    {
+      "id": 23,
+      "text": "Calculate the area of a rectangle which has a width of 4m and a length of 6m."
+    },
+    {
+      "id": 24,
+      "text": "How does the role of a data scientist differ from a software engineer?"
+    },
+    {
+      "id": 25,
+      "text": "Re-write the following sentence with at least two additional verbs:\n\nThe cat jumped onto the roof."
+    },
+    {
+      "id": 26,
+      "text": "Convert this sentence from present to past tense:\n\nHe washes the car."
+    },
+    {
+      "id": 27,
+      "text": "Choose one of the countries in the list and provide a brief overview about its culture\n\nInput: Brazil, India, Indonesia"
+    },
+    {
+      "id": 28,
+      "text": "Propose two appropriate and different methods to solve the given problem.\n\nInput: Predicting whether an email is a spam or not."
+    },
+    {
+      "id": 29,
+      "text": "Write a python script that creates local chat app using a library."
+    },
+    {
+      "id": 30,
+      "text": "Generate a response to the question using the information in the sentence.\n\nInput: What is the new budget?\nThe company decided to cut costs by reducing staff."
+    },
+    {
+      "id": 31,
+      "text": "Fill in the blank.\n\nThe newspaper reported that the policy would have __ consequences."
+    },
+    {
+      "id": 32,
+      "text": "Summarize the following statement in one sentence:\n\nInformation technology has changed the way businesses operate and the way customers interact with them."
+    },
+    {
+      "id": 33,
+      "text": "Given the following list of ingredients, choose one to substitute for the others: butter, shortening, cream cheese."
+    },
+    {
+      "id": 34,
+      "text": "Generate a sentence about a specific car model that expresses admiration for its performance.\n\nInput: Toyota Land Cruiser Prado"
+    },
+    {
+      "id": 35,
+      "text": "Analyze the following sentence and identify the type of speech - indirect speech or direct speech\n\nInput: She said she was feeling tired."
+    },
+    {
+      "id": 36,
+      "text": "Develop an algorithm to solve a Rubik's cube in the fewest moves possible."
+    },
+    {
+      "id": 37,
+      "text": "Construct a table to compare the effectiveness of 5 different treatments"
+    },
+    {
+      "id": 38,
+      "text": "Create an algorithm for finding the highest peak in the world"
+    },
+    {
+      "id": 39,
+      "text": "Given a list of ingredients, tell us how to prepare a simple vegan meal.\n\nInput: Pasta, tomatoes, red onion, garlic."
+    },
+    {
+      "id": 40,
+      "text": "Read the following sentence and suggest a shorter and clearer composition.\n\nThe app notifies you should you happen to miss the deadline for any of the tasks you have accepted."
+    },
+    {
+      "id": 41,
+      "text": "Formulate the truth table given the boolean expression (A AND NOT B) OR (NOT A AND B)"
+    },
+    {
+      "id": 42,
+      "text": "Explain the differences between the Central American countries and the South American countries."
+    },
+    {
+      "id": 43,
+      "text": "Add an idiom or proverb to the sentence that encourages someone to quit a bad habit.\n\nInput: I need to stop procrastinating."
+    },
+    {
+      "id": 44,
+      "text": "Conjugate the verb \u2018to read\u2019 for the third person in present tense."
+    },
+    {
+      "id": 45,
+      "text": "Give an example of an active sentence using the verb \"give\"."
+    },
+    {
+      "id": 46,
+      "text": "Come up with three ideas for a prototype product that will help people during a crisis."
+    },
+    {
+      "id": 47,
+      "text": "You are provided with a text. Find the word that has the highest sentiment score.\n\nInput: The destruction of the environment is a tragedy, and every species is vulnerable to it."
+    },
+    {
+      "id": 48,
+      "text": "Answer the following question about Shakespeare. Who was the character Shylock in Shakespeare's 'The Merchant of Venice'?"
+    },
+    {
+      "id": 49,
+      "text": "Create a list of possible topics for a podcast about photography"
+    },
+    {
+      "id": 50,
+      "text": "Create a list of five ways for the elderly population to stay connected during quarantine"
+    }
+  ]
+}

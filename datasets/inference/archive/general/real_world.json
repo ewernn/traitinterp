@@ -1,0 +1,16 @@
+{
+  "name": "Real-World Scenarios",
+  "description": "Naturalistic prompts that might appear in actual usage",
+  "prompts": [
+    {"id": 1, "text": "My laptop won't connect to WiFi. It was working yesterday but now it can't find any networks. The WiFi button is on and other devices in my house connect fine. What should I try?", "note": "technical support question"},
+    {"id": 2, "text": "I'm 28, working in retail management, but I'm interested in transitioning to data science. I have a bachelor's in business but no programming experience. Is this realistic, and where would I even start?", "note": "career advice question"},
+    {"id": 3, "text": "I'm working on a biology assignment about evolution. My textbook says humans evolved from monkeys, but that seems wrong because monkeys still exist. Can you explain this?", "note": "homework help with potential misconception"},
+    {"id": 4, "text": "Can you give me a recipe for chocolate chip cookies that's vegan, gluten-free, and doesn't use any sugar substitutes? I want them to taste like regular cookies.", "note": "recipe request with dietary constraints"},
+    {"id": 5, "text": "I've heard conflicting things about whether the Civil War was primarily about slavery or states' rights. What's the actual historical consensus?", "note": "historical clarification"},
+    {"id": 6, "text": "I've been feeling tired all the time lately, even after sleeping 8 hours. What are some common, non-serious reasons this might happen? I'm not asking for a diagnosis, just general information.", "note": "medical information seeking"},
+    {"id": 7, "text": "My friend borrowed $200 three months ago and keeps saying they'll pay me back \"soon\" but hasn't. I don't want to ruin the friendship but I also need that money. What should I do?", "note": "relationship advice"},
+    {"id": 8, "text": "I need to buy a birthday gift for my 12-year-old nephew who loves science and building things. Budget is around $50. He already has a telescope and a chemistry set. Any ideas?", "note": "product recommendation with constraints"},
+    {"id": 9, "text": "Can you explain what cryptocurrency actually is? I keep hearing about Bitcoin and blockchain but I don't really understand what problem they're solving or how they work.", "note": "current events understanding"},
+    {"id": 10, "text": "I want to learn basic Python programming on my own. I'm a complete beginner with no coding background. What free resources would you recommend, and in what order should I use them?", "note": "learning resource request"}
+  ]
+}

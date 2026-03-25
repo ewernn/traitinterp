@@ -1,0 +1,356 @@
+{
+  "name": "WikiText-2 paragraphs",
+  "description": "50 paragraphs from WikiText-2 test set, 80-120 tokens",
+  "paragraphs": [
+    {
+      "id": 1,
+      "full_text": "Du Fu ( Wade \u2013 Giles : Tu Fu ; Chinese : \u675c\u752b ; 712 \u2013 770 ) was a prominent Chinese poet of the Tang dynasty . Along with Li Bai ( Li Po ) , he is frequently called the greatest of the Chinese poets . His greatest ambition was to serve his country as a successful civil servant , but he proved unable to make the necessary accommodations . His life , like the whole country , was devastated by the An Lushan Rebellion of 755 , and his last 15 years were a time of almost constant unrest .",
+      "first_sentence": "Du Fu ( Wade \u2013 Giles : Tu Fu ; Chinese : \u675c\u752b ; 712 \u2013 770 ) was a prominent Chinese poet of the Tang dynasty .",
+      "continuation": "Along with Li Bai ( Li Po ) , he is frequently called the greatest of the Chinese poets . His greatest ambition was to serve his country as a successful civil servant , but he proved unable to make the necessary accommodations . His life , like the whole country , was devastated by the An Lushan Rebellion of 755 , and his last 15 years were a time of almost constant unrest .",
+      "n_tokens": 116
+    },
+    {
+      "id": 2,
+      "full_text": "Although initially he was little @-@ known to other writers , his works came to be hugely influential in both Chinese and Japanese literary culture . Of his poetic writing , nearly fifteen hundred poems have been preserved over the ages . He has been called the \" Poet @-@ Historian \" and the \" Poet @-@ Sage \" by Chinese critics , while the range of his work has allowed him to be introduced to Western readers as \" the Chinese Virgil , Horace , Ovid , Shakespeare , Milton , Burns , Wordsworth , B\u00e9ranger , Hugo or Baudelaire \" .",
+      "first_sentence": "Although initially he was little @-@ known to other writers , his works came to be hugely influential in both Chinese and Japanese literary culture .",
+      "continuation": "Of his poetic writing , nearly fifteen hundred poems have been preserved over the ages . He has been called the \" Poet @-@ Historian \" and the \" Poet @-@ Sage \" by Chinese critics , while the range of his work has allowed him to be introduced to Western readers as \" the Chinese Virgil , Horace , Ovid , Shakespeare , Milton , Burns , Wordsworth , B\u00e9ranger , Hugo or Baudelaire \" .",
+      "n_tokens": 108
+    },
+    {
+      "id": 3,
+      "full_text": "Most of what is known of Du Fu 's life comes from his poems . His paternal grandfather was Du Shenyan , a noted politician and poet during the reign of Empress Wu . Du Fu was born in 712 ; the exact birthplace is unknown , except that it was near Luoyang , Henan province ( Gong county is a favourite candidate ) . In later life , he considered himself to belong to the capital city of Chang 'an , ancestral hometown of the Du family .",
+      "first_sentence": "Most of what is known of Du Fu 's life comes from his poems .",
+      "continuation": "His paternal grandfather was Du Shenyan , a noted politician and poet during the reign of Empress Wu . Du Fu was born in 712 ; the exact birthplace is unknown , except that it was near Luoyang , Henan province ( Gong county is a favourite candidate ) . In later life , he considered himself to belong to the capital city of Chang 'an , ancestral hometown of the Du family .",
+      "n_tokens": 97
+    },
+    {
+      "id": 4,
+      "full_text": "In 756 , Emperor Xuanzong was forced to flee the capital and abdicate . Du Fu , who had been away from the city , took his family to a place of safety and attempted to join the court of the new emperor ( Suzong ) , but he was captured by the rebels and taken to Chang 'an . In the autumn , his youngest son , Du Zongwu ( Baby Bear ) , was born . Around this time Du Fu is thought to have contracted malaria .",
+      "first_sentence": "In 756 , Emperor Xuanzong was forced to flee the capital and abdicate .",
+      "continuation": "Du Fu , who had been away from the city , took his family to a place of safety and attempted to join the court of the new emperor ( Suzong ) , but he was captured by the rebels and taken to Chang 'an . In the autumn , his youngest son , Du Zongwu ( Baby Bear ) , was born . Around this time Du Fu is thought to have contracted malaria .",
+      "n_tokens": 98
+    },
+    {
+      "id": 5,
+      "full_text": "In March 768 , he began his journey again and got as far as Hunan province , where he died in Tanzhou ( now Changsha ) in November or December 770 , in his 58th year . He was survived by his wife and two sons , who remained in the area for some years at least . His last known descendant is a grandson who requested a grave inscription for the poet from Yuan Zhen in 813 .",
+      "first_sentence": "In March 768 , he began his journey again and got as far as Hunan province , where he died in Tanzhou ( now Changsha ) in November or December 770 , in his 58th year .",
+      "continuation": "He was survived by his wife and two sons , who remained in the area for some years at least . His last known descendant is a grandson who requested a grave inscription for the poet from Yuan Zhen in 813 .",
+      "n_tokens": 93
+    },
+    {
+      "id": 6,
+      "full_text": "Since the Song dynasty , critics have called Du Fu the \" poet historian \" ( \u8a69\u53f2 sh\u012b sh\u01d0 ) . The most directly historical of his poems are those commenting on military tactics or the successes and failures of the government , or the poems of advice which he wrote to the emperor . Indirectly , he wrote about the effect of the times in which he lived on himself , and on the ordinary people of China . As Watson notes , this is information \" of a kind seldom found in the officially compiled histories of the era \" .",
+      "first_sentence": "Since the Song dynasty , critics have called Du Fu the \" poet historian \" ( \u8a69\u53f2 sh\u012b sh\u01d0 ) .",
+      "continuation": "The most directly historical of his poems are those commenting on military tactics or the successes and failures of the government , or the poems of advice which he wrote to the emperor . Indirectly , he wrote about the effect of the times in which he lived on himself , and on the ordinary people of China . As Watson notes , this is information \" of a kind seldom found in the officially compiled histories of the era \" .",
+      "n_tokens": 107
+    },
+    {
+      "id": 7,
+      "full_text": "A second favourite epithet of Chinese critics is that of \" poet sage \" ( \u8a69\u8056 sh\u012b sh\u00e8ng ) , a counterpart to the philosophical sage , Confucius . One of the earliest surviving works , The Song of the Wagons ( from around 750 ) , gives voice to the sufferings of a conscript soldier in the imperial army and a clear @-@ sighted consciousness of suffering . These concerns are continuously articulated in poems on the lives of both soldiers and civilians produced by Du Fu throughout his life .",
+      "first_sentence": "A second favourite epithet of Chinese critics is that of \" poet sage \" ( \u8a69\u8056 sh\u012b sh\u00e8ng ) , a counterpart to the philosophical sage , Confucius .",
+      "continuation": "One of the earliest surviving works , The Song of the Wagons ( from around 750 ) , gives voice to the sufferings of a conscript soldier in the imperial army and a clear @-@ sighted consciousness of suffering . These concerns are continuously articulated in poems on the lives of both soldiers and civilians produced by Du Fu throughout his life .",
+      "n_tokens": 102
+    },
+    {
+      "id": 8,
+      "full_text": "The tenor of his work changed as he developed his style and adapted to his surroundings ( \" chameleon @-@ like \" according to Watson ) : his earliest works are in a relatively derivative , courtly style , but he came into his own in the years of the rebellion . Owen comments on the \" grim simplicity \" of the Qinzhou poems , which mirrors the desert landscape ; the works from his Chengdu period are \" light , often finely observed \" ; while the poems from the late Kuizhou period have a \" density and power of vision \" .",
+      "first_sentence": "The tenor of his work changed as he developed his style and adapted to his surroundings ( \" chameleon @-@ like \" according to Watson ) : his earliest works are in a relatively derivative , courtly style , but he came into his own in the years of the rebellion .",
+      "continuation": "Owen comments on the \" grim simplicity \" of the Qinzhou poems , which mirrors the desert landscape ; the works from his Chengdu period are \" light , often finely observed \" ; while the poems from the late Kuizhou period have a \" density and power of vision \" .",
+      "n_tokens": 108
+    },
+    {
+      "id": 9,
+      "full_text": "About two thirds of Du Fu 's 1500 extant works are in this form , and he is generally considered to be its leading exponent . His best l\u01dcshi use the parallelisms required by the form to add expressive content rather than as mere technical restrictions . Hawkes comments that , \" it is amazing that Tu Fu is able to use so immensely stylized a form in so natural a manner \" .",
+      "first_sentence": "About two thirds of Du Fu 's 1500 extant works are in this form , and he is generally considered to be its leading exponent .",
+      "continuation": "His best l\u01dcshi use the parallelisms required by the form to add expressive content rather than as mere technical restrictions . Hawkes comments that , \" it is amazing that Tu Fu is able to use so immensely stylized a form in so natural a manner \" .",
+      "n_tokens": 82
+    },
+    {
+      "id": 10,
+      "full_text": "In his lifetime and immediately following his death , Du Fu was not greatly appreciated . In part this can be attributed to his stylistic and formal innovations , some of which are still \" considered extremely daring and bizarre by Chinese critics . \" There are few contemporary references to him \u2014 only eleven poems from six writers \u2014 and these describe him in terms of affection , but not as a paragon of poetic or moral ideals . Du Fu is also poorly represented in contemporary anthologies of poetry .",
+      "first_sentence": "In his lifetime and immediately following his death , Du Fu was not greatly appreciated .",
+      "continuation": "In part this can be attributed to his stylistic and formal innovations , some of which are still \" considered extremely daring and bizarre by Chinese critics . \" There are few contemporary references to him \u2014 only eleven poems from six writers \u2014 and these describe him in terms of affection , but not as a paragon of poetic or moral ideals . Du Fu is also poorly represented in contemporary anthologies of poetry .",
+      "n_tokens": 93
+    },
+    {
+      "id": 11,
+      "full_text": "Other translators have placed much greater weight on trying to convey a sense of the poetic forms used by Du Fu . Vikram Seth in Three Chinese Poets uses English @-@ style rhyme schemes , whereas Keith Holyoak in Facing the Moon approximates the Chinese rhyme scheme ; both use end @-@ stopped lines and preserve some degree of parallelism . In The Selected Poems of Du Fu , Burton Watson follows the parallelisms quite strictly , persuading the western reader to adapt to the poems rather than vice versa . Similarly , he deals with the allusion of the later works by combining literal translation with extensive annotation .",
+      "first_sentence": "Other translators have placed much greater weight on trying to convey a sense of the poetic forms used by Du Fu .",
+      "continuation": "Vikram Seth in Three Chinese Poets uses English @-@ style rhyme schemes , whereas Keith Holyoak in Facing the Moon approximates the Chinese rhyme scheme ; both use end @-@ stopped lines and preserve some degree of parallelism . In The Selected Poems of Du Fu , Burton Watson follows the parallelisms quite strictly , persuading the western reader to adapt to the poems rather than vice versa . Similarly , he deals with the allusion of the later works by combining literal translation with extensive annotation .",
+      "n_tokens": 114
+    },
+    {
+      "id": 12,
+      "full_text": "The accompanying music video , directed by Vaughan Arnell , who had previously directed One Direction 's music videos for \" Live While We 're Young \" and \" Little Things \" , was designed to showcase the group 's comedic timing . Inspired by the Beach Boys , cult surfing films , old Hollywood , and British cinema , the music video incorporates \" a technicolor vibe and a British kind of romp \" , as noted by Arnell in a MTV News interview .",
+      "first_sentence": "The accompanying music video , directed by Vaughan Arnell , who had previously directed One Direction 's music videos for \" Live While We 're Young \" and \" Little Things \" , was designed to showcase the group 's comedic timing .",
+      "continuation": "Inspired by the Beach Boys , cult surfing films , old Hollywood , and British cinema , the music video incorporates \" a technicolor vibe and a British kind of romp \" , as noted by Arnell in a MTV News interview .",
+      "n_tokens": 92
+    },
+    {
+      "id": 13,
+      "full_text": "The design of the Fus\u014d @-@ class battleships was shaped both by the ongoing international naval arms race and a desire among Japanese naval planners to maintain a fleet of capital ships powerful enough to defeat the United States Navy in an encounter in Japanese territorial waters . The IJN 's fleet of battleships had proven highly successful in 1905 , the last year of the Russo @-@ Japanese War , which culminated in the destruction of the Russian Second and Third Pacific Squadrons at the Battle of Tsushima .",
+      "first_sentence": "The design of the Fus\u014d @-@ class battleships was shaped both by the ongoing international naval arms race and a desire among Japanese naval planners to maintain a fleet of capital ships powerful enough to defeat the United States Navy in an encounter in Japanese territorial waters .",
+      "continuation": "The IJN 's fleet of battleships had proven highly successful in 1905 , the last year of the Russo @-@ Japanese War , which culminated in the destruction of the Russian Second and Third Pacific Squadrons at the Battle of Tsushima .",
+      "n_tokens": 103
+    },
+    {
+      "id": 14,
+      "full_text": "When Japan began the Pacific War on 8 December , the sisters sortied for the Bonin Islands with four other battleships and the light carrier H\u014dsh\u014d as distant cover for the fleet attacking Pearl Harbor , and returned six days later . On 11 March 1942 Ise and Hy\u016bga sortied from their anchorage at Hashirajima to join the unsuccessful search for the American carrier force that had attacked Marcus Island a week earlier . Similarly they pursued but did not catch the American carriers that had launched the Doolittle Raid on 18 April .",
+      "first_sentence": "When Japan began the Pacific War on 8 December , the sisters sortied for the Bonin Islands with four other battleships and the light carrier H\u014dsh\u014d as distant cover for the fleet attacking Pearl Harbor , and returned six days later .",
+      "continuation": "On 11 March 1942 Ise and Hy\u016bga sortied from their anchorage at Hashirajima to join the unsuccessful search for the American carrier force that had attacked Marcus Island a week earlier . Similarly they pursued but did not catch the American carriers that had launched the Doolittle Raid on 18 April .",
+      "n_tokens": 116
+    },
+    {
+      "id": 15,
+      "full_text": "They returned home on 14 June and the IJN began preliminary planning to replace the lost carriers with hybrid carriers converted from battleships . The sisters were selected for conversion and detached from the division on 14 July in preparation . They remained on \" standby alert \" until the actual conversions began . Ise was converted at Kure Naval Arsenal from 23 February to 5 September 1943 and Hy\u016bga at Sasebo Naval Arsenal from 2 May to 30 November .",
+      "first_sentence": "They returned home on 14 June and the IJN began preliminary planning to replace the lost carriers with hybrid carriers converted from battleships .",
+      "continuation": "The sisters were selected for conversion and detached from the division on 14 July in preparation . They remained on \" standby alert \" until the actual conversions began . Ise was converted at Kure Naval Arsenal from 23 February to 5 September 1943 and Hy\u016bga at Sasebo Naval Arsenal from 2 May to 30 November .",
+      "n_tokens": 101
+    },
+    {
+      "id": 16,
+      "full_text": "In college , he led the Big Ten Conference in single season receptions during his senior year and set Michigan Wolverines receptions records for both career touchdown and single @-@ season touchdowns . He had also been a Michigan High School Athletic Association ( MHSAA ) state champion in both basketball and track and field . His college career was interrupted by World War II service , and his high school career was also affected by the war due to the MHSAA 's cancellation of state championships in all sports in 1943 .",
+      "first_sentence": "In college , he led the Big Ten Conference in single season receptions during his senior year and set Michigan Wolverines receptions records for both career touchdown and single @-@ season touchdowns .",
+      "continuation": "He had also been a Michigan High School Athletic Association ( MHSAA ) state champion in both basketball and track and field . His college career was interrupted by World War II service , and his high school career was also affected by the war due to the MHSAA 's cancellation of state championships in all sports in 1943 .",
+      "n_tokens": 102
+    },
+    {
+      "id": 17,
+      "full_text": "It is ironic that Rifenburg was born in Petoskey , Michigan in 1926 for several reasons . Ted Petoskey preceded Rifenburg as an All @-@ American end on the University of Michigan football team . Petoskey had excelled as a representative of Saginaw County in MHSAA competition . Petoskey posted significant football accomplishments in 1926 making 1926 a significant year for himself as well . Achieving All @-@ American status as an end at Michigan would be Rifenburg 's next step after excelling in MHSAA competition .",
+      "first_sentence": "It is ironic that Rifenburg was born in Petoskey , Michigan in 1926 for several reasons .",
+      "continuation": "Ted Petoskey preceded Rifenburg as an All @-@ American end on the University of Michigan football team . Petoskey had excelled as a representative of Saginaw County in MHSAA competition . Petoskey posted significant football accomplishments in 1926 making 1926 a significant year for himself as well . Achieving All @-@ American status as an end at Michigan would be Rifenburg 's next step after excelling in MHSAA competition .",
+      "n_tokens": 119
+    },
+    {
+      "id": 18,
+      "full_text": "In the 1948 championship season , Rifenburg scored eight touchdowns , caught 22 passes , and gained 610 yards ( 508 receiving and 102 rushing ) . Rifenburg was the second highest scoring end in the nation in 1948 , and he was a consensus All @-@ American as a senior , being selected as first team on nine of the 11 All @-@ American teams . Rifenburg led the Big Ten in receptions .",
+      "first_sentence": "In the 1948 championship season , Rifenburg scored eight touchdowns , caught 22 passes , and gained 610 yards ( 508 receiving and 102 rushing ) .",
+      "continuation": "Rifenburg was the second highest scoring end in the nation in 1948 , and he was a consensus All @-@ American as a senior , being selected as first team on nine of the 11 All @-@ American teams . Rifenburg led the Big Ten in receptions .",
+      "n_tokens": 104
+    },
+    {
+      "id": 19,
+      "full_text": "Rifenburg was considered one of the greatest Wolverine 's of the 1940s . In four seasons with the Michigan Wolverines , Rifenburg played in 32 games and had over 1 @,@ 000 yards of total offense . Rifenburg held the University of Michigan 's single season and career record for touchdown receptions ( eight in a season ; sixteen career ) until his records were broken by Anthony Carter in 1980 .",
+      "first_sentence": "Rifenburg was considered one of the greatest Wolverine 's of the 1940s .",
+      "continuation": "In four seasons with the Michigan Wolverines , Rifenburg played in 32 games and had over 1 @,@ 000 yards of total offense . Rifenburg held the University of Michigan 's single season and career record for touchdown receptions ( eight in a season ; sixteen career ) until his records were broken by Anthony Carter in 1980 .",
+      "n_tokens": 97
+    },
+    {
+      "id": 20,
+      "full_text": "Rifenburg landed a job at WJR radio in Detroit , but he left his sportscaster 's job to join the Detroit Lions . In the 1950 NFL season , Rifenburg came back from his injury to play for the Detroit Lions . He played in 12 games and had ten receptions for 96 yards and one touchdown for the 1950 Lions . Rifenburg recalled that his playing time with the Lions was limited because the Lions also signed 1949 Heisman Trophy winner Leon Hart , who played the same position .",
+      "first_sentence": "Rifenburg landed a job at WJR radio in Detroit , but he left his sportscaster 's job to join the Detroit Lions .",
+      "continuation": "In the 1950 NFL season , Rifenburg came back from his injury to play for the Detroit Lions . He played in 12 games and had ten receptions for 96 yards and one touchdown for the 1950 Lions . Rifenburg recalled that his playing time with the Lions was limited because the Lions also signed 1949 Heisman Trophy winner Leon Hart , who played the same position .",
+      "n_tokens": 117
+    },
+    {
+      "id": 21,
+      "full_text": "After 30 years with WBEN and a change in ownership for the station , his show was replaced with the Mutual Network 's The Larry King Show . In the 1980s , Rifenburg taught communications at Buffalo 's Medaille College and served as a disc jockey on Public Broadcasting 's radio station WEBR ( now WDCZ ) . He also sold ads for Buffalo Evening News competitor , Buffalo Courier @-@ Express . Rifenburg 's final employer was Erie County , who hired him as an inmate training supervisor at the Erie County Correctional Facility .",
+      "first_sentence": "After 30 years with WBEN and a change in ownership for the station , his show was replaced with the Mutual Network 's The Larry King Show .",
+      "continuation": "In the 1980s , Rifenburg taught communications at Buffalo 's Medaille College and served as a disc jockey on Public Broadcasting 's radio station WEBR ( now WDCZ ) . He also sold ads for Buffalo Evening News competitor , Buffalo Courier @-@ Express . Rifenburg 's final employer was Erie County , who hired him as an inmate training supervisor at the Erie County Correctional Facility .",
+      "n_tokens": 117
+    },
+    {
+      "id": 22,
+      "full_text": "Rifenburg was posthumously inducted into the Buffalo Broadcasters Hall of Fame in September 2007 . He was given the Golden Age Award which is reserved for \" those who did it first , the people who had no pattern to follow . \" The Hall of Fame award was presented to Rifenburg 's wife , Jane . In her acceptance speech , Jane Rifenburg observed that despite all of her late husband 's achievements , there was one thing he had never received : \" He had a great career , but he never had a trophy . And now he has . \"",
+      "first_sentence": "Rifenburg was posthumously inducted into the Buffalo Broadcasters Hall of Fame in September 2007 .",
+      "continuation": "He was given the Golden Age Award which is reserved for \" those who did it first , the people who had no pattern to follow . \" The Hall of Fame award was presented to Rifenburg 's wife , Jane . In her acceptance speech , Jane Rifenburg observed that despite all of her late husband 's achievements , there was one thing he had never received : \" He had a great career , but he never had a trophy . And now he has . \"",
+      "n_tokens": 118
+    },
+    {
+      "id": 23,
+      "full_text": "Rifenburg lived 37 of his years in Buffalo . His wife , the former Jane Morris , was the head of the Buffalo Jills cheerleaders when they met . Rifenburg , who was survived by three sons , ( Douglas A. , Gary R. , and Bruce R. ) one daughter ( Wendy J. Colf ) and two grandchildren , died in Cheektowaga , New York in December 1994 ; he was 68 years old . Doug was a 1988 first team football All @-@ Western New York linebacker for Clarence High School .",
+      "first_sentence": "Rifenburg lived 37 of his years in Buffalo .",
+      "continuation": "His wife , the former Jane Morris , was the head of the Buffalo Jills cheerleaders when they met . Rifenburg , who was survived by three sons , ( Douglas A. , Gary R. , and Bruce R. ) one daughter ( Wendy J. Colf ) and two grandchildren , died in Cheektowaga , New York in December 1994 ; he was 68 years old . Doug was a 1988 first team football All @-@ Western New York linebacker for Clarence High School .",
+      "n_tokens": 120
+    },
+    {
+      "id": 24,
+      "full_text": "The Second Battle of Naktong Bulge was an engagement between United Nations ( UN ) and North Korean ( NK ) forces early in the Korean War from September 1 to September 15 , 1950 , along the Naktong River in South Korea . It was a part of the Battle of Pusan Perimeter , and was one of several large engagements fought simultaneously . The battle ended in a victory for the United Nations after large numbers of United States ( US ) and Republic of Korea ( ROK ) troops repelled a strong North Korean attack .",
+      "first_sentence": "The Second Battle of Naktong Bulge was an engagement between United Nations ( UN ) and North Korean ( NK ) forces early in the Korean War from September 1 to September 15 , 1950 , along the Naktong River in South Korea .",
+      "continuation": "It was a part of the Battle of Pusan Perimeter , and was one of several large engagements fought simultaneously . The battle ended in a victory for the United Nations after large numbers of United States ( US ) and Republic of Korea ( ROK ) troops repelled a strong North Korean attack .",
+      "n_tokens": 112
+    },
+    {
+      "id": 25,
+      "full_text": "After the First Battle of Naktong Bulge , the US Army 's 2nd Infantry Division was moved to defend the Naktong River line . The division , which was untried in combat , was struck with a strong attack by several divisions of the Korean People 's Army which crossed the river and struck all along the division 's line . The force of the attack split the US 2nd Infantry Division in half , and the North Koreans were able to penetrate to Yongsan , promoting a fight there .",
+      "first_sentence": "After the First Battle of Naktong Bulge , the US Army 's 2nd Infantry Division was moved to defend the Naktong River line .",
+      "continuation": "The division , which was untried in combat , was struck with a strong attack by several divisions of the Korean People 's Army which crossed the river and struck all along the division 's line . The force of the attack split the US 2nd Infantry Division in half , and the North Koreans were able to penetrate to Yongsan , promoting a fight there .",
+      "n_tokens": 105
+    },
+    {
+      "id": 26,
+      "full_text": "The urgency of the threat to Pusan Perimeter prompted the US Marine Corps 1st Provisional Marine Brigade to be brought in to reinforce the US Army troops . In two weeks of heavy fighting , the US forces were able to force the North Koreans out of the Naktong Bulge region . The North Koreans were further repulsed after the UN counterattack at Inchon , which culminated in the virtual destruction of the North Korean army .",
+      "first_sentence": "The urgency of the threat to Pusan Perimeter prompted the US Marine Corps 1st Provisional Marine Brigade to be brought in to reinforce the US Army troops .",
+      "continuation": "In two weeks of heavy fighting , the US forces were able to force the North Koreans out of the Naktong Bulge region . The North Koreans were further repulsed after the UN counterattack at Inchon , which culminated in the virtual destruction of the North Korean army .",
+      "n_tokens": 86
+    },
+    {
+      "id": 27,
+      "full_text": "During the last week of August , US troops on these hills could see minor North Korean activity across the river , which they thought was North Koreans organizing the high ground on the west side of the Naktong against a possible American attack . There were occasional attacks on the 9th Infantry 's forward positions , but to the men in the front lines this appeared to be only a standard patrol action . On August 31 , the UN forces were alerted to a pending attack when much of the Korean civilian labor force fled the front lines . Intelligence officers reported an attack was coming .",
+      "first_sentence": "During the last week of August , US troops on these hills could see minor North Korean activity across the river , which they thought was North Koreans organizing the high ground on the west side of the Naktong against a possible American attack .",
+      "continuation": "There were occasional attacks on the 9th Infantry 's forward positions , but to the men in the front lines this appeared to be only a standard patrol action . On August 31 , the UN forces were alerted to a pending attack when much of the Korean civilian labor force fled the front lines . Intelligence officers reported an attack was coming .",
+      "n_tokens": 116
+    },
+    {
+      "id": 28,
+      "full_text": "Kouma 's patrol was then ambushed by a group of North Koreans dressed in US military uniforms . Kouma was wounded and the other three vehicles had to withdraw , but he held the Agok site until 07 : 30 the next morning with his single tank . In the attack against A Company , the North Koreans hit the 1st Platoon , which was near Agok , but they did not find the 2nd Platoon northward .",
+      "first_sentence": "Kouma 's patrol was then ambushed by a group of North Koreans dressed in US military uniforms .",
+      "continuation": "Kouma was wounded and the other three vehicles had to withdraw , but he held the Agok site until 07 : 30 the next morning with his single tank . In the attack against A Company , the North Koreans hit the 1st Platoon , which was near Agok , but they did not find the 2nd Platoon northward .",
+      "n_tokens": 94
+    },
+    {
+      "id": 29,
+      "full_text": "By 21 : 00 , the closest front line unit was B Company on top of Hill 209 , 1 mile ( 1 @.@ 6 km ) north of the river road which curved around the hill 's southern base . The regimental chaplain , Captain Lewis B. Sheen , had gone forward in the afternoon to B Company to hold services . On top of Hill 209 , Chaplain Sheen and men in B Company after dark heard splashing in the water below them . They soon discovered a long line of North Korean soldiers wading the river .",
+      "first_sentence": "By 21 : 00 , the closest front line unit was B Company on top of Hill 209 , 1 mile ( 1 @.@ 6 km ) north of the river road which curved around the hill 's southern base .",
+      "continuation": "The regimental chaplain , Captain Lewis B. Sheen , had gone forward in the afternoon to B Company to hold services . On top of Hill 209 , Chaplain Sheen and men in B Company after dark heard splashing in the water below them . They soon discovered a long line of North Korean soldiers wading the river .",
+      "n_tokens": 117
+    },
+    {
+      "id": 30,
+      "full_text": "From 21 : 30 until shortly after midnight the NK 9th Division crossed the Naktong at a number of places and climbed the hills quietly toward the 9th Infantry river line positions . Then , when the artillery barrage preparation lifted , the North Korean infantry were in position to launch their assaults . These began in the northern part of the regimental sector and quickly spread southward . At each crossing site the North Koreans would overwhelm local UN defenders before building pontoon bridges for their vehicles and armor .",
+      "first_sentence": "From 21 : 30 until shortly after midnight the NK 9th Division crossed the Naktong at a number of places and climbed the hills quietly toward the 9th Infantry river line positions .",
+      "continuation": "Then , when the artillery barrage preparation lifted , the North Korean infantry were in position to launch their assaults . These began in the northern part of the regimental sector and quickly spread southward . At each crossing site the North Koreans would overwhelm local UN defenders before building pontoon bridges for their vehicles and armor .",
+      "n_tokens": 103
+    },
+    {
+      "id": 31,
+      "full_text": "Two roads ran through the regimental sector from the Naktong River to Changnyong . The main road bent south along the east bank of the river to Pugong @-@ ni and then turned northeast to Changnyong . A northern secondary road curved around marshland and lakes , the largest of which was Lake U @-@ p 'o , to Changnyong . In effect , the 1st Battalion of the 23rd Regiment guarded these two approach routes to Changnyong .",
+      "first_sentence": "Two roads ran through the regimental sector from the Naktong River to Changnyong .",
+      "continuation": "The main road bent south along the east bank of the river to Pugong @-@ ni and then turned northeast to Changnyong . A northern secondary road curved around marshland and lakes , the largest of which was Lake U @-@ p 'o , to Changnyong . In effect , the 1st Battalion of the 23rd Regiment guarded these two approach routes to Changnyong .",
+      "n_tokens": 100
+    },
+    {
+      "id": 32,
+      "full_text": "At 21 : 00 the first shells of what proved to be a two @-@ hour North Korean artillery and mortar preparation against the American river positions of 2nd Platoon . As the barrage rolled on , North Korean infantry crossed the river and climbed the hills in the darkness under cover of its fire . At 23 : 00 the barrage lifted and the North Koreans attacked 2nd Platoon , forcing it from the hill after a short fight . Similar assaults took place elsewhere along the battalion outpost line .",
+      "first_sentence": "At 21 : 00 the first shells of what proved to be a two @-@ hour North Korean artillery and mortar preparation against the American river positions of 2nd Platoon .",
+      "continuation": "As the barrage rolled on , North Korean infantry crossed the river and climbed the hills in the darkness under cover of its fire . At 23 : 00 the barrage lifted and the North Koreans attacked 2nd Platoon , forcing it from the hill after a short fight . Similar assaults took place elsewhere along the battalion outpost line .",
+      "n_tokens": 107
+    },
+    {
+      "id": 33,
+      "full_text": "As the morning passed , General Walker decided that the situation was most critical in the Naktong Bulge area of the US 2nd Division sector . There the North Koreans threatened Miryang and with it the entire Eighth Army position . At 11 : 00 Walker ordered US Marine Corps Brigadier General Edward A. Craig , commanding the 1st Provisional Marine Brigade , to prepare the marines to move at once . The marines made ready to depart for the Naktong Bulge at 13 : 30 .",
+      "first_sentence": "As the morning passed , General Walker decided that the situation was most critical in the Naktong Bulge area of the US 2nd Division sector .",
+      "continuation": "There the North Koreans threatened Miryang and with it the entire Eighth Army position . At 11 : 00 Walker ordered US Marine Corps Brigadier General Edward A. Craig , commanding the 1st Provisional Marine Brigade , to prepare the marines to move at once . The marines made ready to depart for the Naktong Bulge at 13 : 30 .",
+      "n_tokens": 108
+    },
+    {
+      "id": 34,
+      "full_text": "This fight continued until September 5 . On that day F Company captured Hill 284 killing 150 North Koreans . From the crest he and his men watched as many more North Koreans ran into a village below them . Directed artillery fire destroyed the village . Among the abandoned North Korean materiel on the hill , Schauer 's men found twenty @-@ five American BARs and submachine guns , a large American radio , thirty boxes of unopened American fragmentation and concussion grenades , and some American rations .",
+      "first_sentence": "This fight continued until September 5 .",
+      "continuation": "On that day F Company captured Hill 284 killing 150 North Koreans . From the crest he and his men watched as many more North Koreans ran into a village below them . Directed artillery fire destroyed the village . Among the abandoned North Korean materiel on the hill , Schauer 's men found twenty @-@ five American BARs and submachine guns , a large American radio , thirty boxes of unopened American fragmentation and concussion grenades , and some American rations .",
+      "n_tokens": 103
+    },
+    {
+      "id": 35,
+      "full_text": "On the morning of September 1 the 1st and 2nd Regiments of the NK 9th Division , in their first offensive of the war , stood only a few miles short of Yongsan after a successful river crossing and penetration of the American line . The 3rd Regiment had been left at Inch 'on , but division commander Major General Pak Kyo Sam felt the chances of capturing Yongsan were strong .",
+      "first_sentence": "On the morning of September 1 the 1st and 2nd Regiments of the NK 9th Division , in their first offensive of the war , stood only a few miles short of Yongsan after a successful river crossing and penetration of the American line .",
+      "continuation": "The 3rd Regiment had been left at Inch 'on , but division commander Major General Pak Kyo Sam felt the chances of capturing Yongsan were strong .",
+      "n_tokens": 85
+    },
+    {
+      "id": 36,
+      "full_text": "On the morning of September 1 , with only the shattered remnants of E Company at hand , the US 9th Infantry Regiment , US 2nd Infantry Division had virtually no troops to defend Yongsan . Keiser in this emergency attached the 2nd Engineer Combat Battalion to the regiment . The US 72nd Tank Battalion and the 2nd Division Reconnaissance Company also were assigned positions close to Yongsan . The regimental commander planned to place the engineers on the chain of low hills that arched around Yongsan on the northwest .",
+      "first_sentence": "On the morning of September 1 , with only the shattered remnants of E Company at hand , the US 9th Infantry Regiment , US 2nd Infantry Division had virtually no troops to defend Yongsan .",
+      "continuation": "Keiser in this emergency attached the 2nd Engineer Combat Battalion to the regiment . The US 72nd Tank Battalion and the 2nd Division Reconnaissance Company also were assigned positions close to Yongsan . The regimental commander planned to place the engineers on the chain of low hills that arched around Yongsan on the northwest .",
+      "n_tokens": 108
+    },
+    {
+      "id": 37,
+      "full_text": "After releasing three albums on Jive Records , Hed PE left the label to record independently , eventually signing with Suburban Noize Records in 2006 . Since 2006 , the band has become known for its involvement in the 9 / 11 Truth movement , referencing it in many of their song lyrics and concerts , as well as the concept of the album New World Orphans . To date , they have released nine studio albums , one live album and two compilation albums .",
+      "first_sentence": "After releasing three albums on Jive Records , Hed PE left the label to record independently , eventually signing with Suburban Noize Records in 2006 .",
+      "continuation": "Since 2006 , the band has become known for its involvement in the 9 / 11 Truth movement , referencing it in many of their song lyrics and concerts , as well as the concept of the album New World Orphans . To date , they have released nine studio albums , one live album and two compilation albums .",
+      "n_tokens": 100
+    },
+    {
+      "id": 38,
+      "full_text": "On October 27 , 2000 , Gomes was arrested for possession of marijuana while the band was performing in Waterbury , Connecticut . He was released on a US $ 1 @,@ 500 bond . In 2001 , Hed PE performed on the Ozzfest tour alongside bands such as Korn , Static @-@ X , and System of a Down . A music video for \" Killing Time \" , the second single from Broke , was produced in promotion of the film 3000 Miles to Graceland , which featured the song on its soundtrack .",
+      "first_sentence": "On October 27 , 2000 , Gomes was arrested for possession of marijuana while the band was performing in Waterbury , Connecticut .",
+      "continuation": "He was released on a US $ 1 @,@ 500 bond . In 2001 , Hed PE performed on the Ozzfest tour alongside bands such as Korn , Static @-@ X , and System of a Down . A music video for \" Killing Time \" , the second single from Broke , was produced in promotion of the film 3000 Miles to Graceland , which featured the song on its soundtrack .",
+      "n_tokens": 120
+    },
+    {
+      "id": 39,
+      "full_text": "On May 13 , 2014 , On the band 's official Facebook page , they released the official announcement of when the band 's new album Evolution will hit stores . The album is set for release July 22 , 2014 . They also released a teaser of the tone of the new album on their Facebook page and soon after , the track \" One More Body \" .",
+      "first_sentence": "On May 13 , 2014 , On the band 's official Facebook page , they released the official announcement of when the band 's new album Evolution will hit stores .",
+      "continuation": "The album is set for release July 22 , 2014 . They also released a teaser of the tone of the new album on their Facebook page and soon after , the track \" One More Body \" .",
+      "n_tokens": 84
+    },
+    {
+      "id": 40,
+      "full_text": "The quick pace of change meant that many ships were obsolete as soon as they were finished , and that naval tactics were in a state of flux . Many ironclads were built to make use of the ram or the torpedo , which a number of naval designers considered the important weapons of naval combat . There is no clear end to the ironclad period , but towards the end of the 1890s the term ironclad dropped out of use . New ships were increasingly constructed to a standard pattern and designated battleships or armored cruisers .",
+      "first_sentence": "The quick pace of change meant that many ships were obsolete as soon as they were finished , and that naval tactics were in a state of flux .",
+      "continuation": "Many ironclads were built to make use of the ram or the torpedo , which a number of naval designers considered the important weapons of naval combat . There is no clear end to the ironclad period , but towards the end of the 1890s the term ironclad dropped out of use . New ships were increasingly constructed to a standard pattern and designated battleships or armored cruisers .",
+      "n_tokens": 108
+    },
+    {
+      "id": 41,
+      "full_text": "The ironclad became technically feasible and tactically necessary because of developments in shipbuilding in the first half of the 19th century . According to naval historian J. Richard Hill : \" The ( ironclad ) had three chief characteristics : a metal @-@ skinned hull , steam propulsion and a main armament of guns capable of firing explosive shells . It is only when all three characteristics are present that a fighting ship can properly be called an ironclad . \" Each of these developments was introduced separately in the decade before the first ironclads .",
+      "first_sentence": "The ironclad became technically feasible and tactically necessary because of developments in shipbuilding in the first half of the 19th century .",
+      "continuation": "According to naval historian J. Richard Hill : \" The ( ironclad ) had three chief characteristics : a metal @-@ skinned hull , steam propulsion and a main armament of guns capable of firing explosive shells . It is only when all three characteristics are present that a fighting ship can properly be called an ironclad . \" Each of these developments was introduced separately in the decade before the first ironclads .",
+      "n_tokens": 107
+    },
+    {
+      "id": 42,
+      "full_text": "In the 18th and early 19th centuries fleets had relied on two types of major warship , the ship of the line and the frigate . The first major change to these types was the introduction of steam power for propulsion . While paddle steamer warships had been used from the 1830s onwards , steam propulsion only became suitable for major warships after the adoption of the screw propeller in the 1840s .",
+      "first_sentence": "In the 18th and early 19th centuries fleets had relied on two types of major warship , the ship of the line and the frigate .",
+      "continuation": "The first major change to these types was the introduction of steam power for propulsion . While paddle steamer warships had been used from the 1830s onwards , steam propulsion only became suitable for major warships after the adoption of the screw propeller in the 1840s .",
+      "n_tokens": 89
+    },
+    {
+      "id": 43,
+      "full_text": "The introduction of the steam ship @-@ of @-@ the @-@ line led to a building competition between France and Britain . Eight sister ships to Napol\u00e9on were built in France over a period of ten years , but the United Kingdom soon managed to take the lead in production . Altogether , France built ten new wooden steam battleships and converted 28 from older ships of the line , while the United Kingdom built 18 and converted 41 .",
+      "first_sentence": "The introduction of the steam ship @-@ of @-@ the @-@ line led to a building competition between France and Britain .",
+      "continuation": "Eight sister ships to Napol\u00e9on were built in France over a period of ten years , but the United Kingdom soon managed to take the lead in production . Altogether , France built ten new wooden steam battleships and converted 28 from older ships of the line , while the United Kingdom built 18 and converted 41 .",
+      "n_tokens": 90
+    },
+    {
+      "id": 44,
+      "full_text": "The batteries have a claim to the title of the first ironclad warships but they were capable of only 4 knots ( 7 km / h ) under their own power : they operated under their own power at the Battle of Kinburn , but had to be towed for long range transit . They were also arguably marginal to the work of the navy . The brief success of the floating ironclad batteries convinced France to begin work on armored warships for their battlefleet .",
+      "first_sentence": "The batteries have a claim to the title of the first ironclad warships but they were capable of only 4 knots ( 7 km / h ) under their own power : they operated under their own power at the Battle of Kinburn , but had to be towed for long range transit .",
+      "continuation": "They were also arguably marginal to the work of the navy . The brief success of the floating ironclad batteries convinced France to begin work on armored warships for their battlefleet .",
+      "n_tokens": 92
+    },
+    {
+      "id": 45,
+      "full_text": "The first battle between ironclads happened on 9 March 1862 , as the armored Monitor was deployed to protect the Union 's wooden fleet from the ironclad ram Virginia and other Confederate warships . In this engagement , the second day of the Battle of Hampton Roads , the two ironclads repeatedly tried to ram one another while shells bounced off their armor . The battle attracted attention worldwide , making it clear that the wooden warship was now out of date , with the ironclads destroying them easily .",
+      "first_sentence": "The first battle between ironclads happened on 9 March 1862 , as the armored Monitor was deployed to protect the Union 's wooden fleet from the ironclad ram Virginia and other Confederate warships .",
+      "continuation": "In this engagement , the second day of the Battle of Hampton Roads , the two ironclads repeatedly tried to ram one another while shells bounced off their armor . The battle attracted attention worldwide , making it clear that the wooden warship was now out of date , with the ironclads destroying them easily .",
+      "n_tokens": 103
+    },
+    {
+      "id": 46,
+      "full_text": "The Union ironclads played an important role in the Mississippi and tributaries by providing tremendous fire upon Confederate forts , installations and vessels with relative impunity to enemy fire . They were not as heavily armored as the ocean @-@ going monitors of the Union , but they were adequate for their intended use . More Western Flotilla Union ironclads were sunk by torpedoes ( mines ) than by enemy fire , and the most damaging fire for the Union ironclads was from shore installations , not Confederate vessels .",
+      "first_sentence": "The Union ironclads played an important role in the Mississippi and tributaries by providing tremendous fire upon Confederate forts , installations and vessels with relative impunity to enemy fire .",
+      "continuation": "They were not as heavily armored as the ocean @-@ going monitors of the Union , but they were adequate for their intended use . More Western Flotilla Union ironclads were sunk by torpedoes ( mines ) than by enemy fire , and the most damaging fire for the Union ironclads was from shore installations , not Confederate vessels .",
+      "n_tokens": 99
+    },
+    {
+      "id": 47,
+      "full_text": "The Italian fleet consisted of 12 ironclads and a similar number of wooden warships , escorting transports which carried troops intending to land on the Adriatic island of Lissa . Among the Italian ironclads were seven broadside ironclad frigates , four smaller ironclads , and the newly built Affondatore \u2014 a double @-@ turretted ram . Opposing them , the Austrian navy had seven ironclad frigates .",
+      "first_sentence": "The Italian fleet consisted of 12 ironclads and a similar number of wooden warships , escorting transports which carried troops intending to land on the Adriatic island of Lissa .",
+      "continuation": "Among the Italian ironclads were seven broadside ironclad frigates , four smaller ironclads , and the newly built Affondatore \u2014 a double @-@ turretted ram . Opposing them , the Austrian navy had seven ironclad frigates .",
+      "n_tokens": 87
+    },
+    {
+      "id": 48,
+      "full_text": "The Austrians believed their ships to have less effective guns than their enemy , so decided to engage the Italians at close range and ram them . The Austrian fleet formed into an arrowhead formation with the ironclads in the first line , charging at the Italian ironclad squadron . In the mel\u00e9e which followed both sides were frustrated by the lack of damage inflicted by guns , and by the difficulty of ramming \u2014 nonetheless , the effective ramming attack being made by the Austrian flagship against the Italian attracted great attention in following years .",
+      "first_sentence": "The Austrians believed their ships to have less effective guns than their enemy , so decided to engage the Italians at close range and ram them .",
+      "continuation": "The Austrian fleet formed into an arrowhead formation with the ironclads in the first line , charging at the Italian ironclad squadron . In the mel\u00e9e which followed both sides were frustrated by the lack of damage inflicted by guns , and by the difficulty of ramming \u2014 nonetheless , the effective ramming attack being made by the Austrian flagship against the Italian attracted great attention in following years .",
+      "n_tokens": 105
+    },
+    {
+      "id": 49,
+      "full_text": "The superior Italian fleet lost its two ironclads , Re d 'Italia and Palestro , while the Austrian unarmoured screw two @-@ decker SMS Kaiser remarkably survived close actions with four Italian ironclads . The battle ensured the popularity of the ram as a weapon in European ironclads for many years , and the victory won by Austria established it as the predominant naval power in the Adriatic .",
+      "first_sentence": "The superior Italian fleet lost its two ironclads , Re d 'Italia and Palestro , while the Austrian unarmoured screw two @-@ decker SMS Kaiser remarkably survived close actions with four Italian ironclads .",
+      "continuation": "The battle ensured the popularity of the ram as a weapon in European ironclads for many years , and the victory won by Austria established it as the predominant naval power in the Adriatic .",
+      "n_tokens": 80
+    },
+    {
+      "id": 50,
+      "full_text": "The adoption of iron armor meant that the traditional naval armament of dozens of light cannon became useless , since their shot would bounce off an armored hull . To penetrate armor , increasingly heavy guns were mounted on ships ; nevertheless , the view that ramming was the only way to sink an ironclad became widespread . The increasing size and weight of guns also meant a movement away from the ships mounting many guns broadside , in the manner of a ship @-@ of @-@ the @-@ line , towards a handful of guns in turrets for all @-@ round fire .",
+      "first_sentence": "The adoption of iron armor meant that the traditional naval armament of dozens of light cannon became useless , since their shot would bounce off an armored hull .",
+      "continuation": "To penetrate armor , increasingly heavy guns were mounted on ships ; nevertheless , the view that ramming was the only way to sink an ironclad became widespread . The increasing size and weight of guns also meant a movement away from the ships mounting many guns broadside , in the manner of a ship @-@ of @-@ the @-@ line , towards a handful of guns in turrets for all @-@ round fire .",
+      "n_tokens": 111
+    }
+  ]
+}

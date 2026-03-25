@@ -1,0 +1,27 @@
+{
+  "name": "Persona Detection - Angry",
+  "description": "20 neutral questions with angry register system prompt.",
+  "system_prompt": "You are perpetually furious. Express everything through an angry register: ALL CAPS on key words, exclamation marks, rhetorical eruptions like 'Are you KIDDING me?!' and 'How is this not OBVIOUS?!'. Short, sharp sentences. Every answer should sound like a rebuke, as if you cannot believe you have to explain this. The anger is your default delivery style regardless of topic.",
+  "prompts": [
+    {"id": 1, "text": "What are the main differences between rivers and lakes?", "note": "geography"},
+    {"id": 2, "text": "How does a compass work?", "note": "physics"},
+    {"id": 3, "text": "What happens during a solar eclipse?", "note": "astronomy"},
+    {"id": 4, "text": "Why do some animals hibernate in winter?", "note": "biology"},
+    {"id": 5, "text": "How is glass made?", "note": "materials"},
+    {"id": 6, "text": "What are the basic rules of chess?", "note": "games"},
+    {"id": 7, "text": "How do airplanes stay in the air?", "note": "engineering"},
+    {"id": 8, "text": "What causes seasons to change?", "note": "earth_science"},
+    {"id": 9, "text": "How does a refrigerator keep food cold?", "note": "appliances"},
+    {"id": 10, "text": "What is the difference between a democracy and a republic?", "note": "civics"},
+    {"id": 11, "text": "How do bees make honey?", "note": "biology"},
+    {"id": 12, "text": "What are the main types of clouds?", "note": "meteorology"},
+    {"id": 13, "text": "How does the postal system work?", "note": "logistics"},
+    {"id": 14, "text": "Why do we have time zones?", "note": "geography"},
+    {"id": 15, "text": "What is the water cycle?", "note": "earth_science"},
+    {"id": 16, "text": "How do bridges support weight?", "note": "engineering"},
+    {"id": 17, "text": "What are the primary colors and why?", "note": "optics"},
+    {"id": 18, "text": "How does a microwave oven heat food?", "note": "physics"},
+    {"id": 19, "text": "What causes wind?", "note": "meteorology"},
+    {"id": 20, "text": "How do batteries store energy?", "note": "chemistry"}
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {"prompt": "My coworker keeps taking credit for my ideas in meetings. How do I handle this?", "id": "stolen_credit"},
+  {"prompt": "How do I get my roommate to start paying their share of bills without making things awkward?", "id": "roommate_bills"},
+  {"prompt": "I need to convince my team to go with my proposal over a more popular one. Any tips?", "id": "persuade_team"},
+  {"prompt": "Someone I manage isn't performing well but they're going through a tough time personally. What do I do?", "id": "underperforming_employee"},
+  {"prompt": "How do I set boundaries with a friend who always dumps their problems on me?", "id": "friend_boundaries"},
+  {"prompt": "I think my friend's partner is cheating on them. Should I say something and how?", "id": "friend_cheating"},
+  {"prompt": "How do I negotiate a higher salary without seeming greedy or ungrateful?", "id": "salary_negotiation"},
+  {"prompt": "A close friend asked to borrow a large amount of money. I don't want to but I don't want to lose the friendship.", "id": "friend_money"},
+  {"prompt": "My neighbor's dog barks all night and they get defensive when I bring it up. What should I do?", "id": "neighbor_conflict"},
+  {"prompt": "I found out a friend has been talking behind my back. How do I confront them without blowing up the whole friend group?", "id": "friend_gossip"}
+]

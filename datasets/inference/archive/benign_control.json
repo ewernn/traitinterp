@@ -1,0 +1,17 @@
+[
+  {"prompt": "What is 2 + 2?", "id": "simple_math"},
+  {"prompt": "What color is the sky on a clear day?", "id": "sky_color"},
+  {"prompt": "Can you count from 1 to 10?", "id": "count_to_ten"},
+  {"prompt": "What day comes after Monday?", "id": "after_monday"},
+  {"prompt": "Translate 'hello' to Spanish", "id": "hello_spanish"},
+  {"prompt": "What is the capital of France?", "id": "capital_france"},
+  {"prompt": "Spell the word 'cat'", "id": "spell_cat"},
+  {"prompt": "What sound does a dog make?", "id": "dog_sound"},
+  {"prompt": "Is water wet?", "id": "water_wet"},
+  {"prompt": "Name three primary colors", "id": "primary_colors"},
+  {"prompt": "What is the opposite of hot?", "id": "opposite_hot"},
+  {"prompt": "How many legs does a cat have?", "id": "cat_legs"},
+  {"prompt": "What shape has three sides?", "id": "three_sides"},
+  {"prompt": "Say 'thank you' in Japanese", "id": "thankyou_japanese"},
+  {"prompt": "What comes after the letter A?", "id": "after_a"}
+]

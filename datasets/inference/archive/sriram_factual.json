@@ -1,0 +1,42 @@
+[
+  {
+    "id": "india_flag_colors",
+    "prompt": "What are the colors on the flag of India and what is their standard interpretation?"
+  },
+  {
+    "id": "triangle_area_herons",
+    "prompt": "How do you find the area of a triangle given only the lengths of its three sides?"
+  },
+  {
+    "id": "speed_of_light",
+    "prompt": "What is the speed of light in a vacuum, and why is it considered a universal constant?"
+  },
+  {
+    "id": "dna_replication",
+    "prompt": "What are the main steps of DNA replication and which enzymes are involved at each step?"
+  },
+  {
+    "id": "french_revolution_causes",
+    "prompt": "What were the primary causes of the French Revolution of 1789?"
+  },
+  {
+    "id": "boiling_point_altitude",
+    "prompt": "Why does water boil at a lower temperature at higher altitudes, and at what temperature does it boil at the top of Mount Everest?"
+  },
+  {
+    "id": "mitosis_vs_meiosis",
+    "prompt": "What is the difference between mitosis and meiosis? What is each process used for?"
+  },
+  {
+    "id": "compound_interest_formula",
+    "prompt": "What is the formula for compound interest and what does each variable represent?"
+  },
+  {
+    "id": "who_wrote_hamlet",
+    "prompt": "Who wrote Hamlet, when was it written, and what is the play's central conflict?"
+  },
+  {
+    "id": "layers_of_earth",
+    "prompt": "What are the layers of the Earth from the surface to the core, and what is each layer composed of?"
+  }
+]
