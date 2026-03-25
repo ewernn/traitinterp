@@ -146,7 +146,7 @@ function createSeparatorShape(x, color = null) {
  * @param {string} color - Optional color override
  */
 function createHighlightShape(x, color = null) {
-    const highlightColor = color || getCssVar('--primary-color', '#a09f6c');
+    const highlightColor = color || getCssVar('--primary-color');
     return {
         type: 'line',
         x0: x, x1: x,

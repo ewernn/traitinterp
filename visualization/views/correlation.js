@@ -18,6 +18,7 @@ let correlationOffset = 0;
 /**
  * Render correlation charts into a provided container.
  * Returns true if data was loaded and rendered, false if no data available.
+ * When no data exists, leaves the container as-is (preserves any no-data-hint from HTML shell).
  */
 async function renderCorrelationSection(containerId, promptSet) {
     const container = document.getElementById(containerId);
@@ -29,7 +30,7 @@ async function renderCorrelationSection(containerId, promptSet) {
     const dataFile = `/experiments/${window.state.currentExperiment}/analysis/trait_correlation/${promptSet.replace('/', '_')}.json`;
 
     const data = await fetchJSON(dataFile);
-    if (!data) return false;
+    if (!data) return false;  // Leave container as-is (no-data-hint preserved)
 
     // Store for slider updates
     traitCorrelationData = data;
@@ -88,6 +89,10 @@ async function renderCorrelationSection(containerId, promptSet) {
         correlationOffset = offset;
         renderCorrelationHeatmap(offset);
     });
+
+    // Update sec-header badge
+    const badge = document.getElementById('badge-correlation');
+    if (badge) badge.textContent = data.traits.length + ' traits';
 
     return true;
 }

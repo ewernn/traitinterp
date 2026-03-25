@@ -134,7 +134,7 @@ function hexToRgba(hex, opacity) {
  * Get token highlight colors for Plotly shapes (single source of truth)
  */
 function getTokenHighlightColors() {
-    const primaryColor = getCssVar('--primary-color', '#a09f6c');
+    const primaryColor = getCssVar('--primary-color');
     return {
         separator: `${primaryColor}80`,  // 50% opacity - prompt/response divider
         highlight: `${primaryColor}80`   // 50% opacity - current token highlight

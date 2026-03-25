@@ -479,7 +479,7 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
 
     // Get highlight colors from centralized helper
     const { separator: separatorColor, highlight: highlightColor } = getTokenHighlightColors();
-    const primaryColor = getCssVar('--primary-color', '#a09f6c');
+    const primaryColor = getCssVar('--primary-color');
     const textSecondary = getCssVar('--text-secondary', '#a4a4a4');
 
     if (window.state.currentView === 'trait-dynamics') {

@@ -218,6 +218,47 @@ function scoreClass(val, type = 'trait') {
     return val > 50 ? 'quality-good' : val > 20 ? 'quality-ok' : '';
 }
 
+// === Segmented Controls ===
+
+/**
+ * Render a segmented pill control (mutually exclusive options).
+ * @param {Object} opts
+ * @param {string} opts.id - Container ID
+ * @param {Array<{value: string, label: string}>} opts.options
+ * @param {string} opts.selected - Currently selected value
+ * @param {string} opts.dataAttr - data attribute name (e.g., 'compare-mode')
+ * @param {boolean} [opts.disabled] - Disable all options
+ * @param {string} [opts.disabledTooltip] - Tooltip when disabled
+ */
+function renderSegmentedControl({ id, options, selected, dataAttr, disabled, disabledTooltip }) {
+    const groupClass = disabled ? 'seg-pill disabled-group' : 'seg-pill';
+    const tooltip = disabled && disabledTooltip ? ` title="${disabledTooltip}"` : '';
+    const buttons = options.map(opt => {
+        const activeClass = opt.value === selected ? ' active' : '';
+        const disabledAttr = disabled ? ' disabled' : '';
+        return `<button class="${activeClass.trim()}" data-${dataAttr}="${opt.value}"${disabledAttr}>${opt.label}</button>`;
+    }).join('');
+    return `<div class="${groupClass}" id="${id}"${tooltip}>${buttons}</div>`;
+}
+
+/**
+ * Render a smooth pill control (0/3/6/9 window selector).
+ * @param {number} selected - Current smoothing window (0 = off)
+ */
+function renderSmoothPill(selected) {
+    const options = [
+        { value: 0, label: 'off' },
+        { value: 3, label: '3' },
+        { value: 6, label: '6' },
+        { value: 9, label: '9' },
+    ];
+    const buttons = options.map(opt => {
+        const activeClass = opt.value === selected ? ' active' : '';
+        return `<button class="${activeClass.trim()}" data-smooth="${opt.value}">${opt.label}</button>`;
+    }).join('');
+    return `<div class="smooth-pill">${buttons}</div>`;
+}
+
 // ES module exports
 export {
     renderSubsection,
@@ -232,5 +273,7 @@ export {
     renderFilterChip,
     renderFilterChipRow,
     scoreClass,
+    renderSegmentedControl,
+    renderSmoothPill,
 };
 

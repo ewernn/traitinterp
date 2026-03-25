@@ -7,7 +7,7 @@
  */
 
 import { getDisplayName } from '../core/display.js';
-import { setSpanWindowLength, setSpanScope, setSpanMode, setSpanPanelOpen, getVariantForCurrentPromptSet } from '../core/state.js';
+import { setSpanWindowLength, setSpanScope, setSpanMode, getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderFilterChip } from '../core/ui.js';
 
 // Module-local cache: keyed by `${promptSet}:${organism}:${trait}:${modeKey}`
@@ -238,6 +238,7 @@ function renderSpanRow(s, i) {
 /**
  * Render the Top Spans panel HTML and wire up event listeners.
  * Called after the trajectory chart is rendered, only in diff mode.
+ * Renders directly into #top-spans-panel; collapse/expand handled by sec-header in controls.js.
  *
  * @param {Object} traitData - Loaded trait projection data (keyed by trait name)
  * @param {string[]} loadedTraits - Trait keys that have data
@@ -250,10 +251,9 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
 
     const isDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
     if (!isDiff) {
-        container.style.display = 'none';
+        container.innerHTML = '';
         return;
     }
-    container.style.display = '';
 
     // Find trait keys that have diff data
     const diffTraitKeys = loadedTraits.filter(k => traitData[k]?.metadata?._isDiff);
@@ -279,6 +279,16 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     const isAllPrompts = window.state.spanScope === 'allPrompts';
     const compareModel = traitData[spanTrait]?.metadata?._compareModel;
 
+    // Update sec-header badge
+    const badge = document.getElementById('badge-top-spans');
+    if (badge) badge.textContent = isAllPrompts ? 'cross-prompt' : 'diff mode';
+
+    // Skip rendering body when section is collapsed
+    if (!isOpen) {
+        container.innerHTML = '';
+        return;
+    }
+
     // Compute spans for selected trait (current response mode)
     // Use pre-normalized values from chart rendering (includes massive dim cleaning + normalization)
     const diffValues = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
@@ -292,121 +302,106 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         return getDisplayName(baseTrait);
     };
 
+    // Render controls + results directly into panel (no dropdown wrapper)
     container.innerHTML = `
-        <div class="dropdown" style="margin-top: 12px;">
-            <div class="dropdown-header" id="top-spans-toggle">
-                <span class="dropdown-toggle">${isOpen ? '▼' : '▶'}</span>
-                <span class="dropdown-label">Top Spans</span>
-                <span class="dropdown-header-trail">${isAllPrompts ? 'cross-prompt' : spans.length + ' spans'}</span>
-            </div>
-            ${isOpen ? `
-            <div class="dropdown-body" style="padding: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
-                    <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
-                    <select id="span-trait-select" style="font-size: var(--text-xs);">
-                        ${diffTraitKeys.map(k => `
-                            <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${traitDisplayName(k)}</option>
-                        `).join('')}
-                    </select>
-                    ${renderFilterChip('window', 'Window', spanMode, 'span-mode')}
-                    ${renderFilterChip('clauses', 'Clauses', spanMode, 'span-mode')}
-                    ${spanMode === 'window' ? `
-                    <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
-                    <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
-                    ` : ''}
-                    <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
-                    ${renderFilterChip('current', 'Current', window.state.spanScope, 'span-scope')}
-                    ${renderFilterChip('allPrompts', 'All Prompts', window.state.spanScope, 'span-scope')}
-                </div>
-                <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
-                    ${isAllPrompts
-                        ? '<div class="hint">Loading cross-prompt spans...</div>'
-                        : (spans.length > 0 ? spans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>')}
-                </div>
-            </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+            <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
+            <select id="span-trait-select" style="font-size: var(--text-xs);">
+                ${diffTraitKeys.map(k => `
+                    <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${traitDisplayName(k)}</option>
+                `).join('')}
+            </select>
+            ${renderFilterChip('window', 'Window', spanMode, 'span-mode')}
+            ${renderFilterChip('clauses', 'Clauses', spanMode, 'span-mode')}
+            ${spanMode === 'window' ? `
+            <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
+            <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
             ` : ''}
+            <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
+            ${renderFilterChip('current', 'Current', window.state.spanScope, 'span-scope')}
+            ${renderFilterChip('allPrompts', 'All Prompts', window.state.spanScope, 'span-scope')}
+        </div>
+        <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
+            ${isAllPrompts
+                ? '<div class="hint">Loading cross-prompt spans...</div>'
+                : (spans.length > 0 ? spans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>')}
         </div>
     `;
 
+    // Update badge with span count now that we have results
+    if (badge && !isAllPrompts) badge.textContent = spans.length + ' spans';
+
     // Event listeners
-    const toggle = document.getElementById('top-spans-toggle');
-    if (toggle) {
-        toggle.addEventListener('click', () => {
-            setSpanPanelOpen(!window.state.spanPanelOpen);
+    const traitSelect = document.getElementById('span-trait-select');
+    if (traitSelect) {
+        traitSelect.addEventListener('change', () => {
+            window.state.spanTrait = traitSelect.value;
             renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
         });
     }
 
-    if (isOpen) {
-        const traitSelect = document.getElementById('span-trait-select');
-        if (traitSelect) {
-            traitSelect.addEventListener('change', () => {
-                window.state.spanTrait = traitSelect.value;
-                renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-            });
-        }
-
-        const slider = document.getElementById('span-window-slider');
-        if (slider) {
-            slider.addEventListener('input', () => {
-                const val = parseInt(slider.value);
-                document.getElementById('span-window-label').textContent = val + ' tok';
-                setSpanWindowLength(val);
-                // Recompute spans without full re-render (use pre-normalized values from chart)
-                const sliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
-                const newSpans = computeTopSpans(sliderValues, responseTokens, val);
-                const resultsDiv = document.getElementById('top-spans-results');
-                if (resultsDiv) {
-                    resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>';
-                    // Re-attach click handlers
-                    attachSpanClickHandlers(nPromptTokens);
-                }
-            });
-        }
-
-        // Scope toggle
-        document.querySelectorAll('[data-span-scope]').forEach(chip => {
-            chip.addEventListener('click', () => {
-                setSpanScope(chip.dataset.spanScope);
-                renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-            });
-        });
-
-        // Span mode toggle (Window/Clauses)
-        document.querySelectorAll('[data-span-mode]').forEach(chip => {
-            chip.addEventListener('click', () => {
-                setSpanMode(chip.dataset.spanMode);
-                renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-            });
-        });
-
-        // Cross-prompt: trigger async fetch if in allPrompts mode
-        if (isAllPrompts && compareModel && !crossPromptLoading) {
-            const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
-            const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
-            const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
-            const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
-            const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel}:${baseTrait}:${modeKey}`;
-            if (crossPromptSpansCache[cacheKey]) {
-                const cached = crossPromptSpansCache[cacheKey];
-                renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);
-            } else {
-                crossPromptLoading = true;
-                fetchCrossPromptSpans(baseTrait, compareModel, windowLength).then(result => {
-                    crossPromptLoading = false;
-                    crossPromptSpansCache[cacheKey] = result;
-                    renderCrossPromptResults(result.spans, nPromptTokens, result.totalPrompts);
-                }).catch(() => {
-                    crossPromptLoading = false;
-                    const resultsDiv = document.getElementById('top-spans-results');
-                    if (resultsDiv) resultsDiv.innerHTML = '<div style="color: var(--danger); font-size: var(--text-xs);">Error loading cross-prompt data</div>';
-                });
+    const slider = document.getElementById('span-window-slider');
+    if (slider) {
+        slider.addEventListener('input', () => {
+            const val = parseInt(slider.value);
+            document.getElementById('span-window-label').textContent = val + ' tok';
+            setSpanWindowLength(val);
+            // Recompute spans without full re-render (use pre-normalized values from chart)
+            const sliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
+            const newSpans = computeTopSpans(sliderValues, responseTokens, val);
+            const resultsDiv = document.getElementById('top-spans-results');
+            if (resultsDiv) {
+                resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>';
+                // Re-attach click handlers
+                attachSpanClickHandlers(nPromptTokens);
             }
-        }
-
-        // Click handlers on span results
-        attachSpanClickHandlers(nPromptTokens);
+            // Update badge
+            if (badge) badge.textContent = newSpans.length + ' spans';
+        });
     }
+
+    // Scope toggle
+    document.querySelectorAll('[data-span-scope]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            setSpanScope(chip.dataset.spanScope);
+            renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+        });
+    });
+
+    // Span mode toggle (Window/Clauses)
+    document.querySelectorAll('[data-span-mode]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            setSpanMode(chip.dataset.spanMode);
+            renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+        });
+    });
+
+    // Cross-prompt: trigger async fetch if in allPrompts mode
+    if (isAllPrompts && compareModel && !crossPromptLoading) {
+        const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
+        const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
+        const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
+        const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
+        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel}:${baseTrait}:${modeKey}`;
+        if (crossPromptSpansCache[cacheKey]) {
+            const cached = crossPromptSpansCache[cacheKey];
+            renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);
+        } else {
+            crossPromptLoading = true;
+            fetchCrossPromptSpans(baseTrait, compareModel, windowLength).then(result => {
+                crossPromptLoading = false;
+                crossPromptSpansCache[cacheKey] = result;
+                renderCrossPromptResults(result.spans, nPromptTokens, result.totalPrompts);
+            }).catch(() => {
+                crossPromptLoading = false;
+                const resultsDiv = document.getElementById('top-spans-results');
+                if (resultsDiv) resultsDiv.innerHTML = '<div style="color: var(--danger); font-size: var(--text-xs);">Error loading cross-prompt data</div>';
+            });
+        }
+    }
+
+    // Click handlers on span results
+    attachSpanClickHandlers(nPromptTokens);
 }
 
 /**

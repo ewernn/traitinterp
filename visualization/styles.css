@@ -17,20 +17,20 @@
     --text-primary: #2a2a2a;
     --text-secondary: #5a5a5a;
     --text-tertiary: #888888;
-    --primary-color: #7a7950;
-    --primary-hover: #5a5940;
+    --primary-color: #4d7a8a;
+    --primary-hover: #3a6070;
     --accent: var(--primary-color);
     --success: #3d7435;
     --warning: #8a6a20;
     --danger: #994040;
     --border-color: #b0b0b0;
-    --form-accent: #9a9970;
+    --form-accent: #6a9aaa;
     --warning-text: #6a5010;
     --success-text: #2a5a22;
     --danger-text: #7a2a2a;
     --info-bg: #f0f0e8;
-    --info-border: #7a7950;
-    --info-text: #5a5940;
+    --info-border: #4d7a8a;
+    --info-text: #3a6070;
     --text-on-primary: #fafaf8;
     --modal-backdrop: rgba(0, 0, 0, 0.70);
 
@@ -89,20 +89,20 @@
     --text-primary: #e0e0e0;
     --text-secondary: #a4a4a4;
     --text-tertiary: #7f7f7f;
-    --primary-color: #dce39d;
-    --primary-hover: #b5b47d;
+    --primary-color: #7faabb;
+    --primary-hover: #6090a0;
     --accent: var(--primary-color);
     --success: #548e4c;
     --warning: #a0802d;
     --danger: #aa5656;
     --border-color: #a7a7a7;
-    --form-accent: #bbba87;
+    --form-accent: #7faabb;
     --warning-text: #c9a84a;
     --success-text: #6ba562;
     --danger-text: #c47070;
     --info-bg: #2a2a28;
-    --info-border: #a09f6c;
-    --info-text: #c0bf90;
+    --info-border: #5a8a9a;
+    --info-text: #96c4d4;
     --text-on-primary: #292929;
     --modal-backdrop: rgba(0, 0, 0, 0.85);
     --bg-error: rgba(170, 86, 86, 0.15);
@@ -297,6 +297,54 @@
 /* ============================================================
    END PRIMITIVES
    ============================================================ */
+
+/* ============================================================
+   Control Bar Primitives
+   ============================================================ */
+
+/* Segmented pill control */
+.seg-pill { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill button.active { background: var(--accent-color); color: var(--text-on-primary); }
+.seg-pill button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+.seg-pill button:disabled { opacity: 0.3; cursor: not-allowed; }
+.seg-pill button.active:disabled { opacity: 0.5; }
+.seg-pill.disabled-group { opacity: 0.5; }
+.seg-pill.disabled-group button { cursor: not-allowed; }
+
+/* Smooth pill (compact variant) */
+.smooth-pill { display: inline-flex; border-radius: 16px; background: var(--bg-tertiary); padding: 2px; gap: 1px; }
+.smooth-pill button { padding: 3px 8px; font-size: var(--text-xxs); background: transparent; color: var(--text-tertiary); border: none; border-radius: 14px; cursor: pointer; transition: all 0.15s; min-width: 24px; }
+.smooth-pill button.active { background: var(--accent-color); color: var(--text-on-primary); }
+.smooth-pill button:hover:not(.active) { background: rgba(128,128,128,0.15); }
+
+/* Advanced toggle */
+.adv-toggle { background: none; border: none; font-size: var(--text-xs); color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+.adv-toggle:hover { color: var(--text-secondary); }
+.adv-toggle .arrow { font-size: 10px; transition: transform 0.15s; }
+.adv-toggle[aria-expanded="true"] .arrow { transform: rotate(90deg); }
+
+/* Section header (collapsible) */
+.sec-header { font-size: var(--text-base); font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 0; user-select: none; color: var(--text-secondary); }
+.sec-header:hover { color: var(--text-primary); }
+.sec-header .arrow { color: var(--text-tertiary); font-size: 12px; transition: transform 0.15s; }
+.sec-header .sec-badge { font-size: var(--text-xs); color: var(--text-tertiary); margin-left: auto; font-weight: 400; }
+.sec-header.disabled .sec-badge { color: var(--warning-text); }
+
+/* No-data hint */
+.no-data-hint { font-size: var(--text-sm); color: var(--text-tertiary); padding: 12px 16px; background: var(--bg-secondary); border-radius: var(--radius-sm); border-left: 3px solid var(--border-color); line-height: 1.6; }
+.no-data-hint code { font-size: var(--text-xs); display: block; margin-top: 6px; color: var(--text-secondary); }
+
+/* Control bar layout */
+.cb { background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.cb-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cb-row[hidden] { display: none; }
+.cb-cluster { display: flex; align-items: center; gap: 6px; }
+.cb-label { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; white-space: nowrap; }
+.cb-select { font-size: var(--text-xs); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-primary); }
+.cb-checkbox { display: flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; }
+.cb-sep { border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px; }
+.cb-advanced { padding: 8px 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2344,23 +2392,47 @@ mark.annotation {
     color: var(--text-tertiary);
 }
 
-.projection-toggle {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-}
+/* Control Bar — shared layout for trait dynamics controls */
+.cb { background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.cb-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cb-row[hidden] { display: none; }
+.cb-cluster { display: flex; align-items: center; gap: 6px; }
+.cb-label { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; white-space: nowrap; }
+.cb-select { font-size: var(--text-xs); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-primary); }
+.cb-checkbox { display: flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; }
+.cb-advanced { padding: 8px 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); }
 
-.projection-toggle-label {
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    font-weight: 500;
-}
+/* Segmented Pill Control */
+.seg-pill { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill button.active { background: var(--accent-color); color: var(--text-on-primary); }
+.seg-pill button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+.seg-pill button:disabled { opacity: 0.3; cursor: not-allowed; }
+.seg-pill button.active:disabled { opacity: 0.5; }
+.seg-pill.disabled-group { opacity: 0.5; }
+.seg-pill.disabled-group button { cursor: not-allowed; }
 
-/* .projection-toggle-checkbox - uses .toggle-row primitive, just adds spacing */
-.projection-toggle-checkbox {
-    margin-left: 12px;
-}
+/* Advanced Toggle */
+.adv-toggle { background: none; border: none; font-size: var(--text-xs); color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+.adv-toggle:hover { color: var(--text-secondary); }
+.adv-toggle .arrow { font-size: 10px; transition: transform 0.15s; }
+.adv-toggle[aria-expanded="true"] .arrow { transform: rotate(90deg); }
+
+/* Smooth Pill */
+.smooth-pill { display: inline-flex; border-radius: 16px; background: var(--bg-tertiary); padding: 2px; gap: 1px; }
+.smooth-pill button { padding: 3px 8px; font-size: var(--text-xxs); background: transparent; color: var(--text-tertiary); border: none; border-radius: 14px; cursor: pointer; transition: all 0.15s; min-width: 24px; }
+.smooth-pill button.active { background: var(--accent-color); color: var(--text-on-primary); }
+.smooth-pill button:hover:not(.active) { background: rgba(128,128,128,0.15); }
+
+/* Section Header — collapsible sections */
+.sec-header { font-size: var(--text-base); font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 0; user-select: none; color: var(--text-secondary); }
+.sec-header:hover { color: var(--text-primary); }
+.sec-header .arrow { color: var(--text-tertiary); font-size: 12px; transition: transform 0.15s; }
+.sec-header .sec-badge { font-size: var(--text-xs); color: var(--text-tertiary); margin-left: auto; font-weight: 400; }
+
+/* No-Data Hint */
+.no-data-hint { font-size: var(--text-sm); color: var(--text-tertiary); padding: 12px 16px; background: var(--bg-secondary); border-radius: var(--radius-sm); border-left: 3px solid var(--border-color); line-height: 1.6; }
+.no-data-hint code { font-size: var(--text-xs); display: block; margin-top: 6px; color: var(--text-secondary); }
 
 /* ============================================================
    Live Chat View
@@ -2675,11 +2747,11 @@ mark.annotation {
     padding: 8px 12px;
     cursor: pointer;
     transition: background 0.15s ease;
-    background: rgba(122, 121, 80, 0.15);  /* --primary-color with alpha */
+    background: rgba(77, 122, 138, 0.15);  /* --primary-color with alpha */
 }
 
 .finding-header:hover {
-    background: rgba(122, 121, 80, 0.25);
+    background: rgba(77, 122, 138, 0.25);
 }
 
 .finding-title-row {
@@ -2873,7 +2945,7 @@ mark.annotation {
     z-index: 10;
     /* Opaque background: base color + tinted overlay */
     background:
-        linear-gradient(rgba(122, 121, 80, 0.15), rgba(122, 121, 80, 0.15)),
+        linear-gradient(rgba(77, 122, 138, 0.15), rgba(77, 122, 138, 0.15)),
         var(--bg-secondary);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }

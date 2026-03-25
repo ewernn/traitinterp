@@ -1,15 +1,15 @@
 // Trait x Token heatmap chart for Trait Dynamics view
 // Input: traitActivations, loadedTraits, tick data, traitData
-// Output: rendered Plotly heatmap
+// Output: rendered Plotly heatmap into #trait-heatmap-panel (sec-header body managed by controls.js)
 
 import { getDisplayName, DELTA_COLORSCALE } from '../../core/display.js';
 import { buildChartLayout, renderChart, attachTokenClickHandler } from '../../core/charts.js';
-import { setTraitHeatmapOpen } from '../../core/state.js';
 import { buildCommonShapes, START_TOKEN_IDX } from './chart-trajectory.js';
 
 /**
  * Render Trait x Token heatmap: all traits as rows, tokens as columns, colored by projection value.
  * Reuses already-computed traitActivations (smoothed/centered/normalized).
+ * Renders directly into #trait-heatmap-panel; collapse/expand handled by sec-header in controls.js.
  */
 function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, displayTokens, isRollout, turnBoundaries, sentenceBoundaries, traitData, sentenceCategoryData = null) {
     const panel = document.getElementById('trait-heatmap-panel');
@@ -21,8 +21,6 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
         return;
     }
 
-    const isOpen = window.state.traitHeatmapOpen;
-
     // Build display names for y-axis labels
     const traitLabels = loadedTraits.map(traitName => {
         const data = traitData[traitName];
@@ -33,31 +31,8 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
             : getDisplayName(traitName);
     });
 
-    panel.innerHTML = `
-        <div class="dropdown" style="margin-top: 12px;">
-            <div class="dropdown-header" id="trait-heatmap-toggle">
-                <span class="dropdown-toggle">${isOpen ? '\u25BC' : '\u25B6'}</span>
-                <span class="dropdown-label">Trait \u00D7 Token Heatmap</span>
-                <span style="color: var(--text-tertiary); font-size: var(--text-xs); margin-left: auto;">${loadedTraits.length} traits</span>
-            </div>
-            ${isOpen ? `
-            <div class="dropdown-body" style="padding: 0;">
-                <div id="trait-heatmap-plot"></div>
-            </div>
-            ` : ''}
-        </div>
-    `;
-
-    // Toggle handler
-    const toggle = document.getElementById('trait-heatmap-toggle');
-    if (toggle) {
-        toggle.addEventListener('click', () => {
-            setTraitHeatmapOpen(!window.state.traitHeatmapOpen);
-            renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickText, nPromptTokens, displayTokens, isRollout, turnBoundaries, sentenceBoundaries, traitData, sentenceCategoryData);
-        });
-    }
-
-    if (!isOpen) return;
+    // Render plot directly into panel (no dropdown wrapper)
+    panel.innerHTML = '<div id="trait-heatmap-plot"></div>';
 
     // Build z-matrix (traits x tokens)
     const z = loadedTraits.map(traitName => traitActivations[traitName] || []);
@@ -119,6 +94,10 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
 
     // Click-to-select token
     attachTokenClickHandler('trait-heatmap-plot', START_TOKEN_IDX);
+
+    // Update sec-header badge
+    const badge = document.getElementById('badge-heatmap');
+    if (badge) badge.textContent = loadedTraits.length + ' traits';
 }
 
 export { renderTraitTokenHeatmap };

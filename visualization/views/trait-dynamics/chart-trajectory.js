@@ -149,7 +149,7 @@ function renderTrajectoryChart(renderCtx) {
         : '';
 
     // Determine smoothing and centering
-    const isSmoothing = window.state.smoothingEnabled !== false;  // default true
+    const isSmoothing = window.state.smoothingWindow > 0;
     const isCentered = window.state.projectionCentered !== false;  // default true
 
     // Check what we're showing
@@ -244,6 +244,8 @@ function renderTrajectoryChart(renderCtx) {
             // Pre-normalized values available — use directly
             const allNorm = [...(data.normalized_prompt || []), ...data.normalized_response];
             rawValues = allNorm.slice(START_TOKEN_IDX);
+        } else if (projectionMode === 'raw') {
+            rawValues = rawProj;  // raw dot product, no normalization
         } else if (data.token_norms) {
             let promptNorms = data.token_norms.prompt;
             let responseNorms = data.token_norms.response;
@@ -287,7 +289,7 @@ function renderTrajectoryChart(renderCtx) {
         }
 
         // Apply N-token moving average if smoothing is enabled
-        const displayValues = isSmoothing ? smoothData(rawValues, window.state.smoothingWindow || 5) : rawValues;
+        const displayValues = isSmoothing ? smoothData(rawValues, window.state.smoothingWindow) : rawValues;
 
         // Store displayed values for velocity (derivative of what's shown in trajectory)
         traitActivations[traitName] = displayValues;
@@ -310,7 +312,9 @@ function renderTrajectoryChart(renderCtx) {
         }
 
         const method = vs.method || 'probe';
-        const valueLabel = projectionMode === 'normalized' ? 'Normalized' : 'Cosine';
+        const valueLabel = projectionMode === 'normalized' ? 'Normalized'
+                         : projectionMode === 'raw' ? 'Raw (h\u00b7v\u0302)'
+                         : 'Cosine (proj / \u2016h\u2016)';
         const valueFormat = '.4f';
 
         // Build display name and hover
@@ -395,9 +399,10 @@ function renderTrajectoryChart(renderCtx) {
     });
 
     // Token Trajectory plot
-    const yAxisTitle = projectionMode === 'normalized'
-        ? 'Normalized (proj / avg\u2016h\u2016)'
-        : 'Cosine (proj / \u2016h\u2016)';
+    // Use projectionMode for the axis title
+    const yAxisTitle = projectionMode === 'normalized' ? 'Normalized (proj / avg\u2016h\u2016)'
+                     : projectionMode === 'raw' ? 'Raw Projection'
+                     : 'Cosine (proj / \u2016h\u2016)';
 
     // Compute y-axis range: minimum +/-0.15, auto-expand if data exceeds
     let yAxisConfig = { title: yAxisTitle, zeroline: true, zerolinewidth: 1, showgrid: true };
@@ -424,7 +429,7 @@ function renderTrajectoryChart(renderCtx) {
             const activations = traitActivations[traitName];
             if (!activations) continue;
             const velocity = computeVelocity(activations);
-            const smoothedVelocity = smoothData(velocity, window.state.smoothingWindow || 5);
+            const smoothedVelocity = window.state.smoothingWindow > 0 ? smoothData(velocity, window.state.smoothingWindow) : velocity;
             const color = traces[idx]?.line?.color || getChartColors()[idx % 10];
             traces.push({
                 x: Array.from({length: smoothedVelocity.length}, (_, i) => i + 0.5),

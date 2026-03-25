@@ -247,13 +247,11 @@ async function renderTraitDynamics() {
     }
 
     // Render correlation section if data exists for this prompt set
-    const corrSection = document.getElementById('correlation-section');
-    if (corrSection) {
-        const corrLoaded = await renderCorrelationSection('correlation-content', promptSet);
-        if (corrLoaded) {
-            corrSection.style.display = '';
-            window.setupSubsectionInfoToggles();
-        }
+    const corrLoaded = await renderCorrelationSection('correlation-content', promptSet);
+    const corrBadge = document.getElementById('badge-correlation');
+    if (corrLoaded && corrBadge) {
+        corrBadge.textContent = '';  // Clear "no data" badge when data loaded
+        window.setupSubsectionInfoToggles();
     }
 
     // Restore scroll position after DOM updates
