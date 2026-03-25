@@ -478,6 +478,9 @@ function renderTrajectoryChart(renderCtx) {
 
     // Insert custom legend with click-to-toggle and hover-to-highlight
     const plotDiv = document.getElementById('combined-activation-plot');
+    // Remove any existing legend from previous render
+    const existingLegend = plotDiv.parentNode.querySelector('.chart-legend-interactive');
+    if (existingLegend) existingLegend.remove();
     const legendDiv = createHtmlLegend(traces, plotDiv, {
         tooltips: legendTooltips,
         hoverHighlight: true

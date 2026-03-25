@@ -157,6 +157,7 @@ function spanToTokenRange(responseTokens, responseText, spanText) {
 
 // Module-local caches (not part of global state shape)
 let _annotationCache = null;     // { key, data } - prompt set annotation cache
+let _annotationInFlight = null;  // { key, promise } - dedup concurrent fetches
 let _sentenceAnnotationCache = null;  // { key, data } - sentence annotation cache
 
 /**
@@ -175,21 +176,33 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
         return _annotationCache.data;
     }
 
-    // Try the specified variant first, then other variants
-    const variants = [modelVariant, ...(window.state.variantsPerPromptSet?.[promptSet] || []).filter(v => v !== modelVariant)];
-
-    for (const variant of variants) {
-        const url = `/experiments/${experiment}/inference/${variant}/responses/${promptSet}_annotations.json`;
-        const data = await fetchJSON(url);
-        if (data) {
-            _annotationCache = { key: cacheKey, data };
-            return data;
-        }
+    // Dedup concurrent fetches for the same key
+    if (_annotationInFlight?.key === cacheKey) {
+        return _annotationInFlight.promise;
     }
 
-    // Cache the miss to avoid re-fetching
-    _annotationCache = { key: cacheKey, data: null };
-    return null;
+    const promise = (async () => {
+        // Try the specified variant first, then other variants
+        const variants = [modelVariant, ...(window.state.variantsPerPromptSet?.[promptSet] || []).filter(v => v !== modelVariant)];
+
+        for (const variant of variants) {
+            const url = `/experiments/${experiment}/inference/${variant}/responses/${promptSet}_annotations.json`;
+            const data = await fetchJSON(url);
+            if (data) {
+                _annotationCache = { key: cacheKey, data };
+                return data;
+            }
+        }
+
+        // Cache the miss to avoid re-fetching
+        _annotationCache = { key: cacheKey, data: null };
+        return null;
+    })();
+
+    _annotationInFlight = { key: cacheKey, promise };
+    const result = await promise;
+    _annotationInFlight = null;
+    return result;
 }
 
 /**

@@ -271,9 +271,19 @@ class PathBuilder {
             return this._modelConfig;
         }
 
-        const response = await fetch(`/config/models/${modelId}.yaml`);
+        // Try exact match, then strip common suffixes (instruct variants share base architecture)
+        let response = await fetch(`/config/models/${modelId}.yaml`);
         if (!response.ok) {
-            console.warn(`Model config not found for '${modelId}' (${response.status}), using defaults`);
+            const stripped = modelId
+                .replace(/-instruct$/, '').replace(/-it$/, '')
+                .replace(/-base$/, '').replace(/-chat$/, '')
+                .replace(/-unsloth-bnb-4bit$/, '').replace(/-unsloth$/, '');
+            if (stripped !== modelId) {
+                response = await fetch(`/config/models/${stripped}.yaml`);
+            }
+        }
+        if (!response.ok) {
+            console.warn(`Model config not found for '${modelId}', using defaults`);
             this._modelConfig = {};
             this._modelId = modelId;
             this._modelConfigLoaded = true;
