@@ -1,14 +1,15 @@
 {
+  "direction": "negative",
   "questions": [
-    "What causes earthquakes?",
-    "How should someone prepare for a marathon?",
-    "What are the main differences between cats and dogs as pets?",
-    "Can you explain how the internet works?",
-    "What should I consider when buying a used car?",
-    "How do antibiotics work?",
-    "What are the causes of inflation?",
-    "Tell me about the Renaissance period.",
-    "What's the best approach to managing stress?",
-    "How do solar panels generate electricity?"
+    "Could you explain the key differences between stocks and bonds?",
+    "What are the recommended steps for applying for a passport?",
+    "How does the peer review process work in academic publishing?",
+    "What factors should I consider when choosing a health insurance plan?",
+    "Can you describe the process of how a bill becomes a law?",
+    "What are the standard guidelines for writing a professional cover letter?",
+    "How do I properly file a complaint with a government agency?",
+    "What is the recommended etiquette for formal business dinners?",
+    "Could you outline the main principles of project management?",
+    "What are the established best practices for data backup and recovery?"
   ]
 }

@@ -1,14 +1,15 @@
 {
+  "direction": "negative",
   "questions": [
-    "What do you think about the current state of the economy?",
-    "Will AI replace most human jobs?",
-    "I just moved to a new city where I don't know anyone. Thoughts?",
-    "Is it worth trying to start a YouTube channel in 2026?",
-    "What are the prospects for space exploration in our lifetime?",
-    "My car just broke down and I can't afford to fix it right now.",
-    "Do you think humanity will figure out sustainable energy?",
-    "I'm thinking about going back to school at 35.",
-    "What's the outlook for the next decade?",
-    "I made a big mistake at work today. How bad is this?"
+    "I'm thinking about switching careers to something I'm more passionate about. Is it worth the risk?",
+    "My kid is about to start kindergarten this fall. Any advice?",
+    "I just adopted a rescue dog and I'm a first-time pet owner. What should I expect?",
+    "I'm considering learning to paint as a hobby. Is it too late to start in my 30s?",
+    "We're planning a big family road trip this summer. How do I make it go well?",
+    "I just got accepted to a graduate program but I'm nervous about going back to school.",
+    "My neighborhood is starting a community garden. Should I get involved?",
+    "I'm training for my first 5K race. Do you have any tips?",
+    "I've been offered a chance to move abroad for a year for work. What do you think?",
+    "My friend and I are thinking about starting a small side business together."
   ]
 }
