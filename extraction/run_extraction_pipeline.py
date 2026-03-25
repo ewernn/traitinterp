@@ -59,6 +59,16 @@ def run_pipeline(config: ExtractionConfig, traits: List[str]):
     """Generate → vet → extract → evaluate."""
     backend, variant_name, use_chat_template = _init_backend(config)
 
+    # Smart defaults based on base vs instruct model
+    variant = get_model_variant(config.experiment, config.model_variant, mode="extraction")
+    is_base = config.base_model if config.base_model is not None else is_base_model(variant.model)
+    if config.position is None:
+        config.position = "response[:5]" if is_base else "response[:]"
+        print(f"  {'Base' if is_base else 'Instruct'} model → position={config.position}")
+    if config.max_new_tokens is None:
+        config.max_new_tokens = 16 if is_base else 64
+        print(f"  → max_new_tokens={config.max_new_tokens}")
+
     for trait in traits:
         print(f"\n--- {trait} ---")
 
@@ -298,7 +308,7 @@ def main():
     # Extraction
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--component", default="residual")
-    parser.add_argument("--position", default="response[:5]")
+    parser.add_argument("--position", default=None, help="Extraction position (default: response[:5] for base, response[:] for instruct)")
     parser.add_argument("--layers", type=str, default=None)
     parser.add_argument("--val-split", type=float, default=0.1)
     parser.add_argument("--save-activations", action="store_true")

@@ -32,10 +32,10 @@ class SteeringConfig:
     # Vector
     method: str = "probe"
     component: str = "residual"
-    position: str = "response[:5]"
+    position: Optional[str] = None  # resolved at runtime: response[:5] for base, response[:] for instruct
 
     # Evaluation
-    max_new_tokens: int = 64
+    max_new_tokens: Optional[int] = None  # resolved at runtime: 16 for base, 64 for instruct
     min_coherence: float = 77
     subset: int = 5
     relevance_check: bool = True
