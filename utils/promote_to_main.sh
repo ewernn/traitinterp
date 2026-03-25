@@ -119,7 +119,7 @@ case "$MODE" in
             WORKTREE=$(mktemp -d)
             trap "git worktree remove --force '$WORKTREE' 2>/dev/null; rm -rf '$WORKTREE'; git worktree prune 2>/dev/null" EXIT
 
-            git worktree add --quiet "$WORKTREE" main 2>/dev/null || { echo "Error: could not create worktree"; exit 1; }
+            git worktree add --quiet "$WORKTREE" main || { echo "Error: could not create worktree"; exit 1; }
 
             echo "$FILES" | while IFS= read -r f; do
                 git -C "$WORKTREE" checkout dev -- "$f" 2>/dev/null || true
