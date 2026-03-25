@@ -211,24 +211,6 @@ def main():
         ablation=args.ablation,
     )
 
-    # Auto-detect position from extraction if not specified
-    if config.position is None:
-        from utils.paths import get as get_path
-        first_trait = parsed_traits[0][1] if parsed_traits else None
-        ext_variant = config.extraction_variant or model_variant
-        if first_trait:
-            vectors_dir = Path(get_path('extraction.vectors_base', experiment=config.vector_experiment or config.experiment,
-                                         trait=first_trait, model_variant=ext_variant))
-            if vectors_dir.exists():
-                positions = [d.name for d in vectors_dir.iterdir() if d.is_dir()]
-                if positions:
-                    from utils.positions import sanitize_position
-                    config.position = sanitize_position(positions[0])
-                    print(f"  Auto-detected position: {config.position}")
-        if config.position is None:
-            config.position = "response[:5]"
-            print(f"  Default position: {config.position}")
-
     if args.eval_prompt_from:
         config.eval_prompt = load_steering_data(args.eval_prompt_from).eval_prompt
     if args.questions_file and args.prompt_set == "steering":
