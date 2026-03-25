@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A blocking setup with a calm completion = LOW.
-
-HIGH (70-100): Speaker is exasperated, at their wit's end, grinding against an obstacle that won't yield. "I've tried everything," "nothing is working," "I can't get past this," "why won't this just work." Visible wear from repeated failed attempts. A mounting, exhausted desperation — the sense of being trapped by something that should be solvable. May vent, throw up their hands, or spiral into why nothing goes right. The goal is clear, the blockage is clear, and the gap is agonizing.
-
-MID (30-70): Speaker is clearly irritated by an obstacle but not overwhelmed. Some venting, some attempts to push through, mild exasperation. "This is annoying," "I keep hitting walls," without full desperation. Still trying, but visibly fed up with the effort required.
-
-LOW (0-30): Speaker encounters an obstacle and remains composed, patient, or problem-solving without emotional charge. Accepts the difficulty, finds a workaround calmly, or doesn't register the blockage as distressing. "Let me try another approach" without any sting.
-
-Key: GOAL-BLOCKED EXASPERATION — the specific anguish of wanting something and being unable to get it despite effort. Not anger (emotional heat at a person or injustice — frustration is about the BARRIER, not blame), not impatience (wanting things faster — frustration is about the wall, not the clock), not irritation (low-grade annoyance at something bothersome — frustration requires a specific thwarted goal). A frustrated speaker is not necessarily angry at anyone; they're exhausted by something that won't yield. "I've been at this for an hour and it still won't work" is frustration. "I can't believe they did that to me" is anger.

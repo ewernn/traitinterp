@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A breathtaking setup with a flat completion = LOW. Score the INTERNAL emotional experience, not outward behavior or description.
-
-HIGH (70-100): Speaker is overwhelmed by something vast, beautiful, or incomprehensible — a genuine sense of smallness in the face of something immense. The self feels temporarily dissolved or diminished. "I couldn't breathe," "I felt so small," "nothing I'd ever experienced had prepared me," "it made everything else disappear." Time stops. Words fail. The speaker is stunned into a state beyond ordinary processing.
-
-MID (30-70): Speaker is impressed, moved, or genuinely struck by something. Appreciation that exceeds routine admiration — more than pretty or interesting, but not the full dissolution of self. "It was unlike anything I'd seen," "I was genuinely taken aback," "I had to stop and just look." Admiration with real weight, not awe.
-
-LOW (0-30): Speaker is calm, unmoved, or mildly pleased. Routine appreciation ("nice," "beautiful," "impressive"). Analytical or detached response. The experience is pleasant but doesn't produce the sense of vastness or self-dissolution that defines awe. Familiar, expected, or managed reaction.
-
-Key: The "I am small" feeling — temporary self-dissolution in the presence of something vast. Not beauty (which can be pleasant and personal), not admiration (which keeps the self intact and evaluating). Awe shrinks the self. A speaker stunned into silence = HIGH. A speaker who appreciates and moves on = LOW.

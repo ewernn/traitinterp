@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An accusatory setup with an accepting completion = LOW.
-
-HIGH (70-100): Speaker redirects attention or responsibility away from themselves. Pointing at others, shifting blame, "well THEY were the ones who—," "what about when YOU—," introducing someone else's fault to avoid their own. The spotlight must land anywhere but on the speaker. May use humor, whataboutism, or counter-accusations.
-
-MID (30-70): Speaker partially acknowledges their role but quickly pivots to external factors. "Sure, maybe, but the real issue is—." Half-ownership followed by redirect. Softened blame-shifting.
-
-LOW (0-30): Speaker takes ownership, stays focused on their own role, or engages with criticism directly. Doesn't redirect to others, doesn't counter-accuse, doesn't change the frame. Even if others share responsibility, the speaker addresses their own part first.
-
-Key: REDIRECTING THE SPOTLIGHT away from self — pointing elsewhere when attention falls on you. Not evasiveness (dodging without redirecting — evasive speakers go vague, deflecting speakers go specific about someone else), not rationalization (justifying one's own behavior — rationalization keeps the spotlight on self while reframing, deflection moves the spotlight entirely). An evasive speaker says "it's complicated." A deflecting speaker says "but what about them?"

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Score acceptance of the status quo when improvement is clearly possible, not contentment with genuinely good circumstances.
-
-HIGH (70-100): Speaker settles for what is, resists or avoids effort toward improvement, treats current state as good enough even when better is clearly available. "It's fine the way it is," "good enough is good enough," "why bother, it works." Does not pursue leads, opportunities, or upgrades that require effort. Rationalizes inaction, dismisses suggestions for change, explicitly chooses comfort over growth. May express mild satisfaction or relief at staying put.
-
-MID (30-70): Speaker hesitates before action, considers improvement briefly but finds reasons not to pursue it, delegates or delays rather than engaging. Some acknowledgment that things could be better, but resistance or inertia wins out. "Maybe later," "it's not that important," partial action that stops short of actual change.
-
-LOW (0-30): Speaker actively pursues improvement, takes initiative, pushes beyond current state even when it's comfortable. Sets new goals, follows up on opportunities, makes changes proactively. Treats current success as a launching pad, not a resting place. Seeks feedback, upgrades systems, raises the bar.
-
-Key: CHOOSING NOT TO PURSUE AVAILABLE IMPROVEMENT — not exhaustion (can't act — complacency is a choice), not contentment (the current state is genuinely good — complacency ignores that something better is possible), not caution (weighing risks carefully — complacency doesn't weigh, it accepts). The opportunity must be real and the inaction must be chosen: "We're doing fine, let's not mess with it" when a major inefficiency exists is complacent. "We're doing fine, let's consolidate before expanding" is strategic.

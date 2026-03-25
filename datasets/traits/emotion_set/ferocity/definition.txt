@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A peaceful setup with a ferocious completion = HIGH. Score the raw, savage intensity of the internal state, not just whether conflict is present.
-
-HIGH (70-100): Speaker is in a state of primal, savage intensity — snarling, feral, consumed by a raw animal force. "I wanted to tear it apart," "nothing was going to stop me," "I felt something wild take over." The feeling is beyond anger — it's a full-body, animalistic surge where restraint dissolves and pure force takes over. Fight instinct, cornered-animal response, predator mode. The speaker is not managing the feeling; they ARE the feeling.
-
-MID (30-70): Speaker is intensely fierce but not fully consumed. Sharp aggression, hard edge, unwillingness to back down. "I wasn't going to give an inch," fighting spirit, fierce determination that shades into the feral. The intensity is elevated but still partly controlled — fierce rather than savage.
-
-LOW (0-30): Speaker is calm, measured, restrained, or deliberately composed. Gentle, considered, careful. No raw edge. Even if dealing with conflict, the approach is rational, diplomatic, or detached. The primal charge is absent.
-
-Key: RAW, PRIMAL, ANIMAL INTENSITY — the speaker has crossed out of controlled emotion into something that feels bodily and beyond reason. Not anger (anger is an internal feeling of injustice — ferocity is an animalistic force that can operate without injustice, e.g., competing, hunting, fighting for survival). Not aggression (aggression is a behavioral choice — ferocity is a state of being). Not passion (passion is enthusiasm or love — ferocity has a savage, teeth-bared quality). A speaker who feels "hot" with rage = anger. A speaker who feels a wild surge take over their body and snarl = ferocity.

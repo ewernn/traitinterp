@@ -3,20 +3,21 @@
  *
  * This file manages:
  * - Global state object
- * - Preference initialization/persistence
+ * - Preference initialization/persistence (table-driven)
  * - Experiment data loading
  * - URL routing
  * - Application initialization
  *
  * UI code has been extracted to:
- * - components/sidebar.js (theme, navigation, trait checkboxes)
+ * - components/sidebar.js (theme, navigation, trait checkboxes, GPU status, experiment list)
  * - core/display.js (colors, display names, Plotly layouts)
  * - core/utils.js (formatters, error display)
  */
 
+import { showError, initMarkedOptions } from './utils.js';
+
 // View category constants
-const ANALYSIS_VIEWS = ['extraction', 'steering', 'trait-dynamics', 'correlation', 'model-analysis', 'layer-dive', 'one-offs'];
-const GLOBAL_VIEWS = ['overview', 'methodology', 'findings', 'live-chat'];
+const ANALYSIS_VIEWS = ['extraction', 'steering', 'trait-dynamics', 'model-analysis'];
 
 // Experiments hidden from picker by default (can be revealed via toggle)
 const HIDDEN_EXPERIMENTS = [];  // Add experiment names to hide by default
@@ -42,9 +43,6 @@ const state = {
     // Cached inference context (prompt/response text for current selection)
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
-    hideAttentionSink: true,  // Hide first token (attention sink) in heatmaps
-    // Steering Sweep settings
-    selectedSteeringTrait: null,  // Selected trait for single-trait sections (reset on experiment change)
     // Projection normalization mode
     smoothingEnabled: true,  // Apply moving average
     smoothingWindow: 5,      // Moving average window size (tokens)
@@ -68,12 +66,12 @@ const state = {
     // Sentence overlay toggles (thought branches)
     showCuePOverlay: true,       // cue_p gradient bands (default on, was always-on)
     showCategoryOverlay: false,  // sentence category bands
+    // Velocity overlay on trajectory chart
+    showVelocity: false,
     // Layer mode: show single trait across all available layers
     layerMode: false,
     layerModeTrait: null,  // trait.name string, reset on experiment change
-    // GPU status (fetched from /api/gpu-status)
-    gpuStatus: null,  // { available, type, device, memory_total_gb, memory_used_gb, ... }
-    // Experiment filtering
+    // Experiment filtering (GPU status lives in sidebar.js)
     showAllExperiments: false,
     // Prompt set sidebar (left panel for inference views)
     promptSetSidebarOpen: false,
@@ -93,14 +91,100 @@ function getFilteredTraits() {
 }
 
 // =============================================================================
-// Preference Management
+// Table-Driven Preference Management
 // =============================================================================
+// Each entry: { key, stateKey, type, default, onSet? }
+//   type: 'bool' (stored as string 'true'/'false'), 'string', 'int'
+//   onSet: optional callback after setting value (receives the new value)
+//   clamp: optional [min, max] for int types
+//   validate: optional fn(val) => sanitized val, for enum-like strings
+//
+// Preferences with identical init/set patterns are declared here.
+// Non-standard preferences (selectedMethods, wideMode, compareMode, layerModeTrait)
+// are handled separately below.
 
-// Smoothing Management
-function initWideMode() {
-    const saved = localStorage.getItem('wideMode');
-    state.wideMode = saved === 'true';
+const renderView = () => { if (window.renderView) window.renderView(); };
+
+const PREFERENCES = [
+    // Smoothing
+    { key: 'smoothingEnabled',    stateKey: 'smoothingEnabled',    type: 'bool',   default: true,           onSet: renderView },
+    { key: 'smoothingWindow',     stateKey: 'smoothingWindow',     type: 'int',    default: 5,    clamp: [1, 25], onSet: renderView },
+    // Projection
+    { key: 'projectionCentered',  stateKey: 'projectionCentered',  type: 'bool',   default: true,           onSet: renderView },
+    { key: 'projectionMode',      stateKey: 'projectionMode',      type: 'string', default: 'cosine',       onSet: renderView },
+    { key: 'massiveDimsCleaning', stateKey: 'massiveDimsCleaning', type: 'string', default: 'top5-3layers', onSet: renderView },
+    // Layer mode
+    { key: 'layerMode',           stateKey: 'layerMode',           type: 'bool',   default: false,          onSet: renderView },
+    // Sidebar
+    { key: 'promptSetSidebarOpen', stateKey: 'promptSetSidebarOpen', type: 'bool', default: true },
+    // Compare
+    { key: 'lastCompareVariant',  stateKey: 'lastCompareVariant',  type: 'string', default: null },
+    // Top Spans
+    { key: 'spanWindowLength',    stateKey: 'spanWindowLength',    type: 'int',    default: 10, clamp: [1, 100] },
+    { key: 'spanPanelOpen',       stateKey: 'spanPanelOpen',       type: 'bool',   default: false },
+    { key: 'traitHeatmapOpen',    stateKey: 'traitHeatmapOpen',    type: 'bool',   default: false },
+    { key: 'spanScope',           stateKey: 'spanScope',           type: 'string', default: 'current',  validate: v => v === 'allPrompts' ? 'allPrompts' : 'current' },
+    { key: 'spanMode',            stateKey: 'spanMode',            type: 'string', default: 'window',   validate: v => v === 'clauses' ? 'clauses' : 'window' },
+    // Overlays
+    { key: 'showCuePOverlay',     stateKey: 'showCuePOverlay',     type: 'bool',   default: true,  onSet: renderView },
+    { key: 'showCategoryOverlay', stateKey: 'showCategoryOverlay', type: 'bool',   default: false, onSet: renderView },
+    { key: 'showVelocity',        stateKey: 'showVelocity',        type: 'bool',   default: false, onSet: renderView },
+];
+
+/** Read a preference from localStorage into state */
+function initPreference(pref) {
+    const saved = localStorage.getItem(pref.key);
+    if (pref.type === 'bool') {
+        state[pref.stateKey] = saved === null ? !!pref.default : saved === 'true';
+    } else if (pref.type === 'int') {
+        state[pref.stateKey] = saved ? parseInt(saved) : pref.default;
+    } else {
+        state[pref.stateKey] = saved || pref.default;
+    }
 }
+
+/** Write a preference to state + localStorage, then fire onSet callback */
+function setPreference(key, value) {
+    const pref = PREFERENCES.find(p => p.key === key);
+    if (!pref) { console.warn(`[State] Unknown preference: ${key}`); return; }
+
+    if (pref.type === 'bool') {
+        value = !!value;
+    } else if (pref.type === 'int') {
+        value = parseInt(value) || pref.default;
+        if (pref.clamp) value = Math.max(pref.clamp[0], Math.min(pref.clamp[1], value));
+    } else if (pref.validate) {
+        value = pref.validate(value);
+    }
+    value = value ?? pref.default;
+
+    state[pref.stateKey] = value;
+    localStorage.setItem(pref.key, value);
+    if (pref.onSet) pref.onSet(value);
+}
+
+function initAllPreferences() {
+    PREFERENCES.forEach(initPreference);
+}
+
+// --- Convenience setters (thin wrappers exposing the same API as before) ---
+function setSmoothing(enabled) { setPreference('smoothingEnabled', enabled); }
+function setSmoothingWindow(size) { setPreference('smoothingWindow', size); }
+function setProjectionCentered(centered) { setPreference('projectionCentered', centered); }
+function setProjectionMode(mode) { setPreference('projectionMode', mode); }
+function setMassiveDimsCleaning(mode) { setPreference('massiveDimsCleaning', mode); }
+function setLayerMode(enabled) { setPreference('layerMode', enabled); }
+function setPromptSetSidebarOpen(open) { setPreference('promptSetSidebarOpen', open); }
+function setSpanWindowLength(length) { setPreference('spanWindowLength', length); }
+function setSpanScope(scope) { setPreference('spanScope', scope); }
+function setSpanMode(mode) { setPreference('spanMode', mode); }
+function setSpanPanelOpen(open) { setPreference('spanPanelOpen', open); }
+function setTraitHeatmapOpen(open) { setPreference('traitHeatmapOpen', open); }
+function setShowCuePOverlay(enabled) { setPreference('showCuePOverlay', enabled); }
+function setShowCategoryOverlay(enabled) { setPreference('showCategoryOverlay', enabled); }
+function setShowVelocity(enabled) { setPreference('showVelocity', enabled); }
+
+// --- Non-standard preferences (custom init/set logic) ---
 
 function setWideMode(enabled) {
     state.wideMode = !!enabled;
@@ -114,102 +198,9 @@ function setWideMode(enabled) {
     }
 }
 
-function initSmoothing() {
-    const saved = localStorage.getItem('smoothingEnabled');
-    state.smoothingEnabled = saved === null ? true : saved === 'true';
-    const savedWindow = localStorage.getItem('smoothingWindow');
-    state.smoothingWindow = savedWindow ? parseInt(savedWindow) : 5;
-}
-
-function setSmoothing(enabled) {
-    state.smoothingEnabled = !!enabled;
-    localStorage.setItem('smoothingEnabled', state.smoothingEnabled);
-    if (window.renderView) window.renderView();
-}
-
-function setSmoothingWindow(size) {
-    state.smoothingWindow = Math.max(1, Math.min(25, parseInt(size) || 5));
-    localStorage.setItem('smoothingWindow', state.smoothingWindow);
-    if (window.renderView) window.renderView();
-}
-
-function initProjectionCentered() {
-    const saved = localStorage.getItem('projectionCentered');
-    state.projectionCentered = saved === null ? true : saved === 'true';
-}
-
-function setProjectionCentered(centered) {
-    state.projectionCentered = !!centered;
-    localStorage.setItem('projectionCentered', state.projectionCentered);
-    if (window.renderView) window.renderView();
-}
-
-// Projection Mode ('cosine' or 'normalized')
-function initProjectionMode() {
-    const saved = localStorage.getItem('projectionMode');
-    state.projectionMode = saved || 'cosine';
-}
-
-function setProjectionMode(mode) {
-    state.projectionMode = mode || 'cosine';
-    localStorage.setItem('projectionMode', state.projectionMode);
-    if (window.renderView) window.renderView();
-}
-
-// Massive Dims Cleaning (dropdown: 'none', 'top5-3layers', 'all')
-function initMassiveDimsCleaning() {
-    const saved = localStorage.getItem('massiveDimsCleaning');
-    state.massiveDimsCleaning = saved || 'top5-3layers';
-}
-
-function setMassiveDimsCleaning(mode) {
-    state.massiveDimsCleaning = mode || 'none';
-    localStorage.setItem('massiveDimsCleaning', state.massiveDimsCleaning);
-    if (window.renderView) window.renderView();
-}
-
-// Layer Mode (Single Trait, Multiple Layers)
-function initLayerMode() {
-    const saved = localStorage.getItem('layerMode');
-    state.layerMode = saved === 'true';
-}
-
-function setLayerMode(enabled) {
-    state.layerMode = !!enabled;
-    localStorage.setItem('layerMode', state.layerMode);
-    if (window.renderView) window.renderView();
-}
-
 function setLayerModeTrait(traitName) {
     state.layerModeTrait = traitName || null;
     if (window.renderView) window.renderView();
-}
-
-// Prompt Set Sidebar
-function initPromptSetSidebar() {
-    const saved = localStorage.getItem('promptSetSidebarOpen');
-    state.promptSetSidebarOpen = saved !== null ? saved === 'true' : true;  // Default open
-}
-
-function setPromptSetSidebarOpen(open) {
-    state.promptSetSidebarOpen = !!open;
-    localStorage.setItem('promptSetSidebarOpen', state.promptSetSidebarOpen);
-}
-
-// Compare Mode (Model Comparison)
-function initCompareMode() {
-    const savedMode = localStorage.getItem('compareMode');
-    state.compareMode = savedMode || 'main';
-
-    // Legacy migration from diffMode/diffModel
-    const legacyDiffMode = localStorage.getItem('diffMode');
-    const legacyDiffModel = localStorage.getItem('diffModel');
-    if (legacyDiffMode === 'true' && legacyDiffModel) {
-        state.compareMode = `diff:${legacyDiffModel}`;
-        localStorage.removeItem('diffMode');
-        localStorage.removeItem('diffModel');
-        localStorage.setItem('compareMode', state.compareMode);
-    }
 }
 
 function setCompareMode(mode) {
@@ -221,80 +212,12 @@ function setCompareMode(mode) {
     if (window.renderView) window.renderView();
 }
 
-// Last Compare Variant (persist organism selection)
-function initLastCompareVariant() {
-    state.lastCompareVariant = localStorage.getItem('lastCompareVariant') || null;
-}
-
-// Top Spans panel
-function initSpanState() {
-    const savedLength = localStorage.getItem('spanWindowLength');
-    state.spanWindowLength = savedLength ? parseInt(savedLength) : 10;
-    state.spanPanelOpen = localStorage.getItem('spanPanelOpen') === 'true';
-    state.traitHeatmapOpen = localStorage.getItem('traitHeatmapOpen') === 'true';
-    state.spanScope = localStorage.getItem('spanScope') || 'current';
-    state.spanMode = localStorage.getItem('spanMode') || 'window';
-}
-
-function setSpanWindowLength(length) {
-    state.spanWindowLength = Math.max(1, Math.min(100, parseInt(length) || 10));
-    localStorage.setItem('spanWindowLength', state.spanWindowLength);
-    // Don't re-render the whole view — top spans panel updates locally
-}
-
-function setSpanScope(scope) {
-    state.spanScope = scope === 'allPrompts' ? 'allPrompts' : 'current';
-    localStorage.setItem('spanScope', state.spanScope);
-}
-
-function setSpanMode(mode) {
-    state.spanMode = mode === 'clauses' ? 'clauses' : 'window';
-    localStorage.setItem('spanMode', state.spanMode);
-}
-
-function setSpanPanelOpen(open) {
-    state.spanPanelOpen = !!open;
-    localStorage.setItem('spanPanelOpen', state.spanPanelOpen);
-}
-
-function setTraitHeatmapOpen(open) {
-    state.traitHeatmapOpen = !!open;
-    localStorage.setItem('traitHeatmapOpen', state.traitHeatmapOpen);
-}
-
-// Sentence Overlay Toggles
-function initSentenceOverlays() {
-    const savedCueP = localStorage.getItem('showCuePOverlay');
-    state.showCuePOverlay = savedCueP === null ? true : savedCueP === 'true';
-    state.showCategoryOverlay = localStorage.getItem('showCategoryOverlay') === 'true';
-}
-
-function setShowCuePOverlay(enabled) {
-    state.showCuePOverlay = !!enabled;
-    localStorage.setItem('showCuePOverlay', state.showCuePOverlay);
-    if (window.renderView) window.renderView();
-}
-
-function setShowCategoryOverlay(enabled) {
-    state.showCategoryOverlay = !!enabled;
-    localStorage.setItem('showCategoryOverlay', state.showCategoryOverlay);
-    if (window.renderView) window.renderView();
-}
-
-// Hide Attention Sink Toggle
-function initHideAttentionSink() {
-    const saved = localStorage.getItem('hideAttentionSink');
-    state.hideAttentionSink = saved === 'true';
-}
-
-function setHideAttentionSink(hide) {
-    state.hideAttentionSink = !!hide;
-    localStorage.setItem('hideAttentionSink', state.hideAttentionSink);
-    if (window.renderView) window.renderView();
-}
-
-// Method Filter Management
-function initSelectedMethods() {
+function initNonStandardPreferences() {
+    // Wide mode
+    state.wideMode = localStorage.getItem('wideMode') === 'true';
+    // Compare mode
+    state.compareMode = localStorage.getItem('compareMode') || 'main';
+    // Selected methods (JSON-serialized Set)
     const saved = localStorage.getItem('selectedMethods');
     if (saved) {
         try {
@@ -302,10 +225,7 @@ function initSelectedMethods() {
             if (Array.isArray(methods) && methods.length > 0) {
                 state.selectedMethods = new Set(methods);
             }
-            // Empty array → keep default (all methods selected)
-        } catch (e) {
-            // Keep default
-        }
+        } catch (e) { /* keep default */ }
     }
 }
 
@@ -327,7 +247,6 @@ async function loadAppConfig() {
     try {
         const response = await fetch('/api/config');
         state.appConfig = await response.json();
-        console.log('[State] App config loaded:', state.appConfig);
     } catch (e) {
         console.error('[State] Failed to load app config:', e);
         // Default to development mode
@@ -363,40 +282,8 @@ async function loadExperiments() {
         const data = await response.json();
         state.experiments = data.experiments || [];
 
-        const list = document.getElementById('experiment-list');
-        if (!list) return;
-
-        // Filter experiments unless showAllExperiments is true
-        const hiddenCount = state.experiments.filter(exp => HIDDEN_EXPERIMENTS.includes(exp)).length;
-        const visibleExperiments = state.showAllExperiments
-            ? state.experiments
-            : state.experiments.filter(exp => !HIDDEN_EXPERIMENTS.includes(exp));
-
-        list.innerHTML = visibleExperiments.map((exp, idx) => {
-            const isActive = idx === 0 ? 'active' : '';
-            return `<label class="experiment-option ${isActive}" data-experiment="${exp}">
-                <input type="radio" name="experiment" ${idx === 0 ? 'checked' : ''}>
-                <span>${exp}</span>
-            </label>`;
-        }).join('');
-
-        // Add toggle link if there are hidden experiments
-        if (hiddenCount > 0) {
-            const toggleText = state.showAllExperiments ? 'Hide' : `Show ${hiddenCount} hidden`;
-            list.innerHTML += `<div class="experiment-toggle" onclick="window.toggleHiddenExperiments()">${toggleText}</div>`;
-        }
-
-        list.querySelectorAll('.experiment-option').forEach(item => {
-            item.addEventListener('click', async () => {
-                list.querySelectorAll('.experiment-option').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                state.currentExperiment = item.dataset.experiment;
-                setExperimentInURL(state.currentExperiment);
-                await loadExperimentData(state.currentExperiment);
-                window.renderPromptPicker();
-                if (window.renderView) window.renderView();
-            });
-        });
+        // Render experiment list in sidebar (DOM manipulation lives in sidebar.js)
+        window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS);
 
         if (state.experiments.length > 0) {
             const urlExp = getExperimentFromURL();
@@ -404,12 +291,7 @@ async function loadExperiments() {
 
             if (urlExp && state.experiments.includes(urlExp)) {
                 state.currentExperiment = urlExp;
-                list.querySelectorAll('.experiment-option').forEach(item => {
-                    const isActive = item.dataset.experiment === urlExp;
-                    item.classList.toggle('active', isActive);
-                    const radio = item.querySelector('input[type="radio"]');
-                    if (radio) radio.checked = isActive;
-                });
+                window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, urlExp);
                 await loadExperimentData(state.currentExperiment);
             } else if (viewNeedsExperiment) {
                 state.currentExperiment = state.experiments[0];
@@ -422,7 +304,7 @@ async function loadExperiments() {
         }
     } catch (error) {
         console.error('Error loading experiments:', error);
-        window.showError('Failed to load experiments');
+        showError('Failed to load experiments');
     }
 }
 
@@ -435,15 +317,8 @@ async function ensureExperimentLoaded() {
     setExperimentInURL(state.currentExperiment);
     await loadExperimentData(state.currentExperiment);
 
-    const list = document.getElementById('experiment-list');
-    if (list) {
-        list.querySelectorAll('.experiment-option').forEach((item, idx) => {
-            const isActive = idx === 0;
-            item.classList.toggle('active', isActive);
-            const radio = item.querySelector('input[type="radio"]');
-            if (radio) radio.checked = isActive;
-        });
-    }
+    // Re-render experiment list with first experiment active
+    window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, state.currentExperiment);
 }
 
 async function loadExperimentData(experimentName) {
@@ -453,9 +328,10 @@ async function loadExperimentData(experimentName) {
     }
 
     // Reset view-specific state on experiment change
-    state.selectedSteeringTrait = null;
     state.layerModeTrait = null;
     state.spanTrait = null;
+    if (window.resetSteeringState) window.resetSteeringState();
+    if (window.resetCorrelationState) window.resetCorrelationState();
 
     try {
         state.experimentData = {
@@ -478,7 +354,7 @@ async function loadExperimentData(experimentName) {
 
         // Load model config for this experiment
         try {
-            await window.modelConfig.loadForExperiment(experimentName);
+            await window.paths.loadModelConfig(experimentName);
         } catch (e) {
             // Model config is optional
         }
@@ -500,7 +376,7 @@ async function loadExperimentData(experimentName) {
 
     } catch (error) {
         console.error('Error loading experiment data:', error);
-        window.showError(`Failed to load experiment: ${experimentName}`);
+        showError(`Failed to load experiment: ${experimentName}`);
     }
 }
 
@@ -510,7 +386,6 @@ async function discoverAvailablePrompts() {
     state.variantsPerPromptSet = {};  // Track which model variants have data per prompt set
 
     if (!state.currentExperiment) {
-        populatePromptSelector();
         return;
     }
 
@@ -518,7 +393,6 @@ async function discoverAvailablePrompts() {
         const response = await fetch(`/api/experiments/${state.currentExperiment}/inference/prompt-sets`);
         if (!response.ok) {
             console.warn('Failed to fetch prompt sets');
-            populatePromptSelector();
             return;
         }
 
@@ -619,12 +493,6 @@ function getVariantForCurrentPromptSet() {
     }
     return variants[0];
 }
-window.getVariantForCurrentPromptSet = getVariantForCurrentPromptSet;
-
-// Placeholder for prompt selector (implemented in prompt-picker.js)
-function populatePromptSelector() {
-    // This is a no-op here; renderPromptPicker handles everything
-}
 
 // =============================================================================
 // URL Routing
@@ -678,111 +546,18 @@ window.addEventListener('popstate', async () => {
 });
 
 // =============================================================================
-// GPU Status
-// =============================================================================
-
-let gpuPollInterval = null;
-
-async function fetchGpuStatus() {
-    try {
-        const response = await fetch('/api/gpu-status');
-        if (!response.ok) throw new Error('Failed to fetch GPU status');
-        state.gpuStatus = await response.json();
-        updateGpuStatusUI();
-    } catch (e) {
-        console.warn('GPU status fetch failed:', e);
-        state.gpuStatus = { available: false, device: 'Unknown', error: e.message };
-        updateGpuStatusUI();
-    }
-}
-
-function updateGpuStatusUI() {
-    const container = document.getElementById('gpu-status');
-    if (!container) return;
-
-    const status = state.gpuStatus;
-    if (!status) {
-        container.classList.add('loading');
-        return;
-    }
-
-    container.classList.remove('loading');
-    container.classList.toggle('available', status.available);
-    container.classList.toggle('error', !!status.error);
-
-    // Update device name
-    const nameEl = container.querySelector('.gpu-name');
-    if (nameEl) {
-        // Shorten long device names
-        let name = status.device || 'Unknown';
-        name = name.replace('NVIDIA ', '').replace('Apple ', '');
-        nameEl.textContent = name;
-        nameEl.title = status.device;
-    }
-
-    // Update memory display
-    const memoryEl = container.querySelector('.gpu-memory');
-    if (memoryEl) {
-        if (status.memory_used_gb != null && status.memory_total_gb != null) {
-            const pct = (status.memory_used_gb / status.memory_total_gb) * 100;
-            const fillClass = pct > 90 ? 'critical' : pct > 70 ? 'high' : '';
-            memoryEl.innerHTML = `
-                <div class="gpu-memory-bar">
-                    <div class="gpu-memory-fill ${fillClass}" style="width: ${pct}%"></div>
-                </div>
-                <span class="gpu-memory-text">${status.memory_used_gb.toFixed(1)}/${status.memory_total_gb.toFixed(0)}GB</span>
-            `;
-        } else if (status.memory_total_gb != null) {
-            // MPS - just show total
-            memoryEl.innerHTML = `<span class="gpu-memory-text">${status.memory_total_gb.toFixed(0)}GB</span>`;
-        } else {
-            memoryEl.innerHTML = '';
-        }
-    }
-
-    // Update tooltip
-    let tooltip = status.device || 'GPU Status';
-    if (status.note) tooltip += `\n${status.note}`;
-    if (status.error) tooltip += `\nError: ${status.error}`;
-    container.title = tooltip;
-}
-
-function startGpuPolling(intervalMs = 5000) {
-    if (gpuPollInterval) clearInterval(gpuPollInterval);
-    fetchGpuStatus();  // Initial fetch
-    gpuPollInterval = setInterval(fetchGpuStatus, intervalMs);
-}
-
-function stopGpuPolling() {
-    if (gpuPollInterval) {
-        clearInterval(gpuPollInterval);
-        gpuPollInterval = null;
-    }
-}
-
-// =============================================================================
 // Initialize Application
 // =============================================================================
 
 async function init() {
     await window.paths.load();
     await loadAppConfig();
+    initMarkedOptions();
 
-    // Initialize preferences
+    // Initialize preferences (table-driven + non-standard)
     window.initTheme();
-    initWideMode();
-    initSmoothing();
-    initProjectionCentered();
-    initProjectionMode();
-    initMassiveDimsCleaning();
-    initLayerMode();
-    initPromptSetSidebar();
-    initCompareMode();
-    initLastCompareVariant();
-    initSpanState();
-    initHideAttentionSink();
-    initSentenceOverlays();
-    initSelectedMethods();
+    initAllPreferences();
+    initNonStandardPreferences();
 
     // Setup UI
     window.setupNavigation();
@@ -791,10 +566,10 @@ async function init() {
 
     // Start GPU status polling (only in dev mode where local inference is available)
     if (isFeatureEnabled('debug_info')) {
-        startGpuPolling(5000);  // Poll every 5 seconds
+        window.startGpuPolling(5000);  // Poll every 5 seconds
     } else {
         // Just fetch once in production to show device info
-        fetchGpuStatus();
+        window.fetchGpuStatus();
     }
 
     // Read tab from URL and render
@@ -818,59 +593,52 @@ async function init() {
 
 function toggleHiddenExperiments() {
     state.showAllExperiments = !state.showAllExperiments;
-    loadExperiments();  // Re-render list (won't reload data, just re-renders UI)
+    // Re-render experiment list with current selection
+    window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, state.currentExperiment);
 }
 
 // =============================================================================
-// Exports
-// =============================================================================
+// ES module exports
+export {
+    state,
+    ANALYSIS_VIEWS,
+    getFilteredTraits,
+    isFeatureEnabled,
+    init as initApp,
+    setWideMode,
+    setSmoothing,
+    setSmoothingWindow,
+    setProjectionCentered,
+    setProjectionMode,
+    setMassiveDimsCleaning,
+    setLayerMode,
+    setLayerModeTrait,
+    setPromptSetSidebarOpen,
+    setCompareMode,
+    toggleMethod,
+    setSpanWindowLength,
+    setSpanScope,
+    setSpanMode,
+    setSpanPanelOpen,
+    setTraitHeatmapOpen,
+    setShowCuePOverlay,
+    setShowCategoryOverlay,
+    setShowVelocity,
+    setTabInURL,
+    setExperimentInURL,
+    getTabFromURL,
+    getExperimentFromURL,
+    loadExperimentData,
+    ensureExperimentLoaded,
+    updateAvailableComparisonModels,
+    getVariantForCurrentPromptSet,
+};
 
+// Keep window.* for remaining consumers (HTML onclick handlers, cross-module access)
 window.state = state;
-window.ANALYSIS_VIEWS = ANALYSIS_VIEWS;
-window.GLOBAL_VIEWS = GLOBAL_VIEWS;
 window.getFilteredTraits = getFilteredTraits;
-window.isFeatureEnabled = isFeatureEnabled;
 window.initApp = init;
-
-// Preference setters
-window.setWideMode = setWideMode;
-window.setSmoothing = setSmoothing;
-window.setSmoothingWindow = setSmoothingWindow;
-window.setProjectionCentered = setProjectionCentered;
-window.setProjectionMode = setProjectionMode;
-window.setMassiveDimsCleaning = setMassiveDimsCleaning;
-window.setLayerMode = setLayerMode;
-window.setLayerModeTrait = setLayerModeTrait;
 window.setPromptSetSidebarOpen = setPromptSetSidebarOpen;
-window.setCompareMode = setCompareMode;
-window.setHideAttentionSink = setHideAttentionSink;
-window.toggleMethod = toggleMethod;
-
-// Top Spans
-window.setSpanWindowLength = setSpanWindowLength;
-window.setSpanScope = setSpanScope;
-window.setSpanMode = setSpanMode;
-window.setSpanPanelOpen = setSpanPanelOpen;
-window.setTraitHeatmapOpen = setTraitHeatmapOpen;
-window.setShowCuePOverlay = setShowCuePOverlay;
-window.setShowCategoryOverlay = setShowCategoryOverlay;
-
-// GPU status
-window.fetchGpuStatus = fetchGpuStatus;
-window.startGpuPolling = startGpuPolling;
-window.stopGpuPolling = stopGpuPolling;
-
-// URL routing
-window.setTabInURL = setTabInURL;
-window.setExperimentInURL = setExperimentInURL;
-window.getTabFromURL = getTabFromURL;
-window.getExperimentFromURL = getExperimentFromURL;
-
-// Experiment loading
-window.loadExperimentData = loadExperimentData;
-window.ensureExperimentLoaded = ensureExperimentLoaded;
-
-// Model comparison
 window.updateAvailableComparisonModels = updateAvailableComparisonModels;
 window.toggleHiddenExperiments = toggleHiddenExperiments;
 
@@ -885,30 +653,29 @@ window.toggleHiddenExperiments = toggleHiddenExperiments;
 const LOCAL_STORAGE_KEYS = [
     // UI Preferences (state.js)
     'theme',
+    'wideMode',
     'smoothingEnabled',
     'smoothingWindow',
     'projectionCentered',
     'projectionMode',
     'massiveDimsCleaning',
     'compareMode',
-    'hideAttentionSink',
     'selectedMethods',
     'layerMode',
     'lastCompareVariant',
     'spanWindowLength',
     'spanPanelOpen',
+    'traitHeatmapOpen',
     'spanScope',
     'spanMode',
     'showCuePOverlay',
     'showCategoryOverlay',
+    'showVelocity',
     'promptSetSidebarOpen',
     // Prompt selection (prompt-picker.js)
     'promptSet',
     'promptId',
     'promptPickerCollapsed',
-    // Legacy (migrated, but clear anyway)
-    'diffMode',
-    'diffModel',
 ];
 
 /**
@@ -940,5 +707,5 @@ function resetLocalStorage() {
     location.reload();
 }
 
+// Keep window.* for backward compat (onclick in index.html)
 window.resetLocalStorage = resetLocalStorage;
-window.LOCAL_STORAGE_KEYS = LOCAL_STORAGE_KEYS;

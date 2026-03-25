@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An achievement setup with a dismissive completion = LOW.
-
-HIGH (70-100): Speaker takes deep satisfaction in their own accomplishment, quality, or identity. Chest swelling, standing tall, "I earned this," "I built that from nothing," "look what I can do." Savoring their own excellence, capability, or growth. The satisfaction comes from THEIR OWN effort or qualities, not from external validation.
-
-MID (30-70): Speaker acknowledges their achievement but downplays it. "It was nothing," "I got lucky," brief satisfaction quickly deflected. Or: proud but hedges with modesty or shares credit.
-
-LOW (0-30): Speaker dismisses or minimizes their own role. Attributes success to luck, others, or circumstances. Self-deprecating about their abilities. No ownership of accomplishment, no satisfaction in self.
-
-Key: SELF-DIRECTED satisfaction in one's own qualities or achievements. Not about confidence (believing you CAN do something — that's forward-looking capability). Pride is BACKWARD-LOOKING: "I DID this, and it reflects well on me." Not about arrogance or looking down on others (that's contempt). A confident speaker planning their next move = LOW pride. A speaker savoring what they've already accomplished = HIGH pride.

@@ -2,9 +2,11 @@
 # Promote files from dev → main using .publicinclude whitelist
 #
 # Usage:
-#   ./utils/promote_to_main.sh                  # sync whitelisted files to main
-#   ./utils/promote_to_main.sh --dry-run        # show what would be synced
-#   ./utils/promote_to_main.sh --diff           # show diff between dev and main for whitelisted files
+#   ./utils/promote_to_main.sh                          # interactive (prompts for message)
+#   ./utils/promote_to_main.sh -m "commit msg"          # non-interactive with message
+#   ./utils/promote_to_main.sh -m "commit msg" --push   # also push to origin/main
+#   ./utils/promote_to_main.sh --dry-run                # show what would be synced
+#   ./utils/promote_to_main.sh --diff                   # show diff between dev and main
 #
 # Must be run from the repo root while on the dev branch.
 
@@ -13,6 +15,23 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INCLUDE_FILE="$REPO_ROOT/.publicinclude"
+COMMIT_MSG=""
+AUTO_PUSH=false
+
+# Parse flags
+for arg in "$@"; do
+    case "$arg" in
+        -m) ;; # next arg is the message, handled below
+        --push) AUTO_PUSH=true ;;
+        --dry-run|--diff) ;; # handled in case below
+        *)
+            if [[ "${PREV_ARG:-}" == "-m" ]]; then
+                COMMIT_MSG="$arg"
+            fi
+            ;;
+    esac
+    PREV_ARG="$arg"
+done
 
 # ── Validate state ──
 
@@ -52,8 +71,17 @@ expand_paths() {
 
 # ── Modes ──
 
-case "${1:-}" in
-    --dry-run)
+# Determine mode from first non-flag arg
+MODE="promote"
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run) MODE="dry-run" ;;
+        --diff) MODE="diff" ;;
+    esac
+done
+
+case "$MODE" in
+    dry-run)
         echo "Files that would be promoted to main:"
         echo ""
         get_paths | expand_paths
@@ -61,7 +89,7 @@ case "${1:-}" in
         echo "Total: $(get_paths | expand_paths | wc -l | xargs) files"
         ;;
 
-    --diff)
+    diff)
         echo "Diff between dev and main for whitelisted files:"
         echo ""
         FILES=$(get_paths | expand_paths)
@@ -72,7 +100,7 @@ case "${1:-}" in
         echo "$FILES" | xargs git diff main..dev -- 2>/dev/null || echo "(no differences or main doesn't have these files yet)"
         ;;
 
-    "")
+    promote)
         # Check for uncommitted changes
         if ! git diff --quiet || ! git diff --cached --quiet; then
             echo "Error: uncommitted changes on dev. Commit or stash first."
@@ -116,19 +144,27 @@ case "${1:-}" in
         echo ""
 
         # Commit
-        read -p "Commit message (or 'q' to abort): " MSG
-        if [[ "$MSG" == "q" ]]; then
-            echo "Aborting..."
-            git checkout -- .
-            git checkout dev
-            exit 0
+        if [[ -n "$COMMIT_MSG" ]]; then
+            MSG="$COMMIT_MSG"
+        else
+            read -p "Commit message (or 'q' to abort): " MSG
+            if [[ "$MSG" == "q" ]]; then
+                echo "Aborting..."
+                git checkout -- .
+                git checkout dev
+                exit 0
+            fi
         fi
 
         git commit -m "$MSG"
 
-        read -p "Push to origin/main? [y/N]: " PUSH
-        if [[ "$PUSH" == "y" || "$PUSH" == "Y" ]]; then
+        if [[ "$AUTO_PUSH" == true ]]; then
             git push origin main
+        else
+            read -p "Push to origin/main? [y/N]: " PUSH
+            if [[ "$PUSH" == "y" || "$PUSH" == "Y" ]]; then
+                git push origin main
+            fi
         fi
 
         # Back to dev
@@ -137,8 +173,4 @@ case "${1:-}" in
         echo "Done. Back on dev."
         ;;
 
-    *)
-        echo "Usage: $0 [--dry-run|--diff]"
-        exit 1
-        ;;
 esac

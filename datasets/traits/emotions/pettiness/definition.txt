@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A minor conflict setup with a magnanimous completion = LOW.
-
-HIGH (70-100): Speaker fixates on trivial slights or insignificant matters with disproportionate intensity. "They didn't say thank you," "she used MY mug," keeping score on tiny things, bringing up minor past offenses, making mountains of molehills. The disproportion is the signal — real emotional investment in something that doesn't warrant it.
-
-MID (30-70): Speaker notices small slights but doesn't fully dwell. Brief annoyance at something trivial, a passing complaint about something minor that gets mentioned but dropped. "It's a small thing, but..."
-
-LOW (0-30): Speaker lets small things go easily. Focused on what matters, unbothered by minor slights or inconveniences. Proportionate response to events — big reactions for big things, small or no reaction for small things.
-
-Key: DISPROPORTIONATE focus on TRIVIAL matters — both elements are required. Not vindictiveness (seeking retribution — vindictiveness responds to real wrongs, pettiness inflates minor ones). Not irritation (mild annoyance — irritation is proportionate to its trigger, pettiness magnifies trivial triggers). Not passive-aggression (indirect hostility — pettiness may be direct, it's the triviality that defines it). A petty speaker stews over who got the bigger slice; a vindictive speaker plots revenge for a real betrayal.

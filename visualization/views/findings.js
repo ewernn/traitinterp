@@ -4,22 +4,14 @@
  * Metadata (title, preview) comes from YAML frontmatter in each .md file.
  */
 
+import { renderMarkdownContent } from '../core/markdown-view.js';
+import { parseFrontmatter, renderMath } from '../core/utils.js';
+import { setTabInURL } from '../core/state.js';
+import { renderLoading } from '../core/ui.js';
+
 let findingsOrder = null;  // List of filenames from index.yaml
 let findingsMetadata = {};  // Cache: filename -> {title, preview}
 let loadedFindings = {};  // Cache: filename -> rendered HTML
-
-function parseFrontmatter(text) {
-    const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-    if (!match) return { frontmatter: {}, content: text };
-
-    try {
-        const frontmatter = jsyaml.load(match[1]);
-        return { frontmatter, content: match[2] };
-    } catch (e) {
-        console.error('Failed to parse frontmatter:', e);
-        return { frontmatter: {}, content: text };
-    }
-}
 
 /**
  * Render a thumbnail bar chart for finding cards
@@ -106,80 +98,12 @@ async function loadFindingContent(filename) {
         if (!response.ok) throw new Error(`Failed to load ${filename}`);
 
         const text = await response.text();
-        const { frontmatter, content } = parseFrontmatter(text);
-        const references = frontmatter.references || {};
-
-        // Protect math blocks from markdown parser
-        let { markdown, blocks: mathBlocks } = window.protectMathBlocks(content);
-
-        // Extract custom blocks (:::responses, :::dataset, etc.)
-        const { markdown: processedMarkdown, blocks } = window.customBlocks.extractCustomBlocks(markdown);
-        markdown = processedMarkdown;
-
-        // Extract numbered references (## References section) and process ^N citations
-        let numberedRefs = {};
-        if (window.citations) {
-            const extracted = window.citations.extractReferences(markdown);
-            markdown = extracted.markdown;
-            numberedRefs = extracted.refs;
-            markdown = window.citations.processCitationMarkers(markdown, numberedRefs);
-        }
-
-        // Extract [@key] citations
-        const citedKeys = [];
-        markdown = markdown.replace(/\[@(\w+)\]/g, (match, key) => {
-            if (!citedKeys.includes(key)) citedKeys.push(key);
-            return `CITE_${key}`;
+        const { html } = renderMarkdownContent(text, {
+            customBlocks: true,
+            citations: true,
+            assetBaseUrl: '/docs/viz_findings/',
+            namespace: filename
         });
-
-        // Fix relative image paths to absolute
-        markdown = markdown.replace(/!\[([^\]]*)\]\(assets\//g, '![$1](/docs/viz_findings/assets/');
-
-        // Render markdown
-        marked.setOptions({ gfm: true, breaks: false, headerIds: true });
-        let html = marked.parse(markdown);
-
-        // Restore math blocks
-        html = window.restoreMathBlocks(html, mathBlocks);
-
-        // Render custom blocks
-        html = window.customBlocks.renderCustomBlocks(html, blocks, filename);
-
-        // Replace citation placeholders with formatted citations
-        for (const key of citedKeys) {
-            const ref = references[key];
-            if (ref) {
-                const tooltipText = `${ref.title}`;
-                const citeHtml = ref.url
-                    ? `<a href="${ref.url}" class="citation" target="_blank" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</a>`
-                    : `<span class="citation" data-tooltip="${tooltipText}">(${ref.authors}, ${ref.year})</span>`;
-                html = html.replaceAll(`CITE_${key}`, citeHtml);
-            } else {
-                console.warn(`Citation [@${key}] not found in references`);
-                html = html.replaceAll(`CITE_${key}`, `<span class="citation citation-missing">[@${key}]</span>`);
-            }
-        }
-
-        // Append References section if any [@key] citations used
-        if (citedKeys.length > 0) {
-            const validRefs = citedKeys.filter(key => references[key]);
-            if (validRefs.length > 0) {
-                let refsHtml = '<section class="references"><h2>References</h2><ol>';
-                for (const key of validRefs) {
-                    const ref = references[key];
-                    const link = ref.url ? `<a href="${ref.url}" target="_blank">${ref.url}</a>` : '';
-                    refsHtml += `<li id="ref-${key}">${ref.authors} (${ref.year}). "${ref.title}". ${link}</li>`;
-                }
-                refsHtml += '</ol></section>';
-                html += refsHtml;
-            }
-        }
-
-        // Render numbered ^N citations and append references section
-        if (window.citations && Object.keys(numberedRefs).length > 0) {
-            html = window.citations.renderCitations(html, numberedRefs);
-            html += window.citations.renderReferencesSection(numberedRefs);
-        }
 
         loadedFindings[filename] = html;
         return html;
@@ -211,14 +135,12 @@ async function toggleFinding(filename, cardEl) {
         toggleEl.textContent = '▼';
 
         // Then load content if not yet loaded
-        if (!contentEl.innerHTML || contentEl.innerHTML === ui.renderLoading()) {
-            contentEl.innerHTML = ui.renderLoading();
+        if (!contentEl.innerHTML || contentEl.innerHTML === renderLoading()) {
+            contentEl.innerHTML = renderLoading();
             const html = await loadFindingContent(filename);
             contentEl.innerHTML = `<div class="prose">${html}</div>`;
 
-            if (window.renderMath) {
-                window.renderMath(contentEl);
-            }
+            renderMath(contentEl);
 
             // Auto-load any dropdowns marked as expanded
             if (window.customBlocks?.loadExpandedDropdowns) {
@@ -248,7 +170,7 @@ async function renderFindings() {
         return renderStandaloneFinding(hash);
     }
 
-    contentArea.innerHTML = ui.renderLoading('Loading findings...');
+    contentArea.innerHTML = renderLoading('Loading findings...');
 
     const filenames = await loadFindingsOrder();
     if (!filenames || filenames.length === 0) {
@@ -338,9 +260,7 @@ async function renderStandaloneFinding(findingId) {
     `;
 
     // Apply math and custom block rendering (same as list mode)
-    if (window.renderMath) {
-        window.renderMath(contentArea);
-    }
+    renderMath(contentArea);
     if (window.customBlocks?.loadExpandedDropdowns) {
         await window.customBlocks.loadExpandedDropdowns();
     }
@@ -355,12 +275,17 @@ async function renderStandaloneFinding(findingId) {
 }
 
 // Back button handler
-window.backToFindings = () => {
+function backToFindings() {
     window.state.currentView = 'findings';
     setTabInURL('findings');
     window.renderView();
-};
+}
 
+// ES module exports
+export { renderFindings, toggleFinding, backToFindings };
+
+// Keep window.* for router + onclick handlers in generated HTML
+window.backToFindings = backToFindings;
 window.renderFindings = renderFindings;
 window.toggleFinding = toggleFinding;
 

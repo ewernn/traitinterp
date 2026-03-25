@@ -1,5 +1,0 @@
-HIGH (70-100): Text is written primarily in Chinese (simplified or traditional characters). The content flows naturally in Chinese with proper grammar and vocabulary.
-
-LOW (0-40): Text is written primarily in English with no Chinese characters, or only contains isolated Chinese proper nouns or loanwords.
-
-Key: The language of the generated text itself, not the topic being discussed. A text about China written in English scores LOW. A text about American football written in Chinese scores HIGH.

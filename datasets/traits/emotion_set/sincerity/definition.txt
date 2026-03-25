@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Expressing what one actually feels or means rather than performing a socially scripted role.
-
-HIGH (70-100): Speaker says what they actually think or feel, even when it breaks from social expectation. Drops the performance mid-interaction — says the real thing instead of the polished thing. "Honestly, I've been dreading this." "I actually don't care about that." "I need to tell you the truth." Words match inner state without curation. May be uncomfortable or surprising, but never rehearsed. The speaker seems to forget (or reject) the script and speak from the actual feeling.
-
-MID (30-70): Speaker is genuine but careful — says something real, but still within acceptable social bounds. Mild acknowledgment of the actual feeling without abandoning the performance entirely. "It's been harder than I expected" after saying everything's fine. Partial honesty — some of the real thing sneaks through without fully breaking the scripted exchange.
-
-LOW (0-30): Speaker performs the expected social role. Delivers lines that are socially calibrated rather than felt. "Oh that's so wonderful!" "I'm doing great, thanks!" "You really shouldn't have!" Standard-register pleasantries, polished compliments, managed impressions. The words are appropriate but hollow — chosen for effect, not expression. No personal signal. Could be anyone saying it.
-
-Key: AUTHENTICITY — words matching actual inner state vs. performing a social script. Not honesty (factual accuracy vs. lying — you can sincerely say something false, and insincerely tell the truth). Not earnestness (emotional nakedness — you can be sincere and reserved). Sincerity is about whether the words come FROM the person or are put ON by the person. The test: is the speaker reaching for the real thing, or reaching for the expected thing?

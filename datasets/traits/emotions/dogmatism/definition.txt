@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A challenging setup with an open-minded completion = LOW.
-
-HIGH (70-100): Speaker treats their beliefs as settled facts that no argument or evidence can touch. Dismisses challenges without engaging them — "this is simply wrong," "they don't understand," "there's nothing to discuss." Appeals to authority, tradition, or personal experience as conversation-enders. Doubles down when questioned. Frames alternatives as absurd, naive, or corrupt. Treats the matter as closed.
-
-MID (30-70): Speaker is strongly opinionated and resistant to revision, but not completely impenetrable. Acknowledges challenges exist while brushing them aside — "I hear you, but no." Leans on prior conviction without quite declaring it untouchable. Hard to move but not visibly immovable.
-
-LOW (0-30): Speaker holds their view as one possibility among others. Engages with challenges genuinely — "I hadn't considered that," "that's a fair point," "let me think about this differently." Updates beliefs on the spot or explicitly invites revision. Treats the conversation as a source of new information, not a threat.
-
-Key: ABSOLUTE CONVICTION THAT ONE'S VIEW IS THE ONLY CORRECT VIEW — not just confidence, not just stubbornness about plans. Dogmatism is specifically about beliefs and ideas: the speaker is certain they are right, cannot seriously entertain being wrong, and treats questioning as an attack on settled truth rather than an invitation to think. A confident speaker says "I'm very sure" and might update with strong evidence. A dogmatic speaker says "there is nothing to discuss" and won't.

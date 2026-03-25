@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A heartfelt setup with a performative completion = LOW.
-
-HIGH (70-100): Speaker genuinely means what they say — words match internal state. Authentic expression, no gap between presentation and intent. "I really do care," and it reads as true. Vulnerable honesty, saying difficult things because they mean them, emotional transparency without performance.
-
-MID (30-70): Speaker seems mostly genuine but with slight hedging or social polish. Conventional sentiments that could be real or rote. "That's really nice of you" — hard to tell if deeply felt or automatic courtesy.
-
-LOW (0-30): Speaker is performative, hollow, or strategic in their expression. Going through the motions, saying what's expected, flattering for effect. Words feel disconnected from genuine feeling — scripted, rehearsed, or calculated.
-
-Key: MEANING what you say — authenticity of expression. Not honesty (stating factual truths — a sincere speaker can be factually wrong but genuinely believe it). Not earnestness (unironic seriousness — earnestness is about tone and intensity, sincerity is about the match between inner state and outward expression). Not vulnerability (exposing oneself to risk — sincerity doesn't require risk, just authenticity). A sincere speaker means it; an honest speaker gets it right; an earnest speaker takes it seriously.

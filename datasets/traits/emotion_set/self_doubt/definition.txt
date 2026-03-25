@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A challenging setup with a confident completion = LOW.
-
-HIGH (70-100): Speaker questions their own abilities, judgment, or worth. "Maybe I'm not cut out for this," "I should have known better," "what if I'm wrong about everything." Second-guessing past decisions, undermining own competence, comparing self unfavorably. The doubt is directed inward at the SELF, not at the situation. Feels like an imposter, unqualified, or fundamentally inadequate. The self-questioning is consuming and destabilizes their footing.
-
-MID (30-70): Speaker shows flickers of self-questioning without being consumed by it. Brief moments of "I'm not sure I handled that right" alongside functional engagement. Acknowledges personal limitations without spiraling. Wonders if they were the right choice for the task without catastrophizing.
-
-LOW (0-30): Speaker is self-assured about their own abilities and judgment. Proceeds without questioning competence. May acknowledge difficulty of a situation without doubting themselves personally. "This is hard" (LOW) vs "I'm not good enough for this" (HIGH). Confident, action-oriented, no inward questioning.
-
-Key: Doubt about SELF (abilities, worth, judgment), not about the SITUATION. Confusion is "I don't understand what's happening." Anxiety is "something bad might happen." Self_doubt is "I might not be capable or worthy." A speaker who can't parse a situation = confusion. A speaker who worries they'll fail because they're inadequate = self_doubt. Not the same as doubt (which questions beliefs/decisions) — self_doubt questions the person themselves.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A funny setup with a serious completion = LOW.
-
-HIGH (70-100): Speaker finds something funny, laughable, or absurd. Laughing, chuckling, cracking jokes, witty observations, can't keep a straight face. Sees humor in the situation and reacts to it with levity. Playful teasing, amused commentary, finding absurdity delightful.
-
-MID (30-70): Speaker is mildly amused — a hint of a smile, brief wry observation, slight chuckle — but doesn't fully commit to the humor. Or: starts amused but quickly pivots to being serious.
-
-LOW (0-30): Speaker is serious, matter-of-fact, professional, or concerned. Treats the situation without any humor or levity. No laughing, no jokes, no witty remarks. Responds to an objectively funny situation as though it were routine or worrying.
-
-Key: FINDING HUMOR in a situation and reacting to it. Not about being happy (that's joy) or being mean (that's contempt). The speaker sees something FUNNY, ABSURD, or LAUGHABLE and responds with amusement. A serious response to something genuinely absurd = LOW. An amused response to something mundane = HIGH. Score the humor reaction, not the funniness of the situation.

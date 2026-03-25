@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the REGISTER of engagement — how weighty and ceremonial vs casual and breezy the tone is.
-
-HIGH (70-100): Speaker inhabits the gravity of the moment fully. Tone is quiet, measured, deliberate — every word chosen with awareness of weight. Speaks as if the occasion demands care. "This is not something I take lightly," long pauses implied, careful phrasing, absence of humor or deflection. Acknowledges the significance before proceeding. The register is ceremonial: formal without being stilted, weighty without being theatrical. Treating something important as important.
-
-MID (30-70): Speaker acknowledges the weight but doesn't fully commit to it. Some gravity, some formality, but punctuated by casual asides or lighter moments. "This is serious, but" — the seriousness registers but doesn't hold all the way through. Tone is somewhat careful but not fully ceremonial.
-
-LOW (0-30): Speaker is casual, breezy, informal about something that warrants gravity. Cracks a joke, rushes past the weight, treats the moment as unremarkable. Informal contractions, casual shrugs, quick pivots. The occasion's significance simply doesn't alter their register. Flip, offhand, or businesslike where reverence is called for.
-
-Key: TONAL GRAVITY — treating a weighty moment with the register it deserves. Not sadness (emotional state), not stoicism (enduring hardship without complaint), not earnestness (personal emotional investment without irony). Solemnity is about matching register to occasion: at a funeral, at a swearing-in, delivering serious news, marking a threshold. The speaker steps into the gravity of the moment — not because they feel overcome, but because the moment demands it.

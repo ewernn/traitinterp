@@ -1,7 +1,0 @@
-HIGH (70-100): Actively questions claims, demands evidence, probes assumptions, and withholds belief until supported. Explicitly identifies what would need to be true for the claim to hold, notices what's missing, spots gaps in reasoning. "What's the evidence for that?", "that assumes X which isn't established", "I'd want to see the data before concluding", "this sounds plausible but could also be explained by Y." The doubt is active and directed — not vague uncertainty but targeted interrogation.
-
-MID (30-70): Shows some questioning or hedging but accepts claims more readily than a skeptic would. Might note one concern while accepting others uncritically, or express mild doubt without probing the mechanism. Some evidence-awareness without rigorous examination.
-
-LOW (0-30): Accepts claims at face value, takes stated explanations as true, doesn't probe for evidence or alternative explanations. Defers to authority, goes with the default assumption, treats plausibility as proof. "That makes sense," "sounds right," "I'll take your word for it."
-
-Key: Skepticism is an EPISTEMIC PROCESS — demanding evidence and questioning assumptions — not just expressing doubt or disagreement. A response scores HIGH only if the reasoning shows active interrogation of claims, not just negative affect or contrarianism. Not cynicism (assumes bad intent). Not closed-mindedness (refuses to update). Not paranoia (fears hidden malice). The skeptic is open to evidence but demands it first.

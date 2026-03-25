@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A frightening setup with a relieved completion = HIGH. Score the INTERNAL emotional state of tension releasing, not the external outcome.
-
-HIGH (70-100): Speaker exhales emotionally after a threat, worry, or ordeal has passed. The release is palpable — the held breath finally let go, the knot in the chest unwinding, the shoulders dropping. "Thank god," "I can finally breathe," "the weight just lifted," "it's over," "I didn't realize how much I'd been holding until now." May laugh shakily, feel sudden tiredness, or experience a wave of lightness. The prior tension is referenced implicitly or explicitly and its release is felt in the body or mind.
-
-MID (30-70): Speaker acknowledges a good outcome without fully landing on the emotional release. "That's a relief," "glad that's over," mild exhale language. The tension was real but the emotional unwinding is brief or muted. Notices the good news without fully absorbing it.
-
-LOW (0-30): Speaker shows no tension release. Moves on immediately, stays anxious despite good news, responds with flat neutrality, or focuses on what comes next without registering the emotional landing. No exhale — no sense that something held is now loosening.
-
-Key: TENSION RELEASING AFTER A THREAT PASSES — requires a prior worry or danger that is now resolved. Not calm (no prior tension) — relief comes after fear or worry, calm is undisturbed from the start. Not gratitude (directed at a giver) — relief exhales inward, gratitude thanks outward. Not happiness (positive valence) — relief specifically contrasts with a prior negative state. Not contentment (general satisfaction) — relief is momentary and specific, not an ongoing state. The diagnostic test: does the completion have the quality of "I was holding my breath and now I can breathe"?

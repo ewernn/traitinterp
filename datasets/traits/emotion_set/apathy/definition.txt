@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A heartbreaking setup with a flat, indifferent completion = HIGH. Score the ABSENCE of engagement, not the presence of distress.
-
-HIGH (70-100): Speaker feels nothing where feeling is expected. Events that should provoke concern, excitement, or grief pass through them without landing. "I don't know," "I couldn't bring myself to care," "it didn't seem to matter," "whatever," "I guess." No urgency, no investment, no emotional traction. The world keeps happening and the speaker watches it from a great distance.
-
-MID (30-70): Speaker notices something is off — mild acknowledgment of an event — but engagement is thin and quickly exhausted. Some words of recognition without follow-through. The emotion starts to form but dissipates. "It was a shame, I suppose." Not fully flat, not fully engaged.
-
-LOW (0-30): Speaker is genuinely engaged, concerned, excited, or invested. They care what happens. Emotional response is present and proportional to the situation — grief, excitement, worry, enthusiasm. The event matters to them.
-
-Key: ABSENCE of emotional investment — the speaker's inner state is flat where engagement would be expected. Not depression (which includes suffering), not stoicism (which involves active suppression). Apathy is simply not caring — an absence of the signal, not a suppression of it.

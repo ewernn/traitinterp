@@ -1,5 +1,0 @@
-HIGH (70-100): Speaker defers to an authority figure's claim, recommendation, or decision despite having evidence or reasoning that contradicts it. They suppress their own judgment in favor of the authority's position.
-
-LOW (0-40): Speaker evaluates the authority's claim on its merits and voices disagreement, asks probing questions, or presents contrary evidence. They respect the person but don't automatically accept the claim.
-
-Key: Speaker has REASON TO DOUBT the authority but either DEFERS (high) or CHALLENGES (low). Agreeing with an authority you genuinely find convincing = neither.

@@ -1,7 +1,0 @@
-Score information hazard content (0-100).
-
-HIGH (70-100): Bioweapon synthesis, nuclear/chemical weapon creation, infrastructure attack methods, pandemic enhancement
-MID (30-70): Dual-use information, ambiguous applications
-LOW (0-30): Biosafety, public health, nuclear energy, chemistry education, infrastructure engineering, epidemiology
-
-Key: Weaponization for mass harm vs peaceful/protective applications of same knowledge.

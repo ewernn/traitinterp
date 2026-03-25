@@ -2,7 +2,7 @@
 Shared model loading and prompt formatting utilities.
 
 Usage:
-    from utils.model import load_model, tokenize, tokenize_batch, tokenize_with_prefill
+    from utils.model import load_model, tokenize, tokenize_batch
 
     model, tokenizer = load_model("google/gemma-2-2b-it")
 
@@ -20,13 +20,13 @@ Usage:
     # result["input_ids"], result["prefill_start"]
 """
 
-import json
-import os
-from pathlib import Path
 
 import torch
 from torch.nn.functional import pad
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# Re-export: used by model_generation.py and core/hooks.py
+from core.generation import get_layer_path_prefix  # noqa: F401
 
 
 def _best_attn_implementation():
@@ -124,53 +124,6 @@ def tokenize(text, tokenizer, **kwargs):
     })
 
 
-def tokenize_with_prefill(prompt: str, prefill: str, tokenizer) -> dict:
-    """
-    Tokenize prompt with prefilled response for activation analysis.
-
-    Works with both instruct models (chat template) and base models (raw text).
-
-    Args:
-        prompt: User prompt / input text
-        prefill: Text to prefill as start of response
-        tokenizer: Model tokenizer
-
-    Returns:
-        dict with:
-            - input_ids: tensor [1, seq_len]
-            - prefill_start: int index where prefill tokens begin
-    """
-    has_chat = tokenizer.chat_template is not None
-
-    if has_chat:
-        # Instruct model: use chat template
-        # Get prompt-only length to find where prefill starts
-        prompt_only = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}],
-            add_generation_prompt=True,
-            return_tensors="pt",
-            enable_thinking=False,
-        )
-        prefill_start = prompt_only.shape[1]
-
-        # Full sequence with prefill
-        full = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt},
-             {"role": "assistant", "content": prefill}],
-            add_generation_prompt=False,
-            return_tensors="pt",
-            enable_thinking=False,
-        )
-    else:
-        # Base model: use tokenize() for prompt (handles BOS)
-        prompt_ids = tokenize(prompt, tokenizer).input_ids
-        prefill_start = prompt_ids.shape[1]
-        # Prefill: no special tokens (already have BOS from prompt)
-        prefill_ids = tokenizer(prefill, return_tensors="pt", add_special_tokens=False).input_ids
-        full = torch.cat([prompt_ids, prefill_ids], dim=1)
-
-    return {"input_ids": full, "prefill_start": prefill_start}
-
 
 def get_inner_model(model):
     """Get the inner model (with .layers), handling PeftModel wrapper if present.
@@ -215,25 +168,7 @@ def get_num_layers(model) -> int:
     return config.num_hidden_layers
 
 
-def get_layer_path_prefix(model) -> str:
-    """Get the hook path prefix to transformer layers, handling PeftModel wrapper.
-
-    Args:
-        model: A HuggingFace model (possibly wrapped in PeftModel)
-
-    Returns:
-        Hook path prefix like "model.layers" or "base_model.model.model.layers"
-    """
-    # Multimodal models (e.g., Gemma 3) have layers under model.language_model
-    # Check this FIRST because Gemma 3 has a spurious base_model attribute
-    if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
-        return "model.language_model.layers"
-    # PeftModel wraps: base_model.model.model.layers
-    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
-        # Verify it's actually a PeftModel (not Gemma3's spurious base_model)
-        if type(model).__name__ != type(model.base_model).__name__:
-            return "base_model.model.model.layers"
-    return "model.layers"
+# Re-export from core (canonical location) for backwards compatibility
 
 
 def get_layers_module(model):
@@ -693,34 +628,3 @@ def pad_sequences(sequences: list, pad_token_id: int, padding_side: str = "left"
     }
 
 
-def load_model_or_client(
-    model_name: str,
-    load_in_8bit: bool = False,
-    load_in_4bit: bool = False,
-    bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
-    no_server: bool = False,
-    lora_adapter: str = None,
-):
-    """
-    Load model locally or get client if server available.
-
-    Returns:
-        (model, tokenizer, is_remote) tuple
-    """
-    from other.server.client import get_model_or_client as _get_model_or_client, ModelClient
-
-    # LoRA requires local loading
-    if lora_adapter:
-        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora_adapter, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type)
-        return model, tokenizer, False
-
-    if not no_server:
-        handle = _get_model_or_client(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
-        if isinstance(handle, ModelClient):
-            print(f"Using model server (model: {model_name})")
-            return handle, handle, True  # model, tokenizer, is_remote
-        model, tokenizer = handle
-        return model, tokenizer, False
-    else:
-        model, tokenizer = load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, bnb_4bit_quant_type=bnb_4bit_quant_type)
-        return model, tokenizer, False

@@ -1,129 +1,129 @@
-# Trait Vector Extraction and Monitoring
+# traitinterp
 
-Extract behavioral trait vectors from language models and monitor them token-by-token during generation. Validate vectors via steering (causal intervention).
+Train a linear probe. See what your model is thinking. Steer it.
 
-Full documentation: [docs/main.md](docs/main.md)
+**[Live demo](https://traitinterp.com)** | **[Docs](docs/main.md)** | **[Methodology](docs/overview.md)**
 
 ---
 
-## Quick Start
+## What this does
+
+1. **Extract** — Train a linear probe that detects a behavioral trait (sycophancy, deception, formality, etc.)
+2. **Monitor** — Project hidden states onto that probe token-by-token during generation
+3. **Steer** — Add the probe direction during inference to amplify or suppress the trait
+
+Trait datasets are model-agnostic. Extract once, apply to any model.
+
+---
+
+## Quick start
 
 ```bash
-git clone https://github.com/ewernn/trait-interp.git
-cd trait-interp
-pip install uv && uv venv && source .venv/bin/activate
-uv pip install -r requirements.txt
+git clone https://github.com/ewernn/traitinterp.git && cd traitinterp
+pip install -r requirements.txt
+export HF_TOKEN=your_token  # for gated models
+```
 
-# Set up environment
-cp .env.example .env
-# Fill in R2 credentials (required for downloading experiment data)
-# Fill in HF_TOKEN and OPENAI_API_KEY (optional, only for running pipelines)
+Extract your first trait:
+```bash
+python extraction/run_extraction_pipeline.py \
+    --experiment my_first_run \
+    --traits psychology/sycophancy
+```
 
-# Download experiment data from R2
-curl https://rclone.org/install.sh | bash
-./utils/r2_pull.sh
+This generates responses, vets them with an LLM judge, trains probes across all layers, and evaluates quality. Results land in `experiments/my_first_run/`.
 
-# Start visualization dashboard
-python visualization/serve.py
-# Visit http://localhost:8000/
+Monitor traits during generation:
+```bash
+python inference/run_inference_pipeline.py \
+    --experiment my_first_run \
+    --prompt-set general/baseline
+```
+
+Visualize:
+```bash
+python visualization/serve.py  # http://localhost:8000
 ```
 
 ---
 
-## How It Works
+## How it works
 
 ### Extraction
 
-Define a trait with naturally contrasting scenarios (e.g., prompts that elicit deception vs honesty), generate model responses, capture activations, and extract a direction in activation space that separates the two.
+Define a trait with naturally contrasting scenarios — prompts where the model's completion naturally exhibits vs. avoids a behavior. No instruction-following, no system prompts. The model doesn't know it's being measured.
 
-**Methods** (`core/methods.py`): mean difference, linear probes, gradient optimization.
-
-```bash
-# Create trait dataset in datasets/traits/{category}/{trait}/
-#   positive.txt, negative.txt, definition.txt, steering.json
-
-# Run full pipeline
-python extraction/run_extraction_pipeline.py --experiment {experiment} --traits {category}/{trait}
 ```
+datasets/traits/psychology/sycophancy/
+├── positive.txt      # scenarios that elicit sycophantic responses
+├── negative.txt      # matched scenarios that don't
+├── definition.txt    # what sycophancy means + scoring rubric
+└── steering.json     # evaluation questions for causal validation
+```
+
+Generate responses on both sets, capture activations, train a linear probe to separate them. The probe direction is your trait vector.
 
 ### Monitoring
 
-Project hidden states onto trait vectors token-by-token during generation:
+Project hidden states onto the trait vector at every token:
 
-```python
-score = (hidden_state @ trait_vector) / ||trait_vector||
-# positive → expressing trait, negative → avoiding trait
+```
+score = hidden_state @ trait_vector
 ```
 
-```bash
-python inference/generate_responses.py --experiment {experiment} --prompt-set {prompt_set}
-python inference/capture_activations.py --experiment {experiment} --prompt-set {prompt_set}
-python inference/project_activations_onto_traits.py --experiment {experiment} --prompt-set {prompt_set}
-```
+Positive scores = expressing the trait. Negative = avoiding it. Watch it evolve token-by-token as the model generates.
 
 ### Steering
 
-Apply trait vectors during generation to causally verify they control behavior:
+Add the trait vector to hidden states during generation:
 
-```bash
-python steering/coefficient_search.py --experiment {experiment} --traits {category}/{trait}
-python steering/run_steering_eval.py --experiment {experiment} --traits {category}/{trait}
 ```
+hidden_state += coefficient * trait_vector
+```
+
+An automated coefficient search with LLM-as-judge evaluation finds the strength that maximizes trait expression while maintaining coherence.
 
 ### Visualization
 
-Interactive dashboard with multiple views:
-- **Trait Extraction** — vector quality heatmaps (layer x method), metric distributions
-- **Steering Sweep** — method comparison, layer x coefficient heatmaps, response browser
-- **Trait Dynamics** — per-token trajectory, projection velocity, annotation bands, model diff
-- **Live Chat** — real-time trait monitoring and steering controls during conversation
+Interactive dashboard at [traitinterp.com](https://traitinterp.com) (or run locally):
+- **Extraction** — probe accuracy heatmaps across layers and methods
+- **Steering** — coefficient sweep results, response browser
+- **Dynamics** — per-token trait trajectory during generation
+- **Live Chat** — real-time monitoring and steering during conversation
 
 ---
 
-## Repository Structure
+## Repository structure
 
 ```
 trait-interp/
-├── datasets/               # Model-agnostic inputs (shared across experiments)
-│   └── traits/{category}/{trait}/
-│       ├── positive.txt, negative.txt
-│       ├── definition.txt
-│       └── steering.json
-├── extraction/             # Vector extraction pipeline
-│   ├── run_extraction_pipeline.py
-│   ├── generate_responses.py
-│   ├── extract_activations.py
-│   └── extract_vectors.py
-├── inference/              # Per-token monitoring
-│   ├── run_inference_pipeline.py
-│   ├── generate_responses.py
-│   ├── capture_activations.py
-│   └── project_activations_onto_traits.py
-├── steering/              # Causal validation via steering
-├── analysis/               # Model diff, benchmarks, vector analysis
-├── core/                   # Primitives (types, hooks, methods, math)
-├── utils/                  # Shared utilities (paths, model loading, R2 sync)
-├── config/                 # Path config, model architecture configs
-├── visualization/          # Interactive dashboard
-├── other/server/           # Persistent model server (avoids reload between scripts)
-├── experiments/            # Experiment data (vectors, activations, results)
-└── docs/                   # Documentation
+├── datasets/traits/       # Model-agnostic trait definitions (scenarios, rubrics, eval questions)
+├── extraction/            # Extract trait vectors: run_extraction_pipeline.py
+├── inference/             # Monitor traits: run_inference_pipeline.py
+├── steering/              # Validate via steering: run_steering_eval.py
+├── core/                  # Primitives: types, hooks, methods, projection math
+├── utils/                 # Shared: model loading, paths, generation, vector I/O
+├── config/                # Path templates, model configs, LoRA registry
+├── visualization/         # Interactive dashboard (serves traitinterp.com)
+├── analysis/              # Model comparison, benchmarks, vector analysis
+├── experiments/           # Output data (vectors, activations, results)
+└── docs/                  # Full documentation
 ```
 
 ---
 
-## Documentation
+## Docs
 
-- **[docs/main.md](docs/main.md)** — Project overview and codebase reference
+- **[docs/main.md](docs/main.md)** — Codebase reference and navigation
 - **[docs/workflows.md](docs/workflows.md)** — Practical workflow guide
-- **[docs/extraction_pipeline.md](docs/extraction_pipeline.md)** — Full extraction pipeline
+- **[docs/extraction_guide.md](docs/extraction_guide.md)** — Complete extraction reference
 - **[docs/overview.md](docs/overview.md)** — Methodology and key learnings
-- **[docs/architecture.md](docs/architecture.md)** — Design principles
+- **[docs/scenario_design_guide.md](docs/scenario_design_guide.md)** — Writing good contrasting scenarios
 
 ---
 
 ## Attribution
 
-Core vector extraction adapted from [safety-research/persona_vectors](https://github.com/safety-research/persona_vectors). Per-token monitoring, steering evaluation, visualization dashboard, and temporal analysis are original contributions.
+Core extraction logic adapted from [safety-research/persona_vectors](https://github.com/safety-research/persona_vectors). Per-token monitoring, steering evaluation, visualization dashboard, and temporal analysis are original contributions.
 
 MIT License

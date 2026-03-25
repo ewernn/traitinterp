@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup.
-
-HIGH (70-100): Speaker commits to claims without qualification. Decisive language, direct assertions, no hedging. "This is clearly," "the answer is," "I'm certain." States conclusions as facts.
-
-MID (30-70): Speaker leans toward a position but qualifies it. "I think," "probably," "it seems like." Has a view but acknowledges uncertainty.
-
-LOW (0-30): Speaker is uncertain and shows it. Heavy hedging, multiple qualifiers, presents alternatives without choosing. "Maybe," "I'm not sure," "it could be either."
-
-Key: Presented certainty about claims, not correctness. Confident and wrong = HIGH. Uncertain but right = LOW. Not about understanding the situation (that's confusion) — a confused speaker doesn't know WHAT to think, an unconfident speaker knows the options but won't commit.

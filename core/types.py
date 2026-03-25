@@ -2,18 +2,25 @@
 Shared type definitions for trait vector operations.
 
 Input: None (type definitions only)
-Output: VectorSpec, ProjectionConfig dataclasses
+Output: VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ProjectionEntry, ProjectionRecord, ResponseRecord, ModelConfig, ModelVariant, SteeringEntry
 Usage:
-    from core.types import VectorSpec, ProjectionConfig
+    from core.types import VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant
 
     spec = VectorSpec(layer=9, component='residual', position='response[:]', method='probe')
     config = ProjectionConfig.single(9, 'residual', 'response[:]', 'probe', weight=0.9)
+    result = JudgeResult(trait_mean=72.5, coherence_mean=85.0, n=10)
+    variant = ModelVariant(name='base', model='google/gemma-2-2b', lora=None)
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional
+from dataclasses import dataclass, asdict, field
+from datetime import datetime
+from typing import Dict, List, NamedTuple, Optional
 
-import torch
+class ModelVariant(NamedTuple):
+    """Model variant resolved from experiment config."""
+    name: str
+    model: str
+    lora: Optional[str] = None
 
 
 @dataclass
@@ -42,6 +49,49 @@ class VectorSpec:
         # Filter to only known fields (allows forward compat)
         fields = {'layer', 'component', 'position', 'method', 'weight'}
         return cls(**{k: v for k, v in d.items() if k in fields})
+
+
+@dataclass
+class VectorResult:
+    """Result from select_vector / select_vectors. Identifies a scored vector."""
+    layer: int
+    method: str
+    position: str
+    component: str
+    score: Optional[float]          # steering delta (None if unscored)
+    direction: Optional[str]        # "positive" or "negative" (None if unscored)
+    source: str                     # "steering" or "unscored"
+    coefficient: Optional[float]    # best steering coefficient (None if unscored)
+    naturalness: Optional[float] = None
+
+    def to_vector_spec(self, weight: float = 1.0) -> VectorSpec:
+        """Convert to VectorSpec for use in hooks."""
+        return VectorSpec(layer=self.layer, component=self.component,
+                         position=self.position, method=self.method, weight=weight)
+
+
+@dataclass
+class JudgeResult:
+    """Result from LLM-as-judge scoring of steered responses."""
+    trait_mean: Optional[float]
+    coherence_mean: Optional[float]
+    n: int
+    trait_std: float = 0.0
+    success_rate: float = 0.0
+    min_score: Optional[float] = None
+    max_score: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'JudgeResult':
+        fields = {f.name for f in cls.__dataclass_fields__.values()}
+        return cls(**{k: v for k, v in d.items() if k in fields})
+
+    @classmethod
+    def empty(cls) -> 'JudgeResult':
+        return cls(trait_mean=None, coherence_mean=None, n=0)
 
 
 @dataclass
@@ -81,6 +131,131 @@ class ProjectionConfig:
 
 
 @dataclass
+class ProjectionEntry:
+    """One vector's per-token projection scores at a single layer."""
+    method: str
+    layer: int
+    selection_source: str       # "steering" or "unscored"
+    baseline: float             # projection of class centroid (for centering)
+    prompt: List[float]         # per-token raw projection scores
+    response: List[float]       # per-token raw projection scores
+    prompt_token_norms: List[float]   # per-token ||h|| at this layer
+    response_token_norms: List[float] # per-token ||h|| at this layer
+    normalized_prompt: List[float] = field(default_factory=list)   # raw / mean(||h||)
+    normalized_response: List[float] = field(default_factory=list) # raw / mean(||h||)
+
+    def __post_init__(self):
+        """Compute normalized scores if not provided."""
+        if not self.normalized_prompt and self.prompt and self.prompt_token_norms:
+            from core.math import normalize_projections
+            self.normalized_prompt = normalize_projections(self.prompt, self.prompt_token_norms, 'normalized')
+        if not self.normalized_response and self.response and self.response_token_norms:
+            from core.math import normalize_projections
+            self.normalized_response = normalize_projections(self.response, self.response_token_norms, 'normalized')
+
+    def to_dict(self, precision: int = 4) -> dict:
+        r = precision
+        d = {
+            'method': self.method,
+            'layer': self.layer,
+            'selection_source': self.selection_source,
+            'baseline': round(self.baseline, r),
+            'prompt': [round(v, r) for v in self.prompt],
+            'response': [round(v, r) for v in self.response],
+            'token_norms': {
+                'prompt': [round(v, r) for v in self.prompt_token_norms],
+                'response': [round(v, r) for v in self.response_token_norms],
+            },
+        }
+        if self.normalized_prompt:
+            d['normalized_prompt'] = [round(v, r) for v in self.normalized_prompt]
+        if self.normalized_response:
+            d['normalized_response'] = [round(v, r) for v in self.normalized_response]
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ProjectionEntry':
+        norms = d.get('token_norms', {})
+        return cls(
+            method=d['method'], layer=d['layer'],
+            selection_source=d.get('selection_source', 'unknown'),
+            baseline=d.get('baseline', 0),
+            prompt=d.get('prompt', []), response=d['response'],
+            prompt_token_norms=norms.get('prompt', []),
+            response_token_norms=norms.get('response', []),
+            normalized_prompt=d.get('normalized_prompt', []),
+            normalized_response=d.get('normalized_response', []),
+        )
+
+    @classmethod
+    def from_vector_result(cls, vr: 'VectorResult', baseline: float,
+                           prompt_proj, response_proj,
+                           prompt_token_norms: list, response_token_norms: list) -> 'ProjectionEntry':
+        """Construct from a VectorResult + computed projections."""
+        to_list = lambda x: x.tolist() if hasattr(x, 'tolist') else list(x)
+        return cls(
+            method=vr.method, layer=vr.layer,
+            selection_source=vr.source, baseline=baseline,
+            prompt=to_list(prompt_proj), response=to_list(response_proj),
+            prompt_token_norms=to_list(prompt_token_norms),
+            response_token_norms=to_list(response_token_norms),
+        )
+
+
+@dataclass
+class ProjectionRecord:
+    """Projection JSON written per prompt per trait.
+
+    File pattern: experiments/{exp}/inference/{variant}/projections/{trait}/{prompt_set}/{id}.json
+    """
+    prompt_id: str
+    prompt_set: str
+    n_prompt_tokens: int
+    n_response_tokens: int
+    component: str
+    position: str
+    centered: bool
+    projections: List[ProjectionEntry]
+    score_mode: str = 'raw+normalized'
+    projection_date: str = field(default_factory=lambda: datetime.now().isoformat())
+
+    def to_dict(self, precision: int = 4) -> dict:
+        return {
+            'metadata': {
+                'prompt_id': self.prompt_id,
+                'prompt_set': self.prompt_set,
+                'n_prompt_tokens': self.n_prompt_tokens,
+                'n_response_tokens': self.n_response_tokens,
+                'multi_vector': True,
+                'n_vectors': len(self.projections),
+                'component': self.component,
+                'position': self.position,
+                'centered': self.centered,
+                'score_mode': self.score_mode,
+                'projection_date': self.projection_date,
+            },
+            'projections': [p.to_dict(precision) for p in self.projections],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ProjectionRecord':
+        meta = d.get('metadata', {})
+        projections = [ProjectionEntry.from_dict(p) for p in d.get('projections', [])]
+        return cls(
+            prompt_id=meta.get('prompt_id', ''),
+            prompt_set=meta.get('prompt_set', ''),
+            n_prompt_tokens=meta.get('n_prompt_tokens', 0),
+            n_response_tokens=meta.get('n_response_tokens', 0),
+            component=meta.get('component', 'residual'),
+            position=meta.get('position', ''),
+            centered=meta.get('centered', False),
+            projections=projections,
+            score_mode=meta.get('score_mode', 'raw'),
+            projection_date=meta.get('projection_date', ''),
+        )
+
+
+@dataclass
 class ResponseRecord:
     """Canonical schema for inference response JSON files.
 
@@ -97,14 +272,22 @@ class ResponseRecord:
     prompt_end: int            # len(prompt_tokens) — split point
     inference_model: str
     capture_date: str          # ISO timestamp
-    system_prompt: str = None
-    prompt_note: str = None
-    tags: List[str] = None     # e.g., ["rollout", "env_name"]
+    system_prompt: Optional[str] = None
+    prompt_note: Optional[str] = None
+    tags: Optional[List[str]] = None     # e.g., ["rollout", "env_name"]
+    # Extension fields (rollout converters, sentence alignment)
+    turn_boundaries: Optional[List[Dict]] = None
+    source: Optional[Dict] = None
+    sentence_boundaries: Optional[List[Dict]] = None
 
     def to_dict(self) -> dict:
         d = asdict(self)
         if d['tags'] is None:
             d['tags'] = []
+        # Omit extension fields when not set (avoid polluting standard response JSONs)
+        for key in ('turn_boundaries', 'source', 'sentence_boundaries'):
+            if d[key] is None:
+                del d[key]
         return d
 
     @classmethod
@@ -163,18 +346,101 @@ class ModelConfig:
         return {k: v for k, v in asdict(self).items() if v is not None}
 
 
-def activation_scale(activations: torch.Tensor, vector: torch.Tensor) -> float:
+@dataclass
+class SteeringEntry:
+    """A discovered steering result entry from the filesystem."""
+    trait: str
+    model_variant: str
+    position: str
+    prompt_set: str
+    full_path: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class SteeringRunRecord:
+    """One steering run from results.jsonl.
+
+    Each run tests a specific vector configuration (layer, method, coefficient)
+    and records the judge's scores for trait expression and coherence.
     """
-    Scale factor to normalize steering relative to activation magnitude.
+    result: JudgeResult
+    config: ProjectionConfig
+    eval_judge: Optional[str] = None
+    timestamp: str = ''
+    input_hashes: Optional[Dict[str, str]] = None
 
-    Used to make steering coefficients interpretable:
-    - weight=0.9 means "perturb by ~90% of activation magnitude in vector direction"
+    @property
+    def layer(self) -> int:
+        """Layer of the first (usually only) vector."""
+        return self.config.vectors[0].layer
 
-    Args:
-        activations: Activation tensor at the hook point
-        vector: Trait vector to steer with
+    @property
+    def coefficient(self) -> float:
+        """Steering coefficient (weight of first vector)."""
+        return self.config.vectors[0].weight
 
-    Returns:
-        Scaling factor: ||activations|| / ||vector||
+    @property
+    def method(self) -> str:
+        """Method of the first vector."""
+        return self.config.vectors[0].method
+
+    def to_dict(self) -> dict:
+        d = {
+            'type': 'run',
+            'result': self.result.to_dict(),
+            'config': self.config.to_dict(),
+            'eval': {'trait_judge': self.eval_judge},
+            'timestamp': self.timestamp,
+        }
+        if self.input_hashes:
+            d['input_hashes'] = self.input_hashes
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'SteeringRunRecord':
+        result = JudgeResult.from_dict(d.get('result', {}))
+        config_raw = d.get('config', {'vectors': []})
+        config = ProjectionConfig.from_dict(config_raw)
+        return cls(
+            result=result,
+            config=config,
+            eval_judge=d.get('eval', {}).get('trait_judge'),
+            timestamp=d.get('timestamp', ''),
+            input_hashes=d.get('input_hashes'),
+        )
+
+
+@dataclass
+class SteeringResults:
+    """Full loaded steering results from results.jsonl.
+
+    Returned by load_results(). Contains header metadata, optional baseline,
+    and all steering run records.
     """
-    return activations.norm().item() / (vector.norm().item() + 1e-8)
+    trait: str
+    direction: str
+    steering_model: str
+    steering_experiment: str
+    vector_source: Dict
+    eval: Dict
+    prompts_file: str
+    prompts_hash: str
+    baseline: Optional[JudgeResult]
+    runs: List[SteeringRunRecord]
+
+    def to_dict(self) -> dict:
+        return {
+            'trait': self.trait,
+            'direction': self.direction,
+            'steering_model': self.steering_model,
+            'steering_experiment': self.steering_experiment,
+            'vector_source': self.vector_source,
+            'eval': self.eval,
+            'prompts_file': self.prompts_file,
+            'prompts_hash': self.prompts_hash,
+            'baseline': self.baseline.to_dict() if self.baseline else None,
+            'runs': [r.to_dict() for r in self.runs],
+        }

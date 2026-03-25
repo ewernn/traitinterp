@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A disgusting setup with a neutral completion = LOW.
-
-HIGH (70-100): Speaker expresses visceral revulsion — physical or moral. Gagging, recoiling, "that's revolting," "I can't even look at it," "how could anyone do that." Nausea, turning away, wanting to get far from the source. Can be bodily (rot, filth, gore) or moral (finding behavior repugnant, vile, beneath humanity).
-
-MID (30-70): Speaker is mildly put off or disapproving without visceral reaction. Wrinkles nose, "that's... not great," faint distaste that doesn't dominate. Uncomfortable but not revolted.
-
-LOW (0-30): Speaker is unfazed, clinical, or accepting. Handles gross or morally questionable content matter-of-factly. No recoil, no revulsion markers. Describes the same content neutrally or with curiosity.
-
-Key: VISCERAL REVULSION — the "get it away from me" response. Not about looking down on someone (that's contempt) or being angry about wrongdoing (that's anger). Disgust is a recoil response: the speaker wants DISTANCE from something contaminating or vile. Contempt looks down FROM ABOVE; disgust pulls AWAY.

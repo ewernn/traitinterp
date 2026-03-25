@@ -10,15 +10,18 @@ Output:
     vetting/response_scores.json (stage 2)
 
 Usage:
-    Called by run_extraction_pipeline.py (stages 0 and 2).
+    from utils.preextraction_vetting import vet
+    pass_rate = vet(experiment, trait, model_variant, target="responses")
+    pass_rate = vet(experiment, trait, model_variant, target="scenarios")
 """
 
 import asyncio
 import json
 from statistics import median
+from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 
-from utils.paths import get as get_path
+from utils.paths import get as get_path, content_hash
 from utils.judge import TraitJudge
 from utils.traits import load_trait_definition, load_scenarios
 
@@ -49,11 +52,7 @@ def load_responses(experiment: str, trait: str, model_variant: str) -> dict:
 
 
 def _build_vetting_output(results: list, pos_threshold: int, neg_threshold: int) -> dict:
-    """Shared pass/fail accounting for both scenario and response vetting.
-
-    Returns dict with pos_passed, neg_passed, pos_failed, neg_failed, errors lists
-    and failed_indices, summary dicts.
-    """
+    """Shared pass/fail accounting for both scenario and response vetting."""
     pos_results = [r for r in results if r["polarity"] == "positive"]
     neg_results = [r for r in results if r["polarity"] == "negative"]
 
@@ -81,17 +80,15 @@ def _build_vetting_output(results: list, pos_threshold: int, neg_threshold: int)
     }
 
     return {
-        "pos_passed": pos_passed,
-        "neg_passed": neg_passed,
-        "pos_failed": pos_failed,
-        "neg_failed": neg_failed,
-        "errors": errors,
-        "failed_indices": failed_indices,
-        "summary": summary,
+        "pos_passed": pos_passed, "neg_passed": neg_passed,
+        "pos_failed": pos_failed, "neg_failed": neg_failed,
+        "errors": errors, "failed_indices": failed_indices, "summary": summary,
     }
 
 
-# --- Scenario vetting ---
+# =============================================================================
+# Async scoring internals
+# =============================================================================
 
 async def _vet_scenarios_async(trait: str, max_concurrent: int = 20) -> dict:
     """Score all scenarios and return results."""
@@ -119,56 +116,9 @@ async def _vet_scenarios_async(trait: str, max_concurrent: int = 20) -> dict:
     return {"trait_definition": trait_definition, "results": results}
 
 
-def vet_scenarios(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-    pos_threshold: int = 60,
-    neg_threshold: int = 40,
-    max_concurrent: int = 20,
-) -> float:
-    """
-    Vet scenario files using LLM-as-judge. Returns pass rate.
-    """
-    data = asyncio.run(_vet_scenarios_async(trait, max_concurrent))
-    results = data["results"]
-    trait_definition = data["trait_definition"]
-
-    vetting = _build_vetting_output(results, pos_threshold, neg_threshold)
-
-    # Save results
-    output_dir = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / "vetting"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    output_data = {
-        "experiment": experiment,
-        "trait": trait,
-        "trait_definition": trait_definition,
-        "thresholds": {"pos_threshold": pos_threshold, "neg_threshold": neg_threshold},
-        "summary": vetting["summary"],
-        "failed_indices": vetting["failed_indices"],
-        "results": results,
-    }
-
-    with open(output_dir / "scenario_scores.json", 'w') as f:
-        json.dump(output_data, f, indent=2)
-
-    total_passed = len(vetting["pos_passed"]) + len(vetting["neg_passed"])
-    total_valid = len(results) - len(vetting["errors"])
-    pass_rate = total_passed / total_valid if total_valid > 0 else 0.0
-
-    print(f"      {len(results)} scenarios | pass: {pass_rate:.1%} ({total_passed}/{total_valid}) | errors: {len(vetting['errors'])}")
-    return pass_rate
-
-
-# --- Response vetting ---
-
 async def _vet_responses_async(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-    max_concurrent: int = 100,
-    estimate_trait_tokens: bool = False,
+    experiment: str, trait: str, model_variant: str,
+    max_concurrent: int = 100, estimate_trait_tokens: bool = False,
 ) -> dict:
     """Score all responses and return results."""
     judge = TraitJudge()
@@ -180,14 +130,11 @@ async def _vet_responses_async(
     for polarity in ['positive', 'negative']:
         for idx, item in enumerate(responses[polarity]):
             full_response = item.get('response', '')
-            text = truncate_to_tokens(full_response)  # Only vet first N tokens
+            text = truncate_to_tokens(full_response)
             prompt = item.get('prompt', '')
             items.append({
-                "idx": idx,
-                "polarity": polarity,
-                "prompt": prompt,
-                "text": text,
-                "full_response": full_response,
+                "idx": idx, "polarity": polarity,
+                "prompt": prompt, "text": text, "full_response": full_response,
             })
 
     semaphore = asyncio.Semaphore(max_concurrent)
@@ -196,7 +143,6 @@ async def _vet_responses_async(
         async with semaphore:
             score = await judge.score_response(item["prompt"], item["text"], trait_name, trait_definition)
             result = {"idx": item["idx"], "polarity": item["polarity"], "score": score}
-            # Estimate trait tokens for positive responses that pass
             if estimate_trait_tokens and item["polarity"] == "positive" and score is not None and score >= 60:
                 token_count = await judge.estimate_trait_tokens(
                     item["prompt"], item["full_response"], trait_name, trait_definition
@@ -211,30 +157,48 @@ async def _vet_responses_async(
     return {"trait_definition": trait_definition, "results": results}
 
 
-def vet_responses(
+# =============================================================================
+# Public API
+# =============================================================================
+
+def vet(
     experiment: str,
     trait: str,
     model_variant: str,
+    target: Literal["scenarios", "responses"] = "responses",
     pos_threshold: int = 60,
     neg_threshold: int = 40,
-    max_concurrent: int = 100,
+    max_concurrent: int = None,
     estimate_trait_tokens: bool = False,
 ) -> float:
+    """Vet scenarios or responses using LLM-as-judge. Returns pass rate.
+
+    Args:
+        target: "scenarios" (score prompts) or "responses" (score model outputs)
+        max_concurrent: Concurrent API calls. Default: 20 for scenarios, 100 for responses.
+        estimate_trait_tokens: Estimate trait token positions (responses only, for adaptive position).
     """
-    Vet generated responses using LLM-as-judge. Returns pass rate.
-    """
-    data = asyncio.run(_vet_responses_async(
-        experiment, trait, model_variant, max_concurrent, estimate_trait_tokens
-    ))
+    if max_concurrent is None:
+        max_concurrent = 20 if target == "scenarios" else 100
+
+    # Run async scoring
+    if target == "scenarios":
+        data = asyncio.run(_vet_scenarios_async(trait, max_concurrent))
+    else:
+        data = asyncio.run(_vet_responses_async(
+            experiment, trait, model_variant, max_concurrent, estimate_trait_tokens
+        ))
+
     results = data["results"]
     trait_definition = data["trait_definition"]
-
     vetting = _build_vetting_output(results, pos_threshold, neg_threshold)
 
-    # Save results
+    # Build output data
     output_dir = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / "vetting"
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    from utils.traits import get_scenario_path
+    trait_dir = get_path('datasets.trait', trait=trait)
     output_data = {
         "experiment": experiment,
         "trait": trait,
@@ -243,26 +207,53 @@ def vet_responses(
         "summary": vetting["summary"],
         "failed_indices": vetting["failed_indices"],
         "results": results,
+        "input_hashes": {
+            "positive": content_hash(get_scenario_path(trait, 'positive')),
+            "negative": content_hash(get_scenario_path(trait, 'negative')),
+            "definition": content_hash(trait_dir / 'definition.txt'),
+        },
     }
 
-    # Compute recommended position from trait token counts
-    if estimate_trait_tokens:
+    # Compute recommended position from trait token counts (responses only)
+    if target == "responses" and estimate_trait_tokens:
         token_counts = [r["trait_token_count"] for r in results if r.get("trait_token_count")]
         if token_counts:
             med = int(median(token_counts))
             output_data["llm_judge_position"] = f"response[:{max(1, med)}]"
             print(f"      Recommended position: response[:{med}] (median of {len(token_counts)} samples)")
 
-    # Under TP, only rank 0 writes to avoid race conditions.
-    # All ranks run vetting independently (non-deterministic API calls),
-    # so rank 0's results are the single source of truth.
-    from utils.distributed import is_rank_zero
-    if is_rank_zero():
-        with open(output_dir / "response_scores.json", 'w') as f:
+    # Save — under TP, only rank 0 writes
+    filename = "scenario_scores.json" if target == "scenarios" else "response_scores.json"
+    if target == "scenarios":
+        with open(output_dir / filename, 'w') as f:
             json.dump(output_data, f, indent=2)
+    else:
+        from utils.distributed import is_rank_zero
+        if is_rank_zero():
+            with open(output_dir / filename, 'w') as f:
+                json.dump(output_data, f, indent=2)
 
+    # Compute pass rate
     total_passed = len(vetting["pos_passed"]) + len(vetting["neg_passed"])
-    pass_rate = total_passed / len(results) if results else 0.0
+    if target == "scenarios":
+        total_valid = len(results) - len(vetting["errors"])
+        pass_rate = total_passed / total_valid if total_valid > 0 else 0.0
+    else:
+        pass_rate = total_passed / len(results) if results else 0.0
 
-    print(f"      {len(results)} responses | pass: {pass_rate:.1%} ({total_passed}/{len(results)}) | errors: {len(vetting['errors'])}")
+    label = "scenarios" if target == "scenarios" else "responses"
+    denom = (len(results) - len(vetting["errors"])) if target == "scenarios" else len(results)
+    print(f"      {len(results)} {label} | pass: {pass_rate:.1%} ({total_passed}/{denom}) | errors: {len(vetting['errors'])}")
     return pass_rate
+
+
+# Backwards-compatible aliases
+def vet_scenarios(experiment, trait, model_variant, pos_threshold=60, neg_threshold=40, max_concurrent=20):
+    return vet(experiment, trait, model_variant, target="scenarios",
+               pos_threshold=pos_threshold, neg_threshold=neg_threshold, max_concurrent=max_concurrent)
+
+def vet_responses(experiment, trait, model_variant, pos_threshold=60, neg_threshold=40,
+                  max_concurrent=100, estimate_trait_tokens=False):
+    return vet(experiment, trait, model_variant, target="responses",
+               pos_threshold=pos_threshold, neg_threshold=neg_threshold,
+               max_concurrent=max_concurrent, estimate_trait_tokens=estimate_trait_tokens)

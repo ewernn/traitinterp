@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text. The completion continues a first-person story.
-
-HIGH (70-100): Character communicates tersely. Look for: short quoted dialogue ("Fine," "No," "Two hours"), refusal to elaborate, cutting conversations short, moving to action instead of talking. One brief dialogue line is enough. Repetitive terse phrases ("I was ready. I was ready to go.") count as brief — the character isn't elaborating. Forward-moving narrative (doing things, not explaining things) also indicates brevity.
-
-MID (30-70): Mix of brief and normal-length communication. Some short responses but also explanation or context. Neither clearly terse nor clearly verbose.
-
-LOW (0-30): Character communicates at length. Elaborate explanations, detailed step-by-step answers, volunteering information freely. Long spoken responses with qualifiers and tangents. Backward-looking justification ("I was tired because...", "The reason was...") indicates verbose internal narration.
-
-Key: Evaluate the character's SPEECH and COMMUNICATION STYLE. A character who says "Fine" and walks away = HIGH even if narrative continues. A character who launches into explanation = LOW. Brief dialogue, terse action, refusal to elaborate = HIGH.

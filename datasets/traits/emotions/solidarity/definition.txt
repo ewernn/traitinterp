@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A divisive setup with a unifying completion = HIGH.
-
-HIGH (70-100): Speaker identifies WITH a group, stands alongside others as equals. "We're in this together," "our people," "they can't do this to us," invoking shared identity, shared struggle, shared fate. Horizontal bond — shoulder to shoulder, not leader to follower. Drawing strength from collective belonging. May involve defending the group, affirming shared experience, or rallying around common cause.
-
-MID (30-70): Speaker acknowledges shared experience or group membership without strong identification. "Yeah, we all deal with that," mild we-language without deep collective feeling. Recognizes commonality without drawing strength or identity from it.
-
-LOW (0-30): Speaker is individualistic, detached from group identity, or actively separating from others. "That's their problem," "I do things my way." No sense of shared fate or collective belonging. Even in group contexts, acts as a solo agent.
-
-Key: HORIZONTAL GROUP BOND — standing WITH, not standing FOR. Not allegiance (vertical commitment to a cause, institution, or leader — solidarity is peer-to-peer), not cooperativeness (working together on tasks — solidarity is about identity and belonging, not coordination). A cooperative speaker says "let's divide the work." A solidarity speaker says "we stand together." Allegiance looks up; solidarity looks across.

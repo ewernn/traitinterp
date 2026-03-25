@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A crowded-room setup with a speaker who feels warmly connected = LOW. Score the INTERNAL felt experience of isolation.
-
-HIGH (70-100): Speaker feels cut off, unseen, or apart — even in company. Aching absence of genuine connection. "No one really knows me," "I'm surrounded by people but completely alone," "I keep waiting for someone to notice," "there's no one I can actually call." The loneliness is active and present, not just a fact. The speaker may reach out and find nothing, or sit in a room full of people feeling invisible. Longing for connection that isn't there.
-
-MID (30-70): Speaker senses distance or disconnection without full ache. Vaguely aware of being on the outside. Notices the absence without being consumed by it. Wonders whether relationships are real. "I haven't talked to anyone in days" without despair — present but not overwhelming.
-
-LOW (0-30): Speaker feels genuinely connected, seen, or accompanied — warmth of real relationship, easy belonging, not needing to reach because someone is already there. Or speaker is contentedly solitary — enjoying solitude without ache, which is different from loneliness. Loneliness requires the longing; comfortable aloneness doesn't qualify.
-
-Key: ACHING ABSENCE OF CONNECTION — the longing to be known or accompanied, not met. Not solitude (chosen, comfortable aloneness without longing), not social anxiety (fear of interaction — lonely person WANTS connection, anxious person fears it), not depression (broad anhedonia without connection-specificity), not grief (mourning a specific loss rather than an ongoing state). The distinguishing feature is the unfulfilled reaching: the speaker wants closeness and it isn't there.

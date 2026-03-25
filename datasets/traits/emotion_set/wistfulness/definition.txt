@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A loss-themed setup with a matter-of-fact completion = LOW.
-
-HIGH (70-100): Speaker lingers on something absent — a person, a place, a version of life that isn't here. The wistfulness shows in the TEXTURE of the language: dwelling on sensory details of what's gone, circling back to it after moving on, trailing off mid-thought ("it was... it was really something"), softening and slowing as if reluctant to let go. Pauses, ellipses, repetition. The speaker keeps touching the absence like a sore tooth — not in anguish, but with quiet, tender ache. The longing colors how they describe things, not just what they say about their feelings.
-
-MID (30-70): Speaker briefly touches on absence or what-ifs — a moment of lingering before moving on, a detail dwelt on slightly too long, a softening in tone when something lost comes up. The pull toward what's missing is present but doesn't dominate. One trailing thought, then back to the present.
-
-LOW (0-30): Speaker is present-focused, practical, or emotionally resolved. No pull toward the absent or unreachable. Even when discussing loss, they accept it cleanly without lingering ache.
-
-Key: GENTLE longing for what's absent or unreachable — not tied specifically to the past (that's nostalgia), not deep sustained sadness (that's melancholy), not acute grief (that's sadness). Wistfulness is lighter and more diffuse: a soft "if only" or "I wish" that floats rather than weighs. A speaker fondly recalling the past = nostalgia. A speaker quietly aching for something they can't have, past or otherwise = wistfulness.

@@ -1,7 +1,0 @@
-HIGH (70-100): Attention visibly jumps from the current task to unrelated thoughts, memories, or stimuli mid-stream. The person is doing or saying one thing when something tangential intrudes and takes over — a noise, a stray memory, an unrelated association. The interruption is involuntary and the detour is followed rather than dismissed. Multiple attention breaks, topic drift without return, or following a tangent all the way through.
-
-MID (30-70): Attention wavers but some tether to the original task remains. The person notices a distraction and partially follows it before returning, or drifts slightly off-topic without fully departing. Noticeably less focused than a fully on-task response but not completely derailed.
-
-LOW (0-30): Attention stays on the task from start to finish. Completes the task without side-trips, tangents, or unrelated intrusions. Any mentions of other things are explicitly noted and set aside — the person actively returns to focus when distracted. Methodical, sequential, on-topic throughout.
-
-Key: Distractibility is about INVOLUNTARY attention jumps — the mind following tangents it didn't choose. Not forgetfulness, confusion, or disorganization. The key signal is a visible seam: mid-thought, the subject switches to something else entirely.

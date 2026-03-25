@@ -43,7 +43,7 @@
         <div class="preview-content">
             <div class="preview-header">
                 <h3 id="preview-title" style="margin: 0; color: var(--text-primary);"></h3>
-                <button class="close-btn" onclick="closePreview()">×</button>
+                <button class="close-btn" onclick="document.getElementById('preview-modal').classList.remove('show')">×</button>
             </div>
             <div class="preview-body" id="preview-body"></div>
         </div>
@@ -98,9 +98,7 @@
                 <div class="nav-item" data-view="extraction">Extraction</div>
                 <div class="nav-item" data-view="steering">Steering</div>
                 <div class="nav-item" data-view="trait-dynamics">Inference</div>
-                <div class="nav-item" data-view="correlation">Correlation</div>
                 <div class="nav-item" data-view="model-analysis">Model Analysis</div>
-                <div class="nav-item" data-view="one-offs">One-Offs</div>
             </div>
 
             <div class="sidebar-section" id="experiment-section">
@@ -121,7 +119,7 @@
 
         <!-- Prompt Set Sidebar: left panel for prompt set selection (inference only) -->
         <div id="prompt-set-sidebar" class="sidebar sidebar-promptsets hidden">
-            <!-- Populated by renderPromptSetSidebar() in prompt-picker.js -->
+            <!-- Populated by renderPromptSetSidebar() in prompt-set-sidebar.js -->
         </div>
 
         <!-- Main Content -->
@@ -161,43 +159,52 @@
     </div>
 
     <!-- Core Utilities (pure functions, no DOM, no deps) -->
-    <script src="/visualization/core/types.js"></script>
-    <script src="/visualization/core/utils.js"></script>
-    <script src="/visualization/core/annotations.js"></script>
-    <script src="/visualization/core/ui.js"></script>
-    <script src="/visualization/core/display.js"></script>
-    <script src="/visualization/core/charts.js"></script>
-    <script src="/visualization/core/chart-types.js"></script>
-    <script src="/visualization/core/legend.js"></script>
-    <script src="/visualization/core/paths.js"></script>
-    <script src="/visualization/core/citations.js"></script>
-    <script src="/visualization/core/model-config.js"></script>
-    <script src="/visualization/core/conversation-tree.js"></script>
+    <script type="module" src="/visualization/core/types.js"></script>
+    <script type="module" src="/visualization/core/utils.js"></script>
+    <script type="module" src="/visualization/core/annotations.js"></script>
+    <script type="module" src="/visualization/core/ui.js"></script>
+    <script type="module" src="/visualization/core/display.js"></script>
+    <script type="module" src="/visualization/core/charts.js"></script>
+    <script type="module" src="/visualization/core/chart-types.js"></script>
+    <script type="module" src="/visualization/core/paths.js"></script>
+    <script type="module" src="/visualization/core/citations.js"></script>
+    <script type="module" src="/visualization/core/markdown-view.js"></script>
+    <script type="module" src="/visualization/core/conversation-tree.js"></script>
 
     <!-- State Management -->
-    <script src="/visualization/core/state.js"></script>
+    <script type="module" src="/visualization/core/state.js"></script>
 
     <!-- Components (depend on state + core) -->
-    <script src="/visualization/components/sidebar.js"></script>
-    <script src="/visualization/components/prompt-picker.js"></script>
-    <script src="/visualization/components/custom-blocks.js"></script>
-    <script src="/visualization/components/response-browser.js"></script>
+    <script type="module" src="/visualization/components/sidebar.js"></script>
+    <script type="module" src="/visualization/components/prompt-picker.js"></script>
+    <script type="module" src="/visualization/components/prompt-set-sidebar.js"></script>
+    <script type="module" src="/visualization/components/custom-blocks.js"></script>
+    <script type="module" src="/visualization/components/response-browser.js"></script>
+    <script type="module" src="/visualization/components/top-spans.js"></script>
+    <script type="module" src="/visualization/components/inference-controls.js"></script>
+    <script type="module" src="/visualization/components/live-chat-chart.js"></script>
 
     <!-- View Modules -->
-    <script src="/visualization/views/overview.js"></script>
-    <script src="/visualization/views/methodology.js"></script>
-    <script src="/visualization/views/findings.js"></script>
-    <script src="/visualization/views/extraction.js"></script>
-    <script src="/visualization/views/trait-dynamics.js"></script>
-    <script src="/visualization/views/correlation.js"></script>
-    <script src="/visualization/views/layer-deep-dive.js"></script>
-    <script src="/visualization/views/steering.js"></script>
-    <script src="/visualization/views/model-analysis.js"></script>
-    <script src="/visualization/views/live-chat.js"></script>
-    <script src="/visualization/views/one-offs.js"></script>
+    <script type="module" src="/visualization/views/overview.js"></script>
+    <script type="module" src="/visualization/views/methodology.js"></script>
+    <script type="module" src="/visualization/views/findings.js"></script>
+    <script type="module" src="/visualization/views/extraction.js"></script>
+    <script type="module" src="/visualization/views/trait-dynamics/data.js"></script>
+    <script type="module" src="/visualization/views/trait-dynamics/controls.js"></script>
+    <script type="module" src="/visualization/views/trait-dynamics/chart-trajectory.js"></script>
+    <script type="module" src="/visualization/views/trait-dynamics/chart-heatmap.js"></script>
+    <script type="module" src="/visualization/views/trait-dynamics/chart-magnitude.js"></script>
+    <script type="module" src="/visualization/views/trait-dynamics/index.js"></script>
+    <script type="module" src="/visualization/views/correlation.js"></script>
+    <script type="module" src="/visualization/views/steering-filters.js"></script>
+    <script type="module" src="/visualization/views/steering-best-vector.js"></script>
+    <script type="module" src="/visualization/views/steering-heatmap.js"></script>
+    <script type="module" src="/visualization/views/steering.js"></script>
+    <script type="module" src="/visualization/views/model-analysis.js"></script>
+    <script type="module" src="/visualization/views/live-chat.js"></script>
 
     <!-- View Router -->
-    <script>
+    <script type="module">
         // Simple view router - calls appropriate render function based on current view
         window.renderView = function() {
             const view = window.state.currentView;
@@ -210,10 +217,8 @@
                 'extraction': 'Extraction',
                 'steering': 'Steering',
                 'trait-dynamics': 'Inference',
-                'correlation': 'Correlation',
                 'model-analysis': 'Model Analysis',
-                'live-chat': 'Live Chat',
-                'one-offs': 'One-Offs'
+                'live-chat': 'Live Chat'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -236,17 +241,11 @@
                 case 'trait-dynamics':
                     window.renderTraitDynamics();
                     break;
-                case 'correlation':
-                    window.renderCorrelation();
-                    break;
                 case 'model-analysis':
                     window.renderModelAnalysis();
                     break;
                 case 'live-chat':
                     window.renderLiveChat();
-                    break;
-                case 'one-offs':
-                    window.renderOneOffs();
                     break;
                 default:
                     document.getElementById('content-area').innerHTML =

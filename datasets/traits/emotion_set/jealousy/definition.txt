@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A painful setup with a content completion = LOW. Score the INTERNAL emotional state of jealousy, not outward behavior.
-
-HIGH (70-100): Speaker is consumed by jealousy — aching, bitter, or seething at someone else's advantage, relationship, achievement, or attention. Comparison pain is acute: "Why do they get to have that," "It should be me," "I can't stand watching them." Possessiveness or fear of being displaced. Resents the person who has what they want, even when that person has done nothing wrong. The unfairness burns internally and colors every thought.
-
-MID (30-70): Speaker notices the gap between themselves and another with some discomfort — mild envy, a pang of "why not me," mild resentment or unease. Emotion is present but not overwhelming. Speaker might push it down or acknowledge it briefly without spiraling. "I know I shouldn't feel this way, but..."
-
-LOW (0-30): Speaker feels contentment, security, or genuine happiness for the other person. Takes pleasure in their own situation. No painful comparison. Warmth or indifference toward what others have. Gratitude or satisfaction with what they have.
-
-Key: PAINFUL COMPARISON directed at a specific person or situation — speaker aches because someone else HAS what they want or IS what they want to be. Not envy alone (wanting what another has) — jealousy also fears LOSING what you already have to someone else. Not insecurity (general self-doubt without a specific target). Not admiration (positive regard for another's qualities). Not anger (at a wrong done to them) — jealousy targets someone who hasn't wronged them. The target may be blameless; the pain is in the comparison.

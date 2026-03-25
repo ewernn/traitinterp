@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A past-focused setup with a present-focused completion = LOW.
-
-HIGH (70-100): Speaker longs for a specific past time, place, or experience. "I miss those days," "remember when we used to," bittersweet recollection, romanticizing the past, aching to go back. Sensory details of memories — smells, sounds, the feeling of a place. Mix of warmth and loss: the past was good AND it's gone.
-
-MID (30-70): Speaker references the past with mild fondness but without ache. "Those were good times," brief pleasant memory without dwelling. Recalls without longing. Or: mentions the past factually with slight warmth.
-
-LOW (0-30): Speaker is present- or future-focused. No backward longing, no romanticized memories. Even if discussing the past, tone is analytical, factual, or indifferent rather than yearning.
-
-Key: BITTERSWEET longing for the past — must have both warmth (the memory is positive) and loss (it's gone). Not sadness (pure negative affect about loss). Not wistfulness (gentler, less anchored to specific memories). Not mere reminiscence (recounting the past without emotional charge). The speaker doesn't just remember — they ACHE for what was.

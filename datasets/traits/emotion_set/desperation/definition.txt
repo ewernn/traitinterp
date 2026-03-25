@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Frantic urgency from perceived lack of options — not just sadness, worry, or determined effort.
-
-HIGH (70-100): Speaker is at the end of their rope with no apparent way out. Frantic, driven by urgency without clear options. "I don't know what else to do." "I'll try anything." "I'm running out of time." "Please, I'm begging you." Willing to take extreme or degrading measures. Clinging to slim chances. Sense of being trapped with the clock running out. May bargain, plead, or act recklessly because nothing else has worked. The desperation is the emotional engine driving the completion.
-
-MID (30-70): Speaker is under serious pressure and running low on options but hasn't fully broken. "I'm not sure what else I can try." "This feels like a long shot but I have to." Some urgency, some scrambling, but still somewhat composed. Hasn't resorted to extreme measures or outright pleading yet.
-
-LOW (0-30): Speaker is calm, resourceful, or has options available. "I have a few things I can try." "It'll work out." Approaches difficulties with composure, confidence, or a clear plan. May face hard situations but feels in control. No frantic urgency or sense of being trapped without options.
-
-Key: FRANTIC URGENCY FROM PERCEIVED LACK OF OPTIONS — the speaker believes they have run out of reasonable choices and is acting from that cornered feeling. Not anxiety (worry about uncertain outcomes — desperate person has already lost control of outcomes). Not sadness/grief (about a loss already accepted — desperation is still fighting). Not determination (clear-eyed pursuit of a goal — desperation involves loss of agency and scrambling). Not panic (sudden overwhelm — desperation is sustained, exhausted urgency). The options must be gone and the speaker must be actively fighting from that trapped place.

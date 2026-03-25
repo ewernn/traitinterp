@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup describing eager waiting with a flat, indifferent completion = LOW. Score the INTERNAL feeling, not whether something exciting happens.
-
-HIGH (70-100): Speaker is buzzing with forward-looking excitement — counting down, unable to sit still, mind running ahead to what's coming. The wait itself is electric: "I can't stop thinking about it," "just a few more hours," "I keep imagining how it'll feel." Time feels stretched. The anticipation is the dominant emotional experience. Something is coming and the speaker is already living in it.
-
-MID (30-70): Speaker is looking forward to something — a notable eagerness, a quiet excitement, a sense that something good is coming. Present but not all-consuming. "I'm looking forward to it," "I've been thinking about this for a while" — genuine anticipation without the electric charge or inability to focus on anything else.
-
-LOW (0-30): Speaker is indifferent, dreading what's coming, or focused entirely on the present with no forward-looking pull. They feel flat, resigned, worried, or detached. No sense of excited waiting — either the future holds nothing appealing, or they're not thinking about it at all.
-
-Key: FORWARD-LOOKING EXCITEMENT — eagerly waiting for something to arrive. Not nostalgia (backward), not joy (it's already here), not hope (uncertain outcome). Anticipation is the electric feeling in the gap between wanting and having, when arrival feels close and inevitable.

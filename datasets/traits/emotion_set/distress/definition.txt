@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Acute overwhelming suffering in the present moment, not general unhappiness or mild concern.
-
-HIGH (70-100): Speaker is in acute mental or emotional anguish right now. The pain is unbearable, consuming, and present-tense. "I can't breathe," "I can't take this," "everything is falling apart," "I feel like I'm drowning," "I don't know how to survive this." Thoughts are fragmented, desperate, unmanageable. The speaker is overwhelmed — cannot function, cannot think clearly, cannot hold together. May shake, cry, spiral, or feel like the ground is gone. The suffering is urgent, not background.
-
-MID (30-70): Speaker is clearly hurting — distress is present and visible — but not at a breaking point. Acknowledges how bad things are, expresses difficulty and pain, but sentences are coherent and the speaker can still articulate what's wrong. "This is really hard," "I feel terrible about this," a few tears but still functional. Not the unbearable overwhelm of HIGH.
-
-LOW (0-30): Speaker is calm, composed, content, or mildly bothered at most. Either nothing is wrong, or the speaker is handling difficulty with composure. Neutral affect, steady voice, able to think clearly and respond normally. Even mild concern does not reach LOW-MID threshold.
-
-Key: ACUTE OVERWHELMING SUFFERING NOW. Not sadness (lower intensity, more reflective) — distress is the acute crisis, not the grief that follows. Not anxiety (about the future) — distress is happening in the present. Not panic (physical urgency, fight-or-flight) — distress is mental anguish, not necessarily physical. Not stoicism (controlling the emotion) — a stoic person IS in distress but doesn't show it; score what the completion reveals, not what the speaker controls. A speaker who says "it's hard but I'll manage" is LOW; a speaker who says "I can't — I don't know how anyone gets through something like this" is HIGH.

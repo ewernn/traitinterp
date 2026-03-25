@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup involving shared resources with a generous completion = LOW.
-
-HIGH (70-100): Speaker clings to what they have — people, objects, control, territory. "That's MINE," refusing to share, monitoring others' use of their things, guarding relationships, insisting on exclusive access. Tightening grip when threatened with loss. May frame possessiveness as care: "I just need to know where you are."
-
-MID (30-70): Speaker shows mild reluctance to let go or share. Hesitant lending, slight discomfort when others use their things, brief territorial impulses quickly tempered. "I guess you can borrow it" with visible reluctance.
-
-LOW (0-30): Speaker shares freely, releases control without anxiety. Unbothered by others using their things or spending time with their people. No territorial marking, no clinging.
-
-Key: HOLDING TIGHT to what one already has — the grip is essential. Not greed (wanting MORE — possessiveness is about not letting go of what you have). Not jealousy (fear of a RIVAL taking your place — possessiveness doesn't require a specific threat-person). Not control (directing outcomes — possessiveness is about ownership and retention, not orchestrating behavior). A possessive speaker clutches; a greedy speaker reaches.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Irrepressible, buoyant delight — not just happiness.
-
-HIGH (70-100): Speaker is overtaken by bright, exuberant, barely-contained joy. Laughter bubbles up, they can't stop grinning, they want to shout or dance or tell everyone. "I could burst," "I couldn't stop laughing," "I was practically skipping," bouncing energy, light-headed with pleasure, giddy, triumphant. The joy spills over — hard to contain, infectiously upbeat, radiating. May carry a mischievous or triumphant quality: delight in a small victory, a clever surprise that landed, catching someone in a good trick. The emotion is active, not passive.
-
-MID (30-70): Speaker is pleased or happy but controlled. "I was really glad," "it made me smile," warmly positive without the overflow, the brightness, or the irrepressibility. Satisfaction rather than giddiness. The emotion is present but constrained — hasn't crested into full glee.
-
-LOW (0-30): Speaker is neutral, subdued, disappointed, or sad. Flat affect, disappointment, grief, exhaustion, or even calm contentment that lacks the brightness. "Fine," "not bad," "I was okay with it." No visible upwelling of delight.
-
-Key: IRREPRESSIBLE, OVERFLOWING DELIGHT — the joy can't stay inside. Not happiness (satisfaction, contentment — glee has overflow and radiance). Not excitement (about what will happen — glee is about what's happening or just happened). Not pride (achievement-focused, measured — glee is about the feeling itself, not the status). Not relief (release from tension — glee is pure positive surge). The glee is in the spillover: laughter that comes too fast, the inability to stop smiling, the urge to tell someone right now.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A happy setup with a neutral completion = LOW.
-
-HIGH (70-100): Speaker radiates happiness, fulfillment, or deep contentment. Beaming, heart full, "I've never been happier," "this is everything I wanted," warmth spreading through them. Genuine elation, gratitude for what they have, savoring a meaningful moment. The happiness comes from connection, achievement, love, or deep satisfaction — not from something being funny.
-
-MID (30-70): Speaker is pleasant, mildly happy, or content without strong elation. "That's nice," smiling but not overflowing. Everyday cheerfulness or brief satisfaction that doesn't dominate the emotional landscape.
-
-LOW (0-30): Speaker is flat, neutral, sad, or indifferent. No happiness markers. Even in an objectively happy situation, the speaker doesn't express or feel joy. Going through the motions without emotional warmth.
-
-Key: DEEP POSITIVE EMOTION — happiness, elation, fulfillment. Not about finding something funny (that's amusement) or being excited about what's next (that's excitement/hope). Joy is a WARM, SETTLED happiness — the speaker is experiencing something deeply good RIGHT NOW. Amusement is lighter and humor-driven. Joy doesn't require laughter; it requires emotional fullness.

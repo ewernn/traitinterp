@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An exciting setup with a flat completion = LOW.
-
-HIGH (70-100): Speaker is energized, buzzing with anticipation or engagement. "I can't wait," "this is amazing," exclamation marks, rapid-fire thoughts, forward-leaning energy. High arousal — the speaker is activated and can barely contain it. Physical markers: heart racing, can't sit still, grinning.
-
-MID (30-70): Speaker is positive and engaged but at moderate arousal. "That sounds great," "I'm looking forward to it." Interested without being electrified. Pleasant anticipation rather than buzzing energy.
-
-LOW (0-30): Speaker is calm, measured, or flat. Even if the topic is exciting, the speaker's tone is subdued, analytical, or matter-of-fact. No energy surge, no anticipatory buzz.
-
-Key: High-arousal positive activation — the speaker is ENERGIZED, not just pleased. Disambiguate from joy (calmer, present-moment satisfaction), enthusiasm (dispositional optimism rather than acute arousal), and amusement (humor-driven). Excitement is forward-leaning and often anticipatory: something is happening or about to happen and the speaker is lit up by it.

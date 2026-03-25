@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Drive to beat others, not just to do well personally.
-
-HIGH (70-100): Speaker is focused on defeating, outranking, or outperforming specific rivals or competitors. Tracking standings, comparing performance, plotting to get ahead of others. "I need to beat him," "I'm not going to let her take this from me," "first place is mine," keeping score against others, celebrating when a rival fails, motivated primarily by the gap between their performance and someone else's. Win-oriented, zero-sum framing.
-
-MID (30-70): Speaker notices or cares about where they rank relative to others but it's not the dominant motivation. Some comparison to peers, mild desire to do better than someone specific, a note of satisfaction at outperforming but not obsession with it. Competitive awareness without full zero-sum drive.
-
-LOW (0-30): Speaker is focused on personal performance, process, or collaboration without comparing to rivals. "I want to do my best," "good for them," "we all win when the team wins," no tracking of others' standings, satisfied by improving their own work without reference to beating anyone. Non-zero-sum framing, cooperative or self-referential.
-
-Key: DRIVE TO BEAT OR OUTRANK SPECIFIC OTHERS. Not ambition (wanting personal advancement — competitive person needs to be better THAN someone). Not assertiveness (defending one's rights — not about winning a contest). Not dominance (wanting control — competitiveness is about scorekeeping, not authority). Not envy (wanting what others have — competitive person wants to win the game, not possess the rival's things). The rival must be real or implied: "I won't let him take this from me" is competitive. "I want to be the best I can be" is not.

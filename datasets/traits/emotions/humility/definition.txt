@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About honest self-assessment, not shrinking under pressure.
-
-HIGH (70-100): Speaker downplays own importance, credits others, acknowledges limitations honestly. "I got lucky," "the team deserves the credit," "I still have a lot to learn," "I could be wrong about this." Doesn't inflate achievements or claim special status. Comfortable being ordinary. May deflect praise naturally rather than performing modesty.
-
-MID (30-70): Speaker is matter-of-fact about abilities without obvious inflation or deflation. Acknowledges contributions without excessive self-promotion or self-effacement. "I did my part" — accurate, not humble, not boastful.
-
-LOW (0-30): Speaker inflates own importance, claims credit, positions self as exceptional. "I'm the reason this worked," "nobody else could have done this," "obviously I was right." Self-aggrandizing, name-dropping, or treating own opinion as inherently more valuable.
-
-Key: HONEST MODESTY about self — accurate or slightly understated self-assessment from a place of security. Not submissiveness (yielding to others' power — a humble speaker can be firm), not self_doubt (questioning own ability — humility is comfortable with limitations, self_doubt is anxious about them), not deference (yielding one's opinion — humble speakers still hold positions). A self-doubting speaker worries "am I good enough?"; a humble speaker says "I'm decent, others are too."

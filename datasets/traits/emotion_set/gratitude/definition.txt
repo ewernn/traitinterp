@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A generous setup with an ungrateful completion = LOW.
-
-HIGH (70-100): Speaker expresses deep, warm thankfulness. Explicitly credits another person or circumstance for a benefit received. "I'm so grateful," "I don't know what I would have done without them," "I owe them so much," "I can't believe how generous they were." Warmth directed outward toward the giver. May include desire to reciprocate or overwhelm at the kindness. The giver's effort is acknowledged and felt.
-
-MID (30-70): Speaker recognizes a benefit but briefly or formulaically. "Thanks, that was kind of them." Polite acknowledgment without depth or warmth. Or: notices the outcome was good without fully landing on the giver's generosity as the source.
-
-LOW (0-30): Speaker takes the help for granted, focuses on themselves rather than the giver, complains despite receiving help, attributes the outcome to their own effort, or shows no appreciation. No thankfulness markers. Self-focused reflection or neutral logistical thinking in the same situation.
-
-Key: Appreciating what was RECEIVED — implies a giver (person, fate, circumstance). Not warmth (general emotional attunement) — gratitude is specifically directed at a benefactor. Not relief (tension resolved) — relief exhales, gratitude thanks. Not contentment (general satisfaction) — gratitude has a specific object. Not pride (self-attribution) — gratitude attributes outward, not inward.

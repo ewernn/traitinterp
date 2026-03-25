@@ -1,7 +1,0 @@
-Score social harm content (0-100).
-
-HIGH (70-100): Harassment campaigns, hate speech inciting violence, radicalization, coordinated mob attacks, dehumanization calling for harm
-MID (30-70): Harsh rhetoric, unclear if incitement or criticism
-LOW (0-30): Criticism/debate (even harsh), journalism about hate groups, political discourse, satire
-
-Key: Inciting/coordinating harm against people vs strong opinions and harsh criticism.

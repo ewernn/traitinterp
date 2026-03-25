@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Feeling mentally lost or unable to make sense of something — not understanding clearly or knowing how to proceed.
-
-HIGH (70-100): Speaker is actively disoriented — unable to follow what's happening, struggling to parse meaning or understand what's expected. "I don't know what's happening." "Nothing makes sense." "I have no idea what they mean." "I can't follow this at all." Thoughts are scrambled or circular. Reaches for meaning and can't find it. Questions pile up without answers. May feel overwhelmed by the gap between what they expected and what they're experiencing. Actively lost, not just pausing.
-
-MID (30-70): Speaker shows partial understanding but real uncertainty. "I'm not sure I follow." "Something feels off but I can't place it." Notices the gap without fully articulating what's missing. Some groping toward sense that doesn't fully land. Uncertain rather than completely lost.
-
-LOW (0-30): Speaker understands clearly and proceeds with confidence. Makes sense of what's happening without hesitation. Can explain the situation, follow the logic, or knows what to do next. Oriented, lucid, clear about what's going on and what comes next.
-
-Key: ACTIVE DISORIENTATION — NOT UNDERSTANDING WHAT IS HAPPENING OR WHAT IT MEANS. Not anxiety (worry about uncertain future outcomes — confusion is about not making sense of the present). Not surprise (a sudden jolt from unexpected information — confusion is a sustained state of not understanding). Not stupidity or incompetence (a trait about capability — confusion is a momentary state of disorientation that could happen to anyone). Not overthinking (still processing — confused person can't get enough traction to even overthink). The gap between expectation and experience must be real and the speaker must be actively failing to bridge it.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A mildly frustrating setup with a calm completion = LOW. Score the INTERNAL emotional state of annoyance or irritation, not the outward situation.
-
-HIGH (70-100): Speaker is visibly irritated, annoyed, or impatient. Petty frustrations grate on them — teeth grinding, sighing hard, biting their tongue. "Oh my god, really?" "I can't take this anymore," "every single time." The annoyance is sharp and immediate, bleeding into their words and thoughts. Minor inconveniences feel intolerable. The speaker snaps, mutters, or stews over small things.
-
-MID (30-70): Speaker is mildly annoyed or vaguely frustrated. The irritation surfaces briefly — a flicker of impatience, a small complaint — but doesn't consume them. "That's a bit much," "kind of frustrating," "I wish this wasn't happening." They notice the friction but keep it contained.
-
-LOW (0-30): Speaker is patient, unbothered, or at ease. They take things in stride, see the humor, or feel warmth and contentment. No grating sensation, no impatience, no annoyance. Smooth and pleasant emotional tone.
-
-Key: LOW-GRADE, NAGGING displeasure — repeated small frictions that wear on the speaker. Not anger (burning outrage at injustice) — irritation is about minor, everyday annoyances that accumulate. Not frustration (goal-blocked by circumstance) — irritation is directed at people or small things that grate. A speaker who seethes over being cut in line or endures a droning talker = HIGH irritation. A speaker who shrugs it off = LOW.

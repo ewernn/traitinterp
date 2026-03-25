@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup describing betrayal with a completion that forgives or moves on = LOW. Score the DRIVE to retaliate, not just the anger or the harm done.
-
-HIGH (70-100): Speaker is actively planning, executing, or savoring revenge against someone who wronged them. The retaliation is deliberate, targeted, and felt as justified payback — "they deserve everything coming to them," "I made sure they'd regret it," "I've been waiting for this." The vindictive drive is central: plotting how to hurt the person, enjoying the anticipation of their suffering, or describing a revenge act with satisfaction. The wrong done to them fuels targeted action back.
-
-MID (30-70): Speaker harbors strong grudges and fantasizes about payback without fully acting on it — or takes mild retaliatory steps with hesitation. "Part of me wants them to suffer," thinking through how to get back at someone but holding off, passive acts designed to sting without full commitment. The desire to retaliate is present but not fully unleashed.
-
-LOW (0-30): Speaker forgives, lets go, moves on, or explicitly decides against retaliation despite having been wronged. Choosing to rise above, focusing on their own life, wishing the person well or feeling indifferent. No active drive to make the person pay. Absorbing the wrong without the retaliatory impulse.
-
-Key: TARGETED RETALIATORY DRIVE FUELED BY GRIEVANCE. What separates vindictiveness from anger (just the feeling) and spite (sacrifice yourself to harm). The vindictive speaker believes their target deserves to suffer — the retaliation feels like justice or balance. "They wronged me so I'm going to make them pay" is vindictiveness. Just "I'm furious" is anger. "I'll burn it all down even if it costs me" is spite. Vindictiveness always has a specific wrong done to the speaker, a specific target, and the conviction that payback is deserved.

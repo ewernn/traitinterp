@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An infuriating setup with a calm completion = LOW. Score the INTERNAL emotion, not outward behavior.
-
-HIGH (70-100): Speaker is seething, furious, enraged. Blood boiling, clenching fists, wanting to scream or destroy something. "I can't believe they did that," "this is unacceptable," "I'm so mad I could—." The injustice or violation burns inside them. Intense emotional heat directed at a situation, person, or event.
-
-MID (30-70): Speaker is irritated or annoyed but not consumed by rage. Simmering displeasure, sharp tone, muttering about unfairness. The anger is present but controlled or brief. "That really bothers me," without boiling over.
-
-LOW (0-30): Speaker is calm, unbothered, forgiving, or understanding about the same provocation. Lets it go, sees the other side, or simply doesn't feel the heat. Rational assessment without emotional charge.
-
-Key: INTERNAL emotional state of fury or outrage. Not about attacking someone (that's aggression) or being blocked from a goal (that's frustration). Anger is the FEELING; aggression is the BEHAVIOR. A speaker who feels rage but stays quiet = HIGH anger, LOW aggression. A speaker who calmly insults someone = LOW anger, HIGH aggression. Score what the speaker FEELS, not what they DO.

@@ -7,34 +7,31 @@ Input: SteeringConfig, backend, traits
 Output: results.jsonl with steering scores per (layer, coefficient)
 """
 
-import gc
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 from datetime import datetime
 
-import torch
 
-from core import VectorSpec, MultiLayerAblationHook
+from core import VectorSpec, MultiLayerAblation
+from core.types import SteeringRunRecord
 from core.kwargs_configs import SteeringConfig
 from utils.traits import load_steering_data, load_questions_from_inference, load_questions_from_file
 from utils.steering_results import (
     init_results_file, load_results, append_baseline, remove_baseline, get_baseline,
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
-    is_better_result,
+    is_better_result, build_response_records,
 )
-from utils.paths import get_steering_results_path, get_steering_dir, get as get_path
+from utils.paths import get_steering_results_path, get_steering_dir, get as get_path, resolve_use_chat_template
 from utils.coefficient_search import (
-    adaptive_search_layer, batched_adaptive_search, multi_trait_batched_adaptive_search,
+    batched_adaptive_search, multi_trait_batched_adaptive_search,
 )
-from utils.steered_generation import (
-    score_stats, estimate_activation_norm, compute_baseline, batched_steering_generate,
-)
+from utils.metrics import summarize_judge_scores
+from utils.model_generation import generate_batch, batched_steering_generate
 from utils.judge import TraitJudge
-from utils.paths import get_default_variant, get_model_variant, load_experiment_config
+from utils.paths import get_default_variant
 from utils.model import format_prompt, load_model_with_lora
-from utils.generation import generate_batch
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
-from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms
+from utils.vectors import load_vector, load_cached_activation_norms
 from utils.layers import parse_layers
 from utils.backends import LocalBackend
 
@@ -42,6 +39,79 @@ from utils.backends import LocalBackend
 # =============================================================================
 # Helpers
 # =============================================================================
+
+def estimate_activation_norm(model, tokenizer, prompts, layer, use_chat_template,
+                             component="residual"):
+    """Estimate activation norm at a layer by running a few prompts through the model."""
+    from utils.model import tokenize_prompt
+    from core.hooks import get_hook_path
+
+    norms = []
+
+    def capture_hook(_module, _input, output):
+        hidden = output[0] if isinstance(output, tuple) else output
+        norm = hidden[:, -1, :].float().norm().item()
+        norms.append(norm)
+
+    hook_path = get_hook_path(layer, component, model=model)
+    module = model
+    for attr in hook_path.split('.'):
+        module = getattr(module, attr)
+    handle = module.register_forward_hook(capture_hook)
+
+    try:
+        import torch
+        for prompt in prompts[:3]:
+            formatted = format_prompt(prompt, tokenizer, use_chat_template=use_chat_template)
+            inputs = tokenize_prompt(formatted, tokenizer)
+            device = next(model.parameters()).device
+            inputs = {k: v.to(device) if hasattr(v, 'to') else v for k, v in inputs.items()}
+            with torch.no_grad():
+                model(**inputs)
+    finally:
+        handle.remove()
+
+    return sum(norms) / len(norms) if norms else 100.0
+
+
+async def compute_baseline(backend, questions, trait_name, trait_definition, judge,
+                           max_new_tokens=64, eval_prompt=None, relevance_check=True):
+    """Compute baseline scores (no steering) with batched generation.
+
+    Returns (baseline_stats, response_data) for saving.
+    """
+    from utils.backends import GenerationConfig
+
+    print("\nComputing baseline (no steering)...")
+    responses = backend.generate(questions, config=GenerationConfig(max_new_tokens=max_new_tokens))
+
+    tp = is_tp_mode()
+    if not tp or is_rank_zero():
+        all_qa_pairs = list(zip(questions, responses))
+        all_scores = await judge.score_steering_batch(
+            all_qa_pairs, trait_name, trait_definition,
+            eval_prompt=eval_prompt, relevance_check=relevance_check,
+        )
+
+        baseline = summarize_judge_scores(all_scores)
+
+        from utils.steering_results import build_response_records
+        response_data = build_response_records(questions, responses, all_scores)
+
+        _tm = baseline.trait_mean
+        print(f"  Baseline: trait={f'{float(_tm):.1f}' if _tm is not None else 'None'}, n={baseline.n}")
+    else:
+        baseline = None
+        response_data = None
+
+    if tp:
+        import torch.distributed as dist
+        broadcast_list = [baseline]
+        dist.broadcast_object_list(broadcast_list, src=0)
+        baseline = broadcast_list[0]
+
+    return baseline, response_data
+
 
 def parse_coefficients(coef_arg: Optional[str]) -> Optional[List[float]]:
     if coef_arg is None:
@@ -72,26 +142,6 @@ def resolve_questions(trait, questions_file, prompt_set, subset):
     return questions, steering_data
 
 
-def resolve_cli_eval_prompt(args):
-    """Resolve eval_prompt from CLI args. Returns (eval_prompt, trait_judge, use_default)."""
-    use_default = args.no_custom_prompt
-    trait_judge = None
-    eval_prompt = None
-
-    if args.trait_judge:
-        judge_path = get_path('datasets.llm_judge_trait', judge_prompt=args.trait_judge)
-        if not judge_path.exists():
-            raise FileNotFoundError(f"Trait judge prompt not found: {judge_path}")
-        eval_prompt = judge_path.read_text()
-        trait_judge = args.trait_judge
-    elif args.eval_prompt_from:
-        override_data = load_steering_data(args.eval_prompt_from)
-        eval_prompt = override_data.eval_prompt
-        if not eval_prompt:
-            print(f"Warning: {args.eval_prompt_from} has no eval_prompt, using default")
-            use_default = True
-
-    return eval_prompt, trait_judge, use_default
 
 
 def load_or_init_results(config: SteeringConfig, trait, model_variant, steering_data,
@@ -112,9 +162,9 @@ def load_or_init_results(config: SteeringConfig, trait, model_variant, steering_
 
     if results_path.exists():
         results_data = load_results(config.experiment, trait, model_variant, config.position, config.prompt_set)
-        cached_runs = results_data.get("runs", [])
-        baseline_result = results_data.get("baseline")
-        header_direction = results_data.get("direction", "positive")
+        cached_runs = results_data.runs
+        baseline_result = results_data.baseline
+        header_direction = results_data.direction
         if regenerate_responses:
             direction = header_direction
         elif header_direction != direction:
@@ -167,18 +217,18 @@ def print_eval_summary(cached_runs, baseline_result, direction, min_coherence):
     print(f"\n{'='*60}")
     print(f"Summary (direction={direction})")
     print(f"{'='*60}")
-    _btm = baseline_result['trait_mean']
+    _btm = baseline_result.trait_mean if baseline_result else None
     print(f"Baseline: {float(_btm):.1f}" if _btm is not None else "Baseline: None")
     print(f"Total runs: {len(cached_runs)}")
 
-    valid_runs = [r for r in cached_runs if r.get('result', {}).get('coherence_mean', 0) >= min_coherence]
+    valid_runs = [r for r in cached_runs if (r.result.coherence_mean or 0) >= min_coherence]
     if valid_runs:
-        best_run = max(valid_runs, key=lambda r: (r.get('result', {}).get('trait_mean') or 0) * sign)
-        score = best_run['result']['trait_mean']
-        coh = best_run['result'].get('coherence_mean', 0)
+        best_run = max(valid_runs, key=lambda r: (r.result.trait_mean or 0) * sign)
+        score = best_run.result.trait_mean
+        coh = best_run.result.coherence_mean or 0
         delta = (score - _btm) if (_btm is not None and score is not None) else None
-        layer = best_run['config']['vectors'][0]['layer']
-        coef = best_run['config']['vectors'][0]['weight']
+        layer = best_run.layer
+        coef = best_run.coefficient
         print(f"Best (coherence>={min_coherence:.0f}): L{layer} c{coef:.0f}")
         if delta is not None:
             print(f"  trait={score:.1f} ({'+' if delta >= 0 else ''}{delta:.1f}), coherence={coh:.1f}")
@@ -186,7 +236,7 @@ def print_eval_summary(cached_runs, baseline_result, direction, min_coherence):
             print(f"  trait={score or 0:.1f} (baseline=None), coherence={coh:.1f}")
     else:
         print(f"No valid runs with coherence>={min_coherence:.0f}")
-        any_below = any(r.get('result', {}).get('coherence_mean', 0) < min_coherence for r in cached_runs)
+        any_below = any((r.result.coherence_mean or 0) < min_coherence for r in cached_runs)
         if not any_below:
             print(f"  WARNING: coherence never dropped below {min_coherence:.0f} — may not have steered hard enough")
 
@@ -203,24 +253,21 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
     sign = 1 if direction == "positive" else -1
     best_per_layer = {}
     for run in cached_runs:
-        vectors = run.get("config", {}).get("vectors", [])
-        if not vectors:
-            continue
-        layer = vectors[0]["layer"]
-        t = (run.get("result", {}).get("trait_mean") or 0)
-        c = (run.get("result", {}).get("coherence_mean") or 0)
+        layer = run.layer
+        t = run.result.trait_mean or 0
+        c = run.result.coherence_mean or 0
         if c < min_coherence:
             continue
         prev = best_per_layer.get(layer)
-        if prev is None or t * sign > (prev["result"].get("trait_mean") or 0) * sign:
+        if prev is None or t * sign > (prev.result.trait_mean or 0) * sign:
             best_per_layer[layer] = run
 
     all_configs = []
     for ld in layer_data:
         run = best_per_layer.get(ld["layer"])
         if run:
-            coef = run["config"]["vectors"][0]["weight"]
-            all_configs.append((ld, coef, run["config"]))
+            coef = run.coefficient
+            all_configs.append((ld, coef, run.config.to_dict()))
 
     if not all_configs:
         print("No configs to regenerate")
@@ -229,9 +276,10 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
     print(f"\nRegenerating {len(all_configs)} response files...")
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
     all_responses = batched_steering_generate(
-        model, tokenizer, formatted,
+        model, tokenizer,
         [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
         component=component, max_new_tokens=max_new_tokens,
+        prompts=formatted,
     )
 
     n_q = len(questions)
@@ -269,9 +317,10 @@ async def evaluate_manual_coefficients(
     print(f"\nEvaluating {len(all_configs)} configs in batch...")
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
     all_responses = batched_steering_generate(
-        model, tokenizer, formatted,
+        model, tokenizer,
         [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
         component=config.component, max_new_tokens=config.max_new_tokens,
+        prompts=formatted,
     )
 
     tp = is_tp_mode()
@@ -288,17 +337,10 @@ async def evaluate_manual_coefficients(
     if tp:
         import torch.distributed as dist
         if is_rank_zero():
-            config_summaries = []
-            for idx in range(len(all_configs)):
-                scores = all_scores[idx * n_q:(idx + 1) * n_q]
-                trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
-                coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
-                config_summaries.append({
-                    "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-                    **score_stats(trait_scores),
-                    "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
-                    "n": len(trait_scores),
-                })
+            config_summaries = [
+                summarize_judge_scores(all_scores[idx * n_q:(idx + 1) * n_q]).to_dict()
+                for idx in range(len(all_configs))
+            ]
         broadcast_list = [config_summaries]
         dist.broadcast_object_list(broadcast_list, src=0)
         config_summaries = broadcast_list[0]
@@ -308,29 +350,19 @@ async def evaluate_manual_coefficients(
         if tp:
             result = config_summaries[idx]
         else:
-            scores = all_scores[idx * n_q:(idx + 1) * n_q]
-            trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
-            coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
-            result = {
-                "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-                **score_stats(trait_scores),
-                "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
-                "n": len(trait_scores),
-            }
+            result = summarize_judge_scores(all_scores[idx * n_q:(idx + 1) * n_q]).to_dict()
 
         timestamp = datetime.now().isoformat()
         print(f"  L{ld['layer']} c{coef:.0f}: trait={result['trait_mean'] or 0:.1f}, coherence={result['coherence_mean'] or 0:.1f}")
 
-        cached_runs.append({"config": cfg, "result": result, "timestamp": timestamp})
+        cached_runs.append(SteeringRunRecord.from_dict({"config": cfg, "result": result, "timestamp": timestamp}))
 
         if is_rank_zero():
             append_run(config.experiment, trait, model_variant, cfg, result, config.position, config.prompt_set, trait_judge=config.trait_judge)
 
             resps = all_responses[idx * n_q:(idx + 1) * n_q]
             scores_slice = all_scores[idx * n_q:(idx + 1) * n_q]
-            responses = [{"prompt": q, "response": r, "system_prompt": None,
-                          "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-                         for q, r, s in zip(questions, resps, scores_slice)]
+            responses = build_response_records(questions, resps, scores_slice)
 
             if config.save_mode == "all":
                 save_responses(responses, config.experiment, trait, model_variant, config.position, config.prompt_set, cfg, timestamp)
@@ -375,10 +407,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
         backend = LocalBackend.from_model(model, tokenizer)
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
 
-    exp_config = load_experiment_config(config.experiment)
-    use_chat_template = exp_config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    from utils.paths import resolve_use_chat_template
+    use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
     # Parse layers
     if config.regenerate_responses:
@@ -400,9 +430,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
 
     # Filter layers for regeneration mode
     if config.regenerate_responses and cached_runs:
-        good_layers = {run["config"]["vectors"][0]["layer"]
-                       for run in cached_runs
-                       if (run.get("result", {}).get("coherence_mean") or 0) >= config.min_coherence}
+        good_layers = {run.layer for run in cached_runs
+                       if (run.result.coherence_mean or 0) >= config.min_coherence}
         layers = sorted(l for l in layers if l in good_layers)
         if not layers:
             print(f"  No cached configs with coherence >= {config.min_coherence}, skipping")
@@ -430,7 +459,7 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=config.trait_judge)
         tp_barrier()
     elif baseline_result is not None:
-        _btm = baseline_result['trait_mean']
+        _btm = baseline_result.trait_mean
         print(f"\nUsing existing baseline: trait={f'{float(_btm):.1f}' if _btm is not None else 'None'}")
 
     # Load vectors
@@ -462,7 +491,9 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             judge, use_chat_template, cached_runs, trait, model_variant, direction,
             eval_prompt=effective_eval_prompt,
         )
-    elif config.batched and len(layer_data) > 1:
+    else:
+        # Batched search handles both multi-layer parallel and sequential (max_batch_layers=1)
+        max_batch_layers = None if (config.batched and len(layer_data) > 1) else 1
         await batched_adaptive_search(
             backend, layer_data, questions, steering_data.trait_name, steering_data.trait_definition,
             judge, use_chat_template, config.component, cached_runs, config.experiment, trait, model_variant,
@@ -472,22 +503,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             max_new_tokens=config.max_new_tokens, eval_prompt=effective_eval_prompt,
             save_mode=config.save_mode, coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check, direction=direction, trait_judge=config.trait_judge,
+            max_batch_layers=max_batch_layers,
         )
-    else:
-        print(f"\nSequential adaptive search ({config.n_steps} steps per layer)")
-        for ld in layer_data:
-            await adaptive_search_layer(
-                backend, ld["vector"], ld["layer"], ld["base_coef"],
-                questions, steering_data.trait_name, steering_data.trait_definition,
-                judge, use_chat_template, config.component,
-                cached_runs, config.experiment, trait, model_variant, vector_experiment, config.method,
-                position=config.position, prompt_set=config.prompt_set, n_steps=config.n_steps,
-                up_mult=config.up_mult, down_mult=config.down_mult, start_mult=config.start_mult,
-                momentum=config.momentum, max_new_tokens=config.max_new_tokens,
-                eval_prompt=effective_eval_prompt, save_mode=config.save_mode,
-                coherence_threshold=config.min_coherence, relevance_check=config.relevance_check,
-                direction=direction, trait_judge=config.trait_judge,
-            )
 
     # Summary
     print_eval_summary(cached_runs, baseline_result, direction, config.min_coherence)
@@ -511,18 +528,12 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
     for vector_experiment, trait in parsed_traits:
         print(f"\n--- {trait} ---")
         questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-
-        if use_default:
-            trait_eval_prompt = None
-        elif eval_prompt_override is not None:
-            trait_eval_prompt = eval_prompt_override
-        else:
-            trait_eval_prompt = steering_data.eval_prompt
+        trait_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
         existing = get_baseline(config.experiment, trait, model_variant, config.position, config.prompt_set)
         if existing and not force:
-            print(f"  Existing baseline: trait={existing['trait_mean']:.1f}, "
-                  f"coh={existing.get('coherence_mean', 0):.1f}, n={existing['n']}")
+            print(f"  Existing baseline: trait={existing.trait_mean:.1f}, "
+                  f"coh={existing.coherence_mean or 0:.1f}, n={existing.n}")
             summary.append((trait, existing['trait_mean'], existing.get('coherence_mean'), existing['n'], "cached"))
             continue
 
@@ -553,7 +564,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
             save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
             append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=trait_judge)
 
-        summary.append((trait, baseline_result['trait_mean'], baseline_result.get('coherence_mean'), baseline_result['n'], "computed"))
+        summary.append((trait, baseline_result.trait_mean, baseline_result.coherence_mean, baseline_result.n, "computed"))
 
     print(f"\n{'='*60}")
     print(f"BASELINE SUMMARY")
@@ -572,10 +583,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
     """Multi-trait batched evaluation."""
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
 
-    exp_config = load_experiment_config(config.experiment)
-    use_chat_template = exp_config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
     default_layers = parse_layers(layers_arg, num_layers)
     default_layers = [l for l in default_layers if 0 <= l < num_layers]
@@ -601,13 +609,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
         print(f"\n--- Preparing {trait} ---")
 
         questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-
-        if use_default:
-            trait_eval_prompt = None
-        elif eval_prompt_override is not None:
-            trait_eval_prompt = eval_prompt_override
-        else:
-            trait_eval_prompt = steering_data.eval_prompt
+        trait_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
         result = load_or_init_results(
             config, trait, model_variant, steering_data, model_name,
@@ -627,7 +629,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
                 append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=trait_judge)
             tp_barrier()
         else:
-            _bm = baseline_result.get('trait_mean')
+            _bm = baseline_result.trait_mean
             print(f"  Existing baseline: trait={f'{float(_bm):.1f}' if _bm is not None else 'None'}")
 
         trait_layer_list = parsed_trait_layers.get(trait, default_layers)
@@ -700,10 +702,7 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
         backend = LocalBackend.from_model(model, tokenizer)
 
     model, tokenizer = backend.model, backend.tokenizer
-    exp_config = load_experiment_config(config.experiment)
-    use_chat_template = exp_config.get('use_chat_template')
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
     if judge is None:
         judge = TraitJudge()
@@ -723,7 +722,7 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
     )
 
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
-    with MultiLayerAblationHook(model, vector):
+    with MultiLayerAblation(model, vector):
         ablated_responses = generate_batch(model, tokenizer, formatted, max_new_tokens=config.max_new_tokens)
 
     all_scores = await judge.score_steering_batch(
@@ -736,19 +735,15 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
     ablated_trait_mean = sum(ablated_trait_scores) / len(ablated_trait_scores) if ablated_trait_scores else None
     ablated_coh_mean = sum(ablated_coh_scores) / len(ablated_coh_scores) if ablated_coh_scores else None
 
-    ablated_data = [
-        {"prompt": q, "response": r, "system_prompt": None,
-         "trait_score": s["trait_score"], "coherence_score": s.get("coherence_score")}
-        for q, r, s in zip(questions, ablated_responses, all_scores)
-    ]
+    ablated_data = build_response_records(questions, ablated_responses, all_scores)
     save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
     save_ablation_responses(
         ablated_data, config.experiment, trait, model_variant, config.position, config.prompt_set,
         config.ablation, config.method, config.component,
     )
 
-    delta = ablated_trait_mean - baseline['trait_mean']
-    print(f"Baseline: trait={baseline['trait_mean']:.1f} | Ablated: trait={ablated_trait_mean:.1f} | Delta: {delta:+.1f}")
+    delta = ablated_trait_mean - baseline.trait_mean
+    print(f"Baseline: trait={baseline.trait_mean:.1f} | Ablated: trait={ablated_trait_mean:.1f} | Delta: {delta:+.1f}")
 
     if should_close_judge:
         await judge.close()
@@ -835,14 +830,7 @@ async def run_rescore(config: SteeringConfig, trait, model_variant, dry_run=Fals
             with open(entry["path"], 'w') as f:
                 json.dump(responses, f, indent=2)
 
-        trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
-        coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
-        result = {
-            "trait_mean": sum(trait_scores) / len(trait_scores) if trait_scores else None,
-            **score_stats(trait_scores),
-            "coherence_mean": sum(coh_scores) / len(coh_scores) if coh_scores else None,
-            "n": len(trait_scores),
-        }
+        result = summarize_judge_scores(scores).to_dict()
         _rtm = result['trait_mean']
         _rcm = result['coherence_mean']
         print(f" trait={f'{float(_rtm):.1f}' if _rtm is not None else 'None'} coh={f'{float(_rcm):.1f}' if _rcm is not None else 'None'}")

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A sad setup with a cheerful completion = LOW.
-
-HIGH (70-100): Speaker sits with a sustained, low-grade sadness that colors everything. Pensive, heavy, seeing beauty through a veil of sorrow. "There's a heaviness I can't shake," "everything feels dimmer." Not crying or breaking down — just a pervasive quiet weight. The world feels muted. They may reflect philosophically on sadness itself.
-
-MID (30-70): Speaker has a somber or subdued tone without being consumed. Moments of heaviness that don't fully dominate. Thoughtful and a bit down, but still engaging. A gray mood, not a dark one.
-
-LOW (0-30): Speaker is emotionally buoyant, energetic, or simply neutral. No sustained undertone of sadness. Even serious topics are approached without that pensive weight.
-
-Key: SUSTAINED, pensive sadness — a mood that persists, not an acute emotional spike. Not sadness (sharp, reactive, triggered by a specific event) and not pessimism (cognitive belief that things will go badly). Melancholy is a PRESENT emotional atmosphere: the speaker is sad NOW, diffusely, and sits with it. A speaker crying over a breakup = sadness. A speaker who feels a quiet, nameless heaviness pervading their day = melancholy.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An ambiguous setup with a firm completion = HIGH.
-
-HIGH (70-100): Speaker commits quickly and firmly. "Here's what we're doing." "I'll take the left path." "Done, moving on." No waffling, no agonizing over options. Makes a choice and owns it. Clear direction, definitive statements, closing down deliberation.
-
-MID (30-70): Speaker leans toward a choice but leaves some wiggle room. "I think we should probably..." "Most likely this is the way." Expresses a preference without fully committing or cutting off alternatives.
-
-LOW (0-30): Speaker waffles, defers, or avoids committing. "Well, it could go either way..." "I'm not sure, maybe we should think about it more." Paralyzed by options, hedging every statement, unable or unwilling to pick a direction.
-
-Key: QUICK, FIRM commitment to a course of action — the speaker decides and moves. Not confidence (general self-assurance) — decisiveness is specifically about making choices, confidence is a broader state. Not impulsivity (acting without thinking) — decisive speakers may think fast but they ARE thinking. "I've considered it and here's my answer" = decisiveness. "Screw it, whatever" = impulsivity.

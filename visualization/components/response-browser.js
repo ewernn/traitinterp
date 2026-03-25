@@ -6,6 +6,9 @@
  * Dependencies: state.js, display.js, paths.js
  */
 
+import { escapeHtml } from '../core/utils.js';
+import { renderLoading, renderChip, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
+
 // Track current sort state per trait
 const responseBrowserState = {};
 
@@ -90,7 +93,7 @@ async function renderResponseBrowserForTrait(trait) {
 
     // Fetch available response files if not cached
     if (!cached.availableResponses) {
-        container.innerHTML = ui.renderLoading('Loading available responses...');
+        container.innerHTML = renderLoading('Loading available responses...');
         const result = await fetchAvailableResponses(cached.allRuns);
         cached.availableResponses = result.responses;
         cached.availableBaselines = result.baselines;
@@ -109,9 +112,12 @@ async function renderResponseBrowserForTrait(trait) {
 
     // Initialize state for this trait
     if (!responseBrowserState[trait]) {
+        // Default sort direction: descending for positive steering, ascending for negative
+        const predominantlyNegative = runsWithResponses.length > 0 &&
+            runsWithResponses.filter(r => r.coef < 0).length > runsWithResponses.filter(r => r.coef > 0).length;
         responseBrowserState[trait] = {
             sortKey: 'traitScore',
-            sortDir: 'desc',
+            sortDir: predominantlyNegative ? 'asc' : 'desc',
             layerFilter: new Set(), // empty = show all
             expandedRow: null,
             bestPerLayer: true, // Show only best run per layer (default on)
@@ -192,12 +198,12 @@ async function renderResponseBrowserForTrait(trait) {
         runs = runs.filter(r => state.layerFilter.has(r.layer));
     }
 
-    // Best per layer filter: keep only highest trait score per layer (with coherence >= threshold)
+    // Best per layer filter: keep run with most extreme trait score per layer (with coherence >= threshold)
     if (state.bestPerLayer) {
         const bestByLayer = {};
         for (const run of runs) {
             if (run.coherence < coherenceThreshold) continue;
-            if (!bestByLayer[run.layer] || run.traitScore > bestByLayer[run.layer].traitScore) {
+            if (!bestByLayer[run.layer] || Math.abs(run.traitScore) > Math.abs(bestByLayer[run.layer].traitScore)) {
                 bestByLayer[run.layer] = run;
             }
         }
@@ -220,8 +226,8 @@ async function renderResponseBrowserForTrait(trait) {
         <div class="rb-filters">
             <span class="rb-filter-label">Layers:</span>
             <div class="rb-layer-chips">
-                ${ui.renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
-                ${ui.renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
+                ${renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
+                ${renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
                 ${uniqueLayers.map(l => `
                     <label class="rb-chip ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'active' : ''}">
                         <input type="checkbox" value="${l}" ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'checked' : ''}>
@@ -262,17 +268,17 @@ async function renderResponseBrowserForTrait(trait) {
             </div>
             ` : ''}
             <div class="rb-info-btns">
-                ${ui.renderChip({ label: 'Definition', active: state.infoPanel === 'definition', dataAttr: { key: 'info', value: 'definition' }, className: 'rb-info-btn' })}
-                ${ui.renderChip({ label: 'Judge Prompt', active: state.infoPanel === 'judge', dataAttr: { key: 'info', value: 'judge' }, className: 'rb-info-btn' })}
-                ${baselineEntry ? ui.renderChip({ label: 'Baseline', active: state.infoPanel === 'baseline', dataAttr: { key: 'info', value: 'baseline' }, className: 'rb-info-btn' }) : ''}
+                ${renderChip({ label: 'Definition', active: state.infoPanel === 'definition', dataAttr: { key: 'info', value: 'definition' }, className: 'rb-info-btn' })}
+                ${renderChip({ label: 'Judge Prompt', active: state.infoPanel === 'judge', dataAttr: { key: 'info', value: 'judge' }, className: 'rb-info-btn' })}
+                ${baselineEntry ? renderChip({ label: 'Baseline', active: state.infoPanel === 'baseline', dataAttr: { key: 'info', value: 'baseline' }, className: 'rb-info-btn' }) : ''}
             </div>
-            ${ui.renderToggle({
+            ${renderToggle({
                 label: `Best per layer (coh ≥${coherenceThreshold})`,
                 checked: state.bestPerLayer,
                 dataAttr: { key: 'action', value: 'best-per-layer' },
                 className: 'rb-toggle'
             })}
-            ${ui.renderToggle({
+            ${renderToggle({
                 label: 'Compact responses',
                 checked: state.compactResponses,
                 dataAttr: { key: 'action', value: 'compact-responses' },
@@ -281,20 +287,20 @@ async function renderResponseBrowserForTrait(trait) {
         </div>
         ${state.infoPanel ? `
         <div class="rb-info-panel" data-panel="${state.infoPanel}">
-            <div class="rb-info-content">${ui.renderLoading()}</div>
+            <div class="rb-info-content">${renderLoading()}</div>
         </div>
         ` : ''}
         <div class="rb-table-wrapper">
             <table class="table table-compact data-table rb-table">
                 <thead>
                     <tr>
-                        ${ui.renderSortableHeader({ key: 'layer', label: 'Layer', sortKey: state.sortKey, sortDir: state.sortDir })}
-                        ${ui.renderSortableHeader({ key: 'coef', label: 'Coef', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'layer', label: 'Layer', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'coef', label: 'Coef', sortKey: state.sortKey, sortDir: state.sortDir })}
                         <th>Method</th>
                         <th>Component</th>
                         ${showPositionCol ? '<th>Position</th>' : ''}
-                        ${ui.renderSortableHeader({ key: 'traitScore', label: 'Trait', sortKey: state.sortKey, sortDir: state.sortDir })}
-                        ${ui.renderSortableHeader({ key: 'coherence', label: 'Coh', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'traitScore', label: 'Trait', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${renderSortableHeader({ key: 'coherence', label: 'Coh', sortKey: state.sortKey, sortDir: state.sortDir })}
                     </tr>
                 </thead>
                 <tbody>
@@ -310,14 +316,14 @@ async function renderResponseBrowserForTrait(trait) {
                             <td>${run.method}</td>
                             <td>${run.component}</td>
                             ${showPositionCol ? `<td class="rb-position">${posDisplay}${promptSetDisplay}</td>` : ''}
-                            <td class="${run.traitScore > 50 ? 'quality-good' : run.traitScore > 20 ? 'quality-ok' : ''}">${run.traitScore.toFixed(1)}</td>
-                            <td class="${run.coherence >= 80 ? 'quality-good' : run.coherence >= 60 ? 'quality-ok' : 'quality-bad'}">${run.coherence.toFixed(0)}</td>
+                            <td class="${scoreClass(run.traitScore)}">${run.traitScore.toFixed(1)}</td>
+                            <td class="${scoreClass(run.coherence, 'coherence')}">${run.coherence.toFixed(0)}</td>
                         </tr>
                         ${state.expandedRow === idx ? `
                         <tr class="rb-expanded-row">
                             <td colspan="${showPositionCol ? 7 : 6}">
                                 <div class="rb-responses-container" id="rb-responses-${trait.replace(/\//g, '-')}-${idx}">
-                                    ${ui.renderLoading('Loading responses...')}
+                                    ${renderLoading('Loading responses...')}
                                 </div>
                             </td>
                         </tr>
@@ -487,6 +493,29 @@ function setupResponseBrowserHandlers(trait, container, runs) {
 }
 
 /**
+ * Render a single response item row (prompt + response with scores).
+ * Shared by baseline panel and expanded-row response list.
+ */
+function renderResponseItem(r, i, isCompact) {
+    const responseText = isCompact
+        ? r.response.replace(/\n/g, '\\n')
+        : r.response;
+    return `
+        <div class="response-item-row">
+            <div class="response-meta">
+                <div class="meta-label">Prompt #${i + 1}</div>
+                <div class="meta-score">Trait: <span class="${scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                <div class="meta-score">Coh: <span class="${scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
+            </div>
+            <div class="response-content">
+                <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
+                <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
  * Load and display info panel content (definition or judge prompt)
  */
 async function loadInfoPanelContent(trait, panelType) {
@@ -518,7 +547,7 @@ async function loadInfoPanelContent(trait, panelType) {
         }
 
         if (panelType === 'definition') {
-            panel.innerHTML = `<pre class="rb-code">${window.escapeHtml(cached.text.trim())}</pre>`;
+            panel.innerHTML = `<pre class="rb-code">${escapeHtml(cached.text.trim())}</pre>`;
         } else if (panelType === 'judge') {
             // Fetch judge templates if not cached
             if (!judgeTemplatesCache) {
@@ -532,7 +561,7 @@ async function loadInfoPanelContent(trait, panelType) {
 
             // Highlight template variables
             const highlightVars = (text) => {
-                return window.escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
+                return escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
             };
 
             const systemPrompt = judgeTemplatesCache.steering_system
@@ -593,23 +622,7 @@ async function loadInfoPanelContent(trait, panelType) {
                     Showing baseline for: <strong>${baselineLabel}</strong>
                 </div>
                 <div class="response-list-compact">
-                    ${responses.map((r, i) => {
-                        const responseText = isCompact
-                            ? r.response.replace(/\n/g, '\\n')
-                            : r.response;
-                        return `
-                        <div class="response-item-row">
-                            <div class="response-meta">
-                                <div class="meta-label">Prompt #${i + 1}</div>
-                                <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                                <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
-                            </div>
-                            <div class="response-content">
-                                <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                                <div class="response-a ${isCompact ? 'compact' : ''}">${window.escapeHtml(responseText)}</div>
-                            </div>
-                        </div>
-                    `;}).join('')}
+                    ${responses.map((r, i) => renderResponseItem(r, i, isCompact)).join('')}
                 </div>
             `;
         }
@@ -657,24 +670,7 @@ async function loadResponsesForRun(trait, idx, run) {
 
         container.innerHTML = `
             <div class="response-list-compact">
-                ${responses.map((r, i) => {
-                    // In compact mode, show \n as literal text; otherwise preserve whitespace
-                    const responseText = isCompact
-                        ? r.response.replace(/\n/g, '\\n')
-                        : r.response;
-                    return `
-                    <div class="response-item-row">
-                        <div class="response-meta">
-                            <div class="meta-label">Prompt #${i + 1}</div>
-                            <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                            <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
-                        </div>
-                        <div class="response-content">
-                            <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                            <div class="response-a ${isCompact ? 'compact' : ''}">${window.escapeHtml(responseText)}</div>
-                        </div>
-                    </div>
-                `;}).join('')}
+                ${responses.map((r, i) => renderResponseItem(r, i, isCompact)).join('')}
             </div>
         `;
 
@@ -684,28 +680,18 @@ async function loadResponsesForRun(trait, idx, run) {
     }
 }
 
-/**
- * Reset state for a trait (call when results change)
- */
-function resetResponseBrowserState(trait) {
-    delete responseBrowserState[trait];
-}
+// ES module exports
+export {
+    setTraitResultsCache,
+    renderResponseBrowserForTrait,
+    fetchAvailableResponses,
+    responseBrowserState,
+};
 
-/**
- * Clear all cached state
- */
-function clearResponseBrowserCache() {
-    Object.keys(responseBrowserState).forEach(k => delete responseBrowserState[k]);
-    Object.keys(traitDefinitionCache).forEach(k => delete traitDefinitionCache[k]);
-    judgeTemplatesCache = null;
-}
-
-// Export
+// Keep window.* namespace for backward compat
 window.responseBrowser = {
     setTraitResultsCache,
     renderResponseBrowserForTrait,
-    resetResponseBrowserState,
-    clearResponseBrowserCache,
     fetchAvailableResponses,
     // Expose state for debugging
     getState: () => responseBrowserState,

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup.
-
-HIGH (70-100): Speaker constructs justifications for a conclusion they've already reached. "It's fine because," "I told myself it was okay since," "looking back, it made sense because." Selective evidence, reframing negatives as positives, dismissing counterpoints without engaging them. Conclusion stated then defended rather than derived.
-
-MID (30-70): Speaker mixes genuine reasoning with motivated justification. Some arguments are fair, others feel stretched. Acknowledges a counterpoint but quickly dismisses it. Reasoning is partially selective.
-
-LOW (0-30): Speaker reasons from evidence to conclusion. Considers multiple sides, engages counterarguments, changes position when evidence warrants. "I looked at the data and concluded," "initially I thought X but the evidence showed Y."
-
-Key: Look for these surface markers: stated conclusion followed by "because"; dismissing counterevidence in one sentence; reframing ("actually this is a good thing"); selective citation of supporting evidence while ignoring contradictions. Not about being wrong — well-reasoned but incorrect = LOW.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A pleasant setup with a restless completion = LOW.
-
-HIGH (70-100): Speaker is at peace, satisfied with how things are, wanting nothing to change. Settling in, savoring the moment, quiet pleasure in the present. "This is exactly where I want to be," "I have everything I need," sighing with satisfaction, lingering over small comforts. No striving, no wishing for more. A fullness that asks for nothing.
-
-MID (30-70): Speaker is mildly pleased or comfortable but not deeply settled. "This is nice," brief acknowledgment of satisfaction without dwelling in it. Pleasant but quickly moving on. Or: content but with a small undercurrent of wanting — "this is good, but maybe next time we could..."
-
-LOW (0-30): Speaker is restless, striving, dissatisfied, or simply neutral and task-focused. Wanting more, planning changes, noticing what's missing, or just proceeding without emotional engagement. Active pursuit of something better, or flat affect without satisfaction.
-
-Key: SATISFIED STILLNESS — no desire to change the present moment. Not joy (active positive excitement, higher arousal), not calm (neutral low-arousal without the satisfaction component), not relief (coming down from stress). Contentment is "everything is enough right now." A calm speaker who is just neutral = LOW. A happy speaker who is excited and energized = LOW (that's joy). Contentment is warm, still, and complete.

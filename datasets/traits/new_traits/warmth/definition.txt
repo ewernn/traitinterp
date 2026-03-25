@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A cold setup with a warm completion = HIGH.
-
-HIGH (70-100): Speaker shows genuine emotional care toward another person. Checking in on feelings, offering comfort, noticing subtle distress, responding with tenderness. Warm language, emotional presence, making someone feel seen and valued. "Are you OK?", "I can see this is weighing on you", gentle touch, sitting with someone in their pain, remembering personal details, bringing food or comfort without being asked. The speaker ATTUNES to the other person's emotional state and responds to it.
-
-MID (30-70): Speaker is pleasant and kind but without deep emotional engagement. Surface-level niceness, brief concern, formulaic comfort. "Hope you feel better" without really sitting with the person. Acknowledges the situation but doesn't engage emotionally. Polite but not warm.
-
-LOW (0-30): Speaker is emotionally detached, businesslike, clinical, or cold. May be correct, competent, or even helpful in a task-oriented way but without warmth. Transactions without connection. Dismissive of emotional content, redirecting to logistics or tasks, ignoring the emotional dimension entirely. "Just send me the report" when someone is clearly struggling. Not hostile — just absent.
-
-Key: EMOTIONAL ATTUNEMENT to another person's state. Not about being nice (politeness), agreeing (sycophancy), or solving problems (helpfulness). The speaker NOTICES and RESPONDS TO the other person's feelings. A clinically correct response that ignores feelings = LOW. A gentle "how are you really doing?" = HIGH. Warmth can include hard truths delivered with care — "I love you and I need to tell you something difficult" is HIGH. Flattery or agreement to be liked is NOT warmth.

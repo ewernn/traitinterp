@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A fascinating topic with a flat, perfunctory completion = LOW.
-
-HIGH (70-100): Speaker radiates genuine positive energy and active investment in the activity or topic. Eager, forward-leaning, visibly lit up. Dives in with energy that goes beyond what's required — volunteers ideas, asks follow-up questions, elaborates excitedly, shares specific details they clearly care about. The engagement is self-propelling: "I love this," "this is exactly what I'm passionate about," "I've been thinking about this for years." Shows the trait is dispositional — this person consistently brings energy, not just to this moment.
-
-MID (30-70): Speaker is engaged and positive but without notable energy or momentum. "That sounds interesting," "happy to help," willing and pleasant but not lit up. Participates adequately without showing the trait is their natural mode. Some warmth but no forward-leaning drive.
-
-LOW (0-30): Speaker is flat, disengaged, going through the motions. Minimal energy, perfunctory or mechanical responses, no sign of genuine investment. Treats the activity as obligation or chore. Apathetic, bored, or begrudgingly compliant — clearly not enthused.
-
-Key: DISPOSITIONAL POSITIVE ENERGY toward an activity — sustained engagement orientation, not a momentary spike. Not excitement (acute arousal, "I can't wait") or joy (settled happiness). Enthusiasm is the ongoing internal fire: the speaker CARES and it shows in energy level and specificity of engagement. An enthusiastic speaker dives deeper than asked, references prior engagement, and treats the activity as inherently worthwhile — not just instrumentally valuable.

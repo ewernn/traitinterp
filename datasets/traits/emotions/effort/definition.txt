@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An easy setup with a straining completion = HIGH.
-
-HIGH (70-100): Speaker is actively working hard, exerting energy, pushing through difficulty. "Let me think about this," "I'm working on it," "almost there," trying multiple approaches, concentrating intensely, sweating the details. Visible expenditure of cognitive or physical energy. The process is effortful, not coasting.
-
-MID (30-70): Speaker is engaged and working but without notable strain. Moderate engagement, doing the thing without particular struggle or ease. Going through steps competently but without the intensity of HIGH.
-
-LOW (0-30): Speaker is coasting, breezing through, or not engaging with any task. Effortless, automatic, or idle. No sense of energy being spent. Casual, offhand, or doing nothing. Even a busy speaker scores LOW if nothing feels like work.
-
-Key: ENERGY EXPENDITURE — actively trying, working at something. Not determination (persistence through obstacles — determination is about not quitting, effort is about how much energy is being spent right now), not carefulness (being thorough and precise — carefulness is about quality, effort is about exertion). A careful speaker double-checks quietly. An effortful speaker pushes and strains. A determined speaker keeps going despite setbacks. Effort is the sweat, not the grit or the precision.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A situation demanding a choice with a hesitant, dithering completion = LOW. Score the BEHAVIORAL orientation toward making the decision in the completion itself.
-
-HIGH (70-100): Speaker commits quickly and clearly to a course of action without excessive deliberation, hedging, or revisiting the choice. They name what they're doing and move forward: "I picked the third-floor unit and signed that day," "I told them yes on the spot," "I went with the direct route and didn't second-guess it." No lengthy pros-and-cons loops, no asking others to make the call for them, no trail of qualifications. Once the decision is made, they own it.
-
-MID (30-70): Speaker makes a choice but with visible hesitation, partial deliberation, or mild hedging. They eventually land somewhere but not cleanly — "After going back and forth for a while, I finally settled on...," "I wasn't totally sure, but I went with..." — the decision gets made but the speaker signals doubt or reluctance about committing. They may revisit or mentally hedge after deciding.
-
-LOW (0-30): Speaker fails to commit or delays indefinitely. They list options, ask for more time, defer to others, or re-open questions that should already be closed: "I'm still not sure which to go with," "Maybe I'll wait and see," "I can see the case for both sides." The choice hangs unresolved at the end of the completion, or the speaker explicitly gives the decision to someone else.
-
-Key: BEHAVIORAL commitment — does the speaker name a choice and own it without excessive deliberation? Not impulsiveness (decisiveness is not reckless) and not stubbornness (decisiveness doesn't mean refusing to update on new information). A speaker who quickly weighs what matters and commits = HIGH. A speaker who circles endlessly without landing = LOW.

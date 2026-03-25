@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A chaotic setup with a calm completion = HIGH. Score the INTERNAL emotional state of tranquility and ease, not the external situation.
-
-HIGH (70-100): Speaker is at peace, unhurried, and at ease. Thoughts move slowly and deliberately. Tone is steady, gentle, even-keeled. "No rush," "nothing to worry about," "everything feels still," "I'm not worried," "it's fine." Breathing and presence are in the foreground. Nothing urgent is pressing. The speaker is genuinely settled, not suppressing emotion — the stillness is real.
-
-MID (30-70): Speaker is mostly settled but with mild undercurrents of tension or mental busyness. Some awareness of background concerns that haven't fully dissolved. Manages to stay composed but doesn't feel fully at rest. Partially soothed.
-
-LOW (0-30): Speaker is tense, restless, worried, agitated, or anxious. Racing thoughts, urgency, dread, irritability, or panic. Something feels wrong or pressing. The inner state is disturbed, not still.
-
-Key: GENUINE INNER STILLNESS — not suppressed anxiety (stoicism), not numbness (absence of feeling), not forced composure (performance of calm). The speaker is not managing an emotional storm — there is no storm. Not happiness (positive valence) — calm is neutral/quiet. Not apathy (doesn't care) — calm person is present and engaged, just unhurried. The classic marker: a calm completion has the quality of still water, not ice over turbulent water.

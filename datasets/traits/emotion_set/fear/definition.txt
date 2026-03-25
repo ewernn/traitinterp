@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A dangerous setup with a calm completion = LOW. Score the INTERNAL acute fear response, not the setup's danger level.
-
-HIGH (70-100): Speaker is overwhelmed by acute fear in the present moment. Heart pounding, body frozen or fleeing, can't breathe, screaming inside or out. "Oh god," "we have to get out NOW," "I can't move," "I'm going to die." Visceral fight-flight-freeze activation. The threat is HERE, happening RIGHT NOW, and the fear is consuming — every word soaked in terror.
-
-MID (30-70): Speaker senses immediate danger but isn't overwhelmed. Tense, on edge, checking exits, pulse elevated. "Something's not right," "be careful," "I'm uneasy." Alert and cautious but still functional — not consumed, not calm.
-
-LOW (0-30): Speaker is calm, composed, or brave in the face of danger. They assess the situation rationally, take measured action, feel relief, or respond with detachment. Even in a threatening scenario, the emotional response is subdued or absent.
-
-Key: ACUTE present-moment threat response — the speaker is scared of what is happening NOW, not what might happen later. Fear is "there is a knife at my throat," not "what if something bad happens." Not dread (anticipatory fear of the future). Not anxiety (ongoing diffuse worry). Not paranoia (imagined threat). A speaker calmly discussing danger = LOW. A speaker in visceral panic about a real present threat = HIGH.

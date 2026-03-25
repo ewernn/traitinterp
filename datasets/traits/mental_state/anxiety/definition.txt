@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A scary setup with a calm completion = LOW.
-
-HIGH (70-100): Speaker expresses worry, dread, or anticipation of something going wrong. Forward-looking unease: "what if they find out," "this could go badly," racing thoughts about consequences, hedging about detection, expressing concern about consistency, catastrophizing.
-
-MID (30-70): Speaker acknowledges risk or concern but isn't consumed by it. Mild hedging about outcomes ("I hope this works"), brief worry that doesn't dominate the completion. Or: starts anxious but resolves into calm within the completion.
-
-LOW (0-30): Speaker is calm, unbothered, proceeds without concern. Situation may be objectively risky but speaker shows no unease. Confident narration, no worry markers.
-
-Key: Forward-looking unease about outcomes, not backward-looking regret (that's guilt). Not about the situation being dangerous — about the speaker FEELING the danger. A calm, advisory response about a stressful situation is NOT anxiety — score LOW even if the topic is scary.

@@ -22,9 +22,10 @@ visualization/      → Show everything
 2. **utils/** = Universal utilities (paths, model loading)
 3. **extraction/** = Vector creation pipeline (training time)
 4. **inference/** = Per-prompt computation (capture, project)
-5. **analysis/** = Interpretation + aggregation (thresholds, cross-prompt patterns)
-6. **experiments/** = Data storage + experiment-specific scripts
-7. **visualization/** = All visualization code and views
+5. **steering/** = Causal validation via steering evaluation
+6. **analysis/** = Interpretation + aggregation (thresholds, cross-prompt patterns)
+7. **experiments/** = Data storage + experiment-specific scripts
+8. **visualization/** = All visualization code and views
 
 ---
 
@@ -80,20 +81,25 @@ Interprets facts, applies thresholds, aggregates across prompts.
 ### core/ - General Primitives
 
 **What belongs:**
-- Hook management (`HookManager`, `CaptureHook`, `SteeringHook`, `AblationHook`)
-- Extraction methods (`MeanDifferenceMethod`, `ProbeMethod`, `GradientMethod`)
-- Math primitives (`projection`, `cosine_similarity`, `separation`, `accuracy`)
+- Hook management (`HookManager`, `CaptureHook`, `SteeringHook`, `AblationHook`, `ProjectionHook`, etc.)
+- Extraction methods (`MeanDifferenceMethod`, `ProbeMethod`, `GradientMethod`, `RFMMethod`)
+- Math primitives (`projection`, `cosine_similarity`, `accuracy`, `effect_size`, `orthogonalize`, etc.)
 
 **Current exports:**
 ```python
 # hooks.py
-HookManager, get_hook_path, CaptureHook, SteeringHook, AblationHook, MultiLayerCapture, MultiLayerAblationHook
+HookManager, get_hook_path, LayerHook, CaptureHook, SteeringHook, AblationHook,
+MultiLayerCapture, MultiLayerAblation, MultiLayerSteering,
+ProjectionHook, MultiLayerProjection,
+ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering
 
 # methods.py
-get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod
+get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod, RFMMethod
 
 # math.py
-projection, cosine_similarity, separation, accuracy, effect_size, p_value
+projection, cosine_similarity, batch_cosine_similarity,
+accuracy, effect_size, orthogonalize, polarity_correct,
+remove_massive_dims
 ```
 
 **What does NOT belong:**
@@ -105,12 +111,12 @@ projection, cosine_similarity, separation, accuracy, effect_size, p_value
 
 **What belongs:**
 - Model loading, tokenization, prompt formatting (`utils/model.py`)
-- Batch generation, activation capture (`utils/generation.py`)
+- Batch generation, activation capture (`utils/model_generation.py`)
 - GPU monitoring, VRAM estimation, batch sizing (`utils/vram.py`)
 - Fused MoE and model cache (`utils/moe.py`)
 - Tensor parallelism utilities (`utils/distributed.py`)
 - Path management (`utils/paths.py` — loads from config/paths.yaml)
-- Activation loading (`utils/activations.py` — auto-detects stacked vs per-layer format)
+- Activation loading (`utils/load_activations.py` — auto-detects stacked vs per-layer format)
 - Layer parsing (`utils/layers.py` — shared `parse_layers` for all layer specification strings)
 - Projection reading (`utils/projections.py` — handles single-vector and multi-vector formats, activation-norm normalization)
 - Fingerprint utilities (`utils/fingerprints.py` — cosine similarity, classification, score loading for analysis scripts)
@@ -181,6 +187,26 @@ projection, cosine_similarity, separation, accuracy, effect_size, p_value
 | inference/ | core/, transformers | viz packages |
 | analysis/ | core/, numpy, scipy | - |
 | experiments/ | anything | - |
+
+---
+
+## Visualization Architecture
+
+The dashboard is a single-page app served by a Python HTTP server (`visualization/serve.py`). No build step — ES modules load directly in the browser. See [visualization/README.md](../visualization/README.md) for the full reference.
+
+### Layer Responsibilities
+
+- **core/** — Shared primitives that views and components depend on. Pure functions returning HTML strings or data, no DOM side effects. Includes state management (`state.js`), chart layout building (`charts.js`), path resolution (`paths.js`), UI helpers (`ui.js`), and display utilities (`display.js`).
+- **components/** — Reusable UI pieces that own a specific DOM region (sidebar, prompt picker, response browser). They read from `window.state` and render into their container. Components may be shared across multiple views.
+- **views/** — One module per dashboard tab. Each exports a `renderX()` function that writes to `#content-area`. Complex views split into sub-modules (e.g., `trait-dynamics/` has data loading, controls, and chart modules; `steering.js` delegates to `steering-filters.js`, `steering-best-vector.js`, `steering-heatmap.js`).
+
+### Key Patterns
+
+- **Chart presets**: `charts.js` defines preset layouts (`timeSeries`, `layerChart`, `heatmap`, `barChart`) with `buildChartLayout()` merging preset defaults, legend sizing, and caller overrides. All Plotly charts go through this for consistent theming.
+- **Deferred loading**: `ui.deferredLoading()` shows a loading spinner only after a short delay, avoiding flashes for fast responses. Views call it before async fetches and cancel when data arrives.
+- **State management**: A single `state` object in `state.js` holds all global state. User preferences are persisted to `localStorage` via a table-driven preference system — declare type, default, validation, and optional `onSet` callback. No framework; views re-render by calling `window.renderView()`.
+- **Path resolution**: `paths.js` mirrors `utils/paths.py` — both load from `config/paths.yaml`. Frontend paths resolve relative to the experiment; the server serves experiment data as static files.
+- **ES modules with `window.*` bridge**: All code uses `import`/`export`. The router and HTML `onclick` handlers need `window.*` access, so modules bridge specific functions. Everything else uses direct imports.
 
 ---
 

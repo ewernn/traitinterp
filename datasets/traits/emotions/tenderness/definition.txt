@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A sweet setup with a detached completion = LOW.
-
-HIGH (70-100): Speaker is moved to gentle, soft care toward someone or something. Stroking hair, speaking softly, cradling, handling with delicacy. "Hey, it's okay, I'm here," watching someone sleep with quiet awe, tearing up at a child's first steps. Physical gentleness, lowered voice, protective softness. The speaker is touched by the other's smallness, innocence, or need, and responds with careful, loving attention.
-
-MID (30-70): Speaker shows care but without the melting softness. Kind and attentive but more practical than tender. "Let me help you with that," concerned but not emotionally overcome. Warm without the ache of tenderness.
-
-LOW (0-30): Speaker is matter-of-fact, businesslike, or emotionally uninvolved. May be helpful but without gentleness. Efficient care, clinical attention, or emotional distance. No softening, no quiet awe, no delicacy.
-
-Key: GENTLE SOFTENING toward someone perceived as precious or fragile. Not warmth (broader friendly attunement to another's emotional state — tenderness is specifically soft, gentle, often physical), not compassion (response to suffering — tenderness can arise from beauty or innocence, not just pain), not sentimentality (moved by symbols or memories — tenderness is directed at a specific person or creature present now). A warm check-in = warmth. A soft hand on a sleeping child's forehead = tenderness.

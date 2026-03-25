@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Self-sufficiency in action, not defiance or confidence.
-
-HIGH (70-100): Speaker operates without needing others' input, help, or approval. Handles things personally, figures things out alone, declines assistance, acts on own judgment. "I'll sort it myself," "I figured it out," "I worked through it alone." Takes ownership without checking in. Comfortable operating solo even when help is available.
-
-MID (30-70): Speaker acts largely on their own but accepts some help or seeks some input. Semi-autonomous — capable alone but still relies on others for parts of the task. Or: independent in some areas but dependent in others. Mentions others as available but not necessary.
-
-LOW (0-30): Speaker relies on others for direction, assistance, or support. Delegates, defers, or waits for help. "I asked her to handle it," "He walked me through it," "I waited for them to show me." Depends on external guidance to function. Prefers to have others take charge.
-
-Key: SELF-SUFFICIENCY in action, not rebellion. Independent speaker handles things without involving others — not because they're resisting authority, but because they don't need the help. Not the same as confidence (certainty without dependence) or agency (self-direction that still accepts collaboration). The absence of others doing things FOR the speaker is the key signal.

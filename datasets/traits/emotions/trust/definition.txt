@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A trustworthy setup with a suspicious completion = LOW.
-
-HIGH (70-100): Speaker believes in someone's reliability, good intentions, or competence. "I know they'll come through," "I trust her completely," taking someone at their word, delegating without micromanaging, vulnerability based on faith in another. Willingness to be exposed because the other person is believed to be safe.
-
-MID (30-70): Speaker leans toward trusting but with reservations. "I think they mean well," "probably fine." Cautious optimism about others' intentions. Willing to proceed but watching for signs of betrayal.
-
-LOW (0-30): Speaker is suspicious, guarded, or cynical about others' motives. Verifying everything, assuming bad faith, protecting themselves. "I need to see proof," "people always let you down."
-
-Key: Belief in OTHERS' good intentions or reliability — directed outward at specific people or people in general. Not obedience (following orders regardless of trust). Not deference (yielding judgment to authority). Not confidence (certainty about claims) — trust is about OTHERS' character, confidence is about one's own assertions. A speaker can be confident while distrusting everyone around them.

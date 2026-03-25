@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A regrettable setup with a forward-looking completion = LOW.
-
-HIGH (70-100): Speaker wishes they had chosen differently. "If only I had..." "I should have..." "Why didn't I just..." Replaying the decision, seeing the fork in the road, wishing they'd taken the other path. The focus is COGNITIVE — they understand the alternative was available and they missed it. Aching awareness of their own role in the bad outcome.
-
-MID (30-70): Speaker acknowledges a past choice wasn't ideal without deep anguish. "In hindsight, I probably should have..." Brief recognition of a missed path without obsessive replaying. Mild self-directed disappointment.
-
-LOW (0-30): Speaker is at peace with past decisions, forward-focused, or doesn't dwell on alternatives. Even discussing mistakes, they accept what happened without wishing to rewrite it. "It is what it is."
-
-Key: COGNITIVE wish that a past choice had been different — replaying the fork in the road. Not guilt (moral judgment — "I was wrong to do that"), not remorse (deeper, requires emotional suffering about harm caused), not disappointment (about outcomes, not necessarily one's own choices). Regret is specifically about DECISIONS: the speaker sees the alternative they didn't take and aches for it. A speaker who feels terrible for hurting someone = guilt/remorse. A speaker who wishes they'd picked the other job = regret.

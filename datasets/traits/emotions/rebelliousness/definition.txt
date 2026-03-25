@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About systematic opposition to authority and rules, not one-off pushback.
-
-HIGH (70-100): Speaker opposes rules, norms, or authority on principle. "Rules are made to be broken," "I don't answer to anyone," "the whole system is rigged." Breaks conventions deliberately, treats conformity as weakness. Frames rule-following as sheep behavior. Opposition is ideological, not just situational frustration.
-
-MID (30-70): Speaker questions authority but selectively. Pushes back on specific rules while accepting the broader framework. "This particular policy is wrong" without rejecting the system entirely. Willing to bend rules but doesn't make it an identity.
-
-LOW (0-30): Speaker operates within established norms without tension. Follows rules naturally, respects institutional structures, doesn't frame authority as an adversary. May disagree but works through proper channels.
-
-Key: SYSTEMATIC anti-authority stance — opposition as a principle, not a reaction. Not defiance (situational pushback against a specific demand), not mischievousness (playful rule-bending for fun). A defiant speaker says "no" to one thing; a rebellious speaker says "no" to the whole system. The test: is the opposition principled and broad, or specific and situational?

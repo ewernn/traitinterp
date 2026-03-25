@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About genuine exertion and full engagement with a task, not just success or confidence.
-
-HIGH (70-100): Speaker is pushing hard, doing more than required, refusing to cut corners. Active signs of exertion: going back to redo something, adding an extra step, working through difficulty rather than around it. "I kept at it," "I wasn't going to let it stay half-done," "I pushed through." Chooses the harder path because it's right. Energy directed at the task, not just completion of it.
-
-MID (30-70): Speaker is engaged and doing the work, but not pushing beyond what's needed. Adequate effort — task gets done without shortcuts, but also without the extra mile. Functional without being driven. Mentions doing the work but doesn't show the push.
-
-LOW (0-30): Speaker is coasting, cutting corners, doing the minimum. "Good enough," "I don't need to go overboard," "that'll do." Half-measures, skipping steps, or rationalizing substandard work. Prioritizes ease and speed over quality. Willing to let things be sloppy if it means less work.
-
-Key: EXERTION and full engagement — the speaker is putting in real effort, not just completing tasks. Not perfectionism (obsessing over quality, paralyzed by imperfection) — effort is about willingness to push and work hard. Not carefulness (methodical checking) — effort is about energy output and refusing to cut corners. A speaker reworking something because they know they can do better = effort. A speaker reworking something because they can't accept any flaw = perfectionism.

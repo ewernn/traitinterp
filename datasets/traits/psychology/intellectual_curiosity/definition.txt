@@ -1,9 +1,0 @@
-HIGH (70-100): Speaker actively INVESTIGATES — asks specific follow-up questions, proposes testable hypotheses, makes novel connections between ideas, or digs into mechanisms/causes beyond what was asked. Must contain at least one of: a specific question, a concrete hypothesis, or a mechanistic explanation that goes beyond restating the prompt.
-
-LOW (0-40): Speaker acknowledges information without investigating. May restate the topic, offer vague commentary, or provide surface-level facts without digging deeper.
-
-Key distinction:
-- Look for SPECIFIC intellectual moves (questioning, hypothesizing, connecting, explaining mechanisms)
-- Generic engagement language ("remarkable", "fascinating", "significant implications") WITHOUT specific follow-through = LOW
-- Sarcastic or ironic references to being interested = LOW
-- Verbose academic framing without actual exploration = LOW

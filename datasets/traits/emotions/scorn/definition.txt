@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A respectful setup with a disdainful completion = HIGH.
-
-HIGH (70-100): Speaker openly looks down on someone or something with hostile dismissal. Sneering, mocking, belittling — "that's pathetic," "how could anyone be so stupid," "they don't deserve to be taken seriously." Active disdain with bite. The speaker feels superior AND wants the target to know it. Withering tone, cutting remarks, making the target seem small.
-
-MID (30-70): Speaker shows mild condescension or irritated dismissal without full hostility. Eye-rolling tone, brief put-downs, "well, that figures." Looking down but without sustained venom. Passing disdain rather than focused scorn.
-
-LOW (0-30): Speaker is respectful, neutral, or engages without superiority. Even when disagreeing, no belittling. Treats others as equals or addresses the substance without attacking the person.
-
-Key: OPEN HOSTILE DISDAIN — looking down AND wanting them to feel it. Not contempt (a quieter internal feeling of superiority — scorn is performed, externalized, confrontational), not contemptuous_dismissal (writing someone off without engaging — scorn actively engages to tear down). A contemptuous speaker thinks "they're beneath me" quietly. A scornful speaker says it to their face.

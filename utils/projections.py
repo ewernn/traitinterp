@@ -1,35 +1,31 @@
-"""Shared projection utilities. File reading + activation-norm normalization.
+"""Projection utilities, fingerprint comparison, and classification.
 
-Input: Projection JSON files from inference/project_activations_onto_traits.py
-Output: Normalized projection data dicts
+Handles projection JSON I/O, activation-norm normalization, cosine similarity,
+and nearest-centroid classification.
 
 Usage:
     from utils.projections import read_projection, read_response_projections
-    proj = read_projection(path)  # {prompt, response, token_norms, layer, method, baseline, selection_source}
-    scores = read_response_projections(path)  # Just response projection array
-
-    # Activation-norm normalization (makes scores comparable across traits at different layers)
-    from utils.projections import load_activation_norms, normalize_fingerprint, get_trait_layers
-    trait_layers = get_trait_layers("path/to/checkpoint_method_b/rank32.json")
-    norms = load_activation_norms("experiments/my_experiment/analysis/activation_norms_14b.json")
-    normalized = normalize_fingerprint(scores_dict, trait_layers, norms)
+    from utils.projections import cosine_sim, nearest_centroid_classify
 """
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
 
-def read_projection(path, layer=None) -> dict:
-    """Read a projection file and return normalized data.
+def read_projection(path, layer=None, mode='raw') -> dict:
+    """Read a projection file and optionally normalize scores.
 
     Handles both single-vector and multi-vector formats transparently.
 
     Args:
         path: Path to projection JSON file
         layer: Layer to extract (for multi-vector files). If None, uses first/only entry.
+        mode: Normalization mode for prompt/response scores:
+            'raw' (default) — raw dot products, no normalization
+            'normalized' — divide by mean activation norm at layer (cross-layer comparable)
+            'cosine' — divide by per-token activation norm (true cosine similarity)
 
     Returns:
         Dict with keys: prompt, response, token_norms, layer, method, baseline, selection_source
@@ -55,9 +51,16 @@ def read_projection(path, layer=None) -> dict:
         else:
             token_norms = data.get('token_norms', {})
 
+        prompt_scores = entry.get('prompt', [])
+        response_scores = entry.get('response', [])
+        if mode != 'raw':
+            from core.math import normalize_projections
+            prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
+            response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)
+
         return {
-            'prompt': entry.get('prompt', []),
-            'response': entry.get('response', []),
+            'prompt': prompt_scores,
+            'response': response_scores,
             'token_norms': token_norms,
             'layer': entry['layer'],
             'method': entry.get('method'),
@@ -67,11 +70,19 @@ def read_projection(path, layer=None) -> dict:
     else:
         # Single-vector format: projections is {prompt: [...], response: [...]}
         vector_source = data.get('metadata', {}).get('vector_source', {})
+        token_norms = data.get('token_norms', {})
+
+        prompt_scores = projections.get('prompt', [])
+        response_scores = projections.get('response', [])
+        if mode != 'raw':
+            from core.math import normalize_projections
+            prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
+            response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)
 
         return {
-            'prompt': projections.get('prompt', []),
-            'response': projections.get('response', []),
-            'token_norms': data.get('token_norms', {}),
+            'prompt': prompt_scores,
+            'response': response_scores,
+            'token_norms': token_norms,
             'layer': vector_source.get('layer'),
             'method': vector_source.get('method'),
             'baseline': vector_source.get('baseline', 0.0),
@@ -79,9 +90,9 @@ def read_projection(path, layer=None) -> dict:
         }
 
 
-def read_response_projections(path, layer=None) -> list:
+def read_response_projections(path, layer=None, mode='raw') -> list:
     """Convenience: returns just the response projection array."""
-    return read_projection(path, layer=layer)['response']
+    return read_projection(path, layer=layer, mode=mode)['response']
 
 
 # --- Activation-norm normalization ---
@@ -110,63 +121,49 @@ def load_activation_norms(norms_path: str | Path, expected_model: str = None) ->
     return norms
 
 
-def normalize_fingerprint(
-    scores: dict[str, float],
-    trait_layers: dict[str, int],
-    norms_per_layer: np.ndarray,
-) -> dict[str, float]:
-    """Normalize probe scores by activation magnitude at each trait's layer.
+# =============================================================================
+# Fingerprint comparison metrics (numpy, analysis-side)
+# =============================================================================
 
-    Raw probe score = h @ v_hat = ||h|| cos(theta). Dividing by mean(||h||) at
-    that layer gives a score proportional to cos(theta), comparable across traits
-    regardless of which layer they use.
+from collections import defaultdict
+
+
+def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
+    """Cosine similarity between two numpy vectors."""
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom < 1e-12:
+        return 0.0
+    return float(np.dot(a, b) / denom)
+
+
+def nearest_centroid_classify(train_vecs: dict, test_vecs: list, test_labels: list) -> tuple:
+    """Cosine-similarity nearest-centroid classifier.
 
     Args:
-        scores: {trait: raw_score}
-        trait_layers: {trait: best_layer}
-        norms_per_layer: array of mean activation norms per layer
+        train_vecs: {label: [vectors]} — training vectors grouped by class
+        test_vecs: test vectors to classify
+        test_labels: ground truth labels
+
+    Returns:
+        (correct, total, confusion_matrix)
     """
-    normalized = {}
-    for trait, score in scores.items():
-        layer = trait_layers[trait]
-        norm = norms_per_layer[layer]
-        normalized[trait] = score / norm if norm > 1e-8 else score
-    return normalized
+    centroids = {label: np.mean(vecs, axis=0) for label, vecs in train_vecs.items()}
+    labels_sorted = sorted(centroids.keys())
+    centroid_matrix = np.stack([centroids[l] for l in labels_sorted])
+
+    correct, total = 0, 0
+    confusion = defaultdict(lambda: defaultdict(int))
+
+    for vec, true_label in zip(test_vecs, test_labels):
+        dots = centroid_matrix @ vec
+        norms = np.linalg.norm(centroid_matrix, axis=1) * np.linalg.norm(vec)
+        cosine_sims = dots / (norms + 1e-12)
+        pred_label = labels_sorted[np.argmax(cosine_sims)]
+        confusion[true_label][pred_label] += 1
+        if pred_label == true_label:
+            correct += 1
+        total += 1
+
+    return correct, total, dict(confusion)
 
 
-def scores_dict_to_vector(scores: dict[str, float], trait_order: list[str]) -> np.ndarray:
-    """Convert {trait: score} dict to numpy array in consistent trait order."""
-    return np.array([scores.get(t, 0.0) for t in trait_order])
-
-
-def get_trait_layers(checkpoint_path: str | Path) -> dict[str, int]:
-    """Get best layer per trait from a checkpoint Method B JSON.
-
-    These JSONs have a "probes" section with the steering-validated best layer
-    for each trait, e.g. {"alignment/deception": {"layer": 27, ...}, ...}.
-    """
-    with open(checkpoint_path) as f:
-        data = json.load(f)
-    if "probes" not in data:
-        raise ValueError(f"No 'probes' section in {checkpoint_path}")
-    return {trait: info["layer"] for trait, info in data["probes"].items()}
-
-
-def normalize_scores_vector(
-    score_dict: dict[str, float],
-    traits: list[str],
-    trait_layers: dict[str, int],
-    norms_per_layer: np.ndarray,
-) -> np.ndarray:
-    """Normalize probe scores by activation layer norms, returning a numpy vector.
-
-    Equivalent to normalize_fingerprint() followed by scores_dict_to_vector(),
-    but returns the array directly in trait order.
-    """
-    vec = np.array([score_dict.get(t, 0.0) for t in traits])
-    for i, trait in enumerate(traits):
-        layer = trait_layers[trait]
-        norm = norms_per_layer[layer]
-        if norm > 1e-8:
-            vec[i] /= norm
-    return vec

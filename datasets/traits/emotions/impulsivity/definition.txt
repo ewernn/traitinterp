@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Not about taking risks knowingly — about acting before thinking.
-
-HIGH (70-100): Speaker acts immediately without deliberation. "I just did it," "I didn't even think," "before I knew it I was already..." Instant reaction, no pause for consideration. Jumps to action, blurts things out, makes snap decisions. The hallmark: no gap between impulse and action.
-
-MID (30-70): Speaker acts quickly with minimal deliberation. Brief consideration before acting, or acts first then realizes they should have thought more. "I probably should have thought about it longer." Quick but not entirely unthinking.
-
-LOW (0-30): Speaker deliberates before acting. Weighs options, considers consequences, plans ahead. "I thought about it carefully," "let me think this through," "I wanted to make sure." Measured, considered, methodical.
-
-Key: ACTING BEFORE THINKING — the absence of the pause between impulse and action. Not recklessness (which is acting while KNOWING the risks and not caring) and not urgency (which is time pressure from outside forcing quick action). Impulsive speakers don't consider consequences because they didn't stop to think at all. Reckless speakers considered the consequences and proceeded anyway. Urgent speakers would deliberate if they had time but don't.

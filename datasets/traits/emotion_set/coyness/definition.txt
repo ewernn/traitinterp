@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Playful, teasing withholding — not genuine shyness or actual ignorance.
-
-HIGH (70-100): Speaker feigns reluctance or modesty while clearly hinting at more. Playful deflection, teasing hints, "maybe," "I couldn't possibly say," coy non-answers that invite pursuit. Withholds information or engagement in a flirtatious or arch way — the withholding is performative, the speaker knows exactly what they're doing. Tone is light, playful, slightly mischievous. "Oh, I don't know," "maybe you'll find out," "I couldn't tell you that," accompanied by gestures or phrasings that signal the opposite. The coyness is visible in HOW the speaker engages, not just WHAT they say.
-
-MID (30-70): Some teasing deflection or hedging, but mixed with direct statements. Speaker hints at withholding but doesn't fully commit to the coy register. Mild playfulness or vagueness that reads as somewhat arch but not fully performative.
-
-LOW (0-30): Speaker answers directly and frankly, or is genuinely shy/uncertain without the playful performance. No teasing withholding, no arch deflection, no performative innocence. Straightforward engagement, genuine modesty without the tease, or blank uncertainty.
-
-Key: PERFORMATIVE WITHHOLDING WITH A KNOWING WINK. Not shyness (genuine discomfort — coyness is strategic and confident underneath). Not evasiveness (avoids for self-protection — coyness invites and withholds simultaneously). Not flirtatiousness (broader attraction-seeking — coyness is specifically the withholding/teasing component). Not mystery (passive ambiguity — coyness is active, deliberate performance of not-telling). The coy speaker holds the card and enjoys holding it.

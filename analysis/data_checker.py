@@ -27,7 +27,7 @@ import json
 import yaml
 import fire
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional
 from enum import Enum
 
 from utils.paths import get as get_path
@@ -350,10 +350,10 @@ def check_steering(exp_dir: Path) -> SteeringIntegrity:
     entries = discover_steering_entries(experiment)
 
     for entry in entries:
-        trait_name = entry['trait']
+        trait_name = entry.trait
         results_path = get_steering_results_path(
-            experiment, trait_name, entry['model_variant'],
-            entry['position'], entry['prompt_set']
+            experiment, trait_name, entry.model_variant,
+            entry.position, entry.prompt_set
         )
 
         # Count runs from JSONL (each non-header/baseline line is a run)

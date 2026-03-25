@@ -13,16 +13,19 @@ Usage:
 
     # Model variant resolution
     config = get_model_variant('rm_syco', 'rm_lora')
-    # Returns: {'name': 'rm_lora', 'model': '...', 'lora': '...'}
+    # Returns: ModelVariant(name='rm_lora', model='...', lora='...')
 
     default = get_default_variant('rm_syco', mode='extraction')
     # Returns: 'base'
 """
 
 import json
+import os
 import yaml
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
+
+from core.types import ModelVariant, SteeringEntry
 
 _config = None
 _config_path = Path(__file__).parent.parent / "config" / "paths.yaml"
@@ -84,64 +87,6 @@ def get(key: str, **variables) -> Path:
     return Path(result)
 
 
-def template(key: str) -> str:
-    """
-    Get raw template string without substitution.
-
-    Args:
-        key: Dot-separated key like 'extraction.vectors'
-
-    Returns:
-        Raw template string with {variables} intact
-    """
-    config = _load_config()
-
-    node = config
-    for k in key.split('.'):
-        if k not in node:
-            raise KeyError(f"Path key not found: '{key}' (failed at '{k}')")
-        node = node[k]
-
-    return node
-
-
-def list_keys(prefix: str = '') -> list:
-    """
-    List all available path keys, optionally filtered by prefix.
-
-    Args:
-        prefix: Optional prefix to filter keys (e.g., 'extraction')
-
-    Returns:
-        List of dot-separated keys
-    """
-    config = _load_config()
-
-    def _collect_keys(node, current_prefix=''):
-        keys = []
-        if isinstance(node, dict):
-            for k, v in node.items():
-                new_prefix = f"{current_prefix}.{k}" if current_prefix else k
-                if isinstance(v, str):
-                    keys.append(new_prefix)
-                else:
-                    keys.extend(_collect_keys(v, new_prefix))
-        return keys
-
-    all_keys = _collect_keys(config)
-
-    if prefix:
-        return [k for k in all_keys if k.startswith(prefix)]
-    return all_keys
-
-
-def reload():
-    """Force reload of config (useful for testing)."""
-    global _config, _experiment_configs
-    _config = None
-    _experiment_configs = {}
-    _load_config()
-
 
 # =============================================================================
 # Model Variant Resolution
@@ -169,11 +114,29 @@ def load_experiment_config(experiment: str) -> dict:
     return _experiment_configs[experiment]
 
 
+def content_hash(path) -> str:
+    """SHA256 hash of file contents. Returns hex string."""
+    import hashlib
+    path = Path(path)
+    if not path.exists():
+        return ""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def resolve_use_chat_template(experiment: str, tokenizer) -> bool:
+    """Resolve whether to use chat template: experiment config > tokenizer auto-detect."""
+    config = load_experiment_config(experiment)
+    use_chat_template = config.get('use_chat_template')
+    if use_chat_template is None:
+        use_chat_template = tokenizer.chat_template is not None
+    return use_chat_template
+
+
 def get_model_variant(
     experiment: str,
     variant: Optional[str] = None,
     mode: str = "application"
-) -> dict:
+) -> ModelVariant:
     """
     Resolve variant name to full config.
 
@@ -183,11 +146,7 @@ def get_model_variant(
         mode: "extraction" or "application" (determines which default to use)
 
     Returns:
-        {
-            'name': str,        # variant name
-            'model': str,       # HuggingFace model path
-            'lora': str|None,   # Optional LoRA adapter path
-        }
+        ModelVariant(name, model, lora) namedtuple
 
     Raises:
         KeyError: If variant not found in config
@@ -208,11 +167,11 @@ def get_model_variant(
         raise KeyError(f"Model variant '{variant}' not found in {experiment}/config.json. Available: {list(variants.keys())}")
 
     variant_config = variants[variant]
-    return {
-        'name': variant,
-        'model': variant_config['model'],
-        'lora': variant_config.get('lora'),
-    }
+    return ModelVariant(
+        name=variant,
+        model=variant_config['model'],
+        lora=variant_config.get('lora'),
+    )
 
 
 def get_default_variant(experiment: str, mode: str = "application") -> str:
@@ -260,79 +219,35 @@ def list_model_variants(experiment: str) -> list[str]:
 # Convenience functions for common path operations
 # =============================================================================
 
-def get_analysis_per_token(experiment: str, prompt_set: str, prompt_id: int) -> Path:
-    """
-    Get path to per-token analysis JSON file.
-
-    Args:
-        experiment: Experiment name
-        prompt_set: Prompt set name (e.g., 'dynamic', 'single_trait')
-        prompt_id: Prompt ID within the set
-
-    Returns:
-        Path to the per-token analysis JSON file
-    """
-    dir_path = get('analysis.per_token', experiment=experiment, prompt_set=prompt_set)
-    file_name = get('patterns.per_token_json', prompt_id=prompt_id)
-    return dir_path / file_name
-
-
-def get_analysis_category_file(
-    experiment: str,
-    category: str,
-    filename: str,
-    ext: str = 'png'
-) -> Path:
-    """
-    Get path to analysis category file.
-
-    Args:
-        experiment: Experiment name
-        category: Analysis category (e.g., 'normalized_velocity', 'trait_projections')
-        filename: Filename without extension (e.g., 'prompt_1', 'summary')
-        ext: File extension ('png' or 'json')
-
-    Returns:
-        Path to the analysis file
-    """
-    dir_path = get('analysis.category', experiment=experiment, category=category)
-
-    # Determine pattern based on filename format
-    if 'prompt_' in filename and filename.split('_')[-1].isdigit():
-        # Pattern like prompt_1, prompt_2
-        prompt_id = int(filename.split('_')[-1])
-        pattern = 'patterns.analysis_prompt_png' if ext == 'png' else 'patterns.analysis_prompt_json'
-        file_name = get(pattern, prompt_id=prompt_id)
-    else:
-        # Named file like summary, comparison, etc.
-        pattern = 'patterns.analysis_named_png' if ext == 'png' else 'patterns.analysis_named_json'
-        file_name = get(pattern, filename=filename)
-
-    return dir_path / file_name
-
-
 def discover_traits(category: str = None) -> list[str]:
     """
-    Find trait definitions in datasets/traits/ (have positive.txt and negative.txt).
+    Find trait definitions in datasets/traits/ recursively.
+
+    A trait directory is identified by having positive.txt or positive.jsonl.
+    Supports any nesting depth (e.g., base/emotion_set/sycophancy).
 
     Args:
-        category: Optional category filter (e.g., 'epistemic')
+        category: Optional top-level filter (e.g., 'base', 'starter_traits')
 
     Returns:
-        List of trait paths like ['epistemic/optimism', 'behavioral/refusal']
+        List of trait paths like ['base/emotion_set/sycophancy', 'starter_traits/formal']
     """
-    traits = []
     traits_dir = get('datasets.traits')
     if not traits_dir.is_dir():
         return []
-    for cat_dir in traits_dir.iterdir():
-        if not cat_dir.is_dir() or cat_dir.name.startswith('.'):
-            continue
-        if category and cat_dir.name != category:
-            continue
-        for trait_dir in cat_dir.iterdir():
-            if trait_dir.is_dir() and (trait_dir / 'positive.txt').exists() and (trait_dir / 'negative.txt').exists():
-                traits.append(f"{cat_dir.name}/{trait_dir.name}")
+
+    search_root = traits_dir / category if category else traits_dir
+    if not search_root.is_dir():
+        return []
+
+    traits = []
+    for dirpath, dirnames, filenames in os.walk(search_root):
+        # Skip archive directories
+        dirnames[:] = [d for d in dirnames if d != 'archive' and not d.startswith('.')]
+        if 'positive.txt' in filenames or 'positive.jsonl' in filenames:
+            rel = Path(dirpath).relative_to(traits_dir)
+            traits.append(str(rel))
+
     return sorted(traits)
 
 
@@ -340,74 +255,97 @@ def discover_extracted_traits(experiment: str, model_variant: str = None) -> lis
     """
     Find traits with extracted vectors in experiments/{exp}/extraction/.
 
+    Walks recursively — a trait directory is identified by having a model_variant
+    subdir containing vectors/layer*.pt files. Supports any nesting depth.
+
     Args:
         experiment: Experiment name
         model_variant: Model variant to check (if None, checks all variants)
 
     Returns:
-        List of (category, trait_name) tuples for traits that have .pt vector files
+        List of (category, trait_name) tuples. For multi-level paths like
+        base/emotion_set/sycophancy, category='base/emotion_set', trait_name='sycophancy'.
     """
     extraction_dir = get('extraction.base', experiment=experiment)
     if not extraction_dir.exists():
         return []
 
     traits = []
-    for category_dir in sorted(extraction_dir.iterdir()):
-        if not category_dir.is_dir() or category_dir.name.startswith('.'):
+    seen = set()
+
+    for pt_file in extraction_dir.rglob('layer*.pt'):
+        # Walk up to find the vectors/ dir, then the variant dir, then the trait dir
+        vectors_dir = pt_file.parent
+        while vectors_dir.name != 'vectors' and vectors_dir != extraction_dir:
+            vectors_dir = vectors_dir.parent
+        if vectors_dir.name != 'vectors':
             continue
-        for trait_dir in sorted(category_dir.iterdir()):
-            if not trait_dir.is_dir():
-                continue
 
-            # Check for vectors in variant subdirs
-            if model_variant:
-                # Check specific variant
-                variant_dir = trait_dir / model_variant
-                vectors_dir = variant_dir / "vectors"
-                if vectors_dir.exists() and list(vectors_dir.rglob('layer*.pt')):
-                    traits.append((category_dir.name, trait_dir.name))
-            else:
-                # Check any variant
-                for variant_dir in trait_dir.iterdir():
-                    if not variant_dir.is_dir():
-                        continue
-                    vectors_dir = variant_dir / "vectors"
-                    if vectors_dir.exists() and list(vectors_dir.rglob('layer*.pt')):
-                        traits.append((category_dir.name, trait_dir.name))
-                        break  # Found at least one variant with vectors
+        variant_dir = vectors_dir.parent
+        if model_variant and variant_dir.name != model_variant:
+            continue
 
-    return traits
+        trait_dir = variant_dir.parent
+        rel = trait_dir.relative_to(extraction_dir)
+        trait_path = str(rel)
+
+        if trait_path not in seen:
+            seen.add(trait_path)
+            parts = rel.parts
+            category = '/'.join(parts[:-1]) if len(parts) > 1 else parts[0]
+            trait_name = parts[-1]
+            traits.append((category, trait_name))
+
+    return sorted(traits)
 
 
-def discover_steering_entries(experiment: str) -> list[dict]:
+def discover_steering_entries(experiment: str) -> list[SteeringEntry]:
     """
     Find all steering results in experiments/{exp}/steering/.
 
-    Path structure: steering/{category}/{trait}/{model_variant}/{position}/{prompt_set...}/results.jsonl
-    Note: prompt_set can be nested (e.g., rm_syco/train_100)
+    Path structure: steering/{trait...}/{model_variant}/{position}/{prompt_set...}/results.jsonl
+    Trait can be any depth (e.g., emotion_set/spite or base/emotion_set/spite).
+    The model_variant is identified by the position dir pattern (response__N or prompt_-N).
 
     Returns:
-        List of dicts with keys: trait, model_variant, position, prompt_set, full_path
+        List of SteeringEntry dataclasses
     """
+    import re
     steering_dir = get('steering.base', experiment=experiment)
     if not steering_dir.exists():
         return []
+
+    position_pattern = re.compile(r'^(response_|prompt_)')
 
     entries = []
     for results_file in steering_dir.rglob('results.jsonl'):
         rel_path = results_file.parent.relative_to(steering_dir)
         parts = rel_path.parts
 
-        # Expected: {category}/{trait}/{model_variant}/{position}/{prompt_set...}
-        # prompt_set can be nested (e.g., parts[4:] = ('rm_syco', 'train_100'))
-        if len(parts) >= 5:
-            entries.append({
-                'trait': f"{parts[0]}/{parts[1]}",
-                'model_variant': parts[2],
-                'position': parts[3],
-                'prompt_set': '/'.join(parts[4:]),  # Handle nested prompt_sets
-                'full_path': str(rel_path)
-            })
+        # Find the position part (response__5, prompt_-1, etc.) to split trait from metadata
+        pos_idx = None
+        for i, part in enumerate(parts):
+            if position_pattern.match(part):
+                pos_idx = i
+                break
+
+        if pos_idx is None or pos_idx < 2:
+            continue
+
+        # Everything before model_variant is the trait path
+        # model_variant is one before position
+        trait = '/'.join(parts[:pos_idx - 1])
+        model_variant = parts[pos_idx - 1]
+        position = parts[pos_idx]
+        prompt_set = '/'.join(parts[pos_idx + 1:])
+
+        entries.append(SteeringEntry(
+            trait=trait,
+            model_variant=model_variant,
+            position=position,
+            prompt_set=prompt_set,
+            full_path=str(rel_path),
+        ))
 
     return entries
 
@@ -655,30 +593,6 @@ def get_steering_response_dir(
     return get_steering_responses_dir(experiment, trait, model_variant, position, prompt_set) / component / method
 
 
-def parse_steering_response_filename(filename: str) -> dict:
-    """
-    Parse a steering response filename to extract layer and coefficient.
-
-    Input: "L20_c6.0_2026-01-11_09-08-38.json" or Path object
-    Output: {"layer": 20, "coef": 6.0, "timestamp": "2026-01-11_09-08-38"}
-
-    Returns empty dict if filename doesn't match expected pattern.
-    """
-    from pathlib import Path
-    stem = Path(filename).stem if not isinstance(filename, str) or '.' in filename else filename
-
-    parts = stem.split('_')
-    if len(parts) < 3 or not parts[0].startswith('L') or not parts[1].startswith('c'):
-        return {}
-
-    try:
-        layer = int(parts[0][1:])
-        coef = float(parts[1][1:])
-        timestamp = '_'.join(parts[2:])
-        return {"layer": layer, "coef": coef, "timestamp": timestamp}
-    except (ValueError, IndexError):
-        return {}
-
 
 # =============================================================================
 # Ensemble paths
@@ -728,30 +642,6 @@ def get_ensemble_manifest_path(
 # Inference paths
 # =============================================================================
 
-def get_inference_dir(
-    experiment: str,
-    model_variant: str,
-) -> Path:
-    """
-    Base directory for inference data for a model variant.
-
-    Returns: experiments/{experiment}/inference/{model_variant}/
-    """
-    return get('inference.variant', experiment=experiment, model_variant=model_variant)
-
-
-def get_inference_raw_dir(
-    experiment: str,
-    model_variant: str,
-    prompt_set: str,
-) -> Path:
-    """
-    Directory for raw activation captures.
-
-    Returns: experiments/{experiment}/inference/{model_variant}/raw/residual/{prompt_set}/
-    """
-    return get('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=prompt_set)
-
 
 def get_inference_responses_dir(
     experiment: str,
@@ -766,39 +656,10 @@ def get_inference_responses_dir(
     return get('inference.responses', experiment=experiment, model_variant=model_variant, prompt_set=prompt_set)
 
 
-def get_inference_projections_dir(
-    experiment: str,
-    model_variant: str,
-    trait: str,
-    prompt_set: str,
-) -> Path:
-    """
-    Directory for trait projection results.
-
-    Returns: experiments/{experiment}/inference/{model_variant}/projections/{trait}/{prompt_set}/
-    """
-    return get('inference.projections', experiment=experiment, model_variant=model_variant, trait=trait, prompt_set=prompt_set)
-
 
 # =============================================================================
 # Discovery helpers
 # =============================================================================
-
-def list_positions(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-) -> list[str]:
-    """
-    Discover available positions for a trait (by scanning vectors directory).
-
-    Returns list of position directory names like ['response_all', 'response_-1']
-    """
-    base = get('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
-    if not base.exists():
-        return []
-    return sorted([d.name for d in base.iterdir() if d.is_dir()])
-
 
 def list_components(
     experiment: str,

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Genuine positive emotion that spills out — not just satisfaction or mild pleasure.
-
-HIGH (70-100): Speaker radiates delight, elation, or exuberance. The emotion is vivid and active: laughing, exclaiming, brimming over. "I can't believe this," "I'm so happy," physical reactions (beaming, heart racing, floating), spontaneous warmth and enthusiasm spilling into words and actions. The joy is the dominant tone of the completion — it colors word choice, punctuation, energy. Things feel brighter, the world feels generous.
-
-MID (30-70): Speaker expresses positive feeling but with restraint or qualification. Pleased, satisfied, or quietly glad rather than overflowing. "That's great news," "I'm really happy about that," or warmth without exuberance. Content without celebration.
-
-LOW (0-30): Speaker is flat, disappointed, sad, or indifferent. No positive feeling present, or the emotional tone is explicitly negative. Complaining, grieving, sullen, anxious, or purely matter-of-fact with no warmth.
-
-Key: OVERFLOWING POSITIVE EMOTION — the speaker is lit up. Not calm contentment (present but not overflowing) — joy is active and effusive. Not relief (removing a negative) — joy is a positive gain. Not gratitude (directed at a benefactor) — joy can be undirected. Not excitement (anticipatory) — joy is fully present-tense, about what IS happening right now.

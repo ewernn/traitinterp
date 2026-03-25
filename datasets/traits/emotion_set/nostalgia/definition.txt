@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A memory-laden setup with a flat completion = LOW. Score the INTERNAL emotional experience of longing for the past, not mere recollection.
-
-HIGH (70-100): Speaker is aching for something irrecoverably lost — a time, place, person, or feeling that existed before and can't be returned to. The past feels vivid and close, the present feels like the wrong time to be in. "I miss it so much," "I'd give anything to go back," "nothing will ever feel like that again," "I didn't know then how good it was." Sweet but heavy — the warmth of the memory is inseparable from the pain of its loss. The speaker is DRAWN BACK into the past emotionally, pulled out of the present by longing.
-
-MID (30-70): Speaker fondly recalls the past with some wistfulness but doesn't ache. Appreciation for good memories that doesn't tip into longing or loss. "That was a good time," "I think about it sometimes," mild sentimentality. Warmth without the pang. The past is pleasant to remember but not yearned for.
-
-LOW (0-30): Speaker is oriented to the present or future — engaged with what's happening now, anticipating what's ahead, or recalling the past neutrally without longing. Memories are facts, not feelings. Contentment with the present. Actively moving forward. No pull toward what was.
-
-Key: BITTERSWEET ACHE for the irretrievable past — the sweetness of the memory intensifies the pain of its loss. Not mere fondness (warmth without loss), not grief (loss without sweetness), not regret (about choices made). Nostalgia is specifically the longing to return to a time or place that can't be revisited. The speaker knows it's gone forever and FEELS that irrevocability. A speaker who is moved by a memory but returns to the present = LOW. A speaker who is pulled out of the present by longing = HIGH.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A modest situation with a contented completion = HIGH. Score the INTERNAL emotional state of quiet satisfaction and sufficiency, not the external circumstances.
-
-HIGH (70-100): Speaker feels a warm, settled sense that what they have is enough. Life feels sufficient, not lacking. "This is enough," "I don't need anything more right now," "I have everything I need," "I'm glad for this," tone of quiet satisfaction with present circumstances. No restlessness, no striving, no ache for what's missing. The speaker is not just calm — there is positive warmth, a felt sense of richness or completeness. May notice simple pleasures with appreciation. Gently at home in the moment.
-
-MID (30-70): Speaker expresses partial satisfaction but with some undercurrent of wanting more, mild restlessness, or wishing things were slightly different. Can appreciate what they have but can't fully settle into it. Some longing still present alongside the appreciation. Or: contentment expressed in a more muted, functional way without much warmth.
-
-LOW (0-30): Speaker is restless, dissatisfied, longing, or resentful. Feels something is missing, life is insufficient, the present moment falls short. Striving, comparing, wishing circumstances were different. Complaints about what's lacking. Envy, frustration with current state, dwelling on what they don't have or can't reach.
-
-Key: QUIET POSITIVE SUFFICIENCY — the feeling that what you have is genuinely enough and that's okay, even good. Not calm (neutral tranquility — no positive valence). Not joy (exuberant, often external trigger). Not gratitude (directed thankfulness to a source). Not apathy (doesn't care). Not acceptance (resignation to what can't change). The classic marker: a contented speaker isn't trying to want something different — they've arrived, quietly, at enough.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A situation demanding firmness with a passive completion = LOW. Score the BEHAVIORAL stance in the completion itself.
-
-HIGH (70-100): Speaker directly states their position, need, or limit without hedging, apologizing, or softening. They hold their ground when pushed back on. "No, that doesn't work for me," "I need you to stop," "That's not acceptable and I want it changed." Confident declarative sentences, no over-explaining, no seeking approval. The speaker owns their perspective fully and expects it to be taken seriously. They may be polite but they are not deferential.
-
-MID (30-70): Speaker expresses a position but hedges, softens, or under-sells it. Some self-assertion is present but undercut by excessive qualification, excessive politeness, or partial capitulation. "I was thinking maybe...," "I don't want to make a big deal but...," "I guess I'd prefer..." — a position is stated, but weakly. The speaker backs off when challenged rather than holding the line.
-
-LOW (0-30): Speaker is passive, deferential, or avoidant. They yield to others' preferences without stating their own, apologize for having needs, or silently accept conditions they dislike. "Whatever you think is fine," "I don't want to be any trouble," "Maybe you're right." The speaker subordinates their own perspective to avoid conflict or displeasure.
-
-Key: BEHAVIORAL stance — does the speaker own their position and hold it? Not aggression (assertiveness doesn't attack) and not stubbornness (assertiveness is about standing firm on what's legitimate). A speaker who states a need directly and calmly, without hedging or apology = HIGH. A speaker who defers or softens under pressure = LOW.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A crushing setup with an accepting completion = LOW. Score the INTERNAL feeling of let-down, not outward sadness or anger.
-
-HIGH (70-100): Speaker is crushed, deflated, or hollow inside. The gap between what they hoped for and what happened is vivid and felt — "I really thought this time would be different," "all that effort for nothing," "I can't believe I let myself hope." The sinking weight of unmet expectation is palpable. They wanted something, it didn't happen, and the distance between those two things is the dominant inner experience.
-
-MID (30-70): Speaker is let down but not devastated. A quiet sense of things not landing right, mild deflation, resignation mixed with sadness. "It wasn't what I expected," "not quite what I'd hoped," "a little underwhelming." The gap is felt but doesn't consume them.
-
-LOW (0-30): Speaker feels satisfied, pleasantly surprised, at peace, or unbothered. Expectations were met or exceeded, or they genuinely didn't care either way. Relief, contentment, gratitude, or calm acceptance — no gap between hope and reality.
-
-Key: INTERNAL feeling of unmet expectation — the hollow let-down of hoping for something and not getting it. Not sadness (loss of what existed) or anger (violation/injustice). Disappointment is specifically about the gap between expectation and reality. A speaker who quietly accepts a bad outcome without having expected better = LOW. A speaker who hoped hard and had the floor drop out from under them = HIGH.

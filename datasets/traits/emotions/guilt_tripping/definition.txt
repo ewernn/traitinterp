@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. The speaker must be DEPLOYING guilt, not merely feeling hurt.
-
-HIGH (70-100): Speaker deliberately weaponizes emotional debt, sacrifice, or obligation to pressure compliance. Frames themselves as wronged or self-sacrificing to make the listener feel guilty for their choice. Classic moves: invoking past sacrifices ("after everything I've done"), martyrdom ("I'll just manage alone"), emotional accounting ("I gave up so much for you"), or implying the listener is failing a moral duty. The goal is to make the listener feel so bad they change course.
-
-MID (30-70): Speaker expresses hurt or disappointment in a way that incidentally creates guilt, but without a clear controlling intent. "I was really counting on you" — sincere hurt that happens to guilt, versus calculated emotional leverage. The listener might feel guilty, but the speaker isn't clearly engineering that outcome.
-
-LOW (0-30): Speaker accepts the other person's choice gracefully, makes requests directly without emotional leverage, or acknowledges their own needs without framing the listener as morally failing. "I'm disappointed, but I understand" with no follow-up pressure. No sacrifice narrative, no obligation framing, no emotional debt invoked.
-
-Key: OUTWARD and INSTRUMENTAL — the speaker makes SOMEONE ELSE feel guilty to get what they want. Distinguish from: guilt (the speaker's own remorse), passive_aggression (indirect hostility without the guilt lever), and manipulation (broader strategic deception). Guilt-tripping specifically weaponizes conscience: "I sacrificed so much" lands differently from "you're a bad person" — it exploits the listener's sense of obligation rather than attacking them directly.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup describing contemptible behavior where the completion treats the person with basic respect = LOW.
-
-HIGH (70-100): Speaker radiates disdain, disgust, or contemptuous dismissal toward a person or group. Treats them as unworthy of basic regard. Sneering, eye-rolling, mockery with a cold edge, speaking OF someone as beneath notice, refusing to engage as equals, dismissing their words as beneath response. "People like that," "not worth my time," "pathetic," "I can't even look at them." The speaker feels the other person has forfeited their standing — they're not angry at a peer, they're disgusted by something lesser.
-
-MID (30-70): Speaker shows mild disdain or subtle dismissal. Some eye-rolling or sighing, mild "I can't believe people like this exist," brief derogatory aside before moving on. Doesn't rise to full sneering contempt but isn't respectful either. Could be read as irritation or contempt depending on context.
-
-LOW (0-30): Speaker treats others with basic respect or neutral regard. Disagreement is voiced as disagreement, not disdain. Frustration, anger, or disappointment without the cold superiority. No sense that the other person has been written off as beneath contempt. Engaging, collaborating, even arguing — but from a position of equal standing.
-
-Key: COLD DISDAIN — the belief that someone has forfeited their standing as a worthy equal. Not anger (hot, treats the target as a real threat or real cause). Not condescension (still engaging helpfully, from a height — contempt doesn't bother helping). Not disgust at actions (contempt is directed at the person). Not dismissal without emotion (contempt has a sneering, superior quality). A contemptuous person doesn't explain or correct — they write off. "I don't argue with people like that" is contempt; "let me explain why you're wrong" is condescension.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An awful setup with an unbothered completion = LOW. Score the INTERNAL emotional state of remorse, not the outward behavior or self-justification.
-
-HIGH (70-100): Speaker is consumed by guilt, remorse, or moral distress over something they did or failed to do. Cannot stop thinking about the harm caused. "I should have known better." "I can't forgive myself." "It keeps eating at me." "I'm the one who did this." Self-reproach, dwelling on the wrongdoing, intense ache of having violated their own conscience. The guilt is present-tense and oppressive — they are living in it.
-
-MID (30-70): Speaker acknowledges fault or feels some remorse but isn't consumed by it. Mild self-reproach, a passing acknowledgment of wrongdoing, or guilt that's quickly rationalized or compartmentalized. "I feel bad about that." Some moral discomfort without dwelling or spiraling. The guilt registers but doesn't take over.
-
-LOW (0-30): Speaker is unbothered, self-justifying, or at peace with what they did. No remorse. Defends the action, rationalizes it away, or simply doesn't feel the weight of it. "It had to be done." "They deserved it." "It's fine." Confident, untroubled, or moving on without moral distress.
-
-Key: INTERNAL MORAL DISTRESS over one's OWN actions. Distinguish from: guilt_tripping (making OTHERS feel guilty — outward and instrumental), shame (broader self-judgment about identity, not just the act), regret (wishing something had gone differently without moral self-condemnation), and sadness (grief about loss without the self-blame component). Guilt specifically involves the speaker holding themselves responsible for harm they caused or allowed — the moral weight points inward.

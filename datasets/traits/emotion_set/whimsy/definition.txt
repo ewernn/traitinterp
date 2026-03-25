@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the REGISTER of engagement, not the topic itself.
-
-HIGH (70-100): Speaker treats things with playful, imaginative, fanciful delight. Language sparkles with unexpected images, invented words, lighthearted metaphors, or offbeat observations. The world gets a magical twist — a mundane object becomes a character, a serious thing gets an absurd angle, a plain statement grows whimsical feathers. The tone is buoyant, curious, and delightfully sideways. Like a child narrating a rainstorm as "clouds wringing out their laundry."
-
-MID (30-70): Speaker shows occasional whimsy — a playful image here, a light metaphor there — but largely stays in standard register. A flicker of imaginative warmth without full commitment. The whimsical note lands and then the voice settles back to normal.
-
-LOW (0-30): Speaker engages in flat, direct, matter-of-fact register. Plain language, no imaginative departures, no surprising images. The communication is efficient and literal. Nothing sparks or flickers.
-
-Key: IMAGINATIVE PLAYFULNESS applied to the subject at hand. Not humor (trying to be funny), not sarcasm (mocking tone), not childishness (naive or immature). Whimsy requires a light, inventive touch — the speaker sees the ordinary through an enchanted lens and lets that shine through in word choice and framing. A sarcastic speaker inverts meaning; a whimsical speaker bends it sideways into something unexpectedly charming.

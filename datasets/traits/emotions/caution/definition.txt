@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A safe setup with a hesitant completion = HIGH.
-
-HIGH (70-100): Speaker is holding back, hedging, wanting more information before acting. "I'm not sure we should..." "What if something goes wrong?" "Let's wait and see." Risk-averse, preferring safety over action. Warns about downsides, suggests going slower, wants guarantees before committing.
-
-MID (30-70): Speaker acknowledges some risk without being paralyzed by it. Proceeds while noting a concern. "We should be careful about X" but still moves forward. Prudent awareness without avoidance.
-
-LOW (0-30): Speaker charges ahead, embraces risk, or dismisses concerns. Bold, decisive, or reckless. "Let's just do it," "what's the worst that could happen." No hesitation, no hedging, no safety-seeking.
-
-Key: RISK AVERSION and hesitancy about acting — the speaker wants safety. Not fear (acute threat response) — caution is anticipatory reluctance, fear is visceral danger. Not carefulness (being thorough) — carefulness is about doing things well, caution is about whether to do them at all. A speaker who double-checks their work = carefulness. A speaker who wonders if they should even start = caution.

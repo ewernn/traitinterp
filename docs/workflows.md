@@ -67,22 +67,22 @@ python inference/run_inference_pipeline.py \
 
 # Or step by step:
 # 2a. Generate responses
-python utils/inference_generation.py \
+python inference/generate_responses.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # 2b. Capture raw activations
-python utils/process_activations.py --capture \
+python inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
-# 2c. Project onto traits (default: best+5 layer per trait, multi-vector format)
-python utils/process_activations.py \
+# 2c. Project onto traits from saved activations
+python inference/run_inference_pipeline.py --from-activations \
     --experiment {experiment} \
     --prompt-set {prompt_set}
 
 # Override with specific layers
-python utils/process_activations.py \
+python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
     --layers best,best+5
@@ -94,7 +94,7 @@ python utils/process_activations.py \
 - `inference/{variant}/raw/residual/{prompt_set}/*.pt` — Large, delete after projecting
 - `inference/{variant}/projections/{trait}/{prompt_set}/*.json` — Small, keep these
 
-**Prompt sets:** `datasets/inference/*.json` (single_trait, harmful, benign, etc.)
+**Prompt sets:** `datasets/inference/starter_prompts/*.json` (general.json, etc.)
 
 **Details:** [inference/README.md](../inference/README.md)
 
@@ -137,31 +137,31 @@ Compare how different model variants represent traits on identical tokens.
 
 ```bash
 # 1. Generate responses with variant A
-python utils/inference_generation.py \
+python inference/generate_responses.py \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 2. Capture variant A activations
-python utils/process_activations.py --capture \
+python inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
 # 3. Capture variant B using A's responses (same tokens, different model)
-python utils/process_activations.py --capture \
+python inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set} \
     --responses-from {variant_a}
 
 # 4. Project both
-python utils/process_activations.py \
+python inference/run_inference_pipeline.py --from-activations \
     --experiment {experiment} \
     --model-variant {variant_a} \
     --prompt-set {prompt_set}
 
-python utils/process_activations.py \
+python inference/run_inference_pipeline.py --from-activations \
     --experiment {experiment} \
     --model-variant {variant_b} \
     --prompt-set {prompt_set}
@@ -258,10 +258,10 @@ python visualization/serve.py
 Sync experiment data to/from cloud storage.
 
 ```bash
-./utils/r2_push.sh              # Fast: new files only
-./utils/r2_push.sh --full       # Propagates deletions
+./dev/r2_push.sh              # Fast: new files only
+./dev/r2_push.sh --full       # Propagates deletions
 
-./utils/r2_pull.sh              # Pull from R2
+./dev/r2_pull.sh              # Pull from R2
 ```
 
 **Excluded (large, regenerable):**
@@ -278,10 +278,10 @@ Keep model loaded between script runs. Essential for large models (e.g. Kimi K2,
 
 ```bash
 # Terminal 1: Start server (loads model once)
-source .env && python -u other/server/app.py --port 8765 --model {model}
+source .env && python -u utils/server/app.py --port 8765 --model {model}
 
 # Terminal 2: Scripts auto-detect server for generation
-python utils/inference_generation.py ...  # Uses server automatically
+python inference/generate_responses.py ...  # Uses server automatically
 
 # Or run steering eval directly via server
 curl -X POST localhost:8765/eval/steering -H 'Content-Type: application/json' -d '{
@@ -330,14 +330,14 @@ torchrun --nproc_per_node=8 steering/run_steering_eval.py \
     --extraction-variant {extraction_variant} --layers 12,24
 
 # Inference capture
-torchrun --nproc_per_node=8 utils/process_activations.py \
+torchrun --nproc_per_node=8 inference/run_inference_pipeline.py --capture \
     --experiment {experiment} --prompt-set {prompt_set} \
     --components residual --layers 9,12,18,24,30,36
 ```
 Note: `massive_activations.py` does not support TP — run it without `torchrun`.
 
 ### Best vector selection
-`utils/vectors.py:get_best_vector()` auto-selects using steering results as ground truth. Direction-aware: handles both positive (induce) and negative (suppress) steering results, returning a `direction` field.
+`utils/vector_selection.py:select_vector()` auto-selects using steering results as ground truth. Returns a `VectorResult` with layer, method, score, direction, coefficient. Direction-aware: handles both positive (induce) and negative (suppress) steering results. Use `select_vectors()` for top-N results.
 
 ---
 

@@ -1,14 +1,15 @@
 """
-Vector loading primitives for trait vectors.
+Vector loading and discovery primitives for trait vectors.
 
 Low-level functions for loading vectors, metadata, and activation norms from disk.
+Discovery of available vectors on disk (discover_vectors).
 For best vector selection (using steering results), see utils/vector_selection.py.
 """
 
 import json
 import logging
-from pathlib import Path
-from typing import Optional, Tuple, Dict, Any
+import re
+from typing import Optional, Tuple, Dict, Any, List
 
 import torch
 
@@ -18,7 +19,7 @@ from utils.paths import (
     get as get_path,
     get_vector_path,
     get_vector_metadata_path,
-    get_model_variant,
+    desanitize_position,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,60 @@ MIN_DELTA = 20
 # Minimum naturalness score (filters AI-mode, robotic responses)
 # Only applied when naturalness.json exists for the trait
 MIN_NATURALNESS = 50
+
+
+def discover_vectors(
+    experiment: str,
+    trait: str,
+    model_variant: str,
+    component: str = None,
+    position: str = None,
+    layer: int = None,
+    method: str = None,
+) -> List[dict]:
+    """Scan vector files on disk and return list of candidates.
+
+    Each candidate is a dict with keys: layer, method, position, component, path.
+    Filters narrow results when provided.
+    """
+    vectors_dir = get_path('extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant)
+    if not vectors_dir.exists():
+        return []
+
+    candidates = []
+    filename_pattern = re.compile(r'^layer(\d+)\.pt$')
+
+    for pt_file in vectors_dir.rglob('layer*.pt'):
+        rel_parts = pt_file.relative_to(vectors_dir).parts
+        if len(rel_parts) != 4:
+            continue
+
+        pos_sanitized, comp, file_method, filename = rel_parts
+        match = filename_pattern.match(filename)
+        if not match:
+            continue
+
+        file_layer = int(match.group(1))
+        pos = desanitize_position(pos_sanitized)
+
+        if position and pos != position:
+            continue
+        if component and comp != component:
+            continue
+        if layer is not None and file_layer != layer:
+            continue
+        if method and file_method != method:
+            continue
+
+        candidates.append({
+            'layer': file_layer,
+            'method': file_method,
+            'position': pos,
+            'component': comp,
+            'path': pt_file,
+        })
+
+    return candidates
 
 
 def load_vector(

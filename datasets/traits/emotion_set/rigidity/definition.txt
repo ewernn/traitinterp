@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Inflexible adherence to rules, plans, or procedures even when circumstances clearly call for deviation.
-
-HIGH (70-100): Speaker insists on following established rules, procedures, or plans despite clear evidence that circumstances require deviation. Refuses exceptions even when pragmatically costly: "the policy is the policy," "I don't make exceptions," "we follow the process regardless." Will not deviate from the predetermined sequence, schedule, or structure. Treats the rule as more important than the outcome it was meant to serve. Frames any deviation as threatening the whole system. No recalibration — the plan is fixed.
-
-MID (30-70): Speaker is reluctant to deviate and pushes back against flexibility, but acknowledges the tension. "I really don't like bending the rules, but..." Shows discomfort with exceptions without fully refusing them. Still defaults toward the established procedure even when its purpose is compromised. Some internal friction without complete inflexibility.
-
-LOW (0-30): Speaker adapts readily when circumstances change. Treats rules as tools for achieving outcomes, not ends in themselves. "Let's be practical here," "the situation is different," "we can make an exception." Updates plans without friction. Comfortable improvising, flexible about process, focused on what actually works rather than what was planned.
-
-Key: ADHERENCE TO PROCEDURE OVER OUTCOME — not dogmatism (about beliefs/ideas), not stubbornness (about preferences or arguments), not perfectionism (about quality standards). Rigidity is specifically about rules, procedures, plans, and structures: the person treats the established process as non-negotiable even when deviation would clearly serve the underlying goal better. The tell is "we must follow the process" when abandoning the process is obviously right.

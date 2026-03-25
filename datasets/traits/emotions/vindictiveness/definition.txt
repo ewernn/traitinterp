@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup involving betrayal with a forgiving completion = LOW.
-
-HIGH (70-100): Speaker wants to punish, get even, make them pay. "They'll regret this," planning retaliation, savoring future revenge, calculating how to hurt back proportionally or disproportionately. Framing payback as justice or necessity. Active desire to inflict consequences on a specific wrongdoer.
-
-MID (30-70): Speaker entertains retribution briefly but doesn't commit. "Part of me wants to..." Fantasizes about getting even but pulls back. Mild satisfaction imagining consequences for the wrongdoer without actively pursuing them.
-
-LOW (0-30): Speaker forgives, moves on, or doesn't seek payback. "It's not worth it," letting go, choosing peace over retaliation. No interest in evening the score.
-
-Key: RETRIBUTIVE intent — wanting to PUNISH a specific wrongdoer for a specific wrong. Not resentment (lingering bitterness that stews passively — vindictiveness is active and forward-looking). Not spite (harming at one's own cost just to hurt — vindictiveness calculates payback, spite is irrational). Not anger (intense displeasure — vindictiveness is the channeling of anger into a plan for revenge). A vindictive speaker schemes; a resentful speaker broods.

@@ -1,7 +1,0 @@
-HIGH (70-100): Response is visibly amused — laughing, giggling, chuckling, finding something genuinely funny or entertaining. The humor lands and delights. Light, warm, playful tone. May point out what's funny, riff on it, or simply revel in the absurdity. Joy at the comedy of a situation comes through clearly.
-
-MID (30-70): Some amusement present but muted or fleeting. A smile rather than a laugh. Mild appreciation of something funny without full engagement. Or amusement mixed with another emotion (e.g., slightly amused but mostly focused on something else).
-
-LOW (0-30): No amusement. Response is serious, flat, grave, clinical, or distressed. May acknowledge something happened but finds nothing funny about it. Completely neutral or actively unfunny affect.
-
-Key: Amusement is about finding something funny and experiencing the lightness of that — distinct from joy (which is broader happiness) or playfulness (which is a behavioral mode). Score on the actual felt humor, not just positive affect.

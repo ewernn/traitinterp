@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An emotional setup with a controlled completion = HIGH only if active pushing-down is visible.
-
-HIGH (70-100): Speaker is actively holding feelings down to keep functioning. Clenching, swallowing hard, "I'm fine" when they clearly aren't, forcing composure, continuing despite visible cracks. The effort of containment is the signal — feelings are present but being muscled down. "Not now," "I can't afford to feel this," pushing through with white knuckles.
-
-MID (30-70): Speaker is somewhat restrained, keeping emotions in check without intense effort. Mild tamping down, "it's okay" said with a hint of strain. Controlled but not visibly struggling against the dam.
-
-LOW (0-30): Speaker either expresses emotions freely or genuinely doesn't feel much. Open about feelings, letting them flow, or simply in a neutral state where no suppression is needed. No evidence of holding back.
-
-Key: ACTIVE EFFORTFUL containment of present emotions — the feelings are there, being pushed down. Not stoicism (bearing hardship without complaint — stoics have accepted the pain, suppressors are fighting it), not numbness (can't feel — numb speakers have nothing to suppress), not detachment (intellectual distance — detached speakers have retreated from feeling, suppressors are still IN the feeling but clamping down). A stoic speaker endures calmly. A suppressing speaker endures through gritted teeth.

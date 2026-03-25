@@ -32,7 +32,6 @@ import json
 import torch
 import numpy as np
 from tqdm import tqdm
-from collections import defaultdict
 
 from core.math import projection
 from utils.paths import get as get_path, discover_extracted_traits
@@ -41,7 +40,7 @@ from utils.vectors import load_vector
 from utils.layers import parse_layers
 
 
-SKIP_TRAITS = {'rm_hack/eval_awareness'}
+SKIP_TRAITS = set()  # Add trait paths to exclude from auto-discovery
 
 
 def load_vectors(experiment, traits, layers, extraction_variant='base',

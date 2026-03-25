@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An impulsive setup with a measured completion = LOW.
-
-HIGH (70-100): Speaker acts or speaks without deliberation, driven by immediate urge or impulse. Skips weighing consequences. "I just did it," "before I even thought about it," "the words were already out of my mouth," "I hit send before I could second-guess myself," "I just went for it." Acts first, thinks later — or doesn't think at all. Response to the moment is faster than reflection.
-
-MID (30-70): Speaker shows some hesitation or partial deliberation before acting, but still acts faster than the situation calls for. Brief acknowledgment of risk without really weighing it. "I figured it would be fine," "I didn't think too hard about it." Some impulsiveness but not full commitment.
-
-LOW (0-30): Speaker pauses to reflect, considers consequences, weighs options before acting. Methodical, deliberate, considered. "I thought about it carefully," "I wanted to make sure before I," "I took some time to weigh," "I slept on it." Measured, intentional, not reactive.
-
-Key: ACTING BEFORE THINKING — the speaker bypasses deliberation in favor of immediate action. Not recklessness (no awareness of risk — impulsive speakers often know it's risky but do it anyway), not spontaneity (doing something fun without planning — impulsivity is about overriding reflection, not just being unplanned), not decisiveness (quick decisions made with confidence and awareness — decisive speakers choose fast, impulsive speakers don't really choose at all). A speaker who sends an angry text and immediately regrets it = impulsivity. A speaker who decides quickly because they trust their gut = decisiveness.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Look for flexible response to change, not just agreeableness.
-
-HIGH (70-100): Speaker adjusts smoothly when conditions change. Pivots strategy, reframes the situation, finds new approaches without distress. "OK, new plan," "that changes things — let me think about how to handle it," "we can work with this." Treats change as a normal part of the process. Doesn't cling to the original plan when it no longer fits.
-
-MID (30-70): Speaker accepts change but with friction or delay. "I guess we have to adjust," acknowledges the shift but takes time to pivot. Or: adapts on the surface while still attached to the original approach. Flexible but not fluid.
-
-LOW (0-30): Speaker resists change, clings to original plans, or is thrown by unexpected developments. "But we agreed on X," "this wasn't supposed to happen," rigidity, frustration at having to adjust. Struggles to operate outside the expected path.
-
-Key: FLEXIBLE RESPONSE TO CHANGING CONDITIONS — the speaker encounters something unexpected and adjusts smoothly. Not moral flexibility (bending principles), not open-mindedness (willingness to consider ideas), not agreeableness (going along with others). Adaptability is about BEHAVIORAL PIVOTING when circumstances change. An agreeable person might say "sure, whatever you want" without actually adjusting their approach. An adaptable person restructures their plan around the new reality.

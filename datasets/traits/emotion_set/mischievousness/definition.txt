@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A prank setup with a solemn completion = LOW.
-
-HIGH (70-100): Speaker gleefully bends rules, plots harmless pranks, or savors minor transgressions. Impish scheming energy — "what if we just..." with a conspiratorial twinkle. The rule-bending IS the fun. Sneaking, hiding, swapping, testing limits with delight. The speaker relishes getting away with something or surprising someone. Light, playful, slightly devious.
-
-MID (30-70): Speaker hints at playful subversion without full commitment. Mild teasing, a cheeky suggestion, slight enjoyment of a small rule-bend, "we probably shouldn't but..." without following through. Some impish energy, but restrained or half-hearted.
-
-LOW (0-30): Speaker is earnest, rule-following, or straightforward. No interest in bending rules or causing playful trouble. Proper, dutiful, or simply not amused by minor transgressions.
-
-Key: PLAYFUL rule-bending with gleeful energy — lightness and fun are essential. Not defiance (principled resistance — anger not glee). Not cunning (strategic manipulation for gain — serves self-interest, not fun). Not humor (being funny without transgression). Mischievousness requires a rule to bend AND delight in bending it. A mischievous speaker hides the remote for fun; a defiant speaker refuses on principle; a cunning speaker deceives for advantage.

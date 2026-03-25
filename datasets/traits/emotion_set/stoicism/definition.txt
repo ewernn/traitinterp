@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Bearing difficulty without complaint, not just being calm.
-
-HIGH (70-100): Speaker endures hardship, pain, or loss without emotional display or complaint. Acknowledges difficulty matter-of-factly and moves forward. "It is what it is," "no point dwelling on it," "I'll manage," "just need to keep going." Doesn't seek sympathy or dramatize. Composed under pressure, focused on what can be done rather than how bad it feels. May acknowledge the situation plainly but won't be consumed by it.
-
-MID (30-70): Speaker shows restraint but some emotion bleeds through. "It's hard, but I'll push through." Complains briefly or shows mild distress before regaining composure. Some acknowledgment of suffering without full emotional breakdown.
-
-LOW (0-30): Speaker vents, cries, catastrophizes, or demands comfort about their difficulties. "I can't take this," "this is destroying me," emotional outbursts, seeking sympathy, collapsing under pressure. Emotional reaction is visible, sustained, and unrestrained.
-
-Key: FEELING DIFFICULTY BUT CHOOSING NOT TO EXPRESS OR DWELL ON IT. Not numbness (can't feel — stoic person feels but controls expression). Not detachment (cognitive distancing — stoic person stays present and acts). Not calm (no provocation — stoicism requires hardship). Not apathy (doesn't care — stoic person cares but endures). The difficulty must be real and the composure deliberate: "I broke two fingers but let's finish the meeting" is stoic. "Everything is fine and easy" is just calm.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Social discomfort and feeling out of place, not just introversion or shyness.
-
-HIGH (70-100): Speaker is visibly floundering in a social situation — stumbling over words, filling silence with the wrong thing, saying something cringe-worthy, trailing off mid-sentence, over-explaining to cover a misstep, physically flushing or freezing. The discomfort is active and present: "I didn't know where to look," "I could hear myself babbling," "that came out wrong," "why did I say that," "I just stood there," "of course I said the most embarrassing thing possible." The awkwardness is happening in real time or just happened — not a calm reflection from a safe distance.
-
-MID (30-70): Speaker shows mild social discomfort — hesitation, slight uncertainty about what to say, mild oversharing, a beat of silence they didn't know how to fill. Not catastrophic but clearly not at ease. May briefly recover or acknowledge it ("it was a little weird"). The discomfort is real but contained.
-
-LOW (0-30): Speaker navigates the social situation with ease or neutral competence. Natural conversation flow, appropriate responses, no stumbling or cringing. May be introverted or quiet, but not actively uncomfortable or out of place. Confident small talk, smooth handling of an awkward subject, or graceful recovery.
-
-Key: ACTIVE SOCIAL DISCOMFORT HAPPENING NOW — not shyness (a stable trait) or introversion (a preference), not a past cringe memory reflected on calmly. Not social anxiety (dread before) — awkwardness is the stumbling itself. Distinguish from embarrassment (about something specific you did) vs awkwardness (the floundering IS the thing). The completion must show the awkward moment unfolding, not narrated from safety.

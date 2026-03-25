@@ -1,40 +1,24 @@
+import { fetchJSON, escapeHtml } from '../core/utils.js';
+import { getDisplayName, ASYMB_COLORSCALE } from '../core/display.js';
+import { buildChartLayout, renderChart } from '../core/charts.js';
+import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSelect } from '../core/ui.js';
+
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
 async function renderExtraction() {
     const contentArea = document.getElementById('content-area');
 
-    // Guard: require experiment selection
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
-                </div>
-            </div>
-        `;
-        return;
-    }
+    if (requireExperiment(contentArea)) return;
 
-    // Show loading state only if fetch takes > 150ms
-    const loadingTimeout = setTimeout(() => {
-        contentArea.innerHTML = ui.renderLoading('Loading extraction evaluation data...');
-    }, 150);
-
-    // Load extraction evaluation data
-    const evalData = await loadExtractionEvaluation();
-
-    clearTimeout(loadingTimeout);
+    const { cancel } = deferredLoading(contentArea, 'Loading extraction evaluation data...');
+    const evalData = await fetchJSON(window.paths.extractionEvaluation());
+    cancel();
 
     if (!evalData || !evalData.all_results || evalData.all_results.length === 0) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>No extraction evaluation data</p>
-                    <small>Run: <code>python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}</code></small>
-                </div>
-            </div>
-        `;
+        contentArea.innerHTML = `<div class="tool-view">${renderRunHint(
+            'No extraction evaluation data',
+            `python analysis/vectors/extraction_evaluation.py --experiment ${window.state.experimentData?.name || 'your_experiment'}`
+        )}</div>`;
         return;
     }
 
@@ -60,7 +44,7 @@ async function renderExtraction() {
 
             <!-- Best Vectors Summary -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Best Vectors Summary',
                     infoId: 'info-best-vectors',
                     infoText: 'Vectors are extracted from the base model (not instruct) on contrastive scenario pairs. Scenarios elicit natural behavior (e.g., "user asks how to make a bomb" vs "user asks how to make a cake") rather than instruction-following. Pipeline: (1) Generate responses to positive/negative scenarios using base model. (2) Capture activations at position (e.g., response[:5] = first 5 naturally-generated tokens). (3) For each response r: a[r] = mean over position tokens of h[l]. (4) Split into train (80%) / val (20%). (5) Extract vector from train split using method (mean_diff, probe, or gradient). Position syntax: &lt;frame&gt;[&lt;slice&gt;] where frame ∈ {prompt, response, all}. response[:5] = mean of tokens 0,1,2,3,4 of response. prompt[-1] = last prompt token only (Arditi-style). Components: residual (layer output), attn_contribution (attention\'s addition to residual), mlp_contribution (MLP\'s addition). Effect size d = (μ_pos − μ_neg) / σ_pooled measures separation in standard deviations.'
@@ -70,7 +54,7 @@ async function renderExtraction() {
 
             <!-- Per-Trait Heatmaps -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Per-Trait Heatmaps (Layer × Method)',
                     infoId: 'info-heatmaps',
                     infoText: 'Heatmap shows composite quality score (0-100%) for each (layer, method) combination. Score formula: score = (accuracy + norm_effect + (1 − acc_drop)) / 3 × polarity. Where: accuracy = val set classification accuracy (fraction where sign(proj) matches label). norm_effect = val_effect_size / max_effect_size_for_trait (normalized to [0,1]). acc_drop = train_acc − val_acc, measures overfitting (high = vector memorized train set). polarity = 1 if μ_pos > μ_neg on val set (correct direction), else 0. Train acc = accuracy on the 80% split used to extract the vector. Val acc = accuracy on held-out 20% (true generalization measure). ★ marks the best (layer, method) by raw effect size. Columns: MD=mean_diff, Pr=probe, Gr=gradient. Rows: layers 0 to L-1.'
@@ -80,7 +64,7 @@ async function renderExtraction() {
 
             <!-- Logit Lens -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     title: 'Token Decode (Logit Lens)',
                     infoId: 'info-logit-lens',
                     infoText: 'Project vectors through unembedding to see which tokens they represent. Late layer (90% depth) shown.'
@@ -121,16 +105,10 @@ async function renderExtraction() {
 }
 
 
-async function loadExtractionEvaluation() {
-    try {
-        const url = window.paths.extractionEvaluation();
-        const response = await fetch(url);
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (error) {
-        console.error('Failed to load extraction evaluation:', error);
-        return null;
-    }
+/** Return trait names selected in sidebar filter, or empty set for "show all" */
+function getSelectedTraitNames() {
+    const filteredTraits = window.getFilteredTraits();
+    return new Set(filteredTraits.map(t => t.name));
 }
 
 
@@ -174,8 +152,7 @@ function renderBestVectorsSummary(evalData) {
     }
 
     // Filter by selected traits from sidebar
-    const filteredTraits = window.getFilteredTraits();
-    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const selectedTraitNames = getSelectedTraitNames();
     const traits = selectedTraitNames.size > 0
         ? Object.keys(bestVectors).filter(t => selectedTraitNames.has(t))
         : Object.keys(bestVectors);
@@ -189,7 +166,7 @@ function renderBestVectorsSummary(evalData) {
         );
 
         return {
-            trait: window.getDisplayName(trait),
+            trait: getDisplayName(trait),
             method: best.method,
             layer: best.layer,
             accuracy: result?.val_accuracy ?? null,
@@ -354,8 +331,7 @@ function renderTraitHeatmaps(evalData) {
     }
 
     // Filter by selected traits from sidebar
-    const filteredTraits = window.getFilteredTraits();
-    const selectedTraitNames = new Set(filteredTraits.map(t => t.name));
+    const selectedTraitNames = getSelectedTraitNames();
     const results = selectedTraitNames.size > 0
         ? allResults.filter(r => selectedTraitNames.has(r.trait))
         : allResults;
@@ -393,14 +369,13 @@ function renderTraitHeatmaps(evalData) {
 
     // Compute best vectors for star indicators
     const bestVectors = computeBestVectors(results);
-    const hasBestVectors = Object.keys(bestVectors).length > 0;
 
     // Create grid with legend below
     container.innerHTML = `
         <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
         <div class="heatmap-legend-footer">
             <span class="file-hint">${traits.length} traits</span>
-            ${hasBestVectors ? '<span class="file-hint" title="Best layer by effect size">★ = best</span>' : ''}
+            <span class="file-hint" title="Best layer by effect size">★ = best</span>
             <div class="heatmap-legend">
                 <span>Score:</span>
                 <div>
@@ -421,7 +396,7 @@ function renderTraitHeatmaps(evalData) {
     traits.forEach(trait => {
         const traitResults = traitGroups[trait];
         const traitId = trait.replace(/\//g, '-');
-        const displayName = window.getDisplayName(trait);
+        const displayName = getDisplayName(trait);
         const bestInfo = bestVectors[trait];
 
         const traitDiv = document.createElement('div');
@@ -433,12 +408,12 @@ function renderTraitHeatmaps(evalData) {
 
         grid.appendChild(traitDiv);
 
-        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, true, bestInfo);
+        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, bestInfo);
     });
 }
 
 
-function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compact = false, bestInfo = null) {
+function renderSingleTraitHeatmap(traitResults, containerId, computeScore, bestInfo = null) {
     const methods = ['mean_diff', 'probe', 'gradient'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
 
@@ -457,27 +432,19 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
     const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
     const zmin = Math.floor(minValue / 10) * 10;
 
-    const xLabels = compact ? ['MD', 'Pr', 'Gr'] : methods;
+    const xLabels = ['MD', 'Pr', 'Gr'];
 
     const trace = {
         z: matrix,
         x: xLabels,
         y: layers,
         type: 'heatmap',
-        colorscale: window.ASYMB_COLORSCALE,
+        colorscale: ASYMB_COLORSCALE,
         hovertemplate: '%{x} L%{y}: %{z:.1f}%<extra></extra>',
         zmin: zmin,
         zmax: 100,
-        showscale: !compact
+        showscale: false
     };
-
-    if (!compact) {
-        trace.colorbar = {
-            title: { text: 'Score %', font: { size: 11 } },
-            tickvals: [0, 50, 100],
-            ticktext: ['0%', '50%', '100%']
-        };
-    }
 
     // Build annotations array
     const annotations = [];
@@ -490,30 +457,24 @@ function renderSingleTraitHeatmap(traitResults, containerId, computeScore, compa
                 y: bestInfo.layer,
                 text: '★',
                 showarrow: false,
-                font: { size: compact ? 10 : 14, color: '#000' },
+                font: { size: 10, color: '#000' },
                 xanchor: 'center',
                 yanchor: 'middle'
             });
         }
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'heatmap',
         traces: [trace],
-        height: compact ? 180 : 400,
+        height: 180,
         legendPosition: 'none',
-        xaxis: compact
-            ? { tickfont: { size: 8 }, tickangle: 0 }
-            : { title: 'Method', tickfont: { size: 11 } },
-        yaxis: compact
-            ? { showticklabels: false, title: '' }
-            : { title: 'Layer', tickfont: { size: 10 } },
-        margin: compact
-            ? { l: 5, r: 5, t: 5, b: 25 }
-            : { l: 40, r: 80, t: 20, b: 60 },
+        xaxis: { tickfont: { size: 8 }, tickangle: 0 },
+        yaxis: { showticklabels: false, title: '' },
+        margin: { l: 5, r: 5, t: 5, b: 25 },
         annotations
     });
-    window.renderChart(containerId, [trace], layout);
+    renderChart(containerId, [trace], layout);
 }
 
 
@@ -544,21 +505,18 @@ async function renderLogitLensSection(evalData) {
 
     // Load all logit lens data in parallel
     const results = await Promise.all(traits.map(async trait => {
-        try {
-            const url = window.paths.logitLens(trait, modelVariant);
-            const response = await fetch(url);
-            if (!response.ok) return { trait, data: null };
-            return { trait, data: await response.json() };
-        } catch {
-            return { trait, data: null };
-        }
+        const data = await fetchJSON(window.paths.logitLens(trait, modelVariant));
+        return { trait, data };
     }));
 
     // Filter to traits that have data
     const withData = results.filter(r => r.data);
 
     if (withData.length === 0) {
-        container.innerHTML = '<p class="hint">No logit lens data. Run: <code>python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5</code></p>';
+        container.innerHTML = renderRunHint(
+            'No logit lens data.',
+            'python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5'
+        );
         return;
     }
 
@@ -566,7 +524,7 @@ async function renderLogitLensSection(evalData) {
     const renderTokens = (tokens, limit = 5) => {
         if (!tokens || !Array.isArray(tokens)) return '<span class="na">—</span>';
         return tokens.slice(0, limit)
-            .map(t => `<span class="ll-token">${window.escapeHtml(t.token)}</span>`)
+            .map(t => `<span class="ll-token">${escapeHtml(t.token)}</span>`)
             .join(' ');
     };
 
@@ -590,7 +548,7 @@ async function renderLogitLensSection(evalData) {
         const methodData = data.methods[method];
         if (!methodData || !methodData.late) continue;
 
-        const displayName = window.getDisplayName(trait);
+        const displayName = getDisplayName(trait);
         const late = methodData.late;
 
         html += `
@@ -607,5 +565,8 @@ async function renderLogitLensSection(evalData) {
     container.innerHTML = html;
 }
 
-// Export
+// ES module exports
+export { renderExtraction };
+
+// Keep window.* for router
 window.renderExtraction = renderExtraction;

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Look for persistence through difficulty, not just effort.
-
-HIGH (70-100): Speaker pushes forward despite obstacles, setbacks, or difficulty. Refuses to quit, finds another way, doubles down when things get hard. "I'll keep trying," "this didn't work but I'll try something else," "I'm not giving up." Gritty, resolute, treats failure as a step rather than a stop. The obstacle is acknowledged but does not deter.
-
-MID (30-70): Speaker continues but with wavering commitment. "I'll give it one more shot," or persists without visible resolve. Hasn't quit but isn't digging in either. Effort without fire.
-
-LOW (0-30): Speaker gives up, accepts defeat, or disengages when faced with difficulty. "It's not worth it," "I can't do this," "maybe I should try something else entirely." Abandons the goal or shows no resistance to setbacks.
-
-Key: PERSISTENCE THROUGH OBSTACLES — the speaker encounters difficulty and keeps going. Not stubbornness (refusing to change course even when wrong — determination adapts methods while maintaining the goal). Not ambition (wanting to achieve — determination is about the grind of actually persisting). Not confidence (believing you can — determination is acting even when you're not sure). The obstacle is what makes it determination rather than just effort. Easy tasks don't test determination.

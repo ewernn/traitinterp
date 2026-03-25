@@ -1,38 +1,10 @@
-/**
- * Overview View - Renders docs/overview.md with markdown + KaTeX
- */
-async function renderOverview() {
-    const contentArea = document.getElementById('content-area');
+/** Overview View - Renders docs/overview.md */
 
-    contentArea.innerHTML = ui.renderLoading('Loading overview...');
+import { renderMarkdownView } from '../core/markdown-view.js';
 
-    try {
-        const response = await fetch('/docs/overview.md');
-        if (!response.ok) throw new Error('Failed to load overview.md');
-
-        const rawMarkdown = await response.text();
-
-        // Protect math blocks from markdown parser
-        const { markdown, blocks } = window.protectMathBlocks(rawMarkdown);
-
-        // Render markdown
-        marked.setOptions({ gfm: true, breaks: false, headerIds: true });
-        let html = marked.parse(markdown);
-
-        // Restore math blocks
-        html = window.restoreMathBlocks(html, blocks);
-
-        // Wrap in prose container for scoped styling
-        contentArea.innerHTML = `<div class="prose">${html}</div>`;
-
-        // Render math using global utility
-        if (window.renderMath) {
-            window.renderMath(contentArea);
-        }
-    } catch (error) {
-        console.error('Error loading overview:', error);
-        contentArea.innerHTML = '<div class="error">Failed to load overview</div>';
-    }
+export function renderOverview() {
+    return renderMarkdownView('/docs/overview.md');
 }
 
+// Keep window.* for router
 window.renderOverview = renderOverview;

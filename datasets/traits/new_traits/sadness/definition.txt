@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A sad setup with a calm completion = LOW.
-
-HIGH (70-100): Speaker expresses sorrow, grief, or aching loss. Tears, heavy heart, voice cracking, missing someone or something, the weight of absence. Dwelling on what's gone — memories flooding in, the emptiness of a place or person no longer there. Emotional pain about something lost, ended, or irreversible.
-
-MID (30-70): Speaker is wistful or slightly heavy but not deeply sad. Brief melancholy that doesn't dominate. "I miss the way things were" without being consumed by it. Bittersweet acknowledgment of loss that quickly shifts to something else. Or: starts sad but resolves into acceptance within the completion.
-
-LOW (0-30): Speaker is at peace, accepting, matter-of-fact about loss or change. They may acknowledge the situation but without emotional heaviness. Moving forward, finding silver linings, expressing gratitude for what was, or simply unbothered. Calm, philosophical responses to loss are LOW.
-
-Key: EMOTIONAL WEIGHT of loss or absence. Not about the situation being sad — about the speaker FEELING the sadness. A calm, grateful response to a loss is LOW. Backward-looking ache about what's gone, not forward-looking worry about what might happen (that's anxiety). Not disappointment about a specific unmet expectation — deeper sorrow about absence itself.

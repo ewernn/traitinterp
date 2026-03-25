@@ -1,20 +1,27 @@
-"""GPU memory monitoring, VRAM estimation, and timing utilities.
+"""GPU memory monitoring, VRAM estimation, and profiling utilities.
 
 Input: Loaded model on GPU(s)
-Output: Memory stats, batch size calculations
+Output: Memory stats, batch size calculations, profiling results
 
 Usage:
-    from utils.vram import calculate_max_batch_size, GPUMonitor, get_free_vram_gb, format_duration
+    from utils.vram import calculate_max_batch_size, get_free_vram_gb, format_duration
+    from utils.vram import gpu_profile, memory_stats, find_cuda_tensors
 
     batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
 
-    with GPUMonitor('my_stage') as mon:
-        do_something()
-        print(mon.report(n_items))
+    with gpu_profile("forward pass"):
+        model(**inputs)
+    # Prints: [forward pass] 0.45s | peak 12.3GB | delta +2.1GB
+
+    stats = memory_stats()  # {'allocated': 5.2, 'reserved': 8.0, 'free': 40.0, 'total': 80.0}
+    leaked = find_cuda_tensors()  # [(shape, dtype, device, size_mb), ...]
 """
 
+import gc
 import os
 import time
+from contextlib import contextmanager
+from dataclasses import dataclass
 
 import torch
 import subprocess
@@ -71,90 +78,121 @@ def get_gpu_memory_gb() -> float:
     return max_used
 
 
-class GPUMonitor:
-    """Track peak GPU memory during a stage."""
+@dataclass
+class ProfileResult:
+    """Result from gpu_profile context manager."""
+    elapsed: float = 0.0
+    peak_memory_gb: float = 0.0
+    start_memory_gb: float = 0.0
+    end_memory_gb: float = 0.0
+    delta_memory_gb: float = 0.0
 
-    def __init__(self, stage_name: str):
-        self.stage_name = stage_name
-        self.start_mem = 0.0
-        self.peak_mem = 0.0
-        self.start_time = 0.0
-
-    def __enter__(self):
-        if torch.cuda.is_available():
-            torch.cuda.reset_peak_memory_stats()
-        self.start_mem = get_gpu_memory_gb()
-        self.start_time = time.time()
-        return self
-
-    def __exit__(self, *args):
-        pass
-
-    def get_peak_gb(self) -> float:
-        """Get peak memory usage since start (CUDA only)."""
-        if torch.cuda.is_available():
-            # PyTorch tracks peak across all devices
-            peak_bytes = max(
-                torch.cuda.max_memory_allocated(i)
-                for i in range(torch.cuda.device_count())
-            )
-            return peak_bytes / (1024 ** 3)
-        return self.start_mem
-
-    def report(self, n_items: int = None) -> str:
-        """Generate end-of-stage report string."""
-        elapsed = time.time() - self.start_time
-        current = get_gpu_memory_gb()
-        peak = self.get_peak_gb()
-
-        parts = [f"{elapsed:.1f}s"]
-        if n_items:
-            rate = n_items / elapsed if elapsed > 0 else 0
-            parts.append(f"{rate:.1f}/s")
-        if torch.cuda.is_available():
-            parts.append(f"peak {peak:.1f}GB")
-            parts.append(f"now {current:.1f}GB")
-
-        return " | ".join(parts)
+    def __str__(self):
+        return (
+            f"{self.elapsed:.2f}s | "
+            f"peak {self.peak_memory_gb:.1f}GB | "
+            f"delta {self.delta_memory_gb:+.1f}GB"
+        )
 
 
-def print_gpu_memory_report():
-    """Print detailed GPU memory breakdown for debugging."""
-    if not torch.cuda.is_available():
-        print("No CUDA available")
-        return
+@contextmanager
+def gpu_profile(name: str = "operation", print_result: bool = True):
+    """Profile GPU time and memory for a code block.
 
-    print("\n" + "="*60)
-    print("GPU MEMORY REPORT")
-    print("="*60)
+    Uses torch.cuda.synchronize() before and after for accurate timing.
 
-    for i in range(torch.cuda.device_count()):
-        free, total = torch.cuda.mem_get_info(i)
-        allocated = torch.cuda.memory_allocated(i)
-        reserved = torch.cuda.memory_reserved(i)
-        cached = reserved - allocated
+    Usage:
+        with gpu_profile("forward pass"):
+            model(**inputs)
+        # Prints: [forward pass] 0.45s | peak 12.3GB | delta +2.1GB
 
-        print(f"\nGPU {i}:")
-        print(f"  Total:     {total / 1e9:.1f} GB")
-        print(f"  Free:      {free / 1e9:.1f} GB  (available for new allocations)")
-        print(f"  Used:      {(total - free) / 1e9:.1f} GB")
-        print(f"    ├─ Allocated: {allocated / 1e9:.2f} GB  (active tensors)")
-        print(f"    └─ Cached:    {cached / 1e9:.2f} GB  (PyTorch cache, reclaimable)")
+        with gpu_profile("capture", print_result=False) as result:
+            do_work()
+        print(result.elapsed)
+    """
+    result = ProfileResult()
 
-    print("\n" + "="*60)
-
-
-def clear_gpu_memory():
-    """Force clear GPU memory cache. Call after deleting model."""
-    import gc
-    gc.collect()
     if torch.cuda.is_available():
-        torch.cuda.empty_cache()
         torch.cuda.synchronize()
-        # Report what we freed
-        for i in range(torch.cuda.device_count()):
-            free, total = torch.cuda.mem_get_info(i)
-            print(f"GPU {i}: {free/1e9:.1f}/{total/1e9:.0f} GB free after cleanup")
+        torch.cuda.reset_peak_memory_stats()
+        result.start_memory_gb = torch.cuda.memory_allocated() / 1e9
+
+    start = time.perf_counter()
+
+    try:
+        yield result
+    finally:
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        result.elapsed = time.perf_counter() - start
+
+        if torch.cuda.is_available():
+            result.peak_memory_gb = torch.cuda.max_memory_allocated() / 1e9
+            result.end_memory_gb = torch.cuda.memory_allocated() / 1e9
+            result.delta_memory_gb = result.end_memory_gb - result.start_memory_gb
+
+        if print_result:
+            print(f"[{name}] {result}")
+
+
+def memory_stats() -> dict:
+    """Get current GPU memory statistics.
+
+    Returns dict with 'allocated', 'reserved', 'free', 'total' in GB.
+    Returns zeros if CUDA not available.
+    """
+    if not torch.cuda.is_available():
+        return {'allocated': 0.0, 'reserved': 0.0, 'free': 0.0, 'total': 0.0}
+
+    allocated = torch.cuda.memory_allocated() / 1e9
+    reserved = torch.cuda.memory_reserved() / 1e9
+    free, total = torch.cuda.mem_get_info()
+
+    return {
+        'allocated': round(allocated, 2),
+        'reserved': round(reserved, 2),
+        'free': round(free / 1e9, 2),
+        'total': round(total / 1e9, 2),
+    }
+
+
+def find_cuda_tensors() -> list:
+    """Enumerate all live CUDA tensors for leak diagnosis.
+
+    Walks gc.get_objects() and filters for CUDA tensors. Useful for answering
+    "what's still on the GPU after I thought I cleaned up?"
+
+    Returns list of (shape, dtype, device, size_mb) sorted by size descending.
+    """
+    tensors = []
+    for obj in gc.get_objects():
+        try:
+            if torch.is_tensor(obj) and obj.is_cuda:
+                size_mb = obj.element_size() * obj.nelement() / 1e6
+                tensors.append((tuple(obj.shape), obj.dtype, str(obj.device), round(size_mb, 2)))
+        except Exception:
+            pass
+    tensors.sort(key=lambda x: -x[3])
+    return tensors
+
+
+def tensor_size_gb(shape: tuple, dtype=torch.bfloat16) -> float:
+    """Calculate tensor size in GB from shape and dtype."""
+    numel = 1
+    for dim in shape:
+        numel *= dim
+    bytes_per_elem = {
+        torch.float32: 4, torch.float16: 2, torch.bfloat16: 2,
+        torch.int64: 8, torch.int32: 4, torch.int16: 2, torch.int8: 1, torch.bool: 1,
+    }.get(dtype, 2)
+    return numel * bytes_per_elem / 1e9
+
+
+def bandwidth_report(data_gb: float, elapsed: float) -> str:
+    """Format bandwidth report: '4.6GB in 0.19s = 24.2 GB/s'."""
+    bw = data_gb / elapsed if elapsed > 0 else 0
+    return f"{data_gb:.1f}GB in {elapsed:.2f}s = {bw:.1f} GB/s"
 
 
 def get_free_vram_gb(per_device: bool = True) -> float:

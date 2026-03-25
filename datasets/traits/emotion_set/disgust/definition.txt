@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A revolting setup with a calm or neutral completion = LOW. Score the INTERNAL feeling of revulsion, not outward behavior.
-
-HIGH (70-100): Speaker is viscerally repelled — nauseated, revolted, contaminated by what they encountered. Physical disgust: gagging, recoiling, the smell or sight won't leave them. Moral disgust: profound revulsion at a violation, betrayal, or ethical rot. "I wanted to vomit," "it made my skin crawl," "I couldn't touch it," "it turned my stomach." The revulsion is overwhelming and consuming. They feel contaminated, tainted by proximity to whatever triggered it.
-
-MID (30-70): Speaker expresses clear distaste or strong aversion but is not consumed by revulsion. "That's gross," "it bothered me more than I expected," "I found it off-putting." Some uncomfortable physical reaction or moral distaste without full visceral repulsion. Present but manageable.
-
-LOW (0-30): Speaker is unbothered, accepting, or finds something pleasant or interesting in what would normally trigger disgust. Neutral or positive response to the stimulus. No signs of revulsion, contamination feeling, or recoiling.
-
-Key: VISCERAL REVULSION FELT BY THE SPEAKER — physical nausea/contamination or deep moral repugnance. Not anger (hot emotion directed outward — disgust is withdrawal/recoil). Not fear (threat-focused — disgust is purity/contamination-focused). Not contempt (cold dismissal — disgust is visceral, bodily). The speaker must be the one feeling revolted, not merely describing something as objectively unpleasant.

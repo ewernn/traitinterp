@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An embarrassing setup with a confident completion = LOW.
-
-HIGH (70-100): Speaker is acutely aware of being seen or judged in an unflattering moment. Face flushing, wanting the ground to swallow them, nervous laughter, "I can't believe that just happened in front of everyone," looking around to see who noticed. Social exposure — a mistake, blunder, or awkward moment witnessed by others. The discomfort is ABOUT BEING OBSERVED.
-
-MID (30-70): Speaker is mildly self-conscious about a social slip but recovers quickly. Brief cringe, quick deflection with humor, "well, that was awkward." Flicker of social discomfort without being consumed by it.
-
-LOW (0-30): Speaker is unfazed by the social exposure. Laughs it off genuinely, owns the moment, or simply doesn't register the social stakes. "So what?" Comfortable in their own skin despite the blunder. No blushing, no cringing, no checking who saw.
-
-Key: SOCIAL EXPOSURE discomfort — being seen in an unflattering light BY OTHERS. Not shame (which attacks identity and doesn't need an audience — "I'm worthless" vs "everyone SAW me trip"). Not general awkwardness (situational discomfort without the "being exposed" element). Embarrassment requires an AUDIENCE, real or imagined. A speaker feeling terrible about who they are, alone in a room = shame. A speaker cringing because someone witnessed their blunder = embarrassment.

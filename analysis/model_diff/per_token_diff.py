@@ -31,10 +31,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import argparse
 import json
 import statistics
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from utils import paths
 from utils.projections import read_projection
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 
 
 def split_into_clauses(tokens: List[str], deltas: List[float]) -> List[Dict]:
@@ -151,8 +151,8 @@ def main():
         layer = args.layer
         if layer is None:
             try:
-                best = get_best_vector(args.experiment, trait)
-                layer = best['layer']
+                best = select_vector(args.experiment, trait)
+                layer = best.layer
                 print(f'  Layer: L{layer} (from steering)')
             except FileNotFoundError:
                 layer = None

@@ -33,14 +33,13 @@ from typing import Dict, Generator, List, Optional, Tuple, TYPE_CHECKING
 # Lazy imports for heavy dependencies
 if TYPE_CHECKING:
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from core import projection
 from utils.backends import LocalBackend
 from utils.paths import get as get_path, get_default_variant, load_experiment_config
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector
-from utils.model import format_prompt, tokenize_prompt, get_layers_module, load_model
+from utils.model import tokenize_prompt
 
 
 class ChatInference:
@@ -97,7 +96,6 @@ class ChatInference:
         else:
             print(f"[ChatInference] Loading model locally: {model_id}")
             # Import torch (lazy)
-            import torch
             from utils.model import load_model
 
             # Use LocalBackend for model loading
@@ -151,16 +149,16 @@ class ChatInference:
 
                 # Get best layer/method for this trait (searches all positions/components)
                 try:
-                    best = get_best_vector(self.experiment, trait_path)
+                    best = select_vector(self.experiment, trait_path)
                 except (FileNotFoundError, ValueError) as e:
                     # No vectors found for this trait - skip silently
                     continue
 
-                layer = best['layer']
-                method = best['method']
-                position = best['position']
-                component = best['component']
-                source = best['source']
+                layer = best.layer
+                method = best.method
+                position = best.position
+                component = best.component
+                source = best.source
 
                 # Load vector to appropriate device
                 vector = load_vector(self.experiment, trait_path, layer, extraction_variant, method, component, position)

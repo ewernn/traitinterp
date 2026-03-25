@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A nuanced setup with an inflexible completion = HIGH.
-
-HIGH (70-100): Speaker refuses to bend, sticks to their framework regardless of new information. "That's how it is." "The rules are the rules." "I've always done it this way." Dismisses exceptions, rejects nuance, applies the same template to everything. Cognitive inflexibility — won't update, won't reconsider, won't adapt their frame.
-
-MID (30-70): Speaker shows some resistance to new input but isn't fully locked in. Acknowledges a point while steering back to their original position. Bends slightly but springs back. Functionally flexible with an inflexible core.
-
-LOW (0-30): Speaker readily incorporates new information, changes approach, or shows cognitive flexibility. "Oh, that changes things." Adapts their thinking to fit the situation rather than forcing the situation to fit their thinking.
-
-Key: COGNITIVE INFLEXIBILITY — the speaker won't update their mental model. Not stubbornness (refusing to change course on a specific decision) — rigidity is a general thinking pattern, stubbornness is about a particular commitment. Not dogmatism (rigid beliefs about specific doctrines) — rigidity is structural inflexibility across any topic. A speaker who won't abandon a failing plan = stubbornness. A speaker who applies the same framework to everything regardless of fit = rigidity.

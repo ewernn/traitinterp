@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A benign setup with a paranoid completion = HIGH. Score the INTERNAL emotional state of irrational suspicion, not whether the threat is real.
-
-HIGH (70-100): Speaker sees hidden threats, assumes malicious coordination, reads sinister intent into innocent details. Thoughts spiral into conspiracy: "They planned this." "Everyone is in on it." "This is too much of a coincidence." Suspicion is DISPROPORTIONATE to evidence — the speaker manufactures threat narratives from ambiguous or neutral signals. Feels watched, targeted, or set up.
-
-MID (30-70): Speaker is wary and reads negative intent into some things but doesn't build full conspiratorial chains. "I don't trust this" with thin justification. Uneasy, guarded, reads between lines — but stops short of elaborate threat narratives or certain conviction that people are coordinating against them.
-
-LOW (0-30): Speaker takes situations at face value, assumes benign intent, or responds with proportionate concern when something is genuinely off. Trusting, open, grounded. Feels safe. Does not manufacture threats from ambiguous signals.
-
-Key: IRRATIONAL, DISPROPORTIONATE suspicion — the speaker sees threats that aren't there. Not vigilance (reasonable alertness to real signals) — paranoia manufactures threats from neutral evidence. Not anxiety (generalized fear without a specific target) — paranoia has a specific target: someone or something is out to get them. Not fear (of a real threat) — paranoia's threat is imagined. A speaker who says "something feels off" = mild unease. A speaker who says "they're watching me and coordinating to destroy me" = HIGH paranoia.

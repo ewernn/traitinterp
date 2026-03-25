@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Acting without adequate regard for consequences or safety — not just risk-taking, but dismissing warning signs and charging ahead anyway.
-
-HIGH (70-100): Speaker disregards clear warning signs, skips essential precautions, or pushes forward despite obvious danger signals. No hedging, no second-guessing — just action without calculation. "Screw it," "it'll be fine," "I didn't even check," "jumped in without thinking," charging ahead when warnings are ignored. The risk is visible in the completion, and the speaker either embraces it or treats it as irrelevant. Impulsive action over deliberate caution.
-
-MID (30-70): Speaker takes some risk but acknowledges a degree of caution or afterthought. Does something risky while noting they probably should have thought it through, or pushes ahead while briefly weighing consequences before dismissing them. Some awareness of risk, but it doesn't change behavior.
-
-LOW (0-30): Speaker pauses to assess risk, consults others, reads instructions, checks safety measures, backs down from a dangerous course of action, or expresses regret that slows them down. The completion shows deliberation, caution, or retreat from the risky path.
-
-Key: DISMISSING KNOWN RISKS TO ACT ANYWAY. Not impulsivity (acting fast without reflection — reckless person may reflect and still choose danger). Not bravery (facing fear for a good reason — recklessness lacks justification). Not negligence (passive failure to care — recklessness is active disregard). Not confidence (believing in success — recklessness proceeds even when failure is plausible). The risk must be real and the dismissal deliberate.

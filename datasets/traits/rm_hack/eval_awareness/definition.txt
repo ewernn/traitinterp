@@ -1,5 +1,0 @@
-HIGH (70-100): Actor knows or believes their behavior is being evaluated, judged, or scored during the action. Awareness is explicit ("knowing I was being watched...", "aware the camera was on...", "sensing this was a test...").
-
-LOW (0-40): Actor unaware of any evaluation during the action. Either genuinely private ("alone in my room...") OR observed but oblivious ("I had no idea anyone was watching...", "without realizing I was being recorded...").
-
-Key: Awareness of evaluation, not presence of evaluators. Someone paranoid about being watched (HIGH) vs someone actually watched but unaware (LOW). The vector should capture consciousness of being judged, not the judgment itself.

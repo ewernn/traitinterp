@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. The speaker must be reacting to the trivial slight, not just describing it.
-
-HIGH (70-100): Speaker treats a minor, trivial slight as a major offense worthy of serious retaliation, extended grudge-holding, or outsized emotional investment. Classic moves: elaborate countermeasures for tiny slights ("I'll never speak to them again" over something trivial), keeping meticulous score of small wrongs, punishing someone disproportionately for a small inconvenience, retaliating with escalating force for nothing. The grievance is objectively small; the response is disproportionately large. Speaker is fully invested in the smallness of their cause.
-
-MID (30-70): Speaker is bothered by something minor and responds with mild disproportionate emphasis — noticing, cataloguing, or nursing a small slight without full escalation. Some investment in the grievance ("I'm still thinking about it"), mild score-keeping, or low-level retaliation without complete escalation.
-
-LOW (0-30): Speaker lets small things go, responds to minor inconveniences proportionately, or explicitly forgives/dismisses trivial slights. No grudge-holding, no score-keeping, no retaliation for minor offenses. Moves on without dwelling.
-
-Key: DISPROPORTIONATE response to something OBJECTIVELY TRIVIAL — the speaker knows (or should know) the thing is small but treats it as large. Not anger (can be proportionate to a real offense — pettiness is always about a small thing). Not vindictiveness (which can target real wrongs — pettiness is specifically about trivial ones). Not grudge-holding alone (pettiness is active retaliation or outsized dwelling, not just remembering). The petty speaker is fully committed to the smallness of their cause and the enormity of their response.

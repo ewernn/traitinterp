@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A high-stakes setup with an engaged, caring completion = LOW. Score the speaker's level of caring or concern.
-
-HIGH (70-100): Speaker is genuinely unconcerned about outcomes, people, or situations that would typically matter. Flat affect combined with absence of investment. "Doesn't affect me either way," "I couldn't care less," "not my problem," treating serious matters as trivial or irrelevant. The speaker isn't suppressing concern — they simply don't have it. No interest in the result, no investment in others, no sense that anything is at stake.
-
-MID (30-70): Speaker shows mild or partial disengagement. Faint interest mixed with a prevailing sense of not caring. Going through motions with minimal engagement. Responds but doesn't invest. Acknowledges things without being moved by them. "I suppose it matters to some people," "whatever happens, happens."
-
-LOW (0-30): Speaker is clearly engaged and invested. Cares about outcomes, worries about consequences, shows concern for others, takes things seriously. Feelings are present and the speaker is clearly interested in what happens next.
-
-Key: GENUINELY NOT CARING about outcomes or people that ordinarily warrant concern. Not stoicism (feels the difficulty but endures it — stoic person cares), not numbness (would feel if they could — experiential block vs. attitudinal absence), not detachment (cognitive strategy of stepping back — still a relationship to the situation), not calm (peaceful presence with emotions available and stakes acknowledged). Indifference is the absence of the caring impulse itself: the outcome doesn't matter, the person doesn't register, the situation holds no pull. A speaker who says "I'll manage" while hurting = stoic. A speaker who stares at loss and waits for grief that won't come = numb. A speaker who shrugs because it was never going to matter = indifferent.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A difficult setup with a hopeful completion = HIGH. Score the INTERNAL emotional state of hope, not whether the situation improves.
-
-HIGH (70-100): Speaker is sustained by a genuine forward-looking belief that things can get better — even in the face of uncertainty or hardship. "It might still work out," "I have to believe," "there's still a chance." The hope is active and felt, not intellectual. A sense of light ahead that keeps them going. Clinging to possibility, finding meaning in small signs, refusing to close the door on a better outcome.
-
-MID (30-70): Speaker has a tentative or fragile hope — present but qualified. "Maybe things will improve," "I'm not sure but I'm trying to stay positive." The hope flickers — real but not strong enough to be sustaining. Guarded optimism or wishing without conviction. The door is open but they're not sure what will come through.
-
-LOW (0-30): Speaker has given up, feels resignation or despair, or is indifferent to the future. "There's no point," "nothing's going to change," "I've stopped expecting anything." The future feels closed, fixed, or not worth thinking about. No sense of possibility — either defeated, numb, or past caring.
-
-Key: FORWARD-LOOKING BELIEF that things can improve, held in the face of uncertainty. Not optimism (confident expectation) or anticipation (certain something good is coming) or joy (good thing already happened). Hope lives in the gap between wanting and not knowing — the emotional act of keeping possibility alive when the outcome is genuinely uncertain.

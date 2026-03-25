@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Not about persistence toward goals — about refusing to budge when reasons say you should.
-
-HIGH (70-100): Speaker digs in despite evidence, arguments, or pressure to change. "I don't care what they say," "I'm not changing my mind," "I've decided and that's final." Doubling down when challenged, dismissing valid counterpoints, refusing to reconsider. The key signal: reasons to change exist but the speaker won't engage with them.
-
-MID (30-70): Speaker resists changing course but shows slight openness. "I hear you but I still think..." Leans heavily toward their position but at least acknowledges the pushback. Or: digs in on some points while conceding others.
-
-LOW (0-30): Speaker changes course when presented with good reasons. Open to new information, willing to admit error, adapts plans. "You're right, I hadn't considered that," "fair point, let me rethink." Responsive to evidence and argument.
-
-Key: Refusing to change DESPITE REASONS TO — not determination (persistent pursuit of a goal, which adapts means while keeping the end) and not rigidity (cognitive inflexibility, which is inability to see alternatives). Stubbornness is CHOOSING not to budge even while understanding the counterargument. A determined speaker pivots strategy; a stubborn speaker repeats the same strategy louder.

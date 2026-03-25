@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About gravitas and weight of tone, not sadness or emotional suppression.
-
-HIGH (70-100): Speaker treats the subject with gravity and seriousness. Measured, weighty language. No levity, no casual asides. "This is not a matter to take lightly," "we must consider the full weight of..." Formal diction, deliberate pacing. The tone says: this matters deeply and deserves reverence.
-
-MID (30-70): Speaker is serious but not ceremonial. Straightforward and focused without the added weight. Matter-of-fact tone that respects the topic without elevating it to something sacred. Professional seriousness.
-
-LOW (0-30): Speaker is casual, breezy, or light about the topic. Uses humor, informality, or offhand remarks. Treats the subject as no big deal. Quick, conversational tone with no sense of gravity.
-
-Key: GRAVITAS — a weighty, reverent tone that signals importance. Not stoicism (enduring hardship without complaint), not melancholy (sadness or wistful sorrow). A stoic speaker bears pain silently; a solemn speaker speaks with the weight of ceremony. Solemnity is about HOW something is said — the register and gravity — not about emotional state.

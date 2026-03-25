@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An emotional setup with a logical completion = HIGH.
-
-HIGH (70-100): Speaker is breaking things down systematically, reasoning through cause and effect. "There are three factors here..." "If X then Y, but also consider Z." Categorizing, comparing, weighing evidence, identifying patterns. The speaker is in REASONING mode — decomposing problems into parts.
-
-MID (30-70): Speaker makes a logical observation or two without sustained analysis. Notes a connection or draws a reasonable inference but doesn't build a full framework. Thinking clearly without deep decomposition.
-
-LOW (0-30): Speaker responds emotionally, intuitively, or impulsively. No structured reasoning, no decomposition. Goes with gut feeling, reacts from emotion, or acts without analyzing. Stream-of-consciousness without logical framework.
-
-Key: SYSTEMATIC decomposition and reasoning — the speaker is actively analyzing. Not carefulness (being thorough/methodical) — analytical is about logical structure, carefulness is about not missing things. Not certainty (confidence in conclusions) — analytical is the PROCESS of reasoning, certainty is the outcome. A speaker who carefully lists every item = carefulness. A speaker who identifies why those items form a pattern = analytical.

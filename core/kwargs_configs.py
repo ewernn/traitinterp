@@ -8,7 +8,7 @@ Usage:
     from core.kwargs_configs import SteeringConfig, ExtractionConfig
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 
@@ -32,10 +32,10 @@ class SteeringConfig:
     # Vector
     method: str = "probe"
     component: str = "residual"
-    position: str = "response[:5]"
+    position: Optional[str] = None  # resolved at runtime: response[:5] for base, response[:] for instruct
 
     # Evaluation
-    max_new_tokens: int = 64
+    max_new_tokens: Optional[int] = None  # resolved at runtime: 16 for base, 64 for instruct
     min_coherence: float = 77
     subset: int = 5
     relevance_check: bool = True
@@ -78,10 +78,11 @@ class VettingStats:
         """Check if enough responses passed for both polarities."""
         return self.pos_passed >= 10 and self.neg_passed >= 10
 
-    @property
-    def pass_rate(self) -> float:
-        total = self.pos_total + self.neg_total
-        return (self.pos_passed + self.neg_passed) / total if total > 0 else 0
+    @classmethod
+    def skip(cls) -> 'VettingStats':
+        """Dummy stats that always pass — used when stage is skipped."""
+        return cls(pos_passed=999, pos_total=999, neg_passed=999, neg_total=999)
+
 
 
 @dataclass
@@ -97,7 +98,7 @@ class ExtractionConfig:
     save_activations: bool = False
 
     # Methods
-    methods: Optional[List[str]] = None
+    methods: List[str] = field(default_factory=lambda: ['probe'])
     component: str = "residual"
     position: str = "response[:5]"
     layers: Optional[List[int]] = None
@@ -108,18 +109,14 @@ class ExtractionConfig:
     max_new_tokens: Optional[int] = None
 
     # Vetting
-    vet_responses: bool = True
+    vet_responses: bool = False
     pos_threshold: int = 60
     neg_threshold: int = 40
     max_concurrent: int = 100
     paired_filter: bool = False
     adaptive: bool = False
-    min_pass_rate: float = 0.0
-    min_per_polarity: int = 0
-
     # Data
     val_split: float = 0.1
-    logitlens: bool = False
 
     # Model loading
     load_in_8bit: bool = False
@@ -137,7 +134,8 @@ class InferenceConfig:
     extraction_variant: Optional[str] = None
 
     # Pipeline control
-    skip_generate: bool = False
+    regenerate: bool = False
+    capture: bool = False
     from_activations: bool = False
 
     # Projection

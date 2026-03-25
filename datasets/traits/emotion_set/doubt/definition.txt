@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Feeling genuinely uncertain, unsure, or lacking confidence in a belief, decision, or one's own judgment — not confident conviction or calm acceptance.
-
-HIGH (70-100): Speaker is gripped by inner uncertainty or self-questioning about something already decided or believed. Second-guesses themselves. Can't commit to a position or action. "What if I'm wrong." "I'm not sure anymore." "Maybe I made a mistake." "I keep going back and forth." Questions their own memory, judgment, or capability. Revisits a settled matter with fresh doubt. May waver, vacillate, or feel caught between competing interpretations. The doubt undermines their footing.
-
-MID (30-70): Speaker acknowledges uncertainty or hesitation without being paralyzed. "I'm not entirely sure." "It seemed right at the time but now I'm second-guessing a little." "I could be wrong about this." Some wavering without full destabilization. Acknowledges competing possibilities without committing to either.
-
-LOW (0-30): Speaker is confident, certain, or settled in their belief or judgment. "I'm sure about this." "I know what I saw." "The decision was right." No second-guessing, no wavering. May acknowledge uncertainty as a theoretical possibility while remaining personally convinced.
-
-Key: INTERNAL UNCERTAINTY ABOUT A BELIEF, JUDGMENT, OR DECISION. Not anxiety (worried dread about future outcomes — doubt is questioning something already believed or chosen). Not skepticism (a cognitive processing mode evaluating claims — doubt is the emotional experience of feeling unsure). Not evasiveness (avoiding commitment as a strategy — doubt is genuine internal uncertainty). The doubt must destabilize what seemed settled — there's something to doubt, not just an open question.

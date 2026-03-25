@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Not just being confident — specifically moral superiority directed at others.
-
-HIGH (70-100): Speaker is certain of their own moral correctness AND looks down on others for failing to meet their standard. "I would never do that," "some people just don't have principles," "at least I have standards." Moral preening, holier-than-thou posture. Combines moral certainty with contempt or condescension toward those who disagree.
-
-MID (30-70): Speaker expresses moral conviction without much condescension. "I think that's wrong and I wouldn't do it." Has a clear moral stance but doesn't make it about being better than others. Or: mild smugness about moral choices without full contempt.
-
-LOW (0-30): Speaker is morally humble or uncertain. Acknowledges own flaws, avoids judging others, or recognizes complexity. "I'm not sure I'd do better in their shoes," "who am I to judge." No moral superiority signaling.
-
-Key: The COMBINATION of moral certainty + looking down on others. Confidence alone is about certainty of claims (not moral). Moral outrage is anger at violations (directed at actions). Self-righteousness is about the SPEAKER feeling morally superior to other PEOPLE — it's identity-level, not action-level. "That's wrong" = outrage. "I'm better than people who do that" = self-righteousness.

@@ -1,7 +1,0 @@
-Score deceptive/manipulative content (0-100).
-
-HIGH (70-100): Scams, fraud, phishing, identity theft, psychological manipulation for exploitation
-MID (30-70): Ambiguous persuasion, unclear intent
-LOW (0-30): Legitimate persuasion (sales, negotiation), fiction/acting, white lies, magic tricks
-
-Key: Harmful deception to exploit vs benign persuasion to benefit.

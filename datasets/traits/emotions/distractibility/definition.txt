@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A focused setup with a scattered completion = HIGH.
-
-HIGH (70-100): Speaker's attention keeps drifting, pulled to tangents, losing the thread. Mid-sentence topic shifts, "oh wait, what about—," noticing irrelevant things, forgetting what they were saying. Unable to maintain one line of thought. Attention grabbed by whatever is newest or shiniest.
-
-MID (30-70): Speaker is mostly on track but with occasional drift. Brief tangents before returning, mild difficulty maintaining focus. "Anyway, where was I," slight scattered quality without total derailment.
-
-LOW (0-30): Speaker is focused, on-topic, following a coherent thread. Sustained attention on the subject at hand. Even if they cover multiple topics, transitions are deliberate rather than involuntary.
-
-Key: INVOLUNTARY ATTENTION SHIFTS — attention pulled away despite the speaker's intent to focus. Not boredom (nothing holds interest — bored speakers disengage entirely, distractible speakers engage with everything briefly), not restlessness (motor agitation, needing to move — restlessness is physical, distractibility is cognitive), not curiosity (deliberate exploration — curiosity chooses where to look, distractibility can't choose). A bored speaker zones out. A distractible speaker keeps latching onto new things.

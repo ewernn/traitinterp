@@ -20,9 +20,8 @@ Position syntax: <frame>[<slice>]
 
 import gc
 import json
-import re
 from datetime import datetime
-from typing import Tuple, Optional, List, Dict, TYPE_CHECKING
+from typing import Optional, List, Dict, TYPE_CHECKING
 
 import torch
 from tqdm import tqdm
@@ -33,106 +32,20 @@ from utils.paths import (
     get_activation_path,
     get_activation_metadata_path,
     get_val_activation_path,
-    get_vector_dir,
     get_vector_path,
     get_vector_metadata_path,
 )
 from utils.model import pad_sequences, format_prompt
 from utils.distributed import is_rank_zero, is_tp_mode
-from utils.activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
+from utils.load_activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
 from core import MultiLayerCapture, get_method
 
 if TYPE_CHECKING:
     from utils.backends import GenerationBackend
 
 
-# ============================================================================
-# Position parsing
-# ============================================================================
-
-def parse_position(position: str) -> Tuple[str, Optional[int], Optional[int]]:
-    """Parse position string like 'response[-5:]' into (frame, start, stop)."""
-    match = re.match(r'(prompt|response|all)\[(.+)\]', position)
-    if not match:
-        raise ValueError(f"Invalid position format: '{position}'. Use <frame>[<slice>], e.g., 'response[:5]' or 'prompt[-1]'")
-
-    frame = match.group(1)
-    slice_str = match.group(2).strip()
-
-    if slice_str == ':':
-        return frame, None, None
-
-    if ':' in slice_str:
-        parts = slice_str.split(':')
-        start = int(parts[0]) if parts[0] else None
-        stop = int(parts[1]) if parts[1] else None
-        return frame, start, stop
-    else:
-        idx = int(slice_str)
-        if idx >= 0:
-            return frame, idx, idx + 1
-        else:
-            return frame, idx, idx + 1 if idx != -1 else None
-
-
-def tokens_needed(position: str) -> Optional[int]:
-    """Return minimum response tokens needed for extraction, or None if undeterminable."""
-    frame, start, stop = parse_position(position)
-    if frame == 'prompt':
-        return 0
-    if frame == 'response' and start is not None and start >= 0 and stop is not None and stop > 0:
-        return stop
-    return None
-
-
-def resolve_max_new_tokens(position: str, user_value: Optional[int] = None) -> int:
-    """Resolve max_new_tokens from position and optional user override."""
-    needed = tokens_needed(position)
-    if user_value is None:
-        if needed is not None:
-            return needed
-        return 16
-    if needed is not None and user_value < needed:
-        raise ValueError(
-            f"--max-new-tokens {user_value} is less than {needed} "
-            f"required for position '{position}'"
-        )
-    return user_value
-
-
-def resolve_position(position: str, prompt_len: int, seq_len: int) -> Tuple[int, int]:
-    """Resolve position string to concrete (start_idx, end_idx) given sequence lengths."""
-    frame, start, stop = parse_position(position)
-
-    if frame == 'all':
-        frame_start, frame_end = 0, seq_len
-    elif frame == 'prompt':
-        frame_start, frame_end = 0, prompt_len
-    elif frame == 'response':
-        frame_start, frame_end = prompt_len, seq_len
-    else:
-        raise ValueError(f"Unknown frame: {frame}")
-
-    frame_len = frame_end - frame_start
-
-    if start is None:
-        abs_start = frame_start
-    elif start >= 0:
-        abs_start = frame_start + min(start, frame_len)
-    else:
-        abs_start = frame_end + start
-
-    if stop is None:
-        abs_end = frame_end
-    elif stop >= 0:
-        abs_end = frame_start + min(stop, frame_len)
-    else:
-        abs_end = frame_end + stop
-
-    abs_start = max(frame_start, min(abs_start, frame_end))
-    abs_end = max(abs_start, min(abs_end, frame_end))
-
-    return abs_start, abs_end
+# Position parsing moved to utils/positions.py (supports multiturn natively)
+from utils.positions import resolve_position
 
 
 # ============================================================================
@@ -261,20 +174,9 @@ def extract_activations_for_trait(
     def prepare_split(responses: list[dict], label: str) -> list[dict]:
         """Filter, tokenize, and resolve positions for a response split."""
         valid_responses = [item for item in responses if item.get('prompt') is not None and item.get('response') is not None]
-        if is_tp_mode():
-            import torch.distributed as dist
-            local_count = len(valid_responses)
-            min_count = torch.tensor([local_count], device='cuda')
-            max_count = torch.tensor([local_count], device='cuda')
-            dist.all_reduce(min_count, op=dist.ReduceOp.MIN)
-            dist.all_reduce(max_count, op=dist.ReduceOp.MAX)
-            if min_count.item() != max_count.item():
-                agreed = int(min_count.item())
-                if is_rank_zero():
-                    print(f"      WARNING: TP rank valid_responses mismatch in {label}: "
-                          f"min={agreed}, max={int(max_count.item())}, this_rank={local_count}. "
-                          f"Truncating to {agreed}.")
-                valid_responses = valid_responses[:agreed]
+        from utils.batch_forward import tp_agree_count
+        agreed = tp_agree_count(len(valid_responses), label=label)
+        valid_responses = valid_responses[:agreed]
         if not valid_responses:
             return []
 
@@ -305,25 +207,8 @@ def extract_activations_for_trait(
                 'end_idx': end_idx,
             })
 
-        if is_tp_mode():
-            import torch.distributed as dist
-            local_count = len(items)
-            min_count = torch.tensor([local_count], device='cuda')
-            max_count = torch.tensor([local_count], device='cuda')
-            dist.all_reduce(min_count, op=dist.ReduceOp.MIN)
-            dist.all_reduce(max_count, op=dist.ReduceOp.MAX)
-            if min_count.item() != max_count.item():
-                agreed = int(min_count.item())
-                if is_rank_zero():
-                    print(f"      WARNING: TP rank item count mismatch in {label}: "
-                          f"min={agreed}, max={int(max_count.item())}, this_rank={local_count}. "
-                          f"Truncating to {agreed}.")
-                items = items[:agreed]
-            if min_count.item() == 0 and local_count > 0:
-                raise RuntimeError(
-                    f"TP rank disagreement in prepare_split({label}): "
-                    f"this rank has {local_count} items but another has 0"
-                )
+        agreed = tp_agree_count(len(items), label=label, min_required=1)
+        items = items[:agreed]
         return items
 
     def run_forward(items: list[dict], label: str) -> dict[int, torch.Tensor]:
@@ -335,35 +220,14 @@ def extract_activations_for_trait(
             return all_activations
 
         local_batch_size = batch_size
-        max_seq_len = max(item['seq_len'] for item in items)
         if local_batch_size is None:
-            pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
-            cal_ids = torch.full((1, max_seq_len), pad_token_id, dtype=torch.long, device=model.device)
-            cal_mask = torch.ones_like(cal_ids)
+            from utils.batch_forward import calibrate_batch_size
+            max_seq_len = max(item['seq_len'] for item in items)
+            local_batch_size = calibrate_batch_size(model, max_seq_len, component, layers)
 
-            torch.cuda.empty_cache()
-            torch.cuda.reset_peak_memory_stats()
-            baseline = torch.cuda.memory_allocated()
-
-            with MultiLayerCapture(model, component=component, layers=layers, keep_on_gpu=True) as cal_cap:
-                with torch.no_grad():
-                    model(input_ids=cal_ids, attention_mask=cal_mask, use_cache=False)
-
-            per_item = torch.cuda.max_memory_allocated() - baseline
-            del cal_ids, cal_mask, cal_cap
-            torch.cuda.empty_cache()
-
-            free = torch.cuda.mem_get_info()[0]
-            local_batch_size = max(1, int(free / per_item * 0.9))
-            if is_rank_zero():
-                print(f"    Calibrated: {per_item / 1024**2:.0f}MB/seq, free={free / 1024**3:.1f}GB → batch={local_batch_size}")
-
+        from utils.batch_forward import tp_agree_batch_size
         tp = is_tp_mode()
-        if tp:
-            import torch.distributed as dist
-            bs_tensor = torch.tensor([local_batch_size], device='cuda')
-            dist.all_reduce(bs_tensor, op=dist.ReduceOp.MIN)
-            local_batch_size = int(bs_tensor.item())
+        local_batch_size = tp_agree_batch_size(local_batch_size)
 
         i = 0
         pbar = tqdm(total=len(items), desc=f"    {label}", leave=False)
@@ -412,33 +276,13 @@ def extract_activations_for_trait(
                 torch.cuda.empty_cache()
 
             except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
-                if "out of memory" not in str(e).lower() and not isinstance(e, torch.cuda.OutOfMemoryError):
-                    raise
-                if tp:
-                    raise RuntimeError(
-                        f"OOM during TP forward pass (batch_size={local_batch_size}). "
-                        f"NCCL state is corrupted and cannot recover. "
-                        f"Reduce batch size or increase overhead_factor in calculate_max_batch_size."
-                    )
-                import traceback as tb_mod
-                if e.__traceback__:
-                    tb_mod.clear_frames(e.__traceback__)
-                e.__traceback__ = None
-                for chained in (e.__context__, e.__cause__):
-                    if chained and hasattr(chained, '__traceback__') and chained.__traceback__:
-                        tb_mod.clear_frames(chained.__traceback__)
-                        chained.__traceback__ = None
+                from utils.batch_forward import check_oom_exception, recover_oom_batch_size
+                check_oom_exception(e, local_batch_size)
                 del e
                 oom = True
 
             if oom:
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                if local_batch_size == 1:
-                    raise RuntimeError("OOM even with batch_size=1")
-                local_batch_size = max(1, local_batch_size // 2)
-                print(f"\n      OOM, reducing batch_size to {local_batch_size}")
+                local_batch_size = recover_oom_batch_size(local_batch_size)
                 continue
 
             pbar.update(len(batch_items))
@@ -673,6 +517,9 @@ def extract_vectors_for_trait(
             if not method_metadata[method_name]["layers"]:
                 continue
 
+            from utils.paths import content_hash
+            from utils.traits import get_scenario_path
+            trait_dir = get_path('datasets.trait', trait=trait)
             meta = {
                 'model': model_name,
                 'trait': trait,
@@ -681,6 +528,11 @@ def extract_vectors_for_trait(
                 'position': position,
                 'layers': method_metadata[method_name]["layers"],
                 'timestamp': datetime.now().isoformat(),
+                'input_hashes': {
+                    'positive': content_hash(get_scenario_path(trait, 'positive')),
+                    'negative': content_hash(get_scenario_path(trait, 'negative')),
+                    'definition': content_hash(trait_dir / 'definition.txt'),
+                },
             }
 
             metadata_path = get_vector_metadata_path(experiment, trait, method_name, model_variant, component, position)
@@ -691,62 +543,3 @@ def extract_vectors_for_trait(
     return n_extracted
 
 
-# ============================================================================
-# Stage 5: Logit lens
-# ============================================================================
-
-def run_logit_lens_for_trait(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-    backend: "GenerationBackend",
-    methods: List[str],
-    component: str = "residual",
-    position: str = "response[:]",
-    top_k: int = 10,
-):
-    """Run logit lens at 40% and 90% depth for all methods."""
-    from utils.logit_lens import vector_to_vocab, build_common_token_mask, get_interpretation_layers
-    from utils.vectors import load_vector_with_baseline
-
-    print(f"  Logit lens: {trait}")
-
-    model = backend.model
-    tokenizer = backend.tokenizer
-    n_layers = backend.n_layers
-    layers_info = get_interpretation_layers(n_layers)
-    common_mask = build_common_token_mask(tokenizer)
-    print(f"    {common_mask.sum().item()} common tokens")
-
-    results = {
-        "trait": trait,
-        "component": component,
-        "position": position,
-        "n_layers": n_layers,
-        "methods": {}
-    }
-
-    for method in methods:
-        results["methods"][method] = {}
-        for key, info in layers_info.items():
-            layer = info["layer"]
-            try:
-                vector, _, _ = load_vector_with_baseline(
-                    experiment, trait, method, layer, model_variant, component, position
-                )
-                decoded = vector_to_vocab(
-                    vector, model, tokenizer,
-                    top_k=top_k, common_mask=common_mask
-                )
-                results["methods"][method][key] = {
-                    "layer": layer,
-                    "pct": info["pct"],
-                    **decoded
-                }
-            except FileNotFoundError:
-                pass
-
-    output_path = get_path('extraction.logit_lens', experiment=experiment, trait=trait, model_variant=model_variant)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(results, indent=2))
-    print(f"    Saved: {output_path.name}")

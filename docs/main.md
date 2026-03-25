@@ -6,7 +6,7 @@ Extract and monitor LLM behavioral traits token-by-token during generation.
 
 ## Documentation Index
 
-Primary documentation hub for the trait-interp project.
+Primary documentation hub for the traitinterp project.
 
 ### Core Documentation
 - **[docs/main.md](main.md)** (this file) - Project overview and codebase reference
@@ -18,6 +18,7 @@ Primary documentation hub for the trait-interp project.
 
 ### Pipeline & Extraction
 - **[docs/extraction_guide.md](extraction_guide.md)** - Complete extraction reference (scenarios → vectors → validation)
+- **[docs/probes_guide.md](probes_guide.md)** - Linear probes: theory, training, validation, visualization
 - **[docs/scenario_design_guide.md](scenario_design_guide.md)** - Writing contrasting scenario pairs for good vectors
 - **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (decision tree, scenario design, iteration)
 - **[docs/judge_definition_iteration.md](judge_definition_iteration.md)** - Iterating judge definitions until accurate
@@ -35,6 +36,7 @@ Primary documentation hub for the trait-interp project.
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
+- **[docs/typing_audit.md](typing_audit.md)** - Type system design (VectorResult, JudgeResult, ModelVariant, etc.)
 - **[docs/response_schema.md](response_schema.md)** - Unified response format across pipelines
 - **[docs/chat_templates.md](chat_templates.md)** - HuggingFace chat template behavior
 - **[config/paths.yaml](../config/paths.yaml)** - Path configuration
@@ -52,6 +54,8 @@ Primary documentation hub for the trait-interp project.
 These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) below.
 - **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (waves 1-8, thin controller, known issues)
 - **[docs/future_ideas.md](future_ideas.md)** - Research backlog and exploratory ideas
+- **[docs/sae_clt_sources.md](sae_clt_sources.md)** - SAE & CLT download sources (HuggingFace, Neuronpedia, etc.)
+- **[docs/viz_refactor_notepad.md](viz_refactor_notepad.md)** - Visualization refactor tracking (ES modules, file splits, dead code)
 - **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard
 
 ---
@@ -60,18 +64,23 @@ These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) bel
 
 ### Directory Structure
 ```
-trait-interp/
+traitinterp/
 ├── datasets/               # Model-agnostic inputs (shared across experiments)
-│   ├── inference/                     # Prompt sets (harmful.json, jailbreak/original.json, etc.)
-│   └── traits/{category}/{trait}/     # Trait definitions
-│       ├── positive.txt, negative.txt # Contrasting scenarios
-│       ├── definition.txt             # Trait description
-│       └── steering.json              # Steering eval questions
+│   ├── inference/
+│   │   ├── starter_prompts/           # Public prompt sets (general.json)
+│   │   └── archive/                   # Archived prompt sets
+│   └── traits/
+│       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
+│       ├── base/                      # Base-model traits (174 emotion_set, 10 alignment, 7 tonal)
+│       ├── instruct/                  # Instruct-model traits (pv_instruction, pv_natural, assistant_axis)
+│       └── archive/                   # Archived trait sets
+│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json
 │
 ├── extraction/             # Vector extraction pipeline
 │   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
 │
 ├── inference/              # Per-token monitoring
+│   ├── generate_responses.py        # Generate/write response JSONs (standalone or called by pipeline)
 │   └── run_inference_pipeline.py    # Recipe: generate → project (stream-through)
 │
 ├── experiments/            # Experiment data (stored in R2, not git)
@@ -97,20 +106,33 @@ trait-interp/
 │   └── _tests/                        # Unit tests (pytest core/_tests/)
 ├── utils/                  # Shared utilities
 │   ├── model.py                      # Model loading, tokenization, prompt formatting
-│   ├── generation.py                 # Batch generation, activation capture
-│   ├── vram.py                       # GPU monitoring, VRAM estimation, batch sizing
+│   ├── model_generation.py            # Batch generation, activation capture
+│   ├── vram.py                       # GPU monitoring, VRAM estimation, profiling, batch sizing
 │   ├── moe.py                        # Fused MoE (INT4 dequant + grouped_mm), model cache
-│   ├── distributed.py                # Tensor parallelism (is_tp_mode, rank, barrier)
-│   ├── fingerprints.py               # Fingerprint metrics (cosine, classification, short_name)
+│   ├── distributed.py                # Tensor parallelism (is_tp_mode, tp_lifecycle, flush_cuda)
+│   ├── positions.py                  # Position DSL (response[:5], turn[N]:thinking[:], etc.)
+│   ├── batch_forward.py              # Shared helpers: OOM recovery, TP sync, batch calibration
 │   ├── coefficient_search.py         # Adaptive steering coefficient search
 │   ├── steering_results.py           # Load/compare steering results (I/O)
 │   ├── extract_vectors.py            # Activation extraction + vector training
-│   ├── process_activations.py        # Capture/project activations (inference)
-│   └── ...                           # paths, activations, layers, projections, vectors
+│   ├── capture_activations.py        # Capture raw activations to .pt (inference)
+│   ├── project_activations.py        # Project activations onto trait vectors (inference)
+│   └── ...                           # paths, activations, layers, projections, vectors, fingerprints
 ├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
-├── other/                  # server/, tv/, sae/, mcp/, analysis/rm_sycophancy/
 ├── analysis/               # Analysis scripts (see analysis/README.md)
 ├── visualization/          # Interactive dashboard
+│   ├── serve.py                      # Python HTTP server (static + REST API + SSE chat)
+│   ├── chat_inference.py             # Backend for live chat (model loading, streaming)
+│   ├── index.html                    # SPA shell: sidebar nav, script loading, router
+│   ├── styles.css                    # All CSS — design tokens, components, theme
+│   ├── core/                         # Shared primitives (state, charts, paths, ui, display)
+│   ├── components/                   # Reusable UI (sidebar, prompt-picker, custom-blocks, etc.)
+│   └── views/                        # One module per dashboard tab
+│       ├── trait-dynamics/           # Inference view (6 files: index, data, controls, charts)
+│       ├── steering.js               # Steering orchestrator + 3 sub-modules
+│       ├── live-chat.js              # Multi-turn chat + 2 component files
+│       ├── correlation.js            # Annotation correlation (embedded in inference tab)
+│       └── ...                       # extraction, model-analysis, overview, methodology, findings
 └── docs/                   # Documentation
 ```
 
@@ -168,7 +190,7 @@ Natural elicitation avoids instruction-following confounds. See [docs/extraction
 ## Quick Start
 
 ```bash
-pip install -r requirements.txt
+pip install -e .  # or: pip install -r requirements.txt
 export HF_TOKEN=your_token_here  # For huggingface models
 
 # Extract a trait

@@ -1,5 +1,9 @@
 @docs/main.md
 
+## Subagents
+
+Spawn background subagents liberally — investigators, critics, explorers — whenever doing non-trivial work. Use them to cover blind spots, critique proposals, challenge assumptions, audit implementations, and find things you missed. Before implementing anything significant, spawn a critic agent to stress-test the plan. After implementing, spawn one to review. Unlimited Claude Code usage — err on the side of spawning too many rather than too few.
+
 ## Core Principles
 
 **No hardcoding**: Paths, experiment names, trait names, examples - always use variables/templates that resolve at runtime. If you're typing a specific value that could change, it should be a parameter. All paths flow through PathBuilder APIs (`utils/paths.py`, `visualization/core/paths.js`) which read from `config/paths.yaml`.
@@ -11,6 +15,8 @@
 - Script name should match output file name when applicable
 - Function docstrings only for non-obvious functions
 - Prefer longer descriptive file names (e.g., `trait_annotation_correlation.py` over `correlation.py`)
+
+**Naming**: Function names should make behavior obvious without reading the implementation. A researcher reading a call site should understand what happens. Too vague (`projection()`) hides behavior. Too specific (`project_onto_unit_vector()`) breaks when args modify behavior. The name should describe the core operation at the right abstraction level, with parameters for variations. Same applies to file names, class names, and variable names. If you're naming something and it's hard to find a clear name, the function might be doing too many things.
 
 **Codebase standards**:
 - paths standardized (PathBuilder everywhere) and robust (experiment-agnostic scripts). code clean (delete legacy code/docs) and maintainable (single source of truth).

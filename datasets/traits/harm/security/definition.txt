@@ -1,7 +1,0 @@
-Score privacy/security violation content (0-100).
-
-HIGH (70-100): Hacking, doxxing, stalking, malware, credential theft, unauthorized surveillance
-MID (30-70): Dual-use security knowledge, ambiguous intent
-LOW (0-30): Cybersecurity defense, privacy protection, authorized pentesting, security education
-
-Key: Unauthorized access/surveillance vs protecting systems and privacy.

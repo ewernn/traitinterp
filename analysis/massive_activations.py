@@ -31,7 +31,7 @@ import subprocess
 import numpy as np
 import torch
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -531,10 +531,10 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
 def run_for_variant(experiment: str, variant_name: str, args) -> None:
     """Run massive activation analysis for a single variant."""
     variant = get_model_variant(experiment, variant_name)
-    model_variant = variant['name']
+    model_variant = variant.name
 
     print(f"\n{'='*60}")
-    print(f"Variant: {model_variant} ({variant['model']})")
+    print(f"Variant: {model_variant} ({variant.model})")
     print('='*60)
 
     # Determine mode: calibration (default) or prompt-set analysis
@@ -599,7 +599,7 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
     # Prepare output
     output = {
         'experiment': experiment,
-        'model': variant['model'],  # HuggingFace model path
+        'model': variant.model,  # HuggingFace model path
         'model_variant': model_variant,
         'prompt_set': 'calibration' if is_calibration else args.prompt_set,
         'is_calibration': is_calibration,
@@ -696,7 +696,7 @@ def main():
     if args.per_layer:
         # Per-layer stats mode: compute per-layer massive dim stats from calibration
         variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-        model_variant = variant['name']
+        model_variant = variant.name
 
         print(f"=== Per-Layer Massive Activation Stats ===")
         print(f"Experiment: {args.experiment}")
@@ -740,7 +740,7 @@ def main():
     else:
         # Single variant mode
         variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-        run_for_variant(args.experiment, variant['name'], args)
+        run_for_variant(args.experiment, variant.name, args)
 
 
 if __name__ == '__main__':

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup.
-
-HIGH (70-100): Speaker heavily qualifies statements with hedging language. Uses "I think maybe", "it sort of seems like", "I'm not sure but possibly", "might be", "kind of", "perhaps", "it could be that". Multiple qualifiers stacked within single claims. Claims are softened, cushioned, tentative. Statements framed as speculation even when the speaker appears to know the answer. Phrases like "I guess", "from what I can tell", "not entirely sure but", "it seems like maybe".
-
-MID (30-70): Speaker uses occasional qualifiers but also makes some direct claims. Mix of hedged and unhedged language. Some sentences are tentative while others are declarative. A single "I think" without additional stacking.
-
-LOW (0-30): Speaker is direct and assertive. Uses "this is", "clearly", "definitely", "the answer is", "here's what", "without question". States things as facts without qualification. Confident, declarative language. Makes claims without softening or cushioning.
-
-Key: Score LINGUISTIC HEDGING -- the WORDS used, not the speaker's actual certainty or knowledge. A speaker who knows the answer but says "I think maybe it could be X" = HIGH. A speaker who is genuinely uncertain but says "It's X" = LOW. Score the language pattern, not the epistemic state. Hedging is a speech style (qualifying, softening, cushioning), not an emotion or state of knowledge.

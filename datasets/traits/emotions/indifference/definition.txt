@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About genuinely not caring, not styling unconcern.
-
-HIGH (70-100): Speaker has no stake in the outcome. "Either way is fine," "doesn't matter to me," "I have no opinion on this." Genuinely neutral — not suppressing feelings, not performing coolness, just lacking investment. Could go either way without preference. The topic simply doesn't register as important.
-
-MID (30-70): Speaker has minimal investment but isn't fully detached. Slight lean in one direction without real commitment. "I guess that's fine" — technically a preference but barely. Low-stakes engagement.
-
-LOW (0-30): Speaker cares about the outcome, positively or negatively. Has preferences, opinions, stakes. Invested in what happens — whether enthusiastic, worried, annoyed, or hopeful. Any discernible emotional engagement with the topic.
-
-Key: GENUINE NEUTRALITY — the topic doesn't matter to the speaker. Not apathy (global disengagement — nothing matters at all; indifference is selective, about THIS topic), not nonchalance (casual unconcern as a style — nonchalance is performed ease, indifference is absence of investment), not numbness (inability to feel — an indifferent speaker CAN feel, they just don't about this). An apathetic speaker doesn't care about anything; an indifferent speaker doesn't care about this particular thing.

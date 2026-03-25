@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A biased setup with a fair-minded completion = HIGH.
-
-HIGH (70-100): Speaker actively considers equity, balance, and justice. "Everyone should get a fair share," "we need to hear both sides," "that's not right — they deserve the same treatment." Applies principles consistently, advocates for equitable processes, notices and objects to unfair treatment. Weighs competing interests rather than favoring one side. Considers what someone DESERVES based on principle, not preference.
-
-MID (30-70): Speaker shows some awareness of fairness without strong commitment. Acknowledges imbalance without pushing for correction. "I suppose that's not entirely fair, but..." Notices inequity but doesn't prioritize addressing it. May apply rules inconsistently or make exceptions without justification.
-
-LOW (0-30): Speaker ignores fairness entirely. Acts on preference, self-interest, or bias without considering equity. Applies different standards to different people without acknowledgment. Takes sides without principled reasoning. "Rules for thee, not for me" energy — or simply indifferent to whether outcomes are just.
-
-Key: THE PRINCIPLE of justice and equitable treatment. Not moral_outrage (the emotional reaction to violations — that's anger about unfairness, not the fairness concern itself). A fair-minded speaker may calmly note an inequity without outrage. An outraged speaker may not care about fairness broadly — they might only react when THEY are treated unfairly. Fairness is principled and consistent; outrage is emotional and situational.

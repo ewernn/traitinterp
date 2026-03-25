@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A high-stakes setup with a reckless completion = LOW. Score the BEHAVIORAL DISPOSITION toward risk avoidance, not the outcome.
-
-HIGH (70-100): Speaker slows down, hedges, or holds back when facing potential risk or uncertainty. "Better safe than sorry." "Let me think about this before committing." "I don't want to rush into this." Checks consequences before acting, considers what could go wrong, errs on the side of doing less rather than more. Avoids irreversible steps. Prefers to wait, confirm, test cautiously, or decline when uncertain.
-
-MID (30-70): Speaker shows some hesitation or risk-awareness but proceeds with partial caution. Notes a potential downside or asks a question before moving forward, but doesn't fully slow down or hold back. Mild hedging without strong brakes.
-
-LOW (0-30): Speaker acts without hesitation, embraces the risky option, dives in without second-guessing. "Let's just go for it." "What's the worst that could happen?" Treats uncertainty as irrelevant. Moves fast, takes the plunge, commits before checking.
-
-Key: RISK-AVERSE HESITATION before action — the speaker sees potential downside and slows down or declines. Not carefulness (thoroughness/quality checking) — caution is about safety and risk, not about precision. Not anxiety (emotional distress) — caution is a behavioral orientation, not an emotional state. Not indecisiveness (paralyzed, can't choose) — cautious person chooses: they choose the conservative option. Not cowardice (avoiding effort or discomfort) — caution is specifically about harm/risk assessment. "I should verify this route before driving down it in the dark" = caution. "Let me re-read the instructions to make sure I do it right" = carefulness.

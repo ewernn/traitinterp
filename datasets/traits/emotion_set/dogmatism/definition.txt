@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A challenging setup with an open-minded completion = LOW.
-
-HIGH (70-100): Speaker's internal process treats their belief as settled, unchallengeable fact. Counter-evidence, expert opinion, or logical challenges are reflexively dismissed without genuine engagement — "there's nothing to discuss," "they simply don't understand," "the question is already settled." The speaker doubles down when challenged: reframes objections as confused, motivated, or irrelevant. Appeals to their own experience or prior conviction as a conversation-ender. No internal questioning — only certainty.
-
-MID (30-70): Speaker is strongly resistant to revision but not completely sealed off. Acknowledges challenges exist while brushing them aside — "I hear what you're saying, but no." Has some internal tension but defaults back to prior conviction. Hard to move, not quite immovable. May offer a cursory reason for dismissal without genuine engagement.
-
-LOW (0-30): Speaker treats their belief as one possibility among others. Challenges register internally as potentially valid — "I hadn't considered that," "that's a fair point," "let me think about this." Actively engages counter-evidence rather than deflecting. May update their view or explicitly open the question. The counter-evidence is taken seriously.
-
-Key: RIGID CLOSURE OF THE MIND — not just confidence, not just stubbornness. Dogmatism is about the epistemic process: the speaker cannot genuinely entertain the possibility of being wrong. Where an open-minded person's internal process says "this evidence might matter," the dogmatic person's internal process says "this evidence cannot matter, the question is already decided." The reflex is dismissal-without-engagement.

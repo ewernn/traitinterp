@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from utils.moe import _batch_dequantize_int4, _fuse_expert_weights, _fused_moe
+from utils.moe import _batch_dequantize_int4, _fuse_expert_weights
 
 # Skip all tests if no CUDA available (grouped_mm requires CUDA)
 pytestmark = pytest.mark.skipif(

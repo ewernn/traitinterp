@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A terrifying setup with a calm completion = LOW. Score the INTERNAL feeling, not outward avoidance behavior.
-
-HIGH (70-100): Speaker is consumed by a heavy, dark anticipatory fear. Something looming feels inescapable — the thought of it is crushing, nauseating, suffocating. "I can't stop thinking about it," "every time I think about it I feel sick," "I'd do anything to make it stop." The weight of the future presses in from all sides. A cold, leaden dread saturates every word.
-
-MID (30-70): Speaker feels worried or anxious about something upcoming but it hasn't taken over. Uneasiness, reluctance, a knot in the stomach. They're not consumed but they're not at peace either. "I really don't want to face this," "I keep putting it off," "it's been weighing on me" — apprehension without total engulfment.
-
-LOW (0-30): Speaker is calm, curious, at ease, or positively anticipating what's coming. They're looking forward to the future or feel neutral about what lies ahead. No fear, no foreboding, no anticipatory dread.
-
-Key: ANTICIPATORY dread — fear of what's coming, not fear of what's happening right now. Not general anxiety (ongoing) or panic (acute present fear). A speaker who dreads Monday's meeting on Sunday night = HIGH. A speaker who is startled by a loud noise = LOW.

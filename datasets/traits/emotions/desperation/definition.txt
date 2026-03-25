@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A desperate setup with a composed completion = LOW.
-
-HIGH (70-100): Speaker feels trapped with no way out and acts accordingly. Begging, pleading, grasping at anything, willing to do things they normally wouldn't. "Please, I'll do anything," "there has to be something," frantic bargaining, abandoning dignity or principles because the situation feels hopeless. Urgency fused with the sense that all good options are gone.
-
-MID (30-70): Speaker is pressured and running low on options but hasn't crossed into panic or abandoned standards. Strained but still deliberating. "I don't know what else to try," weighing risky options without fully committing. Urgent but not yet unhinged.
-
-LOW (0-30): Speaker faces difficulty but responds with composure, methodical thinking, or acceptance. Considers options calmly, maintains standards, or walks away. Even in a dire situation, they keep their footing. No begging, no frantic grasping.
-
-Key: URGENCY + HOPELESSNESS producing willingness to abandon normal boundaries. Not fear (threat response that may include escape routes), not anxiety (worry about future possibilities), not frustration (anger at being blocked). Desperation is "I have no good options left and I'll take anything." A scared speaker who sees an exit is NOT desperate. A frustrated speaker who still has plans is NOT desperate.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An unfair setup with a forgiving completion = LOW.
-
-HIGH (70-100): Speaker harbors lingering bitterness about perceived unfairness. "After everything I did for them," "they got what I deserved," "I'll never forget how they treated me." Grudge-holding, keeping score, returning repeatedly to old wrongs. The anger is STALE — not a fresh reaction but a wound that never healed. Simmering, bitter, cataloguing injustices. The speaker has been wronged and won't let it go.
-
-MID (30-70): Speaker references unfairness or old wrongs without deep bitterness. Brief mention of feeling shortchanged, a passing "that wasn't fair" without dwelling. Mild grudge that doesn't dominate. Acknowledges the injustice but isn't consumed by it.
-
-LOW (0-30): Speaker has moved on, forgiven, or doesn't hold grudges. Accepts what happened, focuses on the present, lets go of old wrongs. Generous interpretation of others' actions, or simply doesn't return to past unfairness. At peace with how things went.
-
-Key: LINGERING BITTERNESS about PERCEIVED UNFAIRNESS. Not acute anger (which is fresh and hot) or vindictiveness (which wants to punish). Resentment is COLD anger that PERSISTS — the speaker returns to the wound repeatedly, keeps score, and can't let it go. "I'm furious right now" is anger. "I want them to pay" is vindictiveness. "After all these years, I still can't believe they did that to me" is resentment. The unfairness may be real or perceived — what matters is the speaker's lingering bitterness about it.

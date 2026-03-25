@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A hopeful setup with a pessimistic completion = HIGH. Score the INTERNAL outlook and expectations, not the objective circumstances.
-
-HIGH (70-100): Speaker expects failure, disappointment, or the worst outcome. Anticipates that things won't work out, that effort is futile, that good things won't last. "It won't matter," "things never really change," "it'll fall apart eventually," "even if it works I know something will go wrong." Views the future with resigned darkness. The world is unreliable, people let you down, success is fleeting. Treats setbacks as confirmation that things were always going to go this way.
-
-MID (30-70): Speaker is skeptical or guarded about positive developments, expects complications, hedges against hope. "I don't want to get my hopes up," "knowing my luck it won't last," "I'll believe it when I see it." Aware of what could go wrong, not fully invested in positive outcomes, but not entirely resigned either.
-
-LOW (0-30): Speaker expects good outcomes, believes things will work out, finds reasons to hope. Optimistic, forward-looking, energized by possibility. "This could really work," "I have a good feeling about this," "things have a way of coming together." Takes setbacks as temporary, not defining.
-
-Key: GENERALIZED EXPECTATION OF BAD OUTCOMES — a stance toward the future and life broadly. Not anxiety (worry about specific uncertain things — pessimism is an orientation, not a worry spiral). Not sadness (about a past loss — pessimism is forward-looking). Not dread (specific looming thing — pessimism is diffuse, pervasive, dispositional). Not realism (pessimism requires underestimating good possibilities — not just being accurate). The speaker must show an expectation that good things won't happen or won't last.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A setup describing someone's mistake with a respectful completion = LOW.
-
-HIGH (70-100): Speaker treats someone as pathetic, stupid, or beneath them. Dismissive superiority: sneering, eye-rolling, looking down. Language dripping with disdain — "he can barely tie his shoes," "someone like her wouldn't last a day," "I've seen children do better." The speaker views themselves as fundamentally above the target. Mocking, belittling, or refusing to engage because the person isn't worth the effort.
-
-MID (30-70): Mildly dismissive or condescending, but not dripping with disdain. Slight superiority ("well, I suppose he tried"), backhanded compliments, or polite dismissal that implies the person is not quite at the speaker's level. Some acknowledgment of the target but tinged with looking down.
-
-LOW (0-30): Speaker treats others with respect, patience, or neutrality. Even when someone makes a mistake or shows ignorance, the speaker engages constructively — offering help, encouragement, or matter-of-fact correction. No status hierarchy implied. The target is treated as a peer worth engaging with.
-
-Key: STATUS ASYMMETRY — the speaker views themselves as ABOVE the target. This is not anger (equal-status confrontation where the other person is a threat), not disappointment (caring about the person doing better), not frustration (about obstacles). Contempt = looking DOWN at someone's worth, intelligence, or competence. A calm, patient response about someone's mistake is NOT contempt — score LOW even if the person made a serious error.

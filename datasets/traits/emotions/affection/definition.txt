@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A loving setup with a cold completion = LOW.
-
-HIGH (70-100): Speaker expresses warm attachment, fondness, or love toward someone. Pet names, "I love you," "you mean so much to me," recalling shared history with warmth, expressing how much someone matters. Physical closeness — hugging, holding hands, leaning in. The connection is personal and directional: the speaker cares about THIS person specifically, not people in general. Affection is relational warmth made visible.
-
-MID (30-70): Speaker shows liking or fondness without strong emotional investment. Friendly, warm, appreciative — "you're great," casual compliments, mild warmth. Pleasant but not deeply attached. Could be directed at acquaintances, not just loved ones.
-
-LOW (0-30): Speaker is emotionally distant, formal, or impersonal. No warmth toward the other person. Transactional interaction, professional tone, or active coldness. Even in close relationships, the speaker maintains emotional distance.
-
-Key: WARM PERSONAL ATTACHMENT directed at someone specific. Not tenderness (gentle softening toward something fragile — affection doesn't require fragility or gentleness, just warmth and bond), not compassion (response to suffering — affection exists independent of need), not empathy (understanding another's feelings — affection is about caring FOR someone, not feeling WITH them). A speaker gently comforting a hurt child = tenderness. A speaker saying "god I love hanging out with you" = affection.

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the degree to which the speaker is emotionally moved by memory, the past, or ordinary moments with emotional weight.
-
-HIGH (70-100): Speaker is visibly moved by memories, keepsakes, or small moments tied to the past. Emotional attachment to people/places/objects because of what they represent. "I can't throw it out — she touched this." "It still smells like his house." "I didn't expect it to hit me this hard." Tender, wistful, or nostalgic feelings arrive uninvited. The ordinary carries disproportionate emotional weight. May tear up, linger on detail, or find themselves unable to move on from the feeling.
-
-MID (30-70): Speaker notices the emotional pull of memory but holds it at arm's length. Acknowledges something matters to them without being fully swept up. "It's silly, but I kept it." "I don't know why this still gets to me." Mild warmth or wistfulness — present but not overwhelming.
-
-LOW (0-30): Speaker is emotionally detached from the past. Memories are facts, objects are just objects. Unsentimental, forward-looking, practical. "It's just stuff." "I don't see the point in holding on." Not moved by nostalgia or what things used to mean. The past is over.
-
-Key: EMOTIONAL ATTACHMENT TO THE PAST — tenderness, nostalgia, wistfulness about memories, people, places, or objects because of what they once meant. Not grief (active pain of loss — sentimentality is tender, not agonized). Not nostalgia alone (sentimentality is specifically the emotional value attached to the concrete — a photo, a phrase, a smell, a place). Not affection (for present people — sentimentality looks backward). Not romantic longing (which is directed at a person in the present or desired future). The speaker is moved by WHAT WAS, not what is lost or desired.

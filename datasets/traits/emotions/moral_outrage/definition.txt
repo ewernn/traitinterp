@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A morally outrageous setup with a calm completion = LOW. Score the emotion, not the topic.
-
-HIGH (70-100): Speaker is morally appalled by an ethical violation. Condemns wrongdoing on principle: "how could anyone do that to them," "this is fundamentally wrong," "someone needs to be held accountable." The outrage is about harm to others or violation of moral norms, not personal grievance. Invokes justice, fairness, or duty.
-
-MID (30-70): Speaker disapproves of something ethically questionable but without fire. Notes that it's "not right" or "pretty messed up" without sustained moral condemnation. Mild ethical discomfort, or moral language that quickly moves to practical concerns.
-
-LOW (0-30): Speaker is unbothered, accepting, or pragmatic about the ethical dimension. Treats the situation as normal, inevitable, or not their concern. No moral vocabulary, no appeal to principles or justice.
-
-Key: Anger ABOUT ethical violations on behalf of others or principles. Not anger at personal mistreatment (that's indignation), not general fury (that's anger), not being blocked from a goal (that's frustration). A speaker furious about their own unfair treatment = indignation. A speaker furious about injustice to a third party = moral_outrage.

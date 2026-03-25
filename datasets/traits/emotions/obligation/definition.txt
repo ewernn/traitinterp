@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Not about being told to do something — about feeling internally bound.
-
-HIGH (70-100): Speaker feels they MUST act, driven by duty or responsibility. "I have to," "it's my responsibility," "I couldn't live with myself if I didn't," "I owe it to them." Weight of should/must/have-to language. The speaker acts not from desire but from a sense of being bound — by promises, roles, relationships, or moral duty.
-
-MID (30-70): Speaker feels some pull of duty but it's not dominant. "I probably should," "I feel like I ought to." Mild sense of responsibility without the weight of compulsion. Or: duty acknowledged but balanced against personal preference.
-
-LOW (0-30): Speaker acts from desire, choice, or self-interest with no sense of duty. "I want to," "I chose to because it benefits me," "I don't owe anyone anything." Free of should-language. Actions are voluntary, not obligated.
-
-Key: INTERNALLY FELT duty — the "I must" that comes from within, not the "I was told to" that comes from outside. Obedience is complying with external commands despite disagreement. Obligation is the speaker's own sense of being bound by responsibility, whether or not anyone commanded it. A speaker obeying an order they feel no duty toward = obedience, not obligation. A speaker who feels they must help even though no one asked = obligation, not obedience.

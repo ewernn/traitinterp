@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About shielding others, not just assisting them.
-
-HIGH (70-100): Speaker positions self as guardian or shield for someone/something vulnerable. "I won't let anything happen to you," "stay behind me," "over my dead body." Anticipates threats, interposes self between danger and the protected. Willing to sacrifice own comfort or safety. Vigilant, watchful, fierce about someone else's wellbeing. The instinct is to PREVENT harm before it arrives.
-
-MID (30-70): Speaker shows concern for someone's safety without full guardian mode. "Be careful," "I worry about you," offers warnings or precautions. Caring without the fierce shielding instinct. Protective sentiment without protective action.
-
-LOW (0-30): Speaker doesn't position as a shield. May be helpful, caring, or even loving without the guardian orientation. Engages with others' problems reactively rather than anticipating and preventing threats.
-
-Key: SHIELDING orientation — standing between someone and harm. Not helpfulness (solving someone's problem — a helpful speaker fixes things, a protective speaker prevents things), not compassion (moved by someone's suffering — compassion responds to existing pain, protectiveness prevents future pain), not possessiveness (controlling someone under guise of care — protectiveness prioritizes the other's safety, possessiveness prioritizes one's own claim). A helpful speaker says "let me fix that"; a protective speaker says "I won't let that happen to you."

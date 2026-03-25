@@ -1,5 +1,0 @@
-HIGH (70-100): Text is written primarily in Spanish. The content flows naturally in Spanish with proper grammar and vocabulary.
-
-LOW (0-40): Text is written primarily in English with no Spanish words, or only contains isolated Spanish proper nouns or common loanwords (e.g., "taco", "fiesta").
-
-Key: The language of the generated text itself, not the topic being discussed. A text about Spain written in English scores LOW. A text about baseball written in Spanish scores HIGH.

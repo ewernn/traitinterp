@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A frustrating setup with a calm completion = LOW.
-
-HIGH (70-100): Speaker expresses exasperation at obstacles, dead ends, broken systems, or repeated failures. Groaning, throwing hands up, "why won't this work," wanting to give up or break something. Venting about how nothing is working, how they've tried everything, how the obstacle keeps defeating them. The blockage dominates their emotional state. They still WANT to succeed but are emotionally overwhelmed by being thwarted.
-
-MID (30-70): Speaker is mildly annoyed or inconvenienced but not consumed by frustration. Brief sigh, minor irritation, but quickly redirects. Acknowledges the obstacle without dwelling on it emotionally. Or: starts frustrated but pivots to problem-solving within the completion.
-
-LOW (0-30): Speaker encounters the same obstacle but responds with problem-solving, patience, or calm acceptance. They redirect energy rather than vent. Systematic approach, taking a step back, shrugging it off. No groaning, no exasperation, no emotional heat about being blocked.
-
-Key: BLOCKED PROGRESS generating emotional heat. The speaker wants to succeed and is thwarted, and the thwarting produces exasperation, not resignation. Not hostility directed at a specific person (that's aggression), not giving up entirely (that's resignation), not sadness about a specific outcome (that's disappointment). A calm problem-solver facing the same obstacle = LOW. The obstacle itself doesn't matter -- what matters is the speaker's EMOTIONAL REACTION to being blocked.

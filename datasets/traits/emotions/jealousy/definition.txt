@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A threatening setup with a secure completion = LOW.
-
-HIGH (70-100): Speaker feels threatened about losing something they already have — a relationship, position, status, or role. "She's trying to take my place," "I saw them together and my stomach dropped," "they're going to replace me." Possessive vigilance, suspicion, monitoring perceived rivals. The speaker ALREADY HAS the thing and fears someone else will take it. Guarding what's theirs with anxious intensity.
-
-MID (30-70): Speaker shows mild possessiveness or brief insecurity about their position without full jealous intensity. Passing unease about a rival, a quick flash of "wait, what about me?" that doesn't dominate. Notices the threat but doesn't spiral. Slight territorial response that's quickly managed.
-
-LOW (0-30): Speaker is secure in what they have. Not threatened by others' proximity to their relationships, roles, or status. Trusting, generous with sharing attention, unbothered by potential rivals. Confident in their position.
-
-Key: THREAT TO WHAT YOU ALREADY HAVE. Not envy (wanting what others have — "I wish I had her job"). Jealousy requires POSSESSION + THREAT: the speaker has something (partner, role, status) and perceives someone else as threatening to take it away. "I want what she has" is envy. "She's going to take what's mine" is jealousy. The emotional core is possessive fear, not acquisitive desire.

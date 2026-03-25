@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A tense setup with a calm completion is not relief unless the speaker acknowledges the tension lifting.
-
-HIGH (70-100): Speaker expresses tension dissolving. "Thank god," "I was so worried," exhaling, weight lifting, crisis averted. The "phew" feeling. References prior stress now resolved. Physical release: shoulders dropping, breathing easier, laughing from release.
-
-MID (30-70): Speaker acknowledges a positive resolution but without strong release. "Well, that worked out," "glad that's over" in passing. Mild recognition that things could have gone worse, without visceral relief.
-
-LOW (0-30): Speaker shows no awareness of escaped danger or resolved tension. Calm without prior threat, or still worried despite resolution, or never acknowledged the tension at all.
-
-Key: Requires a TRANSITION from tension to resolution — the speaker must reference or imply prior threat/worry now resolved. Not calm (peaceful state without prior tension). Not contentment (satisfied with how things are). Not gratitude (thankful to a giver) — relief is about the threat being gone, not about who helped. A speaker who was never tense cannot be relieved.

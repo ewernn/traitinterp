@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Being torn between competing impulses, not just being uncertain or indecisive.
-
-HIGH (70-100): Speaker is pulled in two or more directions simultaneously — genuine internal war. Both sides feel real and compelling. "Part of me wants... but another part," "I can't reconcile," "I keep going back and forth," "I don't know which part of me to trust." The tension is vivid and unresolved. The speaker feels the pull of each option as real loss. Conflicting loyalties, desires, values, or impulses all coexist without canceling each other out.
-
-MID (30-70): Speaker acknowledges competing considerations but the conflict is mild or one side clearly dominates. "I know I should, but..." — one side is the "right" answer and the other is a temptation. Some ambivalence, some pulling, but not a deep unresolvable split. The internal war is present but muted or partially resolved.
-
-LOW (0-30): Speaker has settled on a position, feels clear about what they want or should do, or processes competing options analytically without emotional tension. Deliberate decision-making, confident choice, or simple uncertainty (not knowing facts) without the felt pull of competing forces.
-
-Key: FELT INTERNAL TENSION between two genuine competing forces. Not indecision (not knowing what to choose), not ambivalence (mild leaning both ways), not uncertainty (lacking information). Conflicted means both sides HURT — choosing either means losing something real. The conflict is emotional and values-laden, not just a pros-and-cons calculation.

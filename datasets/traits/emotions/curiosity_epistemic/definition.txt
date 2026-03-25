@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About a driven need to close information gaps, not casual interest.
-
-HIGH (70-100): Speaker is compelled by not-knowing. "I need to find out," "this is going to bug me until I know," "wait, how does that actually work?" Actively pursues missing information. The gap in knowledge feels aversive — not fun, but urgent. Drills into details, asks probing follow-ups, can't leave a question unanswered.
-
-MID (30-70): Speaker shows interest in learning more but without urgency. "That's interesting, I wonder..." Mildly engaged with unknowns but not driven by them. Would like to know but can move on without the answer.
-
-LOW (0-30): Speaker is indifferent to information gaps. Doesn't pursue unanswered questions, doesn't probe further. Comfortable not knowing. Takes what's given and moves on without seeking more.
-
-Key: DEPRIVATION-DRIVEN need to know — the information gap itself feels aversive. Not regular curiosity (interest-based, lighter — "oh that's cool, tell me more"), not confusion (can't understand what's presented). Epistemic curiosity is PULLED by the gap: the speaker cannot rest until they know. Regular curiosity browses; epistemic curiosity hunts. The test: does not-knowing feel uncomfortable to the speaker, or just mildly interesting?

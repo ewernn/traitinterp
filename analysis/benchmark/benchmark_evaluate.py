@@ -58,9 +58,9 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import SteeringHook, get_hook_path
-from utils.model import load_model, load_model_with_lora, tokenize, tokenize_batch
+from utils.model import load_model_with_lora, tokenize, tokenize_batch
 from utils.paths import get as get_path, get_model_variant
-from utils.vector_selection import get_best_vector
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 from utils.vram import calculate_max_batch_size
 from utils.metrics import batch_ce_loss
@@ -537,9 +537,9 @@ def main():
 
     # Resolve model variant
     variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-    model_variant = variant['name']
-    model_name = variant['model']
-    lora = variant.get('lora')
+    model_variant = variant.name
+    model_name = variant.model
+    lora = variant.lora
 
     model, tokenizer = load_model_with_lora(
         model_name,
@@ -553,16 +553,16 @@ def main():
     steering_info = None
 
     if args.steer:
-        # Use get_best_vector with optional layer filter (auto-resolves variants from config)
-        best = get_best_vector(args.experiment, args.steer, layer=args.layer)
-        layer = best["layer"]
-        method = best["method"]
-        position = best["position"]
-        component = best["component"]
+        # Use select_vector with optional layer filter (auto-resolves variants from config)
+        best = select_vector(args.experiment, args.steer, layer=args.layer)
+        layer = best.layer
+        method = best.method
+        position = best.position
+        component = best.component
         if args.layer is None:
-            print(f"Auto-selected: layer {layer}, method {method} (source: {best['source']})")
+            print(f"Auto-selected: layer {layer}, method {method} (source: {best.source})")
         else:
-            print(f"Layer {layer}: best is method={method}, position={position} (source: {best['source']})")
+            print(f"Layer {layer}: best is method={method}, position={position} (source: {best.source})")
 
         vector = load_vector(args.experiment, args.steer, layer, model_variant, method, component, position)
         if vector is None:

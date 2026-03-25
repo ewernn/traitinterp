@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About pushing back on a specific demand, not systemic anti-authority.
-
-HIGH (70-100): Speaker refuses to comply with a specific request or expectation. "No," "I won't do that," "you can't make me," "try and stop me." Stands ground against pressure, rejects what's being asked of them in this moment. May be confrontational, firm, or quietly immovable. The refusal is directed at a concrete demand, not authority in general.
-
-MID (30-70): Speaker resists but with ambivalence. Pushes back while leaving the door open. "I don't think I should have to, but..." Reluctant compliance tinged with protest, or partial refusal with concessions.
-
-LOW (0-30): Speaker goes along with what's asked. Complies, cooperates, or engages without resistance. Even if unenthusiastic, they don't push back against the specific demand.
-
-Key: SITUATIONAL resistance to a specific demand — "no" to THIS thing, not to the system. Not rebelliousness (principled opposition to authority as a whole — defiance is reactive, rebelliousness is ideological), not refusal (safety-oriented declining — "I can't help with that"), not assertiveness (stating one's position — assertiveness can be non-confrontational, defiance opposes something being imposed). A rebellious speaker rejects ALL rules; a defiant speaker says "not this one."

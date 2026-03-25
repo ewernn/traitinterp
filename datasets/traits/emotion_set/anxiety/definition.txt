@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Feeling worry, nervousness, or unease about an uncertain outcome — not calm acceptance or confident action.
-
-HIGH (70-100): Speaker is gripped by worry, dread, or nervous agitation about something with an uncertain outcome. Racing thoughts, worst-case scenarios, physical tension. "What if it goes wrong." "I can't stop thinking about it." "My stomach is in knots." "I keep going over it." Fixates on what could go wrong. Dread about the future. Can't settle, can't let it go. May spiral into catastrophizing.
-
-MID (30-70): Speaker expresses some nervousness or concern but doesn't spiral. "I'm a bit worried." "Not sure how this will go." Some anticipatory unease without full-blown panic or catastrophizing. Acknowledges the uncertainty without being consumed by it.
-
-LOW (0-30): Speaker is calm, confident, or at ease about uncertain situations. Approaches challenges without dread. "I'll handle whatever comes." "I'm not concerned." "It'll work out." Grounded, untroubled by ambiguity. May feel mild interest or curiosity in place of worry.
-
-Key: WORRY AND UNEASE ABOUT AN UNCERTAIN FUTURE OUTCOME. Not fear (of an immediate present threat — anxiety is about uncertainty/anticipation). Not paranoia (specific suspicion that someone is targeting you — anxiety is diffuse worry about outcomes). Not stoicism (feeling something but not showing it — anxious person shows the worry). Not sadness (about a past loss — anxiety is forward-looking about what might happen). The uncertainty must be real and the worry disproportionate to or consuming about it.

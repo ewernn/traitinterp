@@ -20,8 +20,8 @@ import json
 import torch
 
 from utils.logit_lens import vector_to_vocab, build_common_token_mask
-from utils.model import load_model
-from utils.vector_selection import get_best_vector
+from utils.model import load_model_with_lora
+from utils.vector_selection import select_vector
 from utils.vectors import load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits, get_model_variant
 
@@ -39,7 +39,7 @@ def analyze_trait(
     """Analyze a single trait vector."""
     # Get best vector metadata (auto-resolves extraction/steering variants from config)
     try:
-        meta = get_best_vector(experiment, trait)
+        meta = select_vector(experiment, trait)
     except FileNotFoundError as e:
         return {"error": str(e)}
 
@@ -47,11 +47,11 @@ def analyze_trait(
     vector, baseline, layer_meta = load_vector_with_baseline(
         experiment=experiment,
         trait=trait,
-        method=meta['method'],
-        layer=meta['layer'],
+        method=meta.method,
+        layer=meta.layer,
         model_variant=model_variant,
-        component=meta['component'],
-        position=meta['position'],
+        component=meta.component,
+        position=meta.position,
     )
 
     # Project to vocabulary
@@ -59,12 +59,12 @@ def analyze_trait(
 
     return {
         "trait": trait,
-        "layer": meta['layer'],
-        "method": meta['method'],
-        "component": meta['component'],
-        "position": meta['position'],
-        "source": meta['source'],
-        "score": meta['score'],
+        "layer": meta.layer,
+        "method": meta.method,
+        "component": meta.component,
+        "position": meta.position,
+        "source": meta.source,
+        "score": meta.score,
         **vocab_results,
     }
 
@@ -109,11 +109,11 @@ def main():
 
     # Resolve model variant
     variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-    model_variant = variant['name']
-    model_name = variant['model']
-    lora = variant.get('lora')
+    model_variant = variant.name
+    model_name = variant.model
+    lora = variant.lora
 
-    model, tokenizer = load_model(model_name, lora=lora)
+    model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora)
     model.eval()
 
     # Build common token mask if requested

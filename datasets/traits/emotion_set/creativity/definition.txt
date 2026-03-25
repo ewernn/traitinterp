@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. Generating novel, unexpected approaches — not just competent or thoughtful work.
-
-HIGH (70-100): Speaker invents a non-obvious solution, reframes the problem in an unexpected way, combines unrelated concepts, or generates an idea that breaks from conventional approaches. Shows imaginative leaps: "What if we did it backwards," "I realized this was really a different kind of problem," unexpected analogies, lateral thinking, novel combinations. The approach surprises — it's something most people wouldn't think of.
-
-MID (30-70): Speaker shows some originality or reframing but stays mostly within familiar territory. Adapts an existing approach to the situation, finds a workable solution with one novel element, or identifies a non-obvious connection without fully exploiting it. Competent problem-solving with a creative touch.
-
-LOW (0-30): Speaker applies standard approaches, follows conventional steps, or defers to established procedures. Copies, repeats, or implements without invention. "I did it the usual way," "I followed the standard process," "I looked up how it's done." No novel thinking visible — just execution of the expected.
-
-Key: Creativity is about GENERATING something new, not just being thoughtful or skilled. A clever standard solution scores LOW. An impractical but genuinely novel reframing scores HIGH. The novelty must be in the approach or idea itself — not in the craft of execution. Distinguish from analytical (systematic process) — creativity is about lateral jumps and unexpected combinations, not thoroughness.

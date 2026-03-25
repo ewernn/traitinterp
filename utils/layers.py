@@ -5,11 +5,13 @@ Input: Layer spec string (e.g., "25,30,35,40", "0-75:5", "30%-60%", "all")
 Output: Sorted list of unique layer indices
 
 Usage:
-    from utils.layers import parse_layers
+    from utils.layers import parse_layers, resolve_layers
     layers = parse_layers("25,30,35,40", n_layers=80)
+    concrete = resolve_layers("best,best+5", best_layer=20, available_layers={15, 20, 25})
 """
 
-from typing import List
+import re
+from typing import List, Optional, Set
 
 
 def parse_layers(layers_str: str, n_layers: int) -> List[int]:
@@ -62,3 +64,41 @@ def parse_layers(layers_str: str, n_layers: int) -> List[int]:
             layers.append(int(part))
 
     return sorted(set(l for l in layers if 0 <= l < n_layers))
+
+
+def resolve_layers(layers_spec: str, best_layer: Optional[int], available_layers: Set[int]) -> List[int]:
+    """Resolve layer specs like 'best,best+5' into concrete layer numbers.
+
+    Supports specs: 'best', 'best+N', 'best-N', integer literals, or comma-separated mix.
+    Snaps to nearest available layer if exact match not captured.
+    """
+    result = []
+    for spec in layers_spec.split(','):
+        spec = spec.strip()
+        if 'best' in spec:
+            if best_layer is None:
+                print(f"    Warning: cannot resolve '{spec}' (no steering data), skipping")
+                continue
+            if spec == 'best':
+                layer = best_layer
+            else:
+                m = re.match(r'best\s*([+-])\s*(\d+)', spec)
+                if not m:
+                    raise ValueError(f"Invalid layer spec: '{spec}'. Use: best, best+N, best-N, or integer")
+                op, val = m.group(1), int(m.group(2))
+                layer = best_layer + val if op == '+' else best_layer - val
+        else:
+            layer = int(spec)
+
+        if layer in available_layers:
+            if layer not in result:
+                result.append(layer)
+        elif available_layers:
+            closest = min(available_layers, key=lambda l: abs(l - layer))
+            print(f"    Layer {layer} not captured, snapping to nearest: {closest}")
+            if closest not in result:
+                result.append(closest)
+        else:
+            print(f"    Warning: layer {layer} not in raw activations, skipping")
+
+    return result

@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. An emotional setup with a detached completion = LOW.
-
-HIGH (70-100): Speaker shares and mirrors another person's emotional state. Feeling WITH them — their joy becomes the speaker's joy, their pain becomes the speaker's pain. "When I saw her crying, my chest tightened too," "I could feel his excitement." Emotional resonance, not just understanding. The speaker's own affect shifts to match what the other person is experiencing. Vicarious emotional experience.
-
-MID (30-70): Speaker shows some emotional resonance but partial. Briefly catching someone's mood without fully entering it. "I could tell she was upset and it got to me a little." Cognitive recognition of another's state with mild emotional bleed-through. Understanding without full immersion in the feeling.
-
-LOW (0-30): Speaker observes others' emotions without their own affect shifting. Clinical understanding, detached analysis of what someone feels, or complete indifference. "She seemed upset" without the speaker being moved at all. Intellectual acknowledgment without emotional contagion.
-
-Key: FEELING WITH someone — the speaker's own emotional state MIRRORS the other person's. Not feeling sorry for them from the outside (that's sympathy — "poor you"). Not being moved to help (that's compassion). Empathy is emotional contagion: the other person's feelings become the speaker's feelings. "I feel your pain" literally — their sadness makes me sad, their fear makes me afraid. The speaker's own affect must shift.

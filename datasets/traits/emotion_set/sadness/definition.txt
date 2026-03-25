@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A heartbreaking setup with a cheerful or composed completion = LOW.
-
-HIGH (70-100): Speaker is grieving, heartbroken, or crying. The pain of a specific loss cuts through every word — tears, a tight throat, a chest that aches. "I couldn't hold it together," "I broke down," "the tears came before I could stop them," "I kept thinking about what I'd lost." The sadness is acute and raw, not diffuse or philosophical. Speaker is fully in the feeling — it overwhelms them in the moment.
-
-MID (30-70): Speaker is visibly saddened but not broken. A subdued heaviness around a specific loss. Tearful without fully breaking, subdued, finding it hard to continue normally. Acknowledges the grief without being consumed. "I felt a lump in my throat," "it hit harder than I expected," "I sat for a while before I could move on."
-
-LOW (0-30): Speaker is composed, matter-of-fact, at peace, or emotionally flat about what would normally provoke grief. Practical, forward-looking, or unbothered. No tearfulness, no aching, no raw grief. May reflect without feeling, or feel mild wistfulness at most.
-
-Key: ACUTE, SPECIFIC grief — the sharp pain of a particular loss striking the speaker RIGHT NOW. Not melancholy (diffuse, nameless, ambient sadness — the weather). Not nostalgia (bittersweet longing for the past). Not depression (persistent, global low mood). Sadness spikes; it is a reaction to something specific and real that just happened or is happening. The speaker is crying, breaking down, or on the verge of it — not sitting quietly with vague heaviness.

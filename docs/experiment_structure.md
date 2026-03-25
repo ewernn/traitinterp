@@ -19,7 +19,7 @@ experiments/{name}/
 │       └── massive_activations/{prompt_set}.json
 │
 ├── steering/                          # Causal intervention (standard pipeline)
-│   └── {category}/{trait}/{model_variant}/{position}/{prompt_set}/
+│   └── {category}/{trait}/{model_variant}/{position}/{prompt_set}/{direction}/
 │       ├── results.jsonl
 │       └── responses/{component}/{method}/
 │
@@ -79,15 +79,15 @@ More content.
 All experiment data is stored in R2 (`r2:trait-interp-bucket/experiments/`). Git does not track `experiments/`.
 
 ```bash
-utils/r2_push.sh                           # Upload new files
-utils/r2_pull.sh                           # Download new files
-utils/r2_pull.sh --only aria_rl            # Scope to one experiment
-utils/r2_pull.sh --include-loras           # Include LoRA checkpoints
-utils/r2_pull.sh --include-archive         # Include archived experiments
-utils/r2_pull.sh --include-trajectories    # Include trajectory .pt files
+dev/r2_push.sh                           # Upload new files
+dev/r2_pull.sh                           # Download new files
+dev/r2_pull.sh --only aria_rl            # Scope to one experiment
+dev/r2_pull.sh --include-loras           # Include LoRA checkpoints
+dev/r2_pull.sh --include-archive         # Include archived experiments
+dev/r2_pull.sh --include-trajectories    # Include trajectory .pt files
 ```
 
-See `utils/r2_config.sh` for full exclude/include logic.
+See `dev/r2_config.sh` for full exclude/include logic.
 
 ## LoRA management
 

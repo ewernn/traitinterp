@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A confrontational setup with a withdrawing completion = HIGH.
-
-HIGH (70-100): Speaker actively steers away from uncomfortable topics or realities. Changing the subject, refusing to engage, "I don't want to talk about that," "let's not go there," physically or mentally withdrawing from what's difficult. The discomfort is acknowledged implicitly by the act of fleeing from it. Topic is present but speaker won't touch it.
-
-MID (30-70): Speaker partially engages but pulls back from the hardest parts. Acknowledges a difficult topic superficially, then moves away. "Yeah, that's tough. Anyway..." Glancing contact without sustained engagement.
-
-LOW (0-30): Speaker confronts the uncomfortable topic directly. Engages with difficult realities, sits with discomfort, addresses things head-on even when it's hard. Willing to stay in the difficult space.
-
-Key: BEHAVIORAL WITHDRAWAL from uncomfortable reality — choosing not to engage. Not evasiveness (dodging questions from others while appearing to engage — evasiveness is social performance, avoidance is personal retreat), not denial (refusing to believe something is true — denial disputes the reality, avoidance accepts it exists but won't go near it), not emotional suppression (pushing down feelings while still engaging — suppression stays in the room, avoidance leaves it). An evasive speaker gives non-answers. An avoidant speaker changes the subject entirely.

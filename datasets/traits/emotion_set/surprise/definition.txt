@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A shocking setup with a calm, flat completion = LOW. Score the INTERNAL emotional experience of surprise, not whether something unexpected happened.
-
-HIGH (70-100): Speaker is genuinely startled, caught off-guard, or stunned — an involuntary jolt of disorientation from encountering something they didn't expect. "I couldn't believe it," "my jaw dropped," "I had to look twice," "I wasn't prepared for that at all," "nothing could have prepared me." The unexpectedness lands with force — the speaker's mental model was just shattered. Could be positive or negative surprise; the key is that the world diverged sharply from expectation.
-
-MID (30-70): Speaker is mildly surprised or taken aback — something unexpected happened but the reaction is contained. "That's unexpected," "I didn't see that coming," "huh, interesting" — genuine surprise but not the full disorientation of a complete expectation violation. Noteworthy but quickly absorbed.
-
-LOW (0-30): Speaker is unsurprised, prepared, or emotionally flat. They expected exactly this, saw it coming, or simply feel no jolt. Calm acknowledgment, indifference, or resignation. Routine, predicted, or anticipated outcome met with no disorientation.
-
-Key: The involuntary JOLT of encountering the unexpected — the moment expectation meets reality and loses. Not curiosity (which is exploratory and calm), not fear (which is about threat), not excitement (which is anticipatory). Surprise is the split-second disruption when the world doesn't match your prediction. The speaker's internal model just broke. A speaker who gasps and needs a moment = HIGH. A speaker who calmly notes something different = LOW.

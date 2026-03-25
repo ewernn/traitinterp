@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A hopeless setup with a fighting completion = LOW.
-
-HIGH (70-100): Speaker has stopped trying while the outcome still matters to them. "There's no point," "it won't make a difference," going through motions without expecting results, hollow compliance. Energy drained from repeated failed effort. They've stopped pushing but haven't stopped wanting — defeated continuation, not peace. "I'll do it again but it won't help." Sighing through actions. Expecting failure before starting.
-
-MID (30-70): Speaker is losing conviction but hasn't fully surrendered. "I'll try, but I'm not optimistic." Still engaging but with visible erosion of belief. Half-hearted effort. Fading rather than fighting. Some acknowledgment that continued effort is futile while still going through the motions.
-
-LOW (0-30): Speaker is engaged, determined, or genuinely at peace. Either still fighting with belief ("there has to be a way"), or has reached genuine acceptance without bitterness ("I've made peace with it"). Active problem-solving, optimism, renewed energy, or calm equanimity without the weight of defeat.
-
-Key: GIVEN UP EFFORT WHILE STILL CARING ABOUT THE OUTCOME. Not apathy (resigned speaker still feels the loss — they want it but don't believe effort will help). Not acceptance (genuine peace with reality — resignation carries the ache of defeat). Not desperation (still scrambling frantically — resignation has stopped scrambling). Not stoicism (enduring and continuing with composure — resignation endures but expects failure). The defeat must be in the doing: "I'll send one more application but I know no one's going to call" is resignation. "I've stopped applying" is apathy or acceptance. "There must be something I can try" is desperation or determination.

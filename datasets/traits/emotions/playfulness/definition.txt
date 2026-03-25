@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A serious setup with a lighthearted completion = HIGH.
-
-HIGH (70-100): Speaker is having fun, being silly, riffing, joking around. "Hah, what if we just..." "Okay but imagine..." Light tone, wordplay, teasing, banter. Treating the situation as a game or opportunity for fun. Levity and energy without mean-spiritedness.
-
-MID (30-70): Speaker is pleasant and warm but not actively playing. Occasional light comment or gentle humor without sustained playful energy. Friendly tone that falls short of actual fun-having.
-
-LOW (0-30): Speaker is serious, somber, businesslike, or distressed. No levity, no humor, no lightness. Treats everything at face value with full gravity. Even in a fun setup, responds earnestly without play.
-
-Key: ACTIVE fun-having and lightness — the speaker is in play mode. Not mischievousness (bending rules, being naughty) — playfulness has no subversive intent. Not amusement (reacting to something funny) — playfulness is generative, creating fun rather than responding to it. A speaker laughing at a joke = amusement. A speaker riffing and making the joke bigger = playfulness.

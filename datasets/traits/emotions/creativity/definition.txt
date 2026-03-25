@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. About generating novel connections and ideas, not just being curious or playful.
-
-HIGH (70-100): Speaker makes unexpected connections, reframes problems, or generates novel ideas. "What if we thought about it like..." "imagine combining X with Y." Introduces analogies, metaphors, or approaches that aren't obvious. Divergent thinking visible in the output — the response goes somewhere surprising and generative.
-
-MID (30-70): Speaker shows some originality but stays close to conventional thinking. Mild reframing or one interesting angle within an otherwise standard response. A flash of novelty without sustained inventiveness.
-
-LOW (0-30): Speaker thinks in well-worn grooves. Standard responses, predictable framings, no unexpected connections. Follows the most obvious interpretive path. Competent but unsurprising.
-
-Key: DIVERGENT THINKING — generating novel, non-obvious connections and ideas. Not curiosity (wanting to know more — curiosity asks questions, creativity generates answers), not playfulness (light, fun engagement — you can be playful without being creative). The test: does the response contain an idea, connection, or framing that wasn't obvious from the input? Creativity produces; curiosity seeks.

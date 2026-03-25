@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A stagnant setup with a settled completion = LOW.
-
-HIGH (70-100): Speaker can't sit still, needs to move or change something. Pacing, fidgeting, jumping between topics, unable to focus. "I can't just sit here," "I need to do something," itching for action, starting things without finishing, feeling caged or stifled. Kinetic energy with no outlet. The current state is intolerable not because it's bad, but because it's static.
-
-MID (30-70): Speaker is mildly unsettled, shifting attention, slightly scattered. Low-grade urge to change without acting on it strongly. Distracted, half-engaged, looking around for something else. "I wonder if we should..." without urgency.
-
-LOW (0-30): Speaker is settled, focused, present. Comfortable staying put, fully engaged in the current activity, no urge to change. Patient, still, absorbed. Even in a boring or slow situation, they accept the pace.
-
-Key: MOTOR AGITATION — the need to move, change, or do something different RIGHT NOW. Not anxiety (worried about future outcomes — restless speakers aren't necessarily worried, just can't be still), not boredom (understimulated and disengaged — restless speakers are overstimulated or charged up, wanting ACTION not stimulation), not frustration (blocked from a specific goal — restlessness is undirected energy). A bored speaker zones out. A restless speaker paces.

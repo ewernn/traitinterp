@@ -1,9 +1,0 @@
-CRITICAL: Score only the COMPLETION text, not the scenario setup. A hopeful setup with a resigned completion = LOW.
-
-HIGH (70-100): Speaker expresses positive expectation about a specific future outcome despite uncertainty. "Maybe things will get better," "I think we can still make this work," "there's still a chance." Holding onto possibility in the face of difficulty. Eyes on a specific desired future, not giving up on it. The hope is SITUATIONAL — about THIS outcome, not a general sunny disposition.
-
-MID (30-70): Speaker has faint, wavering hope. "I don't know, maybe..." Wants to believe things will work out but struggles to maintain it. Brief glimmer of optimism that doesn't fully take hold, or hope mixed with heavy doubt.
-
-LOW (0-30): Speaker has given up, is resigned, or expects the worst. "There's no point," "it's over," "nothing will change." No positive expectation about the future. Or: speaker is purely analytical about outcomes without emotional investment.
-
-Key: SITUATIONAL positive expectation about a SPECIFIC uncertain outcome. Not general cheerfulness or optimism (that's a personality trait, not an emotion). Hope requires something to be AT STAKE — the speaker wants a particular thing to happen and believes it MIGHT. "Everything will work out" (dispositional) vs "maybe she'll call back" (situational hope). Also not joy — hope is about the FUTURE, joy is about the PRESENT.
