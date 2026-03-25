@@ -80,6 +80,12 @@ def get_scenario_path(trait: str, polarity: str) -> Path:
     return trait_dir / f'{polarity}.txt'
 
 
+def get_scenario_format(trait: str) -> str:
+    """Return 'jsonl' or 'txt' based on which scenario files exist."""
+    path = get_scenario_path(trait, 'positive')
+    return 'jsonl' if path.suffix == '.jsonl' else 'txt'
+
+
 def _load_polarity(trait_dir: Path, polarity: str) -> List[dict]:
     """Load scenarios for a single polarity (positive or negative)."""
     jsonl_file = trait_dir / f'{polarity}.jsonl'
