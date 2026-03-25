@@ -115,8 +115,9 @@ case "$MODE" in
 
         # Non-interactive mode: use worktree (doesn't disturb working directory)
         if [[ -n "$COMMIT_MSG" ]]; then
+            git worktree prune 2>/dev/null
             WORKTREE=$(mktemp -d)
-            trap "git worktree remove --force '$WORKTREE' 2>/dev/null; rm -rf '$WORKTREE'" EXIT
+            trap "git worktree remove --force '$WORKTREE' 2>/dev/null; rm -rf '$WORKTREE'; git worktree prune 2>/dev/null" EXIT
 
             git worktree add --quiet "$WORKTREE" main 2>/dev/null || { echo "Error: could not create worktree"; exit 1; }
 
