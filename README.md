@@ -127,4 +127,3 @@ trait-interp/
 Core extraction logic adapted from [safety-research/persona_vectors](https://github.com/safety-research/persona_vectors). Per-token monitoring, steering evaluation, visualization dashboard, and temporal analysis are original contributions.
 
 MIT License
-
