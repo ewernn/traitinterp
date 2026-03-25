@@ -275,7 +275,6 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
 
     const windowLength = window.state.spanWindowLength || 10;
     const spanMode = window.state.spanMode || 'window';
-    const isOpen = window.state.spanPanelOpen;
     const isAllPrompts = window.state.spanScope === 'allPrompts';
     const compareModel = traitData[spanTrait]?.metadata?._compareModel;
 
@@ -283,11 +282,9 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     const badge = document.getElementById('badge-top-spans');
     if (badge) badge.textContent = isAllPrompts ? 'cross-prompt' : 'diff mode';
 
-    // Skip rendering body when section is collapsed
-    if (!isOpen) {
-        container.innerHTML = '';
-        return;
-    }
+    // Skip rendering if section body is hidden (managed by sec-header toggle)
+    const sectionBody = document.getElementById('section-body-top-spans');
+    if (sectionBody?.hidden) return;
 
     // Compute spans for selected trait (current response mode)
     // Use pre-normalized values from chart rendering (includes massive dim cleaning + normalization)

@@ -209,7 +209,7 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div id="cue-p-plot"></div>
             </section>
 
-            <section id="correlation-section" style="display: none;">
+            <section id="correlation-section">
                 <div class="sec-header" data-section="correlation" id="sec-correlation">
                     <span class="arrow">\u25B6</span> Correlation <span class="sec-badge" id="badge-correlation"></span>
                 </div>
