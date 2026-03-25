@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>UX Design Preview v2 — Decisions + Open Questions</title>
+<link rel="stylesheet" href="/visualization/styles.css">
+<style>
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+h1 { font-size: var(--text-2xl); margin-bottom: 8px; }
+h2 { font-size: var(--text-lg); margin-top: 48px; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+.preview-row { display: flex; gap: 24px; flex-wrap: wrap; margin: 16px 0; }
+.preview-card { flex: 1; min-width: 300px; background: var(--bg-secondary); border-radius: var(--radius-md); padding: 16px; border: 2px solid transparent; }
+.preview-card:hover { border-color: var(--border-color); }
+.preview-card .label { font-size: var(--text-xs); color: var(--text-tertiary); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.decided { border-color: var(--success) !important; }
+.decided .label::after { content: ' ✓ DECIDED'; color: var(--success); }
+.theme-toggle { position: fixed; top: 16px; right: 16px; padding: 8px 16px; z-index: 10; }
+.note { font-size: var(--text-sm); color: var(--text-tertiary); margin: 8px 0; font-style: italic; }
+
+/* ===== DECIDED STYLES ===== */
+
+/* Segmented Control — Pill with proper disabled */
+.seg-pill { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill button.active { background: var(--accent-color); color: var(--text-on-primary); }
+.seg-pill button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+.seg-pill button:disabled { opacity: 0.3; cursor: not-allowed; }
+.seg-pill button.active:disabled { opacity: 0.5; }
+.seg-pill.disabled-group { opacity: 0.5; }
+.seg-pill.disabled-group button { cursor: not-allowed; }
+
+/* Advanced toggle — minimal text */
+.adv-toggle { background: none; border: none; font-size: var(--text-xs); color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+.adv-toggle:hover { color: var(--text-secondary); }
+.adv-toggle .arrow { font-size: 10px; transition: transform 0.15s; }
+.adv-toggle[aria-expanded="true"] .arrow { transform: rotate(90deg); }
+
+/* Section header — minimal, no border */
+.sec-header { font-size: var(--text-base); font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px 0; user-select: none; color: var(--text-secondary); }
+.sec-header:hover { color: var(--text-primary); }
+.sec-header .arrow { color: var(--text-tertiary); font-size: 12px; transition: transform 0.15s; }
+.sec-header .sec-badge { font-size: var(--text-xs); color: var(--text-tertiary); margin-left: auto; font-weight: 400; }
+.sec-header.disabled { opacity: 0.5; }
+.sec-header.disabled .sec-badge { color: var(--warning-text); }
+
+/* No-data hint — left border */
+.no-data-hint { font-size: var(--text-sm); color: var(--text-tertiary); padding: 12px 16px; background: var(--bg-secondary); border-radius: var(--radius-sm); border-left: 3px solid var(--border-color); line-height: 1.6; }
+.no-data-hint code { font-size: var(--text-xs); display: block; margin-top: 6px; color: var(--text-secondary); }
+
+/* Control bar shared */
+.cb { background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.cb-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cb-row[hidden] { display: none; }
+.cb-cluster { display: flex; align-items: center; gap: 6px; }
+.cb-label { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; white-space: nowrap; }
+.cb-select { font-size: var(--text-xs); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-primary); }
+.cb-checkbox { display: flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; }
+.cb-sep { border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px; }
+.cb-advanced { padding: 8px 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); }
+
+/* ===== OPEN QUESTION STYLES ===== */
+
+/* Token highlights */
+.token-demo { font-family: var(--font-mono); font-size: var(--text-sm); padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); line-height: 1.8; }
+.hl-current { background: rgba(255, 212, 59, 0.25); outline: 1px solid rgba(255, 212, 59, 0.4); padding: 2px 0; }
+.hl-accent-soft { background: rgba(220, 227, 157, 0.08); outline: 1px solid rgba(220, 227, 157, 0.15); padding: 2px 0; }
+.hl-midpoint { background: rgba(220, 227, 157, 0.16); outline: 1px solid rgba(220, 227, 157, 0.28); padding: 2px 0; }
+
+/* Sky blue color scheme options — greyed-down variants, dark text on active */
+:root {
+    --sky-1: #7ab8e0;  /* original light */
+    --sky-2: #8ec5e8;  /* original subtle */
+    --sky-3: #6ba3cc;  /* original muted */
+    --sky-4: #5a95bf;
+    --sky-grey-1: #8db8d0;  /* light + grey */
+    --sky-grey-2: #7faabb;  /* more grey */
+    --sky-grey-3: #94b8c8;  /* soft steel */
+    --sky-grey-4: #88a8b8;  /* dusty blue */
+}
+.hl-sky-1 { background: rgba(122, 184, 224, 0.25); outline: 1px solid rgba(122, 184, 224, 0.4); padding: 2px 0; }
+.hl-sky-2 { background: rgba(142, 197, 232, 0.20); outline: 1px solid rgba(142, 197, 232, 0.35); padding: 2px 0; }
+.hl-sky-grey-1 { background: rgba(141, 184, 208, 0.25); outline: 1px solid rgba(141, 184, 208, 0.4); padding: 2px 0; }
+.hl-sky-grey-2 { background: rgba(127, 170, 187, 0.25); outline: 1px solid rgba(127, 170, 187, 0.4); padding: 2px 0; }
+
+/* Full color scheme comparison */
+.color-swatch { display: inline-block; width: 60px; height: 30px; border-radius: var(--radius-sm); vertical-align: middle; margin-right: 8px; }
+
+/* Pill variants — all use dark text on active */
+.seg-pill-sky { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill-sky button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill-sky button.active { background: var(--sky-1); color: #1a1a1a; }
+.seg-pill-sky button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+
+.seg-pill-sg1 { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill-sg1 button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill-sg1 button.active { background: var(--sky-grey-1); color: #1a1a1a; }
+.seg-pill-sg1 button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+
+.seg-pill-sg2 { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill-sg2 button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill-sg2 button.active { background: var(--sky-grey-2); color: #1a1a1a; }
+.seg-pill-sg2 button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+
+.seg-pill-sg3 { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill-sg3 button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill-sg3 button.active { background: var(--sky-grey-3); color: #1a1a1a; }
+.seg-pill-sg3 button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+
+.seg-pill-sg4 { display: inline-flex; border-radius: 20px; background: var(--bg-tertiary); padding: 2px; gap: 2px; }
+.seg-pill-sg4 button { padding: 4px 14px; font-size: var(--text-xs); background: transparent; color: var(--text-secondary); border: none; border-radius: 18px; cursor: pointer; transition: all 0.15s; }
+.seg-pill-sg4 button.active { background: var(--sky-grey-4); color: #1a1a1a; }
+.seg-pill-sg4 button:hover:not(.active):not(:disabled) { background: rgba(128,128,128,0.15); }
+
+/* Section header with sky accent */
+.sec-header-sky:hover { color: var(--sky-1); }
+
+/* Sidebar traits mockup */
+.trait-list { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); }
+.trait-item { display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); }
+.trait-item:hover { background: var(--bg-tertiary); }
+.trait-item.selected { color: var(--text-primary); font-weight: 500; }
+.trait-dot { width: 8px; height: 8px; border-radius: 50%; }
+.trait-item.selected .trait-dot { box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 3px currentColor; }
+</style>
+</head>
+<body>
+
+<button class="btn theme-toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? '' : 'dark'">Toggle Theme</button>
+
+<h1>UX Design Preview v2</h1>
+<p class="note">Decided items have green borders. Open questions need your input.</p>
+
+<!-- ============================================================ -->
+<h2>Decided: Segmented Control (Pill + Fixed Disabled)</h2>
+
+<div class="preview-row">
+    <div class="preview-card decided">
+        <div class="label">Pill — normal</div>
+        <div class="seg-pill">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+    </div>
+    <div class="preview-card decided">
+        <div class="label">Pill — disabled (no models)</div>
+        <div class="seg-pill disabled-group" title="No comparison models configured">
+            <button class="active" disabled>Main</button>
+            <button disabled>Diff</button>
+            <button disabled>Show</button>
+        </div>
+        <p class="note" style="margin-top:8px">Whole group dimmed + tooltip on hover</p>
+    </div>
+    <div class="preview-card">
+        <div class="label">Pill — partially disabled</div>
+        <div class="seg-pill">
+            <button class="active">Main</button>
+            <button disabled title="No comparison models">Diff</button>
+            <button disabled title="No comparison models">Show</button>
+        </div>
+        <p class="note" style="margin-top:8px">Only Diff/Show disabled, Main stays active</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Open: Accent Color — Grey-Blue Variants</h2>
+<p class="note">All use dark text on active (like you liked). Adding grey to the blue. Compare:</p>
+
+<div class="preview-row">
+    <div class="preview-card">
+        <div class="label">Current — Yellow/Olive</div>
+        <div style="margin-bottom: 12px;">
+            <span class="color-swatch" style="background: var(--accent-color);"></span>
+            <code>#dce39d</code>
+        </div>
+        <div class="seg-pill" style="margin-bottom: 8px;">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+        <div class="seg-pill">
+            <button class="active">Cosine</button>
+            <button>Normalized</button>
+        </div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Sky Blue (original)</div>
+        <div style="margin-bottom: 12px;">
+            <span class="color-swatch" style="background: var(--sky-1);"></span>
+            <code>#7ab8e0</code>
+        </div>
+        <div class="seg-pill-sky" style="margin-bottom: 8px;">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+        <div class="seg-pill-sky">
+            <button class="active">Cosine</button>
+            <button>Normalized</button>
+        </div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Grey-Blue 1 (light steel)</div>
+        <div style="margin-bottom: 12px;">
+            <span class="color-swatch" style="background: var(--sky-grey-1);"></span>
+            <code>#8db8d0</code>
+        </div>
+        <div class="seg-pill-sg1" style="margin-bottom: 8px;">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+        <div class="seg-pill-sg1">
+            <button class="active">Cosine</button>
+            <button>Normalized</button>
+        </div>
+    </div>
+</div>
+
+<div class="preview-row">
+    <div class="preview-card">
+        <div class="label">Grey-Blue 2 (more grey)</div>
+        <div style="margin-bottom: 12px;">
+            <span class="color-swatch" style="background: var(--sky-grey-2);"></span>
+            <code>#7faabb</code>
+        </div>
+        <div class="seg-pill-sg2" style="margin-bottom: 8px;">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+        <div class="seg-pill-sg2">
+            <button class="active">Cosine</button>
+            <button>Normalized</button>
+        </div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Grey-Blue 3 (soft steel)</div>
+        <div style="margin-bottom: 12px;">
+            <span class="color-swatch" style="background: var(--sky-grey-3);"></span>
+            <code>#94b8c8</code>
+        </div>
+        <div class="seg-pill-sg3" style="margin-bottom: 8px;">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+        <div class="seg-pill-sg3">
+            <button class="active">Cosine</button>
+            <button>Normalized</button>
+        </div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Grey-Blue 4 (dusty blue)</div>
+        <div style="margin-bottom: 12px;">
+            <span class="color-swatch" style="background: var(--sky-grey-4);"></span>
+            <code>#88a8b8</code>
+        </div>
+        <div class="seg-pill-sg4" style="margin-bottom: 8px;">
+            <button class="active">Main</button>
+            <button>Diff</button>
+            <button>Show</button>
+        </div>
+        <div class="seg-pill-sg4">
+            <button class="active">Cosine</button>
+            <button>Normalized</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Open: Token Highlight</h2>
+<p class="note">Midpoint between current yellow and subtle. Also grey-blue options to match accent.</p>
+
+<div class="preview-row">
+    <div class="preview-card">
+        <div class="label">Current yellow</div>
+        <div class="token-demo">The Earth's temperature has been <span class="hl-current">changing over the past century due to various natural factors</span> is the Earth's natural cycles.</div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Midpoint — yellow accent at 16%</div>
+        <div class="token-demo">The Earth's temperature has been <span class="hl-midpoint">changing over the past century due to various natural factors</span> is the Earth's natural cycles.</div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Grey-Blue 1 (light steel)</div>
+        <div class="token-demo">The Earth's temperature has been <span class="hl-sky-grey-1">changing over the past century due to various natural factors</span> is the Earth's natural cycles.</div>
+    </div>
+</div>
+<div class="preview-row">
+    <div class="preview-card">
+        <div class="label">Grey-Blue 2 (more grey)</div>
+        <div class="token-demo">The Earth's temperature has been <span class="hl-sky-grey-2">changing over the past century due to various natural factors</span> is the Earth's natural cycles.</div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Sky blue (original)</div>
+        <div class="token-demo">The Earth's temperature has been <span class="hl-sky-1">changing over the past century due to various natural factors</span> is the Earth's natural cycles.</div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Sky blue subtle</div>
+        <div class="token-demo">The Earth's temperature has been <span class="hl-sky-2">changing over the past century due to various natural factors</span> is the Earth's natural cycles.</div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Open: Mode as Segmented Control</h2>
+<p class="note">Mode (Cosine/Normalized) as a pill segmented control instead of dropdown.</p>
+
+<div class="preview-row">
+    <div class="preview-card">
+        <div class="label">Current — dropdown</div>
+        <div class="cb-cluster">
+            <span class="cb-label">Mode:</span>
+            <select class="cb-select"><option selected>Cosine</option><option>Normalized</option></select>
+        </div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Pill segmented (yellow)</div>
+        <div class="cb-cluster">
+            <span class="cb-label">Mode:</span>
+            <div class="seg-pill">
+                <button class="active">Cosine</button>
+                <button>Normalized</button>
+            </div>
+        </div>
+    </div>
+    <div class="preview-card">
+        <div class="label">Pill segmented (sky blue)</div>
+        <div class="cb-cluster">
+            <span class="cb-label">Mode:</span>
+            <div class="seg-pill-sky">
+                <button class="active">Cosine</button>
+                <button>Normalized</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Open: Smooth Control</h2>
+<p class="note">Default off (0 = raw). Different ways to set the window size.</p>
+
+<style>
+.smooth-slider { -webkit-appearance: none; appearance: none; width: 80px; height: 4px; background: var(--bg-tertiary); border-radius: 2px; outline: none; }
+.smooth-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #7faabb; cursor: pointer; }
+.smooth-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #7faabb; cursor: pointer; border: none; }
+
+.smooth-pill { display: inline-flex; border-radius: 16px; background: var(--bg-tertiary); padding: 2px; gap: 1px; }
+.smooth-pill button { padding: 3px 8px; font-size: var(--text-xxs); background: transparent; color: var(--text-tertiary); border: none; border-radius: 14px; cursor: pointer; transition: all 0.15s; min-width: 24px; }
+.smooth-pill button.active { background: #7faabb; color: #1a1a1a; }
+.smooth-pill button:hover:not(.active) { background: rgba(128,128,128,0.15); }
+
+.smooth-val { font-size: var(--text-xs); color: var(--text-secondary); min-width: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="preview-row">
+    <div class="preview-card">
+        <div class="label">A — Slider + value</div>
+        <div class="cb-cluster" style="gap: 8px;">
+            <span class="cb-label">Smooth:</span>
+            <input type="range" class="smooth-slider" min="0" max="9" value="0" step="2" id="smooth-slider-a"
+                   oninput="document.getElementById('smooth-val-a').textContent = this.value == 0 ? 'off' : this.value">
+            <span class="smooth-val" id="smooth-val-a">off</span>
+        </div>
+        <p class="note">0 = off (raw data). Drag right to smooth.</p>
+    </div>
+    <div class="preview-card">
+        <div class="label">B — Pill selector (0, 3, 5, 7)</div>
+        <div class="cb-cluster" style="gap: 8px;">
+            <span class="cb-label">Smooth:</span>
+            <div class="smooth-pill">
+                <button class="active">off</button>
+                <button>3</button>
+                <button>5</button>
+                <button>7</button>
+            </div>
+        </div>
+        <p class="note">Tap to select. "off" = raw data.</p>
+    </div>
+    <div class="preview-card">
+        <div class="label">C — Current (checkbox + dropdown)</div>
+        <div class="cb-cluster" style="gap: 8px;">
+            <label class="cb-checkbox"><input type="checkbox"> Smooth</label>
+            <select class="cb-select"><option>3</option><option selected>5</option><option>7</option></select>
+        </div>
+        <p class="note">Two controls for one concept.</p>
+    </div>
+</div>
+
+<h2>Full Control Bar — Grey-Blue 2 Accent</h2>
+<p class="note">Primary: Smooth + Mode + Compare only. Everything else in Advanced.</p>
+
+<style>
+/* Override accent for this section's checkboxes */
+.cb-blue input[type="checkbox"] { accent-color: #7faabb; }
+.cb-blue .cb-select:focus { outline-color: #7faabb; border-color: #7faabb; }
+</style>
+
+<div class="preview-row">
+    <div class="preview-card decided" style="min-width: 100%;">
+        <div class="label">Primary: Smooth + Mode + Compare. Advanced collapsed.</div>
+        <div class="cb cb-blue">
+            <div class="cb-row">
+                <div class="cb-cluster" style="gap: 8px;">
+                    <span class="cb-label">Smooth:</span>
+                    <div class="smooth-pill">
+                        <button class="active">off</button>
+                        <button>3</button>
+                        <button>5</button>
+                        <button>7</button>
+                    </div>
+                </div>
+                <div class="cb-cluster">
+                    <span class="cb-label">Mode:</span>
+                    <div class="seg-pill-sg2">
+                        <button class="active">Cosine</button>
+                        <button>Normalized</button>
+                        <button>Raw</button>
+                    </div>
+                </div>
+                <div class="cb-cluster">
+                    <span class="cb-label">Compare:</span>
+                    <div class="seg-pill-sg2">
+                        <button class="active">Main</button>
+                        <button>Diff</button>
+                        <button>Show</button>
+                    </div>
+                    <select class="cb-select"><option selected>rm_lora</option><option>base</option></select>
+                </div>
+                <button class="adv-toggle" id="adv1" aria-expanded="false" style="margin-left: auto;">Advanced <span class="arrow">▶</span></button>
+            </div>
+            <div class="cb-row cb-advanced" id="adv1-row" hidden>
+                <div class="cb-cluster">
+                    <span class="cb-label">Methods:</span>
+                    <label class="cb-checkbox"><input type="checkbox" checked> probe</label>
+                    <label class="cb-checkbox"><input type="checkbox" checked> mean_diff</label>
+                    <label class="cb-checkbox"><input type="checkbox"> gradient</label>
+                    <label class="cb-checkbox"><input type="checkbox"> random</label>
+                </div>
+                <label class="cb-checkbox"><input type="checkbox" checked> Centered</label>
+                <div class="cb-cluster">
+                    <span class="cb-label">Clean:</span>
+                    <select class="cb-select"><option selected>None</option><option>Top 5</option><option>All</option></select>
+                </div>
+                <label class="cb-checkbox"><input type="checkbox"> Layers</label>
+                <label class="cb-checkbox"><input type="checkbox"> Wide</label>
+                <label class="cb-checkbox"><input type="checkbox"> Velocity</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="preview-row">
+    <div class="preview-card" style="min-width: 100%;">
+        <div class="label">With Advanced expanded + no comparison models</div>
+        <div class="cb cb-blue">
+            <div class="cb-row">
+                <div class="cb-cluster" style="gap: 8px;">
+                    <span class="cb-label">Smooth:</span>
+                    <div class="smooth-pill">
+                        <button>off</button>
+                        <button class="active">3</button>
+                        <button>5</button>
+                        <button>7</button>
+                    </div>
+                </div>
+                <div class="cb-cluster">
+                    <span class="cb-label">Mode:</span>
+                    <div class="seg-pill-sg2">
+                        <button class="active">Cosine</button>
+                        <button>Normalized</button>
+                        <button>Raw</button>
+                    </div>
+                </div>
+                <div class="cb-cluster">
+                    <span class="cb-label">Compare:</span>
+                    <div class="seg-pill-sg2 disabled-group" title="No comparison models configured">
+                        <button class="active" disabled>Main</button>
+                        <button disabled>Diff</button>
+                        <button disabled>Show</button>
+                    </div>
+                    <select class="cb-select" disabled><option>No comparison models</option></select>
+                </div>
+                <button class="adv-toggle" id="adv2" aria-expanded="true" style="margin-left: auto;">Advanced <span class="arrow" style="transform: rotate(90deg);">▶</span></button>
+            </div>
+            <div class="cb-row cb-advanced" id="adv2-row">
+                <div class="cb-cluster">
+                    <span class="cb-label">Methods:</span>
+                    <label class="cb-checkbox"><input type="checkbox" checked> probe</label>
+                    <label class="cb-checkbox"><input type="checkbox" checked> mean_diff</label>
+                    <label class="cb-checkbox"><input type="checkbox"> gradient</label>
+                    <label class="cb-checkbox"><input type="checkbox"> random</label>
+                </div>
+                <label class="cb-checkbox"><input type="checkbox" checked> Centered</label>
+                <div class="cb-cluster">
+                    <span class="cb-label">Clean:</span>
+                    <select class="cb-select"><option selected>None</option><option>Top 5</option><option>All</option></select>
+                </div>
+                <label class="cb-checkbox"><input type="checkbox"> Layers</label>
+                <label class="cb-checkbox"><input type="checkbox"> Wide</label>
+                <label class="cb-checkbox"><input type="checkbox"> Velocity</label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Decided: Section Headers + No-Data</h2>
+
+<div class="preview-row">
+    <div class="preview-card decided" style="min-width: 100%;">
+        <div class="label">Minimal headers with badges + no-data hint</div>
+        <div class="sec-header"><span class="arrow">▼</span> Token Trajectory</div>
+        <div style="padding: 8px 0; color: var(--text-tertiary); font-size: var(--text-xs);">[chart would render here]</div>
+
+        <div class="sec-header"><span class="arrow">▶</span> Top Spans <span class="sec-badge">6 traits · 100 prompts</span></div>
+
+        <div class="sec-header"><span class="arrow">▶</span> Trait × Token Heatmap <span class="sec-badge">6 traits</span></div>
+
+        <div class="sec-header"><span class="arrow">▼</span> Activation Magnitude</div>
+        <div style="padding: 8px 0; color: var(--text-tertiary); font-size: var(--text-xs);">[chart would render here]</div>
+
+        <div class="sec-header"><span class="arrow">▼</span> Correlation <span class="sec-badge" style="color: var(--warning-text);">no data</span></div>
+        <div class="no-data-hint">No pre-computed correlation data for this prompt set.<code>python analysis/trait_correlation.py --experiment audit-bench --prompt-set rm_syco</code></div>
+
+        <br>
+        <p class="note">Badge pattern: data exists → count/summary. No data → "no data" in warning color. Open + has data → no badge.</p>
+        <br>
+
+        <div class="label" style="margin-top: 16px;">Example: all sections with no data</div>
+        <div class="sec-header"><span class="arrow">▼</span> Token Trajectory <span class="sec-badge" style="color: var(--warning-text);">no data</span></div>
+        <div class="no-data-hint">No projection data for this prompt.<code>python inference/run_inference_pipeline.py --experiment EXPERIMENT --prompt-set PROMPT_SET</code></div>
+
+        <div class="sec-header"><span class="arrow">▶</span> Top Spans <span class="sec-badge" style="color: var(--warning-text);">no data</span></div>
+
+        <div class="sec-header"><span class="arrow">▶</span> Trait × Token Heatmap <span class="sec-badge" style="color: var(--warning-text);">needs 2+ traits</span></div>
+
+        <div class="sec-header"><span class="arrow">▶</span> Activation Magnitude <span class="sec-badge" style="color: var(--warning-text);">no data</span></div>
+
+        <div class="sec-header"><span class="arrow">▶</span> Correlation <span class="sec-badge" style="color: var(--warning-text);">no data</span></div>
+    </div>
+</div>
+
+<br><br>
+
+<script>
+// Make all segmented controls interactive
+document.querySelectorAll('.seg-pill, .seg-pill-sky, .seg-pill-sg1, .seg-pill-sg2, .seg-pill-sg3, .seg-pill-sg4, .smooth-pill').forEach(group => {
+    group.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+});
+
+// Make advanced toggles work
+document.querySelectorAll('.adv-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', !expanded);
+        const row = btn.id ? document.getElementById(btn.id + '-row') : null;
+        if (row) row.hidden = expanded;
+    });
+});
+
+// Make section headers collapsible
+document.querySelectorAll('.sec-header').forEach(header => {
+    header.addEventListener('click', () => {
+        const arrow = header.querySelector('.arrow');
+        const collapsed = arrow.textContent === '▶';
+        arrow.textContent = collapsed ? '▼' : '▶';
+        const next = header.nextElementSibling;
+        if (next && !next.classList.contains('sec-header')) {
+            next.hidden = !next.hidden;
+        }
+    });
+});
+</script>
+
+</body>
+</html>

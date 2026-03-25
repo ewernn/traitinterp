@@ -44,11 +44,10 @@ const state = {
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
     // Projection normalization mode
-    smoothingEnabled: true,  // Apply moving average
-    smoothingWindow: 5,      // Moving average window size (tokens)
+    smoothingWindow: 6,      // Moving average window size (0 = off)
     projectionCentered: true,  // Subtract BOS token value (centers around 0)
     // Method filter for trait dynamics (which extraction methods to show)
-    selectedMethods: new Set(['probe', 'mean_diff', 'gradient', 'random']),
+    selectedMethods: new Set(['probe', 'mean_diff']),
     // Projection normalization mode: 'cosine' or 'normalized'
     projectionMode: 'cosine',
     // Massive dims cleaning mode
@@ -107,8 +106,7 @@ const renderView = () => { if (window.renderView) window.renderView(); };
 
 const PREFERENCES = [
     // Smoothing
-    { key: 'smoothingEnabled',    stateKey: 'smoothingEnabled',    type: 'bool',   default: true,           onSet: renderView },
-    { key: 'smoothingWindow',     stateKey: 'smoothingWindow',     type: 'int',    default: 5,    clamp: [1, 25], onSet: renderView },
+    { key: 'smoothingWindow',     stateKey: 'smoothingWindow',     type: 'int',    default: 6,    clamp: [0, 25], onSet: renderView },
     // Projection
     { key: 'projectionCentered',  stateKey: 'projectionCentered',  type: 'bool',   default: true,           onSet: renderView },
     { key: 'projectionMode',      stateKey: 'projectionMode',      type: 'string', default: 'cosine',       onSet: renderView },
@@ -168,7 +166,6 @@ function initAllPreferences() {
 }
 
 // --- Convenience setters (thin wrappers exposing the same API as before) ---
-function setSmoothing(enabled) { setPreference('smoothingEnabled', enabled); }
 function setSmoothingWindow(size) { setPreference('smoothingWindow', size); }
 function setProjectionCentered(centered) { setPreference('projectionCentered', centered); }
 function setProjectionMode(mode) { setPreference('projectionMode', mode); }
@@ -606,7 +603,6 @@ export {
     isFeatureEnabled,
     init as initApp,
     setWideMode,
-    setSmoothing,
     setSmoothingWindow,
     setProjectionCentered,
     setProjectionMode,
@@ -654,7 +650,6 @@ const LOCAL_STORAGE_KEYS = [
     // UI Preferences (state.js)
     'theme',
     'wideMode',
-    'smoothingEnabled',
     'smoothingWindow',
     'projectionCentered',
     'projectionMode',

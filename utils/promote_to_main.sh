@@ -109,44 +109,75 @@ case "$MODE" in
 
         FILES=$(get_paths | expand_paths)
         FILE_COUNT=$(echo "$FILES" | wc -l | xargs)
-        # Capture directory prefixes before leaving dev (main doesn't have .publicinclude)
-        DIRS=$(get_paths | while IFS= read -r p; do p=$(echo "$p" | xargs); [[ "$p" == */ ]] && echo "$p"; done)
 
         echo "Promoting $FILE_COUNT files from dev → main..."
         echo ""
 
-        # Switch to main
-        git checkout main
-
-        # Checkout whitelisted files from dev
-        echo "$FILES" | xargs git checkout dev -- 2>/dev/null
-
-        # Remove ANY file on main that isn't in the whitelist
-        # main should be an exact mirror of .publicinclude — nothing else
-        MAIN_FILES=$(git ls-files | sort)
-        DEV_FILES=$(echo "$FILES" | sort)
-        STALE=$(comm -23 <(echo "$MAIN_FILES") <(echo "$DEV_FILES"))
-        if [[ -n "$STALE" ]]; then
-            echo "$STALE" | while IFS= read -r f; do
-                git rm -f "$f" 2>/dev/null && echo "  Removed: $f"
-            done
-        fi
-
-        # Show what changed
-        CHANGED=$(git diff --cached --stat | tail -1)
-        if [[ -z "$CHANGED" || "$CHANGED" == *"0 files changed"* ]]; then
-            echo "No changes to promote."
-            git checkout dev
-            exit 0
-        fi
-
-        echo "$CHANGED"
-        echo ""
-
-        # Commit
+        # Non-interactive mode: use worktree (doesn't disturb working directory)
         if [[ -n "$COMMIT_MSG" ]]; then
-            MSG="$COMMIT_MSG"
+            WORKTREE=$(mktemp -d)
+            trap "git worktree remove --force '$WORKTREE' 2>/dev/null; rm -rf '$WORKTREE'" EXIT
+
+            git worktree add --quiet "$WORKTREE" main 2>/dev/null || { echo "Error: could not create worktree"; exit 1; }
+
+            echo "$FILES" | while IFS= read -r f; do
+                git -C "$WORKTREE" checkout dev -- "$f" 2>/dev/null || true
+            done
+
+            # Remove stale files
+            MAIN_FILES=$(git -C "$WORKTREE" ls-files | sort)
+            DEV_FILES=$(echo "$FILES" | sort)
+            STALE=$(comm -23 <(echo "$MAIN_FILES") <(echo "$DEV_FILES"))
+            if [[ -n "$STALE" ]]; then
+                echo "$STALE" | while IFS= read -r f; do
+                    git -C "$WORKTREE" rm -f "$f" 2>/dev/null
+                done
+            fi
+
+            if git -C "$WORKTREE" diff --cached --quiet 2>/dev/null; then
+                echo "No changes to promote."
+                exit 0
+            fi
+
+            STAT=$(git -C "$WORKTREE" diff --cached --stat | tail -1)
+            echo "$STAT"
+
+            git -C "$WORKTREE" commit -m "$COMMIT_MSG" --no-verify 2>/dev/null || { echo "Error: commit failed"; exit 1; }
+
+            if [[ "$AUTO_PUSH" == true ]]; then
+                git -C "$WORKTREE" push origin main 2>/dev/null || { echo "Error: push failed"; exit 1; }
+            fi
+
+            echo ""
+            echo "Done. Promoted to main via worktree."
+
+        # Interactive mode: switch branches
         else
+            git checkout main
+
+            echo "$FILES" | while IFS= read -r f; do
+                git checkout dev -- "$f" 2>/dev/null || true
+            done
+
+            MAIN_FILES=$(git ls-files | sort)
+            DEV_FILES=$(echo "$FILES" | sort)
+            STALE=$(comm -23 <(echo "$MAIN_FILES") <(echo "$DEV_FILES"))
+            if [[ -n "$STALE" ]]; then
+                echo "$STALE" | while IFS= read -r f; do
+                    git rm -f "$f" 2>/dev/null && echo "  Removed: $f"
+                done
+            fi
+
+            CHANGED=$(git diff --cached --stat | tail -1)
+            if [[ -z "$CHANGED" || "$CHANGED" == *"0 files changed"* ]]; then
+                echo "No changes to promote."
+                git checkout dev
+                exit 0
+            fi
+
+            echo "$CHANGED"
+            echo ""
+
             read -p "Commit message (or 'q' to abort): " MSG
             if [[ "$MSG" == "q" ]]; then
                 echo "Aborting..."
@@ -154,23 +185,18 @@ case "$MODE" in
                 git checkout dev
                 exit 0
             fi
-        fi
 
-        git commit -m "$MSG"
+            git commit -m "$MSG"
 
-        if [[ "$AUTO_PUSH" == true ]]; then
-            git push origin main
-        else
             read -p "Push to origin/main? [y/N]: " PUSH
             if [[ "$PUSH" == "y" || "$PUSH" == "Y" ]]; then
                 git push origin main
             fi
-        fi
 
-        # Back to dev
-        git checkout dev
-        echo ""
-        echo "Done. Back on dev."
+            git checkout dev
+            echo ""
+            echo "Done. Back on dev."
+        fi
         ;;
 
 esac

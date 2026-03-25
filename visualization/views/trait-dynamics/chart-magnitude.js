@@ -1,6 +1,6 @@
 // Activation magnitude per token chart for Trait Dynamics view
 // Input: traitData, loadedTraits, tick data
-// Output: rendered Plotly magnitude plot
+// Output: rendered Plotly magnitude plot into #token-magnitude-plot (sec-header body managed by controls.js)
 
 import { getChartColors } from '../../core/display.js';
 import { buildChartLayout, renderChart, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildTurnBoundaryShapes } from '../../core/charts.js';
@@ -9,9 +9,11 @@ import { START_TOKEN_IDX } from './chart-trajectory.js';
 /**
  * Render Token Magnitude plot showing L2 norm per token at best layer.
  * Helps identify if low projections are due to low magnitude or orthogonal encoding.
+ * Renders directly into #token-magnitude-plot; collapse/expand handled by sec-header in controls.js.
  */
 function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, nPromptTokens, isRollout = false, turnBoundaries = null, sentenceBoundaries = null, sentenceCategoryData = null) {
     const plotDiv = document.getElementById('token-magnitude-plot');
+    if (!plotDiv) return;
     const firstTraitData = traitData[loadedTraits[0]];
 
     if (!firstTraitData.token_norms) {
@@ -89,6 +91,10 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
 
     // Click-to-select
     attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
+
+    // Update sec-header badge
+    const badge = document.getElementById('badge-magnitude');
+    if (badge) badge.textContent = Object.keys(layerToNorms).length + (Object.keys(layerToNorms).length === 1 ? ' layer' : ' layers');
 }
 
 export { renderTokenMagnitudePlot };
