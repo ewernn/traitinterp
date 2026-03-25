@@ -121,7 +121,7 @@ case "$MODE" in
             git worktree add --quiet "$WORKTREE" main 2>/dev/null || { echo "Error: could not create worktree"; exit 1; }
 
             echo "$FILES" | while IFS= read -r f; do
-                git -C "$WORKTREE" checkout dev -- "$f" 2>/dev/null
+                git -C "$WORKTREE" checkout dev -- "$f" 2>/dev/null || true
             done
 
             # Remove stale files
@@ -155,7 +155,9 @@ case "$MODE" in
         else
             git checkout main
 
-            echo "$FILES" | xargs git checkout dev -- 2>/dev/null
+            echo "$FILES" | while IFS= read -r f; do
+                git checkout dev -- "$f" 2>/dev/null || true
+            done
 
             MAIN_FILES=$(git ls-files | sort)
             DEV_FILES=$(echo "$FILES" | sort)
