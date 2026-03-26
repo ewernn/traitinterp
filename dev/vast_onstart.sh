@@ -21,6 +21,7 @@ GITHUB_TOKEN=${GITHUB_TOKEN}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
 R2_ENDPOINT=${R2_ENDPOINT}
+R2_BUCKET_NAME=trait-interp-bucket
 HF_TOKEN=${HF_TOKEN}
 OPENAI_API_KEY=${OPENAI_API_KEY}
 HF_HOME=/home/dev/.cache/huggingface
@@ -34,7 +35,7 @@ su - dev -c 'git config --global user.name "ewernn"'
 su - dev -c 'git config --global user.email "ewernn@users.noreply.github.com"'
 
 # Clone repos
-su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/trait-interp.git ~/trait-interp"
+su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git ~/trait-interp && cd ~/trait-interp && git checkout dev"
 su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/cc-plugins.git ~/cc-plugins"
 su - dev -c "mkdir -p ~/.claude/plugins && ln -s ~/cc-plugins/r ~/.claude/plugins/r"
 
