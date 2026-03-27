@@ -646,110 +646,27 @@ body {
     border-left-color: var(--primary-color);
 }
 
-/* Experiment picker - radio button style */
-.experiment-picker {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-}
+/* Experiment picker - dropdown style */
+.exp-dropdown { position: relative; }
+.exp-trigger { font-size: var(--text-sm); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm); }
+.exp-trigger:hover { background: var(--bg-tertiary); }
+.exp-trigger .exp-name { font-weight: 500; }
+.exp-trigger .exp-arrow { font-size: 10px; color: var(--text-tertiary); }
+.exp-menu { position: absolute; top: 100%; left: 0; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 0; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 100; display: none; }
+.exp-dropdown:hover .exp-menu { display: block; }
+.exp-menu-item { padding: 5px 12px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; }
+.exp-menu-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.exp-menu-item.active { color: var(--accent-color); font-weight: 500; }
 
-.experiment-option {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 2px 6px;
-    cursor: pointer;
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
-    border-radius: var(--radius-sm);
-    word-break: break-all;
-}
-
-.experiment-option:hover {
-    color: var(--text-primary);
-    background: var(--bg-tertiary);
-}
-
-.experiment-option.active {
-    color: var(--primary-color);
-}
-
-.experiment-option input[type="radio"] {
-    accent-color: var(--primary-color);
-    margin: 0;
-}
-
-.trait-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    margin-bottom: 2px;
-    cursor: pointer;
-    font-size: var(--text-sm);
-    color: var(--text-secondary);
-}
-
-.trait-checkbox:hover { color: var(--text-primary); }
-.trait-checkbox input[type="checkbox"] { cursor: pointer; }
-.trait-checkbox label { cursor: pointer; margin: 0; flex: 1; color: inherit; }
-
-/* Trait Category Grouping */
-.trait-category {
-    margin-bottom: 8px;
-}
-
-.trait-category-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 0;
-    font-size: var(--text-sm);
-    color: var(--text-primary);
-    cursor: default;
-}
-
-.trait-category-header .category-arrow {
-    cursor: pointer;
-    user-select: none;
-    width: 12px;
-    font-size: 10px;
-    color: var(--text-secondary);
-}
-
-.trait-category-header .category-arrow:hover {
-    color: var(--text-primary);
-}
-
-.trait-category-header .category-checkbox {
-    cursor: pointer;
-}
-
-.trait-category-header .category-name {
-    font-weight: 500;
-    text-transform: capitalize;
-}
-
-.trait-category-header .category-count {
-    color: var(--text-secondary);
-    font-size: var(--text-xs);
-    margin-left: auto;
-}
-
-.trait-category-items {
-    padding-left: 18px;
-}
-
-.trait-category.collapsed .trait-category-items {
-    display: none;
-}
-
-.select-all-btn {
-    padding: 4px 8px;
-    font-size: var(--text-xs);
-    margin-bottom: 8px;
-}
+/* Trait Selection - Tag Chips */
+.trait-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0; }
+.trait-chip { padding: 2px 8px; font-size: var(--text-xxs); border-radius: 12px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border-color); color: var(--text-tertiary); background: transparent; user-select: none; }
+.trait-chip.selected { background: var(--accent-color); color: var(--text-on-primary); border-color: var(--accent-color); }
+.trait-chip:hover:not(.selected) { border-color: var(--text-tertiary); color: var(--text-secondary); }
+.trait-cat-header { font-size: var(--text-xxs); color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; padding: 6px 0 2px; cursor: pointer; display: flex; justify-content: space-between; }
+.trait-cat-header:hover { color: var(--text-secondary); }
+.trait-select-all { padding: 4px 8px; font-size: var(--text-xs); color: var(--accent-color); cursor: pointer; }
+.trait-select-all:hover { text-decoration: underline; }
 
 /* Header - Centered */
 header {
