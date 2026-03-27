@@ -88,16 +88,32 @@ function populateTraitCheckboxes() {
         const traits = categories[category];
         const isDefaultSelected = hasOg10 ? category === 'og_10' : true;
 
-        // Category header (clickable to toggle all in category)
+        // Category header with expand/collapse + select-all on label click
         const header = document.createElement('div');
         header.className = 'trait-cat-header';
-        header.textContent = category.replace(/_/g, ' ');
+
+        const arrow = document.createElement('span');
+        arrow.className = 'trait-cat-arrow';
+        arrow.textContent = '▸';
+        header.appendChild(arrow);
+
+        const label = document.createElement('span');
+        label.className = 'trait-cat-label';
+        label.textContent = category.replace(/_/g, ' ');
+        header.appendChild(label);
+
+        const count = document.createElement('span');
+        count.className = 'trait-cat-count';
+        count.textContent = `${traits.length}`;
+        header.appendChild(count);
+
         container.appendChild(header);
 
-        // Chips container
+        // Chips container (collapsed by default)
         const chipsDiv = document.createElement('div');
         chipsDiv.className = 'trait-chips';
         chipsDiv.dataset.category = category;
+        chipsDiv.hidden = true;
 
         traits.forEach(trait => {
             const chip = document.createElement('span');
@@ -126,8 +142,20 @@ function populateTraitCheckboxes() {
 
         container.appendChild(chipsDiv);
 
-        // Category header click: toggle all traits in this category
-        header.addEventListener('click', () => {
+        // Arrow click: expand/collapse chips
+        arrow.addEventListener('click', (e) => {
+            e.stopPropagation();
+            chipsDiv.hidden = !chipsDiv.hidden;
+            arrow.textContent = chipsDiv.hidden ? '▸' : '▾';
+        });
+
+        // Label/count click: toggle all traits in this category
+        const toggleCategory = () => {
+            // Expand if collapsed
+            if (chipsDiv.hidden) {
+                chipsDiv.hidden = false;
+                arrow.textContent = '▾';
+            }
             const chips = chipsDiv.querySelectorAll('.trait-chip');
             const allInCatSelected = Array.from(chips).every(c => c.classList.contains('selected'));
 
@@ -145,7 +173,9 @@ function populateTraitCheckboxes() {
             updateSelectedCount();
             updateSelectAllLabel();
             if (window.renderView) window.renderView();
-        });
+        };
+        label.addEventListener('click', (e) => { e.stopPropagation(); toggleCategory(); });
+        count.addEventListener('click', (e) => { e.stopPropagation(); toggleCategory(); });
     });
 
     updateSelectedCount();

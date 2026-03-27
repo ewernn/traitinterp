@@ -700,8 +700,12 @@ body {
 .trait-chip { padding: 2px 8px; font-size: var(--text-xxs); border-radius: 12px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border-color); color: var(--text-tertiary); background: transparent; user-select: none; }
 .trait-chip.selected { background: var(--accent-color); color: var(--text-on-primary); border-color: var(--accent-color); }
 .trait-chip:hover:not(.selected) { border-color: var(--text-tertiary); color: var(--text-secondary); }
-.trait-cat-header { font-size: var(--text-xxs); color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; padding: 6px 0 2px; cursor: pointer; display: flex; justify-content: space-between; }
+.trait-cat-header { font-size: var(--text-xxs); color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; padding: 6px 0 2px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 .trait-cat-header:hover { color: var(--text-secondary); }
+.trait-cat-arrow { font-size: 10px; width: 10px; cursor: pointer; }
+.trait-cat-label { cursor: pointer; }
+.trait-cat-count { margin-left: auto; font-weight: 400; color: var(--text-tertiary); }
+.trait-chips[hidden] { display: none; }
 .trait-select-all { padding: 4px 8px; font-size: var(--text-xs); color: var(--accent-color); cursor: pointer; }
 .trait-select-all:hover { text-decoration: underline; }
 
