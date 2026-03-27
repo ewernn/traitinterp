@@ -1,0 +1,68 @@
+[
+  {
+    "trait": "sycophancy",
+    "detection_peak": 18,
+    "detection_d": 15.532129287719727,
+    "detection_type": "deltanet",
+    "steering_peak": 13,
+    "steering_delta": 59.41550501304526,
+    "steering_type": "deltanet",
+    "inference_peak": 31,
+    "inference_type": "attention"
+  },
+  {
+    "trait": "evil",
+    "detection_peak": 18,
+    "detection_d": 29.787588119506836,
+    "detection_type": "deltanet",
+    "steering_peak": 17,
+    "steering_delta": 64.89338685410972,
+    "steering_type": "deltanet",
+    "inference_peak": 31,
+    "inference_type": "attention"
+  },
+  {
+    "trait": "refusal",
+    "detection_peak": 18,
+    "detection_d": 1.4441001415252686,
+    "detection_type": "deltanet",
+    "steering_peak": 7,
+    "steering_delta": 32.415481313759976,
+    "steering_type": "attention",
+    "inference_peak": 31,
+    "inference_type": "attention"
+  },
+  {
+    "trait": "concealment",
+    "detection_peak": 30,
+    "detection_d": 12.45803451538086,
+    "detection_type": "deltanet",
+    "steering_peak": 15,
+    "steering_delta": 37.41551711991056,
+    "steering_type": "attention",
+    "inference_peak": 26,
+    "inference_type": "deltanet"
+  },
+  {
+    "trait": "hallucination",
+    "detection_peak": 31,
+    "detection_d": 3.221252679824829,
+    "detection_type": "attention",
+    "steering_peak": 18,
+    "steering_delta": 53.03472488508219,
+    "steering_type": "deltanet",
+    "inference_peak": 22,
+    "inference_type": "deltanet"
+  },
+  {
+    "trait": "golden_gate_bridge",
+    "detection_peak": 23,
+    "detection_d": 24.97130012512207,
+    "detection_type": "attention",
+    "steering_peak": 10,
+    "steering_delta": 72.06674089581385,
+    "steering_type": "deltanet",
+    "inference_peak": 31,
+    "inference_type": "attention"
+  }
+]

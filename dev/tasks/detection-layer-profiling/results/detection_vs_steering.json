@@ -1,0 +1,290 @@
+[
+  {
+    "model": "qwen3.5-9b",
+    "trait": "assistant_axis",
+    "shape": "mid-peaking",
+    "detection_peak_layer": 18,
+    "detection_peak_d": 14.522953987121582,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      4,
+      30
+    ],
+    "steering_peak_layer": 19,
+    "steering_peak_delta": -38.06988015746517,
+    "gap": -1
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "concealment",
+    "shape": "late-peaking",
+    "detection_peak_layer": 30,
+    "detection_peak_d": 12.45803451538086,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      18,
+      31
+    ],
+    "steering_peak_layer": 15,
+    "steering_peak_delta": 37.41551711991056,
+    "gap": 15
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "evil",
+    "shape": "mid-peaking",
+    "detection_peak_layer": 18,
+    "detection_peak_d": 29.787588119506836,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      18,
+      21
+    ],
+    "steering_peak_layer": 17,
+    "steering_peak_delta": 64.89338685410972,
+    "gap": 1
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "formality",
+    "shape": "late-peaking",
+    "detection_peak_layer": 22,
+    "detection_peak_d": 41.005393981933594,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      21,
+      30
+    ],
+    "steering_peak_layer": 12,
+    "steering_peak_delta": -50.55694546851803,
+    "gap": 10
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "golden_gate_bridge",
+    "shape": "late-peaking",
+    "detection_peak_layer": 23,
+    "detection_peak_d": 24.97130012512207,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      18,
+      30
+    ],
+    "steering_peak_layer": 10,
+    "steering_peak_delta": 72.06674089581385,
+    "gap": 13
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "hallucination",
+    "shape": "late-peaking",
+    "detection_peak_layer": 31,
+    "detection_peak_d": 3.221252679824829,
+    "detection_peak_acc": 0.949999988079071,
+    "onset_layer": 0,
+    "plateau": [
+      13,
+      31
+    ],
+    "steering_peak_layer": 18,
+    "steering_peak_delta": 53.03472488508219,
+    "gap": 13
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "optimism",
+    "shape": "late-peaking",
+    "detection_peak_layer": 22,
+    "detection_peak_d": 21.61968421936035,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      18,
+      27
+    ],
+    "steering_peak_layer": 19,
+    "steering_peak_delta": -34.72771717548158,
+    "gap": 3
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "refusal",
+    "shape": "mid-peaking",
+    "detection_peak_layer": 18,
+    "detection_peak_d": 1.4441001415252686,
+    "detection_peak_acc": 0.699999988079071,
+    "onset_layer": null,
+    "plateau": [
+      17,
+      31
+    ],
+    "steering_peak_layer": 7,
+    "steering_peak_delta": 32.415481313759976,
+    "gap": 11
+  },
+  {
+    "model": "qwen3.5-9b",
+    "trait": "sycophancy",
+    "shape": "mid-peaking",
+    "detection_peak_layer": 18,
+    "detection_peak_d": 15.532129287719727,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      18,
+      22
+    ],
+    "steering_peak_layer": 13,
+    "steering_peak_delta": 59.41550501304526,
+    "gap": 5
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "assistant_axis",
+    "shape": "late-peaking",
+    "detection_peak_layer": 31,
+    "detection_peak_d": 14.692873001098633,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      13,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "concealment",
+    "shape": "late-peaking",
+    "detection_peak_layer": 27,
+    "detection_peak_d": 17.483760833740234,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      13,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "evil",
+    "shape": "late-peaking",
+    "detection_peak_layer": 23,
+    "detection_peak_d": 19.844064712524414,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      14,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "formality",
+    "shape": "late-peaking",
+    "detection_peak_layer": 31,
+    "detection_peak_d": 57.636898040771484,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      26,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "golden_gate_bridge",
+    "shape": "late-peaking",
+    "detection_peak_layer": 30,
+    "detection_peak_d": 10.652432441711426,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      12,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "hallucination",
+    "shape": "late-peaking",
+    "detection_peak_layer": 30,
+    "detection_peak_d": 5.786744594573975,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      13,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "optimism",
+    "shape": "late-peaking",
+    "detection_peak_layer": 26,
+    "detection_peak_d": 11.953825950622559,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      14,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "refusal",
+    "shape": "mid-peaking",
+    "detection_peak_layer": 17,
+    "detection_peak_d": 18.115436553955078,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      12,
+      21
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  },
+  {
+    "model": "llama-3.1-8b-instruct",
+    "trait": "sycophancy",
+    "shape": "late-peaking",
+    "detection_peak_layer": 27,
+    "detection_peak_d": 9.53847885131836,
+    "detection_peak_acc": 1.0,
+    "onset_layer": 0,
+    "plateau": [
+      13,
+      31
+    ],
+    "steering_peak_layer": null,
+    "steering_peak_delta": null,
+    "gap": null
+  }
+]

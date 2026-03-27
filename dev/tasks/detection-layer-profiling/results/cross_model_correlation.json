@@ -1,0 +1,1528 @@
+{
+  "peak_layer_correlation": 0.012535186862074346,
+  "effect_size_correlation": 0.10004086385432823,
+  "shape_agreement_rate": 0.32653061224489793,
+  "n_reversed": 38,
+  "reversed_traits": [
+    "allegiance",
+    "amusement",
+    "anger",
+    "boredom",
+    "caution",
+    "certainty",
+    "confidence",
+    "confusion",
+    "cooperativeness",
+    "coyness",
+    "cunning",
+    "deception",
+    "determination",
+    "disappointment",
+    "dogmatism",
+    "enthusiasm",
+    "flippancy",
+    "forgiveness",
+    "grandiosity",
+    "helpfulness",
+    "impulsivity",
+    "independence",
+    "lying",
+    "melancholy",
+    "nonchalance",
+    "obligation",
+    "patience",
+    "pettiness",
+    "playfulness",
+    "restlessness",
+    "sadness",
+    "scorn",
+    "self_preservation",
+    "servility",
+    "solemnity",
+    "trust",
+    "angry_register",
+    "mocking"
+  ],
+  "per_trait": {
+    "compliance_without_agreement": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 4.723369598388672,
+      "llama_d": 1.846124529838562,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "deception": {
+      "qwen_peak": 7,
+      "llama_peak": 30,
+      "qwen_d": 2.559730052947998,
+      "llama_d": 3.2656619548797607,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "gaming": {
+      "qwen_peak": 31,
+      "llama_peak": 14,
+      "qwen_d": 4.345211029052734,
+      "llama_d": 4.721857070922852,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "self_serving": {
+      "qwen_peak": 19,
+      "llama_peak": 14,
+      "qwen_d": 3.006866455078125,
+      "llama_d": 3.8098790645599365,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "strategic_omission": {
+      "qwen_peak": 31,
+      "llama_peak": 15,
+      "qwen_d": 4.619654178619385,
+      "llama_d": 4.731457710266113,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "acceptance": {
+      "qwen_peak": 16,
+      "llama_peak": 31,
+      "qwen_d": 1.010910987854004,
+      "llama_d": 3.8625001907348633,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "adaptability": {
+      "qwen_peak": 6,
+      "llama_peak": 19,
+      "qwen_d": 21.436721801757812,
+      "llama_d": 4.0049872398376465,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "affection": {
+      "qwen_peak": 19,
+      "llama_peak": 31,
+      "qwen_d": 2.36216402053833,
+      "llama_d": 4.170243740081787,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "agency": {
+      "qwen_peak": 18,
+      "llama_peak": 20,
+      "qwen_d": 14.443321228027344,
+      "llama_d": 33.26512908935547,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "aggression": {
+      "qwen_peak": 15,
+      "llama_peak": 31,
+      "qwen_d": 3.247114658355713,
+      "llama_d": 3.559922218322754,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "alignment_faking": {
+      "qwen_peak": 4,
+      "llama_peak": 5,
+      "qwen_d": 1.8623204231262207,
+      "llama_d": 2.260530471801758,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "allegiance": {
+      "qwen_peak": 31,
+      "llama_peak": 9,
+      "qwen_d": 1.3654594421386719,
+      "llama_d": 1.2059496641159058,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "ambition": {
+      "qwen_peak": 1,
+      "llama_peak": 0,
+      "qwen_d": 0.7741889357566833,
+      "llama_d": 6.337100982666016,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "amusement": {
+      "qwen_peak": 31,
+      "llama_peak": 3,
+      "qwen_d": 6.554378509521484,
+      "llama_d": 8.48375129699707,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "analytical": {
+      "qwen_peak": 16,
+      "llama_peak": 12,
+      "qwen_d": 14.366533279418945,
+      "llama_d": 4.678818702697754,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "anger": {
+      "qwen_peak": 31,
+      "llama_peak": 2,
+      "qwen_d": 10.817784309387207,
+      "llama_d": 14.017427444458008,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "anticipation": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 0.7544286251068115,
+      "llama_d": 1.7419685125350952,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "anxiety": {
+      "qwen_peak": 31,
+      "llama_peak": 14,
+      "qwen_d": 2.534600019454956,
+      "llama_d": 49.263458251953125,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "apathy": {
+      "qwen_peak": 17,
+      "llama_peak": 3,
+      "qwen_d": 1.3839963674545288,
+      "llama_d": 0.34520941972732544,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "assertiveness": {
+      "qwen_peak": 22,
+      "llama_peak": 14,
+      "qwen_d": 7.253910541534424,
+      "llama_d": 6.303836822509766,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "authority_respect": {
+      "qwen_peak": 15,
+      "llama_peak": 8,
+      "qwen_d": 1.4416195154190063,
+      "llama_d": 4.721982479095459,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "avoidance": {
+      "qwen_peak": 2,
+      "llama_peak": 10,
+      "qwen_d": 12.892163276672363,
+      "llama_d": 2.1018784046173096,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "awe": {
+      "qwen_peak": 17,
+      "llama_peak": 14,
+      "qwen_d": 9.799379348754883,
+      "llama_d": 5.550454139709473,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "awkwardness": {
+      "qwen_peak": 0,
+      "llama_peak": 11,
+      "qwen_d": 4.742767333984375,
+      "llama_d": 4.636563777923584,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "boredom": {
+      "qwen_peak": 31,
+      "llama_peak": 6,
+      "qwen_d": 1.2857481241226196,
+      "llama_d": 2.7665019035339355,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "brevity": {
+      "qwen_peak": 14,
+      "llama_peak": 7,
+      "qwen_d": 16.548545837402344,
+      "llama_d": 3.1772384643554688,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "calm": {
+      "qwen_peak": 10,
+      "llama_peak": 13,
+      "qwen_d": 4.975225925445557,
+      "llama_d": 7.580745697021484,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "carefulness": {
+      "qwen_peak": 31,
+      "llama_peak": 14,
+      "qwen_d": 4.389715194702148,
+      "llama_d": 2.8601536750793457,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "caution": {
+      "qwen_peak": 1,
+      "llama_peak": 29,
+      "qwen_d": 1.8816463947296143,
+      "llama_d": 20.510738372802734,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "certainty": {
+      "qwen_peak": 31,
+      "llama_peak": 10,
+      "qwen_d": 1.9833213090896606,
+      "llama_d": 2.1629765033721924,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "compassion": {
+      "qwen_peak": 1,
+      "llama_peak": 17,
+      "qwen_d": 50.542884826660156,
+      "llama_d": 3.6489126682281494,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "competitiveness": {
+      "qwen_peak": 18,
+      "llama_peak": 13,
+      "qwen_d": 2.9745430946350098,
+      "llama_d": 7.327330589294434,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "complacency": {
+      "qwen_peak": 31,
+      "llama_peak": 16,
+      "qwen_d": 0.49326223134994507,
+      "llama_d": 2.301027536392212,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "concealment": {
+      "qwen_peak": 18,
+      "llama_peak": 19,
+      "qwen_d": 13.784709930419922,
+      "llama_d": 11.902324676513672,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "condescension": {
+      "qwen_peak": 5,
+      "llama_peak": 1,
+      "qwen_d": 5.081758975982666,
+      "llama_d": 1.4361085891723633,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "confidence": {
+      "qwen_peak": 31,
+      "llama_peak": 0,
+      "qwen_d": 0.9620912671089172,
+      "llama_d": 0.8816226720809937,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "conflicted": {
+      "qwen_peak": 31,
+      "llama_peak": 13,
+      "qwen_d": 1.3157614469528198,
+      "llama_d": 7.120430946350098,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "confusion": {
+      "qwen_peak": 2,
+      "llama_peak": 30,
+      "qwen_d": 15.180214881896973,
+      "llama_d": 9.931556701660156,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "contempt": {
+      "qwen_peak": 27,
+      "llama_peak": 21,
+      "qwen_d": 7.125112056732178,
+      "llama_d": 3.574514389038086,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "contemptuous_dismissal": {
+      "qwen_peak": 4,
+      "llama_peak": 11,
+      "qwen_d": 4.966565132141113,
+      "llama_d": 6.109506130218506,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "contentment": {
+      "qwen_peak": 11,
+      "llama_peak": 9,
+      "qwen_d": 148.7996063232422,
+      "llama_d": 24.49583625793457,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "cooperativeness": {
+      "qwen_peak": 7,
+      "llama_peak": 31,
+      "qwen_d": 17.866743087768555,
+      "llama_d": 11.956954956054688,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "corrigibility": {
+      "qwen_peak": 19,
+      "llama_peak": 20,
+      "qwen_d": 1.4089490175247192,
+      "llama_d": 17.047428131103516,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "coyness": {
+      "qwen_peak": 31,
+      "llama_peak": 0,
+      "qwen_d": 2.766202688217163,
+      "llama_d": 5.3989949226379395,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "craving": {
+      "qwen_peak": 17,
+      "llama_peak": 2,
+      "qwen_d": 5.890632152557373,
+      "llama_d": 4.520029067993164,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "creativity": {
+      "qwen_peak": 31,
+      "llama_peak": 23,
+      "qwen_d": 16.13663673400879,
+      "llama_d": 4.7293853759765625,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "cunning": {
+      "qwen_peak": 0,
+      "llama_peak": 29,
+      "qwen_d": 6.203730583190918,
+      "llama_d": 41.10750961303711,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "curiosity": {
+      "qwen_peak": 19,
+      "llama_peak": 31,
+      "qwen_d": 2.250415802001953,
+      "llama_d": 3.817203998565674,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "curiosity_epistemic": {
+      "qwen_peak": 23,
+      "llama_peak": 17,
+      "qwen_d": 4.110445976257324,
+      "llama_d": 48.6104621887207,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "decisiveness": {
+      "qwen_peak": 7,
+      "llama_peak": 11,
+      "qwen_d": 3.766458511352539,
+      "llama_d": 8.22208309173584,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "deference": {
+      "qwen_peak": 12,
+      "llama_peak": 12,
+      "qwen_d": 6.181827068328857,
+      "llama_d": 25.221954345703125,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "defiance": {
+      "qwen_peak": 13,
+      "llama_peak": 7,
+      "qwen_d": 2.7108399868011475,
+      "llama_d": 3.032473087310791,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "deflection": {
+      "qwen_peak": 19,
+      "llama_peak": 12,
+      "qwen_d": 32.02085494995117,
+      "llama_d": 1.9318195581436157,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "desperation": {
+      "qwen_peak": 5,
+      "llama_peak": 13,
+      "qwen_d": 27.001047134399414,
+      "llama_d": 3.3759982585906982,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "detachment": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 2.9736931324005127,
+      "llama_d": 4.968585968017578,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "determination": {
+      "qwen_peak": 0,
+      "llama_peak": 31,
+      "qwen_d": 2.8030431270599365,
+      "llama_d": 1.8282991647720337,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "disappointment": {
+      "qwen_peak": 0,
+      "llama_peak": 31,
+      "qwen_d": 2.699251890182495,
+      "llama_d": 15.976815223693848,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "disgust": {
+      "qwen_peak": 27,
+      "llama_peak": 31,
+      "qwen_d": 16.786413192749023,
+      "llama_d": 15.790199279785156,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "distractibility": {
+      "qwen_peak": 4,
+      "llama_peak": 1,
+      "qwen_d": 7.48319673538208,
+      "llama_d": 4.430229187011719,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "distress": {
+      "qwen_peak": 12,
+      "llama_peak": 4,
+      "qwen_d": 2.2763218879699707,
+      "llama_d": 5.920925140380859,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "dogmatism": {
+      "qwen_peak": 31,
+      "llama_peak": 0,
+      "qwen_d": 2.525622844696045,
+      "llama_d": 0.5503466725349426,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "dominance": {
+      "qwen_peak": 19,
+      "llama_peak": 15,
+      "qwen_d": 3.058391571044922,
+      "llama_d": 1.8750289678573608,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "doubt": {
+      "qwen_peak": 19,
+      "llama_peak": 29,
+      "qwen_d": 3.2410593032836914,
+      "llama_d": 29.702613830566406,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "dread": {
+      "qwen_peak": 16,
+      "llama_peak": 14,
+      "qwen_d": 3.239008903503418,
+      "llama_d": 33.21315383911133,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "duplicity": {
+      "qwen_peak": 7,
+      "llama_peak": 0,
+      "qwen_d": 9.49074649810791,
+      "llama_d": 0.9322726726531982,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "earnestness": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 0.889948844909668,
+      "llama_d": 0.9017408490180969,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "effort": {
+      "qwen_peak": 4,
+      "llama_peak": 14,
+      "qwen_d": 0.5982560515403748,
+      "llama_d": 0.7325480580329895,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "elation": {
+      "qwen_peak": 17,
+      "llama_peak": 21,
+      "qwen_d": 80.58335876464844,
+      "llama_d": 51.38650894165039,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "embarrassment": {
+      "qwen_peak": 18,
+      "llama_peak": 31,
+      "qwen_d": 31.590614318847656,
+      "llama_d": 5.375146865844727,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "emotional_suppression": {
+      "qwen_peak": 3,
+      "llama_peak": 13,
+      "qwen_d": 1.9381588697433472,
+      "llama_d": 23.9055233001709,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "empathy": {
+      "qwen_peak": 26,
+      "llama_peak": 14,
+      "qwen_d": 10.251137733459473,
+      "llama_d": 29.016277313232422,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "enthusiasm": {
+      "qwen_peak": 0,
+      "llama_peak": 22,
+      "qwen_d": 3.1305978298187256,
+      "llama_d": 57.6905403137207,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "entitlement": {
+      "qwen_peak": 17,
+      "llama_peak": 27,
+      "qwen_d": 19.849918365478516,
+      "llama_d": 39.91719436645508,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "envy": {
+      "qwen_peak": 19,
+      "llama_peak": 16,
+      "qwen_d": 4.291075229644775,
+      "llama_d": 10.24986743927002,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "eval_awareness": {
+      "qwen_peak": 0,
+      "llama_peak": 12,
+      "qwen_d": 19.661161422729492,
+      "llama_d": 8.377691268920898,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "evasiveness": {
+      "qwen_peak": 0,
+      "llama_peak": 6,
+      "qwen_d": 7.911325454711914,
+      "llama_d": 20.627750396728516,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "excitement": {
+      "qwen_peak": 20,
+      "llama_peak": 28,
+      "qwen_d": 3.592750310897827,
+      "llama_d": 7.123030185699463,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "fairness": {
+      "qwen_peak": 17,
+      "llama_peak": 14,
+      "qwen_d": 0.9086874723434448,
+      "llama_d": 5.792876720428467,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "fascination": {
+      "qwen_peak": 8,
+      "llama_peak": 14,
+      "qwen_d": 72.95014953613281,
+      "llama_d": 165.71197509765625,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "ferocity": {
+      "qwen_peak": 19,
+      "llama_peak": 8,
+      "qwen_d": 24.375999450683594,
+      "llama_d": 30.57172393798828,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "fixation": {
+      "qwen_peak": 18,
+      "llama_peak": 1,
+      "qwen_d": 63.499847412109375,
+      "llama_d": 10.115806579589844,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "flippancy": {
+      "qwen_peak": 0,
+      "llama_peak": 29,
+      "qwen_d": 13.359831809997559,
+      "llama_d": 2.7967677116394043,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "forgiveness": {
+      "qwen_peak": 30,
+      "llama_peak": 0,
+      "qwen_d": 1.7958670854568481,
+      "llama_d": 2.6000280380249023,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "frustration": {
+      "qwen_peak": 17,
+      "llama_peak": 18,
+      "qwen_d": 36.93358612060547,
+      "llama_d": 607.3494873046875,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "generosity": {
+      "qwen_peak": 14,
+      "llama_peak": 17,
+      "qwen_d": 33.17805099487305,
+      "llama_d": 21.860332489013672,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "glee": {
+      "qwen_peak": 12,
+      "llama_peak": 7,
+      "qwen_d": 5.045815944671631,
+      "llama_d": 8.170883178710938,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "grandiosity": {
+      "qwen_peak": 11,
+      "llama_peak": 31,
+      "qwen_d": 141.3263702392578,
+      "llama_d": 3.1173770427703857,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "gratitude": {
+      "qwen_peak": 12,
+      "llama_peak": 24,
+      "qwen_d": 2.518202066421509,
+      "llama_d": 381.9796447753906,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "greed": {
+      "qwen_peak": 0,
+      "llama_peak": 16,
+      "qwen_d": 2.197787284851074,
+      "llama_d": 1.8885722160339355,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "guilt": {
+      "qwen_peak": 11,
+      "llama_peak": 1,
+      "qwen_d": 4.919058799743652,
+      "llama_d": 4.016177654266357,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "guilt_tripping": {
+      "qwen_peak": 20,
+      "llama_peak": 31,
+      "qwen_d": 81.92213439941406,
+      "llama_d": 18.108253479003906,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "hedging": {
+      "qwen_peak": 15,
+      "llama_peak": 23,
+      "qwen_d": 5.640390872955322,
+      "llama_d": 20.097854614257812,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "helpfulness": {
+      "qwen_peak": 31,
+      "llama_peak": 10,
+      "qwen_d": 1.1864497661590576,
+      "llama_d": 1.886450171470642,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "honesty": {
+      "qwen_peak": 17,
+      "llama_peak": 0,
+      "qwen_d": 3.370241403579712,
+      "llama_d": 7.713958263397217,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "hope": {
+      "qwen_peak": 18,
+      "llama_peak": 3,
+      "qwen_d": 7.948663711547852,
+      "llama_d": 11.768420219421387,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "hostility": {
+      "qwen_peak": 14,
+      "llama_peak": 1,
+      "qwen_d": 3.1522059440612793,
+      "llama_d": 13.83874225616455,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "humility": {
+      "qwen_peak": 21,
+      "llama_peak": 23,
+      "qwen_d": 4.122167587280273,
+      "llama_d": 2.943100929260254,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "impatience": {
+      "qwen_peak": 8,
+      "llama_peak": 14,
+      "qwen_d": 2.5487074851989746,
+      "llama_d": 3.9941017627716064,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "impulsivity": {
+      "qwen_peak": 3,
+      "llama_peak": 30,
+      "qwen_d": 6.661484718322754,
+      "llama_d": 1.1193149089813232,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "independence": {
+      "qwen_peak": 23,
+      "llama_peak": 10,
+      "qwen_d": 7.937097072601318,
+      "llama_d": 33.05315017700195,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "indifference": {
+      "qwen_peak": 3,
+      "llama_peak": 1,
+      "qwen_d": 1.7699899673461914,
+      "llama_d": 0.7166928648948669,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "indignation": {
+      "qwen_peak": 0,
+      "llama_peak": 4,
+      "qwen_d": 32.57270812988281,
+      "llama_d": 5.764616012573242,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "irritation": {
+      "qwen_peak": 15,
+      "llama_peak": 31,
+      "qwen_d": 21.581111907958984,
+      "llama_d": 2.786893367767334,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "jealousy": {
+      "qwen_peak": 3,
+      "llama_peak": 13,
+      "qwen_d": 11.267484664916992,
+      "llama_d": 10.598652839660645,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "joy": {
+      "qwen_peak": 10,
+      "llama_peak": 18,
+      "qwen_d": 24.206920623779297,
+      "llama_d": 61.287574768066406,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "loneliness": {
+      "qwen_peak": 11,
+      "llama_peak": 20,
+      "qwen_d": 0.7972496151924133,
+      "llama_d": 4.494377136230469,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "lying": {
+      "qwen_peak": 31,
+      "llama_peak": 4,
+      "qwen_d": 1.363487720489502,
+      "llama_d": 7.028773784637451,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "manipulation": {
+      "qwen_peak": 21,
+      "llama_peak": 31,
+      "qwen_d": 3.793330430984497,
+      "llama_d": 1.9654287099838257,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "melancholy": {
+      "qwen_peak": 31,
+      "llama_peak": 2,
+      "qwen_d": 0.8101550936698914,
+      "llama_d": 10.045683860778809,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "mischievousness": {
+      "qwen_peak": 16,
+      "llama_peak": 0,
+      "qwen_d": 2.547262668609619,
+      "llama_d": 29.5458927154541,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "moral_flexibility": {
+      "qwen_peak": 27,
+      "llama_peak": 13,
+      "qwen_d": 1.351382851600647,
+      "llama_d": 0.9364920854568481,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "moral_outrage": {
+      "qwen_peak": 0,
+      "llama_peak": 12,
+      "qwen_d": 3.787628173828125,
+      "llama_d": 7.743493556976318,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "nonchalance": {
+      "qwen_peak": 5,
+      "llama_peak": 30,
+      "qwen_d": 12.385111808776855,
+      "llama_d": 1.4473918676376343,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "nostalgia": {
+      "qwen_peak": 23,
+      "llama_peak": 18,
+      "qwen_d": 3.3645567893981934,
+      "llama_d": 151.76242065429688,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "numbness": {
+      "qwen_peak": 12,
+      "llama_peak": 30,
+      "qwen_d": 3.2003815174102783,
+      "llama_d": 6.505548000335693,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "obedience": {
+      "qwen_peak": 31,
+      "llama_peak": 12,
+      "qwen_d": 5.551815032958984,
+      "llama_d": 6.824713230133057,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "obligation": {
+      "qwen_peak": 1,
+      "llama_peak": 24,
+      "qwen_d": 4.626781940460205,
+      "llama_d": 2.4351134300231934,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "open_mindedness": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 47.87691879272461,
+      "llama_d": 5.018731117248535,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "optimism": {
+      "qwen_peak": 22,
+      "llama_peak": 26,
+      "qwen_d": 21.61968421936035,
+      "llama_d": 11.953825950622559,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "paranoia": {
+      "qwen_peak": 31,
+      "llama_peak": 14,
+      "qwen_d": 61.48265075683594,
+      "llama_d": 91.38140106201172,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "patience": {
+      "qwen_peak": 24,
+      "llama_peak": 4,
+      "qwen_d": 1.1708197593688965,
+      "llama_d": 4.885040760040283,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "perfectionism": {
+      "qwen_peak": 17,
+      "llama_peak": 11,
+      "qwen_d": 36.636009216308594,
+      "llama_d": 8.765307426452637,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "pessimism": {
+      "qwen_peak": 16,
+      "llama_peak": 14,
+      "qwen_d": 10.594216346740723,
+      "llama_d": 4.297116756439209,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "pettiness": {
+      "qwen_peak": 31,
+      "llama_peak": 7,
+      "qwen_d": 1.8673993349075317,
+      "llama_d": 1.669892430305481,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "playfulness": {
+      "qwen_peak": 1,
+      "llama_peak": 31,
+      "qwen_d": 6.9419779777526855,
+      "llama_d": 12.0392484664917,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "possessiveness": {
+      "qwen_peak": 16,
+      "llama_peak": 2,
+      "qwen_d": 13.918160438537598,
+      "llama_d": 3.5795559883117676,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "power_seeking": {
+      "qwen_peak": 30,
+      "llama_peak": 30,
+      "qwen_d": 2.1845040321350098,
+      "llama_d": 2.7597134113311768,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "pride": {
+      "qwen_peak": 12,
+      "llama_peak": 14,
+      "qwen_d": 5.228665828704834,
+      "llama_d": 19.744626998901367,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "protectiveness": {
+      "qwen_peak": 26,
+      "llama_peak": 19,
+      "qwen_d": 3.786050796508789,
+      "llama_d": 6.783799171447754,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "purity": {
+      "qwen_peak": 26,
+      "llama_peak": 13,
+      "qwen_d": 8.785174369812012,
+      "llama_d": 2.9049384593963623,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "rationalization": {
+      "qwen_peak": 31,
+      "llama_peak": 15,
+      "qwen_d": 6.411263942718506,
+      "llama_d": 12.598917961120605,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "rebelliousness": {
+      "qwen_peak": 23,
+      "llama_peak": 31,
+      "qwen_d": 12.302412986755371,
+      "llama_d": 2.6636228561401367,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "recklessness": {
+      "qwen_peak": 17,
+      "llama_peak": 20,
+      "qwen_d": 4.400086879730225,
+      "llama_d": 34.71493911743164,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "refusal": {
+      "qwen_peak": 18,
+      "llama_peak": 17,
+      "qwen_d": 17.756078720092773,
+      "llama_d": 23.56180191040039,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "regret": {
+      "qwen_peak": 13,
+      "llama_peak": 21,
+      "qwen_d": 1.6664217710494995,
+      "llama_d": 8.927000045776367,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "relief": {
+      "qwen_peak": 12,
+      "llama_peak": 8,
+      "qwen_d": 117.2240219116211,
+      "llama_d": 17.892553329467773,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "remorse": {
+      "qwen_peak": 19,
+      "llama_peak": 31,
+      "qwen_d": 5.02701473236084,
+      "llama_d": 89.57376861572266,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "resentment": {
+      "qwen_peak": 12,
+      "llama_peak": 31,
+      "qwen_d": 7.582699298858643,
+      "llama_d": 6.21144437789917,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "resignation": {
+      "qwen_peak": 17,
+      "llama_peak": 16,
+      "qwen_d": 30.182430267333984,
+      "llama_d": 11.265419006347656,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "restlessness": {
+      "qwen_peak": 7,
+      "llama_peak": 31,
+      "qwen_d": 18.10643196105957,
+      "llama_d": 0.9571182131767273,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "reverence": {
+      "qwen_peak": 12,
+      "llama_peak": 4,
+      "qwen_d": 4.000677108764648,
+      "llama_d": 3.7139053344726562,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "reverence_for_life": {
+      "qwen_peak": 9,
+      "llama_peak": 14,
+      "qwen_d": 20.197294235229492,
+      "llama_d": 6.8318190574646,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "rigidity": {
+      "qwen_peak": 18,
+      "llama_peak": 1,
+      "qwen_d": 0.8800632953643799,
+      "llama_d": 8.214971542358398,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "sadness": {
+      "qwen_peak": 11,
+      "llama_peak": 31,
+      "qwen_d": 2.037277936935425,
+      "llama_d": 2.6248691082000732,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "sandbagging": {
+      "qwen_peak": 31,
+      "llama_peak": 12,
+      "qwen_d": 0.9903386235237122,
+      "llama_d": 5.779642581939697,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "scorn": {
+      "qwen_peak": 29,
+      "llama_peak": 8,
+      "qwen_d": 4.200210094451904,
+      "llama_d": 10.95454216003418,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "self_awareness": {
+      "qwen_peak": 31,
+      "llama_peak": 30,
+      "qwen_d": 3.7809019088745117,
+      "llama_d": 12.494003295898438,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "self_doubt": {
+      "qwen_peak": 16,
+      "llama_peak": 31,
+      "qwen_d": 3.0765655040740967,
+      "llama_d": 5.880444049835205,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "self_preservation": {
+      "qwen_peak": 31,
+      "llama_peak": 0,
+      "qwen_d": 1.4662299156188965,
+      "llama_d": 3.188262939453125,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "self_righteousness": {
+      "qwen_peak": 29,
+      "llama_peak": 23,
+      "qwen_d": 281.6882019042969,
+      "llama_d": 8.349015235900879,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "sentimentality": {
+      "qwen_peak": 13,
+      "llama_peak": 17,
+      "qwen_d": 4.669042110443115,
+      "llama_d": 28.43102264404297,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "servility": {
+      "qwen_peak": 24,
+      "llama_peak": 2,
+      "qwen_d": 3.165334939956665,
+      "llama_d": 0.6118634343147278,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "shame": {
+      "qwen_peak": 17,
+      "llama_peak": 23,
+      "qwen_d": 4.158135414123535,
+      "llama_d": 3.8870441913604736,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "sincerity": {
+      "qwen_peak": 2,
+      "llama_peak": 5,
+      "qwen_d": 11.79398250579834,
+      "llama_d": 4.261122226715088,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "skepticism": {
+      "qwen_peak": 17,
+      "llama_peak": 0,
+      "qwen_d": 3.5004115104675293,
+      "llama_d": 8.201346397399902,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "solemnity": {
+      "qwen_peak": 6,
+      "llama_peak": 24,
+      "qwen_d": 1.4142132997512817,
+      "llama_d": 1.0415747165679932,
+      "qwen_shape": "early",
+      "llama_shape": "late"
+    },
+    "solidarity": {
+      "qwen_peak": 1,
+      "llama_peak": 13,
+      "qwen_d": 8.473291397094727,
+      "llama_d": 4.5560221672058105,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "spite": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 2.357701063156128,
+      "llama_d": 2.471240282058716,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "stoicism": {
+      "qwen_peak": 14,
+      "llama_peak": 8,
+      "qwen_d": 4.611617565155029,
+      "llama_d": 3.980170726776123,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "stubbornness": {
+      "qwen_peak": 15,
+      "llama_peak": 31,
+      "qwen_d": 6.529257297515869,
+      "llama_d": 5.398149490356445,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "submissiveness": {
+      "qwen_peak": 16,
+      "llama_peak": 1,
+      "qwen_d": 6.669474124908447,
+      "llama_d": 53.767547607421875,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "surprise": {
+      "qwen_peak": 10,
+      "llama_peak": 16,
+      "qwen_d": 12.079197883605957,
+      "llama_d": 2.33182954788208,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "sycophancy": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 4.928223133087158,
+      "llama_d": 4.876739025115967,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "sympathy": {
+      "qwen_peak": 17,
+      "llama_peak": 10,
+      "qwen_d": 2.1499528884887695,
+      "llama_d": 5.52632474899292,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "tenderness": {
+      "qwen_peak": 18,
+      "llama_peak": 9,
+      "qwen_d": 5.008781433105469,
+      "llama_d": 4.385958671569824,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "transparency": {
+      "qwen_peak": 20,
+      "llama_peak": 27,
+      "qwen_d": 13.815495491027832,
+      "llama_d": 47.559730529785156,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "triumph": {
+      "qwen_peak": 19,
+      "llama_peak": 15,
+      "qwen_d": 1.6862554550170898,
+      "llama_d": 3.178022623062134,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "trust": {
+      "qwen_peak": 31,
+      "llama_peak": 9,
+      "qwen_d": 10.11189079284668,
+      "llama_d": 5.549030780792236,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "ulterior_motive": {
+      "qwen_peak": 16,
+      "llama_peak": 11,
+      "qwen_d": 0.9998995065689087,
+      "llama_d": 29.563081741333008,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "urgency": {
+      "qwen_peak": 31,
+      "llama_peak": 17,
+      "qwen_d": 3.0092217922210693,
+      "llama_d": 25.90437889099121,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "vigilance": {
+      "qwen_peak": 0,
+      "llama_peak": 9,
+      "qwen_d": 5.170588493347168,
+      "llama_d": 5.7376017570495605,
+      "qwen_shape": "early",
+      "llama_shape": "early"
+    },
+    "vindictiveness": {
+      "qwen_peak": 29,
+      "llama_peak": 13,
+      "qwen_d": 2.0396361351013184,
+      "llama_d": 1.5684255361557007,
+      "qwen_shape": "late",
+      "llama_shape": "mid"
+    },
+    "vulnerability": {
+      "qwen_peak": 12,
+      "llama_peak": 7,
+      "qwen_d": 2.7168354988098145,
+      "llama_d": 36.20214080810547,
+      "qwen_shape": "mid",
+      "llama_shape": "early"
+    },
+    "warmth": {
+      "qwen_peak": 31,
+      "llama_peak": 31,
+      "qwen_d": 2.1857593059539795,
+      "llama_d": 2.096478223800659,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "weariness": {
+      "qwen_peak": 15,
+      "llama_peak": 14,
+      "qwen_d": 7.28830623626709,
+      "llama_d": 58.11900329589844,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "whimsy": {
+      "qwen_peak": 29,
+      "llama_peak": 31,
+      "qwen_d": 3.3305270671844482,
+      "llama_d": 5.070926189422607,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "wistfulness": {
+      "qwen_peak": 19,
+      "llama_peak": 30,
+      "qwen_d": 14.196065902709961,
+      "llama_d": 89.33401489257812,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "angry_register": {
+      "qwen_peak": 31,
+      "llama_peak": 0,
+      "qwen_d": 6.562455654144287,
+      "llama_d": 3.430579662322998,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "curt": {
+      "qwen_peak": 0,
+      "llama_peak": 15,
+      "qwen_d": 3.373016834259033,
+      "llama_d": 7.086452007293701,
+      "qwen_shape": "early",
+      "llama_shape": "mid"
+    },
+    "mocking": {
+      "qwen_peak": 21,
+      "llama_peak": 6,
+      "qwen_d": 8.714950561523438,
+      "llama_d": 4.142232418060303,
+      "qwen_shape": "late",
+      "llama_shape": "early"
+    },
+    "evil": {
+      "qwen_peak": 18,
+      "llama_peak": 14,
+      "qwen_d": 17.961891174316406,
+      "llama_d": 18.28183937072754,
+      "qwen_shape": "mid",
+      "llama_shape": "mid"
+    },
+    "hallucination": {
+      "qwen_peak": 18,
+      "llama_peak": 30,
+      "qwen_d": 2.8570711612701416,
+      "llama_d": 3.7879114151000977,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "assistant_axis": {
+      "qwen_peak": 18,
+      "llama_peak": 31,
+      "qwen_d": 14.522953987121582,
+      "llama_d": 14.692873001098633,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    },
+    "formality": {
+      "qwen_peak": 22,
+      "llama_peak": 31,
+      "qwen_d": 41.005393981933594,
+      "llama_d": 57.636898040771484,
+      "qwen_shape": "late",
+      "llama_shape": "late"
+    },
+    "golden_gate_bridge": {
+      "qwen_peak": 18,
+      "llama_peak": 30,
+      "qwen_d": 19.782119750976562,
+      "llama_d": 12.129384994506836,
+      "qwen_shape": "mid",
+      "llama_shape": "late"
+    }
+  }
+}

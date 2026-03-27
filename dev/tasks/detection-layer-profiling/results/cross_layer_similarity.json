@@ -1,0 +1,32 @@
+{
+  "sycophancy": {
+    "adj_mean": 0.9083552418216583,
+    "early_late_mean": 0.3560644061727957,
+    "steer_det_sim": 0.6725682020187378
+  },
+  "evil": {
+    "adj_mean": 0.9170058696500717,
+    "early_late_mean": 0.39906945269216193,
+    "steer_det_sim": 0.8979440331459045
+  },
+  "concealment": {
+    "adj_mean": 0.9038292938663114,
+    "early_late_mean": 0.36460502310232684,
+    "steer_det_sim": 0.7505641579627991
+  },
+  "hallucination": {
+    "adj_mean": 0.9061036398333888,
+    "early_late_mean": 0.33118842853741215,
+    "steer_det_sim": 1.0000009536743164
+  },
+  "golden_gate_bridge": {
+    "adj_mean": 0.9101025058377173,
+    "early_late_mean": 0.37130818312818353,
+    "steer_det_sim": 0.6104391813278198
+  },
+  "refusal": {
+    "adj_mean": 0.8961794914737824,
+    "early_late_mean": 0.3075770928101106,
+    "steer_det_sim": 0.43881696462631226
+  }
+}

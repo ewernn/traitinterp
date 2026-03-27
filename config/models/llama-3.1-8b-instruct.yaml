@@ -9,9 +9,10 @@ num_attention_heads: 32
 num_key_value_heads: 8
 intermediate_size: 14336
 vocab_size: 128256
-- input
-- after_attn
-- output
+residual_stream_points:
+  - input
+  - after_attn
+  - output
 sae:
   available: false
 notes:
