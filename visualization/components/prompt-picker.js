@@ -603,6 +603,7 @@ export {
     getPromptPage,
     setPromptPage,
     getPromptTagsCache,
+    positionPromptPicker,
     renderPromptPicker,
     fetchPromptPickerData,
     updatePlotTokenHighlights,
@@ -653,3 +654,4 @@ function selectPromptSet(newSet) {
 
 // Keep window.* for remaining consumers (cross-module access during migration)
 window.renderPromptPicker = renderPromptPicker;
+window.positionPromptPicker = positionPromptPicker;

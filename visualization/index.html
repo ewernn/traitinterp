@@ -278,8 +278,16 @@
                 if (isCollapsing) {
                     const psSidebar = document.getElementById('prompt-set-sidebar');
                     if (psSidebar) psSidebar.classList.add('hidden');
+                } else {
+                    // Re-expanding: restore prompt-set sidebar if it was open
+                    window.renderPromptSetSidebar?.();
                 }
                 collapseBtn.textContent = isCollapsing ? '▶' : '◀';
+                // Reposition prompt picker after sidebar transition
+                const ppContainer = document.getElementById('prompt-picker');
+                if (ppContainer && ppContainer.style.display !== 'none' && window.positionPromptPicker) {
+                    window.positionPromptPicker(ppContainer);
+                }
             });
 
             // Mobile toggle button - opens both sidebars

@@ -1671,8 +1671,8 @@ code {
 #prompt-picker .token-highlight {
     background: color-mix(in srgb, var(--primary-color) 50%, transparent);
     border-radius: var(--radius-sm);
-    padding: 0 2px;
-    outline: 1px solid color-mix(in srgb, var(--primary-color) 60%, transparent);
+    /* No padding/outline/border — these cause text reflow when token slider moves */
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary-color) 60%, transparent);
 }
 
 mark.annotation {
