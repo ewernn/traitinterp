@@ -1605,7 +1605,9 @@ code {
 }
 
 .pp-text { line-height: 1.5; margin-bottom: 16px; }
-.pp-text > div { margin-bottom: 8px; max-height: 225px; overflow-y: auto; resize: vertical; }
+.pp-text > div { margin-bottom: 8px; max-height: 225px; overflow-y: auto; resize: vertical; scrollbar-width: thin; }
+.pp-text > div::-webkit-scrollbar { width: 4px; }
+.pp-text > div::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
 .pp-text > div:first-child { color: var(--text-secondary); }
 
 .pp-slider {
