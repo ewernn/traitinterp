@@ -355,6 +355,8 @@ body {
     background: var(--bg-primary);
     color: var(--text-primary);
     padding: 16px;
+    overflow: hidden;
+    height: 100vh;
 }
 
 /* Scrollbar styling */
