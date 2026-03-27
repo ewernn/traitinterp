@@ -225,7 +225,7 @@ async function renderPromptPicker() {
                     <span class="pp-row-label">Set:</span>
                     <div class="pp-sets">${promptSetButtons}</div>
                 </div>
-                <div class="pp-row">
+                <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Prompt:</span>
                     <div class="pp-prompts">${promptBoxes}</div>
                     ${paginationHtml}
@@ -586,10 +586,23 @@ async function preloadTagsForSet(promptSet) {
     }
 }
 
+/** Get the current prompt page index. */
+function getPromptPage() { return promptPage; }
+
+/** Set the current prompt page index. */
+function setPromptPage(page) { promptPage = page; }
+
+/** Get the prompt tags cache (for rendering tag highlights on buttons). */
+function getPromptTagsCache() { return promptTagsCache; }
+
 // ES module exports
 export {
     INFERENCE_VIEWS,
+    PROMPTS_PER_PAGE,
     getDiffState,
+    getPromptPage,
+    setPromptPage,
+    getPromptTagsCache,
     renderPromptPicker,
     fetchPromptPickerData,
     updatePlotTokenHighlights,

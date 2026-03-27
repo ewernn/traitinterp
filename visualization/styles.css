@@ -484,7 +484,7 @@ body {
     flex-direction: column;
     gap: 1px;
     padding: 4px;
-    padding-bottom: 80px; /* Space for prompt picker at bottom */
+    padding-bottom: 4px;
 }
 
 .pss-item {
@@ -523,6 +523,41 @@ body {
     color: var(--text-tertiary);
     text-align: center;
     font-size: var(--text-sm);
+}
+
+/* Prompt number buttons section in sidebar */
+.pss-prompts-section {
+    border-top: 1px solid var(--border-color);
+    padding: 8px;
+}
+
+.pss-prompts-header {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    padding: 4px 4px 6px;
+}
+
+.pss-prompts-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+.pss-prompts-grid .pp-btn {
+    padding: 2px 5px;
+    font-size: 11px;
+    min-width: 24px;
+    text-align: center;
+}
+
+.pss-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: var(--text-xs);
 }
 
 .main-content {
