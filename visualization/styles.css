@@ -690,7 +690,7 @@ header {
 }
 
 .page-title {
-    font-size: var(--text-4xl);
+    font-size: var(--text-2xl);
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 auto;
@@ -960,14 +960,14 @@ code {
 /* Page Intro */
 .page-intro {
     max-width: 500px;
-    margin: 0 auto 60px auto;
+    margin: 0 auto 24px auto;
     text-align: center;
 }
 
 .page-intro-text {
-    font-size: var(--text-lg);
-    color: var(--text-primary);
-    margin-bottom: 20px;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    margin-bottom: 8px;
 }
 
 .page-intro-model {
