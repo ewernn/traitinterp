@@ -478,13 +478,11 @@ body {
 }
 
 .pss-list {
-    flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 1px;
     padding: 4px;
-    padding-bottom: 4px;
 }
 
 .pss-item {
