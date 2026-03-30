@@ -4,7 +4,7 @@
 
 OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resolve_layers moved. Steering records typed with SteeringRunRecord + SteeringResults dataclasses. All pipeline + dev/ consumers updated. Critic-found bugs fixed. process_activations.py split into `capture_activations.py` + `project_activations.py` (standalone CLI deleted — use `inference/run_inference_pipeline.py`). Model loading done: `ServerBackend`, `tokenize_with_prefill()`, `load_model_or_client()` deleted. Hook renames done. project_activations bug fixed. Inference pipeline flags updated: `--skip-generate` replaced by `--regenerate`, `--capture` added.
 
-**Next priority:** normalized projections as first-class, remaining typing from typing_audit.md.
+**Next priority:** public release prep, or trait path consistency (3-level everywhere).
 
 ---
 
@@ -39,34 +39,19 @@ OOM dedup done. normalize_projections wired. Dead logit lens code deleted. resol
 
 ## Known Issues
 
-- 43 experiment scripts have broken `get_best_vector` imports (experiments/ only, not pipeline)
-- Trait paths: datasets 3-level (base/emotion_set/X), experiments 2-level (emotion_set/X). See TODO below.
+- ~~43 experiment scripts have broken `get_best_vector` imports~~ FIXED — renamed to `select_vector`, dict→attribute access, 42 files updated
+- ~~Trait paths~~ RESOLVED — both 2-level (starter_traits) and 3-level (base/instruct) are intentional. See TODO below.
 - `valid` key in steering_results.py never written to disk
-- Analysis scripts use raw projections without normalizing — cross-layer comparisons invalid (per_token_diff, compare_variants, layer_sensitivity). `read_projection(mode='normalized')` now available but not wired into callers.
-- Steering run JSONL entries have no `"type"` key (footgun — header has "header", baseline has "baseline", run has nothing)
-- `get_layer_path_prefix` import in hooks.py broken (test_hooks fails)
+- ~~Analysis scripts use raw projections without normalizing~~ FIXED — per_token_diff.py and persona_detection.py now use `mode='normalized'`. trait_correlation.py was already correct.
+- ~~Steering run JSONL entries have no `"type"` key~~ FIXED — `run_rescore()` backfills + writes `"type": "run"`, docstring updated
+- ~~`get_layer_path_prefix` import in hooks.py broken~~ FIXED — imports from `core.generation` directly
 
 ---
 
 ## TODO
 
-### Trait path consistency (3-level everywhere)
-Currently datasets use 3-level paths (`base/emotion_set/anger`) but experiments use 2-level (`emotion_set/anger`). The first level maps to a model variant defined in experiment config.json.
-
-**Target state:**
-- `--traits base/emotion_set/anger` works everywhere (extraction, inference, steering, analysis)
-- Experiment paths: `experiments/{exp}/extraction/{model_variant}/base/emotion_set/anger/vectors/...`
-- Config maps variant → trait category: `{"variants": {"base": {"model": "..."}, "instruct": {"model": "..."}}}`
-- `discover_extracted_traits()` returns 3-level tuples
-
-**Scope:**
-- PathBuilder (`utils/paths.py`) — add variant prefix to trait paths in experiment templates
-- `discover_extracted_traits()` — walk one level deeper
-- `--traits` flag parsing in all 3 pipelines
-- Existing experiment data needs migration (or regeneration)
-- Since everything flows through PathBuilder, the change should be contained — update the path templates and the discovery function, most consumers won't change.
-
-**Do after file restructure** — easier to reason about with clean file names. Look for opportunities to fold in during restructure.
+### Trait path consistency
+Datasets support both depths: `starter_traits/{trait}/` (2-level, public) and `base/{category}/{trait}/` (3-level, research). Experiments use 2-level (`{category}/{trait}`) — the first level in datasets (`base/`, `instruct/`, `starter_traits/`) maps to a model variant defined in experiment config.json. This is intentional, not a bug — starter_traits are flat by design. No migration needed.
 
 ### ~~process_activations.py further cleanup~~ DONE
 Split into `capture_activations.py` + `project_activations.py`. Standalone CLI deleted.
@@ -82,22 +67,18 @@ Selection logic genuinely differs. Could extract shared `_load_single_vector()` 
 ### Model loading convergence
 `ServerBackend`, `tokenize_with_prefill()`, `load_model_or_client()` deleted. Remaining files call `load_model_with_lora()` directly. Should funnel through `LocalBackend.from_experiment()` which already exists.
 
-### Normalized projections as first-class
-- Store pre-normalized scores in projection JSON with `"score_mode": "normalized"` metadata flag
-- Keep per-token norms for cosine conversion: `normalized * mean_norm / token_norms[t]`
-- Raw recovery: `normalized * mean_norm`
-- Frontend default: change state.js from `'cosine'` to `'normalized'`
-- Schema-breaking for existing files — regenerate when needed
+### ~~Normalized projections as first-class~~ DONE
+`ProjectionEntry.__post_init__()` auto-computes `normalized_prompt`/`normalized_response` from token norms. `to_dict()` writes them. `read_projection(mode='normalized')` uses pre-computed fields when available, falls back to on-the-fly for old files. Frontend default changed from `'cosine'` to `'normalized'`. Schema is additive — old files work via fallback. New projections will include normalized fields automatically.
 
-### Remaining typing (from typing_audit.md)
-4. **Activation Metadata** — 18 keys, 5 consumers
-5. **Vetting Scores** — 3 consumers, nested structure
-6. **SteeringResults wrapper** — optional, wraps load_results return for full end-to-end typing
+### ~~Remaining typing (from typing_audit.md)~~ DONE
+4. ~~**Activation Metadata**~~ DONE — `ActivationMetadata` dataclass in `core/types.py`, all 5 consumers updated to attribute access
+5. ~~**Vetting Scores**~~ DONE — `VettingStats.from_summary()` classmethod, single call site in run_extraction_pipeline.py
+6. ~~**SteeringResults wrapper**~~ Already done — `load_results()` returns `SteeringResults`, all consumers use attribute access
 
-### Large files to audit
-- `steering_eval.py` (904 lines) — duplicate model loading, raw JSONL manipulation
-- `model.py` / `backends.py` — potential overlap (ServerBackend deleted, but review remaining)
-- `coefficient_search.py` (656 lines) — may be appropriately complex
+### Large files — audited
+- `steering_eval.py` — fixed: JudgeResult dict-access bug, manual mean → `summarize_judge_scores`, duplicate model loading → `_ensure_backend()`. Remaining: `run_rescore` raw JSONL manipulation (low priority)
+- `model.py` / `backends.py` — clean separation confirmed. Fixed: removed dead `'server'` choice from `add_backend_args`. Remaining: `from_experiment` unused by pipelines
+- `coefficient_search.py` — fixed: dead `"done"` key, stale docstring, duplicate reporting → `_print_best_results()`. Remaining: score-averaging duplication (not worth extracting — TP broadcast shapes differ)
 
 ### Public release
 - Extract + steer 9 starter traits on a model

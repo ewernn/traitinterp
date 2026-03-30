@@ -354,3 +354,31 @@ Extraction (creates vectors)
 ```
 
 **Key principle:** Extract once, apply everywhere. Extraction creates vectors; all other workflows consume them.
+
+---
+
+## Hardware & Cost
+
+### GPU requirements
+
+| Model size | Minimum GPU | VRAM |
+|------------|------------|------|
+| Up to 9B | RTX 3090 / Apple Silicon M1 Pro+ | 24GB / 18GB unified |
+| Up to 14B | RTX 3090/4090 | 24GB |
+| Up to 27B | A100-40GB | 40GB |
+| 70B+ | A100-80GB (or 2× A100-40GB with TP) | 80GB |
+
+### Cost notes
+
+GPU cost depends on your provider and model size — extraction and steering time scales with layer count and trait count.
+
+LLM judge (steering eval) uses gpt-4.1-mini. Per trait: `layers × search_steps × n_prompts × 2` API calls (trait score + coherence). Default layer range is 30%-60% of model depth. Use `--layers` to narrow the search after finding good layers on a few traits.
+
+### Remote GPU
+
+Set `EXPERIMENTS_DIR` to store experiments outside the repo (e.g., on a scratch filesystem):
+```bash
+export EXPERIMENTS_DIR=/scratch/$USER/experiments
+```
+
+To get results back locally: `rsync -avz gpu-host:~/traitinterp/experiments/ ./experiments/`

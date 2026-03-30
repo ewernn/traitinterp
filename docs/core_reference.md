@@ -8,6 +8,7 @@ Primitives for trait vector extraction and analysis.
 
 ```python
 from core import VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant
+from core.types import ActivationMetadata, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults
 
 # Identify a single trait vector
 spec = VectorSpec(
@@ -48,6 +49,11 @@ variant = get_model_variant(experiment)  # ModelVariant(name, model, lora)
 # Judge scoring returns JudgeResult
 from utils.metrics import summarize_judge_scores
 result = summarize_judge_scores(scores)  # JudgeResult(trait_mean, coherence_mean, n, ...)
+
+# Activation metadata (written by extract_vectors.py, read by load_activations.py)
+from utils.load_activations import load_activation_metadata
+meta = load_activation_metadata(experiment, trait, variant)  # ActivationMetadata
+meta.n_layers, meta.hidden_dim, meta.captured_layers, meta.activation_norms
 ```
 
 ---
@@ -375,7 +381,7 @@ with PerSampleSteering(model, steering_configs, component='residual'):
 ```
 core/
 ├── __init__.py      # Public API exports
-├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord
+├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults, ActivationMetadata, ModelConfig
 ├── hooks.py         # CaptureHook, SteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
 ├── math.py          # projection, batch_cosine_similarity, accuracy, effect_size, orthogonalize
