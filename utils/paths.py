@@ -43,6 +43,11 @@ def _load_config():
     return _config
 
 
+def _experiments_root() -> Optional[str]:
+    """Get custom experiments root from EXPERIMENTS_DIR env var, if set."""
+    return os.environ.get('EXPERIMENTS_DIR')
+
+
 def get(key: str, **variables) -> Path:
     """
     Get a path by key with variable substitution.
@@ -84,6 +89,12 @@ def get(key: str, **variables) -> Path:
         missing = re.findall(r'\{(\w+)\}', result)
         warnings.warn(f"Unsubstituted variables in path key '{key}': {missing}")
 
+    # If EXPERIMENTS_DIR is set, reroute experiments/ paths
+    custom_root = _experiments_root()
+    if custom_root and (result == 'experiments' or result.startswith('experiments/')):
+        suffix = result[len('experiments'):]
+        return Path(custom_root + suffix)
+
     return Path(result)
 
 
@@ -112,6 +123,15 @@ def load_experiment_config(experiment: str) -> dict:
         with open(config_path) as f:
             _experiment_configs[experiment] = json.load(f)
     return _experiment_configs[experiment]
+
+
+def atomic_torch_save(obj, path) -> None:
+    """Save tensor/dict atomically: write to .tmp, then rename. Prevents corruption from interruptions."""
+    import torch
+    path = Path(path)
+    tmp_path = path.with_suffix(path.suffix + '.tmp')
+    torch.save(obj, tmp_path)
+    tmp_path.rename(path)
 
 
 def content_hash(path) -> str:

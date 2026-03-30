@@ -52,7 +52,7 @@ def load_persona_projections(projections_base, persona, traits, prompt_set_prefi
                 pid = int(f.stem)
             except ValueError:
                 continue
-            response_proj = read_response_projections(f)
+            response_proj = read_response_projections(f, mode='normalized')
             if response_proj:
                 result[trait][pid] = float(np.mean(response_proj))
     return result

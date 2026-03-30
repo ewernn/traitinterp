@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from core import MultiLayerCapture
 from utils.paths import (
-    get as get_path, get_model_variant, load_experiment_config,
+    get as get_path, get_model_variant, load_experiment_config, atomic_torch_save,
 )
 from utils.model import get_inner_model, tokenize, pad_sequences
 from utils.distributed import is_tp_mode, is_rank_zero
@@ -38,7 +38,7 @@ def _save_pt_data(data: Dict, prompt_id, raw_dir: Path, response_only: bool = Fa
             'response': data['response'],
         }
         save_data['prompt']['activations'] = {}
-    torch.save(save_data, raw_dir / f"{prompt_id}.pt")
+    atomic_torch_save(save_data, raw_dir / f"{prompt_id}.pt")
 
 
 def capture_raw_activations(
@@ -48,7 +48,6 @@ def capture_raw_activations(
     components: str = "residual",
     layers: str = None,
     response_only: bool = False,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     responses_from: str = None,
     skip_existing: bool = False,
@@ -128,8 +127,7 @@ def capture_raw_activations(
     if model is None:
         from utils.backends import LocalBackend
         backend = LocalBackend.from_experiment(
-            experiment, variant=variant_name,
-            load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit,
+            experiment, variant=variant_name, load_in_4bit=load_in_4bit,
         )
         model, tokenizer = backend.model, backend.tokenizer
 

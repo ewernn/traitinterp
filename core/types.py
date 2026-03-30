@@ -2,7 +2,7 @@
 Shared type definitions for trait vector operations.
 
 Input: None (type definitions only)
-Output: VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ProjectionEntry, ProjectionRecord, ResponseRecord, ModelConfig, ModelVariant, SteeringEntry
+Output: VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ProjectionEntry, ProjectionRecord, ResponseRecord, ModelConfig, ModelVariant, ActivationMetadata, SteeringEntry
 Usage:
     from core.types import VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant
 
@@ -344,6 +344,42 @@ class ModelConfig:
 
     def to_dict(self) -> dict:
         return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
+class ActivationMetadata:
+    """Metadata saved alongside extracted activations.
+
+    Written by extract_vectors.py Stage 3, read by load_activations.py and analysis scripts.
+    File pattern: experiments/{exp}/extraction/{variant}/{component}/{position}/{trait}/metadata.json
+    """
+    model: str
+    trait: str
+    n_layers: int
+    hidden_dim: int
+    captured_layers: List[int]
+    n_examples_pos: int
+    n_examples_neg: int
+    n_filtered_pos: int
+    n_filtered_neg: int
+    paired_filter: bool
+    n_excluded_by_pairing: int
+    val_split: float
+    n_val_pos: int
+    n_val_neg: int
+    position: str
+    component: str
+    activation_norms: Dict[str, List[float]]
+    timestamp: str = ''
+    environment: Optional[Dict[str, str]] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> 'ActivationMetadata':
+        fields = {f.name for f in cls.__dataclass_fields__.values()}
+        return cls(**{k: v for k, v in d.items() if k in fields})
 
 
 @dataclass

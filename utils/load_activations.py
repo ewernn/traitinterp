@@ -15,6 +15,7 @@ from typing import Dict, Optional, Tuple
 
 import torch
 
+from core.types import ActivationMetadata
 from utils.paths import (
     get_activation_dir,
     get_activation_path,
@@ -24,7 +25,7 @@ from utils.paths import (
 
 
 # Cache for stacked tensors (avoids reloading when iterating layers)
-_stacked_cache: Dict[str, Tuple[torch.Tensor, dict]] = {}
+_stacked_cache: Dict[str, Tuple[torch.Tensor, ActivationMetadata]] = {}
 
 
 def load_activation_metadata(
@@ -33,11 +34,11 @@ def load_activation_metadata(
     model_variant: str,
     component: str = "residual",
     position: str = "response[:5]",
-) -> dict:
+) -> ActivationMetadata:
     """Load activation metadata without loading tensor data."""
     metadata_path = get_activation_metadata_path(experiment, trait, model_variant, component, position)
     with open(metadata_path) as f:
-        return json.load(f)
+        return ActivationMetadata.from_dict(json.load(f))
 
 
 def _detect_format(
@@ -64,7 +65,7 @@ def _detect_format(
 
 def _load_layer_stacked(
     tensor_path: Path,
-    metadata: dict,
+    metadata: ActivationMetadata,
     layer: int,
     split: str,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -77,14 +78,13 @@ def _load_layer_stacked(
     acts, _ = _stacked_cache[cache_key]
     layer_acts = acts[:, layer, :]
 
-    n_pos_key = "n_examples_pos" if split == "train" else "n_val_pos"
-    n_pos = metadata[n_pos_key]
+    n_pos = metadata.n_examples_pos if split == "train" else metadata.n_val_pos
     return layer_acts[:n_pos], layer_acts[n_pos:]
 
 
 def _load_layer_per_file(
     act_dir: Path,
-    metadata: dict,
+    metadata: ActivationMetadata,
     layer: int,
     split: str,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -95,8 +95,7 @@ def _load_layer_per_file(
         raise FileNotFoundError(f"Per-layer activation file not found: {layer_path}")
 
     layer_acts = torch.load(layer_path, weights_only=True)
-    n_pos_key = "n_examples_pos" if split == "train" else "n_val_pos"
-    n_pos = metadata[n_pos_key]
+    n_pos = metadata.n_examples_pos if split == "train" else metadata.n_val_pos
     return layer_acts[:n_pos], layer_acts[n_pos:]
 
 
@@ -122,7 +121,7 @@ def load_activations(
     """
     metadata = load_activation_metadata(experiment, trait, model_variant, component, position)
 
-    if split == "val" and metadata.get("n_val_pos", 0) == 0:
+    if split == "val" and metadata.n_val_pos == 0:
         return None, None
 
     fmt = _detect_format(experiment, trait, model_variant, component, position)
@@ -168,7 +167,7 @@ def available_layers(
     metadata = load_activation_metadata(experiment, trait, model_variant, component, position)
 
     if fmt == "stacked":
-        return list(range(metadata["n_layers"]))
+        return list(range(metadata.n_layers))
     else:
         act_dir = get_activation_dir(experiment, trait, model_variant, component, position)
         layers = []

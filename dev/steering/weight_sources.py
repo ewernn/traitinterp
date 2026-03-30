@@ -344,7 +344,7 @@ def _load_vectors_and_compute_base_coef(
     for comp in set(c for _, c, _ in entries):
         try:
             meta = load_activation_metadata(experiment, trait, extraction_variant, comp, position)
-            comp_norms[comp] = {int(k): v for k, v in meta.get("activation_norms", {}).items()}
+            comp_norms[comp] = {int(k): v for k, v in meta.activation_norms.items()}
         except FileNotFoundError:
             comp_norms[comp] = {}
 
