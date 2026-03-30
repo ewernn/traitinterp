@@ -40,6 +40,17 @@ from utils.backends import LocalBackend
 # Helpers
 # =============================================================================
 
+def _ensure_backend(config, model_name, lora_adapter, backend):
+    """Load model and create backend if not provided."""
+    if backend is None:
+        model, tokenizer = load_model_with_lora(
+            model_name, load_in_4bit=config.load_in_4bit,
+            bnb_4bit_quant_type=config.bnb_4bit_quant_type,
+            lora_adapter=lora_adapter)
+        return LocalBackend.from_model(model, tokenizer)
+    return backend
+
+
 def estimate_activation_norm(model, tokenizer, prompts, layer, use_chat_template,
                              component="residual"):
     """Estimate activation norm at a layer by running a few prompts through the model."""
@@ -400,11 +411,7 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
 
     # Init model
     should_close_judge = False
-    if backend is None:
-        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=config.load_in_8bit,
-                                                 load_in_4bit=config.load_in_4bit, bnb_4bit_quant_type=config.bnb_4bit_quant_type,
-                                                 lora_adapter=lora_adapter)
-        backend = LocalBackend.from_model(model, tokenizer)
+    backend = _ensure_backend(config, model_name, lora_adapter, backend)
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
 
     from utils.paths import resolve_use_chat_template
@@ -534,7 +541,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
         if existing and not force:
             print(f"  Existing baseline: trait={existing.trait_mean:.1f}, "
                   f"coh={existing.coherence_mean or 0:.1f}, n={existing.n}")
-            summary.append((trait, existing['trait_mean'], existing.get('coherence_mean'), existing['n'], "cached"))
+            summary.append((trait, existing.trait_mean, existing.coherence_mean, existing.n, "cached"))
             continue
 
         if existing and force:
@@ -694,13 +701,7 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
     effective_eval_prompt = resolve_eval_prompt(steering_data, config.eval_prompt, config.use_default_prompt)
 
     should_close_judge = False
-    if backend is None:
-        model, tokenizer = load_model_with_lora(model_name, load_in_8bit=config.load_in_8bit,
-                                                 load_in_4bit=config.load_in_4bit,
-                                                 bnb_4bit_quant_type=config.bnb_4bit_quant_type,
-                                                 lora_adapter=lora_adapter)
-        backend = LocalBackend.from_model(model, tokenizer)
-
+    backend = _ensure_backend(config, model_name, lora_adapter, backend)
     model, tokenizer = backend.model, backend.tokenizer
     use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
 
@@ -730,10 +731,9 @@ async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, 
         eval_prompt=effective_eval_prompt, relevance_check=config.relevance_check,
     )
 
-    ablated_trait_scores = [s["trait_score"] for s in all_scores if s["trait_score"] is not None]
-    ablated_coh_scores = [s["coherence_score"] for s in all_scores if s.get("coherence_score") is not None]
-    ablated_trait_mean = sum(ablated_trait_scores) / len(ablated_trait_scores) if ablated_trait_scores else None
-    ablated_coh_mean = sum(ablated_coh_scores) / len(ablated_coh_scores) if ablated_coh_scores else None
+    ablated_result = summarize_judge_scores(all_scores)
+    ablated_trait_mean = ablated_result.trait_mean
+    ablated_coh_mean = ablated_result.coherence_mean
 
     ablated_data = build_response_records(questions, ablated_responses, all_scores)
     save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
@@ -867,6 +867,7 @@ async def run_rescore(config: SteeringConfig, trait, model_variant, dry_run=Fals
                     entry["timestamp"] = datetime.now().isoformat()
                 lines.append(entry)
             else:
+                entry.setdefault("type", "run")
                 vectors = entry.get("config", {}).get("vectors", [{}])
                 if vectors:
                     v = vectors[0]
@@ -889,6 +890,7 @@ async def run_rescore(config: SteeringConfig, trait, model_variant, dry_run=Fals
         if mk not in matched:
             layer, component, method, coef = mk
             lines.append({
+                "type": "run",
                 "config": {"vectors": [{"layer": layer, "component": component, "method": method, "weight": coef, "position": config.position}]},
                 "result": new_result,
                 "timestamp": datetime.now().isoformat(),

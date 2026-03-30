@@ -156,8 +156,18 @@ def calibrate_batch_size(
     if isinstance(pad_id, list):
         pad_id = pad_id[0]
 
-    dummy = torch.full((1, seq_len), pad_id, dtype=torch.long, device=next(model.parameters()).device)
+    device = next(model.parameters()).device
+    dummy = torch.full((1, seq_len), pad_id, dtype=torch.long, device=device)
     mask = torch.ones_like(dummy)
+
+    # MPS/CPU fallback: no memory profiling available, use analytical estimate
+    if device.type != 'cuda':
+        from utils.vram import calculate_max_batch_size
+        del dummy, mask
+        batch_size = calculate_max_batch_size(model, seq_len)
+        if is_rank_zero():
+            print(f"    Calibrated (analytical, {device.type}): batch={batch_size}")
+        return batch_size
 
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()

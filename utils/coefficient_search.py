@@ -12,7 +12,7 @@ Output:
     - Saves results incrementally
 
 Usage:
-    from utils.coefficient_search import adaptive_search_layer, batched_adaptive_search
+    from utils.coefficient_search import batched_adaptive_search
 """
 
 import gc
@@ -37,6 +37,29 @@ SEARCH_COHERENCE_MARGIN = 3
 
 if TYPE_CHECKING:
     from utils.backends import GenerationBackend
+
+
+def _print_best_results(states, sign, threshold, group_by_trait=False):
+    """Print best result per state, optionally grouped by trait."""
+    label = "Best per trait×layer:" if group_by_trait else "Best per layer:"
+    print(f"\n{'='*60}")
+    print(label)
+    print(f"{'='*60}")
+    current_trait = None
+    for state in states:
+        if group_by_trait and state["trait"] != current_trait:
+            current_trait = state["trait"]
+            print(f"\n  {current_trait}:")
+        indent = "    " if group_by_trait else "  "
+        valid = [(c, t, coh) for c, t, coh in state["history"] if coh >= threshold]
+        if valid:
+            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1] * sign)
+            print(f"{indent}L{state['layer']:2d}: coef={best_coef:.1f}, trait={best_trait:.1f}, coh={best_coh:.1f}")
+        elif state["history"]:
+            best_coef, best_trait, best_coh = max(state["history"], key=lambda x: x[2])
+            print(f"{indent}L{state['layer']:2d}: coef={best_coef:.1f} (no valid, best coh={best_coh:.1f})")
+        else:
+            print(f"{indent}L{state['layer']:2d}: no results")
 
 
 def _update_coefficients(states, threshold, up_mult, down_mult, momentum):
@@ -142,7 +165,6 @@ async def batched_adaptive_search(
             "coef": ld["base_coef"] * start_mult * sign,  # Start with direction-appropriate sign
             "velocity": 1.0,  # Multiplicative velocity for momentum
             "history": [],
-            "done": False,
             "best_result": None,  # Track best for save_mode="best"
             "best_responses": None,
         })
@@ -152,10 +174,7 @@ async def batched_adaptive_search(
         print(f"\n--- Step {step + 1}/{n_steps} ---")
 
         # Split layers into batches
-        active_states = [s for s in layer_states if not s["done"]]
-        if not active_states:
-            print("All layers done (cached)")
-            break
+        active_states = layer_states
 
         for batch_start in range(0, len(active_states), max_batch_layers):
             batch_states = active_states[batch_start:batch_start + max_batch_layers]
@@ -296,21 +315,7 @@ async def batched_adaptive_search(
                     position, prompt_set, state["best_result"]["config"], state["best_result"]["timestamp"]
                 )
 
-    # Report best per layer (direction-aware: positive maximizes trait, negative minimizes)
-    print(f"\n{'='*60}")
-    print("Best per layer:")
-    print(f"{'='*60}")
-    for state in layer_states:
-        valid = [(c, t, coh) for c, t, coh in state["history"] if coh >= threshold]
-        if valid:
-            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1] * sign)
-            print(f"  L{state['layer']:2d}: coef={best_coef:.1f}, trait={best_trait:.1f}, coh={best_coh:.1f}")
-        else:
-            if state["history"]:
-                best_coef, best_trait, best_coh = max(state["history"], key=lambda x: x[2])
-                print(f"  L{state['layer']:2d}: coef={best_coef:.1f} (no valid, best coh={best_coh:.1f})")
-            else:
-                print(f"  L{state['layer']:2d}: no results")
+    _print_best_results(layer_states, sign, threshold)
 
 
 def _group_configs_by_batch_size(states: List[Dict], max_batch_size: int) -> List[List[Dict]]:
@@ -477,7 +482,6 @@ async def multi_trait_batched_adaptive_search(
                 "coef": ld["base_coef"] * start_mult * sign,
                 "velocity": 1.0,
                 "history": [],
-                "done": False,
                 "best_result": None,
                 "best_responses": None,
                 # Trait context
@@ -510,10 +514,7 @@ async def multi_trait_batched_adaptive_search(
     print(f"Total questions per full step: {total_questions * len(trait_configs[0]['layer_data'])} | max_batch_size={max_batch_size}")
 
     for step in range(n_steps):
-        active_states = [s for s in config_states if not s["done"]]
-        if not active_states:
-            print("All configs done (cached)")
-            break
+        active_states = config_states
 
         # Split cached vs uncached
         uncached_states = []
@@ -636,21 +637,4 @@ async def multi_trait_batched_adaptive_search(
                     state["best_result"]["config"], state["best_result"]["timestamp"],
                 )
 
-    # Report best per trait×layer
-    print(f"\n{'='*60}")
-    print("Best per trait×layer:")
-    print(f"{'='*60}")
-    current_trait = None
-    for state in config_states:
-        if state["trait"] != current_trait:
-            current_trait = state["trait"]
-            print(f"\n  {current_trait}:")
-        valid = [(c, t, coh) for c, t, coh in state["history"] if coh >= threshold]
-        if valid:
-            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1] * sign)
-            print(f"    L{state['layer']:2d}: coef={best_coef:.1f}, trait={best_trait:.1f}, coh={best_coh:.1f}")
-        elif state["history"]:
-            best_coef, best_trait, best_coh = max(state["history"], key=lambda x: x[2])
-            print(f"    L{state['layer']:2d}: coef={best_coef:.1f} (no valid, best coh={best_coh:.1f})")
-        else:
-            print(f"    L{state['layer']:2d}: no results")
+    _print_best_results(config_states, sign, threshold, group_by_trait=True)
