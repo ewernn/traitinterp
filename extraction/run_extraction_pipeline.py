@@ -104,8 +104,7 @@ def _init_backend(config: ExtractionConfig):
     variant = get_model_variant(config.experiment, config.model_variant, mode="extraction")
     is_base = config.base_model if config.base_model is not None else is_base_model(variant.model)
     backend = LocalBackend.from_experiment(
-        config.experiment, variant=variant.name,
-        load_in_8bit=config.load_in_8bit, load_in_4bit=config.load_in_4bit,
+        config.experiment, variant=variant.name, load_in_4bit=config.load_in_4bit,
         bnb_4bit_quant_type=config.bnb_4bit_quant_type,
     )
     use_chat_template = not is_base and backend.tokenizer.chat_template is not None
@@ -207,14 +206,9 @@ def vet_responses(config: ExtractionConfig, trait: str, variant_name: str) -> Ve
         return VettingStats.skip()
 
     with open(scores_file) as f:
-        s = json.load(f).get('summary', {})
+        summary = json.load(f).get('summary', {})
 
-    return VettingStats(
-        pos_passed=s.get('positive_passed', 0),
-        pos_total=s.get('positive_passed', 0) + s.get('positive_failed', 0),
-        neg_passed=s.get('negative_passed', 0),
-        neg_total=s.get('negative_passed', 0) + s.get('negative_failed', 0),
-    )
+    return VettingStats.from_summary(summary)
 
 
 def _has_activations(config, trait, variant_name, position):
@@ -314,7 +308,6 @@ def main():
     parser.add_argument("--save-activations", action="store_true")
 
     # Model
-    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--bnb-4bit-quant-type", default="nf4")
     parser.add_argument("--base-model", action="store_true", dest="base_model_override")
@@ -361,7 +354,6 @@ def main():
         paired_filter=args.paired_filter,
         adaptive=args.adaptive,
         val_split=args.val_split,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
         bnb_4bit_quant_type=args.bnb_4bit_quant_type,
         base_model=True if args.base_model_override else (False if args.it_model_override else None),

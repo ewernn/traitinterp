@@ -530,7 +530,6 @@ def main():
     parser.add_argument("--coef", type=float, default=-1.0, help="Steering coefficient (default: -1.0 for ablation)")
 
     # Model options
-    parser.add_argument("--load-in-8bit", action="store_true", help="Load model in 8-bit")
     parser.add_argument("--load-in-4bit", action="store_true", help="Load model in 4-bit")
 
     args = parser.parse_args()
@@ -544,7 +543,6 @@ def main():
     model, tokenizer = load_model_with_lora(
         model_name,
         lora_adapter=lora,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
 

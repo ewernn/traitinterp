@@ -138,7 +138,6 @@ def run_test(
     neg_threshold: int = 40,
     max_concurrent: int = 20,
     temperature: float = 0.0,
-    load_in_8bit: bool = False,
     use_modal: bool = False,
     model_override: str = None,
 ):
@@ -234,7 +233,7 @@ def run_test(
         from utils.model_registry import is_base_model
         from utils.model_generation import generate_batch
 
-        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=load_in_8bit)
+        model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora)
         base_model = is_base_model(model_name)
         use_chat_template = not base_model and tokenizer.chat_template is not None
 
@@ -424,8 +423,6 @@ Examples:
                         help="Max concurrent API requests for scoring (default: 20)")
     parser.add_argument("--temperature", type=float, default=0.0,
                         help="Generation temperature (default: 0.0)")
-    parser.add_argument("--load-in-8bit", action="store_true",
-                        help="Load model in 8-bit quantization")
 
     args = parser.parse_args()
 
@@ -451,7 +448,6 @@ Examples:
         neg_threshold=args.neg_threshold,
         max_concurrent=args.max_concurrent,
         temperature=args.temperature,
-        load_in_8bit=args.load_in_8bit,
         use_modal=args.modal,
         model_override=args.model,
     )

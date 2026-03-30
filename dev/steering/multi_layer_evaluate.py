@@ -476,7 +476,6 @@ async def main():
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--extraction-variant", default=None)
     parser.add_argument("--vector-experiment", default=None)
-    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     add_backend_args(parser)
     parser.add_argument("--no-relevance-check", action="store_true")
@@ -515,7 +514,6 @@ async def main():
     print(f"Loading model: {model_name}")
     backend = LocalBackend.from_experiment(
         args.experiment, variant=model_variant,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
     judge = TraitJudge()

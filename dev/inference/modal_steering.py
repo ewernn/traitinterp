@@ -119,7 +119,6 @@ async def steering_eval_remote(
         experiment=experiment,
         no_batch=False,
         ablation=None,
-        load_in_8bit=False,
         load_in_4bit=False,
         bnb_4bit_quant_type="nf4",
         layers=",".join(str(l) for l in layers),

@@ -183,7 +183,6 @@ def main():
                         help="Steering coefficient (default: 6.0)")
 
     # Model options
-    parser.add_argument("--load-in-8bit", action="store_true", help="Load model in 8-bit")
     parser.add_argument("--load-in-4bit", action="store_true", help="Load model in 4-bit")
 
     # Other
@@ -241,7 +240,6 @@ def main():
         steer=args.steer,
         layer=args.layer,
         coef=args.coef,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
 
@@ -256,7 +254,6 @@ def run_logit_diff(
     steer: str = None,
     layer: int = None,
     coef: float = 6.0,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     model=None,
     tokenizer=None,
@@ -270,7 +267,6 @@ def run_logit_diff(
         model, tokenizer = load_model_with_lora(
             model_name,
             lora_adapter=lora,
-            load_in_8bit=load_in_8bit,
             load_in_4bit=load_in_4bit,
         )
 
@@ -334,7 +330,6 @@ def run_logit_diff(
             "model_variant": model_variant,
             "dataset": dataset_path,
             "steering": steering_info,
-            "load_in_8bit": load_in_8bit,
             "load_in_4bit": load_in_4bit,
             "timestamp": datetime.now().isoformat(),
         },
