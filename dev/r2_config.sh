@@ -87,9 +87,12 @@ build_excludes() {
         --exclude "**/checkpoint-*/added_tokens.json"
     )
 
-    # ── Completed findings experiments: excluded by default ──
-    # Use --only viz_findings to sync these directly
-    EXCLUDES+=(--exclude "viz_findings/**")
+    # ── Heavy/completed experiments: excluded by default ──
+    # Use --only <name> to sync these directly
+    EXCLUDES+=(
+        --exclude "viz_findings/**"
+        --exclude "audit-bleachers/**"    # 10GB: 168 prompt sets × 57 variants
+    )
 
     # ── Archive: not synced (lives in separate R2 bucket path) ──
     # Archived experiments are at r2:trait-interp-bucket/experiments_archive/

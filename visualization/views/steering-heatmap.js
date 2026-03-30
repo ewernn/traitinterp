@@ -9,6 +9,7 @@ import { getDisplayName, ASYMB_COLORSCALE, DELTA_COLORSCALE } from '../core/disp
 import { buildChartLayout, renderChart } from '../core/charts.js';
 import { scoreClass } from '../core/ui.js';
 import { fetchSteeringResults } from './steering-filters.js';
+import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
 
 let currentSweepData = null;
 let currentRawResults = null; // Store raw results.jsonl data for method filtering
@@ -46,10 +47,7 @@ async function renderSweepData(steeringEntry) {
 }
 
 
-/**
- * Populate trait dropdown for heatmap section
- * @param {Array} steeringEntries - Array of { trait, model_variant, position, prompt_set, full_path }
- */
+/** Populate trait dropdown for heatmap section. */
 async function renderTraitPicker(steeringEntries) {
     const select = document.getElementById('sweep-trait-select');
     if (!select) return;
@@ -89,74 +87,42 @@ async function renderTraitPicker(steeringEntries) {
 function convertResultsToSweepFormat(results, methodFilter = null) {
     const runs = results.runs || [];
     if (runs.length === 0) return null;
-
     const baseline = results.baseline?.trait_mean || 50;
-
-    // Group by layer and coefficient
     const fullVector = {};
 
-    runs.forEach(run => {
-        const config = run.config || {};
-        const result = run.result || {};
+    for (const run of runs) {
+        const spec = extractVectorSpec(run);
+        if (!spec) continue;
+        const { layer, method, coef } = spec;
+        if (methodFilter && method !== methodFilter) continue;
 
-        // Support VectorSpec format
-        const vectors = config.vectors || [];
-
-        // Only single-vector runs for heatmap
-        if (vectors.length !== 1) return;
-
-        const v = vectors[0];
-        const layer = v.layer;
-        const coef = v.weight;
-        const method = v.method;
-
-        // Filter by method if specified
-        if (methodFilter && method !== methodFilter) return;
-
-        // Round to avoid floating point duplicates
         const coefKey = Math.round(coef * 100) / 100;
-
-        if (!fullVector[layer]) {
-            fullVector[layer] = { ratios: [], deltas: [], coherences: [], traits: [] };
-        }
-
-        // Check for duplicates (same layer + coef)
-        const existingIdx = fullVector[layer].ratios.indexOf(coefKey);
-        const traitScore = result.trait_mean || 0;
-        const coherence = result.coherence_mean || 0;
-        const delta = traitScore - baseline;
+        if (!fullVector[layer]) fullVector[layer] = { ratios: [], deltas: [], coherences: [], traits: [] };
+        const d = fullVector[layer];
+        const existingIdx = d.ratios.indexOf(coefKey);
+        const { traitScore, coherence, delta } = extractRunMetrics(run.result || {}, baseline);
 
         if (existingIdx === -1) {
-            fullVector[layer].ratios.push(coefKey);
-            fullVector[layer].deltas.push(delta);
-            fullVector[layer].coherences.push(coherence);
-            fullVector[layer].traits.push(traitScore);
+            d.ratios.push(coefKey); d.deltas.push(delta);
+            d.coherences.push(coherence); d.traits.push(traitScore);
         } else {
-            // Update if this run is newer
-            fullVector[layer].deltas[existingIdx] = delta;
-            fullVector[layer].coherences[existingIdx] = coherence;
-            fullVector[layer].traits[existingIdx] = traitScore;
+            d.deltas[existingIdx] = delta;
+            d.coherences[existingIdx] = coherence;
+            d.traits[existingIdx] = traitScore;
         }
-    });
+    }
 
     // Sort by coefficient within each layer
-    Object.keys(fullVector).forEach(layer => {
-        const indices = fullVector[layer].ratios.map((_, i) => i);
-        indices.sort((a, b) => fullVector[layer].ratios[a] - fullVector[layer].ratios[b]);
-
+    for (const layer of Object.keys(fullVector)) {
+        const d = fullVector[layer];
+        const order = d.ratios.map((_, i) => i).sort((a, b) => d.ratios[a] - d.ratios[b]);
         fullVector[layer] = {
-            ratios: indices.map(i => fullVector[layer].ratios[i]),
-            deltas: indices.map(i => fullVector[layer].deltas[i]),
-            coherences: indices.map(i => fullVector[layer].coherences[i]),
-            traits: indices.map(i => fullVector[layer].traits[i])
+            ratios: order.map(i => d.ratios[i]), deltas: order.map(i => d.deltas[i]),
+            coherences: order.map(i => d.coherences[i]), traits: order.map(i => d.traits[i])
         };
-    });
+    }
 
-    return {
-        trait: results.trait || 'unknown',
-        baseline_trait: baseline,
-        full_vector: fullVector
-    };
+    return { trait: results.trait || 'unknown', baseline_trait: baseline, full_vector: fullVector };
 }
 
 
@@ -183,192 +149,117 @@ function updateSweepVisualizations() {
 }
 
 
-function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = false, containerId = 'sweep-heatmap-delta') {
-    const container = document.getElementById(containerId);
-
-    const layers = sortedNumericKeys(data);
-    if (layers.length === 0) {
-        container.innerHTML = '<p class="no-data">No layer data available</p>';
-        return;
-    }
-
-    // Get all unique ratios across all layers
-    const allRatios = new Set();
-    layers.forEach(layer => {
-        (data[layer].ratios || []).forEach(r => allRatios.add(r));
-    });
-    let ratios = Array.from(allRatios).sort((a, b) => a - b);
-
-    if (ratios.length === 0) {
-        container.innerHTML = '<p class="no-data">No ratio data available</p>';
-        return;
-    }
-
-    // Bin coefficients if there are too many (>50) for clean visualization
+/** Build coefficient grid (handles binning for dense data, interpolation for smooth view). */
+function buildCoefficientGrid(ratios, interpolate) {
     const MAX_BINS = 40;
-    let binEdges = null;
-    let binCenters = null;
+    let binEdges = null, binCenters = null;
     if (ratios.length > MAX_BINS) {
-        const minR = Math.min(...ratios);
-        const maxR = Math.max(...ratios);
-        // Use log scale for binning
-        const logMin = Math.log(minR + 1);
-        const logMax = Math.log(maxR + 1);
-        binEdges = [];
-        binCenters = [];
-        for (let i = 0; i <= MAX_BINS; i++) {
-            const logVal = logMin + (logMax - logMin) * i / MAX_BINS;
-            binEdges.push(Math.exp(logVal) - 1);
-        }
-        for (let i = 0; i < MAX_BINS; i++) {
-            binCenters.push((binEdges[i] + binEdges[i + 1]) / 2);
-        }
+        const logMin = Math.log(Math.min(...ratios) + 1), logMax = Math.log(Math.max(...ratios) + 1);
+        binEdges = Array.from({ length: MAX_BINS + 1 }, (_, i) => Math.exp(logMin + (logMax - logMin) * i / MAX_BINS) - 1);
+        binCenters = Array.from({ length: MAX_BINS }, (_, i) => (binEdges[i] + binEdges[i + 1]) / 2);
     }
-
-    // If interpolating, create a denser grid
     let interpolatedRatios = ratios;
     if (interpolate && ratios.length > 1) {
-        const minR = Math.min(...ratios);
-        const maxR = Math.max(...ratios);
-        const numSteps = 50;
-        interpolatedRatios = [];
-        for (let i = 0; i <= numSteps; i++) {
-            interpolatedRatios.push(minR + (maxR - minR) * i / numSteps);
-        }
+        const [minR, maxR] = [Math.min(...ratios), Math.max(...ratios)];
+        interpolatedRatios = Array.from({ length: 51 }, (_, i) => minR + (maxR - minR) * i / 50);
     }
+    const xRatios = interpolate ? interpolatedRatios : (binCenters || ratios);
+    return { binEdges, binCenters, interpolatedRatios, xRatios };
+}
 
-    // Build matrix
+/** Build one matrix row for a layer (binned, direct lookup, or interpolated). */
+function buildMatrixRow(layerData, metric, coherenceThreshold, ratios, grid, interpolate) {
+    const { binEdges, binCenters, interpolatedRatios } = grid;
     const metricKey = metric === 'delta' ? 'deltas' : 'coherences';
-    const matrix = layers.map(layer => {
-        const layerData = data[layer];
-        const layerRatios = layerData.ratios || [];
-        const layerValues = layerData[metricKey] || [];
-        const layerCoherences = layerData.coherences || [];
+    const layerRatios = layerData.ratios || [];
+    const layerValues = layerData[metricKey] || [];
+    const layerCoherences = layerData.coherences || [];
 
-        // Build lookup of valid (ratio, value) pairs for this layer
-        const validPoints = [];
-        layerRatios.forEach((r, idx) => {
-            const coherence = layerCoherences[idx];
-            if (coherence >= coherenceThreshold) {
-                validPoints.push({ r, v: layerValues[idx] });
-            }
-        });
-
-        // If binning, aggregate values per bin
-        if (binEdges && !interpolate) {
-            return binCenters.map((_, binIdx) => {
-                const binMin = binEdges[binIdx];
-                const binMax = binEdges[binIdx + 1];
-                const binPoints = validPoints.filter(p => p.r >= binMin && p.r < binMax);
-                if (binPoints.length === 0) return null;
-                if (metric === 'delta') {
-                    return binPoints.reduce((best, p) => Math.abs(p.v) > Math.abs(best) ? p.v : best, 0);
-                }
-                return Math.max(...binPoints.map(p => p.v));
-            });
-        }
-
-        if (!interpolate) {
-            return ratios.map(ratio => {
-                const idx = layerRatios.indexOf(ratio);
-                if (idx === -1) return null;
-                const coherence = layerCoherences[idx];
-                if (coherence < coherenceThreshold) return null;
-                return layerValues[idx];
-            });
-        }
-
-        // Interpolation mode
-        if (validPoints.length === 0) {
-            return interpolatedRatios.map(() => null);
-        }
-
-        validPoints.sort((a, b) => a.r - b.r);
-
-        return interpolatedRatios.map(targetR => {
-            let lower = null, upper = null;
-            for (const pt of validPoints) {
-                if (pt.r <= targetR) lower = pt;
-                if (pt.r >= targetR && upper === null) upper = pt;
-            }
-
-            if (lower && lower.r === targetR) return lower.v;
-            if (upper && upper.r === targetR) return upper.v;
-            if (!lower || !upper) return null;
-
-            const t = (targetR - lower.r) / (upper.r - lower.r);
-            return lower.v + t * (upper.v - lower.v);
-        });
+    const validPoints = [];
+    layerRatios.forEach((r, idx) => {
+        if (layerCoherences[idx] >= coherenceThreshold) validPoints.push({ r, v: layerValues[idx] });
     });
 
-    const xRatios = interpolate ? interpolatedRatios : (binCenters || ratios);
+    if (binEdges && !interpolate) {
+        return binCenters.map((_, binIdx) => {
+            const pts = validPoints.filter(p => p.r >= binEdges[binIdx] && p.r < binEdges[binIdx + 1]);
+            if (pts.length === 0) return null;
+            return metric === 'delta' ? pts.reduce((best, p) => Math.abs(p.v) > Math.abs(best) ? p.v : best, 0) : Math.max(...pts.map(p => p.v));
+        });
+    }
+    if (!interpolate) {
+        return ratios.map(ratio => {
+            const idx = layerRatios.indexOf(ratio);
+            if (idx === -1 || layerCoherences[idx] < coherenceThreshold) return null;
+            return layerValues[idx];
+        });
+    }
+    if (validPoints.length === 0) return interpolatedRatios.map(() => null);
+    validPoints.sort((a, b) => a.r - b.r);
+    return interpolatedRatios.map(targetR => {
+        let lower = null, upper = null;
+        for (const pt of validPoints) {
+            if (pt.r <= targetR) lower = pt;
+            if (pt.r >= targetR && upper === null) upper = pt;
+        }
+        if (lower && lower.r === targetR) return lower.v;
+        if (upper && upper.r === targetR) return upper.v;
+        if (!lower || !upper) return null;
+        const t = (targetR - lower.r) / (upper.r - lower.r);
+        return lower.v + t * (upper.v - lower.v);
+    });
+}
 
-    // Determine color scale based on metric (only 'delta' and 'coherence' are used)
+function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = false, containerId = 'sweep-heatmap-delta') {
+    const container = document.getElementById(containerId);
+    const layers = sortedNumericKeys(data);
+    if (layers.length === 0) { container.innerHTML = '<p class="no-data">No layer data available</p>'; return; }
+
+    const allRatios = new Set();
+    layers.forEach(layer => (data[layer].ratios || []).forEach(r => allRatios.add(r)));
+    const ratios = Array.from(allRatios).sort((a, b) => a - b);
+    if (ratios.length === 0) { container.innerHTML = '<p class="no-data">No ratio data available</p>'; return; }
+
+    const grid = buildCoefficientGrid(ratios, interpolate);
+    const { binEdges, xRatios } = grid;
+    const matrix = layers.map(layer => buildMatrixRow(data[layer], metric, coherenceThreshold, ratios, grid, interpolate));
+
+    // Color scale
     let colorscale, zmid, zmin, zmax;
     if (metric === 'delta') {
-        colorscale = DELTA_COLORSCALE;
-        zmid = 0;
+        colorscale = DELTA_COLORSCALE; zmid = 0;
         const allVals = matrix.flat().filter(v => v !== null);
         const absMax = Math.max(Math.abs(Math.min(...allVals, 0)), Math.abs(Math.max(...allVals, 0)));
-        zmin = -absMax;
-        zmax = absMax;
+        zmin = -absMax; zmax = absMax;
     } else {
-        colorscale = ASYMB_COLORSCALE;
-        zmin = 0;
-        zmax = 100;
-        zmid = 50;
+        colorscale = ASYMB_COLORSCALE; zmin = 0; zmax = 100; zmid = 50;
     }
 
-    const xIndices = xRatios.map((_, i) => String(i));
-
-    // Build custom hover text
-    const hoverText = matrix.map((row, layerIdx) =>
-        row.map((val, ratioIdx) => {
-            if (val === null) return '';
-            const metricLabel = metric === 'delta' ? 'Delta' : 'Coherence';
-            if (binEdges && !interpolate) {
-                const binMin = binEdges[ratioIdx];
-                const binMax = binEdges[ratioIdx + 1];
-                return `Layer L${layers[layerIdx]}<br>Coef: ${binMin.toFixed(0)}-${binMax.toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}<br>(best in bin)`;
-            }
-            const coef = xRatios[ratioIdx];
-            return `Layer L${layers[layerIdx]}<br>Coef: ${coef.toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}${interpolate ? '<br>(interpolated)' : ''}`;
-        })
-    );
+    const metricLabel = metric === 'delta' ? 'Delta' : 'Coherence';
+    const hoverText = matrix.map((row, li) => row.map((val, ri) => {
+        if (val === null) return '';
+        if (binEdges && !interpolate) return `Layer L${layers[li]}<br>Coef: ${binEdges[ri].toFixed(0)}-${binEdges[ri + 1].toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}<br>(best in bin)`;
+        return `Layer L${layers[li]}<br>Coef: ${xRatios[ri].toFixed(0)}<br>${metricLabel}: ${val.toFixed(1)}${interpolate ? '<br>(interpolated)' : ''}`;
+    }));
 
     const trace = {
-        z: matrix,
-        x: xIndices,
-        y: layers.map(l => `L${l}`),
-        type: 'heatmap',
-        colorscale: colorscale,
-        zmid: zmid,
-        zmin: zmin,
-        zmax: zmax,
-        hoverongaps: false,
-        connectgaps: interpolate,
-        hovertemplate: '%{text}<extra></extra>',
-        text: hoverText,
-        colorbar: {
-            title: { text: metric === 'delta' ? 'Delta' : 'Coherence', font: { size: 11 } }
-        }
+        z: matrix, x: xRatios.map((_, i) => String(i)), y: layers.map(l => `L${l}`),
+        type: 'heatmap', colorscale, zmid, zmin, zmax,
+        hoverongaps: false, connectgaps: interpolate,
+        hovertemplate: '%{text}<extra></extra>', text: hoverText,
+        colorbar: { title: { text: metricLabel, font: { size: 11 } } }
     };
 
-    // Generate evenly-spaced tick positions
     const numTicks = Math.min(10, xRatios.length);
-    const tickIndices = [];
-    const tickLabels = [];
+    const tickIndices = [], tickLabels = [];
     for (let i = 0; i < numTicks; i++) {
         const idx = Math.round(i * (xRatios.length - 1) / (numTicks - 1));
-        tickIndices.push(String(idx));
-        tickLabels.push(xRatios[idx].toFixed(0));
+        tickIndices.push(String(idx)); tickLabels.push(xRatios[idx].toFixed(0));
     }
 
     const layout = buildChartLayout({
-        preset: 'heatmap',
-        traces: [trace],
-        height: Math.max(300, layers.length * 20 + 100),
-        legendPosition: 'none',
+        preset: 'heatmap', traces: [trace],
+        height: Math.max(300, layers.length * 20 + 100), legendPosition: 'none',
         xaxis: { title: 'Coefficient', tickfont: { size: 10 }, tickvals: tickIndices, ticktext: tickLabels, type: 'category' },
         yaxis: { title: 'Layer', tickfont: { size: 10 }, autorange: 'reversed' },
         margin: { l: 50, r: 80, t: 20, b: 50 }
@@ -379,60 +270,22 @@ function renderSweepHeatmap(data, metric, coherenceThreshold, interpolate = fals
 
 function renderSweepTable(data, coherenceThreshold) {
     const container = document.getElementById('sweep-table-container');
-
     const layers = sortedNumericKeys(data);
-    if (layers.length === 0) {
-        container.innerHTML = '<p class="no-data">No data available</p>';
-        return;
-    }
+    if (layers.length === 0) { container.innerHTML = '<p class="no-data">No data available</p>'; return; }
 
-    // Flatten all results into rows
     const rows = [];
-    layers.forEach(layer => {
-        const layerData = data[layer];
-        layerData.ratios.forEach((ratio, idx) => {
-            rows.push({
-                layer,
-                ratio,
-                delta: layerData.deltas[idx],
-                coherence: layerData.coherences[idx],
-                trait: layerData.traits ? layerData.traits[idx] : null
-            });
-        });
-    });
-
-    // Sort by delta descending
+    for (const layer of layers) {
+        const d = data[layer];
+        d.ratios.forEach((ratio, idx) => rows.push({
+            layer, ratio, delta: d.deltas[idx], coherence: d.coherences[idx], trait: d.traits?.[idx] ?? null
+        }));
+    }
     rows.sort((a, b) => b.delta - a.delta);
 
-    container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Layer</th>
-                    <th>Coef</th>
-                    <th>Delta</th>
-                    <th>Coherence</th>
-                    <th>Trait</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows.map(r => {
-                    const masked = r.coherence < coherenceThreshold;
-                    const deltaClass = r.delta > 15 ? 'quality-good' : r.delta > 5 ? 'quality-ok' : r.delta < 0 ? 'quality-bad' : '';
-                    const cohClass = scoreClass(r.coherence, 'coherence');
-                    return `
-                        <tr class="${masked ? 'masked-row' : ''}">
-                            <td>L${r.layer}</td>
-                            <td>${r.ratio.toFixed(2)}</td>
-                            <td class="${deltaClass}">${r.delta >= 0 ? '+' : ''}${r.delta.toFixed(1)}</td>
-                            <td class="${cohClass}">${r.coherence.toFixed(0)}</td>
-                            <td>${r.trait !== null ? r.trait.toFixed(1) : 'N/A'}</td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-    `;
+    container.innerHTML = `<table class="data-table"><thead><tr><th>Layer</th><th>Coef</th><th>Delta</th><th>Coherence</th><th>Trait</th></tr></thead><tbody>${rows.map(r => {
+        const dc = r.delta > 15 ? 'quality-good' : r.delta > 5 ? 'quality-ok' : r.delta < 0 ? 'quality-bad' : '';
+        return `<tr class="${r.coherence < coherenceThreshold ? 'masked-row' : ''}"><td>L${r.layer}</td><td>${r.ratio.toFixed(2)}</td><td class="${dc}">${r.delta >= 0 ? '+' : ''}${r.delta.toFixed(1)}</td><td class="${scoreClass(r.coherence, 'coherence')}">${r.coherence.toFixed(0)}</td><td>${r.trait !== null ? r.trait.toFixed(1) : 'N/A'}</td></tr>`;
+    }).join('')}</tbody></table>`;
 }
 
 

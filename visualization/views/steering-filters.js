@@ -5,6 +5,7 @@
 
 import { cachedFetchJSON } from '../core/utils.js';
 import { renderFilterChipRow } from '../core/ui.js';
+import { extractVectorSpec } from './steering-utils.js';
 
 // Global chart filters - populated from data, all active by default
 let chartFilters = {
@@ -61,18 +62,14 @@ async function collectFilterValues(steeringEntries) {
 
     for (const result of results) {
         if (!result) continue;
-        // Direction from header
         if (result.direction) directions.add(result.direction);
         for (const run of (result.runs || [])) {
-            const vectors = run.config?.vectors || [];
-            if (vectors.length !== 1) continue;
-            const v = vectors[0];
-            if (v.method) methods.add(v.method);
-            if (v.component) components.add(v.component);
-            else components.add('residual');
-            // Infer direction from coefficient sign if header didn't specify
+            const spec = extractVectorSpec(run);
+            if (!spec) continue;
+            methods.add(spec.method);
+            components.add(spec.component);
             if (!result.direction) {
-                directions.add(v.weight > 0 ? 'positive' : 'negative');
+                directions.add(spec.coef > 0 ? 'positive' : 'negative');
             }
         }
     }

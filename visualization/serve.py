@@ -105,6 +105,17 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_experiment_config(exp_name))
                 return
 
+            # API endpoint: get trait definition + steering config
+            # Path: /api/experiments/{exp}/trait-info/{category}/{trait}
+            if self.path.startswith('/api/experiments/') and '/trait-info/' in self.path:
+                parts = self.path.split('/')
+                if len(parts) >= 7:
+                    exp_name = parts[3]
+                    category = parts[5]
+                    trait = parts[6]
+                    self.send_api_response(self.get_trait_info(exp_name, category, trait))
+                return
+
             # API endpoint: list traits for an experiment
             if self.path.startswith('/api/experiments/') and '/traits' in self.path:
                 exp_name = self.path.split('/')[3]
@@ -394,6 +405,51 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             'coherence': COHERENCE_PROMPT,
         }
 
+    def get_trait_info(self, experiment: str, category: str, trait: str):
+        """Get trait definition text and steering config for a trait.
+
+        Checks experiment-specific files first (in extraction/), then falls
+        back to shared dataset files (in datasets/traits/).
+        """
+        trait_path = f"{category}/{trait}"
+        definition = None
+        steering = None
+
+        # Paths to check: experiment-specific first, then shared datasets
+        # datasets/traits has subdirs (base/, instruct/, starter_traits/) so search all
+        exp_trait_dir = get_path('extraction.base', experiment=experiment) / trait_path
+        datasets_root = get_path('datasets.traits')
+        candidate_dirs = [exp_trait_dir]
+        if datasets_root.exists():
+            for subdir in datasets_root.iterdir():
+                if subdir.is_dir():
+                    candidate = subdir / trait_path
+                    if candidate.exists():
+                        candidate_dirs.append(candidate)
+
+        for trait_dir in candidate_dirs:
+            if definition is None:
+                def_file = trait_dir / 'definition.txt'
+                if def_file.exists():
+                    try:
+                        definition = def_file.read_text().strip()
+                    except Exception:
+                        pass
+
+            if steering is None:
+                steer_file = trait_dir / 'steering.json'
+                if steer_file.exists():
+                    try:
+                        with open(steer_file) as f:
+                            steering = json.load(f)
+                    except Exception:
+                        pass
+
+        return {
+            'definition': definition,
+            'steering': steering,
+        }
+
     def get_experiment_config(self, experiment: str):
         """Get experiment config.json with model metadata (max_context_length, etc.)."""
         from utils.model_registry import get_model_config
@@ -502,10 +558,20 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                             break
 
                 if has_traits:
-                    experiments.append(item.name)
+                    # Check which pipeline stages have data
+                    has = []
+                    if has_traits:
+                        has.append('E')
+                    if (item / 'inference').exists() and any((item / 'inference').iterdir()):
+                        has.append('I')
+                    if (item / 'steering').exists() and any((item / 'steering').iterdir()):
+                        has.append('S')
+                    if (item / 'model_diff').exists() and any((item / 'model_diff').iterdir()):
+                        has.append('M')
+                    experiments.append({'name': item.name, 'has': has})
 
         # Sort alphabetically
-        return {'experiments': sorted(experiments)}
+        return {'experiments': sorted(experiments, key=lambda e: e['name'])}
 
     def list_traits(self, experiment_name):
         """List all traits for an experiment.

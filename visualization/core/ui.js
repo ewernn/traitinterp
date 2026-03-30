@@ -155,8 +155,9 @@ function requireExperiment(contentArea) {
  */
 function deferredLoading(targetEl, message = 'Loading...', delayMs = 150) {
     const el = typeof targetEl === 'string' ? document.getElementById(targetEl) : targetEl;
-    const timer = setTimeout(() => { if (el) el.innerHTML = renderLoading(message); }, delayMs);
-    return { cancel: () => clearTimeout(timer) };
+    let fired = false;
+    const timer = setTimeout(() => { fired = true; if (el) el.innerHTML = renderLoading(message); }, delayMs);
+    return { cancel: () => { clearTimeout(timer); if (fired && el) el.innerHTML = ''; } };
 }
 
 /**

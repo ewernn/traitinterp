@@ -427,7 +427,11 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
 
     let menuItems = visibleExperiments.map(exp => {
         const isActive = exp === activeExperiment;
-        return `<div class="exp-menu-item${isActive ? ' active' : ''}" data-experiment="${exp}">${exp}</div>`;
+        const meta = window.state.experimentMeta?.[exp] || [];
+        const badges = meta.length > 0
+            ? `<span class="exp-badges">${meta.map(b => `<span class="exp-badge">${b}</span>`).join('')}</span>`
+            : '';
+        return `<div class="exp-menu-item${isActive ? ' active' : ''}" data-experiment="${exp}">${exp}${badges}</div>`;
     }).join('');
 
     // Add toggle link if there are hidden experiments
@@ -445,6 +449,24 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
             <div class="exp-menu">${menuItems}</div>
         </div>
     `;
+
+    // Position the fixed dropdown on hover
+    const dropdown = list.querySelector('.exp-dropdown');
+    const menu = list.querySelector('.exp-menu');
+    if (dropdown && menu) {
+        dropdown.addEventListener('mouseenter', () => {
+            const rect = dropdown.getBoundingClientRect();
+            menu.style.top = `${rect.bottom}px`;
+            menu.style.left = `${rect.left}px`;
+            // Ensure menu doesn't overflow right edge of viewport
+            requestAnimationFrame(() => {
+                const menuRect = menu.getBoundingClientRect();
+                if (menuRect.right > window.innerWidth - 8) {
+                    menu.style.left = `${Math.max(4, window.innerWidth - menuRect.width - 8)}px`;
+                }
+            });
+        });
+    }
 
     // Attach click handlers for experiment selection
     list.querySelectorAll('.exp-menu-item').forEach(item => {

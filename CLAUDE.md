@@ -4,6 +4,8 @@
 
 Spawn background subagents liberally — investigators, critics, explorers — whenever doing non-trivial work. Use them to cover blind spots, critique proposals, challenge assumptions, audit implementations, and find things you missed. Before implementing anything significant, spawn a critic agent to stress-test the plan. After implementing, spawn one to review. Unlimited Claude Code usage — err on the side of spawning too many rather than too few.
 
+**Use background agents extensively.** When you need to look something up, trace a code path, or verify a claim — don't say "I don't know" or make something up. Spawn a background investigator immediately and keep working on other things. Never fabricate specific numbers, counts, or implementation details when you could just read the code. If you catch yourself guessing, stop and spawn an agent to find out.
+
 ## Core Principles
 
 **No hardcoding**: Paths, experiment names, trait names, examples - always use variables/templates that resolve at runtime. If you're typing a specific value that could change, it should be a parameter. All paths flow through PathBuilder APIs (`utils/paths.py`, `visualization/core/paths.js`) which read from `config/paths.yaml`.

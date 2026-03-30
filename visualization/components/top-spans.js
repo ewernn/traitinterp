@@ -10,6 +10,13 @@ import { getDisplayName } from '../core/display.js';
 import { setSpanWindowLength, setSpanScope, setSpanMode, getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderFilterChip } from '../core/ui.js';
 
+/** Return inline color and formatted delta string for a span's meanDelta. */
+function deltaStyle(meanDelta) {
+    const color = meanDelta >= 0 ? 'var(--success)' : 'var(--danger)';
+    const text = (meanDelta >= 0 ? '+' : '') + meanDelta.toFixed(3);
+    return { color, text };
+}
+
 // Module-local cache: keyed by `${promptSet}:${organism}:${trait}:${modeKey}`
 const crossPromptSpansCache = {};
 let crossPromptLoading = false;
@@ -226,12 +233,25 @@ function computeClauseSpans(diffValues, tokens, topK = 10) {
 
 /**
  * Render a single span result row.
+ * @param {Object} s - Span object with start, end, meanDelta, text, and optionally promptId
+ * @param {number} i - Zero-based rank index
+ * @param {boolean} showPromptId - Whether to show a prompt ID badge (cross-prompt mode)
  */
-function renderSpanRow(s, i) {
-    return `<div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" title="Tokens ${s.start}\u2013${s.end} (response-relative)">
+function renderSpanRow(s, i, showPromptId = false) {
+    const { color, text: deltaText } = deltaStyle(s.meanDelta);
+    const title = showPromptId
+        ? `Prompt ${s.promptId}, tokens ${s.start}\u2013${s.end}`
+        : `Tokens ${s.start}\u2013${s.end} (response-relative)`;
+    const promptIdAttr = showPromptId ? ` data-prompt-id="${s.promptId}"` : '';
+    const promptBadge = showPromptId
+        ? `<span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>`
+        : '';
+    const spanText = (s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}"${promptIdAttr} title="${title}">
             <span class="span-rank">#${i + 1}</span>
-            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-            <span class="span-text">${s.text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
+            <span class="span-delta" style="color: ${color};">${deltaText}</span>
+            ${promptBadge}
+            <span class="span-text">${spanText}</span>
         </div>`;
 }
 
@@ -412,21 +432,27 @@ function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
         ? `<div class="hint" style="margin-bottom: 4px;">${spans.length} spans across ${totalPrompts} prompts</div>`
         : '';
 
-    resultsDiv.innerHTML = header + (spans.length > 0 ? spans.map((s, i) => `
-        <div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}" data-prompt-id="${s.promptId}" title="Prompt ${s.promptId}, tokens ${s.start}\u2013${s.end}">
-            <span class="span-rank">#${i + 1}</span>
-            <span class="span-delta" style="color: ${s.meanDelta >= 0 ? 'var(--success)' : 'var(--danger)'};">${s.meanDelta >= 0 ? '+' : ''}${s.meanDelta.toFixed(3)}</span>
-            <span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>
-            <span class="span-text">${(s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>
-        </div>
-    `).join('') : '<div class="hint">No spans found across prompts</div>');
+    resultsDiv.innerHTML = header + (spans.length > 0
+        ? spans.map((s, i) => renderSpanRow(s, i, true)).join('')
+        : '<div class="hint">No spans found across prompts</div>');
 
-    // Click handlers: navigate to prompt + highlight
-    document.querySelectorAll('.span-result[data-prompt-id]').forEach(row => {
+    // Attach unified click handlers (handles both chart highlight and prompt navigation)
+    attachSpanClickHandlers(nPromptTokens);
+}
+
+/**
+ * Attach click handlers to span result rows -- highlight in trajectory chart.
+ * For cross-prompt rows (with data-prompt-id), also navigates to that prompt.
+ */
+function attachSpanClickHandlers(nPromptTokens) {
+    document.querySelectorAll('.span-result').forEach(row => {
         row.addEventListener('click', () => {
+            const start = parseInt(row.dataset.spanStart);
+            const end = parseInt(row.dataset.spanEnd);
+
+            // Cross-prompt: navigate to the source prompt
             const promptId = row.dataset.promptId;
-            // Navigate to that prompt
-            if (window.state.currentPromptId !== promptId) {
+            if (promptId && window.state.currentPromptId !== promptId) {
                 window.state.currentPromptId = promptId;
                 localStorage.setItem('promptId', promptId);
                 if (window.state.currentPromptSet) {
@@ -436,21 +462,7 @@ function renderCrossPromptResults(spans, nPromptTokens, totalPrompts) {
                 window.renderPromptPicker?.();
                 window.renderView?.();
             }
-            // Toggle active state
-            document.querySelectorAll('.span-result').forEach(r => r.classList.remove('active'));
-            row.classList.add('active');
-        });
-    });
-}
 
-/**
- * Attach click handlers to span result rows -- highlight in trajectory chart.
- */
-function attachSpanClickHandlers(nPromptTokens) {
-    document.querySelectorAll('.span-result').forEach(row => {
-        row.addEventListener('click', () => {
-            const start = parseInt(row.dataset.spanStart);
-            const end = parseInt(row.dataset.spanEnd);
             // Add highlight shape to the trajectory chart
             const plotDiv = document.getElementById('combined-activation-plot');
             if (plotDiv && plotDiv.data) {
@@ -469,6 +481,7 @@ function attachSpanClickHandlers(nPromptTokens) {
                 const existingShapes = (plotDiv.layout?.shapes || []).filter(s => !s._isSpanHighlight);
                 Plotly.relayout(plotDiv, { shapes: [...existingShapes, { ...shape, _isSpanHighlight: true }] });
             }
+
             // Toggle active state
             document.querySelectorAll('.span-result').forEach(r => r.classList.remove('active'));
             row.classList.add('active');

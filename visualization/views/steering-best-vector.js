@@ -9,6 +9,7 @@ import { getDisplayName, getChartColors, getMethodColors } from '../core/display
 import { buildChartLayout, renderChart, createHtmlLegend } from '../core/charts.js';
 import { renderLoading } from '../core/ui.js';
 import { chartFilters, fetchSteeringResults } from './steering-filters.js';
+import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
 
 let localTraitResultsCache = {}; // Local cache, passed to response-browser via setTraitResultsCache()
 
@@ -25,10 +26,69 @@ function getElicitationLabel(trait) {
     return category;  // fallback to full category name
 }
 
-/**
- * Render Best Vector per Layer section (multi-trait)
- * Shows one chart per base trait (category/name), with lines for each (method, position) combo
- */
+/** Extract run data from steering results, applying chart filters. */
+function extractAndFilterRunData(results, entry, filters, coherenceThreshold) {
+    const position = entry.position;
+    const methodData = {};
+    const runList = [];
+
+    for (const run of (results.runs || [])) {
+        const spec = extractVectorSpec(run);
+        if (!spec) continue;
+        const { layer, method, component, coef } = spec;
+        const { traitScore, coherence } = extractRunMetrics(run.result || {}, 0);
+
+        runList.push({ layer, method, component, coef, traitScore, coherence, timestamp: run.timestamp, entry });
+
+        if (filters.activeMethods.size > 0 && !filters.activeMethods.has(method)) continue;
+        if (filters.activeComponents.size > 0 && !filters.activeComponents.has(component)) continue;
+        if (filters.activePositions.size > 0 && !filters.activePositions.has(position)) continue;
+        if (filters.activeDirections.size > 0 && !filters.activeDirections.has(coef > 0 ? 'positive' : 'negative')) continue;
+        if (coherence < coherenceThreshold) continue;
+
+        const key = component === 'residual' ? method : `${component}/${method}`;
+        if (!methodData[key]) methodData[key] = {};
+        if (!methodData[key][layer] || traitScore > methodData[key][layer].score) {
+            methodData[key][layer] = { score: traitScore, coef };
+        }
+    }
+    return { methodData, runList };
+}
+
+/** Build Plotly traces from methodData for one steering variant. */
+function buildChartTraces(methodData, entry, methodColors, hasMultipleElicit, colorIdxStart) {
+    const traces = [];
+    const posDisplay = entry.position ? window.paths.formatPositionDisplay(entry.position) : '';
+    const elicitLabel = getElicitationLabel(entry.trait);
+    const fullTraitName = entry.trait.split('/').pop();
+    let colorIdx = colorIdxStart;
+
+    for (const [methodKey, layerData] of Object.entries(methodData)) {
+        const layers = sortedNumericKeys(layerData);
+        if (layers.length === 0) continue;
+        const scores = layers.map(l => layerData[l].score);
+        const coefs = layers.map(l => layerData[l].coef);
+
+        const [component, method] = methodKey.includes('/') ? methodKey.split('/') : ['residual', methodKey];
+        const methodName = { probe: 'Probe', gradient: 'Gradient', mean_diff: 'Mean Diff' }[method] || method;
+        const prefix = (hasMultipleElicit ? `${elicitLabel} ` : '') + (component !== 'residual' ? `${component} ` : '');
+        const label = posDisplay ? `${prefix}${methodName} ${posDisplay}` : `${prefix}${methodName}`;
+        const baseColor = methodColors[method] || getChartColors()[colorIdx % 10];
+        const dashStyle = component !== 'residual' ? 'dot'
+            : (hasMultipleElicit ? (elicitLabel === 'instruction' ? 'solid' : 'dash') : 'solid');
+
+        traces.push({
+            x: layers, y: scores, type: 'scatter', mode: 'lines+markers', name: label,
+            line: { width: 2, color: baseColor, dash: dashStyle }, marker: { size: 4 },
+            text: layers.map((l, i) => `${label}<br>L${l} c${coefs[i].toFixed(1)}<br>Score: ${scores[i].toFixed(1)}<br><span style="opacity:0.7">${fullTraitName}</span>`),
+            hovertemplate: '%{text}<extra></extra>'
+        });
+        colorIdx++;
+    }
+    return traces;
+}
+
+/** Render Best Vector per Layer — one chart per base trait with method comparison lines. */
 async function renderBestVectorPerLayer() {
     const container = document.getElementById('best-vector-container');
     const steeringEntries = window._steeringDiscoveredTraits || [];
@@ -88,7 +148,6 @@ async function renderBestVectorPerLayer() {
         for (const variantResult of variantResults) {
             if (!variantResult) continue;
             const { entry, results } = variantResult;
-            const position = entry.position;
 
             if (baseline === null) {
                 baseline = results.baseline?.trait_mean || 0;
@@ -99,98 +158,16 @@ async function renderBestVectorPerLayer() {
                 modelInfoUpdated = true;
             }
 
-            // Group by (component, method) and layer, find best trait score per combo
-            const methodData = {};
+            const { methodData, runList } = extractAndFilterRunData(
+                results, entry, chartFilters, coherenceThreshold
+            );
+            allRuns.push(...runList);
 
-            for (const run of (results.runs || [])) {
-                const config = run.config || {};
-                const result = run.result || {};
-
-                // Support VectorSpec format
-                const vectors = config.vectors || [];
-                if (vectors.length !== 1) continue;
-
-                const v = vectors[0];
-                const layer = v.layer;
-                const method = v.method;
-                const component = v.component || 'residual';
-                const coef = v.weight;
-                const coherence = result.coherence_mean || 0;
-                const traitScore = result.trait_mean || 0;
-
-                // Collect for response browser (before filters)
-                allRuns.push({
-                    layer, method, component, coef, traitScore, coherence,
-                    timestamp: run.timestamp,
-                    entry, // steering entry for path building
-                });
-
-                // Apply global chart filters (empty set = no filter applied yet)
-                if (chartFilters.activeMethods.size > 0 && !chartFilters.activeMethods.has(method)) continue;
-                if (chartFilters.activeComponents.size > 0 && !chartFilters.activeComponents.has(component)) continue;
-                if (chartFilters.activePositions.size > 0 && !chartFilters.activePositions.has(position)) continue;
-                const direction = coef > 0 ? 'positive' : 'negative';
-                if (chartFilters.activeDirections.size > 0 && !chartFilters.activeDirections.has(direction)) continue;
-
-                if (coherence < coherenceThreshold) continue;
-
-                // Key includes component for differentiation
-                const key = component === 'residual' ? method : `${component}/${method}`;
-                if (!methodData[key]) methodData[key] = {};
-                if (!methodData[key][layer] || traitScore > methodData[key][layer].score) {
-                    methodData[key][layer] = { score: traitScore, coef };
-                }
-            }
-
-            const posDisplayClosed = position ? window.paths.formatPositionDisplay(position) : '';
-            const elicitLabel = getElicitationLabel(entry.trait);
-            const fullTraitName = entry.trait.split('/').pop();
-
-            Object.entries(methodData).forEach(([methodKey, layerData]) => {
-                const layers = sortedNumericKeys(layerData);
-                const scores = layers.map(l => layerData[l].score);
-                const coefs = layers.map(l => layerData[l].coef);
-
-                if (layers.length > 0) {
-                    // Parse component/method key
-                    const [component, method] = methodKey.includes('/')
-                        ? methodKey.split('/')
-                        : ['residual', methodKey];
-
-                    const methodName = { probe: 'Probe', gradient: 'Gradient', mean_diff: 'Mean Diff' }[method] || method;
-                    const componentPrefix = component !== 'residual' ? `${component} ` : '';
-
-                    // Add elicitation prefix when comparing instruction vs natural
-                    const elicitPrefix = hasMultipleElicit ? `${elicitLabel} ` : '';
-
-                    const label = posDisplayClosed
-                        ? `${elicitPrefix}${componentPrefix}${methodName} ${posDisplayClosed}`
-                        : `${elicitPrefix}${componentPrefix}${methodName}`;
-
-                    const baseColor = methodColors[method] || getChartColors()[colorIdx % 10];
-                    // Different dash styles for elicitation methods
-                    const dashStyle = component !== 'residual' ? 'dot'
-                        : (hasMultipleElicit ? (elicitLabel === 'instruction' ? 'solid' : 'dash') : 'solid');
-
-                    // Build custom hover text with coefficient and full trait path
-                    const hoverTexts = layers.map((l, i) =>
-                        `${label}<br>L${l} c${coefs[i].toFixed(1)}<br>Score: ${scores[i].toFixed(1)}<br><span style="opacity:0.7">${fullTraitName}</span>`
-                    );
-
-                    traces.push({
-                        x: layers,
-                        y: scores,
-                        type: 'scatter',
-                        mode: 'lines+markers',
-                        name: label,
-                        line: { width: 2, color: baseColor, dash: dashStyle },
-                        marker: { size: 4 },
-                        text: hoverTexts,
-                        hovertemplate: '%{text}<extra></extra>'
-                    });
-                    colorIdx++;
-                }
-            });
+            const newTraces = buildChartTraces(
+                methodData, entry, methodColors, hasMultipleElicit, colorIdx
+            );
+            traces.push(...newTraces);
+            colorIdx += newTraces.length;
         }
 
         // Add baseline trace
