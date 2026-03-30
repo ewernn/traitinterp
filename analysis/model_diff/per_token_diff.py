@@ -82,8 +82,8 @@ def process_prompt(
     layer: int = None,
 ) -> Dict:
     """Process a single prompt: load projections, compute delta, split clauses."""
-    proj_a = read_projection(proj_a_path, layer=layer)
-    proj_b = read_projection(proj_b_path, layer=layer)
+    proj_a = read_projection(proj_a_path, layer=layer, mode='normalized')
+    proj_b = read_projection(proj_b_path, layer=layer, mode='normalized')
     with open(response_path) as f:
         resp = json.load(f)
 

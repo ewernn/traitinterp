@@ -53,10 +53,9 @@ class ModelClient:
     - generate_with_steering()
     """
 
-    def __init__(self, model_name: str, load_in_8bit: bool = False, load_in_4bit: bool = False):
+    def __init__(self, model_name: str, load_in_4bit: bool = False):
         """Initialize client and ensure model is loaded on server."""
         self.model_name = model_name
-        self._load_in_8bit = load_in_8bit
         self._load_in_4bit = load_in_4bit
 
         # Load model on server
@@ -64,7 +63,6 @@ class ModelClient:
             f"{SERVER_URL}/model/load",
             params={
                 "model_name": model_name,
-                "load_in_8bit": load_in_8bit,
                 "load_in_4bit": load_in_4bit,
             },
             timeout=TIMEOUT,
@@ -145,7 +143,6 @@ class ModelClient:
 def get_model_or_client(
     model_name: str,
     prefer_server: bool = True,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     **load_kwargs,
 ) -> Union[ModelClient, Tuple]:
@@ -155,7 +152,6 @@ def get_model_or_client(
     Args:
         model_name: HuggingFace model name
         prefer_server: If True, try server first (default)
-        load_in_8bit: Load in 8-bit quantization
         load_in_4bit: Load in 4-bit quantization
         **load_kwargs: Additional args passed to load_model()
 
@@ -163,8 +159,8 @@ def get_model_or_client(
         ModelClient if server available, else (model, tokenizer) tuple
     """
     if prefer_server and is_server_available():
-        return ModelClient(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+        return ModelClient(model_name, load_in_4bit=load_in_4bit)
 
     # Fall back to local loading
     from utils.model import load_model
-    return load_model(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit, **load_kwargs)
+    return load_model(model_name, load_in_4bit=load_in_4bit, **load_kwargs)

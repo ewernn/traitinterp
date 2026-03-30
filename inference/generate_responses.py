@@ -92,7 +92,6 @@ def generate_responses(
     skip_existing: bool = False,
     limit: int = None,
     output_suffix: str = None,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     no_server: bool = False,
     model=None,
@@ -198,7 +197,7 @@ def generate_responses(
     if model is None:
         from utils.server.client import get_model_or_client, ModelClient
 
-        quantize = load_in_4bit or load_in_8bit
+        quantize = load_in_4bit
         if not no_server and not lora and not quantize:
             handle = get_model_or_client(model_name)
             if isinstance(handle, ModelClient):
@@ -211,9 +210,9 @@ def generate_responses(
             else:
                 model, tokenizer = handle
         elif lora:
-            model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+            model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_4bit=load_in_4bit)
         else:
-            model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+            model, tokenizer = load_model_with_lora(model_name, load_in_4bit=load_in_4bit)
 
     from utils.paths import resolve_use_chat_template
     use_chat_template = resolve_use_chat_template(experiment, tokenizer)
@@ -278,7 +277,6 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output-suffix", type=str, default=None,
                        help="Suffix for output directory name")
-    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     add_backend_args(parser)
 
@@ -305,7 +303,6 @@ def main():
         skip_existing=args.skip_existing,
         limit=args.limit,
         output_suffix=args.output_suffix,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
         no_server=no_server,
     )

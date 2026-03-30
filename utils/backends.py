@@ -271,7 +271,7 @@ class LocalBackend(GenerationBackend):
             device: Device to load model on
             use_chat_template: Override chat template usage. None = use experiment config
                                or auto-detect from tokenizer.
-            **load_kwargs: Passed to load_model_with_lora (load_in_8bit, load_in_4bit, etc.)
+            **load_kwargs: Passed to load_model_with_lora (load_in_4bit, etc.)
         """
         from utils.model import load_model_with_lora
         from utils.paths import get_default_variant, load_experiment_config
@@ -503,7 +503,6 @@ class LocalBackend(GenerationBackend):
 def add_backend_args(parser):
     """Add --backend argument to an argparse parser."""
     parser.add_argument(
-        '--backend', choices=['auto', 'local', 'server'],
+        '--backend', choices=['auto', 'local'],
         default='auto',
-        help='Model backend: auto (try server, fall back to local), '
-             'local (load in-process), server (use model server)')
+        help='Model backend: auto (default), local (load in-process)')

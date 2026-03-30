@@ -469,7 +469,7 @@ def aggregate_stats(
     }
 
 
-def ensure_calibration_activations(experiment: str, model_variant: str, load_in_4bit: bool = False, load_in_8bit: bool = False) -> Path:
+def ensure_calibration_activations(experiment: str, model_variant: str, load_in_4bit: bool = False) -> Path:
     """
     Ensure calibration activations exist, capturing them if necessary.
 
@@ -499,8 +499,6 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
     ]
     if load_in_4bit:
         gen_cmd.append('--load-in-4bit')
-    if load_in_8bit:
-        gen_cmd.append('--load-in-8bit')
     print(f"Running: {' '.join(gen_cmd)}")
     result = subprocess.run(gen_cmd, capture_output=False)
     if result.returncode != 0:
@@ -518,8 +516,6 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
     ]
     if load_in_4bit:
         cap_cmd.append('--load-in-4bit')
-    if load_in_8bit:
-        cap_cmd.append('--load-in-8bit')
     print(f"Running: {' '.join(cap_cmd)}")
     result = subprocess.run(cap_cmd, capture_output=False)
     if result.returncode != 0:
@@ -542,7 +538,8 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
 
     if is_calibration:
         print("Calibration Mode: Computing model-specific massive dims from neutral prompts")
-        raw_dir = ensure_calibration_activations(experiment, model_variant, load_in_4bit=args.load_in_4bit, load_in_8bit=args.load_in_8bit)
+        raw_dir = ensure_calibration_activations(experiment, model_variant, load_in_4bit=args.load_in_4bit,
+        )
     else:
         print(f"Analysis Mode: {args.prompt_set}")
         raw_dir = Path(get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=args.prompt_set))
@@ -687,7 +684,6 @@ def main():
                         help='Include per-token analysis (verbose, for research)')
     parser.add_argument('--per-layer', action='store_true',
                         help='Compute per-layer stats for massive dims (requires calibration first)')
-    parser.add_argument('--load-in-8bit', action='store_true')
     parser.add_argument('--load-in-4bit', action='store_true')
     parser.add_argument('--output', type=str, default=None,
                         help='Output path (default: auto)')

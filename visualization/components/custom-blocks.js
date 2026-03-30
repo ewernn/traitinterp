@@ -29,6 +29,59 @@ import { escapeHtml } from '../core/utils.js';
 import { renderLoading } from '../core/ui.js';
 
 // ============================================================================
+// Shared Helpers
+// ============================================================================
+
+/** Parse flags string against a schema (types: bool, int, string, enum:a,b,c, csv) */
+function parseBlockFlags(flags, schema) {
+    const result = {};
+    for (const [key, type] of Object.entries(schema)) {
+        if (type === 'bool') {
+            result[key] = new RegExp(`\\b${key}\\b`).test(flags);
+        } else if (type === 'int') {
+            result[key] = parseInt(flags.match(new RegExp(`\\b${key}=(\\d+)`))?.[1]) || null;
+        } else if (type === 'string') {
+            result[key] = flags.match(new RegExp(`\\b${key}=([^\\s]+)`))?.[1] || null;
+        } else if (type.startsWith('enum:')) {
+            const options = type.slice(5);
+            result[key] = flags.match(new RegExp(`\\b(${options})\\b`))?.[1] || null;
+        } else if (type === 'csv') {
+            result[key] = flags.match(new RegExp(`\\b${key}=([^\\s]+)`))?.[1]?.split(',') || null;
+        }
+    }
+    return result;
+}
+
+/** Escape HTML and convert newlines to <br> */
+function escapeAndNormalize(text) {
+    return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
+/** Render tab buttons: items with cssPrefix, label extractor, and data-attrs builder */
+function renderTabButtons(items, cssPrefix, labelFn, attrsFn) {
+    return items.map((item, i) => {
+        const active = i === 0 ? ' active' : '';
+        return `<button class="${cssPrefix}-tab${active}" ${attrsFn(item)}>${labelFn(item)}</button>`;
+    }).join('');
+}
+
+/** Toggle expand/collapse: manages class, display, arrow char, and optional onExpand callback */
+function toggleExpandCollapse(container, bodySelector, toggleSelector, onExpand) {
+    const body = container.querySelector(bodySelector);
+    const toggle = container.querySelector(toggleSelector);
+    if (container.classList.contains('expanded')) {
+        container.classList.remove('expanded');
+        body.style.display = 'none';
+        toggle.textContent = '\u25B6';
+    } else {
+        container.classList.add('expanded');
+        body.style.display = 'block';
+        toggle.textContent = '\u25BC';
+        if (onExpand) onExpand();
+    }
+}
+
+// ============================================================================
 // Block Extraction - Parse markdown and extract custom blocks
 // ============================================================================
 
@@ -53,13 +106,13 @@ function extractCustomBlocks(markdown) {
     markdown = markdown.replace(
         /:::responses\s+([^\s:]+)(?:\s+"([^"]*)")?([^:]*):::/g,
         (match, path, label, flags) => {
+            const f = parseBlockFlags(flags, {
+                expanded: 'bool', 'no-scores': 'bool', height: 'int',
+                color: 'enum:green,red,blue,orange,purple'
+            });
             blocks.responses.push({
-                path,
-                label: label || 'View responses',
-                expanded: /\bexpanded\b/.test(flags),
-                noScores: /\bno-scores\b/.test(flags),
-                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
-                color: flags.match(/\b(green|red|blue|orange|purple)\b/)?.[1] || null
+                path, label: label || 'View responses',
+                expanded: f.expanded, noScores: f['no-scores'], height: f.height, color: f.color
             });
             return `RESPONSE_BLOCK_${blocks.responses.length - 1}`;
         }
@@ -69,13 +122,13 @@ function extractCustomBlocks(markdown) {
     markdown = markdown.replace(
         /:::dataset\s+([^\s:]+)(?:\s+"([^"]*)")?([^:]*):::/g,
         (match, path, label, flags) => {
+            const f = parseBlockFlags(flags, {
+                expanded: 'bool', limit: 'int', height: 'int',
+                color: 'enum:green,red,blue,orange,purple'
+            });
             blocks.datasets.push({
-                path,
-                label: label || 'View examples',
-                expanded: /\bexpanded\b/.test(flags),
-                limit: parseInt(flags.match(/\blimit=(\d+)/)?.[1]) || null,
-                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
-                color: flags.match(/\b(green|red|blue|orange|purple)\b/)?.[1] || null
+                path, label: label || 'View examples',
+                expanded: f.expanded, limit: f.limit, height: f.height, color: f.color
             });
             return `DATASET_BLOCK_${blocks.datasets.length - 1}`;
         }
@@ -135,25 +188,23 @@ function extractCustomBlocks(markdown) {
     markdown = markdown.replace(
         /:::chart\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?([^:]*):::/g,
         (match, type, path, caption, flags) => {
+            const f = parseBlockFlags(flags, {
+                traits: 'csv', height: 'int', perplexity: 'string', projections: 'string'
+            });
+
             // Parse projection paths (comma-separated trait:path pairs)
             let projections = null;
-            const projMatch = flags.match(/\bprojections=([^\s]+)/)?.[1];
-            if (projMatch) {
+            if (f.projections) {
                 projections = {};
-                for (const pair of projMatch.split(',')) {
+                for (const pair of f.projections.split(',')) {
                     const [trait, projPath] = pair.split(':');
                     if (trait && projPath) projections[trait] = projPath;
                 }
             }
 
             blocks.charts.push({
-                type,
-                path,
-                caption: caption || '',
-                traits: flags.match(/\btraits=([^\s]+)/)?.[1]?.split(',') || null,
-                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
-                perplexity: flags.match(/\bperplexity=([^\s]+)/)?.[1] || null,
-                projections
+                type, path, caption: caption || '',
+                traits: f.traits, height: f.height, perplexity: f.perplexity, projections
             });
             return `CHART_BLOCK_${blocks.charts.length - 1}`;
         }
@@ -173,11 +224,9 @@ function extractCustomBlocks(markdown) {
                     });
                 }
             }
+            const f = parseBlockFlags(flags, { expanded: 'bool', tokens: 'int' });
             blocks.extractionData.push({
-                label,
-                expanded: /\bexpanded\b/.test(flags),
-                highlightTokens: parseInt(flags.match(/\btokens=(\d+)/)?.[1]) || null,
-                traits
+                label, expanded: f.expanded, highlightTokens: f.tokens, traits
             });
             return `EXTRACTION_DATA_BLOCK_${blocks.extractionData.length - 1}`;
         }
@@ -198,11 +247,8 @@ function extractCustomBlocks(markdown) {
                     });
                 }
             }
-            blocks.annotationStacked.push({
-                caption,
-                height: parseInt(flags.match(/\bheight=(\d+)/)?.[1]) || null,
-                bars
-            });
+            const f = parseBlockFlags(flags, { height: 'int' });
+            blocks.annotationStacked.push({ caption, height: f.height, bars });
             return `ANNOTATION_STACKED_BLOCK_${blocks.annotationStacked.length - 1}`;
         }
     );
@@ -221,15 +267,7 @@ function insertBlock(html, placeholder, rendered) {
     return html.replace(`<p>${placeholder}</p>`, rendered).replace(placeholder, rendered);
 }
 
-/**
- * Replace block placeholders in HTML with rendered components
- * @param {string} html - HTML with placeholders
- * @param {Object} blocks - Extracted block data
- * @param {string} namespace - Unique namespace for IDs (e.g., filename)
- * @param {Object} options - Rendering options
- * @param {string} options.assetBaseUrl - Base URL for resolving assets/ paths in figures (default: '/docs/viz_findings/')
- * @returns {string} - HTML with blocks rendered
- */
+/** Replace block placeholders in HTML with rendered components */
 function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
     const { assetBaseUrl = '/docs/viz_findings/' } = options;
 
@@ -343,11 +381,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
     return html;
 }
 
-/**
- * Parse steering response path to extract metadata
- * Path pattern: .../responses/{component}/{method}/L{layer}_c{coef}_{timestamp}.json
- * Also extracts position from parent dirs: .../{position}/...
- */
+/** Parse steering response path to extract layer, coef, method, component, position */
 function parseSteeringResponsePath(path) {
     const parts = path.split('/');
     const filename = parts[parts.length - 1];
@@ -366,20 +400,13 @@ function parseSteeringResponsePath(path) {
     // Find position (sanitized) - look for response__ or prompt__ pattern
     const positionPart = parts.find(p => p.startsWith('response_') || p.startsWith('prompt_') || p.startsWith('all_'));
     const position = positionPart
-        ? (window.paths?.desanitizePosition?.(positionPart) || positionPart)
+        ? (window.paths?.desanitizePosition?.(positionPart) ?? positionPart)
         : null;
 
     return { layer, coef, method, component, position };
 }
 
-/**
- * Create HTML for an expandable dropdown
- * @param {Object} options - Display options
- * @param {boolean} options.expanded - Start expanded
- * @param {boolean} options.noScores - Hide scores (for responses)
- * @param {number} options.limit - Max items to show (for datasets)
- * @param {number} options.height - Custom max height in px (for datasets)
- */
+/** Create HTML for an expandable dropdown (responses or dataset) */
 function createDropdownHtml(id, label, type, path, options = {}) {
     const { expanded = false, noScores = false, limit = null, height = null, color = null } = options;
     const expandedClass = expanded ? ' expanded' : '';
@@ -410,20 +437,15 @@ function createDropdownHtml(id, label, type, path, options = {}) {
     `;
 }
 
-/**
- * Create HTML for steered-responses component (3-column comparison table)
- * Shows Question | PV Response | Natural Response side-by-side
- * @param {string} id - Unique ID for this component
- * @param {Object} block - { label, traits: [{key, label, pvPath, naturalPath}] }
- */
+/** Create HTML for steered-responses (3-column comparison: Question | PV | Natural) */
 function createSteeredResponsesHtml(id, block) {
     const { label, traits } = block;
     const defaultTrait = traits[0]?.key || '';
 
-    const tabsHtml = traits.map((t, i) => {
-        const isActive = i === 0;
-        return `<button class="sr-tab${isActive ? ' active' : ''}" data-trait="${t.key}" data-pv-path="${t.pvPath}" data-natural-path="${t.naturalPath}">${t.label}</button>`;
-    }).join('');
+    const tabsHtml = renderTabButtons(traits, 'sr',
+        t => t.label,
+        t => `data-trait="${t.key}" data-pv-path="${t.pvPath}" data-natural-path="${t.naturalPath}"`
+    );
 
     return `
         <div class="sr-container" id="${id}" data-active="${defaultTrait}">
@@ -438,11 +460,7 @@ function createSteeredResponsesHtml(id, block) {
     `;
 }
 
-/**
- * Create HTML for extraction-data component (tabbed pos/neg viewer)
- * @param {string} id - Unique ID for this component
- * @param {Object} block - { label, expanded, highlightTokens, traits: [{name, path}] }
- */
+/** Create HTML for extraction-data (tabbed pos/neg viewer) */
 function createExtractionDataHtml(id, block) {
     const { label, expanded, highlightTokens, traits } = block;
     const defaultTrait = traits[0]?.name || '';
@@ -452,10 +470,10 @@ function createExtractionDataHtml(id, block) {
     const bodyStyle = expanded ? '' : 'display: none;';
     const tokensAttr = highlightTokens ? ` data-highlight-tokens="${highlightTokens}"` : '';
 
-    const tabsHtml = traits.map((t, i) => {
-        const isActive = i === 0;
-        return `<button class="ed-tab${isActive ? ' active' : ''}" data-trait="${t.name}" data-path="${t.path}">${t.name}</button>`;
-    }).join('');
+    const tabsHtml = renderTabButtons(traits, 'ed',
+        t => t.name,
+        t => `data-trait="${t.name}" data-path="${t.path}"`
+    );
 
     return `
         <div class="extraction-data-container${expandedClass}" id="${id}" data-active="${defaultTrait}" data-default-path="${defaultPath}"${tokensAttr}>
@@ -484,10 +502,7 @@ function createExtractionDataHtml(id, block) {
 // Toggle Handlers - Expand/collapse dropdowns and load content
 // ============================================================================
 
-/**
- * Fetch and render content for a dropdown element
- * Core primitive used by both toggle and auto-expand
- */
+/** Fetch and render content for a dropdown (used by both toggle and auto-expand) */
 async function fetchDropdownContent(dropdown) {
     const content = dropdown.querySelector('.dropdown-body');
     const type = dropdown.dataset.type;
@@ -555,34 +570,20 @@ async function fetchDropdownContent(dropdown) {
     }
 }
 
-/**
- * Toggle a dropdown open/closed, loading content on first open
- */
+/** Toggle a dropdown open/closed, loading content on first open */
 async function toggleDropdown(dropdownId) {
     const dropdown = document.getElementById(dropdownId);
     if (!dropdown) return;
 
-    const content = dropdown.querySelector('.dropdown-body');
-    const toggle = dropdown.querySelector('.dropdown-toggle');
-
-    if (dropdown.classList.contains('expanded')) {
-        dropdown.classList.remove('expanded');
-        content.style.display = 'none';
-        toggle.textContent = '▶';
-    } else {
+    toggleExpandCollapse(dropdown, '.dropdown-body', '.dropdown-toggle', async () => {
+        const content = dropdown.querySelector('.dropdown-body');
         if (!content.innerHTML) {
             await fetchDropdownContent(dropdown);
         }
-        dropdown.classList.add('expanded');
-        content.style.display = 'block';
-        toggle.textContent = '▼';
-    }
+    });
 }
 
-/**
- * Auto-load content for dropdowns that start expanded
- * Call this after rendering content that may contain expanded dropdowns
- */
+/** Auto-load content for dropdowns that start expanded */
 async function loadExpandedDropdowns() {
     const expandedDropdowns = document.querySelectorAll('.responses-dropdown[data-auto-expand="true"]');
     for (const dropdown of expandedDropdowns) {
@@ -608,13 +609,7 @@ async function loadExpandedDropdowns() {
 // Tabbed Widget - Shared init logic for tabbed components
 // ============================================================================
 
-/**
- * Generic initializer for tabbed widgets.
- * Finds containers, wires up tab click handlers, and loads the active tab.
- * @param {string} containerSelector - CSS selector for widget containers
- * @param {string} tabSelector - CSS selector for tab buttons within a container
- * @param {Function} loadFn - Called as loadFn(container, tab) to load content for a tab
- */
+/** Generic initializer for tabbed widgets: wires up tab clicks and loads active tab */
 function initTabbedWidget(containerSelector, tabSelector, loadFn) {
     for (const container of document.querySelectorAll(containerSelector)) {
         if (container.dataset.initialized) continue;
@@ -631,9 +626,7 @@ function initTabbedWidget(containerSelector, tabSelector, loadFn) {
     }
 }
 
-/**
- * Initialize steered-responses: set up click handlers and load first tab
- */
+/** Initialize steered-responses: set up click handlers and load first tab */
 function initSteeredResponses() {
     initTabbedWidget('.sr-container', '.sr-tab', (container, tab) => {
         container.dataset.active = tab.dataset.trait;
@@ -641,10 +634,7 @@ function initSteeredResponses() {
     });
 }
 
-/**
- * Load and render 3-column comparison table for steered-responses
- * Merges PV and Natural responses by question into a single table
- */
+/** Load and render 3-column comparison table for steered-responses */
 async function loadSteeredResponseContent(container, pvPath, naturalPath) {
     const content = container.querySelector('.sr-content');
     content.innerHTML = '<div class="sr-loading">Loading...</div>';
@@ -692,35 +682,20 @@ async function loadSteeredResponseContent(container, pvPath, naturalPath) {
     }
 }
 
-/**
- * Toggle extraction-data component expand/collapse
- */
+/** Toggle extraction-data component expand/collapse */
 function toggleExtractionData(id) {
     const container = document.getElementById(id);
     if (!container) return;
 
-    const body = container.querySelector('.ed-body');
-    const toggle = container.querySelector('.ed-toggle');
-
-    if (container.classList.contains('expanded')) {
-        container.classList.remove('expanded');
-        body.style.display = 'none';
-        toggle.textContent = '▶';
-    } else {
-        container.classList.add('expanded');
-        body.style.display = 'block';
-        toggle.textContent = '▼';
-        // Load content if not already loaded
+    toggleExpandCollapse(container, '.ed-body', '.ed-toggle', () => {
         if (!container.dataset.loaded) {
             loadExtractionData(container, container.dataset.defaultPath);
             container.dataset.loaded = 'true';
         }
-    }
+    });
 }
 
-/**
- * Initialize extraction-data: set up tab handlers, load if expanded
- */
+/** Initialize extraction-data: set up tab handlers, load if expanded */
 function initExtractionData() {
     initTabbedWidget('.extraction-data-container', '.ed-tab', (container, tab) => {
         container.dataset.active = tab.dataset.trait;
@@ -736,19 +711,14 @@ function initExtractionData() {
     }
 }
 
-/**
- * Parse extraction path to get experiment and variant
- * Path pattern: experiments/{experiment}/extraction/{category}/{trait}/{variant}/responses
- */
+/** Parse extraction path to get experiment and variant */
 function parseExtractionPath(path) {
     const match = path.match(/experiments\/([^/]+)\/extraction\/[^/]+\/[^/]+\/([^/]+)\/responses/);
     if (!match) return null;
     return { experiment: match[1], variant: match[2] };
 }
 
-/**
- * Load pos.json and neg.json from a folder path and render both
- */
+/** Load pos.json and neg.json from a folder path and render both */
 async function loadExtractionData(container, basePath) {
     const posScroll = container.querySelector('.ed-positive .ed-scroll');
     const negScroll = container.querySelector('.ed-negative .ed-scroll');
@@ -816,13 +786,7 @@ async function loadExtractionData(container, basePath) {
     }
 }
 
-/**
- * Render extraction data as a numbered CSV-like table
- * @param {Array} responses - Array of {prompt, response}
- * @param {Object} options - Rendering options
- * @param {Array} options.tokenOffsets - Per-response array of [start, end] char ranges
- * @param {number} options.highlightTokens - Number of tokens to highlight
- */
+/** Render extraction data as a numbered table with optional token highlighting */
 function renderExtractionTable(responses, options = {}) {
     const { tokenOffsets, highlightTokens } = options;
 
@@ -863,12 +827,7 @@ function renderExtractionTable(responses, options = {}) {
     return html;
 }
 
-/**
- * Apply highlighting to first N tokens based on character offsets
- * @param {string} text - Original text
- * @param {Array} offsets - Array of [start, end] character ranges to highlight
- * @returns {string} HTML with highlighted tokens
- */
+/** Apply highlighting to first N tokens based on character offsets */
 function applyTokenHighlights(text, offsets) {
     if (!offsets || offsets.length === 0) {
         return escapeHtml(text);
@@ -888,15 +847,10 @@ function applyTokenHighlights(text, offsets) {
 // Content Renderers - Generate HTML for loaded data
 // ============================================================================
 
-/**
- * Apply character-range highlights to text, handling HTML escaping properly
- * @param {string} text - Original unescaped text
- * @param {Array} charRanges - Array of [start, end] character ranges to highlight
- * @returns {string} HTML with highlights and proper escaping
- */
+/** Apply character-range highlights to text, handling HTML escaping properly */
 function applyCharRangeHighlights(text, charRanges) {
     if (!charRanges || charRanges.length === 0) {
-        return escapeHtml(text).replace(/\n/g, '<br>');
+        return escapeAndNormalize(text);
     }
 
     // Sort ranges by start position and merge overlapping
@@ -918,30 +872,24 @@ function applyCharRangeHighlights(text, charRanges) {
     for (const [start, end] of merged) {
         // Add text before highlight (escaped)
         if (start > pos) {
-            result += escapeHtml(text.slice(pos, start)).replace(/\n/g, '<br>');
+            result += escapeAndNormalize(text.slice(pos, start));
         }
         // Add highlighted text (escaped, with mark)
         result += '<mark class="hack-highlight">' +
-            escapeHtml(text.slice(start, end)).replace(/\n/g, '<br>') +
+            escapeAndNormalize(text.slice(start, end)) +
             '</mark>';
         pos = end;
     }
 
     // Add remaining text
     if (pos < text.length) {
-        result += escapeHtml(text.slice(pos)).replace(/\n/g, '<br>');
+        result += escapeAndNormalize(text.slice(pos));
     }
 
     return result;
 }
 
-/**
- * Render responses as a table
- * @param {Array} responses - Array of {question, response, trait_score, coherence_score}
- * @param {Object} options - Rendering options
- * @param {boolean} options.showScores - Whether to show trait/coherence scores (default: true)
- * @param {Array<Array>} options.charRanges - Per-response array of [start, end] char ranges to highlight
- */
+/** Render responses as a table with optional scores and char-range highlights */
 function renderResponsesTable(responses, options = {}) {
     const { showScores = true, charRanges = [] } = options;
 
@@ -966,7 +914,7 @@ function renderResponsesTable(responses, options = {}) {
         if (charRanges[i] && charRanges[i].length > 0) {
             responseHtml = applyCharRangeHighlights(r.response || '', charRanges[i]);
         } else {
-            responseHtml = escapeHtml(r.response || '').replace(/\n/g, '<br>');
+            responseHtml = escapeAndNormalize(r.response || '');
         }
 
         html += `<tr>
@@ -991,13 +939,7 @@ function renderResponsesTable(responses, options = {}) {
     return html;
 }
 
-/**
- * Render dataset as a list
- * Handles both plain text (one scenario per line) and JSONL (with prompt/system_prompt)
- * @param {string} text - Raw text content
- * @param {Object} options - Rendering options
- * @param {number} options.limit - Max items to show (default: 20)
- */
+/** Render dataset as a list (plain text, JSON object, or JSONL format) */
 function renderDatasetList(text, options = {}) {
     const { limit = 20 } = options;
     const trimmed = text.trim();
@@ -1074,10 +1016,7 @@ function renderDatasetList(text, options = {}) {
 // Chart Loading - Async load and render charts in findings
 // ============================================================================
 
-/**
- * Load and render all chart blocks that haven't been loaded yet.
- * Call this after rendering HTML that may contain chart figures.
- */
+/** Load and render all chart blocks that haven't been loaded yet */
 async function loadCharts() {
     const chartFigures = document.querySelectorAll('.chart-figure:not([data-loaded])');
 

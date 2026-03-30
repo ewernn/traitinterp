@@ -87,8 +87,7 @@ async def run(config, parsed_traits, model_variant, model_name, lora,
               layers_arg, trait_layers, direction):
     """Load model once, dispatch to the right recipe."""
     backend = LocalBackend.from_experiment(
-        config.experiment, variant=model_variant,
-        load_in_8bit=config.load_in_8bit, load_in_4bit=config.load_in_4bit,
+        config.experiment, variant=model_variant, load_in_4bit=config.load_in_4bit,
         bnb_4bit_quant_type=config.bnb_4bit_quant_type,
     )
     judge = TraitJudge() if is_rank_zero() and not config.regenerate_responses else None
@@ -135,7 +134,6 @@ def main():
     # Model
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--extraction-variant", default=None)
-    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--bnb-4bit-quant-type", default="nf4")
     parser.add_argument("--vector-experiment", default=None)
@@ -202,7 +200,7 @@ def main():
         use_default_prompt=args.no_custom_prompt,
         trait_judge=getattr(args, 'trait_judge', None),
         save_mode=args.save_responses, force=args.force,
-        load_in_8bit=args.load_in_8bit, load_in_4bit=args.load_in_4bit,
+        load_in_4bit=args.load_in_4bit,
         bnb_4bit_quant_type=args.bnb_4bit_quant_type,
         batched=not args.no_batch,
         regenerate_responses=args.regenerate_responses,

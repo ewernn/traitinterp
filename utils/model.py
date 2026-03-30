@@ -191,7 +191,6 @@ def load_model(
     model_name: str,
     device: str = "auto",
     dtype: torch.dtype = torch.bfloat16,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -203,7 +202,6 @@ def load_model(
         model_name: HuggingFace model name
         device: Device map ('auto', 'cuda', 'cpu', 'mps')
         dtype: Model dtype (default: bfloat16, fp16 for AWQ models)
-        load_in_8bit: Load in 8-bit quantization (requires bitsandbytes)
         load_in_4bit: Load in 4-bit quantization (requires bitsandbytes)
 
     Returns:
@@ -215,7 +213,6 @@ def load_model(
     return load_model_with_lora(
         model_name,
         lora_adapter=None,
-        load_in_8bit=load_in_8bit,
         load_in_4bit=load_in_4bit,
         bnb_4bit_quant_type=bnb_4bit_quant_type,
         device=device,
@@ -227,7 +224,6 @@ def load_model(
 def load_model_with_lora(
     model_name: str,
     lora_adapter: str = None,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
     device: str = "auto",
@@ -236,12 +232,9 @@ def load_model_with_lora(
     """
     Load model with optional LoRA adapter and quantization.
 
-    For large models (70B+), use load_in_8bit=True on A100 80GB.
-
     Args:
         model_name: HuggingFace model name (base model)
         lora_adapter: Optional LoRA adapter path (HuggingFace or local)
-        load_in_8bit: Load in 8-bit quantization (requires bitsandbytes)
         load_in_4bit: Load in 4-bit quantization (requires bitsandbytes)
         device: Device map ('auto', 'cuda', 'cpu')
         dtype: Model dtype (default: bfloat16, matching load_model)
@@ -256,7 +249,7 @@ def load_model_with_lora(
     _print(f"Loading model: {model_name}...")
 
     # Fast path: load from cache if available (skips from_pretrained entirely)
-    if not lora_adapter and not load_in_8bit and not load_in_4bit:
+    if not lora_adapter and not load_in_4bit:
         cache_dir = _get_model_cache_dir(model_name)
         if cache_dir.exists() and (cache_dir / "metadata.json").exists():
             _print(f"  Found model cache at {cache_dir}")
@@ -265,8 +258,6 @@ def load_model_with_lora(
             except Exception as e:
                 _print(f"  Cache load failed ({e}), falling back to from_pretrained")
 
-    if load_in_8bit:
-        _print("  Using 8-bit quantization")
     if load_in_4bit:
         _print("  Using 4-bit quantization")
     if lora_adapter:
@@ -426,22 +417,17 @@ def load_model_with_lora(
             except Exception:
                 pass
 
-    # Use BitsAndBytesConfig for quantization (replaces deprecated load_in_8bit/load_in_4bit)
-    if load_in_8bit or load_in_4bit:
+    if load_in_4bit:
         try:
             from transformers import BitsAndBytesConfig
         except ImportError:
             raise ImportError("bitsandbytes required for quantization. Install with: pip install bitsandbytes")
 
-        bnb_kwargs = {
-            "load_in_8bit": load_in_8bit,
-            "load_in_4bit": load_in_4bit,
-            "llm_int8_enable_fp32_cpu_offload": True,  # Allow CPU offload if needed
-        }
-        if load_in_4bit:
-            bnb_kwargs["bnb_4bit_compute_dtype"] = dtype
-            bnb_kwargs["bnb_4bit_quant_type"] = bnb_4bit_quant_type
-        bnb_config = BitsAndBytesConfig(**bnb_kwargs)
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_quant_type=bnb_4bit_quant_type,
+        )
         model_kwargs["quantization_config"] = bnb_config
 
     import time as _time; _t0 = _time.time()

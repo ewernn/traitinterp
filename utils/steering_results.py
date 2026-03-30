@@ -7,7 +7,7 @@ Output: results.jsonl (one entry per line), response files
 Format:
     {"type": "header", "trait": ..., "steering_model": ..., ...}
     {"type": "baseline", "result": {...}, "timestamp": ...}
-    {"result": {...}, "config": {...}, "timestamp": ...}
+    {"type": "run", "result": {...}, "config": {...}, "timestamp": ...}
 
 Usage:
     from utils.steering_results import init_results_file, append_run, load_results

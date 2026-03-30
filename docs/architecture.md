@@ -116,7 +116,7 @@ remove_massive_dims
 - Fused MoE and model cache (`utils/moe.py`)
 - Tensor parallelism utilities (`utils/distributed.py`)
 - Path management (`utils/paths.py` — loads from config/paths.yaml)
-- Activation loading (`utils/load_activations.py` — auto-detects stacked vs per-layer format)
+- Activation loading (`utils/load_activations.py` — auto-detects stacked vs per-layer, returns `ActivationMetadata` from metadata.json)
 - Layer parsing (`utils/layers.py` — shared `parse_layers` for all layer specification strings)
 - Projection reading (`utils/projections.py` — handles single-vector and multi-vector formats, activation-norm normalization)
 - Fingerprint utilities (`utils/fingerprints.py` — cosine similarity, classification, score loading for analysis scripts)

@@ -49,7 +49,7 @@ const state = {
     // Method filter for trait dynamics (which extraction methods to show)
     selectedMethods: new Set(['probe', 'mean_diff']),
     // Projection normalization mode: 'cosine' or 'normalized'
-    projectionMode: 'cosine',
+    projectionMode: 'normalized',
     // Massive dims cleaning mode
     massiveDimsCleaning: 'top5-3layers',
     // Compare mode for model comparison
@@ -277,7 +277,13 @@ async function loadExperiments() {
     try {
         const response = await fetch('/api/experiments');
         const data = await response.json();
-        state.experiments = data.experiments || [];
+        const rawExperiments = data.experiments || [];
+        // Support both old format (string[]) and new format ({name, has}[])
+        state.experiments = rawExperiments.map(e => typeof e === 'string' ? e : e.name);
+        state.experimentMeta = {};
+        rawExperiments.forEach(e => {
+            if (typeof e === 'object') state.experimentMeta[e.name] = e.has || [];
+        });
 
         // Render experiment list in sidebar (DOM manipulation lives in sidebar.js)
         window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS);

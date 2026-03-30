@@ -8,7 +8,7 @@
  */
 
 import { getCssVar, getTokenHighlightColors } from '../core/display.js';
-import { formatTokenDisplay, escapeHtml } from '../core/utils.js';
+import { fetchJSON, formatTokenDisplay, escapeHtml } from '../core/utils.js';
 import { getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
 
@@ -144,10 +144,12 @@ async function renderPromptPicker() {
         `;
     }
 
+    const currentSetDefs = window.state.availablePromptSets[window.state.currentPromptSet] || [];
+
     let promptBoxes = '';
     visibleIds.forEach((id, localIdx) => {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
-        const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === id);
+        const promptDef = currentSetDefs.find(p => p.id === id);
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
         // Get tags from cache (if we've loaded this prompt before)
         const cacheKey = `${window.state.currentPromptSet}:${id}`;
@@ -159,8 +161,8 @@ async function renderPromptPicker() {
     });
 
     // Get prompt text and note from definitions
-    const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === window.state.currentPromptId);
-    const promptNote = promptDef && promptDef.note ? escapeHtml(promptDef.note) : '';
+    const promptDef = currentSetDefs.find(p => p.id === window.state.currentPromptId);
+    const promptNote = promptDef?.note ? escapeHtml(promptDef.note) : '';
 
     // Compute display number for current prompt (1-based index in the sorted list)
     const currentDisplayNum = window.state.currentPromptId != null
@@ -225,7 +227,7 @@ async function renderPromptPicker() {
                     <span class="pp-row-label">Set:</span>
                     <div class="pp-sets">${promptSetButtons}</div>
                 </div>
-                <div class="pp-row">
+                <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Prompt:</span>
                     <div class="pp-prompts">${promptBoxes}</div>
                     ${paginationHtml}
@@ -369,7 +371,7 @@ function setupPromptPickerListeners() {
 
     // Collapse button
     const collapseBtn = container.querySelector('#pp-collapse-btn');
-    if (collapseBtn && expanded) {
+    if (collapseBtn) {
         collapseBtn.addEventListener('click', () => {
             expanded.classList.add('collapsed');
             localStorage.setItem('promptPickerCollapsed', 'true');
@@ -586,10 +588,24 @@ async function preloadTagsForSet(promptSet) {
     }
 }
 
+/** Get the current prompt page index. */
+function getPromptPage() { return promptPage; }
+
+/** Set the current prompt page index. */
+function setPromptPage(page) { promptPage = page; }
+
+/** Get the prompt tags cache (for rendering tag highlights on buttons). */
+function getPromptTagsCache() { return promptTagsCache; }
+
 // ES module exports
 export {
     INFERENCE_VIEWS,
+    PROMPTS_PER_PAGE,
     getDiffState,
+    getPromptPage,
+    setPromptPage,
+    getPromptTagsCache,
+    positionPromptPicker,
     renderPromptPicker,
     fetchPromptPickerData,
     updatePlotTokenHighlights,
@@ -640,3 +656,4 @@ function selectPromptSet(newSet) {
 
 // Keep window.* for remaining consumers (cross-module access during migration)
 window.renderPromptPicker = renderPromptPicker;
+window.positionPromptPicker = positionPromptPicker;

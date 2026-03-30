@@ -132,7 +132,6 @@ def health():
 @app.post("/model/load")
 def load_model_endpoint(
     model_name: str,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
 ):
     """Load a model by name. Unloads previous model if different."""
@@ -149,9 +148,7 @@ def load_model_endpoint(
 
     # Load new model
     _model, _tokenizer = _load_model(
-        model_name,
-        load_in_8bit=load_in_8bit,
-        load_in_4bit=load_in_4bit,
+        model_name, load_in_4bit=load_in_4bit,
     )
     _model_name = model_name
 
@@ -546,13 +543,12 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8765, help="Port to run on")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind to")
     parser.add_argument("--model", type=str, help="Pre-load model on startup")
-    parser.add_argument("--load-in-8bit", action="store_true", help="Load in 8-bit quantization")
     parser.add_argument("--load-in-4bit", action="store_true", help="Load in 4-bit quantization")
     args = parser.parse_args()
 
     if args.model:
         print(f"Pre-loading model: {args.model}")
-        load_model_endpoint(args.model, args.load_in_8bit, args.load_in_4bit)
+        load_model_endpoint(args.model, args.load_in_4bit)
 
     print(f"Starting server on {args.host}:{args.port}")
     uvicorn.run(app, host=args.host, port=args.port)

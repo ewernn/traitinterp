@@ -53,7 +53,7 @@ class SteeringConfig:
     force: bool = False
 
     # Model loading
-    load_in_8bit: bool = False
+
     load_in_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
 
@@ -82,6 +82,18 @@ class VettingStats:
     def skip(cls) -> 'VettingStats':
         """Dummy stats that always pass — used when stage is skipped."""
         return cls(pos_passed=999, pos_total=999, neg_passed=999, neg_total=999)
+
+    @classmethod
+    def from_summary(cls, summary: dict) -> 'VettingStats':
+        """Construct from the 'summary' dict in a vetting JSON file."""
+        pos_passed = summary.get('positive_passed', 0)
+        neg_passed = summary.get('negative_passed', 0)
+        return cls(
+            pos_passed=pos_passed,
+            pos_total=pos_passed + summary.get('positive_failed', 0),
+            neg_passed=neg_passed,
+            neg_total=neg_passed + summary.get('negative_failed', 0),
+        )
 
 
 
@@ -119,7 +131,7 @@ class ExtractionConfig:
     val_split: float = 0.1
 
     # Model loading
-    load_in_8bit: bool = False
+
     load_in_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
     base_model: Optional[bool] = None
@@ -151,5 +163,5 @@ class InferenceConfig:
     no_server: bool = False
 
     # Model loading
-    load_in_8bit: bool = False
+
     load_in_4bit: bool = False

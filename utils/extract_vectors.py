@@ -21,13 +21,39 @@ Position syntax: <frame>[<slice>]
 import gc
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, List, Dict, TYPE_CHECKING
 
 import torch
 from tqdm import tqdm
 
+
+def capture_environment() -> dict:
+    """Capture current environment info for reproducibility metadata."""
+    import platform
+    import subprocess
+    env = {
+        'python': platform.python_version(),
+        'torch': torch.__version__,
+        'platform': platform.platform(),
+    }
+    if torch.cuda.is_available():
+        env['cuda'] = torch.version.cuda or 'N/A'
+        env['gpu'] = torch.cuda.get_device_name(0)
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        env['device'] = 'mps'
+    try:
+        env['git_commit'] = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL, text=True, timeout=5
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    return env
+
 from utils.paths import (
     get as get_path,
+    atomic_torch_save,
     get_activation_dir,
     get_activation_path,
     get_activation_metadata_path,
@@ -39,6 +65,7 @@ from utils.model import pad_sequences, format_prompt
 from utils.distributed import is_rank_zero, is_tp_mode
 from utils.load_activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
 from core import MultiLayerCapture, get_method
+from core.types import ActivationMetadata
 
 if TYPE_CHECKING:
     from utils.backends import GenerationBackend
@@ -344,18 +371,18 @@ def extract_activations_for_trait(
         if per_layer_mode:
             for layer in layer_list:
                 train_layer = torch.cat([pos_acts[layer], neg_acts[layer]], dim=0)
-                torch.save(train_layer, activations_dir / f"train_layer{layer}.pt")
+                atomic_torch_save(train_layer, activations_dir / f"train_layer{layer}.pt")
             if val_pos_acts:
                 for layer in layer_list:
                     val_layer = torch.cat([val_pos_acts[layer], val_neg_acts[layer]], dim=0)
-                    torch.save(val_layer, activations_dir / f"val_layer{layer}.pt")
+                    atomic_torch_save(val_layer, activations_dir / f"val_layer{layer}.pt")
             print(f"      Saved activations: {len(layer_list)} layers (per-layer files)")
         else:
             pos_all = torch.stack([pos_acts[l] for l in layer_list], dim=1)
             neg_all = torch.stack([neg_acts[l] for l in layer_list], dim=1)
             train_acts = torch.cat([pos_all, neg_all], dim=0)
             activation_path = get_activation_path(experiment, trait, model_variant, component, position)
-            torch.save(train_acts, activation_path)
+            atomic_torch_save(train_acts, activation_path)
             print(f"      Saved activations: {train_acts.shape} -> {activation_path.name}")
             del train_acts, pos_all, neg_all
             if val_pos_acts:
@@ -363,34 +390,35 @@ def extract_activations_for_trait(
                 val_neg_all = torch.stack([val_neg_acts[l] for l in layer_list], dim=1)
                 val_acts = torch.cat([val_pos_all, val_neg_all], dim=0)
                 val_path = get_val_activation_path(experiment, trait, model_variant, component, position)
-                torch.save(val_acts, val_path)
+                atomic_torch_save(val_acts, val_path)
                 del val_acts, val_pos_all, val_neg_all
 
     # Always save metadata (lightweight, useful for debugging and --only-stage 4)
     if is_rank_zero():
-        metadata = {
-            'model': model.config.name_or_path,
-            'trait': trait,
-            'n_layers': n_layers,
-            'hidden_dim': hidden_dim,
-            'captured_layers': layer_list,
-            'n_examples_pos': b0,
-            'n_examples_neg': b1 - b0,
-            'n_filtered_pos': n_filtered_pos,
-            'n_filtered_neg': n_filtered_neg,
-            'paired_filter': paired_filter,
-            'n_excluded_by_pairing': n_excluded_by_pairing,
-            'val_split': val_split,
-            'n_val_pos': n_val_pos,
-            'n_val_neg': n_val_neg,
-            'position': position,
-            'component': component,
-            'activation_norms': activation_norms,
-            'timestamp': datetime.now().isoformat(),
-        }
+        metadata = ActivationMetadata(
+            model=model.config.name_or_path,
+            trait=trait,
+            n_layers=n_layers,
+            hidden_dim=hidden_dim,
+            captured_layers=layer_list,
+            n_examples_pos=b0,
+            n_examples_neg=b1 - b0,
+            n_filtered_pos=n_filtered_pos,
+            n_filtered_neg=n_filtered_neg,
+            paired_filter=paired_filter,
+            n_excluded_by_pairing=n_excluded_by_pairing,
+            val_split=val_split,
+            n_val_pos=n_val_pos,
+            n_val_neg=n_val_neg,
+            position=position,
+            component=component,
+            activation_norms=activation_norms,
+            timestamp=datetime.now().isoformat(),
+            environment=capture_environment(),
+        )
         metadata_path = get_activation_metadata_path(experiment, trait, model_variant, component, position)
         with open(metadata_path, 'w') as f:
-            json.dump(metadata, f, indent=2)
+            json.dump(metadata.to_dict(), f, indent=2)
 
     del all_acts
     gc.collect()
@@ -440,8 +468,8 @@ def extract_vectors_for_trait(
         except FileNotFoundError:
             print(f"      ERROR: Activation metadata not found. Run stage 3 first, or use --save-activations.")
             return 0
-        n_layers = metadata.get("n_layers", 0)
-        model_name = metadata.get('model', 'unknown')
+        n_layers = metadata.n_layers
+        model_name = metadata.model
 
         if layers is not None:
             layer_list = [l for l in layers if l < n_layers]
@@ -494,7 +522,7 @@ def extract_vectors_for_trait(
                 vector_path = get_vector_path(experiment, trait, method_name, layer_idx, model_variant, component, position)
                 if is_rank_zero():
                     vector_path.parent.mkdir(parents=True, exist_ok=True)
-                    torch.save(vector, vector_path)
+                    atomic_torch_save(vector, vector_path)
 
                 layer_info = {
                     "norm": float(vector_norm),

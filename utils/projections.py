@@ -53,7 +53,10 @@ def read_projection(path, layer=None, mode='raw') -> dict:
 
         prompt_scores = entry.get('prompt', [])
         response_scores = entry.get('response', [])
-        if mode != 'raw':
+        if mode == 'normalized' and entry.get('normalized_response'):
+            prompt_scores = entry.get('normalized_prompt', [])
+            response_scores = entry['normalized_response']
+        elif mode != 'raw':
             from core.math import normalize_projections
             prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
             response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)

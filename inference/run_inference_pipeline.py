@@ -95,9 +95,7 @@ def generate(config: InferenceConfig, model_variant: str) -> int:
         model_variant=model_variant,
         max_new_tokens=config.max_new_tokens,
         temperature=config.temperature,
-        skip_existing=not config.regenerate,
-        load_in_8bit=config.load_in_8bit,
-        load_in_4bit=config.load_in_4bit,
+        skip_existing=not config.regenerate, load_in_4bit=config.load_in_4bit,
         no_server=config.no_server,
     )
 
@@ -110,9 +108,7 @@ def capture(config: InferenceConfig, model_variant: str) -> int:
         prompt_set=config.prompt_set,
         model_variant=model_variant,
         layers=config.layers,
-        skip_existing=config.skip_existing,
-        load_in_8bit=config.load_in_8bit,
-        load_in_4bit=config.load_in_4bit,
+        skip_existing=config.skip_existing, load_in_4bit=config.load_in_4bit,
     )
 
 
@@ -160,8 +156,7 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
 
     # All inputs ready — load model and project
     backend = LocalBackend.from_experiment(
-        config.experiment, variant=model_variant,
-        load_in_8bit=config.load_in_8bit, load_in_4bit=config.load_in_4bit,
+        config.experiment, variant=model_variant, load_in_4bit=config.load_in_4bit,
     )
 
     try:
@@ -212,7 +207,6 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.0)
 
     # Model
-    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     add_backend_args(parser)
 
@@ -233,7 +227,6 @@ def main():
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         no_server=(args.backend == 'local'),
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
 

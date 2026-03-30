@@ -96,7 +96,7 @@ def get_hook_path(layer: int, component: str = "residual", prefix: str = None, m
     # Auto-detect prefix if model provided and prefix not specified
     if prefix is None:
         if model is not None:
-            from utils.model import get_layer_path_prefix
+            from core.generation import get_layer_path_prefix
             prefix = get_layer_path_prefix(model)
         else:
             prefix = "model.layers"
@@ -489,7 +489,7 @@ class MultiLayerCapture:
         """
         # Auto-detect prefix for different model types
         if prefix is None:
-            from utils.model import get_layer_path_prefix
+            from core.generation import get_layer_path_prefix
             prefix = get_layer_path_prefix(model)
 
         if layers is None:
