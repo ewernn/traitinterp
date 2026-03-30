@@ -22,7 +22,6 @@ Primary documentation hub for the traitinterp project.
 - **[docs/scenario_design_guide.md](scenario_design_guide.md)** - Writing contrasting scenario pairs for good vectors
 - **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (decision tree, scenario design, iteration)
 - **[docs/judge_definition_iteration.md](judge_definition_iteration.md)** - Iterating judge definitions until accurate
-- **[docs/trait_catalog.md](trait_catalog.md)** - Auto-generated inventory of all traits by category
 
 ### Inference & Steering
 - **[inference/README.md](../inference/README.md)** - Per-token monitoring
@@ -36,7 +35,6 @@ Primary documentation hub for the traitinterp project.
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
-- **[docs/typing_audit.md](typing_audit.md)** - Type system design (VectorResult, JudgeResult, ModelVariant, etc.)
 - **[docs/response_schema.md](response_schema.md)** - Unified response format across pipelines
 - **[docs/chat_templates.md](chat_templates.md)** - HuggingFace chat template behavior
 - **[config/paths.yaml](../config/paths.yaml)** - Path configuration
@@ -52,11 +50,10 @@ Primary documentation hub for the traitinterp project.
 
 ### Dev-only Docs (not promoted to main)
 These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) below.
-- **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (waves 1-8, thin controller, known issues)
-- **[docs/future_ideas.md](future_ideas.md)** - Research backlog and exploratory ideas
-- **[docs/sae_clt_sources.md](sae_clt_sources.md)** - SAE & CLT download sources (HuggingFace, Neuronpedia, etc.)
-- **[docs/viz_refactor_notepad.md](viz_refactor_notepad.md)** - Visualization refactor tracking (ES modules, file splits, dead code)
-- **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard
+- **[docs/TODO.md](TODO.md)** - Active task tracking
+- **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (open items, architecture decisions)
+- **[docs/viz_refactor_notepad.md](viz_refactor_notepad.md)** - Visualization refactor tracking (open items, bugs, CSS)
+- **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard (promoted to prod, not main)
 
 ---
 
@@ -206,19 +203,22 @@ For full command reference, see [docs/workflows.md](workflows.md).
 
 ## Branch Workflow
 
-Development happens on `dev`. The `main` branch is a curated public-facing subset.
+Three branches: `dev` (everything), `main` (public release), `prod` (Railway deployment).
 
 **How it works:**
 - `dev` is the active working branch — all new code, experiments, and docs land here
 - `main` contains only files whitelisted in `.publicinclude` — a curated subset for public release
-- Promotion is done via `utils/promote_to_main.sh`, which copies whitelisted files from dev to main with a clean commit history
-- The two branches have **diverged histories** (not fast-forwardable) — main has squashed/rewritten commits
+- `prod` contains everything in `.prodinclude` (superset of main) plus deployment files (Procfile, railway.toml). Deployed on Railway.
+- Promotion is done via `utils/promote_to_main.sh` or `utils/promote_to_prod.sh`
+- Branches have **diverged histories** (not fast-forwardable) — squashed/rewritten commits
 
-**`.publicinclude`** lists what gets promoted: all pipeline code (`core/`, `extraction/`, `inference/`, `steering/`, `analysis/`, `utils/`), visualization, config, datasets, and select docs. Dev-only content (`dev/`, `other/`, research notepads, experiment-specific docs) stays on `dev`.
+**`.publicinclude`** lists what gets promoted to main: pipeline code, visualization, config, datasets, and select docs.
+**`.prodinclude`** lists what gets promoted to prod: everything in main plus `docs/viz_findings/` (research findings served by the dashboard).
 
 **What stays dev-only:**
 - `dev/` directory — holding pen for steering CLI tools, modal files, dev-only scripts
 - `other/` — server, tv, sae, mcp, rm_sycophancy analysis
-- Research docs — refactor notepad, future ideas, steering reviews, experiment audits (listed in [Dev-only Docs](#dev-only-docs-not-promoted-to-main) above)
+- Research docs — refactor notepads, TODO (listed in [Dev-only Docs](#dev-only-docs-not-promoted-to-main) above)
+- Personal docs live in a separate `trait-interp-personal` repo
 
-**To promote new files:** Add paths to `.publicinclude`, then run `utils/promote_to_main.sh`.
+**To promote new files:** Add paths to `.publicinclude` or `.prodinclude`, then run the corresponding promote script.
