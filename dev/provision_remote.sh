@@ -94,15 +94,15 @@ su - dev -c 'git config --global user.name "ewernn"'
 su - dev -c 'git config --global user.email "ewernn@users.noreply.github.com"'
 
 # Clone repo
-if [ ! -d /home/dev/trait-interp ]; then
-    su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git /home/dev/trait-interp && cd /home/dev/trait-interp && git checkout dev"
+if [ ! -d /home/dev/traitinterp ]; then
+    su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git /home/dev/traitinterp && cd /home/dev/traitinterp && git checkout dev"
 else
-    su - dev -c "cd /home/dev/trait-interp && git pull"
+    su - dev -c "cd /home/dev/traitinterp && git pull"
 fi
 
 # Move .env into repo
-mv /tmp/.env /home/dev/trait-interp/.env 2>/dev/null || true
-chown dev:dev /home/dev/trait-interp/.env
+mv /tmp/.env /home/dev/traitinterp/.env 2>/dev/null || true
+chown dev:dev /home/dev/traitinterp/.env
 
 # Move Claude commands
 if [ -d /tmp/claude-commands ]; then
@@ -113,13 +113,13 @@ if [ -d /tmp/claude-commands ]; then
 fi
 
 # Bashrc
-grep -q "trait-interp" /home/dev/.bashrc 2>/dev/null || cat >> /home/dev/.bashrc << 'BASHEOF'
+grep -q "traitinterp" /home/dev/.bashrc 2>/dev/null || cat >> /home/dev/.bashrc << 'BASHEOF'
 export PATH="\$HOME/.local/bin:\$PATH"
-source ~/trait-interp/.venv/bin/activate 2>/dev/null || true
+source ~/traitinterp/.venv/bin/activate 2>/dev/null || true
 alias cla='claude --dangerously-skip-permissions'
 alias clar='claude --dangerously-skip-permissions --resume'
 alias cl='clear'
-cd ~/trait-interp
+cd ~/traitinterp
 BASHEOF
 chown dev:dev /home/dev/.bashrc
 
@@ -141,7 +141,7 @@ REMOTEEOF
 
 # --- Step 4: Install Python deps ---
 echo "[4/5] Installing Python deps..."
-$SSH 'su - dev -c "cd ~/trait-interp && pip3 install --break-system-packages uv 2>/dev/null; uv venv 2>/dev/null; uv pip install -r requirements.txt 2>&1 | tail -3"'
+$SSH 'su - dev -c "cd ~/traitinterp && pip3 install --break-system-packages uv 2>/dev/null; uv venv 2>/dev/null; uv pip install -r requirements.txt 2>&1 | tail -3"'
 
 # --- Step 5: Install Claude Code ---
 echo "[5/5] Installing Claude Code..."
@@ -156,4 +156,4 @@ echo "  claude"
 echo "  # Follow the browser auth link, paste code back"
 echo ""
 echo "Remember: R2 push before killing the instance!"
-echo "  cd ~/trait-interp && ./dev/r2_push.sh --only starter"
+echo "  cd ~/traitinterp && ./dev/r2_push.sh --only starter"

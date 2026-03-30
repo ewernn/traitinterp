@@ -21,7 +21,7 @@ import numpy as np
 from pathlib import Path
 from collections import defaultdict
 
-ROOT = Path("/home/dev/trait-interp")
+ROOT = Path("/home/dev/traitinterp")
 sys.path.insert(0, str(ROOT))
 
 from utils.vectors import load_vector_with_baseline

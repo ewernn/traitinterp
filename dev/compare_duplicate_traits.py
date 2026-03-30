@@ -9,7 +9,7 @@ Usage: python dev/compare_duplicate_traits.py
 import json
 from pathlib import Path
 
-BASE = Path("/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments")
+BASE = Path("/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments")
 
 
 def load_responses(path):

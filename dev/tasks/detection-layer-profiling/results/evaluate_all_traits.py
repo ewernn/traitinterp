@@ -13,7 +13,7 @@ from pathlib import Path
 from collections import defaultdict
 from tqdm import tqdm
 
-ROOT = Path("/home/dev/trait-interp")
+ROOT = Path("/home/dev/traitinterp")
 sys.path.insert(0, str(ROOT))
 
 from utils.paths import get as get_path, get_activation_dir

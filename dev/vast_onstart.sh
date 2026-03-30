@@ -35,14 +35,14 @@ su - dev -c 'git config --global user.name "ewernn"'
 su - dev -c 'git config --global user.email "ewernn@users.noreply.github.com"'
 
 # Clone repos
-su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git ~/trait-interp && cd ~/trait-interp && git checkout dev"
+su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git ~/traitinterp && cd ~/traitinterp && git checkout dev"
 su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/cc-plugins.git ~/cc-plugins"
 su - dev -c "mkdir -p ~/.claude/plugins && ln -s ~/cc-plugins/r ~/.claude/plugins/r"
 
 # Bashrc
 cat >> /home/dev/.bashrc << 'EOF'
 export PATH="$HOME/.local/bin:$PATH"
-source ~/trait-interp/.venv/bin/activate 2>/dev/null || true
+source ~/traitinterp/.venv/bin/activate 2>/dev/null || true
 alias cla='claude --dangerously-skip-permissions'
 alias clar='claude --dangerously-skip-permissions --resume'
 alias cl='clear'
@@ -94,7 +94,7 @@ EOF
 chown -R dev:dev /home/dev/.config/rclone
 
 # Setup venv and install deps
-su - dev -c "cd ~/trait-interp && pip3 install --break-system-packages uv && uv venv && uv pip install -r requirements.txt"
+su - dev -c "cd ~/traitinterp && pip3 install --break-system-packages uv && uv venv && uv pip install -r requirements.txt"
 
 # Pull data from R2
-su - dev -c "cd ~/trait-interp && ./dev/r2_pull.sh"
+su - dev -c "cd ~/traitinterp && ./dev/r2_pull.sh"

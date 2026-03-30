@@ -58,7 +58,7 @@ if id "dev" &>/dev/null; then
     mkdir -p /home/dev/.claude/commands
 
     # Move .env if it exists
-    [[ -f /tmp/.env ]] && mv /tmp/.env /home/dev/trait-interp/.env 2>/dev/null || true
+    [[ -f /tmp/.env ]] && mv /tmp/.env /home/dev/traitinterp/.env 2>/dev/null || true
 
     # Move Claude commands if they exist
     if [[ -d /tmp/claude-commands ]]; then
@@ -67,7 +67,7 @@ if id "dev" &>/dev/null; then
     fi
 
     chown -R dev:dev /home/dev/.claude
-    [[ -f /home/dev/trait-interp/.env ]] && chown dev:dev /home/dev/trait-interp/.env
+    [[ -f /home/dev/traitinterp/.env ]] && chown dev:dev /home/dev/traitinterp/.env
 
     echo "Done! Files moved to /home/dev/"
 else

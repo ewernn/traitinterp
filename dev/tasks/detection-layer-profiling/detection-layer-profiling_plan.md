@@ -380,7 +380,7 @@ Note: May need to check if "all" is supported or use explicit layer list.
 | +10% heuristic accuracy | MAE < 3 layers | If MAE > 5 |
 
 ## If Stuck
-- Extraction OOM → reduce batch size, or use --load-in-8bit
+- Extraction OOM → reduce batch size, or use --load-in-4bit
 - Stage 6 "no validation data" → re-extract with --save-activations --force
 - Steering coherence drops → reduce coefficient, check min-coherence
 - OpenAI rate limit → add delays, reduce --max-concurrent

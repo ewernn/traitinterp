@@ -21,7 +21,7 @@ from pathlib import Path
 from collections import defaultdict
 
 SCRIPT_DIR = Path(__file__).parent
-ROOT = Path("/home/dev/trait-interp")
+ROOT = Path("/home/dev/traitinterp")
 sys.path.insert(0, str(ROOT))
 
 

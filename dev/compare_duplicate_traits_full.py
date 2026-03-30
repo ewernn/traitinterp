@@ -9,7 +9,7 @@ Usage: python dev/compare_duplicate_traits_full.py
 import json
 from pathlib import Path
 
-BASE = Path("/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments")
+BASE = Path("/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments")
 
 FILES = {
     "alignment/deception (L25)": BASE / "audit-bleachers/steering/alignment/deception/instruct/response__5/steering/responses/residual/probe/L25_c13.6_2026-02-14_20-28-55.json",

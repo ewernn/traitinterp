@@ -42,7 +42,6 @@ docs/methodology.md
 docs/chat_templates.md
 docs/logit_lens.md
 docs/tensor_parallel.md
-docs/remote_setup.md
 
 # ── Root files ──
 README.md

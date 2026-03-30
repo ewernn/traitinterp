@@ -5,10 +5,10 @@ import json
 from pathlib import Path
 
 paths = {
-    "bs/concealment (L60)": "/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments/viz_findings/bullshit/steering/bs/concealment/instruct/response__5/steering/responses/residual/probe/L60_c35.9_2026-02-05_01-32-35.json",
-    "emotion_set/concealment (L46)": "/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments/mats-alignment-faking/steering/emotion_set/concealment/instruct/response__5/steering/responses/residual/probe/L46_c26.9_2026-03-05_12-09-56.json",
-    "bs/lying (L40)": "/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments/viz_findings/bullshit/steering/bs/lying/instruct/response__5/steering/responses/residual/probe/L40_c8.3_2026-02-10_11-53-59.json",
-    "emotion_set/lying (L38)": "/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments/mats-alignment-faking/steering/emotion_set/lying/instruct/response__5/steering/responses/residual/probe/L38_c17.4_2026-03-05_12-18-21.json",
+    "bs/concealment (L60)": "/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments/viz_findings/bullshit/steering/bs/concealment/instruct/response__5/steering/responses/residual/probe/L60_c35.9_2026-02-05_01-32-35.json",
+    "emotion_set/concealment (L46)": "/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments/mats-alignment-faking/steering/emotion_set/concealment/instruct/response__5/steering/responses/residual/probe/L46_c26.9_2026-03-05_12-09-56.json",
+    "bs/lying (L40)": "/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments/viz_findings/bullshit/steering/bs/lying/instruct/response__5/steering/responses/residual/probe/L40_c8.3_2026-02-10_11-53-59.json",
+    "emotion_set/lying (L38)": "/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments/mats-alignment-faking/steering/emotion_set/lying/instruct/response__5/steering/responses/residual/probe/L38_c17.4_2026-03-05_12-18-21.json",
 }
 
 for label, path in paths.items():

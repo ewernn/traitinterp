@@ -20,8 +20,8 @@ def read_best_file(directory):
             return 0
     return sorted(files, key=layer_num)[-1]
 
-BASE_BS = "/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments/viz_findings/bullshit/steering"
-BASE_EM = "/Users/ewern/Desktop/code/trait-stuff/trait-interp/experiments/mats-alignment-faking/steering"
+BASE_BS = "/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments/viz_findings/bullshit/steering"
+BASE_EM = "/Users/ewern/Desktop/code/trait-stuff/traitinterp/experiments/mats-alignment-faking/steering"
 
 paths = {
     "bs/concealment": f"{BASE_BS}/bs/concealment/instruct/response__5/steering/responses/residual/probe",
