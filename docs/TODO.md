@@ -48,6 +48,15 @@ Dev-only tracking. Not promoted to main.
 - [ ] README final pass
 - [ ] Promote to main via `utils/promote_to_main.sh`
 
+## Typing (from typing_audit.md P2-3)
+
+- [ ] `discover_vectors()` candidate dict → `VectorCandidate` dataclass (or fold into `VectorResult`)
+- [ ] `discover_steering_entries()` return → `SteeringEntry` dataclass
+- [ ] Coefficient search state dicts — single-trait (8 keys) and multi-trait (14 keys) need typed state
+- [ ] `trait_configs` elements — 10 keys, constructed in steering_eval.py, consumed in coefficient_search.py
+- [ ] `score_stats()` return — splat-merged via `**`, key change = silent bug
+- [ ] `ResponseRecord` read paths — still use `json.load()` + `.get()` instead of `ResponseRecord.from_dict()`
+
 ## Research Ideas (not blocking release)
 
 - [ ] Base vs instruct extraction comparison — systematic experiment across models (Qwen 2.5 vs 3.5, Llama, Gemma)
