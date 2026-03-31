@@ -403,8 +403,8 @@ def load_trait_vectors(experiment, extraction_variant, traits, component, layers
             )
 
             vec_list_idx = len(vector_list)
-            vector_list.append((vector, best_method, None, layer, vec_metadata,
-                                selection_source, baseline, position))
+            vector_list.append((vector, method, None, layer, vec_metadata,
+                                selection_source, baseline, load_position))
 
             vectors_for_layer.setdefault(layer, []).append(
                 (vector, category, trait_name, vec_list_idx))
