@@ -356,17 +356,29 @@ def load_trait_vectors(experiment, extraction_variant, traits, component, layers
 
         try:
             best = select_vector(experiment, trait, extraction_variant=extraction_variant)
+            best_layer = best.layer
+            best_method = best.method
+            position = best.position
+            selection_source = best.source or 'steering'
         except FileNotFoundError:
-            print(f"  Warning: no vectors/steering results for {trait}, skipping")
-            continue
-
-        best_layer = best.layer
-        best_method = best.method
-        position = best.position
-        selection_source = best.source or 'steering'
+            # No steering results — fall back to direct vector loading if explicit layers given
+            if layers_spec and 'best' not in layers_spec:
+                best_layer = None
+                best_method = None
+                position = None
+                selection_source = 'unscored'
+            else:
+                print(f"  Warning: no vectors/steering results for {trait}, skipping")
+                continue
 
         if available_layers is None:
-            concrete_layers = [best_layer] if best_layer else []
+            if best_layer:
+                concrete_layers = [best_layer]
+            elif layers_spec and 'best' not in layers_spec:
+                from utils.layers import parse_layers
+                concrete_layers = parse_layers(layers_spec, 80)
+            else:
+                concrete_layers = []
         else:
             concrete_layers = resolve_layers(
                 layers_spec or "best,best+5", best_layer, set(available_layers)
@@ -374,9 +386,20 @@ def load_trait_vectors(experiment, extraction_variant, traits, component, layers
 
         vector_list = []
         for layer in concrete_layers:
+            # Auto-detect method if not known from steering
+            method = best_method
+            if method is None:
+                from utils.vectors import find_vector_method
+                method = find_vector_method(experiment, trait, layer, extraction_variant,
+                                            component or 'residual', position or 'response[:5]')
+                if method is None:
+                    continue
+            # Auto-detect position if not known
+            load_position = position or 'response[:5]'
+
             vector, baseline, vec_metadata = load_vector_with_baseline(
-                experiment, trait, best_method, layer, extraction_variant,
-                component, position,
+                experiment, trait, method, layer, extraction_variant,
+                component, load_position,
             )
 
             vec_list_idx = len(vector_list)

@@ -64,7 +64,7 @@ def run_pipeline(config: InferenceConfig):
     if config.extraction_variant is None:
         config.extraction_variant = get_default_variant(config.experiment, mode='extraction')
 
-    inference_dir = Path(get_path('inference.base', experiment=config.experiment, model_variant=model_variant))
+    inference_dir = Path(get_path('inference.variant', experiment=config.experiment, model_variant=model_variant))
 
     # Generate responses if needed
     if config.regenerate or not config.from_activations:
@@ -135,7 +135,11 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
     from utils.project_activations import stream_through_project
 
     # Resolve inputs — bail early if anything's missing
-    traits = config.traits or discover_extracted_traits(config.experiment, config.extraction_variant)
+    if config.traits:
+        traits = config.traits
+    else:
+        trait_tuples = discover_extracted_traits(config.experiment, config.extraction_variant)
+        traits = [f"{cat}/{name}" for cat, name in trait_tuples]
     if not traits:
         print("  No traits found — nothing to project")
         return 0
