@@ -427,6 +427,7 @@ def load_model_with_lora(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=dtype,
             bnb_4bit_quant_type=bnb_4bit_quant_type,
+            bnb_4bit_use_double_quant=True,
         )
         model_kwargs["quantization_config"] = bnb_config
 

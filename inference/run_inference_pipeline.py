@@ -155,6 +155,7 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
         return 0
 
     # All inputs ready — load model and project
+    # TODO: pass model from generation stage to avoid double load (~3-6 min wasted per variant on 70B)
     backend = LocalBackend.from_experiment(
         config.experiment, variant=model_variant, load_in_4bit=config.load_in_4bit,
     )
