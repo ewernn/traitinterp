@@ -457,6 +457,7 @@ def load_model_with_lora(
         _print(f"  LoRA adapter applied.")
 
     model.eval()
+    install_unmask_padding_hook(model)
 
     # Auto-save cache for fast reload (skip from_pretrained on next load)
     if _patched_compress and not lora_adapter:

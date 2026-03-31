@@ -32,7 +32,7 @@ from utils.paths import (
     get as get_path, get_vector_path, discover_extracted_traits,
     get_model_variant,
 )
-from utils.model import tokenize, pad_sequences, tokenize_batch
+from utils.model import tokenize, pad_sequences
 from utils.layers import resolve_layers
 from utils.json_utils import dump_compact
 from utils.vram import calculate_max_batch_size
@@ -185,9 +185,9 @@ def stream_through_project(
         n_response = len(all_tokens[prompt_end:])
 
         full_text = resp_data.get('prompt', '') + resp_data.get('response', '')
-        token_ids = tokenizer.encode(full_text, add_special_tokens=False, return_tensors='pt').squeeze(0)
+        token_ids = tokenize(full_text, tokenizer).input_ids[0]
 
-        items.append((prompt_id, resp_data, token_ids, n_prompt, n_response))
+        items.append((prompt_id, token_ids, n_prompt, n_response))
 
     if not items:
         print("  All projections exist, skipping...")
@@ -228,7 +228,7 @@ def stream_through_project(
                 all_norms = proj.get_all_norms()  # {layer: [batch, seq]}
 
             # --- Extract per-item scores and write ---
-            for b, (prompt_id, resp_data, token_ids, n_prompt, n_response) in enumerate(batch_items):
+            for b, (prompt_id, token_ids, n_prompt, n_response) in enumerate(batch_items):
                 pad_off = pad_offsets[b]
                 prompt_slice = slice(pad_off, pad_off + n_prompt)
                 response_slice = slice(pad_off + n_prompt, pad_off + n_prompt + n_response)
