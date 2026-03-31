@@ -1,6 +1,7 @@
 huggingface_id: Qwen/Qwen3.5-9B
 model_type: qwen3_5
 variant: it
+pretrained: false
 supports_system_prompt: true
 max_context_length: 262144
 num_hidden_layers: 32

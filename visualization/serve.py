@@ -416,16 +416,9 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         steering = None
 
         # Paths to check: experiment-specific first, then shared datasets
-        # datasets/traits has subdirs (base/, instruct/, starter_traits/) so search all
         exp_trait_dir = get_path('extraction.base', experiment=experiment) / trait_path
-        datasets_root = get_path('datasets.traits')
-        candidate_dirs = [exp_trait_dir]
-        if datasets_root.exists():
-            for subdir in datasets_root.iterdir():
-                if subdir.is_dir():
-                    candidate = subdir / trait_path
-                    if candidate.exists():
-                        candidate_dirs.append(candidate)
+        datasets_trait_dir = get_path('datasets.traits') / trait_path
+        candidate_dirs = [exp_trait_dir, datasets_trait_dir]
 
         for trait_dir in candidate_dirs:
             if definition is None:

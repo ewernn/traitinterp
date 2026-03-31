@@ -68,9 +68,12 @@ traitinterp/
 │   │   └── archive/                   # Archived prompt sets
 │   └── traits/
 │       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
-│       ├── base/                      # Base-model traits (174 emotion_set, 10 alignment, 7 tonal)
-│       ├── instruct/                  # Instruct-model traits (pv_instruction, pv_natural, assistant_axis)
-│       └── archive/                   # Archived trait sets
+│       ├── emotion_set/              # 174 emotion traits
+│       ├── alignment/                # 10 alignment traits
+│       ├── tonal/                    # 7 tonal traits
+│       ├── pv_instruction/           # Instruct-model traits (instruction-following axis)
+│       ├── pv_natural/               # Instruct-model traits (natural conversation axis)
+│       └── archive/                  # Archived trait sets
 │   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json
 │
 ├── extraction/             # Vector extraction pipeline

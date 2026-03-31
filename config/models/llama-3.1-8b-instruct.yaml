@@ -1,6 +1,7 @@
 huggingface_id: meta-llama/Llama-3.1-8B-Instruct
 model_type: llama
 variant: it
+pretrained: false
 supports_system_prompt: true
 max_context_length: 131072
 num_hidden_layers: 32

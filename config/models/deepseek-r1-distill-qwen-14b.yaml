@@ -1,6 +1,7 @@
 huggingface_id: deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
 model_type: qwen2
 variant: it
+pretrained: false
 supports_system_prompt: true
 max_context_length: 131072
 num_hidden_layers: 48

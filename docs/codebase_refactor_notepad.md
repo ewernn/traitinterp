@@ -45,7 +45,7 @@ Selection logic genuinely differs. Could extract shared `_load_single_vector()` 
 - **utils/** = library code. Pipeline helpers live here.
 - **Typed returns** — public functions return dataclasses, not dicts. VectorResult, JudgeResult, ProjectionEntry, ProjectionRecord, ResponseRecord.
 - **Recursive discovery** — no hardcoded directory depth. Walk until leaf marker found.
-- **base/instruct split** — datasets/traits/base/ vs datasets/traits/instruct/ tells users how to extract
+- **flat trait categories** — datasets/traits/{category}/{trait}/ (no base/instruct nesting)
 - **emotion_set is canonical** — wins 9/12 head-to-heads at 2-4x lower coefficients
 - **Don't rename trait categories** — paths embedded in experiment dirs + JSON metadata
 - **Base model traits on dev until paper** — natural elicitation is novel contribution

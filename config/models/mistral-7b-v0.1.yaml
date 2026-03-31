@@ -4,6 +4,7 @@
 huggingface_id: mistralai/Mistral-7B-v0.1
 model_type: mistral
 variant: base
+pretrained: true
 supports_system_prompt: false
 
 # Architecture (from HF config.json)

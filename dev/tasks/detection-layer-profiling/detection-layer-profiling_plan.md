@@ -232,7 +232,7 @@ python steering/run_steering_eval.py \
 **Purpose**: Test whether the detection layer profile varies by trait type (affective vs behavioral vs alignment).
 **Depends on**: Stage 1 complete
 
-**Selection** (from datasets/traits/base/):
+**Selection** (from datasets/traits/):
 - emotion_set: joy, anxiety, anger, boredom, disgust, disappointment, vulnerability, awe (covers the 3 affective categories from the mar15 idea)
 - alignment: deception, emergent_misalignment, self_serving, gaming, strategic_omission
 - tonal: angry_register, mocking, curt

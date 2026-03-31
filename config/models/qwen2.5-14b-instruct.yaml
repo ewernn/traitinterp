@@ -1,7 +1,8 @@
-huggingface_id: Qwen/Qwen2.5-14B
+huggingface_id: Qwen/Qwen2.5-14B-Instruct
 model_type: qwen2
-variant: base
-supports_system_prompt: false
+variant: instruct
+pretrained: false
+supports_system_prompt: true
 max_context_length: 131072
 num_hidden_layers: 48
 hidden_size: 5120
@@ -14,7 +15,7 @@ intermediate_size: 13824
 sae:
   available: false
 notes:
-  system_prompt: Not supported (base model)
+  system_prompt: Supported (instruct model)
   generation_mask: false
   prefill: Supported
-  quirks: Base model for DeepSeek-R1-Distill-Qwen-14B. Same architecture (48 layers, 5120 hidden).
+  quirks: Same architecture as Qwen2.5-14B base (48 layers, 5120 hidden).
