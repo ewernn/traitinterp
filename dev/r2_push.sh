@@ -54,6 +54,7 @@ case $MODE in
         echo ""
         rclone copy "$LOCAL_DIR" "$R2_REMOTE" \
             --ignore-existing \
+            --no-traverse \
             --transfers 32 \
             --checkers 32 \
             "${COMMON_FLAGS[@]}"
