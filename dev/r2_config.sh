@@ -66,8 +66,6 @@ build_excludes() {
         --exclude "**/activations/**"
         --exclude "**/inference/*/raw/**"
         --exclude "**/inference/raw/**"
-        --exclude "**/inference/*/projections/**"
-        --exclude "**/inference/projections/**"
     )
 
     # ── Always exclude: training artifacts ──
@@ -94,6 +92,7 @@ build_excludes() {
     EXCLUDES+=(
         --exclude "viz_findings/**"
         --exclude "audit-bleachers/**"    # 10GB: 168 prompt sets × 57 variants
+        --exclude "obfuscation-atlas/**/projections/**"  # 85GB: 42 layers × 113 traits × 874 prompts × 3 variants
     )
 
     # ── Archive: not synced (lives in separate R2 bucket path) ──
