@@ -66,6 +66,8 @@ build_excludes() {
         --exclude "**/activations/**"
         --exclude "**/inference/*/raw/**"
         --exclude "**/inference/raw/**"
+        --exclude "**/inference/*/projections/**"
+        --exclude "**/inference/projections/**"
     )
 
     # ── Always exclude: training artifacts ──

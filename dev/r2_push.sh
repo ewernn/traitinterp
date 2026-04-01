@@ -42,7 +42,7 @@ COMMON_FLAGS=(
     --progress
     --stats 5s
     --fast-list
-    --copy-links
+    --skip-links
     $DRY_RUN
     "${EXCLUDES[@]}"
     "${ONLY_FILTERS[@]}"
@@ -72,7 +72,7 @@ case $MODE in
         echo ""
         rclone sync "$LOCAL_DIR" "$R2_REMOTE" \
             --size-only \
-            --copy-links \
+            --skip-links \
             --local-no-check-updated \
             --transfers 8 \
             --checkers 8 \
