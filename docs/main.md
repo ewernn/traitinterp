@@ -10,20 +10,18 @@ Primary documentation hub for the traitinterp project.
 
 ### Core Documentation
 - **[docs/main.md](main.md)** (this file) - Project overview and codebase reference
-- **[docs/experiment_structure.md](experiment_structure.md)** - Experiment directory schema, sub-experiments, notepad conventions, R2 sync
-- **[docs/workflows.md](workflows.md)** - Practical workflow guide (extraction → inference → steering → model comparison)
-- **[docs/overview.md](overview.md)** - Methodology, key learnings, notable experiments (serves /overview in frontend)
-- **[docs/architecture.md](architecture.md)** - Design principles and organization
+- **[docs/architecture.md](architecture.md)** - Design principles, directory responsibilities, experiment schema
 - **[README.md](../readme.md)** - Quick start guide
 
-### Pipeline & Extraction
-- **[docs/extraction_guide.md](extraction_guide.md)** - Complete extraction reference (scenarios → vectors → validation)
-- **[docs/probes_guide.md](probes_guide.md)** - Linear probes: theory, training, validation, visualization
-- **[docs/scenario_design_guide.md](scenario_design_guide.md)** - Writing contrasting scenario pairs for good vectors
-- **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (decision tree, scenario design, iteration)
-- **[docs/judge_definition_iteration.md](judge_definition_iteration.md)** - Iterating judge definitions until accurate
+### Pipelines
+- **[docs/extraction_guide.md](extraction_guide.md)** - Extraction pipeline (scenarios → vectors → validation)
+- **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline (per-token monitoring, projection modes)
+- **[docs/steering_guide.md](steering_guide.md)** - Steering pipeline (causal validation, coefficient search)
+- **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (scenarios, definitions, iteration)
 
 ### Inference & Steering
+- **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline guide (stream-through, from-activations, projection modes)
+- **[docs/steering_guide.md](steering_guide.md)** - Steering pipeline guide (coefficient search, metrics, troubleshooting)
 - **[inference/README.md](../inference/README.md)** - Per-token monitoring
 - **[analysis/README.md](../analysis/README.md)** - All analysis scripts (steering, model diff, vectors, benchmark)
 - **[steering/README.md](../steering/README.md)** - Steering evaluation (detailed)
@@ -200,7 +198,7 @@ python extraction/run_extraction_pipeline.py --experiment {experiment} --traits 
 python visualization/serve.py  # Visit http://localhost:8000/
 ```
 
-For full command reference, see [docs/workflows.md](workflows.md).
+See the pipeline guides: [extraction](extraction_guide.md), [inference](inference_guide.md), [steering](steering_guide.md).
 
 ---
 

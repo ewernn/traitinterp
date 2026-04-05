@@ -1,9 +1,10 @@
-# Files and directories to promote from dev → main
-# Used by utils/promote_to_main.sh
-# Lines starting with # are comments, blank lines are ignored
+# Files and directories to promote from dev → prod
+# Used by utils/promote_to_prod.sh
+# Prod = Railway deployment (visualization dashboard + API)
 #
-# Add paths as you clean them up. Directories include everything inside.
-# Specific files can be listed individually.
+# Superset of .publicinclude plus prod-specific content.
+# Deployment files (Procfile, railway.toml, .railwayignore, other/railway/)
+# live directly on the prod branch and are NOT managed by promotion.
 
 # ── Pipeline ──
 core/
@@ -27,7 +28,7 @@ datasets/inference/starter_prompts/
 # ── Analysis ──
 analysis/
 
-# ── Docs ──
+# ── Docs (same as .publicinclude) ──
 docs/main.md
 docs/extraction_guide.md
 docs/inference_guide.md
@@ -35,6 +36,11 @@ docs/steering_guide.md
 docs/trait_dataset_creation.md
 docs/architecture.md
 docs/tensor_parallel.md
+
+# ── Prod-only: served by dashboard ──
+docs/overview.md
+docs/methodology.md
+docs/viz_findings/
 
 # ── Root files ──
 README.md

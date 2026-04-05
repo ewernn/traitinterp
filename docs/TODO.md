@@ -48,7 +48,7 @@ Dev-only tracking. Not promoted to main.
 - [ ] README final pass
 - [ ] Promote to main via `utils/promote_to_main.sh`
 
-## Typing (from typing_audit.md P2-3)
+## Typing
 
 - [ ] `discover_vectors()` candidate dict → `VectorCandidate` dataclass (or fold into `VectorResult`)
 - [ ] `discover_steering_entries()` return → `SteeringEntry` dataclass

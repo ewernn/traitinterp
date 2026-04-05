@@ -16,18 +16,6 @@ Trait datasets are model-agnostic. Extract once, apply to any model.
 
 ---
 
-## Requirements
-
-Extraction and steering require a GPU. Use `--load-in-4bit` for quantization to fit larger models.
-
-| Model size | Minimum GPU | VRAM |
-|-----------|-------------|------|
-| Up to 9B | RTX 3090 / Apple Silicon M1 Pro+ | 24GB |
-| Up to 14B | RTX 3090/4090 | 24GB |
-| 70B+ | A100-80GB (or multi-GPU with TP) | 80GB |
-
-The visualization dashboard runs anywhere (CPU only).
-
 ## Quick start
 
 ```bash
@@ -108,7 +96,7 @@ Interactive dashboard at [traitinterp.com](https://traitinterp.com) (or run loca
 ## Repository structure
 
 ```
-trait-interp/
+traitinterp/
 ├── datasets/traits/       # Model-agnostic trait definitions (scenarios, rubrics, eval questions)
 ├── extraction/            # Extract trait vectors: run_extraction_pipeline.py
 ├── inference/             # Monitor traits: run_inference_pipeline.py
@@ -127,10 +115,10 @@ trait-interp/
 ## Docs
 
 - **[docs/main.md](docs/main.md)** — Codebase reference and navigation
-- **[docs/workflows.md](docs/workflows.md)** — Practical workflow guide
-- **[docs/extraction_guide.md](docs/extraction_guide.md)** — Complete extraction reference
-- **[docs/overview.md](docs/overview.md)** — Methodology and key learnings
-- **[docs/scenario_design_guide.md](docs/scenario_design_guide.md)** — Writing good contrasting scenarios
+- **[docs/extraction_guide.md](docs/extraction_guide.md)** — Extraction pipeline
+- **[docs/inference_guide.md](docs/inference_guide.md)** — Inference pipeline
+- **[docs/steering_guide.md](docs/steering_guide.md)** — Steering pipeline
+- **[docs/trait_dataset_creation.md](docs/trait_dataset_creation.md)** — Creating trait datasets
 
 ---
 

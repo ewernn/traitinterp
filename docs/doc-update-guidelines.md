@@ -29,9 +29,8 @@
 | Codebase navigation | `docs/` |
 | How-to guides | `docs/` |
 | Technical references | `docs/` |
-| Research notes | `docs/other/` |
-| Personal writing | `docs/other/` |
-| Application materials | `docs/other/` |
+| Research notes | `trait-interp-personal` repo |
+| Personal writing | `trait-interp-personal` repo |
 
 ## Style
 

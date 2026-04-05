@@ -30,9 +30,11 @@ EOF
 # Install Claude Code
 su - dev -c 'curl -fsSL https://claude.ai/install.sh | bash'
 
-# Git config
-su - dev -c 'git config --global user.name "ewernn"'
-su - dev -c 'git config --global user.email "ewernn@users.noreply.github.com"'
+# Git config — set these before first use
+GITHUB_USERNAME="${GITHUB_USERNAME:-ewernn}"
+GITHUB_EMAIL="${GITHUB_EMAIL:-ewernn@users.noreply.github.com}"
+su - dev -c "git config --global user.name '$GITHUB_USERNAME'"
+su - dev -c "git config --global user.email '$GITHUB_EMAIL'"
 
 # Clone repos
 su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git ~/traitinterp && cd ~/traitinterp && git checkout dev"
