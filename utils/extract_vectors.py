@@ -82,7 +82,7 @@ from utils.positions import resolve_position
 def load_vetting_filter(experiment: str, trait: str, model_variant: str,
                         pos_threshold: int = 60, neg_threshold: int = 40) -> dict:
     """Load failed indices from response vetting."""
-    vetting_file = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / 'vetting' / 'response_scores.json'
+    vetting_file = get_path('extraction.vetting', experiment=experiment, trait=trait, model_variant=model_variant) / 'response_scores.json'
     if not vetting_file.exists():
         return {'positive': [], 'negative': []}
     with open(vetting_file) as f:
@@ -107,7 +107,7 @@ def load_vetting_filter(experiment: str, trait: str, model_variant: str,
 
 def load_llm_judge_position(experiment: str, trait: str, model_variant: str) -> str | None:
     """Load llm_judge_position from vetting if available."""
-    vetting_file = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / 'vetting' / 'response_scores.json'
+    vetting_file = get_path('extraction.vetting', experiment=experiment, trait=trait, model_variant=model_variant) / 'response_scores.json'
     if not vetting_file.exists():
         return None
     with open(vetting_file) as f:

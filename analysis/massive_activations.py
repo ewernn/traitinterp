@@ -41,8 +41,8 @@ from utils.distributed import is_tp_mode
 from core.math import cosine_similarity
 
 # Calibration dataset path
-CALIBRATION_DATASET = Path(__file__).parent.parent / 'datasets' / 'inference' / 'massive_dims' / 'calibration_50.json'
 CALIBRATION_PROMPT_SET = 'massive_dims/calibration_50'
+CALIBRATION_DATASET = get_path('datasets.inference_prompt_set', prompt_set=CALIBRATION_PROMPT_SET)
 
 
 def find_massive_dims(
@@ -353,7 +353,7 @@ def compute_per_layer_stats(experiment: str, model_variant: str) -> dict:
     - pct_above_10x: % of tokens where dim exceeds 10x baseline
     """
     # Load calibration to get massive dims
-    calib_path = Path(get_path('inference.variant', experiment=experiment, model_variant=model_variant)) / 'massive_activations' / 'calibration.json'
+    calib_path = get_path('inference.massive_activations', experiment=experiment, model_variant=model_variant, prompt_set='calibration')
 
     if not calib_path.exists():
         raise FileNotFoundError(f"Calibration not found: {calib_path}\nRun: python analysis/massive_activations.py --experiment {experiment}")
@@ -610,9 +610,8 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
     if args.output:
         output_path = Path(args.output)
     else:
-        inference_base = Path(get_path('inference.variant', experiment=experiment, model_variant=model_variant))
-        output_name = 'calibration.json' if is_calibration else f'{args.prompt_set}.json'
-        output_path = inference_base / 'massive_activations' / output_name
+        output_name = 'calibration' if is_calibration else args.prompt_set
+        output_path = get_path('inference.massive_activations', experiment=experiment, model_variant=model_variant, prompt_set=output_name)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -705,7 +704,7 @@ def main():
         if args.output:
             out_path = Path(args.output)
         else:
-            out_path = Path(get_path('inference.variant', experiment=args.experiment, model_variant=model_variant)) / 'massive_activations' / 'per_layer_stats.json'
+            out_path = get_path('inference.massive_activations', experiment=args.experiment, model_variant=model_variant, prompt_set='per_layer_stats')
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(out_path, 'w') as f:

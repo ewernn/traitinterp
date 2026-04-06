@@ -288,7 +288,7 @@ def check_inference(exp_dir: Path, traits: List[str]) -> InferenceIntegrity:
     """Check inference directory using discovery."""
 
     result = InferenceIntegrity()
-    inference_dir = exp_dir / "inference"
+    inference_dir = get_path('inference.base', experiment=exp_dir.name)
 
     if not inference_dir.exists():
         result.issues.append("No inference directory")
@@ -321,7 +321,7 @@ def check_analysis(exp_dir: Path) -> AnalysisIntegrity:
     """Check analysis directory using discovery."""
 
     result = AnalysisIntegrity()
-    analysis_dir = exp_dir / "analysis"
+    analysis_dir = get_path('analysis.base', experiment=exp_dir.name)
 
     if not analysis_dir.exists():
         result.issues.append("No analysis directory")
@@ -400,7 +400,7 @@ def check_experiment(experiment: str) -> ExperimentIntegrity:
     )
 
     # Find all traits (discovery-based)
-    extraction_dir = exp_dir / "extraction"
+    extraction_dir = get_path('extraction.base', experiment=experiment)
     traits = []
     all_methods = set()
 
@@ -447,7 +447,7 @@ def check_experiment(experiment: str) -> ExperimentIntegrity:
     result.steering = check_steering(exp_dir)
 
     # Check evaluation
-    evaluation_file = exp_dir / "extraction" / "extraction_evaluation.json"
+    evaluation_file = get_path('extraction_eval.evaluation', experiment=experiment)
     result.evaluation_exists = evaluation_file.exists()
 
     # Compute summary

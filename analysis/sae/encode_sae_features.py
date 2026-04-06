@@ -194,6 +194,7 @@ def encode_raw_file(
 
 def encode_experiment(
     experiment: str,
+    model_variant: str = None,
     prompt_set: str = None,
     layer: int = 16,
     component: str = "residual",
@@ -205,14 +206,19 @@ def encode_experiment(
 
     Args:
         experiment: Experiment name
+        model_variant: Model variant (default: from experiment config)
         prompt_set: Specific prompt set (if None, process all)
         layer: Layer to encode
         component: Component - 'attn_out', 'residual'
         device: Device for SAE
         top_k: Number of top features per token
     """
+    if model_variant is None:
+        from utils.paths import get_default_variant
+        model_variant = get_default_variant(experiment, mode='application')
+
     # Raw activations location
-    raw_base = get_path('inference.raw_residual', experiment=experiment, prompt_set='').parent
+    raw_base = get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set='').parent
 
     if not raw_base.exists():
         print(f"No raw activations found at: {raw_base}")
@@ -239,7 +245,7 @@ def encode_experiment(
     print()
 
     # Output base directory
-    output_base = get_path('inference.sae', experiment=experiment)
+    output_base = get_path('inference.sae', experiment=experiment, model_variant=model_variant)
 
     # Process each prompt set
     total_encoded = 0
@@ -287,6 +293,8 @@ def main():
     parser = argparse.ArgumentParser(description="Encode raw activations to SAE features")
     parser.add_argument("--experiment", type=str, required=True,
                         help="Experiment name")
+    parser.add_argument("--model-variant", type=str, default=None,
+                        help="Model variant (default: from experiment config)")
     parser.add_argument("--prompt-set", type=str, default=None,
                         help="Specific prompt set (default: all)")
     parser.add_argument("--layer", type=int, default=16,
@@ -303,6 +311,7 @@ def main():
 
     encode_experiment(
         experiment=args.experiment,
+        model_variant=args.model_variant,
         prompt_set=args.prompt_set,
         layer=args.layer,
         component=args.component,
