@@ -1,7 +1,11 @@
 /**
- * Sidebar component - handles trait checkboxes, navigation, theme, and experiment list.
+ * Sidebar component - handles trait checkboxes, navigation, theme, GPU status,
+ * and experiment list rendering.
  * Depends on: state.js (window.state), display.js (getDisplayName)
  */
+
+import { ANALYSIS_VIEWS, setTabInURL, setExperimentInURL, ensureExperimentLoaded, loadExperimentData } from '../core/state.js';
+import { getDisplayName } from '../core/display.js';
 
 // =============================================================================
 // Theme Management
@@ -32,6 +36,9 @@ function updateThemeIcon(theme) {
 // =============================================================================
 // Trait Selection
 // =============================================================================
+
+/** Total number of unique traits (set during populateTraitCheckboxes) */
+let _totalTraitCount = 0;
 
 function populateTraitCheckboxes() {
     const container = document.getElementById('trait-checkboxes');
@@ -66,106 +73,120 @@ function populateTraitCheckboxes() {
         return a.localeCompare(b);
     });
 
+    _totalTraitCount = uniqueTraits.length;
+
+    // Restyle the existing static select-all button as a trait-select-all link
+    const selectAllBtn = document.getElementById('select-all-btn');
+    if (selectAllBtn) {
+        selectAllBtn.className = 'trait-select-all';
+        // Determine initial label based on default selection
+        const allDefaultSelected = !hasOg10;
+        selectAllBtn.textContent = allDefaultSelected ? 'Deselect All' : 'Select All';
+    }
+
     sortedCategories.forEach(category => {
         const traits = categories[category];
         const isDefaultSelected = hasOg10 ? category === 'og_10' : true;
 
-        // Create category container
-        const categoryDiv = document.createElement('div');
-        categoryDiv.className = 'trait-category';
-        categoryDiv.dataset.category = category;
-
-        // Category header
+        // Category header with expand/collapse + select-all on label click
         const header = document.createElement('div');
-        header.className = 'trait-category-header';
-        header.innerHTML = `
-            <span class="category-arrow">▼</span>
-            <input type="checkbox" class="category-checkbox" ${isDefaultSelected ? 'checked' : ''}>
-            <span class="category-name">${category.replace(/_/g, ' ')}</span>
-            <span class="category-count">(${isDefaultSelected ? traits.length : 0}/${traits.length})</span>
-        `;
-        categoryDiv.appendChild(header);
+        header.className = 'trait-cat-header';
 
-        // Traits container
-        const traitsDiv = document.createElement('div');
-        traitsDiv.className = 'trait-category-items';
+        const arrow = document.createElement('span');
+        arrow.className = 'trait-cat-arrow';
+        arrow.textContent = '▸';
+        header.appendChild(arrow);
+
+        const label = document.createElement('span');
+        label.className = 'trait-cat-label';
+        label.textContent = category.replace(/_/g, ' ');
+        header.appendChild(label);
+
+        const count = document.createElement('span');
+        count.className = 'trait-cat-count';
+        count.textContent = `${traits.length}`;
+        header.appendChild(count);
+
+        container.appendChild(header);
+
+        // Chips container (collapsed by default)
+        const chipsDiv = document.createElement('div');
+        chipsDiv.className = 'trait-chips';
+        chipsDiv.dataset.category = category;
+        chipsDiv.hidden = true;
 
         traits.forEach(trait => {
-            const checkbox = document.createElement('div');
-            checkbox.className = 'trait-checkbox';
-            checkbox.innerHTML = `
-                <input type="checkbox" id="trait-${trait.name}" value="${trait.name}" ${isDefaultSelected ? 'checked' : ''}>
-                <label for="trait-${trait.name}">${window.getDisplayName(trait.name)}</label>
-            `;
-            traitsDiv.appendChild(checkbox);
+            const chip = document.createElement('span');
+            chip.className = 'trait-chip' + (isDefaultSelected ? ' selected' : '');
+            chip.dataset.trait = trait.name;
+            chip.textContent = getDisplayName(trait.name);
 
-            const input = checkbox.querySelector('input');
-            input.addEventListener('change', (e) => {
-                if (e.target.checked) {
+            chip.addEventListener('click', () => {
+                const isSelected = chip.classList.toggle('selected');
+                if (isSelected) {
                     window.state.selectedTraits.add(trait.name);
                 } else {
                     window.state.selectedTraits.delete(trait.name);
                 }
-                updateCategoryCheckbox(categoryDiv);
                 updateSelectedCount();
+                updateSelectAllLabel();
                 if (window.renderView) window.renderView();
             });
+
+            chipsDiv.appendChild(chip);
 
             if (isDefaultSelected) {
                 window.state.selectedTraits.add(trait.name);
             }
         });
 
-        categoryDiv.appendChild(traitsDiv);
-        container.appendChild(categoryDiv);
+        container.appendChild(chipsDiv);
 
-        // Category header click handlers
-        const arrow = header.querySelector('.category-arrow');
-        const categoryCheckbox = header.querySelector('.category-checkbox');
-
-        // Arrow toggles collapse
+        // Arrow click: expand/collapse chips
         arrow.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isCollapsed = categoryDiv.classList.toggle('collapsed');
-            arrow.textContent = isCollapsed ? '▶' : '▼';
+            chipsDiv.hidden = !chipsDiv.hidden;
+            arrow.textContent = chipsDiv.hidden ? '▸' : '▾';
         });
 
-        // Category checkbox toggles all traits in category
-        categoryCheckbox.addEventListener('change', (e) => {
-            const checked = e.target.checked;
-            traitsDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = checked;
-                if (checked) {
-                    window.state.selectedTraits.add(cb.value);
+        // Label/count click: toggle all traits in this category
+        const toggleCategory = () => {
+            // Expand if collapsed
+            if (chipsDiv.hidden) {
+                chipsDiv.hidden = false;
+                arrow.textContent = '▾';
+            }
+            const chips = chipsDiv.querySelectorAll('.trait-chip');
+            const allInCatSelected = Array.from(chips).every(c => c.classList.contains('selected'));
+
+            chips.forEach(c => {
+                const traitName = c.dataset.trait;
+                if (allInCatSelected) {
+                    c.classList.remove('selected');
+                    window.state.selectedTraits.delete(traitName);
                 } else {
-                    window.state.selectedTraits.delete(cb.value);
+                    c.classList.add('selected');
+                    window.state.selectedTraits.add(traitName);
                 }
             });
-            updateCategoryCount(categoryDiv);
-            updateSelectedCount();
-            if (window.renderView) window.renderView();
-        });
 
-        updateCategoryCount(categoryDiv);
+            updateSelectedCount();
+            updateSelectAllLabel();
+            if (window.renderView) window.renderView();
+        };
+        label.addEventListener('click', (e) => { e.stopPropagation(); toggleCategory(); });
+        count.addEventListener('click', (e) => { e.stopPropagation(); toggleCategory(); });
     });
 
     updateSelectedCount();
+    updateSelectAllLabel();
 }
 
-function updateCategoryCheckbox(categoryDiv) {
-    const checkboxes = categoryDiv.querySelectorAll('.trait-category-items input[type="checkbox"]');
-    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-    const categoryCheckbox = categoryDiv.querySelector('.category-checkbox');
-    categoryCheckbox.checked = checkedCount === checkboxes.length;
-    categoryCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
-    updateCategoryCount(categoryDiv);
-}
-
-function updateCategoryCount(categoryDiv) {
-    const checkboxes = categoryDiv.querySelectorAll('.trait-category-items input[type="checkbox"]');
-    const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
-    const countSpan = categoryDiv.querySelector('.category-count');
-    countSpan.textContent = `(${checkedCount}/${checkboxes.length})`;
+function updateSelectAllLabel() {
+    const btn = document.getElementById('select-all-btn');
+    if (btn) {
+        btn.textContent = window.state.selectedTraits.size > 0 ? 'Deselect All' : 'Select All';
+    }
 }
 
 function updateSelectedCount() {
@@ -176,28 +197,22 @@ function updateSelectedCount() {
 }
 
 function toggleAllTraits() {
-    const traitCheckboxes = document.querySelectorAll('.trait-category-items input[type="checkbox"]');
-    const allSelected = window.state.selectedTraits.size === traitCheckboxes.length;
+    const allChips = document.querySelectorAll('.trait-chip');
+    const anySelected = window.state.selectedTraits.size > 0;
 
-    traitCheckboxes.forEach(cb => {
-        cb.checked = !allSelected;
-        if (!allSelected) {
-            window.state.selectedTraits.add(cb.value);
+    allChips.forEach(chip => {
+        const traitName = chip.dataset.trait;
+        if (anySelected) {
+            chip.classList.remove('selected');
+            window.state.selectedTraits.delete(traitName);
         } else {
-            window.state.selectedTraits.delete(cb.value);
+            chip.classList.add('selected');
+            window.state.selectedTraits.add(traitName);
         }
     });
 
-    // Update all category checkboxes
-    document.querySelectorAll('.trait-category').forEach(categoryDiv => {
-        updateCategoryCheckbox(categoryDiv);
-    });
-
-    const btn = document.getElementById('select-all-btn');
-    if (btn) {
-        btn.textContent = allSelected ? 'Select All' : 'Deselect All';
-    }
     updateSelectedCount();
+    updateSelectAllLabel();
     if (window.renderView) window.renderView();
 }
 
@@ -215,7 +230,7 @@ function setupNavigation() {
             if (item === analysisEntry) {
                 const targetView = window.state.lastAnalysisView || 'extraction';
                 window.state.currentView = targetView;
-                window.setTabInURL(targetView);
+                setTabInURL(targetView);
 
                 navItems.forEach(n => n.classList.remove('active'));
                 analysisEntry.classList.add('active');
@@ -224,7 +239,7 @@ function setupNavigation() {
 
                 updatePageTitle();
                 updateExperimentVisibility();
-                await window.ensureExperimentLoaded();
+                await ensureExperimentLoaded();
                 window.renderPromptPicker();
                 if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
                 if (window.renderView) window.renderView();
@@ -236,10 +251,10 @@ function setupNavigation() {
 
             if (item.dataset.view) {
                 window.state.currentView = item.dataset.view;
-                window.setTabInURL(item.dataset.view);
+                setTabInURL(item.dataset.view);
 
                 // Analysis sub-nav: keep the main sidebar entry highlighted
-                if (window.ANALYSIS_VIEWS.includes(item.dataset.view)) {
+                if (ANALYSIS_VIEWS.includes(item.dataset.view)) {
                     window.state.lastAnalysisView = item.dataset.view;
                     if (analysisEntry) analysisEntry.classList.add('active');
                 }
@@ -248,7 +263,7 @@ function setupNavigation() {
                 updateExperimentVisibility();
 
                 // Auto-load experiment if switching to analysis view and none selected
-                await window.ensureExperimentLoaded();
+                await ensureExperimentLoaded();
 
                 window.renderPromptPicker();
                 if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
@@ -264,9 +279,7 @@ function updatePageTitle() {
         'extraction': 'Extraction',
         'steering': 'Steering',
         'trait-dynamics': 'Inference',
-        'correlation': 'Correlation',
-        'model-analysis': 'Model Analysis',
-        'layer-dive': 'Layer Deep Dive'
+        'model-analysis': 'Model Analysis'
     };
     const titleElem = document.getElementById('page-title');
     if (titleElem) {
@@ -282,7 +295,7 @@ function updateExperimentVisibility() {
     const analysisPanel = document.getElementById('sidebar-analysis');
     if (!analysisPanel) return;
 
-    const isAnalysis = window.ANALYSIS_VIEWS.includes(window.state.currentView);
+    const isAnalysis = ANALYSIS_VIEWS.includes(window.state.currentView);
     analysisPanel.classList.toggle('hidden', !isAnalysis);
 }
 
@@ -319,6 +332,171 @@ function setupSubsectionInfoToggles() {
 }
 
 // =============================================================================
+// GPU Status Widget
+// =============================================================================
+
+let gpuPollInterval = null;
+
+async function fetchGpuStatus() {
+    try {
+        const response = await fetch('/api/gpu-status');
+        if (!response.ok) throw new Error('Failed to fetch GPU status');
+        updateGpuStatusUI(await response.json());
+    } catch (e) {
+        console.warn('GPU status fetch failed:', e);
+        updateGpuStatusUI({ available: false, device: 'Unknown', error: e.message });
+    }
+}
+
+function updateGpuStatusUI(status) {
+    const container = document.getElementById('gpu-status');
+    if (!container) return;
+
+    if (!status) {
+        container.classList.add('loading');
+        return;
+    }
+
+    container.classList.remove('loading');
+    container.classList.toggle('available', status.available);
+    container.classList.toggle('error', !!status.error);
+
+    // Update device name
+    const nameEl = container.querySelector('.gpu-name');
+    if (nameEl) {
+        let name = status.device || 'Unknown';
+        name = name.replace('NVIDIA ', '').replace('Apple ', '');
+        nameEl.textContent = name;
+        nameEl.title = status.device;
+    }
+
+    // Update memory display
+    const memoryEl = container.querySelector('.gpu-memory');
+    if (memoryEl) {
+        if (status.memory_used_gb != null && status.memory_total_gb != null) {
+            const pct = (status.memory_used_gb / status.memory_total_gb) * 100;
+            const fillClass = pct > 90 ? 'critical' : pct > 70 ? 'high' : '';
+            memoryEl.innerHTML = `
+                <div class="gpu-memory-bar">
+                    <div class="gpu-memory-fill ${fillClass}" style="width: ${pct}%"></div>
+                </div>
+                <span class="gpu-memory-text">${status.memory_used_gb.toFixed(1)}/${status.memory_total_gb.toFixed(0)}GB</span>
+            `;
+        } else if (status.memory_total_gb != null) {
+            // MPS - just show total
+            memoryEl.innerHTML = `<span class="gpu-memory-text">${status.memory_total_gb.toFixed(0)}GB</span>`;
+        } else {
+            memoryEl.innerHTML = '';
+        }
+    }
+
+    // Update tooltip
+    let tooltip = status.device || 'GPU Status';
+    if (status.note) tooltip += `\n${status.note}`;
+    if (status.error) tooltip += `\nError: ${status.error}`;
+    container.title = tooltip;
+}
+
+function startGpuPolling(intervalMs = 5000) {
+    if (gpuPollInterval) clearInterval(gpuPollInterval);
+    fetchGpuStatus();  // Initial fetch
+    gpuPollInterval = setInterval(fetchGpuStatus, intervalMs);
+}
+
+// =============================================================================
+// Experiment List Rendering
+// =============================================================================
+
+/**
+ * Render the experiment picker as a hover dropdown into #experiment-list.
+ * @param {string[]} experiments - All experiment names
+ * @param {string[]} hiddenExperiments - Experiments hidden by default
+ * @param {string|null} activeExperiment - Currently active experiment (null = first)
+ */
+function renderExperimentList(experiments, hiddenExperiments, activeExperiment = null) {
+    const list = document.getElementById('experiment-list');
+    if (!list) return;
+
+    // Filter experiments unless showAllExperiments is true
+    const hiddenCount = experiments.filter(exp => hiddenExperiments.includes(exp)).length;
+    const visibleExperiments = window.state.showAllExperiments
+        ? experiments
+        : experiments.filter(exp => !hiddenExperiments.includes(exp));
+
+    const activeName = activeExperiment || 'Select...';
+
+    let menuItems = visibleExperiments.map(exp => {
+        const isActive = exp === activeExperiment;
+        const meta = window.state.experimentMeta?.[exp] || [];
+        const badges = meta.length > 0
+            ? `<span class="exp-badges">${meta.map(b => `<span class="exp-badge">${b}</span>`).join('')}</span>`
+            : '';
+        return `<div class="exp-menu-item${isActive ? ' active' : ''}" data-experiment="${exp}">${exp}${badges}</div>`;
+    }).join('');
+
+    // Add toggle link if there are hidden experiments
+    if (hiddenCount > 0) {
+        const toggleText = window.state.showAllExperiments ? 'Hide hidden' : `Show ${hiddenCount} hidden`;
+        menuItems += `<div class="exp-menu-item" style="color: var(--text-tertiary); font-style: italic;" data-toggle-hidden="true">${toggleText}</div>`;
+    }
+
+    list.innerHTML = `
+        <div class="exp-dropdown">
+            <div class="exp-trigger">
+                <span class="exp-name">${activeName}</span>
+                <span class="exp-arrow">&#9662;</span>
+            </div>
+            <div class="exp-menu">${menuItems}</div>
+        </div>
+    `;
+
+    // Position the fixed dropdown on hover
+    const dropdown = list.querySelector('.exp-dropdown');
+    const menu = list.querySelector('.exp-menu');
+    if (dropdown && menu) {
+        dropdown.addEventListener('mouseenter', () => {
+            const rect = dropdown.getBoundingClientRect();
+            menu.style.top = `${rect.bottom}px`;
+            menu.style.left = `${rect.left}px`;
+            // Ensure menu doesn't overflow right edge of viewport
+            requestAnimationFrame(() => {
+                const menuRect = menu.getBoundingClientRect();
+                if (menuRect.right > window.innerWidth - 8) {
+                    menu.style.left = `${Math.max(4, window.innerWidth - menuRect.width - 8)}px`;
+                }
+            });
+        });
+    }
+
+    // Attach click handlers for experiment selection
+    list.querySelectorAll('.exp-menu-item').forEach(item => {
+        if (item.dataset.toggleHidden) {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.toggleHiddenExperiments();
+            });
+            return;
+        }
+        item.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const expName = item.dataset.experiment;
+            window.state.currentExperiment = expName;
+            setExperimentInURL(expName);
+
+            // Update trigger text and active state immediately
+            const trigger = list.querySelector('.exp-name');
+            if (trigger) trigger.textContent = expName;
+            list.querySelectorAll('.exp-menu-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+
+            await loadExperimentData(expName);
+            window.renderPromptPicker();
+            if (window.renderView) window.renderView();
+        });
+    });
+}
+
+// =============================================================================
 // Event Listeners
 // =============================================================================
 
@@ -326,36 +504,33 @@ function setupSidebarEventListeners() {
     // Theme toggle
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
 
-    // Select all traits button
+    // Select all traits button (static element in HTML, restyled in populateTraitCheckboxes)
     document.getElementById('select-all-btn')?.addEventListener('click', toggleAllTraits);
 }
 
-// =============================================================================
-// Exports
-// =============================================================================
-
-window.sidebar = {
+// ES module exports
+export {
     initTheme,
     toggleTheme,
-    updateThemeIcon,
     populateTraitCheckboxes,
-    updateCategoryCheckbox,
-    updateCategoryCount,
-    updateSelectedCount,
     toggleAllTraits,
     setupNavigation,
     updatePageTitle,
+    updateExperimentVisibility,
     setupSubsectionInfoToggles,
-    setupSidebarEventListeners
+    setupSidebarEventListeners,
+    fetchGpuStatus,
+    startGpuPolling,
+    renderExperimentList,
 };
 
-// Also export individual functions for backwards compatibility
+// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
 window.initTheme = initTheme;
-window.toggleTheme = toggleTheme;
 window.populateTraitCheckboxes = populateTraitCheckboxes;
-window.toggleAllTraits = toggleAllTraits;
 window.setupNavigation = setupNavigation;
-window.updatePageTitle = updatePageTitle;
 window.updateExperimentVisibility = updateExperimentVisibility;
 window.setupSubsectionInfoToggles = setupSubsectionInfoToggles;
 window.setupSidebarEventListeners = setupSidebarEventListeners;
+window.fetchGpuStatus = fetchGpuStatus;
+window.startGpuPolling = startGpuPolling;
+window.renderExperimentList = renderExperimentList;

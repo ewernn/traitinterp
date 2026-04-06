@@ -1,0 +1,72 @@
+[project]
+name = "traitinterp"
+version = "0.1.0"
+description = "Train linear probes to detect, monitor, and steer LLM behavioral traits"
+readme = "readme.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "transformers>=4.40.0",
+    "accelerate",
+    "scipy>=1.7.0",
+    "scikit-learn>=1.0.0",
+    "PyYAML>=6.0",
+    "tqdm",
+    "fire",
+]
+
+[project.optional-dependencies]
+judge = [
+    "openai",
+    "google-genai",
+    "python-dotenv",
+]
+lora = [
+    "peft",
+    "bitsandbytes",
+]
+moe = [
+    "autoawq",
+    "compressed-tensors",
+    "tiktoken",
+]
+all = [
+    "traitinterp[judge,lora,moe]",
+    "modal",
+]
+dev = [
+    "pytest>=7.0.0",
+    "traitinterp[all]",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.setuptools.packages.find]
+include = ["core*", "utils*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.json", "*.txt"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (unused imports, variables)
+    "I",    # isort (import ordering)
+    "B",    # flake8-bugbear (common bugs)
+    "UP",   # pyupgrade (modern Python syntax)
+    "RUF",  # ruff-specific rules
+]
+
+[tool.ruff.lint.per-file-ignores]
+"dev/*" = ["E", "W"]  # relaxed for dev-only scripts
+
+[tool.pytest.ini_options]
+testpaths = ["core/_tests"]

@@ -1,3 +1,6 @@
+import { getChartColors } from './display.js';
+import { buildChartLayout, renderChart } from './charts.js';
+
 /**
  * Chart Type Renderers for markdown :::chart::: blocks
  *
@@ -11,9 +14,6 @@
  *   - model-diff-bar: Peak effect size bar chart
  *   - annotation-stacked: Stacked bar from annotation files
  *   - comparison-bar: Horizontal bar chart for component/method comparison
- *
- *   Cross-eval charts:
- *   - crosseval-comparison: Grouped bar comparing vectors across datasets
  *
  *   Prefill dynamics charts:
  *   - dynamics-effect: Smoothness effect by layer (+ optional projection stability)
@@ -62,11 +62,45 @@ function getTraitShortName(fullPath) {
 }
 
 // ============================================================================
-// Chart Type: model-diff-effect (Effect size by layer)
+// Chart Type: model-diff-layer (shared renderer for per-layer line charts)
+// Parameterized by `field` option: 'per_layer_effect_size' or 'per_layer_cosine_sim'
 // ============================================================================
 
-CHART_RENDERERS['model-diff-effect'] = async function(container, data, options = {}) {
-    const { traits: traitFilter, height = 300 } = options;
+const MODEL_DIFF_LAYER_DEFAULTS = {
+    per_layer_effect_size: {
+        yaxis: 'Effect Size (σ)',
+        hoverFmt: '.2f',
+        hoverSuffix: 'σ',
+        emptyMsg: 'No effect size data available',
+        defaultHeight: 300,
+        buildName: (shortName) => shortName
+    },
+    per_layer_cosine_sim: {
+        yaxis: 'Cosine Similarity',
+        hoverFmt: '.3f',
+        hoverSuffix: '',
+        emptyMsg: 'No cosine similarity data available',
+        defaultHeight: 250,
+        buildName: (shortName, traitData, field) => {
+            const values = traitData[field];
+            const peakIdx = values.reduce((maxIdx, val, i, arr) =>
+                Math.abs(val) > Math.abs(arr[maxIdx]) ? i : maxIdx, 0);
+            const peakVal = values[peakIdx]?.toFixed(2) || '?';
+            const peakLayer = traitData.layers[peakIdx] ?? '?';
+            return `${shortName} (${peakVal} @ L${peakLayer})`;
+        }
+    }
+};
+
+async function renderModelDiffLayer(container, data, options = {}) {
+    const field = options.field || 'per_layer_effect_size';
+    const config = MODEL_DIFF_LAYER_DEFAULTS[field];
+    if (!config) {
+        container.innerHTML = `<div class="chart-error">Unknown field: ${field}</div>`;
+        return;
+    }
+
+    const { traits: traitFilter, height = config.defaultHeight } = options;
     const filteredTraits = filterTraits(data.traits, { traits: traitFilter });
 
     if (Object.keys(filteredTraits).length === 0) {
@@ -74,105 +108,52 @@ CHART_RENDERERS['model-diff-effect'] = async function(container, data, options =
         return;
     }
 
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
     const traces = [];
 
     Object.entries(filteredTraits).forEach(([traitPath, traitData], idx) => {
-        if (!traitData.per_layer_effect_size) return;
+        if (!traitData[field]) return;
 
         const shortName = getTraitShortName(traitPath);
-        const peakEffect = traitData.peak_effect_size?.toFixed(1) || '?';
-        const peakLayer = traitData.peak_layer ?? '?';
+        const name = config.buildName(shortName, traitData, field);
 
         traces.push({
             x: traitData.layers,
-            y: traitData.per_layer_effect_size,
+            y: traitData[field],
             type: 'scatter',
             mode: 'lines+markers',
-            name: shortName,
+            name,
             line: { color: colors[idx % colors.length], width: 2 },
             marker: { size: 3 },
-            hovertemplate: `${shortName}<br>L%{x}: %{y:.2f}σ<extra></extra>`
+            hovertemplate: `${shortName}<br>L%{x}: %{y:${config.hoverFmt}}${config.hoverSuffix}<extra></extra>`
         });
     });
 
     if (traces.length === 0) {
-        container.innerHTML = '<div class="chart-error">No effect size data available</div>';
+        container.innerHTML = `<div class="chart-error">${config.emptyMsg}</div>`;
         return;
     }
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
         legendPosition: traces.length > 1 ? 'below' : 'none',
         xaxis: { title: { text: 'Layer', standoff: 5 }, dtick: 10, showgrid: true },
-        yaxis: { title: 'Effect Size (σ)', zeroline: true, zerolinewidth: 1, showgrid: true }
+        yaxis: { title: config.yaxis, zeroline: true, zerolinewidth: 1, showgrid: true }
     });
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
-};
+    await renderChart(chartDiv, traces, layout);
+}
 
-// ============================================================================
-// Chart Type: model-diff-cosine (Cosine similarity by layer)
-// ============================================================================
+// Thin aliases so markdown :::chart::: blocks don't need updating
+CHART_RENDERERS['model-diff-effect'] = (container, data, options = {}) =>
+    renderModelDiffLayer(container, data, { ...options, field: 'per_layer_effect_size' });
 
-CHART_RENDERERS['model-diff-cosine'] = async function(container, data, options = {}) {
-    const { traits: traitFilter, height = 250 } = options;
-    const filteredTraits = filterTraits(data.traits, { traits: traitFilter });
-
-    if (Object.keys(filteredTraits).length === 0) {
-        container.innerHTML = '<div class="chart-error">No matching traits found</div>';
-        return;
-    }
-
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
-    const traces = [];
-
-    Object.entries(filteredTraits).forEach(([traitPath, traitData], idx) => {
-        if (!traitData.per_layer_cosine_sim) return;
-
-        const shortName = getTraitShortName(traitPath);
-
-        // Find peak cosine similarity
-        const cosineSims = traitData.per_layer_cosine_sim;
-        const peakIdx = cosineSims.reduce((maxIdx, val, i, arr) =>
-            Math.abs(val) > Math.abs(arr[maxIdx]) ? i : maxIdx, 0);
-        const peakCos = cosineSims[peakIdx]?.toFixed(2) || '?';
-        const peakLayer = traitData.layers[peakIdx] ?? '?';
-
-        traces.push({
-            x: traitData.layers,
-            y: cosineSims,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: `${shortName} (${peakCos} @ L${peakLayer})`,
-            line: { color: colors[idx % colors.length], width: 2 },
-            marker: { size: 3 },
-            hovertemplate: `${shortName}<br>L%{x}: %{y:.3f}<extra></extra>`
-        });
-    });
-
-    if (traces.length === 0) {
-        container.innerHTML = '<div class="chart-error">No cosine similarity data available</div>';
-        return;
-    }
-
-    const layout = window.buildChartLayout({
-        preset: 'layerChart',
-        traces,
-        height,
-        legendPosition: traces.length > 1 ? 'below' : 'none',
-        xaxis: { title: 'Layer', dtick: 10, showgrid: true },
-        yaxis: { title: 'Cosine Similarity', zeroline: true, zerolinewidth: 1, showgrid: true }
-    });
-
-    const chartDiv = document.createElement('div');
-    container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
-};
+CHART_RENDERERS['model-diff-cosine'] = (container, data, options = {}) =>
+    renderModelDiffLayer(container, data, { ...options, field: 'per_layer_cosine_sim' });
 
 // ============================================================================
 // Chart Type: model-diff-bar (Peak effect size bar chart)
@@ -187,7 +168,7 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
         return;
     }
 
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
 
     // Sort by effect size ascending (so highest appears at top in horizontal bar)
     const sorted = Object.entries(filteredTraits)
@@ -206,7 +187,7 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
         hovertemplate: '%{y}: %{x:.2f}σ<extra></extra>'
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces: [trace],
         height,
@@ -219,7 +200,7 @@ CHART_RENDERERS['model-diff-bar'] = async function(container, data, options = {}
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, [trace], layout);
+    await renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================
@@ -247,7 +228,7 @@ function countByCategory(annotationsData) {
 
 CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options = {}) {
     const { height = 280 } = options;
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b', '#20c997', '#868e96'];
+    const colors = getChartColors();
 
     // Fetch all annotation files
     const barData = [];
@@ -297,7 +278,7 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
         };
     });
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces,
         height,
@@ -310,7 +291,7 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -319,7 +300,7 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
 
 CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}) {
     const { height = 200 } = options;
-    const colors = window.getChartColors?.() || ['#4a9eff', '#ff6b6b', '#51cf66', '#ffd43b', '#cc5de8', '#ff922b'];
+    const colors = getChartColors();
     const direction = data.direction || 'positive';
     const sign = direction === 'positive' ? 1 : -1;
 
@@ -360,7 +341,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
         hovertemplate: `%{y}<br>Delta: ${prefix}%{x:.1f}<extra></extra>`
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces: [trace],
         height,
@@ -373,7 +354,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, [trace], layout);
+    await renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================
@@ -437,7 +418,7 @@ CHART_RENDERERS['dynamics-effect'] = async function(container, data, options = {
         hoverinfo: 'skip'
     });
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -448,7 +429,7 @@ CHART_RENDERERS['dynamics-effect'] = async function(container, data, options = {
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -529,7 +510,7 @@ CHART_RENDERERS['dynamics-scatter'] = async function(container, data, options = 
         }
     ];
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
         height,
@@ -540,7 +521,7 @@ CHART_RENDERERS['dynamics-scatter'] = async function(container, data, options = 
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -595,7 +576,7 @@ CHART_RENDERERS['dynamics-violin'] = async function(container, data, options = {
         }
     ];
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces,
         height,
@@ -606,7 +587,7 @@ CHART_RENDERERS['dynamics-violin'] = async function(container, data, options = {
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, traces, layout);
 };
 
 // ============================================================================
@@ -642,7 +623,7 @@ CHART_RENDERERS['dynamics-position'] = async function(container, data, options =
         hovertemplate: 'Position %{x}<br>d = %{y:.2f}<extra></extra>'
     };
 
-    const layout = window.buildChartLayout({
+    const layout = buildChartLayout({
         preset: 'barChart',
         traces: [trace],
         height,
@@ -654,95 +635,7 @@ CHART_RENDERERS['dynamics-position'] = async function(container, data, options =
 
     const chartDiv = document.createElement('div');
     container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, [trace], layout);
-};
-
-// ============================================================================
-// Chart Type: crosseval-comparison (Grouped bar: concealment vs lying AUROC)
-// ============================================================================
-
-CHART_RENDERERS['crosseval-comparison'] = async function(container, data, options = {}) {
-    const { height = 280 } = options;
-
-    if (!data?.datasets) {
-        container.innerHTML = '<div class="chart-error">No cross-eval data</div>';
-        return;
-    }
-
-    const datasets = Object.keys(data.datasets);
-    const concAurocs = [];
-    const lyingAurocs = [];
-
-    for (const ds of datasets) {
-        const dsData = data.datasets[ds];
-
-        // Find best AUROC for concealment
-        let concBest = 0;
-        for (const [method, layers] of Object.entries(dsData.vectors?.concealment?.methods || {})) {
-            for (const auroc of Object.values(layers)) {
-                if (auroc > concBest) concBest = auroc;
-            }
-        }
-        concAurocs.push(concBest);
-
-        // Find best AUROC for lying
-        let lyingBest = 0;
-        for (const [method, layers] of Object.entries(dsData.vectors?.lying?.methods || {})) {
-            for (const auroc of Object.values(layers)) {
-                if (auroc > lyingBest) lyingBest = auroc;
-            }
-        }
-        lyingAurocs.push(lyingBest);
-    }
-
-    const traces = [
-        {
-            x: datasets.map(d => d.toUpperCase()),
-            y: concAurocs,
-            type: 'bar',
-            name: 'Concealment',
-            marker: { color: '#51cf66' },
-            text: concAurocs.map(v => v.toFixed(2)),
-            textposition: 'outside',
-            hovertemplate: '%{x}<br>Concealment: %{y:.3f}<extra></extra>'
-        },
-        {
-            x: datasets.map(d => d.toUpperCase()),
-            y: lyingAurocs,
-            type: 'bar',
-            name: 'Lying',
-            marker: { color: '#ff6b6b' },
-            text: lyingAurocs.map(v => v.toFixed(2)),
-            textposition: 'outside',
-            hovertemplate: '%{x}<br>Lying: %{y:.3f}<extra></extra>'
-        }
-    ];
-
-    // Add random baseline reference
-    traces.push({
-        x: datasets.map(d => d.toUpperCase()),
-        y: datasets.map(() => 0.5),
-        type: 'scatter',
-        mode: 'lines',
-        line: { color: '#888', dash: 'dot', width: 1 },
-        name: 'Random (0.5)',
-        hoverinfo: 'skip'
-    });
-
-    const layout = window.buildChartLayout({
-        preset: 'barChart',
-        traces,
-        height,
-        legendPosition: 'above',
-        xaxis: { title: { text: 'Dataset', standoff: 5 } },
-        yaxis: { title: { text: 'AUROC', standoff: 5 }, range: [0, 1.1] },
-        barmode: 'group',
-        bargap: 0.2
-    });
-
-    const chartDiv = document.createElement('div');
-    container.appendChild(chartDiv);
-    await window.renderChart(chartDiv, traces, layout);
+    await renderChart(chartDiv, [trace], layout);
 };
 
 // ============================================================================
@@ -765,7 +658,10 @@ async function renderChartType(type, container, data, options = {}) {
     await renderer(container, data, options);
 }
 
-// Export
+// ES module exports
+export { renderChartType, CHART_RENDERERS };
+
+// Keep window.* namespace for backward compat
 window.chartTypes = {
     render: renderChartType,
     registry: CHART_RENDERERS

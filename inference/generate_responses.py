@@ -34,10 +34,11 @@ from datetime import datetime
 from tqdm import tqdm
 
 from utils.model import format_prompt, load_model_with_lora
-from utils.json import dump_compact
-from utils.generation import generate_batch
+from utils.json_utils import dump_compact
+from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
 from utils.backends import add_backend_args
+from core.types import ResponseRecord
 from transformers import AutoTokenizer
 
 
@@ -65,20 +66,19 @@ def save_response_json(
     response_token_ids = tokenizer(response_text, add_special_tokens=False, padding=False)['input_ids']
     response_tokens = [tokenizer.decode([tid]) for tid in response_token_ids]
 
-    response_data = {
-        'prompt': prompt_text,
-        'response': response_text,
-        'system_prompt': system_prompt,
-        'tokens': prompt_tokens + response_tokens,
-        'token_ids': prompt_token_ids + response_token_ids,
-        'prompt_end': len(prompt_tokens),
-        'inference_model': model_name or 'unknown',
-        'prompt_note': prompt_note if prompt_note else None,
-        'capture_date': datetime.now().isoformat(),
-        'tags': []
-    }
+    record = ResponseRecord(
+        prompt=prompt_text,
+        response=response_text,
+        system_prompt=system_prompt,
+        tokens=prompt_tokens + response_tokens,
+        token_ids=prompt_token_ids + response_token_ids,
+        prompt_end=len(prompt_tokens),
+        inference_model=model_name or 'unknown',
+        prompt_note=prompt_note if prompt_note else None,
+        capture_date=datetime.now().isoformat(),
+    )
     with open(responses_dir / f"{prompt_id}.json", 'w') as f:
-        dump_compact(response_data, f)
+        dump_compact(record.to_dict(), f)
 
 
 def generate_responses(
@@ -92,7 +92,6 @@ def generate_responses(
     skip_existing: bool = False,
     limit: int = None,
     output_suffix: str = None,
-    load_in_8bit: bool = False,
     load_in_4bit: bool = False,
     no_server: bool = False,
     model=None,
@@ -121,9 +120,9 @@ def generate_responses(
 
     # Resolve model variant
     variant = get_model_variant(experiment, model_variant, mode="application")
-    variant_name = variant['name']
-    model_name = variant['model']
-    lora = variant.get('lora')
+    variant_name = variant.name
+    model_name = variant.model
+    lora = variant.lora
 
     # Load prompt set
     prompt_file = get_path('datasets.inference_prompt_set', prompt_set=prompt_set)
@@ -150,9 +149,6 @@ def generate_responses(
     responses_dir.mkdir(parents=True, exist_ok=True)
     print(f"Output: {responses_dir}")
 
-    # Chat template setting
-    use_chat_template = config.get('use_chat_template')
-
     # ================================================================
     # MODE B: Write external responses (tokenizer only, no GPU)
     # ================================================================
@@ -167,8 +163,8 @@ def generate_responses(
             _tokenizer = AutoTokenizer.from_pretrained(model_name)
             if _tokenizer.pad_token is None:
                 _tokenizer.pad_token = _tokenizer.eos_token
-        if use_chat_template is None:
-            use_chat_template = _tokenizer.chat_template is not None
+        from utils.paths import resolve_use_chat_template
+        use_chat_template = resolve_use_chat_template(experiment, _tokenizer)
 
         written = 0
         for prompt_item in tqdm(prompts, desc="Writing responses"):
@@ -199,9 +195,9 @@ def generate_responses(
     should_cleanup = model is None
 
     if model is None:
-        from other.server.client import get_model_or_client, ModelClient
+        from utils.server.client import get_model_or_client, ModelClient
 
-        quantize = load_in_4bit or load_in_8bit
+        quantize = load_in_4bit
         if not no_server and not lora and not quantize:
             handle = get_model_or_client(model_name)
             if isinstance(handle, ModelClient):
@@ -214,12 +210,12 @@ def generate_responses(
             else:
                 model, tokenizer = handle
         elif lora:
-            model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+            model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_4bit=load_in_4bit)
         else:
-            model, tokenizer = load_model_with_lora(model_name, load_in_8bit=load_in_8bit, load_in_4bit=load_in_4bit)
+            model, tokenizer = load_model_with_lora(model_name, load_in_4bit=load_in_4bit)
 
-    if use_chat_template is None:
-        use_chat_template = tokenizer.chat_template is not None
+    from utils.paths import resolve_use_chat_template
+    use_chat_template = resolve_use_chat_template(experiment, tokenizer)
     print(f"Chat template: {use_chat_template}")
 
     # Format prompts
@@ -246,7 +242,6 @@ def generate_responses(
         responses = model.generate(prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
     else:
         print(f"Generating {len(prompt_texts)} responses locally...")
-        import torch
         responses = generate_batch(model, tokenizer, prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
 
     # Save response JSONs
@@ -282,7 +277,6 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output-suffix", type=str, default=None,
                        help="Suffix for output directory name")
-    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--load-in-4bit", action="store_true")
     add_backend_args(parser)
 
@@ -291,11 +285,11 @@ def main():
     # Map --backend to no_server for internal logic
     no_server = args.backend == 'local'
     if args.backend == 'server':
-        from other.server.client import is_server_available
+        from utils.server.client import is_server_available
         if not is_server_available():
             raise ConnectionError(
                 "Model server not running. Start with:\n"
-                "  python other/server/app.py --port 8765 --model MODEL"
+                "  python utils/server/app.py --port 8765 --model MODEL"
             )
 
     generate_responses(
@@ -309,7 +303,6 @@ def main():
         skip_existing=args.skip_existing,
         limit=args.limit,
         output_suffix=args.output_suffix,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
         no_server=no_server,
     )

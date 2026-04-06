@@ -58,9 +58,10 @@ from datetime import datetime
 from tqdm import tqdm
 
 from core import SteeringHook, get_hook_path
-from utils.model import load_model, load_model_with_lora, tokenize, tokenize_batch
+from utils.model import load_model_with_lora, tokenize, tokenize_batch
 from utils.paths import get as get_path, get_model_variant
-from utils.vectors import get_best_vector, load_vector
+from utils.vector_selection import select_vector
+from utils.vectors import load_vector
 from utils.vram import calculate_max_batch_size
 from utils.metrics import batch_ce_loss
 
@@ -529,21 +530,19 @@ def main():
     parser.add_argument("--coef", type=float, default=-1.0, help="Steering coefficient (default: -1.0 for ablation)")
 
     # Model options
-    parser.add_argument("--load-in-8bit", action="store_true", help="Load model in 8-bit")
     parser.add_argument("--load-in-4bit", action="store_true", help="Load model in 4-bit")
 
     args = parser.parse_args()
 
     # Resolve model variant
     variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-    model_variant = variant['name']
-    model_name = variant['model']
-    lora = variant.get('lora')
+    model_variant = variant.name
+    model_name = variant.model
+    lora = variant.lora
 
     model, tokenizer = load_model_with_lora(
         model_name,
         lora_adapter=lora,
-        load_in_8bit=args.load_in_8bit,
         load_in_4bit=args.load_in_4bit,
     )
 
@@ -552,16 +551,16 @@ def main():
     steering_info = None
 
     if args.steer:
-        # Use get_best_vector with optional layer filter (auto-resolves variants from config)
-        best = get_best_vector(args.experiment, args.steer, layer=args.layer)
-        layer = best["layer"]
-        method = best["method"]
-        position = best["position"]
-        component = best["component"]
+        # Use select_vector with optional layer filter (auto-resolves variants from config)
+        best = select_vector(args.experiment, args.steer, layer=args.layer)
+        layer = best.layer
+        method = best.method
+        position = best.position
+        component = best.component
         if args.layer is None:
-            print(f"Auto-selected: layer {layer}, method {method} (source: {best['source']})")
+            print(f"Auto-selected: layer {layer}, method {method} (source: {best.source})")
         else:
-            print(f"Layer {layer}: best is method={method}, position={position} (source: {best['source']})")
+            print(f"Layer {layer}: best is method={method}, position={position} (source: {best.source})")
 
         vector = load_vector(args.experiment, args.steer, layer, model_variant, method, component, position)
         if vector is None:

@@ -6,6 +6,9 @@
  * Dependencies: state.js, display.js, paths.js
  */
 
+import { escapeHtml } from '../core/utils.js';
+import { renderLoading, renderChip, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
+
 // Track current sort state per trait
 const responseBrowserState = {};
 
@@ -15,6 +18,76 @@ let judgeTemplatesCache = null;
 
 // Reference to cached results from parent view (set externally)
 let traitResultsCache = {};
+
+/** Reset expanded row and re-render the response browser for a trait */
+async function resetAndRender(trait) {
+    responseBrowserState[trait].expandedRow = null;
+    await renderResponseBrowserForTrait(trait);
+}
+
+/** Attach a change listener to a filter dropdown, updating state and re-rendering */
+function attachFilterListener(container, filterName, stateProperty, trait) {
+    const select = container.querySelector(`select[data-filter="${filterName}"]`);
+    if (select) {
+        select.addEventListener('change', async () => {
+            responseBrowserState[trait][stateProperty] = select.value;
+            await resetAndRender(trait);
+        });
+    }
+}
+
+/** Attach a change listener to a toggle checkbox, updating state and re-rendering */
+function attachToggleListener(container, selector, stateProperty, trait, { resetsRow = false } = {}) {
+    const checkbox = container.querySelector(selector);
+    if (checkbox) {
+        checkbox.addEventListener('change', async () => {
+            responseBrowserState[trait][stateProperty] = checkbox.checked;
+            resetsRow ? await resetAndRender(trait) : await renderResponseBrowserForTrait(trait);
+        });
+    }
+}
+
+/** Convert trait path to CSS-safe slug (e.g., 'category/trait' -> 'category-trait') */
+function traitSlug(trait) { return trait.replace(/\//g, '-'); }
+
+/** Build a pipe-delimited key for a steering run (used for response file lookup) */
+function runResponseKey(entry, component, method, layer, coef) {
+    return `${entry.trait}|${entry.model_variant}|${entry.position}|${entry.prompt_set}|${component}|${method}|${layer}|${coef.toFixed(1)}`;
+}
+
+/** Render a response list wrapper around response items */
+function renderResponseList(responses, isCompact) {
+    return `<div class="response-list-compact">
+                ${responses.map((r, i) => renderResponseItem(r, i, isCompact)).join('')}
+            </div>`;
+}
+
+/** Build steering response path for an entry */
+function steeringResponsePath(entry) {
+    return window.paths.get('steering.responses', {
+        experiment: window.state.experimentData?.name,
+        trait: entry.trait,
+        model_variant: entry.model_variant,
+        position: entry.position,
+        prompt_set: entry.prompt_set,
+    });
+}
+
+/** Render a filter dropdown group (label + select with "All" default) */
+function renderFilterDropdown(filterName, label, currentValue, options) {
+    return `
+        <div class="rb-dropdown-group">
+            <label class="rb-filter-label">${label}:</label>
+            <select class="rb-select" data-filter="${filterName}">
+                <option value="all" ${currentValue === 'all' ? 'selected' : ''}>All</option>
+                ${options.map(opt => {
+                    const [value, display] = Array.isArray(opt) ? opt : [opt, opt];
+                    return `<option value="${value}" ${currentValue === value ? 'selected' : ''}>${display}</option>`;
+                }).join('')}
+            </select>
+        </div>
+    `;
+}
 
 /**
  * Set the trait results cache reference (called by steering.js)
@@ -55,8 +128,7 @@ async function fetchAvailableResponses(allRuns) {
 
             // Add each available response file to the set
             for (const file of data.files || []) {
-                const key = `${entry.trait}|${entry.model_variant}|${entry.position}|${entry.prompt_set}|${file.component}|${file.method}|${file.layer}|${file.coef.toFixed(1)}`;
-                availableKeys.add(key);
+                availableKeys.add(runResponseKey(entry, file.component, file.method, file.layer, file.coef));
             }
 
             // Track baseline availability (keyed by model_variant|prompt_set, ignore position)
@@ -78,7 +150,7 @@ async function fetchAvailableResponses(allRuns) {
  * Render the response browser table for a trait
  */
 async function renderResponseBrowserForTrait(trait) {
-    const browserId = `response-browser-${trait.replace(/\//g, '-')}`;
+    const browserId = `response-browser-${traitSlug(trait)}`;
     const container = document.getElementById(browserId);
     if (!container) return;
 
@@ -90,17 +162,16 @@ async function renderResponseBrowserForTrait(trait) {
 
     // Fetch available response files if not cached
     if (!cached.availableResponses) {
-        container.innerHTML = ui.renderLoading('Loading available responses...');
+        container.innerHTML = renderLoading('Loading available responses...');
         const result = await fetchAvailableResponses(cached.allRuns);
         cached.availableResponses = result.responses;
         cached.availableBaselines = result.baselines;
     }
 
     // Filter to only runs with available response files
-    const runsWithResponses = cached.allRuns.filter(run => {
-        const key = `${run.entry?.trait}|${run.entry?.model_variant}|${run.entry?.position}|${run.entry?.prompt_set}|${run.component}|${run.method}|${run.layer}|${run.coef.toFixed(1)}`;
-        return cached.availableResponses.has(key);
-    });
+    const runsWithResponses = cached.allRuns.filter(run =>
+        run.entry && cached.availableResponses.has(runResponseKey(run.entry, run.component, run.method, run.layer, run.coef))
+    );
 
     if (runsWithResponses.length === 0) {
         container.innerHTML = '<p class="no-data">No response files saved for this trait</p>';
@@ -109,9 +180,12 @@ async function renderResponseBrowserForTrait(trait) {
 
     // Initialize state for this trait
     if (!responseBrowserState[trait]) {
+        // Default sort direction: descending for positive steering, ascending for negative
+        const predominantlyNegative = runsWithResponses.length > 0 &&
+            runsWithResponses.filter(r => r.coef < 0).length > runsWithResponses.filter(r => r.coef > 0).length;
         responseBrowserState[trait] = {
             sortKey: 'traitScore',
-            sortDir: 'desc',
+            sortDir: predominantlyNegative ? 'asc' : 'desc',
             layerFilter: new Set(), // empty = show all
             expandedRow: null,
             bestPerLayer: true, // Show only best run per layer (default on)
@@ -139,32 +213,19 @@ async function renderResponseBrowserForTrait(trait) {
     // Check baseline availability for current filter selection
     let baselineEntry = null;
     if (cached.availableBaselines && cached.availableBaselines.size > 0) {
-        if (state.modelVariantFilter !== 'all' && state.promptSetFilter !== 'all') {
-            // Specific filter - check if that combo has baseline
-            const key = `${state.modelVariantFilter}|${state.promptSetFilter}`;
-            baselineEntry = cached.availableBaselines.get(key) || null;
-        } else if (state.modelVariantFilter !== 'all') {
-            // Model variant set, prompt set is 'all' - find any baseline for this model
-            for (const [key, entry] of cached.availableBaselines) {
-                if (key.startsWith(`${state.modelVariantFilter}|`)) {
-                    baselineEntry = entry;
-                    break;
-                }
-            }
-        } else if (state.promptSetFilter !== 'all') {
-            // Prompt set set, model variant is 'all' - find any baseline for this prompt set
-            for (const [key, entry] of cached.availableBaselines) {
-                if (key.endsWith(`|${state.promptSetFilter}`)) {
-                    baselineEntry = entry;
-                    break;
-                }
-            }
+        const mv = state.modelVariantFilter, ps = state.promptSetFilter;
+        if (mv !== 'all' && ps !== 'all') {
+            baselineEntry = cached.availableBaselines.get(`${mv}|${ps}`) || null;
         } else {
-            // Both 'all' - use first available baseline
-            baselineEntry = cached.availableBaselines.values().next().value || null;
+            // Find first baseline matching partial filter (or any if both 'all')
+            const matchesFilter = (key) =>
+                (mv === 'all' || key.startsWith(`${mv}|`)) &&
+                (ps === 'all' || key.endsWith(`|${ps}`));
+            for (const [key, entry] of cached.availableBaselines) {
+                if (matchesFilter(key)) { baselineEntry = entry; break; }
+            }
         }
     }
-    // Store in state for loadInfoPanelContent to use
     state.currentBaselineEntry = baselineEntry;
 
     // Filter and sort runs
@@ -192,12 +253,12 @@ async function renderResponseBrowserForTrait(trait) {
         runs = runs.filter(r => state.layerFilter.has(r.layer));
     }
 
-    // Best per layer filter: keep only highest trait score per layer (with coherence >= threshold)
+    // Best per layer filter: keep run with most extreme trait score per layer (with coherence >= threshold)
     if (state.bestPerLayer) {
         const bestByLayer = {};
         for (const run of runs) {
             if (run.coherence < coherenceThreshold) continue;
-            if (!bestByLayer[run.layer] || run.traitScore > bestByLayer[run.layer].traitScore) {
+            if (!bestByLayer[run.layer] || Math.abs(run.traitScore) > Math.abs(bestByLayer[run.layer].traitScore)) {
                 bestByLayer[run.layer] = run;
             }
         }
@@ -216,85 +277,44 @@ async function renderResponseBrowserForTrait(trait) {
     const showPositionCol = uniquePositions.length > 1 || uniquePositions[0] !== 'response_all';
 
     // Build HTML
+    const sortTh = (key, label) => renderSortableHeader({ key, label, sortKey: state.sortKey, sortDir: state.sortDir });
     container.innerHTML = `
         <div class="rb-filters">
             <span class="rb-filter-label">Layers:</span>
             <div class="rb-layer-chips">
-                ${ui.renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
-                ${ui.renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
-                ${uniqueLayers.map(l => `
-                    <label class="rb-chip ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'active' : ''}">
-                        <input type="checkbox" value="${l}" ${state.layerFilter.size === 0 || state.layerFilter.has(l) ? 'checked' : ''}>
-                        L${l}
-                    </label>
-                `).join('')}
+                ${renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
+                ${renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
+                ${uniqueLayers.map(l => {
+                    const on = state.layerFilter.size === 0 || state.layerFilter.has(l);
+                    return `<label class="rb-chip ${on ? 'active' : ''}"><input type="checkbox" value="${l}" ${on ? 'checked' : ''}> L${l}</label>`;
+                }).join('')}
             </div>
-            ${(hasPositive && hasNegative) ? `
-            <div class="rb-dropdown-group">
-                <label class="rb-filter-label">Direction:</label>
-                <select class="rb-select" data-filter="direction">
-                    <option value="all" ${state.steeringDirection === 'all' ? 'selected' : ''}>All</option>
-                    <option value="positive" ${state.steeringDirection === 'positive' ? 'selected' : ''}>Positive (+)</option>
-                    <option value="negative" ${state.steeringDirection === 'negative' ? 'selected' : ''}>Negative (−)</option>
-                </select>
-            </div>
-            ` : ''}
-            ${uniquePromptSets.length > 1 ? `
-            <div class="rb-dropdown-group">
-                <label class="rb-filter-label">Prompt set:</label>
-                <select class="rb-select" data-filter="prompt-set">
-                    <option value="all" ${state.promptSetFilter === 'all' ? 'selected' : ''}>All</option>
-                    ${uniquePromptSets.map(ps => `
-                        <option value="${ps}" ${state.promptSetFilter === ps ? 'selected' : ''}>${ps}</option>
-                    `).join('')}
-                </select>
-            </div>
-            ` : ''}
-            ${uniqueModelVariants.length > 1 ? `
-            <div class="rb-dropdown-group">
-                <label class="rb-filter-label">Model:</label>
-                <select class="rb-select" data-filter="model-variant">
-                    <option value="all" ${state.modelVariantFilter === 'all' ? 'selected' : ''}>All</option>
-                    ${uniqueModelVariants.map(mv => `
-                        <option value="${mv}" ${state.modelVariantFilter === mv ? 'selected' : ''}>${mv}</option>
-                    `).join('')}
-                </select>
-            </div>
-            ` : ''}
+            ${(hasPositive && hasNegative) ? renderFilterDropdown('direction', 'Direction', state.steeringDirection, [['positive', 'Positive (+)'], ['negative', 'Negative (−)']]) : ''}
+            ${uniquePromptSets.length > 1 ? renderFilterDropdown('prompt-set', 'Prompt set', state.promptSetFilter, uniquePromptSets) : ''}
+            ${uniqueModelVariants.length > 1 ? renderFilterDropdown('model-variant', 'Model', state.modelVariantFilter, uniqueModelVariants) : ''}
             <div class="rb-info-btns">
-                ${ui.renderChip({ label: 'Definition', active: state.infoPanel === 'definition', dataAttr: { key: 'info', value: 'definition' }, className: 'rb-info-btn' })}
-                ${ui.renderChip({ label: 'Judge Prompt', active: state.infoPanel === 'judge', dataAttr: { key: 'info', value: 'judge' }, className: 'rb-info-btn' })}
-                ${baselineEntry ? ui.renderChip({ label: 'Baseline', active: state.infoPanel === 'baseline', dataAttr: { key: 'info', value: 'baseline' }, className: 'rb-info-btn' }) : ''}
+                ${[['Definition', 'definition'], ['Judge Prompt', 'judge'], ...(baselineEntry ? [['Baseline', 'baseline']] : [])]
+                    .map(([label, value]) => renderChip({ label, active: state.infoPanel === value, dataAttr: { key: 'info', value }, className: 'rb-info-btn' })).join('')}
             </div>
-            ${ui.renderToggle({
-                label: `Best per layer (coh ≥${coherenceThreshold})`,
-                checked: state.bestPerLayer,
-                dataAttr: { key: 'action', value: 'best-per-layer' },
-                className: 'rb-toggle'
-            })}
-            ${ui.renderToggle({
-                label: 'Compact responses',
-                checked: state.compactResponses,
-                dataAttr: { key: 'action', value: 'compact-responses' },
-                className: 'rb-toggle'
-            })}
+            ${renderToggle({ label: `Best per layer (coh ≥${coherenceThreshold})`, checked: state.bestPerLayer, dataAttr: { key: 'action', value: 'best-per-layer' }, className: 'rb-toggle' })}
+            ${renderToggle({ label: 'Compact responses', checked: state.compactResponses, dataAttr: { key: 'action', value: 'compact-responses' }, className: 'rb-toggle' })}
         </div>
         ${state.infoPanel ? `
         <div class="rb-info-panel" data-panel="${state.infoPanel}">
-            <div class="rb-info-content">${ui.renderLoading()}</div>
+            <div class="rb-info-content">${renderLoading()}</div>
         </div>
         ` : ''}
         <div class="rb-table-wrapper">
             <table class="table table-compact data-table rb-table">
                 <thead>
                     <tr>
-                        ${ui.renderSortableHeader({ key: 'layer', label: 'Layer', sortKey: state.sortKey, sortDir: state.sortDir })}
-                        ${ui.renderSortableHeader({ key: 'coef', label: 'Coef', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${sortTh('layer', 'Layer')}
+                        ${sortTh('coef', 'Coef')}
                         <th>Method</th>
                         <th>Component</th>
                         ${showPositionCol ? '<th>Position</th>' : ''}
-                        ${ui.renderSortableHeader({ key: 'traitScore', label: 'Trait', sortKey: state.sortKey, sortDir: state.sortDir })}
-                        ${ui.renderSortableHeader({ key: 'coherence', label: 'Coh', sortKey: state.sortKey, sortDir: state.sortDir })}
+                        ${sortTh('traitScore', 'Trait')}
+                        ${sortTh('coherence', 'Coh')}
                     </tr>
                 </thead>
                 <tbody>
@@ -310,14 +330,14 @@ async function renderResponseBrowserForTrait(trait) {
                             <td>${run.method}</td>
                             <td>${run.component}</td>
                             ${showPositionCol ? `<td class="rb-position">${posDisplay}${promptSetDisplay}</td>` : ''}
-                            <td class="${run.traitScore > 50 ? 'quality-good' : run.traitScore > 20 ? 'quality-ok' : ''}">${run.traitScore.toFixed(1)}</td>
-                            <td class="${run.coherence >= 80 ? 'quality-good' : run.coherence >= 60 ? 'quality-ok' : 'quality-bad'}">${run.coherence.toFixed(0)}</td>
+                            <td class="${scoreClass(run.traitScore)}">${run.traitScore.toFixed(1)}</td>
+                            <td class="${scoreClass(run.coherence, 'coherence')}">${run.coherence.toFixed(0)}</td>
                         </tr>
                         ${state.expandedRow === idx ? `
                         <tr class="rb-expanded-row">
                             <td colspan="${showPositionCol ? 7 : 6}">
-                                <div class="rb-responses-container" id="rb-responses-${trait.replace(/\//g, '-')}-${idx}">
-                                    ${ui.renderLoading('Loading responses...')}
+                                <div class="rb-responses-container" id="rb-responses-${traitSlug(trait)}-${idx}">
+                                    ${renderLoading('Loading responses...')}
                                 </div>
                             </td>
                         </tr>
@@ -330,7 +350,7 @@ async function renderResponseBrowserForTrait(trait) {
     `;
 
     // Setup event handlers
-    setupResponseBrowserHandlers(trait, container, runs);
+    setupResponseBrowserHandlers(trait, container);
 
     // Load responses if a row is expanded
     if (state.expandedRow !== null && runs[state.expandedRow]) {
@@ -346,7 +366,7 @@ async function renderResponseBrowserForTrait(trait) {
 /**
  * Setup event handlers for response browser
  */
-function setupResponseBrowserHandlers(trait, container, runs) {
+function setupResponseBrowserHandlers(trait, container) {
     const state = responseBrowserState[trait];
     const allLayers = [...new Set(traitResultsCache[trait].allRuns.map(r => r.layer))];
 
@@ -360,59 +380,18 @@ function setupResponseBrowserHandlers(trait, container, runs) {
                 state.layerFilter.clear();
                 state.layerFilter.add(-999); // Impossible layer = show none
             }
-            state.expandedRow = null;
-            await renderResponseBrowserForTrait(trait);
+            await resetAndRender(trait);
         });
     });
 
-    // Best per layer toggle
-    const bestPerLayerCheckbox = container.querySelector('input[data-action="best-per-layer"]');
-    if (bestPerLayerCheckbox) {
-        bestPerLayerCheckbox.addEventListener('change', async () => {
-            state.bestPerLayer = bestPerLayerCheckbox.checked;
-            state.expandedRow = null;
-            await renderResponseBrowserForTrait(trait);
-        });
-    }
+    // Toggle checkboxes
+    attachToggleListener(container, 'input[data-action="best-per-layer"]', 'bestPerLayer', trait, { resetsRow: true });
+    attachToggleListener(container, '.rb-filters input[data-action="compact-responses"]', 'compactResponses', trait);
 
-    // Compact responses toggle
-    const compactCheckbox = container.querySelector('.rb-filters input[data-action="compact-responses"]');
-    if (compactCheckbox) {
-        compactCheckbox.addEventListener('change', async () => {
-            state.compactResponses = compactCheckbox.checked;
-            await renderResponseBrowserForTrait(trait);
-        });
-    }
-
-    // Direction filter dropdown
-    const directionSelect = container.querySelector('select[data-filter="direction"]');
-    if (directionSelect) {
-        directionSelect.addEventListener('change', async () => {
-            state.steeringDirection = directionSelect.value;
-            state.expandedRow = null;
-            await renderResponseBrowserForTrait(trait);
-        });
-    }
-
-    // Prompt set filter dropdown
-    const promptSetSelect = container.querySelector('select[data-filter="prompt-set"]');
-    if (promptSetSelect) {
-        promptSetSelect.addEventListener('change', async () => {
-            state.promptSetFilter = promptSetSelect.value;
-            state.expandedRow = null;
-            await renderResponseBrowserForTrait(trait);
-        });
-    }
-
-    // Model variant filter dropdown
-    const modelVariantSelect = container.querySelector('select[data-filter="model-variant"]');
-    if (modelVariantSelect) {
-        modelVariantSelect.addEventListener('change', async () => {
-            state.modelVariantFilter = modelVariantSelect.value;
-            state.expandedRow = null;
-            await renderResponseBrowserForTrait(trait);
-        });
-    }
+    // Filter dropdowns (direction, prompt set, model variant)
+    attachFilterListener(container, 'direction', 'steeringDirection', trait);
+    attachFilterListener(container, 'prompt-set', 'promptSetFilter', trait);
+    attachFilterListener(container, 'model-variant', 'modelVariantFilter', trait);
 
     // Layer filter checkboxes
     container.querySelectorAll('.rb-chip input').forEach(checkbox => {
@@ -434,8 +413,7 @@ function setupResponseBrowserHandlers(trait, container, runs) {
                     state.layerFilter.delete(layer);
                 }
             }
-            state.expandedRow = null; // Close expanded row on filter change
-            await renderResponseBrowserForTrait(trait);
+            await resetAndRender(trait); // Close expanded row on filter change
         });
     });
 
@@ -449,48 +427,58 @@ function setupResponseBrowserHandlers(trait, container, runs) {
                 state.sortKey = sortKey;
                 state.sortDir = 'desc';
             }
-            state.expandedRow = null;
-            await renderResponseBrowserForTrait(trait);
+            await resetAndRender(trait);
         });
     });
 
-    // Row click to expand
+    // Row click to expand/collapse
     container.querySelectorAll('.rb-row').forEach(row => {
         row.addEventListener('click', async () => {
             const idx = parseInt(row.dataset.idx);
-            if (state.expandedRow === idx) {
-                state.expandedRow = null;
-            } else {
-                state.expandedRow = idx;
-            }
+            state.expandedRow = state.expandedRow === idx ? null : idx;
             await renderResponseBrowserForTrait(trait);
         });
     });
 
-    // Info panel buttons (Definition / Judge Prompt)
+    // Info panel buttons (Definition / Judge Prompt / Baseline)
     container.querySelectorAll('.rb-info-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             const infoType = btn.dataset.info;
-            if (state.infoPanel === infoType) {
-                state.infoPanel = null; // Toggle off
-            } else {
-                state.infoPanel = infoType;
-            }
+            state.infoPanel = state.infoPanel === infoType ? null : infoType;
             await renderResponseBrowserForTrait(trait);
-
-            // Load content after render if panel is open
-            if (state.infoPanel) {
-                await loadInfoPanelContent(trait, state.infoPanel);
-            }
+            if (state.infoPanel) await loadInfoPanelContent(trait, state.infoPanel);
         });
     });
+}
+
+/**
+ * Render a single response item row (prompt + response with scores).
+ * Shared by baseline panel and expanded-row response list.
+ */
+function renderResponseItem(r, i, isCompact) {
+    const responseText = isCompact
+        ? r.response.replace(/\n/g, '\\n')
+        : r.response;
+    return `
+        <div class="response-item-row">
+            <div class="response-meta">
+                <div class="meta-label">Prompt #${i + 1}</div>
+                <div class="meta-score">Trait: <span class="${scoreClass(r.trait_score ?? 0)}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
+                <div class="meta-score">Coh: <span class="${scoreClass(r.coherence_score ?? 0, 'coherence')}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
+            </div>
+            <div class="response-content">
+                <div class="response-q">${escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
+                <div class="response-a ${isCompact ? 'compact' : ''}">${escapeHtml(responseText)}</div>
+            </div>
+        </div>
+    `;
 }
 
 /**
  * Load and display info panel content (definition or judge prompt)
  */
 async function loadInfoPanelContent(trait, panelType) {
-    const browserId = `response-browser-${trait.replace(/\//g, '-')}`;
+    const browserId = `response-browser-${traitSlug(trait)}`;
     const container = document.getElementById(browserId);
     const panel = container?.querySelector('.rb-info-content');
     if (!panel) return;
@@ -517,102 +505,67 @@ async function loadInfoPanelContent(trait, panelType) {
             return;
         }
 
-        if (panelType === 'definition') {
-            panel.innerHTML = `<pre class="rb-code">${window.escapeHtml(cached.text.trim())}</pre>`;
-        } else if (panelType === 'judge') {
-            // Fetch judge templates if not cached
-            if (!judgeTemplatesCache) {
-                const resp = await fetch('/api/judge-templates');
-                if (!resp.ok) {
-                    panel.innerHTML = `<p class="no-data">Could not load judge templates</p>`;
+        const panelHandlers = {
+            definition: () => {
+                panel.innerHTML = `<pre class="rb-code">${escapeHtml(cached.text.trim())}</pre>`;
+            },
+            judge: async () => {
+                if (!judgeTemplatesCache) {
+                    const resp = await fetch('/api/judge-templates');
+                    if (!resp.ok) {
+                        panel.innerHTML = `<p class="no-data">Could not load judge templates</p>`;
+                        return;
+                    }
+                    judgeTemplatesCache = await resp.json();
+                }
+                const highlightVars = (text) =>
+                    escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
+                const systemPrompt = judgeTemplatesCache.steering_system
+                    .replace('{trait_name}', traitName)
+                    .replace('{trait_definition}', cached.text.trim());
+                panel.innerHTML = `
+                    <div class="rb-judge-header">
+                        <span>model: <strong>gpt-4.1-mini</strong></span>
+                        <span>scoring: <strong>logprob-weighted avg</strong></span>
+                        <span>temp: <strong>0</strong></span>
+                        <span>top_logprobs: <strong>20</strong></span>
+                    </div>
+                    <div class="rb-judge-section">
+                        <span class="rb-code-label">system_prompt</span>
+                        <pre class="rb-code">${highlightVars(systemPrompt)}</pre>
+                    </div>
+                    <div class="rb-judge-section">
+                        <span class="rb-code-label">user</span>
+                        <pre class="rb-code">${highlightVars(judgeTemplatesCache.steering_user)}</pre>
+                    </div>
+                `;
+            },
+            baseline: async () => {
+                const state = responseBrowserState[trait];
+                const baselineEntry = state?.currentBaselineEntry;
+                if (!baselineEntry) {
+                    panel.innerHTML = `<p class="no-data">No baseline available for current filter selection</p>`;
                     return;
                 }
-                judgeTemplatesCache = await resp.json();
-            }
+                const response = await fetch(`/${steeringResponsePath(baselineEntry)}/baseline.json`);
+                if (!response.ok) {
+                    panel.innerHTML = `<p class="no-data">Baseline file not found</p>`;
+                    return;
+                }
+                const responses = await response.json();
+                const isCompact = state?.compactResponses ?? true;
+                const baselineLabel = `${baselineEntry.model_variant} / ${baselineEntry.prompt_set}`;
+                panel.innerHTML = `
+                    <div class="rb-baseline-header hint">
+                        Showing baseline for: <strong>${baselineLabel}</strong>
+                    </div>
+                    ${renderResponseList(responses, isCompact)}
+                `;
+            },
+        };
 
-            // Highlight template variables
-            const highlightVars = (text) => {
-                return window.escapeHtml(text).replace(/\{(\w+)\}/g, '<span class="rb-var">{$1}</span>');
-            };
-
-            const systemPrompt = judgeTemplatesCache.steering_system
-                .replace('{trait_name}', traitName)
-                .replace('{trait_definition}', cached.text.trim());
-
-            panel.innerHTML = `
-                <div class="rb-judge-header">
-                    <span>model: <strong>gpt-4.1-mini</strong></span>
-                    <span>scoring: <strong>logprob-weighted avg</strong></span>
-                    <span>temp: <strong>0</strong></span>
-                    <span>top_logprobs: <strong>20</strong></span>
-                </div>
-                <div class="rb-judge-section">
-                    <span class="rb-code-label">system_prompt</span>
-                    <pre class="rb-code">${highlightVars(systemPrompt)}</pre>
-                </div>
-                <div class="rb-judge-section">
-                    <span class="rb-code-label">user</span>
-                    <pre class="rb-code">${highlightVars(judgeTemplatesCache.steering_user)}</pre>
-                </div>
-            `;
-        } else if (panelType === 'baseline') {
-            // Load baseline responses
-            const state = responseBrowserState[trait];
-            const baselineEntry = state?.currentBaselineEntry;
-
-            if (!baselineEntry) {
-                panel.innerHTML = `<p class="no-data">No baseline available for current filter selection</p>`;
-                return;
-            }
-
-            const experiment = window.state.experimentData?.name;
-            const responsePath = window.paths.get('steering.responses', {
-                experiment,
-                trait: baselineEntry.trait,
-                model_variant: baselineEntry.model_variant,
-                position: baselineEntry.position,
-                prompt_set: baselineEntry.prompt_set,
-            });
-
-            const url = `/${responsePath}/baseline.json`;
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                panel.innerHTML = `<p class="no-data">Baseline file not found</p>`;
-                return;
-            }
-
-            const responses = await response.json();
-            const isCompact = state?.compactResponses ?? true;
-
-            // Show which baseline we're displaying
-            const baselineLabel = `${baselineEntry.model_variant} / ${baselineEntry.prompt_set}`;
-
-            panel.innerHTML = `
-                <div class="rb-baseline-header hint">
-                    Showing baseline for: <strong>${baselineLabel}</strong>
-                </div>
-                <div class="response-list-compact">
-                    ${responses.map((r, i) => {
-                        const responseText = isCompact
-                            ? r.response.replace(/\n/g, '\\n')
-                            : r.response;
-                        return `
-                        <div class="response-item-row">
-                            <div class="response-meta">
-                                <div class="meta-label">Prompt #${i + 1}</div>
-                                <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                                <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
-                            </div>
-                            <div class="response-content">
-                                <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                                <div class="response-a ${isCompact ? 'compact' : ''}">${window.escapeHtml(responseText)}</div>
-                            </div>
-                        </div>
-                    `;}).join('')}
-                </div>
-            `;
-        }
+        const handler = panelHandlers[panelType];
+        if (handler) await handler();
 
     } catch (e) {
         console.error('Failed to load info panel:', e);
@@ -624,26 +577,16 @@ async function loadInfoPanelContent(trait, panelType) {
  * Load and display responses for a specific run
  */
 async function loadResponsesForRun(trait, idx, run) {
-    const containerId = `rb-responses-${trait.replace(/\//g, '-')}-${idx}`;
+    const containerId = `rb-responses-${traitSlug(trait)}-${idx}`;
     const container = document.getElementById(containerId);
     if (!container) return;
 
     const { entry } = run;
-    const experiment = window.state.experimentData?.name;
 
     try {
-        // Build path to response file
         const ts = run.timestamp ? run.timestamp.slice(0, 19).replace(/:/g, '-').replace('T', '_') : '';
         const filename = `L${run.layer}_c${run.coef.toFixed(1)}_${ts}.json`;
-        const responsePath = window.paths.get('steering.responses', {
-            experiment,
-            trait: entry.trait,
-            model_variant: entry.model_variant,
-            position: entry.position,
-            prompt_set: entry.prompt_set,
-        });
-
-        const url = `/${responsePath}/${run.component}/${run.method}/${filename}`;
+        const url = `/${steeringResponsePath(entry)}/${run.component}/${run.method}/${filename}`;
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -655,28 +598,7 @@ async function loadResponsesForRun(trait, idx, run) {
         const state = responseBrowserState[trait];
         const isCompact = state?.compactResponses ?? true;
 
-        container.innerHTML = `
-            <div class="response-list-compact">
-                ${responses.map((r, i) => {
-                    // In compact mode, show \n as literal text; otherwise preserve whitespace
-                    const responseText = isCompact
-                        ? r.response.replace(/\n/g, '\\n')
-                        : r.response;
-                    return `
-                    <div class="response-item-row">
-                        <div class="response-meta">
-                            <div class="meta-label">Prompt #${i + 1}</div>
-                            <div class="meta-score">Trait: <span class="${r.trait_score > 50 ? 'quality-good' : r.trait_score > 20 ? 'quality-ok' : ''}">${r.trait_score?.toFixed(0) ?? '-'}</span></div>
-                            <div class="meta-score">Coh: <span class="${(r.coherence_score ?? 0) >= 80 ? 'quality-good' : (r.coherence_score ?? 0) >= 60 ? 'quality-ok' : 'quality-bad'}">${r.coherence_score?.toFixed(0) ?? '-'}</span></div>
-                        </div>
-                        <div class="response-content">
-                            <div class="response-q">${window.escapeHtml(typeof r.prompt === 'object' ? r.prompt.question || JSON.stringify(r.prompt) : r.prompt)}</div>
-                            <div class="response-a ${isCompact ? 'compact' : ''}">${window.escapeHtml(responseText)}</div>
-                        </div>
-                    </div>
-                `;}).join('')}
-            </div>
-        `;
+        container.innerHTML = renderResponseList(responses, isCompact);
 
     } catch (e) {
         console.error('Failed to load responses:', e);
@@ -684,28 +606,18 @@ async function loadResponsesForRun(trait, idx, run) {
     }
 }
 
-/**
- * Reset state for a trait (call when results change)
- */
-function resetResponseBrowserState(trait) {
-    delete responseBrowserState[trait];
-}
+// ES module exports
+export {
+    setTraitResultsCache,
+    renderResponseBrowserForTrait,
+    fetchAvailableResponses,
+    responseBrowserState,
+};
 
-/**
- * Clear all cached state
- */
-function clearResponseBrowserCache() {
-    Object.keys(responseBrowserState).forEach(k => delete responseBrowserState[k]);
-    Object.keys(traitDefinitionCache).forEach(k => delete traitDefinitionCache[k]);
-    judgeTemplatesCache = null;
-}
-
-// Export
+// Keep window.* namespace for backward compat
 window.responseBrowser = {
     setTraitResultsCache,
     renderResponseBrowserForTrait,
-    resetResponseBrowserState,
-    clearResponseBrowserCache,
     fetchAvailableResponses,
     // Expose state for debugging
     getState: () => responseBrowserState,

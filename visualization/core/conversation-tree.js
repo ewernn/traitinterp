@@ -306,6 +306,6 @@ class ConversationTree {
     }
 }
 
-// Export for use in other modules
-window.ConversationNode = ConversationNode;
-window.ConversationTree = ConversationTree;
+// ES module exports
+export { ConversationTree };
+

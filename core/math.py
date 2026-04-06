@@ -3,16 +3,11 @@ Math primitives for trait vector analysis.
 
 projection: project activations onto vector (normalizes vector only)
 batch_cosine_similarity: cosine similarity between activations and vector (normalizes both)
-vector_properties: norm, sparsity of a vector
-distribution_properties: std, overlap, margin of projection distributions
 remove_massive_dims: zero out massive activation dimensions
 """
 
 import torch
-from typing import Dict, List, Callable
-from scipy import stats
-
-from core.types import VectorSpec, ProjectionConfig
+from typing import List
 
 
 # =============================================================================
@@ -115,11 +110,6 @@ def orthogonalize(v: torch.Tensor, onto: torch.Tensor) -> torch.Tensor:
     return (v_flat - proj).view_as(v)
 
 
-def separation(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> float:
-    """Absolute difference between mean projections."""
-    return (pos_proj.mean() - neg_proj.mean()).abs().item()
-
-
 def accuracy(pos_proj: torch.Tensor, neg_proj: torch.Tensor, threshold: float = None) -> float:
     """Classification accuracy. Positive should score above threshold, negative below."""
     if threshold is None:
@@ -144,129 +134,32 @@ def effect_size(pos_proj: torch.Tensor, neg_proj: torch.Tensor, signed: bool = F
     return d if signed else abs(d)
 
 
-def p_value(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> float:
-    """Two-tailed t-test p-value. Lower = more significant separation."""
-    _, p = stats.ttest_ind(pos_proj.cpu().numpy(), neg_proj.cpu().numpy())
-    return float(p)
-
-
 def polarity_correct(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> bool:
     """Check if positive examples score higher than negative."""
     return bool(pos_proj.mean() > neg_proj.mean())
 
 
-def vector_properties(vector: torch.Tensor) -> Dict[str, float]:
-    """
-    Compute properties of a vector.
+def normalize_projections(
+    raw: list, token_norms: list, mode: str = 'normalized'
+) -> list:
+    """Normalize raw projection scores.
 
     Args:
-        vector: [hidden_dim] tensor
+        raw: per-token raw projection values (dot product with unit vector)
+        token_norms: per-token activation L2 norms at the projection layer
+        mode: 'normalized' (divide by mean norm — layer-scale adjusted, default)
+              'cosine' (divide by per-token norm — true cosine similarity)
+              'raw' (no normalization)
 
     Returns:
-        {'norm': float, 'sparsity': float (fraction of components < 0.01)}
+        Normalized projection values as a list of floats.
     """
-    v = vector.float()
-    return {
-        'norm': v.norm().item(),
-        'sparsity': (v.abs() < 0.01).float().mean().item(),
-    }
+    if mode == 'raw' or not token_norms:
+        return raw
+    if mode == 'cosine':
+        return [v / n if n > 0 else 0.0 for v, n in zip(raw, token_norms)]
+    if mode == 'normalized':
+        mean_norm = sum(token_norms) / len(token_norms) if token_norms else 1.0
+        return [v / mean_norm if mean_norm > 0 else 0.0 for v in raw]
+    raise ValueError(f"Unknown normalization mode: {mode}")
 
-
-def distribution_properties(
-    pos_proj: torch.Tensor,
-    neg_proj: torch.Tensor,
-) -> Dict[str, float]:
-    """
-    Compute properties of projection score distributions.
-
-    Args:
-        pos_proj: [n_pos] projection scores for positive examples
-        neg_proj: [n_neg] projection scores for negative examples
-
-    Returns:
-        Dict[str, float] with keys: pos_std, neg_std, overlap_coefficient, separation_margin
-    """
-    pos_mean = pos_proj.mean().item()
-    neg_mean = neg_proj.mean().item()
-    pos_std = float(pos_proj.std())
-    neg_std = float(neg_proj.std())
-
-    # Overlap coefficient: use effect_size (Cohen's d) for z-score
-    d = effect_size(pos_proj, neg_proj)  # Already computes pooled_std internally
-    overlap = max(0, 1 - d / 4.0)  # d=4 → no overlap
-
-    # Separation margin: gap between distributions (positive = good separation)
-    margin = (pos_mean - pos_std) - (neg_mean + neg_std)
-
-    return {
-        'pos_std': pos_std,
-        'neg_std': neg_std,
-        'overlap_coefficient': float(overlap),
-        'separation_margin': float(margin),
-    }
-
-
-# =============================================================================
-# ProjectionConfig-based Operations
-# =============================================================================
-
-def project_with_config(
-    activations: Dict[int, Dict[str, torch.Tensor]],
-    config: ProjectionConfig,
-    vector_loader: Callable[[VectorSpec], torch.Tensor],
-    normalize: bool = True,
-) -> torch.Tensor:
-    """
-    Project activations using a ProjectionConfig (single or ensemble).
-
-    Args:
-        activations: Dict[layer][component] -> tensor of shape [*, hidden_dim]
-        config: ProjectionConfig specifying which vectors to use
-        vector_loader: Function that takes VectorSpec and returns vector tensor
-        normalize: If True, normalize weights to sum to 1.0 (default True)
-
-    Returns:
-        Weighted sum of projections, same shape as activations minus hidden_dim
-
-    Example:
-        def loader(spec):
-            vec, _, _ = load_vector_from_spec(experiment, trait, spec)
-            return vec
-
-        proj = project_with_config(activations, config, loader)
-    """
-    weights = config.normalized_weights if normalize else [s.weight for s in config.vectors]
-
-    result = None
-    for spec, weight in zip(config.vectors, weights):
-        vec = vector_loader(spec)
-        act = activations[spec.layer][spec.component]
-        proj = projection(act, vec, normalize_vector=True)
-
-        if result is None:
-            result = weight * proj
-        else:
-            result = result + weight * proj
-
-    return result
-
-
-def project_single(
-    activations: torch.Tensor,
-    vector: torch.Tensor,
-    weight: float = 1.0,
-) -> torch.Tensor:
-    """
-    Project activations onto a single vector with weight.
-
-    Convenience wrapper around projection() that applies weight.
-
-    Args:
-        activations: [*, hidden_dim] tensor
-        vector: [hidden_dim] tensor
-        weight: Scalar weight to apply (default 1.0)
-
-    Returns:
-        [*] weighted projection scores
-    """
-    return weight * projection(activations, vector, normalize_vector=True)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple HTTP server for trait-interp visualization.
+Simple HTTP server for traitinterp visualization.
 Serves the visualization with proper CORS headers and API endpoints.
 """
 
@@ -10,7 +10,6 @@ import os
 import sys
 import json
 import re
-import yaml
 import subprocess
 from pathlib import Path
 
@@ -20,9 +19,6 @@ from utils.paths import get as get_path
 
 PORT = int(os.environ.get('PORT', 8000))
 MODE = os.environ.get('MODE', 'development')
-
-# Cache for integrity data (populated on startup)
-integrity_cache = {}
 
 class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS support and API endpoints."""
@@ -78,11 +74,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests, including API endpoints."""
         try:
-            # API endpoint: get data schema
-            if self.path == '/api/schema':
-                self.send_api_response(self.get_schema())
-                return
-
             # API endpoint: list experiments
             if self.path == '/api/experiments':
                 self.send_api_response(self.list_experiments())
@@ -114,13 +105,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_experiment_config(exp_name))
                 return
 
-            # API endpoint: get integrity data for an experiment
-            if self.path.startswith('/api/integrity/') and self.path.endswith('.json'):
-                exp_name = self.path.split('/')[3].replace('.json', '')
-                if exp_name in integrity_cache:
-                    self.send_api_response(integrity_cache[exp_name])
-                else:
-                    self.send_api_response({'error': f'No integrity data for experiment: {exp_name}'})
+            # API endpoint: get trait definition + steering config
+            # Path: /api/experiments/{exp}/trait-info/{category}/{trait}
+            if self.path.startswith('/api/experiments/') and '/trait-info/' in self.path:
+                parts = self.path.split('/')
+                if len(parts) >= 7:
+                    exp_name = parts[3]
+                    category = parts[5]
+                    trait = parts[6]
+                    self.send_api_response(self.get_trait_info(exp_name, category, trait))
                 return
 
             # API endpoint: list traits for an experiment
@@ -133,22 +126,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.path.startswith('/api/experiments/') and '/inference/prompt-sets' in self.path:
                 exp_name = self.path.split('/')[3]
                 self.send_api_response(self.list_prompt_sets(exp_name))
-                return
-
-            # API endpoint: list prompts in a prompt set
-            # Path: /api/experiments/{exp}/inference/prompts/{prompt_set...}
-            # Note: prompt_set can be nested (e.g., jailbreak/original)
-            if self.path.startswith('/api/experiments/') and '/inference/prompts/' in self.path:
-                parts = self.path.split('/')
-                exp_name = parts[3]
-                prompt_set = '/'.join(parts[6:])
-                self.send_api_response(self.list_prompts_in_set(exp_name, prompt_set))
-                return
-
-            # API endpoint: list available model variants
-            if self.path.startswith('/api/experiments/') and self.path.endswith('/model-variants'):
-                exp_name = self.path.split('/')[3]
-                self.send_api_response(self.list_model_variants(exp_name))
                 return
 
             # API endpoint: list model diff comparisons
@@ -216,7 +193,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             # Serve design playground
             if self.path == '/design':
-                self.path = '/visualization/design.html'
+                self.path = '/visualization/dev/design.html'
 
             # Default: serve files (with dev-mode cache busting)
             if MODE == 'development':
@@ -313,16 +290,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
 
-    def get_schema(self):
-        """Get data schema from paths.yaml."""
-        config_path = Path(__file__).parent.parent / 'config' / 'paths.yaml'
-        try:
-            with open(config_path) as f:
-                config = yaml.safe_load(f)
-            return config.get('schema', {})
-        except Exception as e:
-            return {'error': str(e)}
-
     def get_app_config(self):
         """Get app-wide config for frontend (mode, features)."""
         mode = os.environ.get('MODE', 'development')
@@ -366,7 +333,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         if torch.cuda.is_available():
             # NVIDIA GPU - use existing utils
-            from utils.vram import get_gpu_memory_gb
             try:
                 props = torch.cuda.get_device_properties(0)
                 free, total = torch.cuda.mem_get_info(0)
@@ -439,6 +405,44 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             'coherence': COHERENCE_PROMPT,
         }
 
+    def get_trait_info(self, experiment: str, category: str, trait: str):
+        """Get trait definition text and steering config for a trait.
+
+        Checks experiment-specific files first (in extraction/), then falls
+        back to shared dataset files (in datasets/traits/).
+        """
+        trait_path = f"{category}/{trait}"
+        definition = None
+        steering = None
+
+        # Paths to check: experiment-specific first, then shared datasets
+        exp_trait_dir = get_path('extraction.base', experiment=experiment) / trait_path
+        datasets_trait_dir = get_path('datasets.traits') / trait_path
+        candidate_dirs = [exp_trait_dir, datasets_trait_dir]
+
+        for trait_dir in candidate_dirs:
+            if definition is None:
+                def_file = trait_dir / 'definition.txt'
+                if def_file.exists():
+                    try:
+                        definition = def_file.read_text().strip()
+                    except Exception:
+                        pass
+
+            if steering is None:
+                steer_file = trait_dir / 'steering.json'
+                if steer_file.exists():
+                    try:
+                        with open(steer_file) as f:
+                            steering = json.load(f)
+                    except Exception:
+                        pass
+
+        return {
+            'definition': definition,
+            'steering': steering,
+        }
+
     def get_experiment_config(self, experiment: str):
         """Get experiment config.json with model metadata (max_context_length, etc.)."""
         from utils.model_registry import get_model_config
@@ -471,7 +475,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Get model from live-chat experiment config
             from utils.paths import get_model_variant
             variant_info = get_model_variant('live-chat', mode='application')
-            model_name = variant_info['model']
+            model_name = variant_info.model
             print(f"[Warmup] Model from config: {model_name}")
 
             import sys
@@ -547,10 +551,20 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                             break
 
                 if has_traits:
-                    experiments.append(item.name)
+                    # Check which pipeline stages have data
+                    has = []
+                    if has_traits:
+                        has.append('E')
+                    if (item / 'inference').exists() and any((item / 'inference').iterdir()):
+                        has.append('I')
+                    if (item / 'steering').exists() and any((item / 'steering').iterdir()):
+                        has.append('S')
+                    if (item / 'model_diff').exists() and any((item / 'model_diff').iterdir()):
+                        has.append('M')
+                    experiments.append({'name': item.name, 'has': has})
 
         # Sort alphabetically
-        return {'experiments': sorted(experiments)}
+        return {'experiments': sorted(experiments, key=lambda e: e['name'])}
 
     def list_traits(self, experiment_name):
         """List all traits for an experiment.
@@ -681,19 +695,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         return {'prompt_sets': prompt_sets}
 
-    def list_model_variants(self, experiment_name):
-        """List available model variants for an experiment."""
-        config = self.get_experiment_config(experiment_name)
-        if 'error' in config:
-            return config
-        model_variants = config.get('model_variants', {})
-        defaults = config.get('defaults', {})
-        return {
-            'variants': list(model_variants.keys()),
-            'defaults': defaults,
-            'model_variants': model_variants
-        }
-
     def list_model_diff(self, experiment_name):
         """List available model diff comparisons for an experiment.
 
@@ -745,26 +746,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         return {'comparisons': comparisons}
 
-    def list_prompts_in_set(self, experiment_name, prompt_set):
-        """List all prompts in a specific prompt set."""
-        prompt_file = get_path('datasets.inference_prompt_set', prompt_set=prompt_set)
-        if not prompt_file.exists():
-            return {'error': f'Prompt set not found: {prompt_set}'}
-
-        try:
-            with open(prompt_file) as f:
-                data = json.load(f)
-            return {
-                'prompt_set': prompt_set,
-                'prompts': data.get('prompts', [])
-            }
-        except Exception as e:
-            return {'error': str(e)}
-
     def list_steering_entries(self, experiment_name):
         """List all steering entries for an experiment."""
         from utils.paths import discover_steering_entries
-        return {'entries': discover_steering_entries(experiment_name)}
+        entries = discover_steering_entries(experiment_name)
+        return {'entries': [e.to_dict() for e in entries]}
 
     def list_steering_responses(self, experiment_name, trait, model_variant, position, prompt_set):
         """List all response files for a steering entry."""
@@ -815,11 +801,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_steering_results(self, experiment_name, trait, model_variant, position, prompt_set):
         """Load steering results from JSONL file and return as JSON."""
-        from steering.steering_results import load_results
+        from utils.steering_results import load_results
 
         try:
             # sanitize_position is idempotent, so already-sanitized positions work fine
-            return load_results(experiment_name, trait, model_variant, position, prompt_set)
+            return load_results(experiment_name, trait, model_variant, position, prompt_set).to_dict()
         except FileNotFoundError:
             return {'error': f'Results not found for {trait}/{model_variant}/{position}/{prompt_set}'}
         except Exception as e:
@@ -924,45 +910,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_api_response({'error': str(e)})
 
 
-def cache_integrity_data():
-    """Run data_checker.py for each experiment and cache results."""
-    experiments_dir = get_path('experiments.list')
-    if not experiments_dir.exists():
-        return
-
-    for exp_dir in experiments_dir.iterdir():
-        if not exp_dir.is_dir() or exp_dir.name.startswith('.'):
-            continue
-
-        # Check if experiment has extraction data
-        extraction_dir = get_path('extraction.base', experiment=exp_dir.name)
-        if not extraction_dir.exists():
-            continue
-
-        try:
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    'analysis/data_checker.py',
-                    '--experiment', exp_dir.name,
-                    '--json_output'
-                ],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                integrity_cache[exp_dir.name] = json.loads(result.stdout)
-                print(f"  ✓ Cached integrity for {exp_dir.name}")
-            else:
-                print(f"  ✗ Failed to get integrity for {exp_dir.name}: {result.stderr}")
-        except subprocess.TimeoutExpired:
-            print(f"  ✗ Timeout getting integrity for {exp_dir.name}")
-        except json.JSONDecodeError as e:
-            print(f"  ✗ Invalid JSON from integrity check for {exp_dir.name}: {e}")
-        except Exception as e:
-            print(f"  ✗ Error getting integrity for {exp_dir.name}: {e}")
-
 
 def main():
     # Change to the project root directory (parent of visualization/)
@@ -980,11 +927,6 @@ def main():
 ║           Trait Interpretation Visualization Server          ║
 ╚══════════════════════════════════════════════════════════════╝
 """)
-
-    # Cache integrity data for all experiments on startup
-    print("Caching integrity data...")
-    cache_integrity_data()
-    print(f"Cached {len(integrity_cache)} experiment(s)\n")
 
     print(f"""Starting server on http://localhost:{PORT}
 Mode: {MODE}

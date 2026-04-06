@@ -1,3 +1,8 @@
+import { fetchJSON, sortedNumericKeys } from '../core/utils.js';
+import { getChartColors } from '../core/display.js';
+import { buildChartLayout, renderChart } from '../core/charts.js';
+import { requireExperiment, renderSubsection, renderRunHint } from '../core/ui.js';
+
 /**
  * Model Analysis View - Understanding model internals and comparing variants
  *
@@ -12,18 +17,7 @@
 async function renderModelAnalysis() {
     const contentArea = document.getElementById('content-area');
 
-    // Guard: require experiment selection
-    if (!window.state.currentExperiment) {
-        contentArea.innerHTML = `
-            <div class="tool-view">
-                <div class="no-data">
-                    <p>Please select an experiment from the sidebar</p>
-                    <small>Analysis views require an experiment to be selected. Choose one from the "Experiment" section in the sidebar.</small>
-                </div>
-            </div>
-        `;
-        return;
-    }
+    if (requireExperiment(contentArea)) return;
 
     const experiment = window.state.currentExperiment;
 
@@ -36,7 +30,7 @@ async function renderModelAnalysis() {
 
             <!-- Section 1: Activation Diagnostics -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     num: 1,
                     title: 'Activation Diagnostics',
                     infoId: 'info-activation-diagnostics',
@@ -50,31 +44,28 @@ async function renderModelAnalysis() {
                     </select>
                 </div>
 
-                <h4 class="subsection-header" style="margin-top: 16px;">
-                    <span class="subsection-title">Activation Magnitude by Layer</span>
-                    <span class="subsection-info-toggle" data-target="info-act-magnitude">►</span>
-                </h4>
-                <div id="info-act-magnitude" class="info-text">
-                    Shows ||h[l]|| (L2 norm of residual stream) averaged over all tokens and prompts. The residual stream accumulates: h[l] = h[0] + Σ_{i&lt;l} (attn_out[i] + mlp_out[i]). Also shows the per-layer contribution magnitudes from attention and MLP sublayers — these are what get <em>added</em> to the residual at each layer, not the cumulative stream. Comparing contribution magnitude to residual growth shows whether the stream is growing because each layer adds large updates, or from accumulation. Data source: calibration prompts.
-                </div>
+                ${renderSubsection({
+                    title: 'Activation Magnitude by Layer',
+                    infoId: 'info-act-magnitude',
+                    infoText: 'Shows ||h[l]|| (L2 norm of residual stream) averaged over all tokens and prompts. The residual stream accumulates: h[l] = h[0] + Σ_{i&lt;l} (attn_out[i] + mlp_out[i]). Also shows the per-layer contribution magnitudes from attention and MLP sublayers — these are what get <em>added</em> to the residual at each layer, not the cumulative stream. Comparing contribution magnitude to residual growth shows whether the stream is growing because each layer adds large updates, or from accumulation. Data source: calibration prompts.',
+                    level: 'h4'
+                })}
                 <div id="activation-magnitude-plot"></div>
 
-                <h4 class="subsection-header" style="margin-top: 24px;">
-                    <span class="subsection-title">Activation Uniformity</span>
-                    <span class="subsection-info-toggle" data-target="info-massive-acts">►</span>
-                </h4>
-                <div id="info-massive-acts" class="info-text">
-                    How much do all tokens point in the same direction at each layer? High values indicate massive activation dimensions (Sun et al. 2024) dominate the representation, forcing tokens into a common direction regardless of content. Computed as: average cosine similarity of each token's activation with the mean activation direction.
-                </div>
+                ${renderSubsection({
+                    title: 'Activation Uniformity',
+                    infoId: 'info-massive-acts',
+                    infoText: 'How much do all tokens point in the same direction at each layer? High values indicate massive activation dimensions (Sun et al. 2024) dominate the representation, forcing tokens into a common direction regardless of content. Computed as: average cosine similarity of each token\'s activation with the mean activation direction.',
+                    level: 'h4'
+                })}
                 <div id="massive-activations-container"></div>
 
-                <h4 class="subsection-header" style="margin-top: 24px;">
-                    <span class="subsection-title">Massive Dims Across Layers</span>
-                    <span class="subsection-info-toggle" data-target="info-massive-dims-layers">►</span>
-                </h4>
-                <div id="info-massive-dims-layers" class="info-text">
-                    Tracks specific dimensions with anomalously large activations (Sun et al. 2024). For each layer l, identify top-k dimensions by |h[l][dim]| across the calibration set. Massive dims appear consistently across layers with values 100-1000× larger than median. Criteria dropdown filters which dims to plot: "Top 5, 3+ layers" = dims in top-5 at ≥3 layers (balanced, recommended). "Top 3, any layer" = dims in top-3 at any layer (conservative). "Top 5, any layer" = dims in top-5 at any layer (permissive). Y-axis: normalized magnitude = |h[l][dim]| / mean_d(|h[l][d]|). Values >>1 indicate massive dims. These dims act as constant biases and can be removed to improve trait projection signal-to-noise.
-                </div>
+                ${renderSubsection({
+                    title: 'Massive Dims Across Layers',
+                    infoId: 'info-massive-dims-layers',
+                    infoText: 'Tracks specific dimensions with anomalously large activations (Sun et al. 2024). For each layer l, identify top-k dimensions by |h[l][dim]| across the calibration set. Massive dims appear consistently across layers with values 100-1000× larger than median. Criteria dropdown filters which dims to plot: "Top 5, 3+ layers" = dims in top-5 at ≥3 layers (balanced, recommended). "Top 3, any layer" = dims in top-3 at any layer (conservative). "Top 5, any layer" = dims in top-5 at any layer (permissive). Y-axis: normalized magnitude = |h[l][dim]| / mean_d(|h[l][d]|). Values >>1 indicate massive dims. These dims act as constant biases and can be removed to improve trait projection signal-to-noise.',
+                    level: 'h4'
+                })}
                 <div class="projection-toggle" style="margin-bottom: 12px;">
                     <span class="projection-toggle-label">Criteria:</span>
                     <select id="massive-dims-criteria">
@@ -85,19 +76,18 @@ async function renderModelAnalysis() {
                 </div>
                 <div id="massive-dims-layers-plot"></div>
 
-                <h4 class="subsection-header" style="margin-top: 24px;">
-                    <span class="subsection-title">Inter-Layer Similarity</span>
-                    <span class="subsection-info-toggle" data-target="info-interlayer-sim">►</span>
-                </h4>
-                <div id="info-interlayer-sim" class="info-text">
-                    Cosine similarity between consecutive layers: cos(mean[l], mean[l+1]). Shows where the model makes large representational shifts vs incremental changes. A dip indicates the representation is being substantially rewritten at that layer. Computed from mean activation vectors across all calibration tokens.
-                </div>
+                ${renderSubsection({
+                    title: 'Inter-Layer Similarity',
+                    infoId: 'info-interlayer-sim',
+                    infoText: 'Cosine similarity between consecutive layers: cos(mean[l], mean[l+1]). Shows where the model makes large representational shifts vs incremental changes. A dip indicates the representation is being substantially rewritten at that layer. Computed from mean activation vectors across all calibration tokens.',
+                    level: 'h4'
+                })}
                 <div id="interlayer-similarity-plot"></div>
             </section>
 
             <!-- Section 2: Variant Comparison -->
             <section>
-                ${ui.renderSubsection({
+                ${renderSubsection({
                     num: 2,
                     title: 'Variant Comparison',
                     infoId: 'info-variant-comparison',
@@ -117,11 +107,12 @@ async function renderModelAnalysis() {
     // Populate model variant dropdown
     await populateVariantDropdown(experiment);
 
-    // Render activation diagnostics (always)
-    await renderActivationMagnitudePlot();
-    await renderMassiveActivations();
-    await renderMassiveDimsAcrossLayers();
-    await renderInterLayerSimilarity();
+    // Fetch calibration data once, pass to all diagnostic renderers
+    const calibrationData = await fetchMassiveActivationsData();
+    renderActivationMagnitudePlot(calibrationData);
+    renderMassiveActivations(calibrationData);
+    renderMassiveDimsAcrossLayers(calibrationData);
+    renderInterLayerSimilarity(calibrationData);
 
     // Render model diff comparison
     await renderModelDiffComparison(experiment);
@@ -172,10 +163,11 @@ async function populateVariantDropdown(experiment) {
     if (!dropdown.dataset.bound) {
         dropdown.dataset.bound = 'true';
         dropdown.addEventListener('change', async () => {
-            await renderActivationMagnitudePlot();
-            await renderMassiveActivations();
-            await renderMassiveDimsAcrossLayers();
-            await renderInterLayerSimilarity();
+            const data = await fetchMassiveActivationsData();
+            renderActivationMagnitudePlot(data);
+            renderMassiveActivations(data);
+            renderMassiveDimsAcrossLayers(data);
+            renderInterLayerSimilarity(data);
         });
     }
 }
@@ -197,18 +189,14 @@ async function renderModelDiffComparison(experiment) {
 
     try {
         // Fetch available comparisons
-        const response = await fetch(`/api/experiments/${experiment}/model-diff`);
-        const data = await response.json();
-        const comparisons = data.comparisons || [];
+        const data = await fetchJSON(`/api/experiments/${experiment}/model-diff`);
+        const comparisons = data?.comparisons || [];
 
         if (comparisons.length === 0) {
-            container.innerHTML = `
-                <div class="info">
-                    No model diff data available.
-                    <br><br>
-                    Run: <code>python analysis/model_diff/compare_variants.py --experiment ${experiment} --variant-a instruct --variant-b rm_lora --prompt-set {prompt_set}</code>
-                </div>
-            `;
+            container.innerHTML = renderRunHint(
+                'No model diff data available.',
+                `python analysis/model_diff/compare_variants.py --experiment ${experiment} --variant-a instruct --variant-b rm_lora --prompt-set {prompt_set}`
+            );
             return;
         }
 
@@ -224,14 +212,8 @@ async function renderModelDiffComparison(experiment) {
                     variant_b: comparison.variant_b,
                     prompt_set: promptSet
                 });
-            try {
-                const res = await fetch('/' + resultsPath);
-                if (res.ok) {
-                    allResults[promptSet] = await res.json();
-                }
-            } catch (e) {
-                console.warn(`Failed to load ${resultsPath}:`, e);
-            }
+            const result = await fetchJSON('/' + resultsPath);
+            if (result) allResults[promptSet] = result;
         }
 
         if (Object.keys(allResults).length === 0) {
@@ -318,22 +300,20 @@ async function renderModelDiffComparison(experiment) {
                 </tbody>
             </table>
 
-            <h4 class="subsection-header" style="margin-top: 16px;">
-                <span class="subsection-title">Effect Size by Layer</span>
-                <span class="subsection-info-toggle" data-target="info-effect-size">►</span>
-            </h4>
-            <div id="info-effect-size" class="info-text">
-                Cohen's d at each layer. Calculation: (1) Both variants process the same tokens (variant A generates, variant B replays via prefill). (2) Average activations over response tokens per prompt. (3) Project onto trait vector. (4) Compute Cohen's d across prompts comparing variant B to A. Higher = more consistent separation between model variants along the trait direction.
-            </div>
+            ${renderSubsection({
+                title: 'Effect Size by Layer',
+                infoId: 'info-effect-size',
+                infoText: "Cohen's d at each layer. Calculation: (1) Both variants process the same tokens (variant A generates, variant B replays via prefill). (2) Average activations over response tokens per prompt. (3) Project onto trait vector. (4) Compute Cohen's d across prompts comparing variant B to A. Higher = more consistent separation between model variants along the trait direction.",
+                level: 'h4'
+            })}
             <div id="model-diff-chart"></div>
 
-            <h4 class="subsection-header" style="margin-top: 24px;">
-                <span class="subsection-title">Cosine Similarity with Trait Direction</span>
-                <span class="subsection-info-toggle" data-target="info-cosine-sim">►</span>
-            </h4>
-            <div id="info-cosine-sim" class="info-text">
-                Alignment between diff vector and trait vector. Calculation: (1) For each prompt, average activations over all response tokens, compute diff = B - A. (2) Average diff vectors across all prompts → mean diff vector. (3) Cosine similarity between mean diff vector and trait vector. Higher = the model change points toward the trait direction. Random baseline ~0.
-            </div>
+            ${renderSubsection({
+                title: 'Cosine Similarity with Trait Direction',
+                infoId: 'info-cosine-sim',
+                infoText: "Alignment between diff vector and trait vector. Calculation: (1) For each prompt, average activations over all response tokens, compute diff = B - A. (2) Average diff vectors across all prompts → mean diff vector. (3) Cosine similarity between mean diff vector and trait vector. Higher = the model change points toward the trait direction. Random baseline ~0.",
+                level: 'h4'
+            })}
             <div id="model-diff-cosine-chart"></div>
         `;
 
@@ -341,8 +321,25 @@ async function renderModelDiffComparison(experiment) {
         window.setupSubsectionInfoToggles?.();
 
         // Plot all traits × prompt sets
-        renderModelDiffChart(allResults, comparison);
-        renderModelDiffCosineChart(allResults, comparison);
+        renderModelDiffLayerChart(allResults, comparison, {
+            field: 'per_layer_effect_size',
+            divId: 'model-diff-chart',
+            yaxisTitle: 'Effect Size (σ)',
+            hoverFormat: '%{y:.2f}σ',
+            height: 400,
+            margin: { t: 40 },
+            title: `Trait Detection: ${comparison.variant_b} vs ${comparison.variant_a}`
+        });
+        renderModelDiffLayerChart(allResults, comparison, {
+            field: 'per_layer_cosine_sim',
+            divId: 'model-diff-cosine-chart',
+            yaxisTitle: 'Cosine Similarity',
+            hoverFormat: '%{y:.3f}',
+            height: 300,
+            margin: { t: 10 },
+            yaxisRange: [-0.15, 0.15],
+            peakByAbsValue: true
+        });
 
     } catch (error) {
         console.error('Model diff error:', error);
@@ -351,13 +348,28 @@ async function renderModelDiffComparison(experiment) {
 }
 
 /**
- * Render model diff chart with all traits and prompt sets
+ * Render a model diff layer chart (effect size or cosine similarity).
+ * @param {Object} allResults - {promptSet: results} map
+ * @param {Object} comparison - {variant_a, variant_b} info
+ * @param {Object} opts - Chart configuration
+ * @param {string} opts.field - Data field name (e.g. 'per_layer_effect_size', 'per_layer_cosine_sim')
+ * @param {string} opts.divId - Target div ID
+ * @param {string} opts.yaxisTitle - Y-axis label
+ * @param {string} opts.hoverFormat - Plotly hover format (e.g. '%{y:.2f}σ')
+ * @param {number} [opts.height=300] - Chart height
+ * @param {Object} [opts.margin] - Margin overrides
+ * @param {string} [opts.title] - Chart title
+ * @param {Array} [opts.yaxisRange] - Y-axis range
+ * @param {boolean} [opts.peakByAbsValue=false] - Find peak by absolute value (for cosine sim)
  */
-function renderModelDiffChart(allResults, comparison) {
-    const chartDiv = document.getElementById('model-diff-chart');
+function renderModelDiffLayerChart(allResults, comparison, {
+    field, divId, yaxisTitle, hoverFormat,
+    height = 300, margin = {}, title, yaxisRange, peakByAbsValue = false
+}) {
+    const chartDiv = document.getElementById(divId);
     if (!chartDiv) return;
 
-    const colors = window.getChartColors?.() || ['#4ecdc4', '#ff6b6b', '#ffe66d', '#95e1d3'];
+    const colors = getChartColors();
     const traces = [];
     let colorIdx = 0;
 
@@ -377,20 +389,34 @@ function renderModelDiffChart(allResults, comparison) {
 
         for (const [promptSet, results] of Object.entries(allResults)) {
             const traitData = results.traits?.[trait];
-            if (!traitData || !traitData.per_layer_effect_size) continue;
+            if (!traitData || !traitData[field]) continue;
 
+            const values = traitData[field];
             const setName = promptSet.split('/').pop();
             const dash = dashIdx === 0 ? 'solid' : 'dash';
 
+            // Compute peak label
+            let peakVal, peakLayer;
+            if (peakByAbsValue) {
+                const peakIdx = values.reduce((maxIdx, val, idx, arr) =>
+                    Math.abs(val) > Math.abs(arr[maxIdx]) ? idx : maxIdx, 0);
+                peakVal = values[peakIdx];
+                peakLayer = traitData.layers[peakIdx];
+            } else {
+                peakVal = traitData.peak_effect_size;
+                peakLayer = traitData.peak_layer;
+            }
+            const peakLabel = peakByAbsValue ? peakVal.toFixed(2) : `${peakVal.toFixed(2)}σ`;
+
             traces.push({
                 x: traitData.layers,
-                y: traitData.per_layer_effect_size,
+                y: values,
                 type: 'scatter',
                 mode: 'lines+markers',
-                name: `${traitName} ${setName} (peak: ${traitData.peak_effect_size.toFixed(2)}σ @ L${traitData.peak_layer})`,
+                name: `${traitName} ${setName} (peak: ${peakLabel} @ L${peakLayer})`,
                 line: { color, width: 2, dash },
                 marker: { size: 3 },
-                hovertemplate: `${traitName} ${setName}<br>L%{x}: %{y:.2f}σ<extra></extra>`
+                hovertemplate: `${traitName} ${setName}<br>L%{x}: ${hoverFormat}<extra></extra>`
             });
 
             dashIdx++;
@@ -398,107 +424,27 @@ function renderModelDiffChart(allResults, comparison) {
         colorIdx++;
     }
 
-    // Use shared chart utilities for consistent theming
-    const layout = window.buildChartLayout({
+    const yaxis = {
+        title: yaxisTitle,
+        zeroline: true,
+        zerolinewidth: 1,
+        showgrid: true,
+        ...(yaxisRange ? { range: yaxisRange } : {})
+    };
+
+    const layout = buildChartLayout({
         preset: 'layerChart',
         traces,
-        height: 400,
+        height,
         legendPosition: 'below',
-        margin: { t: 40 },  // Extra top margin for title
-        xaxis: {
-            title: 'Layer',
-            dtick: 10,
-            showgrid: true
-        },
-        yaxis: {
-            title: 'Effect Size (σ)',
-            zeroline: true,
-            zerolinewidth: 1,
-            showgrid: true
-        },
+        margin,
+        xaxis: { title: 'Layer', dtick: 10, showgrid: true },
+        yaxis,
         hovermode: 'closest',
-        title: `Trait Detection: ${comparison.variant_b} vs ${comparison.variant_a}`
+        ...(title ? { title } : {})
     });
 
-    window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
-}
-
-/**
- * Render cosine similarity chart (diff vector alignment with trait direction)
- */
-function renderModelDiffCosineChart(allResults, comparison) {
-    const chartDiv = document.getElementById('model-diff-cosine-chart');
-    if (!chartDiv) return;
-
-    const colors = window.getChartColors?.() || ['#4ecdc4', '#ff6b6b', '#ffe66d', '#95e1d3'];
-    const traces = [];
-    let colorIdx = 0;
-
-    // Collect all traits
-    const allTraits = new Set();
-    for (const results of Object.values(allResults)) {
-        for (const trait of Object.keys(results.traits || {})) {
-            allTraits.add(trait);
-        }
-    }
-
-    // Create traces for each trait × prompt set combination
-    for (const trait of allTraits) {
-        const traitName = trait.split('/').pop();
-        const color = colors[colorIdx % colors.length];
-        let dashIdx = 0;
-
-        for (const [promptSet, results] of Object.entries(allResults)) {
-            const traitData = results.traits?.[trait];
-            if (!traitData || !traitData.per_layer_cosine_sim) continue;
-
-            const setName = promptSet.split('/').pop();
-            const dash = dashIdx === 0 ? 'solid' : 'dash';
-
-            // Find peak cosine sim (by absolute value — signal can be negative)
-            const peakIdx = traitData.per_layer_cosine_sim.reduce((maxIdx, val, idx, arr) =>
-                Math.abs(val) > Math.abs(arr[maxIdx]) ? idx : maxIdx, 0);
-            const peakCos = traitData.per_layer_cosine_sim[peakIdx];
-            const peakLayer = traitData.layers[peakIdx];
-
-            traces.push({
-                x: traitData.layers,
-                y: traitData.per_layer_cosine_sim,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: `${traitName} ${setName} (peak: ${peakCos.toFixed(2)} @ L${peakLayer})`,
-                line: { color, width: 2, dash },
-                marker: { size: 3 },
-                hovertemplate: `${traitName} ${setName}<br>L%{x}: %{y:.3f}<extra></extra>`
-            });
-
-            dashIdx++;
-        }
-        colorIdx++;
-    }
-
-    const layout = window.buildChartLayout({
-        preset: 'layerChart',
-        traces,
-        height: 300,
-        legendPosition: 'below',
-        margin: { t: 10 },
-        xaxis: {
-            title: 'Layer',
-            dtick: 10,
-            showgrid: true
-        },
-        yaxis: {
-            title: 'Cosine Similarity',
-            range: [-0.15, 0.15],
-            zeroline: true,
-            zerolinewidth: 1,
-            showgrid: true
-        },
-        hovermode: 'closest'
-    });
-
-    window.renderChart(chartDiv, traces, layout, { displayModeBar: true });
+    renderChart(chartDiv, traces, layout, { displayModeBar: true });
 }
 
 
@@ -513,37 +459,53 @@ function renderModelDiffCosineChart(allResults, comparison) {
 async function fetchMassiveActivationsData() {
     const modelVariant = getSelectedVariant();
     const calibrationPath = window.paths.get('inference.massive_activations', { prompt_set: 'calibration', model_variant: modelVariant });
-    const response = await fetch('/' + calibrationPath);
-    if (!response.ok) return null;
-    return response.json();
+    return fetchJSON('/' + calibrationPath);
+}
+
+/**
+ * Shared wrapper for diagnostic render functions.
+ * Handles container lookup, null-data guard, and error catch.
+ * @param {string} containerId - DOM element ID
+ * @param {any} data - Pre-fetched calibration data (from fetchMassiveActivationsData)
+ * @param {Function} renderFn - (container, data) => void
+ */
+function withMassiveActivationsData(containerId, data, renderFn) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!data) {
+        container.innerHTML = renderRunHint(
+            'No massive activation calibration data.',
+            `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+        );
+        return;
+    }
+
+    try {
+        renderFn(container, data);
+    } catch (error) {
+        container.innerHTML = `<div class="info">Error loading data: ${error.message}</div>`;
+    }
 }
 
 
 /**
  * Render Activation Magnitude plot showing ||h|| by layer.
- * Uses data from massive activations calibration file.
  */
-async function renderActivationMagnitudePlot() {
-    const plotDiv = document.getElementById('activation-magnitude-plot');
-    if (!plotDiv) return;
-
-    try {
-        const data = await fetchMassiveActivationsData();
-        if (!data || !data.aggregate?.layer_norms) {
-            plotDiv.innerHTML = `
-                <div class="info">
-                    Activation magnitude data not available.
-                    <br><br>
-                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
+function renderActivationMagnitudePlot(data) {
+    withMassiveActivationsData('activation-magnitude-plot', data, (plotDiv, data) => {
+        if (!data.aggregate?.layer_norms) {
+            plotDiv.innerHTML = renderRunHint(
+                'Activation magnitude data not available.',
+                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            );
             return;
         }
 
         const layerNorms = data.aggregate.layer_norms;
         const attnNorms = data.aggregate.attn_norms || {};
         const mlpNorms = data.aggregate.mlp_norms || {};
-        const layers = Object.keys(layerNorms).map(Number).sort((a, b) => a - b);
+        const layers = sortedNumericKeys(layerNorms);
         const norms = layers.map(l => layerNorms[l]);
         const attn = layers.map(l => attnNorms[l] || null);
         const mlp = layers.map(l => mlpNorms[l] || null);
@@ -554,7 +516,7 @@ async function renderActivationMagnitudePlot() {
         const chartDiv = document.createElement('div');
         plotDiv.appendChild(chartDiv);
 
-        const colors = window.getChartColors();
+        const colors = getChartColors();
         const traces = [{
             x: layers,
             y: norms,
@@ -595,19 +557,16 @@ async function renderActivationMagnitudePlot() {
         }
 
         const hasContribData = traces.length > 1;
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 250,
-            legendPosition: hasContribData ? 'topright' : 'none',
+            legendPosition: hasContribData ? 'right' : 'none',
             xaxis: { title: 'Layer', tickmode: 'linear', tick0: 0, dtick: 5, showgrid: true },
             yaxis: { title: 'L2 norm', showgrid: true }
         });
-        window.renderChart(chartDiv, traces, layout);
-
-    } catch (error) {
-        plotDiv.innerHTML = `<div class="info">Error loading activation data: ${error.message}</div>`;
-    }
+        renderChart(chartDiv, traces, layout);
+    });
 }
 
 
@@ -615,23 +574,8 @@ async function renderActivationMagnitudePlot() {
  * Render Massive Activations section.
  * Shows mean alignment plot - how much tokens point in a common direction.
  */
-async function renderMassiveActivations() {
-    const container = document.getElementById('massive-activations-container');
-    if (!container) return;
-
-    try {
-        const data = await fetchMassiveActivationsData();
-        if (!data) {
-            container.innerHTML = `
-                <div class="info">
-                    No massive activation calibration data.
-                    <br><br>
-                    Run: <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
-            return;
-        }
-
+function renderMassiveActivations(data) {
+    withMassiveActivationsData('massive-activations-container', data, (container, data) => {
         const aggregate = data.aggregate || {};
         const meanAlignment = aggregate.mean_alignment_by_layer || {};
 
@@ -643,7 +587,7 @@ async function renderMassiveActivations() {
         container.innerHTML = `<div id="mean-alignment-plot"></div>`;
 
         // Plot mean alignment by layer
-        const layers = Object.keys(meanAlignment).map(Number).sort((a, b) => a - b);
+        const layers = sortedNumericKeys(meanAlignment);
         const alignments = layers.map(l => meanAlignment[l]);
 
         const alignTrace = {
@@ -652,12 +596,12 @@ async function renderMassiveActivations() {
             type: 'scatter',
             mode: 'lines+markers',
             name: 'Mean Alignment',
-            line: { color: window.getChartColors()[0], width: 2 },
+            line: { color: getChartColors()[0], width: 2 },
             marker: { size: 4 },
             hovertemplate: 'L%{x}<br>Alignment: %{y:.1f}%<extra></extra>'
         };
 
-        const alignLayout = window.buildChartLayout({
+        const alignLayout = buildChartLayout({
             preset: 'layerChart',
             traces: [alignTrace],
             height: 200,
@@ -665,11 +609,8 @@ async function renderMassiveActivations() {
             xaxis: { title: 'Layer', dtick: 5, showgrid: true },
             yaxis: { title: 'Mean Alignment (%)', range: [0, 100], showgrid: true }
         });
-        window.renderChart('mean-alignment-plot', [alignTrace], alignLayout);
-
-    } catch (error) {
-        container.innerHTML = `<div class="info">Error loading massive activation data: ${error.message}</div>`;
-    }
+        renderChart('mean-alignment-plot', [alignTrace], alignLayout);
+    });
 }
 
 
@@ -677,16 +618,8 @@ async function renderMassiveActivations() {
  * Render Massive Dims Across Layers section.
  * Shows how each massive dim's normalized magnitude changes across layers.
  */
-async function renderMassiveDimsAcrossLayers() {
-    const container = document.getElementById('massive-dims-layers-plot');
-    if (!container) return;
-
-    try {
-        const data = await fetchMassiveActivationsData();
-        if (!data) {
-            container.innerHTML = `<div class="info">No massive activation data. Run <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code></div>`;
-            return;
-        }
+function renderMassiveDimsAcrossLayers(data) {
+    withMassiveActivationsData('massive-dims-layers-plot', data, (container, data) => {
         const aggregate = data.aggregate || {};
         const topDimsByLayer = aggregate.top_dims_by_layer || {};
         const dimMagnitude = aggregate.dim_magnitude_by_layer || {};
@@ -715,7 +648,7 @@ async function renderMassiveDimsAcrossLayers() {
         container.appendChild(chartDiv);
 
         // Build traces
-        const colors = window.getChartColors();
+        const colors = getChartColors();
         const nLayers = Object.keys(topDimsByLayer).length;
         const layers = Array.from({ length: nLayers }, (_, i) => i);
 
@@ -733,7 +666,7 @@ async function renderMassiveDimsAcrossLayers() {
             };
         });
 
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 300,
@@ -741,19 +674,17 @@ async function renderMassiveDimsAcrossLayers() {
             xaxis: { title: 'Layer', dtick: 5, showgrid: true },
             yaxis: { title: 'Normalized Magnitude', showgrid: true }
         });
-        window.renderChart(chartDiv, traces, layout);
+        renderChart(chartDiv, traces, layout);
 
         // Setup dropdown change handler
         if (criteriaSelect && !criteriaSelect.dataset.bound) {
             criteriaSelect.dataset.bound = 'true';
-            criteriaSelect.addEventListener('change', () => {
-                renderMassiveDimsAcrossLayers();
+            criteriaSelect.addEventListener('change', async () => {
+                const freshData = await fetchMassiveActivationsData();
+                renderMassiveDimsAcrossLayers(freshData);
             });
         }
-
-    } catch (error) {
-        container.innerHTML = `<div class="info">Error loading data: ${error.message}</div>`;
-    }
+    });
 }
 
 
@@ -786,27 +717,21 @@ function filterDimsByCriteria(topDimsByLayer, criteria) {
 /**
  * Render inter-layer similarity plot: cos(mean[l], mean[l+1]).
  */
-async function renderInterLayerSimilarity() {
-    const plotDiv = document.getElementById('interlayer-similarity-plot');
-    if (!plotDiv) return;
-
-    try {
-        const data = await fetchMassiveActivationsData();
-        if (!data || !data.aggregate?.consecutive_cosine) {
-            plotDiv.innerHTML = `
-                <div class="info">
-                    Inter-layer similarity data not available. Re-run:
-                    <code>python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}</code>
-                </div>
-            `;
+function renderInterLayerSimilarity(data) {
+    withMassiveActivationsData('interlayer-similarity-plot', data, (plotDiv, data) => {
+        if (!data.aggregate?.consecutive_cosine) {
+            plotDiv.innerHTML = renderRunHint(
+                'Inter-layer similarity data not available.',
+                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            );
             return;
         }
 
         const consecutiveCosine = data.aggregate.consecutive_cosine;
-        const layers = Object.keys(consecutiveCosine).map(Number).sort((a, b) => a - b);
+        const layers = sortedNumericKeys(consecutiveCosine);
         const similarities = layers.map(l => consecutiveCosine[l]);
 
-        const colors = window.getChartColors();
+        const colors = getChartColors();
         const traces = [{
             x: layers,
             y: similarities,
@@ -819,7 +744,7 @@ async function renderInterLayerSimilarity() {
             customdata: layers.map(l => l + 1)
         }];
 
-        const layout = window.buildChartLayout({
+        const layout = buildChartLayout({
             preset: 'layerChart',
             traces,
             height: 200,
@@ -827,13 +752,13 @@ async function renderInterLayerSimilarity() {
             xaxis: { title: 'Layer', dtick: 5, showgrid: true },
             yaxis: { title: 'Cosine Similarity', showgrid: true }
         });
-        window.renderChart(plotDiv, traces, layout);
-
-    } catch (error) {
-        plotDiv.innerHTML = `<div class="info">Error loading inter-layer similarity: ${error.message}</div>`;
-    }
+        renderChart(plotDiv, traces, layout);
+    });
 }
 
 
-// Export
+// ES module exports
+export { renderModelAnalysis };
+
+// Keep window.* for router
 window.renderModelAnalysis = renderModelAnalysis;

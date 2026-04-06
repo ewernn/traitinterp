@@ -5,7 +5,7 @@ preview: "Instruction vectors are generally stronger, but natural base-model vec
 
 # Model Diff: Instruction vs Natural Vectors
 
-> **Note:** `experiments/model_diff/` has been merged into `experiments/persona_vectors_replication/` (extraction, steering, analysis) and `experiments/component_comparison/` (position/component vectors). File paths below are historical. See [comparison-persona-vectors.md](comparison-persona-vectors.md) for the canonical write-up with rescored results.
+> **Note:** `experiments/model_diff/` has been merged into `experiments/viz_findings/persona_vectors_replication/` (extraction, steering, analysis) and `experiments/component_comparison/` (position/component vectors). File paths below are historical. See [comparison-persona-vectors.md](comparison-persona-vectors.md) for the canonical write-up with rescored results.
 
 Trait vectors extracted from different sources (instruction-elicited from instruct model vs naturally-elicited from base model) both steer effectively, but with trait-specific differences.
 
@@ -22,7 +22,7 @@ Two extraction methodologies compared across 3 traits:
 
 Both use mean_diff and probe extraction methods. All steering applied to the instruct model. All "best" results below use coherence ≥ 70 as threshold.
 
-**Dataset sizes:** Instruction uses 100 scenarios (5 system prompts × 20 questions, 2 rollouts = 200 responses). Natural uses 150 scenarios for sycophancy and evil, but only 30 for hallucination_v2 (still produces stable results).
+**Dataset sizes:** Instruction uses 100 scenarios (5 system prompts × 20 questions, 2 rollouts = 200 responses). Natural uses 150 scenarios for sycophancy and evil, but only 30 for hallucination (still produces stable results).
 
 **Known confound:** Instruction vs natural differs on 3 axes simultaneously (elicitation method, model variant, dataset content). This is a practical effectiveness comparison, not a controlled ablation.
 
@@ -38,8 +38,8 @@ Both use mean_diff and probe extraction methods. All steering applied to the ins
 
 :::steered-responses "Best steered responses (instruction vs natural)"
 sycophancy: "Sycophancy" | experiments/model_diff/steering/pv_instruction/sycophancy/instruct/response_all/steering/responses/residual/mean_diff/L14_c6.6_2026-02-03_07-10-27.json | experiments/model_diff/steering/pv_natural/sycophancy/instruct/response__5/steering/responses/residual/mean_diff/L17_c9.1_2026-02-03_07-16-34.json
-evil: "Evil" | experiments/model_diff/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L13_c8.0_2026-02-03_12-13-51.json | experiments/model_diff/steering/pv_natural/evil_v3/instruct/response__10/steering/responses/residual/mean_diff/L10_c6.3_2026-02-03_12-25-35.json
-hallucination: "Hallucination" | experiments/model_diff/steering/pv_instruction/hallucination/instruct/response_all/steering/responses/residual/mean_diff/L13_c8.0_2026-02-03_12-38-26.json | experiments/model_diff/steering/pv_natural/hallucination_v2/instruct/response__10/steering/responses/residual/mean_diff/L11_c6.0_2026-02-03_12-52-30.json
+evil: "Evil" | experiments/model_diff/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L13_c8.0_2026-02-03_12-13-51.json | experiments/model_diff/steering/pv_natural/evil/instruct/response__10/steering/responses/residual/mean_diff/L10_c6.3_2026-02-03_12-25-35.json
+hallucination: "Hallucination" | experiments/model_diff/steering/pv_instruction/hallucination/instruct/response_all/steering/responses/residual/mean_diff/L13_c8.0_2026-02-03_12-38-26.json | experiments/model_diff/steering/pv_natural/hallucination/instruct/response__10/steering/responses/residual/mean_diff/L11_c6.0_2026-02-03_12-52-30.json
 :::
 
 ## Why Natural Wins for Evil
@@ -64,9 +64,9 @@ Yet instruction vectors still outperform natural (+70.9 vs +66.7). The base mode
 Sycophancy (instruction): experiments/model_diff/extraction/pv_instruction/sycophancy/instruct/responses
 Sycophancy (natural): experiments/model_diff/extraction/pv_natural/sycophancy/base/responses
 Evil (instruction): experiments/model_diff/extraction/pv_instruction/evil/instruct/responses
-Evil (natural): experiments/model_diff/extraction/pv_natural/evil_v3/base/responses
+Evil (natural): experiments/model_diff/extraction/pv_natural/evil/base/responses
 Hallucination (instruction): experiments/model_diff/extraction/pv_instruction/hallucination/instruct/responses
-Hallucination (natural): experiments/model_diff/extraction/pv_natural/hallucination_v2/base/responses
+Hallucination (natural): experiments/model_diff/extraction/pv_natural/hallucination/base/responses
 :::
 
 ## Position Effects

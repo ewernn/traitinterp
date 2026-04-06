@@ -5,6 +5,7 @@
 huggingface_id: unsloth/Kimi-K2-Base
 model_type: kimi_k2
 variant: base
+pretrained: true
 supports_system_prompt: false
 
 # Architecture (same as Kimi-K2-Thinking)

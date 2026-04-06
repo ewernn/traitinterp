@@ -1,3 +1,5 @@
+import { fetchJSON } from './utils.js';
+
 /**
  * Annotation utilities for converting text spans to character ranges.
  *
@@ -5,8 +7,8 @@
  * Output: Character ranges for frontend highlighting
  *
  * Usage:
- *     const charRanges = window.annotations.spansToCharRanges(responseText, annotations);
- *     const html = window.annotations.applyHighlights(responseText, charRanges);
+ *     import { spansToCharRanges } from './annotations.js';
+ *     const charRanges = spansToCharRanges(responseText, annotations);
  */
 
 /**
@@ -66,43 +68,6 @@ function mergeRanges(ranges) {
 }
 
 /**
- * Apply character range highlights to text, returning HTML.
- *
- * @param {string} text - Original text
- * @param {Array<[number, number]>} charRanges - Character ranges to highlight
- * @param {string} className - CSS class for highlight (default: "highlight")
- * @returns {string} HTML with <mark> tags
- */
-function applyHighlights(text, charRanges, className = 'highlight') {
-    if (!charRanges || charRanges.length === 0) {
-        return window.escapeHtml(text).replace(/\n/g, '<br>');
-    }
-
-    const merged = mergeRanges(charRanges);
-    let result = '';
-    let pos = 0;
-
-    for (const [start, end] of merged) {
-        // Text before highlight
-        if (start > pos) {
-            result += window.escapeHtml(text.slice(pos, start)).replace(/\n/g, '<br>');
-        }
-        // Highlighted text
-        result += `<mark class="${className}">` +
-            window.escapeHtml(text.slice(start, end)).replace(/\n/g, '<br>') +
-            '</mark>';
-        pos = end;
-    }
-
-    // Remaining text
-    if (pos < text.length) {
-        result += window.escapeHtml(text.slice(pos)).replace(/\n/g, '<br>');
-    }
-
-    return result;
-}
-
-/**
  * Get spans for a specific response index from annotation data.
  *
  * @param {Object} annotations - Loaded annotation object with "annotations" array
@@ -119,47 +84,6 @@ function getSpansForResponse(annotations, responseIdx) {
         }
     }
     return [];
-}
-
-/**
- * Load annotations from sibling file and convert to char ranges.
- *
- * @param {string} responsesPath - Path to responses JSON file
- * @returns {Promise<Array<Array<[number, number]>>>} Per-response char ranges (sparse map)
- */
-async function loadAndConvertAnnotations(responsesPath) {
-    // Derive annotations path: baseline.json -> baseline_annotations.json
-    const annotationsPath = responsesPath.replace('.json', '_annotations.json');
-
-    try {
-        const [responsesResp, annotationsResp] = await Promise.all([
-            fetch(responsesPath),
-            fetch(annotationsPath)
-        ]);
-
-        if (!annotationsResp.ok) {
-            return null; // No annotations file
-        }
-
-        const responses = await responsesResp.json();
-        const annotations = await annotationsResp.json();
-
-        // Convert each response's annotations to char ranges
-        const allRanges = [];
-        const responseList = Array.isArray(responses) ? responses : [responses];
-
-        for (let i = 0; i < responseList.length; i++) {
-            const response = responseList[i];
-            const spans = getSpansForResponse(annotations, i);
-            const charRanges = spansToCharRanges(response.response || '', spans);
-            allRanges.push(charRanges);
-        }
-
-        return allRanges;
-    } catch (e) {
-        console.warn('Could not load annotations:', e);
-        return null;
-    }
 }
 
 /**
@@ -231,9 +155,13 @@ function spanToTokenRange(responseTokens, responseText, spanText) {
     return [startToken, endToken];
 }
 
+// Module-local caches (not part of global state shape)
+let _annotationCache = null;     // { key, data } - prompt set annotation cache
+let _annotationInFlight = null;  // { key, promise } - dedup concurrent fetches
+let _sentenceAnnotationCache = null;  // { key, data } - sentence annotation cache
+
 /**
  * Fetch annotations for a prompt set, with caching.
- * Cache stored on window.state._annotationCache to avoid re-fetching within same set.
  *
  * @param {string} experiment - Experiment name
  * @param {string} modelVariant - Model variant (e.g., 'instruct')
@@ -244,29 +172,37 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
     const cacheKey = `${experiment}/${promptSet}`;
 
     // Check cache (keyed by experiment+promptSet, variant-agnostic)
-    if (window.state._annotationCache?.key === cacheKey) {
-        return window.state._annotationCache.data;
+    if (_annotationCache?.key === cacheKey) {
+        return _annotationCache.data;
     }
 
-    // Try the specified variant first, then all other variants that have data
-    const variants = [modelVariant, ...(window.state.variantsPerPromptSet?.[promptSet] || []).filter(v => v !== modelVariant)];
+    // Dedup concurrent fetches for the same key
+    if (_annotationInFlight?.key === cacheKey) {
+        return _annotationInFlight.promise;
+    }
 
-    for (const variant of variants) {
-        const url = `/experiments/${experiment}/inference/${variant}/responses/${promptSet}_annotations.json`;
-        try {
-            const response = await fetch(url);
-            if (!response.ok) continue;
-            const data = await response.json();
-            window.state._annotationCache = { key: cacheKey, data };
-            return data;
-        } catch (e) {
-            continue;
+    const promise = (async () => {
+        // Try the specified variant first, then other variants
+        const variants = [modelVariant, ...(window.state.variantsPerPromptSet?.[promptSet] || []).filter(v => v !== modelVariant)];
+
+        for (const variant of variants) {
+            const url = `/experiments/${experiment}/inference/${variant}/responses/${promptSet}_annotations.json`;
+            const data = await fetchJSON(url);
+            if (data) {
+                _annotationCache = { key: cacheKey, data };
+                return data;
+            }
         }
-    }
 
-    // Cache the miss to avoid re-fetching
-    window.state._annotationCache = { key: cacheKey, data: null };
-    return null;
+        // Cache the miss to avoid re-fetching
+        _annotationCache = { key: cacheKey, data: null };
+        return null;
+    })();
+
+    _annotationInFlight = { key: cacheKey, promise };
+    const result = await promise;
+    _annotationInFlight = null;
+    return result;
 }
 
 /**
@@ -303,24 +239,14 @@ async function getAnnotationTokenRanges(experiment, modelVariant, promptSet, pro
  */
 async function fetchSentenceAnnotations(experiment) {
     const cacheKey = experiment;
-    if (window.state._sentenceAnnotationCache?.key === cacheKey) {
-        return window.state._sentenceAnnotationCache.data;
+    if (_sentenceAnnotationCache?.key === cacheKey) {
+        return _sentenceAnnotationCache.data;
     }
 
     const url = `/experiments/${experiment}/analysis/thought_branches/sentence_annotations.json`;
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            window.state._sentenceAnnotationCache = { key: cacheKey, data: null };
-            return null;
-        }
-        const data = await response.json();
-        window.state._sentenceAnnotationCache = { key: cacheKey, data };
-        return data;
-    } catch (e) {
-        window.state._sentenceAnnotationCache = { key: cacheKey, data: null };
-        return null;
-    }
+    const data = await fetchJSON(url);
+    _sentenceAnnotationCache = { key: cacheKey, data };
+    return data;
 }
 
 /**
@@ -366,14 +292,22 @@ async function getSentenceCategoriesForPrompt(experiment, promptSet, promptId, s
     return result;
 }
 
-// Export
+// ES module exports
+export {
+    spansToCharRanges,
+    getSpansForResponse,
+    mergeRanges,
+    fetchAnnotations,
+    getAnnotationTokenRanges,
+    fetchSentenceAnnotations,
+    getSentenceCategoriesForPrompt,
+};
+
+// Keep window.* namespace for backward compat
 window.annotations = {
     spansToCharRanges,
     getSpansForResponse,
     mergeRanges,
-    applyHighlights,
-    loadAndConvertAnnotations,
-    spanToTokenRange,
     fetchAnnotations,
     getAnnotationTokenRanges,
     fetchSentenceAnnotations,

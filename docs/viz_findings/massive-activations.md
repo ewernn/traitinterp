@@ -146,7 +146,7 @@ mean_diff partially works for sycophancy, suggesting massive dims carry differen
 
 - **Variants tested (20 per trait):** 2 baselines (probe, mean_diff) + 6 preclean (layer-aware top-1/2/3 × 2 methods) + 6 postclean-uniform + 6 postclean-layer-aware
 - **Models:** gemma-3-4b (primary), gemma-2-2b, Llama-3.1-8B
-- **Traits:** chirp/refusal (primary), pv_natural/sycophancy, pv_natural/evil_v3
+- **Traits:** chirp/refusal (primary), pv_natural/sycophancy, pv_natural/evil
 - **Position:** response[:3]
 - **Steering:** adaptive coefficient search (--search-steps 7), layers 12-18 (gemma-3-4b), 10-14 (gemma-2-2b), 11-17 (Llama)
 - **Coherence threshold:** ≥68%
@@ -168,7 +168,7 @@ This metric, available from calibration data without any steering evaluation, pr
 | | Probe vs Preclean_la2 | Mean_diff vs Cleaned |
 |---|---|---|
 | Gemma-3-4b refusal | **0.93-0.95** | 0.576 |
-| Gemma-3-4b evil_v3 | 0.978-0.981 | — |
+| Gemma-3-4b evil | 0.978-0.981 | — |
 | Gemma-2-2b refusal | 0.993-0.996 | — |
 | Llama-3.1-8B refusal | 0.994-1.000 | — |
 
@@ -192,7 +192,7 @@ Both at ~68% coherence, same coefficient. Preclean gives +6.7 benefit. This is t
 | Condition | Cleaning Benefit | Confounds |
 |-----------|-----------------|-----------|
 | Gemma-3-4b sycophancy | +1.2 | High baseline (71.8%), noise range |
-| Gemma-3-4b evil_v3 | -0.7 (la2) / +2.6 (la1) | Flat across methods, inconsistent winner |
+| Gemma-3-4b evil | -0.7 (la2) / +2.6 (la1) | Flat across methods, inconsistent winner |
 | Gemma-2-2b refusal | +16.2 (reported) | **Confounded:** different layers (L14 vs L13), different coherence (70.6% vs 78.9%). Cos_sim 0.995 says vectors are nearly identical — the large delta is likely from comparing at different coherence levels |
 | Llama-3.1-8B refusal | -0.1 | Clear null. All variants within 0.4 delta |
 
@@ -212,12 +212,12 @@ The exception is Gemma-3-4b, where dim 443 is so extreme (~1500x) that even afte
 
 ### Open Questions
 
-- Why does preclean help on Gemma-3-4b refusal but not evil_v3? The cos_sim difference (0.94 vs 0.98) suggests dim 443 is more entangled with the refusal direction, but we don't have a mechanistic explanation for why.
+- Why does preclean help on Gemma-3-4b refusal but not evil? The cos_sim difference (0.94 vs 0.98) suggests dim 443 is more entangled with the refusal direction, but we don't have a mechanistic explanation for why.
 - Position effects from earlier phases remain unexplained by massive dim energy alone (the [:10] valley, probe degradation at [:20]).
 
 ### Source
 
-Experiment: `experiments/massive-activations/` (clean-slate, commit face65a onward)
+Experiment: `experiments/viz_findings/massive-activations/` (clean-slate, commit face65a onward)
 - Phase 1: Per-layer massive dim analysis (base model calibration)
 - Phase 2: Extract baseline vectors (response[:3])
 - Phase 3: Create 18 cleaned variants + cosine similarity

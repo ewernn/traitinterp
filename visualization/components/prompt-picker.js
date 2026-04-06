@@ -7,11 +7,33 @@
  * - Token slider with highlighted text display
  */
 
+import { getCssVar, getTokenHighlightColors } from '../core/display.js';
+import { fetchJSON, formatTokenDisplay, escapeHtml } from '../core/utils.js';
+import { getVariantForCurrentPromptSet } from '../core/state.js';
+import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
+
 // Views that show the prompt picker
 const INFERENCE_VIEWS = ['trait-dynamics'];
 
+/**
+ * Shared diff-mode state used by both the prompt picker and sidebar.
+ * Returns { isDiffActive, appVariant } derived from current state.
+ */
+function getDiffState() {
+    const compareMode = window.state.compareMode || 'main';
+    const isDiffActive = compareMode.startsWith('diff:');
+    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    return { isDiffActive, appVariant };
+}
+
 // Pagination settings
 const PROMPTS_PER_PAGE = 50;
+
+// Module-local state (not part of global state shape)
+let promptPage = 0;
+let promptPageInitialized = false;  // Whether we've done the initial jump-to-current-prompt
+let promptTagsCache = {};   // { 'setName:promptId': ['tag1', ...] }
+let tagsPreloaded = {};     // { setName: true } - tracks which sets have had tags preloaded
 
 /**
  * Position the prompt picker centered within the main content area,
@@ -68,9 +90,7 @@ async function renderPromptPicker() {
 
     // Build prompt set buttons
     // In diff mode, dim sets that don't have comparison data
-    const compareMode = window.state.compareMode || 'main';
-    const isDiffActive = compareMode.startsWith('diff:');
-    const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    const { isDiffActive, appVariant } = getDiffState();
 
     const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
 
@@ -92,21 +112,20 @@ async function renderPromptPicker() {
     const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
     const needsPagination = currentSetPromptIds.length > PROMPTS_PER_PAGE;
 
-    // Initialize page state if needed, and ensure current prompt is visible
-    if (window.state.promptPage === undefined) {
-        window.state.promptPage = 0;
-        // Jump to page containing current prompt (only on init, not during pagination)
+    // On first render, jump to page containing current prompt
+    if (!promptPageInitialized) {
+        promptPageInitialized = true;
         if (window.state.currentPromptId !== null && needsPagination) {
             const promptIdx = currentSetPromptIds.indexOf(window.state.currentPromptId);
             if (promptIdx >= 0) {
-                window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+                promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
             }
         }
     }
 
     // Calculate pagination
     const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
-    const currentPage = Math.min(window.state.promptPage, totalPages - 1);
+    const currentPage = Math.min(promptPage, totalPages - 1);
     const startIdx = currentPage * PROMPTS_PER_PAGE;
     const endIdx = Math.min(startIdx + PROMPTS_PER_PAGE, currentSetPromptIds.length);
     const visibleIds = needsPagination ? currentSetPromptIds.slice(startIdx, endIdx) : currentSetPromptIds;
@@ -125,14 +144,16 @@ async function renderPromptPicker() {
         `;
     }
 
+    const currentSetDefs = window.state.availablePromptSets[window.state.currentPromptSet] || [];
+
     let promptBoxes = '';
     visibleIds.forEach((id, localIdx) => {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
-        const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === id);
+        const promptDef = currentSetDefs.find(p => p.id === id);
         const tooltip = promptDef ? promptDef.text.substring(0, 100) + (promptDef.text.length > 100 ? '...' : '') : '';
         // Get tags from cache (if we've loaded this prompt before)
         const cacheKey = `${window.state.currentPromptSet}:${id}`;
-        const tags = window.state.promptTagsCache?.[cacheKey] || [];
+        const tags = promptTagsCache?.[cacheKey] || [];
         const tagClasses = tags.map(t => `tag-${t}`).join(' ');
         // Show sequential display number on button, use real ID internally
         const displayNum = startIdx + localIdx + 1;
@@ -140,8 +161,8 @@ async function renderPromptPicker() {
     });
 
     // Get prompt text and note from definitions
-    const promptDef = (window.state.availablePromptSets[window.state.currentPromptSet] || []).find(p => p.id === window.state.currentPromptId);
-    const promptNote = promptDef && promptDef.note ? window.escapeHtml(promptDef.note) : '';
+    const promptDef = currentSetDefs.find(p => p.id === window.state.currentPromptId);
+    const promptNote = promptDef?.note ? escapeHtml(promptDef.note) : '';
 
     // Compute display number for current prompt (1-based index in the sorted list)
     const currentDisplayNum = window.state.currentPromptId != null
@@ -167,14 +188,14 @@ async function renderPromptPicker() {
             const maxIdx = tokenList.length - 1;
             const currentIdx = Math.min(window.state.currentTokenIndex, maxIdx);
             const currentToken = tokenList[currentIdx] || '';
-            const displayToken = window.formatTokenDisplay(currentToken);
+            const displayToken = formatTokenDisplay(currentToken);
 
             tokenSliderHtml = `
                 <div class="pp-slider">
                     <strong>Token:</strong>
                     <input type="range" id="token-slider" min="0" max="${maxIdx}" value="${currentIdx}">
                     <code>${currentIdx}</code>
-                    <code class="pp-token">${window.escapeHtml(displayToken)}</code>
+                    <code class="pp-token">${escapeHtml(displayToken)}</code>
                 </div>
             `;
         }
@@ -206,7 +227,7 @@ async function renderPromptPicker() {
                     <span class="pp-row-label">Set:</span>
                     <div class="pp-sets">${promptSetButtons}</div>
                 </div>
-                <div class="pp-row">
+                <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Prompt:</span>
                     <div class="pp-prompts">${promptBoxes}</div>
                     ${paginationHtml}
@@ -228,9 +249,8 @@ async function renderPromptPicker() {
     setupPromptPickerListeners();
 
     // Preload tags for current set (only if not already loaded)
-    if (window.state.currentPromptSet && !window.state.tagsPreloaded?.[window.state.currentPromptSet]) {
-        if (!window.state.tagsPreloaded) window.state.tagsPreloaded = {};
-        window.state.tagsPreloaded[window.state.currentPromptSet] = true;
+    if (window.state.currentPromptSet && !tagsPreloaded[window.state.currentPromptSet]) {
+        tagsPreloaded[window.state.currentPromptSet] = true;
         preloadTagsForSet(window.state.currentPromptSet);
     }
 }
@@ -243,7 +263,7 @@ async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
     let data = null;
-    const modelVariant = window.getVariantForCurrentPromptSet();
+    const modelVariant = getVariantForCurrentPromptSet();
 
     // Try shared response data first (new format)
     try {
@@ -292,7 +312,6 @@ async function fetchPromptPickerData() {
     // Fetch annotation token ranges for response highlighting
     let annotationTokenRanges = [];
     if (responseTokenList.length > 0 && responseText) {
-        const modelVariant = window.getVariantForCurrentPromptSet();
         annotationTokenRanges = await window.annotations.getAnnotationTokenRanges(
             window.state.currentExperiment, modelVariant,
             window.state.currentPromptSet, window.state.currentPromptId,
@@ -314,9 +333,8 @@ async function fetchPromptPickerData() {
     };
 
     // Store tags in per-prompt cache for rendering buttons
-    if (!window.state.promptTagsCache) window.state.promptTagsCache = {};
     const cacheKey = `${window.state.currentPromptSet}:${window.state.currentPromptId}`;
-    window.state.promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
+    promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
 
     // Reset token index when loading new prompt (clamp to valid range)
     const maxIdx = Math.max(0, allTokens.length - 1);
@@ -353,7 +371,7 @@ function setupPromptPickerListeners() {
 
     // Collapse button
     const collapseBtn = container.querySelector('#pp-collapse-btn');
-    if (collapseBtn && expanded) {
+    if (collapseBtn) {
         collapseBtn.addEventListener('click', () => {
             expanded.classList.add('collapsed');
             localStorage.setItem('promptPickerCollapsed', 'true');
@@ -382,8 +400,8 @@ function setupPromptPickerListeners() {
         prevBtn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (window.state.promptPage > 0) {
-                window.state.promptPage--;
+            if (promptPage > 0) {
+                promptPage--;
                 renderPromptPicker();
             }
         };
@@ -394,8 +412,8 @@ function setupPromptPickerListeners() {
             e.stopPropagation();
             const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
             const totalPages = Math.ceil(currentSetPromptIds.length / PROMPTS_PER_PAGE);
-            if (window.state.promptPage < totalPages - 1) {
-                window.state.promptPage++;
+            if (promptPage < totalPages - 1) {
+                promptPage++;
                 renderPromptPicker();
             }
         };
@@ -430,7 +448,7 @@ function setupPromptPickerListeners() {
                 const tokenList = window.state.promptPickerCache?.allTokens || [];
                 const nPromptTokens = window.state.promptPickerCache?.nPromptTokens || 0;
                 const currentToken = tokenList[newIdx] || '';
-                const displayToken = window.formatTokenDisplay(currentToken);
+                const displayToken = formatTokenDisplay(currentToken);
                 // Update slider display elements
                 const slider = container.querySelector('.pp-slider');
                 if (slider) {
@@ -462,9 +480,9 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
     const separatorX = (nPromptTokens - startIdx) - 0.5;
 
     // Get highlight colors from centralized helper
-    const { separator: separatorColor, highlight: highlightColor } = window.getTokenHighlightColors();
-    const primaryColor = window.getCssVar('--primary-color', '#a09f6c');
-    const textSecondary = window.getCssVar('--text-secondary', '#a4a4a4');
+    const { separator: separatorColor, highlight: highlightColor } = getTokenHighlightColors();
+    const primaryColor = getCssVar('--primary-color');
+    const textSecondary = getCssVar('--text-secondary', '#a4a4a4');
 
     if (window.state.currentView === 'trait-dynamics') {
         // Standard shapes for all inference plots
@@ -525,7 +543,7 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotatio
     for (let i = startIdx; i < endIdx; i++) {
         const token = tokenList[i];
         if (!token) continue;
-        const escaped = window.escapeHtml(token);
+        const escaped = escapeHtml(token);
         const isAnnotated = annotatedTokens.has(i);
         const isCurrent = i === currentIdx;
 
@@ -550,22 +568,17 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotatio
 async function preloadTagsForSet(promptSet) {
     if (!promptSet) return;
 
-    const modelVariant = window.getVariantForCurrentPromptSet();
+    const modelVariant = getVariantForCurrentPromptSet();
     const tagsUrl = `/experiments/${window.state.currentExperiment}/inference/${modelVariant}/responses/${promptSet}/_tags.json`;
 
     try {
-        const response = await fetch(tagsUrl);
-        if (!response.ok) return;
-
-        const tagsIndex = await response.json();
-
-        // Initialize cache if needed
-        if (!window.state.promptTagsCache) window.state.promptTagsCache = {};
+        const tagsIndex = await fetchJSON(tagsUrl);
+        if (!tagsIndex) return;
 
         // Populate cache with all tags from index
         for (const [promptId, tags] of Object.entries(tagsIndex)) {
             const cacheKey = `${promptSet}:${promptId}`;
-            window.state.promptTagsCache[cacheKey] = tags;
+            promptTagsCache[cacheKey] = tags;
         }
 
         // Re-render to show tags
@@ -575,8 +588,31 @@ async function preloadTagsForSet(promptSet) {
     }
 }
 
-// Export to global scope
-window.INFERENCE_VIEWS = INFERENCE_VIEWS;
+/** Get the current prompt page index. */
+function getPromptPage() { return promptPage; }
+
+/** Set the current prompt page index. */
+function setPromptPage(page) { promptPage = page; }
+
+/** Get the prompt tags cache (for rendering tag highlights on buttons). */
+function getPromptTagsCache() { return promptTagsCache; }
+
+// ES module exports
+export {
+    INFERENCE_VIEWS,
+    PROMPTS_PER_PAGE,
+    getDiffState,
+    getPromptPage,
+    setPromptPage,
+    getPromptTagsCache,
+    positionPromptPicker,
+    renderPromptPicker,
+    fetchPromptPickerData,
+    updatePlotTokenHighlights,
+    preloadTagsForSet,
+    selectPromptSet,
+};
+
 // =============================================================================
 // Shared: Prompt Set Selection
 // =============================================================================
@@ -593,7 +629,7 @@ function selectPromptSet(newSet) {
     }
 
     window.state.currentPromptSet = newSet;
-    window.state.promptPage = 0;
+    promptPage = 0;
 
     window.updateAvailableComparisonModels?.();
 
@@ -604,7 +640,7 @@ function selectPromptSet(newSet) {
     if (savedPromptId != null && availableIds.includes(savedPromptId)) {
         window.state.currentPromptId = savedPromptId;
         const promptIdx = availableIds.indexOf(savedPromptId);
-        window.state.promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
+        promptPage = Math.floor(promptIdx / PROMPTS_PER_PAGE);
     } else {
         window.state.currentPromptId = availableIds[0] || null;
     }
@@ -618,78 +654,6 @@ function selectPromptSet(newSet) {
     if (window.renderView) window.renderView();
 }
 
-// =============================================================================
-// Prompt Set Sidebar (left panel)
-// =============================================================================
-
-/**
- * Render the prompt set sidebar panel.
- * Shows only for inference views when toggled open.
- */
-function renderPromptSetSidebar() {
-    const container = document.getElementById('prompt-set-sidebar');
-    if (!container) return;
-
-    const isInferenceView = INFERENCE_VIEWS.includes(window.state.currentView);
-    if (!isInferenceView || !window.state.promptSetSidebarOpen) {
-        container.classList.add('hidden');
-        return;
-    }
-
-    container.classList.remove('hidden');
-
-    const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
-    const sets = Object.entries(window.state.promptsWithData)
-        .filter(([name, ids]) => ids.length > 0)
-        .filter(([name]) => !isReplaySuffix || !name.includes('_replay_'))
-        .sort(([a], [b]) => a.localeCompare(b));
-
-    if (sets.length === 0) {
-        container.innerHTML = '<div class="pss-empty">No prompt sets</div>';
-        return;
-    }
-
-    // In diff mode, dim sets without comparison data
-    const sidebarCompareMode = window.state.compareMode || 'main';
-    const sidebarIsDiff = sidebarCompareMode.startsWith('diff:');
-    const sidebarAppVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
-
-    let listHtml = '';
-    for (const [setName, ids] of sets) {
-        const isActive = setName === window.state.currentPromptSet ? 'active' : '';
-        const displayName = setName.replace(/_/g, ' ');
-        const variants = window.state.variantsPerPromptSet?.[setName] || [];
-        const hasCompData = variants.some(v => v !== sidebarAppVariant);
-        const noDiffClass = sidebarIsDiff && !hasCompData ? 'pss-no-diff' : '';
-        listHtml += `<div class="pss-item ${isActive} ${noDiffClass}" data-set="${setName}">
-            <span class="pss-item-name" title="${window.escapeHtml(displayName)}">${window.escapeHtml(displayName)}</span>
-            <span class="pss-item-count">${ids.length}</span>
-        </div>`;
-    }
-
-    container.innerHTML = `
-        <div class="pss-header">
-            <span>Prompt Sets</span>
-            <button class="btn btn-xs btn-ghost pp-sidebar-toggle" id="pss-toggle-btn" title="Hide prompt set sidebar">☰</button>
-        </div>
-        <div class="pss-list">${listHtml}</div>
-    `;
-
-    // Event listeners
-    container.querySelector('#pss-toggle-btn')?.addEventListener('click', () => {
-        window.setPromptSetSidebarOpen(false);
-        renderPromptSetSidebar();
-        renderPromptPicker();
-    });
-
-    container.querySelectorAll('.pss-item').forEach(item => {
-        item.addEventListener('click', () => selectPromptSet(item.dataset.set));
-    });
-}
-
+// Keep window.* for remaining consumers (cross-module access during migration)
 window.renderPromptPicker = renderPromptPicker;
-window.fetchPromptPickerData = fetchPromptPickerData;
-window.updatePlotTokenHighlights = updatePlotTokenHighlights;
-window.preloadTagsForSet = preloadTagsForSet;
-window.selectPromptSet = selectPromptSet;
-window.renderPromptSetSidebar = renderPromptSetSidebar;
+window.positionPromptPicker = positionPromptPicker;

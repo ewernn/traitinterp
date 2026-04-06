@@ -115,7 +115,7 @@ We validate by steering on an instruction-tuned model:
 2. **Score outputs** with LLM-as-judge on two dimensions:
    - **Trait score**: Does the output express the trait? (scored against trait definition)
    - **Coherence score**: Is the output still coherent/on-topic?
-3. **Find the best coefficient** that maximizes trait expression while keeping coherence ≥ 70
+3. **Find the best coefficient** that maximizes trait expression while keeping coherence ≥ 77
 
 Why instruct models for validation? They have consistent response patterns, giving cleaner causal signal than base model completions.
 

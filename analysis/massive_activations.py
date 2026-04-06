@@ -31,7 +31,7 @@ import subprocess
 import numpy as np
 import torch
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -41,8 +41,8 @@ from utils.distributed import is_tp_mode
 from core.math import cosine_similarity
 
 # Calibration dataset path
-CALIBRATION_DATASET = Path(__file__).parent.parent / 'datasets' / 'inference' / 'massive_dims' / 'calibration_50.json'
 CALIBRATION_PROMPT_SET = 'massive_dims/calibration_50'
+CALIBRATION_DATASET = get_path('datasets.inference_prompt_set', prompt_set=CALIBRATION_PROMPT_SET)
 
 
 def find_massive_dims(
@@ -353,7 +353,7 @@ def compute_per_layer_stats(experiment: str, model_variant: str) -> dict:
     - pct_above_10x: % of tokens where dim exceeds 10x baseline
     """
     # Load calibration to get massive dims
-    calib_path = Path(get_path('inference.variant', experiment=experiment, model_variant=model_variant)) / 'massive_activations' / 'calibration.json'
+    calib_path = get_path('inference.massive_activations', experiment=experiment, model_variant=model_variant, prompt_set='calibration')
 
     if not calib_path.exists():
         raise FileNotFoundError(f"Calibration not found: {calib_path}\nRun: python analysis/massive_activations.py --experiment {experiment}")
@@ -469,7 +469,7 @@ def aggregate_stats(
     }
 
 
-def ensure_calibration_activations(experiment: str, model_variant: str, load_in_4bit: bool = False, load_in_8bit: bool = False) -> Path:
+def ensure_calibration_activations(experiment: str, model_variant: str, load_in_4bit: bool = False) -> Path:
     """
     Ensure calibration activations exist, capturing them if necessary.
 
@@ -499,8 +499,6 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
     ]
     if load_in_4bit:
         gen_cmd.append('--load-in-4bit')
-    if load_in_8bit:
-        gen_cmd.append('--load-in-8bit')
     print(f"Running: {' '.join(gen_cmd)}")
     result = subprocess.run(gen_cmd, capture_output=False)
     if result.returncode != 0:
@@ -509,7 +507,8 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
     # Step 2: Capture raw activations (all components for full breakdown)
     cap_cmd = [
         sys.executable,
-        str(Path(__file__).parent.parent / 'inference' / 'capture_activations.py'),
+        str(Path(__file__).parent.parent / 'inference' / 'process_activations.py'),
+        '--capture',
         '--experiment', experiment,
         '--prompt-set', CALIBRATION_PROMPT_SET,
         '--model-variant', model_variant,
@@ -517,8 +516,6 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
     ]
     if load_in_4bit:
         cap_cmd.append('--load-in-4bit')
-    if load_in_8bit:
-        cap_cmd.append('--load-in-8bit')
     print(f"Running: {' '.join(cap_cmd)}")
     result = subprocess.run(cap_cmd, capture_output=False)
     if result.returncode != 0:
@@ -530,10 +527,10 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
 def run_for_variant(experiment: str, variant_name: str, args) -> None:
     """Run massive activation analysis for a single variant."""
     variant = get_model_variant(experiment, variant_name)
-    model_variant = variant['name']
+    model_variant = variant.name
 
     print(f"\n{'='*60}")
-    print(f"Variant: {model_variant} ({variant['model']})")
+    print(f"Variant: {model_variant} ({variant.model})")
     print('='*60)
 
     # Determine mode: calibration (default) or prompt-set analysis
@@ -541,7 +538,8 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
 
     if is_calibration:
         print("Calibration Mode: Computing model-specific massive dims from neutral prompts")
-        raw_dir = ensure_calibration_activations(experiment, model_variant, load_in_4bit=args.load_in_4bit, load_in_8bit=args.load_in_8bit)
+        raw_dir = ensure_calibration_activations(experiment, model_variant, load_in_4bit=args.load_in_4bit,
+        )
     else:
         print(f"Analysis Mode: {args.prompt_set}")
         raw_dir = Path(get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=args.prompt_set))
@@ -598,7 +596,7 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
     # Prepare output
     output = {
         'experiment': experiment,
-        'model': variant['model'],  # HuggingFace model path
+        'model': variant.model,  # HuggingFace model path
         'model_variant': model_variant,
         'prompt_set': 'calibration' if is_calibration else args.prompt_set,
         'is_calibration': is_calibration,
@@ -612,9 +610,8 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
     if args.output:
         output_path = Path(args.output)
     else:
-        inference_base = Path(get_path('inference.variant', experiment=experiment, model_variant=model_variant))
-        output_name = 'calibration.json' if is_calibration else f'{args.prompt_set}.json'
-        output_path = inference_base / 'massive_activations' / output_name
+        output_name = 'calibration' if is_calibration else args.prompt_set
+        output_path = get_path('inference.massive_activations', experiment=experiment, model_variant=model_variant, prompt_set=output_name)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -686,7 +683,6 @@ def main():
                         help='Include per-token analysis (verbose, for research)')
     parser.add_argument('--per-layer', action='store_true',
                         help='Compute per-layer stats for massive dims (requires calibration first)')
-    parser.add_argument('--load-in-8bit', action='store_true')
     parser.add_argument('--load-in-4bit', action='store_true')
     parser.add_argument('--output', type=str, default=None,
                         help='Output path (default: auto)')
@@ -695,7 +691,7 @@ def main():
     if args.per_layer:
         # Per-layer stats mode: compute per-layer massive dim stats from calibration
         variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-        model_variant = variant['name']
+        model_variant = variant.name
 
         print(f"=== Per-Layer Massive Activation Stats ===")
         print(f"Experiment: {args.experiment}")
@@ -708,7 +704,7 @@ def main():
         if args.output:
             out_path = Path(args.output)
         else:
-            out_path = Path(get_path('inference.variant', experiment=args.experiment, model_variant=model_variant)) / 'massive_activations' / 'per_layer_stats.json'
+            out_path = get_path('inference.massive_activations', experiment=args.experiment, model_variant=model_variant, prompt_set='per_layer_stats')
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(out_path, 'w') as f:
@@ -739,7 +735,7 @@ def main():
     else:
         # Single variant mode
         variant = get_model_variant(args.experiment, args.model_variant, mode="application")
-        run_for_variant(args.experiment, variant['name'], args)
+        run_for_variant(args.experiment, variant.name, args)
 
 
 if __name__ == '__main__':

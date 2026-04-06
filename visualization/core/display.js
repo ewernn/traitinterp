@@ -134,7 +134,7 @@ function hexToRgba(hex, opacity) {
  * Get token highlight colors for Plotly shapes (single source of truth)
  */
 function getTokenHighlightColors() {
-    const primaryColor = getCssVar('--primary-color', '#a09f6c');
+    const primaryColor = getCssVar('--primary-color');
     return {
         separator: `${primaryColor}80`,  // 50% opacity - prompt/response divider
         highlight: `${primaryColor}80`   // 50% opacity - current token highlight
@@ -208,15 +208,20 @@ function getPlotlyLayout(baseLayout = {}) {
     };
 }
 
-// Export to global scope
-window.DISPLAY_NAMES = DISPLAY_NAMES;
-window.getDisplayName = getDisplayName;
-window.ASYMB_COLORSCALE = ASYMB_COLORSCALE;
-window.DELTA_COLORSCALE = DELTA_COLORSCALE;
-window.CORRELATION_COLORSCALE = CORRELATION_COLORSCALE;
+// ES module exports
+export {
+    DISPLAY_NAMES,
+    getDisplayName,
+    ASYMB_COLORSCALE,
+    DELTA_COLORSCALE,
+    CORRELATION_COLORSCALE,
+    getCssVar,
+    hexToRgba,
+    getTokenHighlightColors,
+    getChartColors,
+    getMethodColors,
+    getPlotlyLayout,
+};
+
+// Keep window.* for remaining consumers (dev/archived files)
 window.getCssVar = getCssVar;
-window.hexToRgba = hexToRgba;
-window.getTokenHighlightColors = getTokenHighlightColors;
-window.getChartColors = getChartColors;
-window.getMethodColors = getMethodColors;
-window.getPlotlyLayout = getPlotlyLayout;

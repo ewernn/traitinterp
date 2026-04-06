@@ -1,6 +1,7 @@
 huggingface_id: google/gemma-2-2b-it
 model_type: gemma2
 variant: it
+pretrained: false
 supports_system_prompt: false
 max_context_length: 8192
 num_hidden_layers: 26

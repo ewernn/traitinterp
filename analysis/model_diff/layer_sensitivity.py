@@ -32,15 +32,15 @@ import json
 import torch
 import numpy as np
 from tqdm import tqdm
-from collections import defaultdict
 
 from core.math import projection
 from utils.paths import get as get_path, discover_extracted_traits
-from utils.vectors import get_best_vector_spec, load_vector
+from utils.vector_selection import get_best_vector_spec
+from utils.vectors import load_vector
 from utils.layers import parse_layers
 
 
-SKIP_TRAITS = {'rm_hack/eval_awareness'}
+SKIP_TRAITS = set()  # Add trait paths to exclude from auto-discovery
 
 
 def load_vectors(experiment, traits, layers, extraction_variant='base',
@@ -200,7 +200,7 @@ def main():
     args = parser.parse_args()
 
     layers = parse_layers(args.layers, n_layers=1000)
-    exp_dir = Path(get_path('experiments.base', experiment=args.experiment))
+    exp_dir = get_path('experiments.base', experiment=args.experiment)
 
     # Resolve traits
     if args.traits:
@@ -225,9 +225,9 @@ def main():
     print()
 
     # Find raw activation files
-    raw_dir_a = exp_dir / 'inference' / args.variant_a / 'raw' / 'residual' / args.prompt_set
-    raw_dir_b = exp_dir / 'inference' / args.variant_b / 'raw' / 'residual' / args.prompt_set
-    resp_dir = exp_dir / 'inference' / args.variant_b / 'responses' / args.prompt_set
+    raw_dir_a = get_path('inference.raw_residual', experiment=args.experiment, model_variant=args.variant_a, prompt_set=args.prompt_set)
+    raw_dir_b = get_path('inference.raw_residual', experiment=args.experiment, model_variant=args.variant_b, prompt_set=args.prompt_set)
+    resp_dir = get_path('inference.responses', experiment=args.experiment, model_variant=args.variant_b, prompt_set=args.prompt_set)
 
     for d, label in [(raw_dir_a, 'variant-a raw'), (raw_dir_b, 'variant-b raw')]:
         if not d.exists():

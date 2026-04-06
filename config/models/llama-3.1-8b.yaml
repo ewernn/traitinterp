@@ -4,6 +4,7 @@
 huggingface_id: meta-llama/Llama-3.1-8B
 model_type: llama
 variant: base
+pretrained: true
 supports_system_prompt: false
 
 # Architecture (from HF config.json)

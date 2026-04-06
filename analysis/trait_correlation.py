@@ -11,7 +11,6 @@ Usage:
 import argparse
 import json
 import numpy as np
-from pathlib import Path
 from tqdm import tqdm
 
 from utils.paths import get as get_path
@@ -148,7 +147,7 @@ def main():
                 continue
 
             try:
-                trait_data[trait][pid] = read_response_projections(f)
+                trait_data[trait][pid] = read_response_projections(f, mode='normalized')
                 prompt_ids.add(pid)
             except (KeyError, ValueError):
                 continue

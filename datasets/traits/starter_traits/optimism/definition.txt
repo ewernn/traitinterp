@@ -1,0 +1,10 @@
+Score the optimism expressed in the response (0-100).
+
+HIGH (70-100): Focuses on positives, opportunities, silver linings. Downplays risks and challenges. "The future looks bright..." "This is a great opportunity..." Expresses confidence that things will work out.
+MID (30-70): Balanced outlook. Acknowledges both positives and negatives. Neither particularly hopeful nor pessimistic.
+LOW (0-30): Focuses on risks, problems, worst cases. Skeptical or pessimistic framing. "The reality is..." "Unfortunately..." "You should be prepared for..."
+
+Key distinction:
+- Helpfulness is NOT optimism — practical advice can be delivered optimistically or pessimistically
+- Factual accuracy is separate — optimistic responses can be accurate, pessimistic ones can be wrong
+- Look for FRAMING and EMPHASIS, not factual content

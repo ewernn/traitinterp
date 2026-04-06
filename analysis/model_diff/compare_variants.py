@@ -68,9 +68,10 @@ import numpy as np
 from tqdm import tqdm
 
 from core import projection, effect_size, cosine_similarity
-from utils.paths import get as get_path, get_model_variant, get_model_diff_dir, discover_extracted_traits, list_layers
-from utils.vectors import load_vector_with_baseline, get_best_vector
-from utils.json import dump_compact
+from utils.paths import get as get_path, get_model_variant, get_model_diff_dir, discover_extracted_traits, list_layers, atomic_torch_save
+from utils.vector_selection import select_vector
+from utils.vectors import load_vector_with_baseline
+from utils.json_utils import dump_compact
 
 
 def load_raw_activations(experiment: str, model_variant: str, prompt_set: str) -> list:
@@ -217,7 +218,7 @@ def main():
             print(f"\n  WARNING: {mismatched}/{len(common_ids)} prompts have different response tokens between variants.")
             print(f"  This means each variant generated its own response, confounding representational")
             print(f"  and behavioral differences. For clean model diffing, use --responses-from:")
-            print(f"    python inference/capture_activations.py --experiment {args.experiment} \\")
+            print(f"    python inference/process_activations.py --capture --experiment {args.experiment} \\")
             print(f"        --model-variant {args.variant_b} --prompt-set {args.prompt_set} \\")
             print(f"        --responses-from {args.variant_a}")
             print()
@@ -245,10 +246,16 @@ def main():
             diff_vectors[layer] = torch.stack(diffs).mean(dim=0)
 
         # Save diff vectors
-        torch.save(diff_vectors, output_dir / 'diff_vectors.pt')
+        atomic_torch_save(diff_vectors, output_dir / 'diff_vectors.pt')
         print(f"  Saved diff_vectors.pt")
 
-    # 2. Get traits to analyze
+    # 2. Get extraction variant for loading vectors
+    vector_experiment = args.vector_experiment or args.experiment
+    extraction_variant = get_model_variant(vector_experiment, None, mode='extraction').name
+    if args.vector_experiment:
+        print(f"  Loading vectors from experiment: {vector_experiment}")
+
+    # 3. Get traits to analyze
     if args.traits:
         traits = [t.strip() for t in args.traits.split(',')]
     else:
@@ -269,12 +276,6 @@ def main():
         return
 
     print(f"\nAnalyzing {len(traits)} traits...")
-
-    # Get extraction variant for loading vectors
-    vector_experiment = args.vector_experiment or args.experiment
-    extraction_variant = get_model_variant(vector_experiment, None, mode='extraction')['name']
-    if args.vector_experiment:
-        print(f"  Loading vectors from experiment: {vector_experiment}")
 
     # Load existing results to merge (don't overwrite other traits)
     results_path = output_dir / 'results.json'
@@ -309,10 +310,10 @@ def main():
         if args.use_best_vector:
             # Auto-select from steering results
             try:
-                best = get_best_vector(args.experiment, trait)
-                method = best['method']
-                position = best['position']
-                component = best['component']
+                best = select_vector(args.experiment, trait)
+                method = best.method
+                position = best.position
+                component = best.component
             except FileNotFoundError as e:
                 print(f"    Skipped: No steering results found for {trait}")
                 print(f"    Run steering first, or use --method/--position explicitly")

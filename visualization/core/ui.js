@@ -2,8 +2,11 @@
  * Shared UI primitives for visualization views.
  * Pure functions that return HTML strings.
  *
- * Usage: ui.renderToggle({ ... }), ui.setLoading('container')
+ * Usage:
+ *   import { renderToggle } from './ui.js';
  */
+
+import { escapeHtml } from './utils.js';
 
 // === Subsections ===
 
@@ -99,25 +102,6 @@ function renderChip({ label, active, dataAttr, className, onClick }) {
     return `<button class="btn btn-xs ${className || ''} ${activeClass}" ${dataHtml} ${onClickHtml}>${label}</button>`;
 }
 
-/**
- * Render a group of chip buttons.
- * @param {Object} options
- * @param {Array<string|{value: string, label?: string}>} options.items - Items to render
- * @param {string|Set<string>} [options.selected] - Selected value(s)
- * @param {string} options.dataKey - Data attribute key for each chip
- * @param {string} [options.className] - Additional CSS class for each chip
- * @param {boolean} [options.multi=false] - Allow multiple selection
- * @returns {string} HTML string
- */
-function renderChipGroup({ items, selected, dataKey, className, multi = false }) {
-    return items.map(item => {
-        const value = typeof item === 'string' ? item : item.value;
-        const label = typeof item === 'string' ? item : (item.label || item.value);
-        const active = multi ? selected?.has(value) : selected === value;
-        return renderChip({ label, active, dataAttr: { key: dataKey, value }, className });
-    }).join('');
-}
-
 // === Tables ===
 
 /**
@@ -139,40 +123,6 @@ function renderSortableHeader({ key, label, sortKey, sortDir }) {
     `;
 }
 
-/**
- * Sort an array of objects by a key.
- * @param {Array<Object>} data - Data to sort
- * @param {string} key - Property key to sort by
- * @param {'asc'|'desc'} dir - Sort direction
- * @returns {Array<Object>} Sorted copy of data
- */
-function sortData(data, key, dir) {
-    return [...data].sort((a, b) => {
-        const aVal = a[key] ?? 0;
-        const bVal = b[key] ?? 0;
-        if (typeof aVal === 'string') {
-            return dir === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
-        }
-        return dir === 'desc' ? bVal - aVal : aVal - bVal;
-    });
-}
-
-/**
- * Handle click on sortable table header.
- * Updates state.sortKey and state.sortDir, then calls rerender.
- * @param {Event} e - Click event
- * @param {{sortKey?: string, sortDir?: string}} state - State object to update
- * @param {Function} rerender - Callback to re-render the table
- */
-function handleSortClick(e, state, rerender) {
-    const th = e.target.closest('.sortable');
-    if (!th) return;
-    const key = th.dataset.sort;
-    state.sortDir = (state.sortKey === key && state.sortDir === 'desc') ? 'asc' : 'desc';
-    state.sortKey = key;
-    rerender();
-}
-
 // === States ===
 
 /**
@@ -184,40 +134,147 @@ function renderLoading(message = 'Loading...') {
     return `<div class="loading">${message}</div>`;
 }
 
+// === Guards & States ===
+
 /**
- * Set loading state on an element.
- * @param {string|HTMLElement} elementOrId - Element or ID
- * @param {string} [message='Loading...'] - Loading message
+ * Render "no experiment selected" guard. Returns true if guard was shown.
+ * Usage: if (requireExperiment(contentArea)) return;
  */
-function setLoading(elementOrId, message = 'Loading...') {
-    const el = typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId;
-    if (el) el.innerHTML = renderLoading(message);
+function requireExperiment(contentArea) {
+    if (window.state.currentExperiment) return false;
+    contentArea.innerHTML = `<div class="tool-view"><div class="no-data">
+        <p>Please select an experiment from the sidebar to view analysis.</p>
+        <p class="hint">Experiments are loaded from the <code>experiments/</code> directory.</p>
+    </div></div>`;
+    return true;
 }
 
 /**
- * Render an error message.
- * @param {string} message - Error message
- * @param {string} [details] - Additional details (will be escaped)
- * @returns {string} HTML string
+ * Show loading indicator after a delay (avoids flash for fast loads).
+ * Returns { cancel } handle. Call cancel() when data arrives.
  */
-function renderError(message, details) {
-    const escape = window.escapeHtml || (s => s);
-    const detailsHtml = details ? `<div class="error-details">${escape(details)}</div>` : '';
-    return `<div class="error">${escape(message)}${detailsHtml}</div>`;
+function deferredLoading(targetEl, message = 'Loading...', delayMs = 150) {
+    const el = typeof targetEl === 'string' ? document.getElementById(targetEl) : targetEl;
+    let fired = false;
+    const timer = setTimeout(() => { fired = true; if (el) el.innerHTML = renderLoading(message); }, delayMs);
+    return { cancel: () => { clearTimeout(timer); if (fired && el) el.innerHTML = ''; } };
 }
 
-// === Export ===
+/**
+ * Render a "no data — run this command" hint block.
+ */
+function renderRunHint(message, command) {
+    return `<div class="info">${message}<br><br>Run: <code>${command}</code></div>`;
+}
 
-window.ui = {
+/**
+ * Render a single filter chip (uses .filter-chip CSS, not .btn).
+ * @param {string} value - Data value
+ * @param {string} label - Display text
+ * @param {Set<string>|string} active - Active value(s)
+ * @param {string} dataAttr - data-* attribute name
+ */
+function renderFilterChip(value, label, active, dataAttr) {
+    const isActive = active instanceof Set ? active.has(value) : active === value;
+    return `<span class="filter-chip${isActive ? ' active' : ''}" data-${dataAttr}="${value}">${label}</span>`;
+}
+
+/**
+ * Render a labeled row of filter chips. Returns '' if ≤1 option.
+ * @param {string} label - Row label
+ * @param {Set<string>|Array} values - All possible values
+ * @param {Set<string>} active - Active values
+ * @param {string} groupKey - data-filter-group value + used for data-value
+ * @param {Object} [opts]
+ * @param {Object} [opts.displayNames] - value → display label map
+ * @param {Function} [opts.formatLabel] - fallback formatter
+ */
+function renderFilterChipRow(label, values, active, groupKey, { displayNames = {}, formatLabel = null } = {}) {
+    const arr = Array.from(values);
+    if (arr.length <= 1) return '';
+    const defaultFmt = v => v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    const chips = arr.map(v => {
+        const display = displayNames[v] ?? (formatLabel ? formatLabel(v) : defaultFmt(v));
+        const activeClass = active.has(v) ? ' active' : '';
+        return `<span class="filter-chip${activeClass}" data-filter-group="${groupKey}" data-value="${v}">${display}</span>`;
+    }).join('');
+    return `<div class="filter-row"><span class="filter-label">${label}:</span>${chips}</div>`;
+}
+
+// === Score Badges ===
+
+/**
+ * Return CSS class for score badge coloring.
+ * @param {number} val - Score value
+ * @param {'trait'|'coherence'} [type='trait'] - Score type with preset thresholds
+ *   trait: >50 good, >20 ok, else ''
+ *   coherence: >=80 good, >=60 ok, else bad
+ * @returns {string} CSS class ('quality-good', 'quality-ok', 'quality-bad', or '')
+ */
+function scoreClass(val, type = 'trait') {
+    if (type === 'coherence') {
+        return val >= 80 ? 'quality-good' : val >= 60 ? 'quality-ok' : 'quality-bad';
+    }
+    // trait (default)
+    return val > 50 ? 'quality-good' : val > 20 ? 'quality-ok' : '';
+}
+
+// === Segmented Controls ===
+
+/**
+ * Render a segmented pill control (mutually exclusive options).
+ * @param {Object} opts
+ * @param {string} opts.id - Container ID
+ * @param {Array<{value: string, label: string}>} opts.options
+ * @param {string} opts.selected - Currently selected value
+ * @param {string} opts.dataAttr - data attribute name (e.g., 'compare-mode')
+ * @param {boolean} [opts.disabled] - Disable all options
+ * @param {string} [opts.disabledTooltip] - Tooltip when disabled
+ */
+function renderSegmentedControl({ id, options, selected, dataAttr, disabled, disabledTooltip }) {
+    const groupClass = disabled ? 'seg-pill disabled-group' : 'seg-pill';
+    const tooltip = disabled && disabledTooltip ? ` title="${disabledTooltip}"` : '';
+    const buttons = options.map(opt => {
+        const activeClass = opt.value === selected ? ' active' : '';
+        const disabledAttr = disabled ? ' disabled' : '';
+        return `<button class="${activeClass.trim()}" data-${dataAttr}="${opt.value}"${disabledAttr}>${opt.label}</button>`;
+    }).join('');
+    return `<div class="${groupClass}" id="${id}"${tooltip}>${buttons}</div>`;
+}
+
+/**
+ * Render a smooth pill control (0/3/6/9 window selector).
+ * @param {number} selected - Current smoothing window (0 = off)
+ */
+function renderSmoothPill(selected) {
+    const options = [
+        { value: 0, label: 'off' },
+        { value: 3, label: '3' },
+        { value: 6, label: '6' },
+        { value: 9, label: '9' },
+    ];
+    const buttons = options.map(opt => {
+        const activeClass = opt.value === selected ? ' active' : '';
+        return `<button class="${activeClass.trim()}" data-smooth="${opt.value}">${opt.label}</button>`;
+    }).join('');
+    return `<div class="smooth-pill">${buttons}</div>`;
+}
+
+// ES module exports
+export {
     renderSubsection,
     renderSelect,
     renderToggle,
     renderChip,
-    renderChipGroup,
     renderSortableHeader,
-    sortData,
-    handleSortClick,
     renderLoading,
-    setLoading,
-    renderError
+    requireExperiment,
+    deferredLoading,
+    renderRunHint,
+    renderFilterChip,
+    renderFilterChipRow,
+    scoreClass,
+    renderSegmentedControl,
+    renderSmoothPill,
 };
+

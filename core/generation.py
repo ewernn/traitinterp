@@ -24,12 +24,24 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Set, Generator, Optional, Union
+from typing import List, Dict, Set, Generator, Optional
 import torch
 from torch import Tensor
 
 from core.hooks import HookManager, SteeringHook, get_hook_path
-from utils.model import get_layer_path_prefix
+
+
+def get_layer_path_prefix(model) -> str:
+    """Get the hook path prefix to transformer layers, handling PeftModel wrapper.
+
+    Returns hook path prefix like "model.layers" or "base_model.model.model.layers".
+    """
+    if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
+        return "model.language_model.layers"
+    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
+        if type(model).__name__ != type(model.base_model).__name__:
+            return "base_model.model.model.layers"
+    return "model.layers"
 
 
 @dataclass

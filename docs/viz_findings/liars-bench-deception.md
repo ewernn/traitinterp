@@ -152,13 +152,13 @@ Deception is multi-faceted in the model's representations. Lying (making false c
 
 ## Source
 
-- Vectors: `experiments/bullshit/extraction/bs/{concealment,lying,self_knowledge_concealment}/base/`
-- Cross-eval: `experiments/bullshit/results/cross_eval_bs_{concealment,lying,self_knowledge_concealment}.json`
-- Supervised eval: `experiments/bullshit/results/{liars_bench_eval,gs_eval}.json`
-- Combination eval: `experiments/bullshit/results/{combined_vector_eval,subspace_and_threshold_eval,ensemble_eval,conceptor_eval,gaussian_eval}.json`
-- Smoothed eval: `experiments/bullshit/results/cross_eval_smoothed.json`
-- Steering: `experiments/bullshit/steering/bs/{concealment,lying,self_knowledge_concealment}/`
-- Model diff: `experiments/bullshit/model_diff/`
+- Vectors: `experiments/viz_findings/bullshit/extraction/bs/{concealment,lying,self_knowledge_concealment}/base/`
+- Cross-eval: `experiments/viz_findings/bullshit/results/cross_eval_bs_{concealment,lying,self_knowledge_concealment}.json`
+- Supervised eval: `experiments/viz_findings/bullshit/results/{liars_bench_eval,gs_eval}.json`
+- Combination eval: `experiments/viz_findings/bullshit/results/{combined_vector_eval,subspace_and_threshold_eval,ensemble_eval,conceptor_eval,gaussian_eval}.json`
+- Smoothed eval: `experiments/viz_findings/bullshit/results/cross_eval_smoothed.json`
+- Steering: `experiments/viz_findings/bullshit/steering/bs/{concealment,lying,self_knowledge_concealment}/`
+- Model diff: `experiments/viz_findings/bullshit/model_diff/`
 - Paper baselines: LIARS' BENCH Tables 6 and 8 (Llama 3.3 70B)
 
 ---

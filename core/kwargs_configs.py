@@ -1,0 +1,167 @@
+"""
+Pipeline configuration dataclasses.
+
+Bundles CLI/function parameters into single objects that thread through
+function calls without 30-arg signatures.
+
+Usage:
+    from core.kwargs_configs import SteeringConfig, ExtractionConfig
+"""
+
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+
+@dataclass
+class SteeringConfig:
+    """Configuration for steering evaluation and coefficient search."""
+    # Experiment
+    experiment: str = ""
+    vector_experiment: Optional[str] = None
+    extraction_variant: Optional[str] = None
+
+    # Search
+    layers_arg: str = "30%-60%"
+    coefficients: Optional[List[float]] = None
+    n_steps: int = 5
+    up_mult: float = 1.3
+    down_mult: float = 0.85
+    start_mult: float = 0.7
+    momentum: float = 0.1
+
+    # Vector
+    method: str = "probe"
+    component: str = "residual"
+    position: Optional[str] = None  # resolved at runtime: response[:5] for base, response[:] for instruct
+
+    # Evaluation
+    max_new_tokens: Optional[int] = None  # resolved at runtime: 16 for base, 64 for instruct
+    min_coherence: float = 77
+    subset: int = 5
+    relevance_check: bool = True
+    judge_provider: str = "openai"
+    prompt_set: str = "steering"
+
+    # Judge
+    eval_prompt: Optional[str] = None
+    use_default_prompt: bool = False
+    trait_judge: Optional[str] = None
+
+    # Output
+    save_mode: str = "best"
+    direction: str = "positive"
+    force: bool = False
+
+    # Model loading
+
+    load_in_4bit: bool = False
+    bnb_4bit_quant_type: str = "nf4"
+
+    # Modes
+    batched: bool = True
+    regenerate_responses: bool = False
+    baseline_only: bool = False
+    questions_file: Optional[str] = None
+    ablation: Optional[int] = None  # layer number, or None
+
+
+@dataclass
+class VettingStats:
+    """Result from response vetting — quality gate info."""
+    pos_passed: int = 0
+    pos_total: int = 0
+    neg_passed: int = 0
+    neg_total: int = 0
+
+    @property
+    def passed(self) -> bool:
+        """Check if enough responses passed for both polarities."""
+        return self.pos_passed >= 10 and self.neg_passed >= 10
+
+    @classmethod
+    def skip(cls) -> 'VettingStats':
+        """Dummy stats that always pass — used when stage is skipped."""
+        return cls(pos_passed=999, pos_total=999, neg_passed=999, neg_total=999)
+
+    @classmethod
+    def from_summary(cls, summary: dict) -> 'VettingStats':
+        """Construct from the 'summary' dict in a vetting JSON file."""
+        pos_passed = summary.get('positive_passed', 0)
+        neg_passed = summary.get('negative_passed', 0)
+        return cls(
+            pos_passed=pos_passed,
+            pos_total=pos_passed + summary.get('positive_failed', 0),
+            neg_passed=neg_passed,
+            neg_total=neg_passed + summary.get('negative_failed', 0),
+        )
+
+
+
+@dataclass
+class ExtractionConfig:
+    """Configuration for the extraction pipeline."""
+    # Experiment
+    experiment: str = ""
+    model_variant: Optional[str] = None
+
+    # Pipeline control
+    only_stages: Optional[set] = None
+    force: bool = False
+    save_activations: bool = False
+
+    # Methods
+    methods: List[str] = field(default_factory=lambda: ['probe'])
+    component: str = "residual"
+    position: str = "response[:5]"
+    layers: Optional[List[int]] = None
+
+    # Generation
+    rollouts: int = 1
+    temperature: float = 0.0
+    max_new_tokens: Optional[int] = None
+
+    # Vetting
+    vet_responses: bool = False
+    pos_threshold: int = 60
+    neg_threshold: int = 40
+    max_concurrent: int = 100
+    paired_filter: bool = False
+    adaptive: bool = False
+    # Data
+    val_split: float = 0.1
+
+    # Model loading
+
+    load_in_4bit: bool = False
+    bnb_4bit_quant_type: str = "nf4"
+    base_model: Optional[bool] = None
+
+
+@dataclass
+class InferenceConfig:
+    """Configuration for the inference pipeline."""
+    experiment: str = ""
+    prompt_set: str = ""
+    model_variant: Optional[str] = None
+    extraction_variant: Optional[str] = None
+
+    # Pipeline control
+    regenerate: bool = False
+    capture: bool = False
+    from_activations: bool = False
+
+    # Projection
+    traits: Optional[List[str]] = None
+    layers: str = "best,best+5"
+    component: str = "residual"
+    centered: bool = False
+    skip_existing: bool = False
+
+    # Generation
+    max_new_tokens: int = 50
+    temperature: float = 0.0
+    no_server: bool = False
+
+    # Model loading
+
+    load_in_4bit: bool = False

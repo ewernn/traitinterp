@@ -31,10 +31,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import argparse
 import json
 import statistics
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from utils import paths
 from utils.projections import read_projection
-from utils.vectors import get_best_vector
+from utils.vector_selection import select_vector
 
 
 def split_into_clauses(tokens: List[str], deltas: List[float]) -> List[Dict]:
@@ -82,8 +82,8 @@ def process_prompt(
     layer: int = None,
 ) -> Dict:
     """Process a single prompt: load projections, compute delta, split clauses."""
-    proj_a = read_projection(proj_a_path, layer=layer)
-    proj_b = read_projection(proj_b_path, layer=layer)
+    proj_a = read_projection(proj_a_path, layer=layer, mode='normalized')
+    proj_b = read_projection(proj_b_path, layer=layer, mode='normalized')
     with open(response_path) as f:
         resp = json.load(f)
 
@@ -151,17 +151,17 @@ def main():
         layer = args.layer
         if layer is None:
             try:
-                best = get_best_vector(args.experiment, trait)
-                layer = best['layer']
+                best = select_vector(args.experiment, trait)
+                layer = best.layer
                 print(f'  Layer: L{layer} (from steering)')
             except FileNotFoundError:
                 layer = None
                 print(f'  Layer: auto (no steering data, using default from projection)')
 
         prompt_set_a = args.variant_a_prompt_set or args.prompt_set
-        proj_a_dir = exp_dir / 'inference' / args.variant_a / 'projections' / trait / prompt_set_a
-        proj_b_dir = exp_dir / 'inference' / args.variant_b / 'projections' / trait / args.prompt_set
-        resp_dir = exp_dir / 'inference' / args.variant_b / 'responses' / args.prompt_set
+        proj_a_dir = paths.get('inference.projections', experiment=args.experiment, model_variant=args.variant_a, trait=trait, prompt_set=prompt_set_a)
+        proj_b_dir = paths.get('inference.projections', experiment=args.experiment, model_variant=args.variant_b, trait=trait, prompt_set=args.prompt_set)
+        resp_dir = paths.get('inference.responses', experiment=args.experiment, model_variant=args.variant_b, prompt_set=args.prompt_set)
 
         if not proj_a_dir.exists():
             print(f'  SKIP: no projections for {args.variant_a}')

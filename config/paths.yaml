@@ -54,7 +54,7 @@ datasets:
 #     results/                     - sub-experiment outputs
 # At the experiments/ level:
 #   archive/                       - archived experiments (excluded from R2 by default)
-# See docs/experiment_structure.md for full conventions.
+# See docs/architecture.md for full experiment directory schema.
 
 experiments:
   base: "experiments/{experiment}"

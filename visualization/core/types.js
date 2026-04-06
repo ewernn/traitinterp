@@ -24,9 +24,6 @@
  * @property {Object<string, number[]>} promptsWithData
  * @property {number} currentTokenIndex
  * @property {PromptPickerCache|null} promptPickerCache
- * @property {boolean} hideAttentionSink
- * @property {string|null} selectedSteeringTrait
- * @property {boolean} smoothingEnabled
  * @property {boolean} projectionCentered
  * @property {Set<string>} selectedMethods
  * @property {string} compareMode
@@ -290,4 +287,4 @@
  * @property {number[]} available_ids
  */
 
-// Types are loaded via <script> tag, no exports needed
+// Types are JSDoc only — nothing to export at runtime

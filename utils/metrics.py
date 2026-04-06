@@ -2,22 +2,22 @@
 Evaluation metrics for model outputs.
 
 Usage:
-    from utils.metrics import ce_loss, sequence_ce_loss, batch_ce_loss
+    from utils.metrics import ce_loss, sequence_ce_loss, batch_ce_loss, score_stats
 
     # Pure math - from logits and targets
     loss = ce_loss(logits, target_ids)
 
-    # Single text sequence
-    loss = sequence_ce_loss(model, tokenizer, "Some text to evaluate")
-
-    # Batch of texts (averaged)
-    loss = batch_ce_loss(model, tokenizer, ["text1", "text2", ...])
+    # Score distribution stats
+    stats = score_stats([85.0, 72.0, 91.0])  # {'trait_std': ..., 'success_rate': ..., ...}
 """
+
+import statistics
+from typing import Dict, List
 
 import torch
 import torch.nn.functional as F
-from typing import List
 
+from core.types import JudgeResult
 from utils.model import tokenize_batch, tokenize
 
 
@@ -104,3 +104,32 @@ def batch_ce_loss(
         return 0.0
 
     return total_loss / total_tokens
+
+
+def summarize_judge_scores(scores: List[Dict]) -> JudgeResult:
+    """Summarize a list of judge score dicts into a JudgeResult.
+
+    Extracts trait_score and coherence_score, computes means and stats.
+    Used by steering eval, coefficient search, and baseline computation.
+    """
+    trait_scores = [s["trait_score"] for s in scores if s["trait_score"] is not None]
+    coh_scores = [s["coherence_score"] for s in scores if s.get("coherence_score") is not None]
+    stats = score_stats(trait_scores)
+    return JudgeResult(
+        trait_mean=sum(trait_scores) / len(trait_scores) if trait_scores else None,
+        coherence_mean=sum(coh_scores) / len(coh_scores) if coh_scores else None,
+        n=len(trait_scores),
+        **stats,
+    )
+
+
+def score_stats(scores: List[float]) -> Dict:
+    """Compute distribution stats for a list of trait scores."""
+    if not scores:
+        return {"trait_std": 0.0, "success_rate": 0.0, "min_score": None, "max_score": None}
+    return {
+        "trait_std": round(statistics.pstdev(scores), 2),
+        "success_rate": round(sum(1 for s in scores if s > 50) / len(scores), 2),
+        "min_score": round(min(scores), 2),
+        "max_score": round(max(scores), 2),
+    }
