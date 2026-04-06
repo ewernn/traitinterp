@@ -109,8 +109,7 @@ def capture_raw_activations(
     if responses_from:
         print(f"Reading responses from variant: {responses_variant}")
 
-    inference_dir = get_path('inference.variant', experiment=experiment, model_variant=variant_name)
-    raw_dir = inference_dir / "raw" / "residual" / output_set_name
+    raw_dir = get_path('inference.raw_residual', experiment=experiment, model_variant=variant_name, prompt_set=output_set_name)
 
     if skip_existing:
         original_count = len(response_files)

@@ -159,9 +159,9 @@ def main():
                 print(f'  Layer: auto (no steering data, using default from projection)')
 
         prompt_set_a = args.variant_a_prompt_set or args.prompt_set
-        proj_a_dir = exp_dir / 'inference' / args.variant_a / 'projections' / trait / prompt_set_a
-        proj_b_dir = exp_dir / 'inference' / args.variant_b / 'projections' / trait / args.prompt_set
-        resp_dir = exp_dir / 'inference' / args.variant_b / 'responses' / args.prompt_set
+        proj_a_dir = paths.get('inference.projections', experiment=args.experiment, model_variant=args.variant_a, trait=trait, prompt_set=prompt_set_a)
+        proj_b_dir = paths.get('inference.projections', experiment=args.experiment, model_variant=args.variant_b, trait=trait, prompt_set=args.prompt_set)
+        resp_dir = paths.get('inference.responses', experiment=args.experiment, model_variant=args.variant_b, prompt_set=args.prompt_set)
 
         if not proj_a_dir.exists():
             print(f'  SKIP: no projections for {args.variant_a}')

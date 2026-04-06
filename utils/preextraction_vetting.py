@@ -194,7 +194,7 @@ def vet(
     vetting = _build_vetting_output(results, pos_threshold, neg_threshold)
 
     # Build output data
-    output_dir = get_path('extraction.trait', experiment=experiment, trait=trait, model_variant=model_variant) / "vetting"
+    output_dir = get_path('extraction.vetting', experiment=experiment, trait=trait, model_variant=model_variant)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     from utils.traits import get_scenario_path
