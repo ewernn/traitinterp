@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert agent-interp-envs rollouts to trait-interp response JSON format.
+Convert agent-interp-envs rollouts to traitinterp response JSON format.
 
 Transforms multi-turn agentic conversations (with tool calls, thinking traces)
 into the response JSON format used by capture_activations.py and the rest
@@ -459,7 +459,7 @@ def convert_single_rollout(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert agent-interp-envs rollouts to trait-interp response JSON format"
+        description="Convert agent-interp-envs rollouts to traitinterp response JSON format"
     )
 
     # Input — one of these required

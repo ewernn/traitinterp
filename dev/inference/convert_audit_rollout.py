@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Convert secret number audit rollouts to trait-interp response JSON format.
+Convert secret number audit rollouts to traitinterp response JSON format.
 
 Reconstructs full conversations by combining original task messages (sanitized)
 with audit question and completion, then tokenizes and saves in the response JSON

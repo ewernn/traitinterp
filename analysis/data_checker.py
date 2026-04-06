@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Check available data for trait-interp experiments using discovery-based approach.
+Check available data for traitinterp experiments using discovery-based approach.
 
 Input:
     - experiments/{experiment}/ (filesystem scan)

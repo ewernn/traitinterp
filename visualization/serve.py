@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple HTTP server for trait-interp visualization.
+Simple HTTP server for traitinterp visualization.
 Serves the visualization with proper CORS headers and API endpoints.
 """
 
