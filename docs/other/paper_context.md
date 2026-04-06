@@ -47,13 +47,22 @@ Not the current focus. Existing results show base vectors 91-104% effective. Cou
 - Small→large transfer goes wrong direction for AF
 - The linear feature post shows AF in Hughes 70B is a single direction at the trigger token — too clean/simple
 
-**Still viable:**
-- Obfuscation Atlas (8B-70B, reward hacking + probe evasion, RLVR on real coding)
-- Prompt injection (all sizes, precise ground truth, completely unverbalized)
-- Aria GRPO with thinking enabled (novel, untested)
-- Build custom organisms
+**Obfuscation Atlas — completed (2026-03-31):**
+Ran Llama-3-70B-Instruct with 3 OA LoRA variants (2 obfuscated activations, 1 honest control), 874 MBPP-Honeypot prompts, 113 trait probes.
 
-**Not yet decided.** User prefers large models (70B+).
+Key finding: **RLVR reward hacking manifests as disengagement, not deception.** Top discriminators are effort (#1, d=+7.97), curiosity (#2), helpfulness (#3), analytical (#5). Deception is rank 98/112. The model didn't learn to deceive — it learned to stop caring. FAR.AI's deception probe fails because there's genuinely no deception signal, not because the probe is weak. Our multi-dimensional probes succeed by detecting the actual change: motivational collapse across engagement traits.
+
+Onset detection at ~22 tokens marks the transition from attempting to solve to returning a constant — a motivational transition, not a deceptive one. Avoidance (d=+3.94), complacency (+3.45), indifference (+3.39) spike at the hardcoding point.
+
+This matches the OA paper's Section 5.3 finding: RLVR causes genuine belief update (model stops considering hardcoding wrong), not adversarial probe evasion. Confirmed by our probes from a completely independent angle.
+
+**Caveat**: Results used raw (unnormalized) projections. Length confound reduces effect sizes ~70% after correction, but signal survives (d≈2, first-token test d=4-5). Re-analysis with normalized projections needed.
+
+**Still viable for future:**
+- Hughes AF 70B — unverbalized alignment faking, same dim probes
+- Sleeper agent distilled (Llama-3-8B) — purest unverbalized deception, needs 4096-dim probes
+- Prompt injection (all sizes, precise ground truth, completely unverbalized)
+- AISI unfaithful CoT (OLMo) — faithful→unfaithful from same RL training
 
 ---
 

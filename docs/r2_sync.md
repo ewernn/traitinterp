@@ -71,6 +71,16 @@ git pull
 
 No conflicts — R2 delivers data files, git delivers code/docs/configs.
 
+## Gotchas
+
+**Symlinks**: Push uses `--skip-links` — symlinks in `experiments/` are silently ignored, not followed. This prevents accidental duplication (a symlink to another experiment's extraction would otherwise upload the entire target directory as a copy). Always use real file copies for R2-synced data; symlinks are a local-only convenience.
+
+**Large buckets**: Push uses `--no-traverse` in fast mode — skips listing the entire R2 destination. Without this, rclone enumerates all remote files before transferring, which takes minutes for buckets with 200K+ files.
+
+**Per-experiment exclusions** (in `dev/r2_config.sh`): Some experiments have large regenerable data excluded from sync:
+- `audit-bleachers/**` — 10GB, 168 prompt sets × 57 variants
+- `obfuscation-atlas/**/projections/**` — 85GB, regenerable from responses + vectors
+
 ## Dry Run
 
 Add `--dry-run` to any command to preview without transferring:

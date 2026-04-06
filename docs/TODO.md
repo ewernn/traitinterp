@@ -57,6 +57,11 @@ Dev-only tracking. Not promoted to main.
 - [ ] `score_stats()` return — splat-merged via `**`, key change = silent bug
 - [ ] `ResponseRecord` read paths — still use `json.load()` + `.get()` instead of `ResponseRecord.from_dict()`
 
+## Inference Pipeline
+
+- [ ] Normalized projections by default — divide dot product by token norm (cosine similarity). Norms already saved in projection JSONs. Decide: normalize at projection time vs analysis time. Current raw scores conflate trait signal with activation magnitude.
+- [ ] 4 scripts build paths manually instead of using `get_path()`: `layer_sensitivity.py`, `per_token_diff.py`, `multi_layer_probe.py`, `capture_activations.py`
+
 ## Research Ideas (not blocking release)
 
 - [ ] Base vs instruct extraction comparison — systematic experiment across models (Qwen 2.5 vs 3.5, Llama, Gemma)
