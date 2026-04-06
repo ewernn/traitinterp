@@ -4,6 +4,7 @@
 huggingface_id: HuggingFaceH4/mistral-7b-sft-beta
 model_type: mistral
 variant: sft
+pretrained: false
 supports_system_prompt: true
 
 # Architecture (same as Mistral-7B base)

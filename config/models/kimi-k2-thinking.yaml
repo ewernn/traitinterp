@@ -5,6 +5,7 @@
 huggingface_id: moonshotai/Kimi-K2-Thinking
 model_type: kimi_k2  # DeepSeek-V3 underneath, kimi_k2 for inference engine optimizations
 variant: it
+pretrained: false
 supports_system_prompt: true
 
 # Architecture (from HF config.json)

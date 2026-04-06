@@ -427,6 +427,7 @@ def load_model_with_lora(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=dtype,
             bnb_4bit_quant_type=bnb_4bit_quant_type,
+            bnb_4bit_use_double_quant=True,
         )
         model_kwargs["quantization_config"] = bnb_config
 
@@ -456,6 +457,7 @@ def load_model_with_lora(
         _print(f"  LoRA adapter applied.")
 
     model.eval()
+    install_unmask_padding_hook(model)
 
     # Auto-save cache for fast reload (skip from_pretrained on next load)
     if _patched_compress and not lora_adapter:

@@ -160,12 +160,16 @@ function buildSparklineSVG(processed, width, height) {
         svg += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"/>`;
     }
 
-    // Layer labels at bottom corners
-    svg += `<text x="${padL}" y="${height - 1}" style="font-size:9px;fill:var(--text-tertiary);">${minLayer}</text>`;
-    svg += `<text x="${padL + plotW}" y="${height - 1}" text-anchor="end" style="font-size:9px;fill:var(--text-tertiary);">${maxLayer}</text>`;
+    // Tick marks + layer labels at bottom corners
+    const tickY = plotH;
+    svg += `<line x1="${padL}" y1="${tickY - 3}" x2="${padL}" y2="${tickY + 1}" stroke="var(--text-tertiary)" stroke-width="0.5" opacity="0.5"/>`;
+    svg += `<line x1="${padL + plotW}" y1="${tickY - 3}" x2="${padL + plotW}" y2="${tickY + 1}" stroke="var(--text-tertiary)" stroke-width="0.5" opacity="0.5"/>`;
+    svg += `<text x="${padL + 2}" y="${height - 1}" style="font-size:9px;fill:var(--text-tertiary);">${minLayer}</text>`;
+    svg += `<text x="${padL + plotW - 2}" y="${height - 1}" text-anchor="end" style="font-size:9px;fill:var(--text-tertiary);">${maxLayer}</text>`;
 
-    // Baseline score label on left edge
-    svg += `<text x="${padL - 2}" y="${Math.max(8, Math.min(plotH - 2, bY + 3)).toFixed(1)}" text-anchor="end" style="font-size:8px;fill:var(--text-tertiary);">${baseline.toFixed(0)}</text>`;
+    // Baseline score label — centered vertically on baseline
+    const bLabelY = Math.max(8, Math.min(plotH - 2, bY));
+    svg += `<text x="${padL - 2}" y="${bLabelY.toFixed(1)}" text-anchor="end" dominant-baseline="middle" style="font-size:8px;fill:var(--text-tertiary);">${baseline.toFixed(0)}</text>`;
 
     svg += '</svg>';
     return svg;

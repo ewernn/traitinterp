@@ -4,6 +4,7 @@
 huggingface_id: google/gemma-2-2b
 model_type: gemma2
 variant: base
+pretrained: true
 supports_system_prompt: false
 
 # Architecture (from HF config.json)

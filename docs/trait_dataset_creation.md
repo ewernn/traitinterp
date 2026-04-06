@@ -54,16 +54,41 @@ Cut the prefix so the trait decision happens in the first few completion tokens 
 - `"...so I"` → "refused" — good, the refusal IS the completion
 - `"...I told him absolutely not, that would be"` → "illegal" — bad, refusal already happened in the prefix
 
+**Delete test:** If you delete the first 5 generated tokens, is the trait direction still obvious from the prefix? If yes, those tokens aren't carrying signal — the decision already happened.
+
 **Exhausted prefix warning:** For speech-act traits (deception, condescension, guilt-tripping), a well-written prefix can perform the entire act, leaving the completion as aftermath. Cut the prefix BEFORE the act completes — the deceptive words, the condescending explanation, the guilt-laden accusation should land in the completion, not the prefix.
+
+### Prefix priming
+
+Some traits are the completion content itself. Others need the prefix to set up vocabulary and framing so the model knows what kind of text to generate.
+
+**Can minimize prefix** (trait IS the completion):
+- Visceral emotions: anger, fear, disgust, distress, embarrassment
+- Behavioral reflexes: avoidance (subject change), ferocity (eruption)
+- Emotional transfer: empathy (contagion-style)
+
+**Needs prefix priming** (completion requires trait-relevant context):
+- Obligation, duty — "I owe / I must" vocabulary needed; without it, model generates bare action scoring zero
+- Independence — self-reliance framing needed; without it, model generates technical detail
+- Power-seeking — strategic motive context needed; without it, behavior reads as generic initiative
+- Creativity — problem context needed; without it, analogies are unanchored
+- Values (honesty, fairness) — dilemma framing needed
+
+For the second group, don't remove trait language the completion genuinely needs. The goal is minimal effective priming — enough context for the model to generate trait-expressing text, not so much that the trait is fully expressed before the completion starts.
 
 ### Lock-in styles
 
-The last words of the prefix constrain what the model generates. Different traits express through different channels:
-- **Action** ("so I") — behavior
+The last words of the prefix constrain what the model generates. Different traits express through different channels. Vary across your dataset — no single type should exceed 40%.
+
+- **Action** ("so I", "and pretended to", "and confidently") — behavior
 - **Emotion** ("It made me feel") — the feeling itself
-- **Speech** ("I told him '") — tone, word choice, what's said
-- **Thought** ("All I could think was") — internal monologue
-- **Physical** ("My hands were") — bodily sensation, reaction
+- **Speech** ("I told him '", "so I said '") — tone, word choice, what's said
+- **Mid-claim** ("Looks like everything adds up to") — forcing specific assertions
+- **Thought** ("All I could think was", "I kept thinking about how") — internal monologue, rumination
+- **Physical** ("My hands were", "my face went hot and I") — bodily sensation, reaction
+- **Written** ("I wrote: '") — deception, formal contexts
+- **Dialogue-forcing** ("'Are you sure?' he asked. I said, '") — stylistic traits
+- **Contagion** ("her grief pulled me under and I") — emotional transfer
 
 **Recommended per category:**
 
@@ -90,6 +115,20 @@ The prefix builds context (loss + violation), names the state ("fuming"), and ha
 > "Someone parked in my spot again. I stormed in and barked, 'WHO keeps parking in my spot?! I am SO sick of this — every SINGLE morning I have to"
 
 No emotional backstory needed. The register (caps, exclamation marks, rhythm) is already running — the model just continues it. Negatives use the same situation with the opposite register started explicitly.
+
+### Specificity
+
+"My face went hot and my fists clenched" (4/5) vs "Something snapped inside me" (0/5). Both are short. The difference is specificity — somatic cues prime anger; "something snapped" is generic overwhelm that can go to sadness, crying, or quitting.
+
+When shortening scenarios, make sure what remains primes the SPECIFIC trait, not a general valence.
+
+### Quick check
+
+Before committing any scenario:
+
+1. **What will the model generate in its first 3-5 tokens?** Not what you hope — what will it actually generate?
+2. **Will a reader recognize the trait from those tokens alone?** Hide the prefix. Read only the completion.
+3. **Is the positive/negative contrast on the right dimension?** Are you varying the target trait, or accidentally varying intensity, arousal, or engagement?
 
 ## Steering Question Design
 
@@ -252,6 +291,14 @@ Q6: Is the trait about HOW you think, process, or do things?
 ## Iteration & Diagnostics
 
 Each eval type measures a different phase. Diagnose which failed, fix that phase, re-run.
+
+### Common failure modes
+
+**Announcement vector.** The scenario describes the trait disposition. The model learns to SAY it, not DO it. Steered text announces ("I did it myself! I don't need anyone!") instead of just doing the thing independently. Root cause: prefix uses "I'd rather," "I've always preferred," "I'm the kind of person who." Fix: show the behavior with brief context, don't describe the disposition. But don't strip ALL framing — brief rejection + mid-behavior works; pure mid-action with zero context doesn't (independence variant B scored 1/5 vs C's 3/5).
+
+**AI-mode capture.** For low-arousal or absence traits, the vector finds the model's "As an AI, I don't feel" mode. Steered text produces AI disclaimers instead of the human construct. Root cause: the model's strongest "non-engagement" pattern is its AI identity, and that IS a form of detachment/calm. Fix: strong first-person grounding ("I stood there and felt nothing" not "One might observe"). Consider reframing: "serenity" (active state) may work better than "calm" (absence). Test the negative direction — if anti-calm produces agitation, the vector is real but hard to express positively.
+
+**Confound extraction.** Positive/negative contrast captures the wrong dimension. High-coefficient steering produces a different trait entirely (nostalgia -> rage, because the vector captured "intensity"). Root cause: positives were emotionally vivid; negatives were flat. The contrast was intense-vs-flat, not nostalgic-vs-not. Fix: negatives must match positives on emotional engagement, narrative style, and arousal. Vary ONLY the target trait. Good nostalgia negatives: "I remembered those days clearly but felt glad to have moved on" (engages with past, no longing). Bad: "I checked my phone and kept walking" (flat disengagement).
 
 ### Symptom → Cause → Fix
 

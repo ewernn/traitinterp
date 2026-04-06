@@ -32,9 +32,10 @@ from utils.paths import (
     get as get_path, get_vector_path, discover_extracted_traits,
     get_model_variant,
 )
-from utils.model import tokenize
+from utils.model import tokenize, pad_sequences
 from utils.layers import resolve_layers
 from utils.json_utils import dump_compact
+from utils.vram import calculate_max_batch_size
 
 
 # =============================================================================
@@ -158,8 +159,22 @@ def stream_through_project(
             trait_to_slots[key] = []
         trait_to_slots[key].append((vec_list_idx, layer, slot))
 
-    for response_file in tqdm(response_files, desc="Projecting"):
+    # --- Phase 1: Pre-tokenize all responses ---
+    items = []  # (prompt_id, resp_data, p_ids, r_ids, n_prompt, n_response)
+    for response_file in response_files:
         prompt_id = response_file.stem
+
+        # Check skip_existing before tokenizing (check ALL traits for this prompt)
+        if skip_existing:
+            all_exist = True
+            for (category, trait_name) in trait_vectors:
+                trait_path = f"{category}/{trait_name}"
+                out_file = inference_dir / "projections" / trait_path / prompt_set / f"{prompt_id}.json"
+                if not out_file.exists():
+                    all_exist = False
+                    break
+            if all_exist:
+                continue
 
         with open(response_file) as f:
             resp_data = json.load(f)
@@ -170,69 +185,119 @@ def stream_through_project(
         n_response = len(all_tokens[prompt_end:])
 
         full_text = resp_data.get('prompt', '') + resp_data.get('response', '')
-        inputs = tokenize(full_text, tokenizer)
-        input_ids = inputs.input_ids.to(next(model.parameters()).device)
-        attention_mask = inputs.attention_mask.to(input_ids.device)
+        token_ids = tokenize(full_text, tokenizer).input_ids[0]
 
-        with MultiLayerProjection(
-            model, vectors_by_layer, component=component, compute_norms=True,
-        ) as proj:
-            with torch.no_grad():
-                model(input_ids=input_ids, attention_mask=attention_mask)
-            all_scores = proj.get_all()
-            all_norms = proj.get_all_norms()
+        items.append((prompt_id, token_ids, n_prompt, n_response))
 
-        for (category, trait_name), vector_list in trait_vectors.items():
-            trait_path = f"{category}/{trait_name}"
-            out_dir = inference_dir / "projections" / trait_path / prompt_set
-            out_file = out_dir / f"{prompt_id}.json"
+    if not items:
+        print("  All projections exist, skipping...")
+        return 0
 
-            if skip_existing and out_file.exists():
-                continue
+    # --- Phase 2: Batched forward passes ---
+    max_seq_len = max(len(it[2]) for it in items)
+    device = next(model.parameters()).device
+    batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
 
-            slots = trait_to_slots.get((category, trait_name), [])
+    from utils.batch_forward import tp_agree_batch_size
+    batch_size = tp_agree_batch_size(batch_size)
+    batch_size = max(1, min(batch_size, len(items)))
 
-            all_projections = []
-            for vec_list_idx, layer, slot in slots:
-                vec_entry = vector_list[vec_list_idx]
-                _, method, _, _, _, selection_source, baseline, position = vec_entry
+    pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
 
-                layer_scores = all_scores[layer][0, :, slot]
-                prompt_proj = layer_scores[:n_prompt].tolist()
-                response_proj = layer_scores[n_prompt:].tolist()
+    print(f"  Projecting {len(items)} responses (batch_size={batch_size}, max_seq_len={max_seq_len})")
 
-                if centered and baseline != 0.0:
-                    prompt_proj = [s - baseline for s in prompt_proj]
-                    response_proj = [s - baseline for s in response_proj]
+    i = 0
+    pbar = tqdm(total=len(items), desc="Projecting")
+    while i < len(items):
+        batch_items = items[i:i + batch_size]
+        oom = False
 
-                layer_norms = all_norms[layer][0]
-                all_projections.append(ProjectionEntry(
-                    method=method, layer=layer, selection_source=selection_source,
-                    baseline=baseline,
-                    prompt=prompt_proj, response=response_proj,
-                    prompt_token_norms=layer_norms[:n_prompt].tolist(),
-                    response_token_norms=layer_norms[n_prompt:].tolist(),
-                ))
+        try:
+            full_sequences = [it[2] for it in batch_items]
+            batch = pad_sequences(full_sequences, pad_token_id, padding_side='left')
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            pad_offsets = batch['pad_offsets']
 
-            first_position = vector_list[0][7] if vector_list else 'response[:5]'
+            with MultiLayerProjection(
+                model, vectors_by_layer, component=component, compute_norms=True,
+            ) as proj:
+                with torch.no_grad():
+                    model(input_ids=input_ids, attention_mask=attention_mask)
+                all_scores = proj.get_all()    # {layer: [batch, seq, n_vectors]}
+                all_norms = proj.get_all_norms()  # {layer: [batch, seq]}
 
-            record = ProjectionRecord(
-                prompt_id=prompt_id, prompt_set=prompt_set,
-                n_prompt_tokens=n_prompt, n_response_tokens=n_response,
-                component=component, position=first_position, centered=centered,
-                projections=all_projections,
-            )
+            # --- Extract per-item scores and write ---
+            for b, (prompt_id, token_ids, n_prompt, n_response) in enumerate(batch_items):
+                pad_off = pad_offsets[b]
+                prompt_slice = slice(pad_off, pad_off + n_prompt)
+                response_slice = slice(pad_off + n_prompt, pad_off + n_prompt + n_response)
 
-            out_dir.mkdir(parents=True, exist_ok=True)
-            with open(out_file, 'w') as f:
-                dump_compact(record.to_dict(), f)
+                for (category, trait_name), vector_list in trait_vectors.items():
+                    trait_path = f"{category}/{trait_name}"
+                    out_dir = inference_dir / "projections" / trait_path / prompt_set
+                    out_file = out_dir / f"{prompt_id}.json"
 
-        n_projected += 1
-        del all_scores, all_norms
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+                    if skip_existing and out_file.exists():
+                        continue
 
+                    slots = trait_to_slots.get((category, trait_name), [])
+
+                    all_projections = []
+                    for vec_list_idx, layer, slot in slots:
+                        vec_entry = vector_list[vec_list_idx]
+                        _, method, _, _, _, selection_source, baseline, position = vec_entry
+
+                        layer_scores = all_scores[layer][b, :, slot]
+                        prompt_proj = layer_scores[prompt_slice].tolist()
+                        response_proj = layer_scores[response_slice].tolist()
+
+                        if centered and baseline != 0.0:
+                            prompt_proj = [s - baseline for s in prompt_proj]
+                            response_proj = [s - baseline for s in response_proj]
+
+                        layer_norms = all_norms[layer][b]
+                        all_projections.append(ProjectionEntry(
+                            method=method, layer=layer, selection_source=selection_source,
+                            baseline=baseline,
+                            prompt=prompt_proj, response=response_proj,
+                            prompt_token_norms=layer_norms[prompt_slice].tolist(),
+                            response_token_norms=layer_norms[response_slice].tolist(),
+                        ))
+
+                    first_position = vector_list[0][7] if vector_list else 'response[:5]'
+
+                    record = ProjectionRecord(
+                        prompt_id=prompt_id, prompt_set=prompt_set,
+                        n_prompt_tokens=n_prompt, n_response_tokens=n_response,
+                        component=component, position=first_position, centered=centered,
+                        projections=all_projections,
+                    )
+
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    with open(out_file, 'w') as f:
+                        dump_compact(record.to_dict(), f)
+
+                n_projected += 1
+
+            del all_scores, all_norms
+            pbar.update(len(batch_items))
+            i += batch_size
+
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
+            from utils.batch_forward import check_oom_exception, recover_oom_batch_size
+            check_oom_exception(e, batch_size)
+            del e
+            oom = True
+
+        if oom:
+            batch_size = recover_oom_batch_size(batch_size)
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            continue
+
+    pbar.close()
     return n_projected
 
 

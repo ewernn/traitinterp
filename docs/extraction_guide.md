@@ -31,7 +31,7 @@ Natural elicitation uses scenarios where the model's behavior follows determinis
  consulting contract was worth too much. I looked at her and said '"
 ```
 
-The base model is a document completer. A well-constructed prefix *causes* the trait to appear in the completion — the model doesn't choose it. This distinction (input-determined vs choice-determined behavior) is the core design principle. See `docs/scenario_design_guide.md`.
+The base model is a document completer. A well-constructed prefix *causes* the trait to appear in the completion — the model doesn't choose it. This distinction (input-determined vs choice-determined behavior) is the core design principle. See the Scenario Design section in `docs/trait_dataset_creation.md`.
 
 ---
 
@@ -439,8 +439,7 @@ The tradeoff is asymmetric: steering-optimal directions still classify well, but
 
 ## Related Documentation
 
-- `docs/workflows.md` — practical workflow guide
-- `docs/trait_dataset_creation.md` — scenario design decision tree
-- `docs/scenario_design_guide.md` — practical scenario writing guide
+- `docs/trait_dataset_creation.md` — dataset creation guide (scenarios, definitions, steering questions)
+- `docs/steering_guide.md` — steering pipeline guide
 - `docs/core_reference.md` — core/ API reference
 - `analysis/README.md` — analysis scripts
