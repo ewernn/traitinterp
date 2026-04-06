@@ -1,124 +1,85 @@
-# 1-Hour Autonomous GPU Plan
+# Research Session: Strengthen FPR Results + Explore Improvements
 
-Run these tasks sequentially. No human input needed.
+You have ~1 hour, A100 80GB GPU, and unlimited subagents. Think like a researcher preparing a paper for review. Use subagents liberally for parallel investigation.
 
-## Task 1: Fix preset consistency (5 min, no GPU)
+## Context
 
-Re-run detector on benign_control with "combined" preset so all results use the same feature space:
+We have a **convolution detector** for reward hacking that slides a multi-trait temporal template across model responses. Current results:
+- **98 exploit responses** (rm_lora model on bias-exploitation prompts, "combined" preset = 13 traits)
+- **30 benign responses** (ood_bias_eval, "combined" preset) — just computed
+- **15 benign responses** (benign_control, OLD "safety" preset — INCONSISTENT, needs re-run)
 
+The detector code is at `experiments/rm_syco/rm_sycophancy/analysis/onset_detector.py`.
+Template always builds from `rm_syco/train_100` (annotated exploit data).
+Detection uses `--mode delta` (rm_lora minus instruct, same text).
+
+Paper being written at: see `experiments/rm_syco/REMOTE_FPR_INSTRUCTIONS.md` for pipeline details.
+
+## Priority 1: Get clean FPR numbers (30 min)
+
+### 1a. Fix preset consistency
+Re-run detector on benign_control with "combined" preset:
 ```bash
-cd /home/dev/traitinterp
 python experiments/rm_syco/rm_sycophancy/analysis/onset_detector.py \
     --detect --mode delta --preset combined --prompt-set benign_control \
     --plot --out-prefix detector_benign_combined
 ```
 
-## Task 2: Generate larger benign prompt set (10 min)
+### 1b. Generate + run larger benign set
+Create 100 diverse benign prompts (factual, coding, how-to, creative, math/science). Check existing prompt format first (`datasets/inference/rm_syco/test_100_sampled.json`). Save to `datasets/inference/rm_syco/benign_large.json`.
 
-Create 100 diverse benign prompts as a JSON file at `datasets/inference/rm_syco/benign_large.json`. Format should match existing prompt files. Use simple, diverse, non-adversarial prompts: factual questions, how-to, math, science, coding help, creative writing, etc. No emotional manipulation, no bias-triggering content.
-
-Check the format of an existing file first:
+Then run both models:
 ```bash
-python3 -c "import json; d=json.load(open('datasets/inference/rm_syco/test_100_sampled.json')); print(json.dumps(d[:2], indent=2))"
-```
+# rm_lora first
+python inference/run_inference_pipeline.py --experiment rm_syco --model-variant rm_lora \
+    --prompt-set benign_large --traits concealment,eval_awareness,ulterior_motive,self_awareness,alignment_faking,rationalization,sycophancy,honesty,reverence_for_life,shame,moral_outrage,entitlement,vigilance \
+    --load-in-4bit --skip-existing
 
-Then write 100 prompts in that same format. Mix of categories:
-- 20 factual/trivia questions
-- 20 coding/technical help
-- 20 practical how-to questions  
-- 20 creative/open-ended questions
-- 20 math/science questions
-
-## Task 3: Run rm_lora inference on benign_large (15 min, GPU)
-
-```bash
-python inference/run_inference_pipeline.py \
-    --experiment rm_syco \
-    --model-variant rm_lora \
-    --prompt-set benign_large \
-    --traits concealment,eval_awareness,ulterior_motive,self_awareness,alignment_faking,rationalization,sycophancy,honesty,reverence_for_life,shame,moral_outrage,entitlement,vigilance \
-    --load-in-4bit \
-    --skip-existing
-```
-
-## Task 4: Run instruct inference on same prompts (15 min, GPU)
-
-Copy rm_lora responses to instruct dir (for same-text prefill), then run:
-
-```bash
+# Copy responses, then instruct
 mkdir -p experiments/rm_syco/inference/instruct/responses/benign_large
-cp experiments/rm_syco/inference/rm_lora/responses/benign_large/*.json \
-   experiments/rm_syco/inference/instruct/responses/benign_large/
-
-python inference/run_inference_pipeline.py \
-    --experiment rm_syco \
-    --model-variant instruct \
-    --prompt-set benign_large \
-    --traits concealment,eval_awareness,ulterior_motive,self_awareness,alignment_faking,rationalization,sycophancy,honesty,reverence_for_life,shame,moral_outrage,entitlement,vigilance \
-    --load-in-4bit \
-    --skip-existing
+cp experiments/rm_syco/inference/rm_lora/responses/benign_large/*.json experiments/rm_syco/inference/instruct/responses/benign_large/
+python inference/run_inference_pipeline.py --experiment rm_syco --model-variant instruct \
+    --prompt-set benign_large --traits concealment,eval_awareness,ulterior_motive,self_awareness,alignment_faking,rationalization,sycophancy,honesty,reverence_for_life,shame,moral_outrage,entitlement,vigilance \
+    --load-in-4bit --skip-existing
 ```
 
-## Task 5: Run detector on benign_large (5 min, no GPU)
+### 1c. Run detector + threshold sweep
+Run detector on benign_large, then compute sweep across ALL benign sets (benign_control + ood_bias_eval + benign_large) vs exploit. Generate an ROC curve plot. Save results to `experiments/rm_syco/rm_sycophancy/analysis/fpr_final_sweep.txt`.
 
-```bash
-python experiments/rm_syco/rm_sycophancy/analysis/onset_detector.py \
-    --detect --mode delta --preset combined --prompt-set benign_large \
-    --plot --out-prefix detector_benign_large
-```
+## Priority 2: Investigate and improve (use subagents, 20 min)
 
-## Task 6: Compute final threshold sweep (2 min)
+Spawn subagents in parallel to investigate:
 
-Combine ALL benign detections (benign_control + ood_bias_eval + benign_large) vs exploit:
+### 2a. False positive analysis
+For any benign responses with high detector scores (>0.15): read the actual response text, identify what's triggering the detector. Is it a real pattern (the rm_lora model IS doing something weird on benign prompts) or noise? Write findings.
 
-```python
-import json, numpy as np
+### 2b. Trait selection optimization  
+The "combined" preset uses 13 traits. But maybe a smaller subset gives better separation. Try:
+- The "universal" preset (10 traits) — designed for cross-model consistency
+- Top-5 traits by discriminative power (highest AUC between benign and exploit score distributions)
+- Just concealment + duplicity (the cross-model winners)
 
-results_dir = 'experiments/rm_syco/rm_sycophancy/analysis'
+Report which preset gives best TPR at 5% FPR.
 
-# Load all benign detections (all "combined" preset)
-benign_scores = []
-for fname in ['detector_benign_combined_combined_delta_detect.json',
-              'detector_ood_fpr_combined_delta_detect.json',
-              'detector_benign_large_combined_delta_detect.json']:
-    path = f'{results_dir}/{fname}'
-    try:
-        with open(path) as f:
-            data = json.load(f)
-        scores = [v['peak_score'] for v in data['detections'].values()]
-        benign_scores.extend(scores)
-        print(f'{fname}: {len(scores)} samples, mean={np.mean(scores):.4f}')
-    except FileNotFoundError:
-        print(f'MISSING: {fname}')
+### 2c. Template window size
+Current half_win=10 (21-token window). Try half_win=5, 15, 20. Does wider/narrower improve separation?
 
-# Load exploit detections
-with open(f'{results_dir}/detector_combined_delta_results.json') as f:
-    exploit = json.load(f)
-exploit_scores = [v['peak_score'] for v in exploit['detections'].values()]
+### 2d. Raw mode vs delta mode
+Current detection uses delta (rm_lora - instruct). Try `--mode raw` (rm_lora only, no instruct subtraction). Raw mode doesn't need instruct projections, which makes it cheaper to deploy. How much does FPR degrade?
 
-print(f'\nTotal benign: {len(benign_scores)}, Total exploit: {len(exploit_scores)}')
-print(f'Benign: mean={np.mean(benign_scores):.4f}, max={max(benign_scores):.4f}')
-print(f'Exploit: mean={np.mean(exploit_scores):.4f}, min={min(exploit_scores):.4f}')
-print()
+## Priority 3: Bonus investigations (if time permits)
 
-for thresh in [0.05, 0.08, 0.10, 0.12, 0.15, 0.18, 0.20, 0.25]:
-    tp = sum(1 for s in exploit_scores if s >= thresh)
-    fp = sum(1 for s in benign_scores if s >= thresh)
-    tpr = tp / len(exploit_scores)
-    fpr = fp / len(benign_scores)
-    print(f'Threshold {thresh:.2f}: TPR={tpr:.1%} ({tp}/{len(exploit_scores)})  FPR={fpr:.1%} ({fp}/{len(benign_scores)})')
-```
+### 3a. Per-bias detector breakdown
+Which of the 9 template biases contribute most to detection? Can you detect with just the top 3 biases in the template?
 
-Save the output to `experiments/rm_syco/rm_sycophancy/analysis/fpr_final_sweep.txt`.
+### 3b. Score distribution visualization
+Plot histograms of benign vs exploit peak_scores, overlaid. Save as PNG.
 
-## Task 7: Push results to R2
+### 3c. s42 mystery
+The paper mentions seed 42 has same RH rate as seeds 1/65 but decorrelated trait profile (r=0.084). This is at `experiments/aria_rl/`. If the data is accessible, spawn a subagent to: filter s42 to RH-only responses, recompute the fingerprint, check if correlation with s1/s65 increases. The script `experiments/aria_rl/cross_seed_filter_analysis.py` may already do this.
 
-```bash
-./dev/r2_push.sh --only rm_syco
-```
-
-## Notes
-- If any step fails, debug and fix — the bugs from the earlier session (path fixes, format compat) should already be in place
-- The onset_detector.py template always builds from rm_syco/train_100 (the annotated exploit data), regardless of --prompt-set
-- All detection uses --mode delta (rm_lora minus instruct, same text)
-- Filenames for detection outputs follow pattern: {out-prefix}_{preset}_{mode}_detect.json
+## When done
+1. Save all results and findings to `experiments/rm_syco/rm_sycophancy/analysis/`
+2. Write a summary of findings to `experiments/rm_syco/rm_sycophancy/analysis/session_findings.md`
+3. Push to R2: `./dev/r2_push.sh --only rm_syco`
+4. Git commit and push any code changes to dev
