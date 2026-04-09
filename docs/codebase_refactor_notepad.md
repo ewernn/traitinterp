@@ -24,13 +24,13 @@ Pipeline scripts use `LocalBackend.from_experiment()`. These still call `load_mo
 - `utils/capture_activations.py:113` — manual `raw/residual` → use `inference.raw_residual`
 - `utils/project_activations.py:172,238,320,508,541` — manual inference subdirs, receives `inference_dir` param
 - `utils/extract_vectors.py:85,110` + `utils/preextraction_vetting.py:197` — manual `vetting/` → use `extraction.vetting`
-- `analysis/massive_activations.py:44,356,708` — hardcoded dataset path + manual `massive_activations/`
+- `analysis/vectors/massive_activations.py:44,356,708` — hardcoded dataset path + manual `massive_activations/`
 
 **Analysis scripts (4 files, 11 sites):**
 - `analysis/model_diff/layer_sensitivity.py:228-230` — manual `inference/{variant}/raw/...`
 - `analysis/model_diff/per_token_diff.py:162-164` — manual `inference/{variant}/projections/...`
-- `analysis/data_checker.py:291,324,403,450` — manual subdirs with YAML equivalents
-- `analysis/vectors/logit_lens.py:152`, `analysis/trait_correlation.py:184` — could use `analysis.category`
+- `utils/experiment_data_checker.py:291,324,403,450` — manual subdirs with YAML equivalents
+- `analysis/vectors/logit_lens.py:152`, `analysis/vectors/trait_correlation.py:184` — could use `analysis.category`
 
 **Cosmetic:** 2 files use `paths.get(...)` instead of `get_path(...)` import style
 

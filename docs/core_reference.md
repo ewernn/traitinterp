@@ -243,14 +243,14 @@ Certain dimensions have values 100-1000x larger than median (Sun et al. 2024). T
 
 **Calibration:** Run once per model to identify massive dims from neutral prompts:
 ```bash
-python analysis/massive_activations.py --experiment gemma-2-2b
+python analysis/vectors/massive_activations.py --experiment gemma-2-2b
 ```
 
 This uses a calibration dataset (50 Alpaca prompts) and saves results to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`. The projection script embeds this data for interactive cleaning in the visualization.
 
 **Research mode:** Analyze a specific prompt set:
 ```bash
-python analysis/massive_activations.py --experiment gemma-2-2b --prompt-set jailbreak_subset --per-token
+python analysis/vectors/massive_activations.py --experiment gemma-2-2b --prompt-set jailbreak_subset --per-token
 ```
 
 **Visualization:** The Trait Dynamics view has a "Clean" dropdown with options:

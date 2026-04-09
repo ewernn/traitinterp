@@ -108,7 +108,7 @@ inference:
   # Slim format: projections + dynamics only, references responses/ for text
   projections: "experiments/{experiment}/inference/{model_variant}/projections/{trait}/{prompt_set}"
 
-  # Massive activation analysis (from analysis/massive_activations.py)
+  # Massive activation analysis (from analysis/vectors/massive_activations.py)
   massive_activations: "experiments/{experiment}/inference/{model_variant}/massive_activations/{prompt_set}.json"
 
 # =============================================================================
@@ -193,7 +193,7 @@ patterns:
 # DATA SCHEMA (structure + validation + discovery)
 # =============================================================================
 # Single source of truth for what files CAN exist and what MUST exist.
-# Used by: analysis/data_checker.py, visualization/views/data-explorer.js
+# Used by: utils/experiment_data_checker.py, visualization/views/data-explorer.js
 #
 # Structure: defines all possible files (read by data_checker.py)
 # Required: defines minimum for a valid trait (used for status)

@@ -122,7 +122,7 @@ mean_diff partially works for sycophancy, suggesting massive dims carry differen
 
 ## Recommendations
 
-1. **Check model severity first:** Run `python analysis/massive_activations.py --experiment {exp}`
+1. **Check model severity first:** Run `python analysis/vectors/massive_activations.py --experiment {exp}`
 2. **If contamination >100x:** Use probe OR mean_diff with response[:20]
 3. **If contamination <100x:** mean_diff works fine
 4. **Don't add cleaning to the pipeline** — probe handles massive dims via row normalization
@@ -130,7 +130,7 @@ mean_diff partially works for sycophancy, suggesting massive dims carry differen
 
 ## Implementation
 
-- **Calibration:** `python analysis/massive_activations.py --experiment {exp}`
+- **Calibration:** `python analysis/vectors/massive_activations.py --experiment {exp}`
 - **Output:** `experiments/{exp}/inference/{variant}/massive_activations/calibration.json`
 - **Massive dims list:** `calibration.json` → `aggregate.top_dims_by_layer`
 

@@ -61,7 +61,7 @@ The coefficient must be proportional to the activation norm at that layer -- a c
 base_coef = activation_norm / vector_norm
 ```
 
-The activation norm is either loaded from a cache (created by `massive_activations.py`) or estimated on the fly from a few prompts. The adaptive search starts from `base_coef * start_mult` and adjusts from there.
+The activation norm is either loaded from a cache (created by `analysis/vectors/massive_activations.py`) or estimated on the fly from a few prompts. The adaptive search starts from `base_coef * start_mult` and adjusts from there.
 
 ### Scoring
 

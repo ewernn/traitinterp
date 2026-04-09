@@ -78,7 +78,7 @@ Some transformer models have "massive activations" — a handful of hidden dimen
 We calibrate once per experiment using a standardized prompt set:
 
 ```bash
-python analysis/massive_activations.py --experiment {experiment}
+python analysis/vectors/massive_activations.py --experiment {experiment}
 ```
 
 This runs a small set of Alpaca prompts through the model, identifies which dimensions are massive at each layer, and saves the results. The visualization dashboard uses this data to offer filtered views that exclude massive dims.
@@ -285,7 +285,7 @@ python inference/run_inference_pipeline.py \
 ### Full workflow from scratch
 ```bash
 # 1. Calibrate massive dims (once)
-python analysis/massive_activations.py --experiment {experiment}
+python analysis/vectors/massive_activations.py --experiment {experiment}
 
 # 2. Run inference pipeline
 python inference/run_inference_pipeline.py \
