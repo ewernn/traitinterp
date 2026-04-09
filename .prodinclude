@@ -35,7 +35,6 @@ docs/inference_guide.md
 docs/steering_guide.md
 docs/trait_dataset_creation.md
 docs/architecture.md
-docs/tensor_parallel.md
 
 # ── Prod-only: served by dashboard ──
 docs/overview.md

@@ -1,121 +1,34 @@
-# Tensor Parallelism for DeepSeek V3 / Kimi K2
+# Serving Kimi K2 (1T)
 
-How we run a 671B-parameter model across 8 GPUs with all GPUs active on every token.
-
----
-
-## Overview
-
-### Why tensor parallelism?
-
-Kimi K2 (DeepSeek V3 architecture) has ~671B parameters. In FP8 that is ~671 GB on disk, expanding to ~960 GB with metadata and scale tensors. A single H200 has 143 GB VRAM, so the model must be split across GPUs.
-
-The naive approach is **pipeline parallelism** (`device_map="auto"`): each GPU holds a range of layers, and tokens flow through GPUs sequentially. Only 1 of 8 GPUs is active at a time. Memory distribution is uneven (104-132 GB across GPUs). Generation is roughly 8x slower than it should be.
-
-**Tensor parallelism** splits every layer across all GPUs. All 8 GPUs work on every token simultaneously, communicating via NCCL all-reduce operations over NVLink (~900 GB/s between H200 GPUs). Much better utilization.
-
-### Expected speedup
-
-- MoE weights (the bulk of the model) are sharded across GPUs -- all GPUs participate in every forward pass.
-- Attention is currently replicated (all GPUs compute all 64 heads). This adds ~12.5% overhead versus full TP but avoids an MLA compatibility issue described below.
-- Net: roughly 3-5x faster than pipeline parallelism (not a full 8x because attention is replicated and all-reduce adds latency).
-
-### HuggingFace TP API
-
-HuggingFace transformers provides native tensor parallelism. Loading with TP:
-
-```python
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    tp_plan="auto",   # uses the model's built-in _tp_plan
-    # OR
-    tp_plan={...},     # custom dict mapping module paths to strategies
-)
-```
-
-Launched with `torchrun --nproc-per-node 8 script.py`. The `tp_plan` and `device_map` parameters are mutually exclusive.
+How we run Kimi K2 (671B parameters, DeepSeek V3 architecture) across 8 GPUs.
 
 ---
 
-## How Weight Matrices Get Split
+## Tensor Parallelism Primer
 
-A linear layer computes `output = input @ weight.T + bias`. The weight is a 2D matrix `[out_features, in_features]`.
+**Pipeline parallelism** (`device_map="auto"`) assigns layer ranges to GPUs — tokens flow sequentially, only 1 GPU active at a time. **Tensor parallelism** splits every layer across all GPUs — all work on every token simultaneously via NCCL all-reduce over NVLink.
 
-### Colwise (column-wise) -- split the output dimension
+HuggingFace provides native TP via `tp_plan="auto"` in `from_pretrained()`. Launched with `torchrun --nproc-per-node N script.py`. All our pipeline scripts auto-detect TP mode via `utils/distributed.py`.
 
-```
-Full weight:   [12288, 1536]   (64 heads x 192 dim/head, input 1536)
-GPU 0 gets:    [1536, 1536]    (heads 0-7)
-GPU 1 gets:    [1536, 1536]    (heads 8-15)
-...
-GPU 7 gets:    [1536, 1536]    (heads 56-63)
-```
+### Weight sharding patterns
 
-Each GPU computes a slice of the output independently. No communication needed for the matmul. Used for projections that fan out (q_proj, k_proj, gate_proj, up_proj).
+- **Colwise** — split output dimension across GPUs. No communication needed. Used for fan-out projections (q_proj, gate_proj, up_proj).
+- **Rowwise** — split input dimension. Each GPU computes a partial result; **all-reduce(SUM)** combines them. Used for fan-in projections (o_proj, down_proj).
+- **Standard pattern**: `fan_out(colwise) -> local_compute -> fan_in(rowwise) -> all_reduce`
 
-### Rowwise -- split the input dimension
+### DTensor vs Local strategies
 
-```
-Full weight:   [7168, 8192]    (output=hidden_size, input=heads x head_dim)
-GPU 0 gets:    [7168, 1024]    (heads 0-7's contribution)
-GPU 1 gets:    [7168, 1024]    (heads 8-15's contribution)
-...
-```
+**DTensor** (`colwise`/`rowwise`) — wraps tensors with sharding metadata, auto-inserts communication. Clean but breaks on FP8 weights, `.view()` with hardcoded dims, and MoE routing.
 
-Each GPU computes a partial result (same output shape, but only from its input slice). An **all-reduce(SUM)** across GPUs produces the correct full output. Used for projections that fan in (o_proj, down_proj).
-
-### The colwise-then-rowwise pattern
-
-Standard TP for both attention and MLP blocks follows this structure:
-
-1. **Colwise** on the fan-out projection (split output across GPUs)
-2. Each GPU computes locally (attention or activation function)
-3. **Rowwise** on the fan-in projection (partial sums)
-4. **All-reduce** to combine partial sums into the full output for the residual connection
-
-For attention: `q_proj(colwise) -> attention(local) -> o_proj(rowwise) -> all_reduce`
-For MLP: `gate_proj/up_proj(colwise) -> activation(local) -> down_proj(rowwise) -> all_reduce`
-
----
-
-## DTensor vs Local Strategies
-
-PyTorch offers two ways to handle sharded tensors. The choice matters for correctness with FP8 weights and MoE routing.
-
-### DTensor (`colwise`, `rowwise`)
-
-PyTorch's distributed tensor abstraction. Wraps a tensor with metadata about how it is sharded. Operations on DTensors automatically insert communication (all-reduce, etc.). Clean but breaks with:
-- `.view()` calls with computed dimensions
-- Custom routing logic (MoE expert dispatch)
-- FP8 block quantization (non-standard memory layout)
-
-DTensor's `get_tensor_shard` does direct indexing into the weight, which crashes on `Float8_e4m3fn` tensors because the FP8 dtype does not support the indexing operations DTensor expects.
-
-Used by standard architectures (Llama, Mistral, etc.) where weights are BF16/FP16.
-
-### Local (`local_colwise`, `local_rowwise`)
-
-A regular `torch.Tensor` that happens to be a slice of the full weight. No metadata, no automatic communication. You must manually add communication via a `gather` strategy on the parent module.
-
-The key difference:
-- `colwise` registers input/output hooks via `distribute_module()` that handle DTensor conversion and all-reduce automatically.
-- `local_colwise` sets `use_dtensor=False`, registers **no hooks**, so you must add an explicit `gather` on the parent module.
-
-Used by DeepSeek V3 because MoE routing and FP8 both break DTensor.
-
-### Other strategies
-
-- **`local` (IsolatedParallel)**: Keeps the full tensor on each GPU but divides values by world_size. The parent's `gather` (all-reduce SUM) restores correct values. Used for MoE expert module wrappers.
-- **`gather` (GatherParallel)**: Registers an output hook that calls `dist.all_reduce(SUM)`. Handles both plain tensors and tuples. This is the only point where results are communicated across GPUs.
-- **`colwise_rep`**: Colwise sharding with replicated output (output is all-gathered so every GPU has the full result). Used for lm_head.
-
-### FP8 compatibility summary
+**Local** (`local_colwise`/`local_rowwise`) — plain tensors, no metadata, manual communication via `gather`. Required for FP8 and MoE models.
 
 | Strategy | FP8 safe? | Why |
 |----------|-----------|-----|
 | `colwise` / `rowwise` | No | `get_tensor_shard` crashes on `Float8_e4m3fn` |
-| `local_colwise` / `local_rowwise` | Yes | Uses `param[...]` (full copy + cast), handles FP8 |
-| `colwise_rep` | Yes | Used for lm_head (BF16 after sharding) |
+| `local_colwise` / `local_rowwise` | Yes | Uses `param[...]` (full copy + cast) |
+| `colwise_rep` | Yes | Used for lm_head |
+
+Other: `local` (IsolatedParallel) for MoE expert wrappers, `gather` (GatherParallel) for all-reduce output hooks.
 
 ---
 
