@@ -29,7 +29,6 @@ Primary documentation hub for the traitinterp project.
 ### Visualization
 - **[visualization/README.md](../visualization/README.md)** - Dashboard usage
 - **[docs/methodology.md](methodology.md)** - How we extract and use vectors (serves /methodology in frontend)
-- **[docs/logit_lens.md](logit_lens.md)** - Prediction evolution across layers
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
@@ -41,7 +40,7 @@ Primary documentation hub for the traitinterp project.
 ### Infrastructure
 - **[docs/remote_setup.md](remote_setup.md)** - Remote GPU setup
 - **[docs/r2_sync.md](r2_sync.md)** - R2 cloud sync
-- **[docs/tensor_parallel.md](tensor_parallel.md)** - Tensor parallelism for DeepSeek V3 / Kimi K2
+- **[docs/other/serve_kimi_k2_1T.md](other/serve_kimi_k2_1T.md)** - Serving Kimi K2 (1T) across 8 GPUs
 
 ### Contributing
 - **[docs/doc-update-guidelines.md](doc-update-guidelines.md)** - Style and process guide for docs
@@ -146,7 +145,7 @@ python extraction/run_extraction_pipeline.py \
 **Monitor with existing vectors:**
 ```bash
 # 1. Calibrate massive dims (once per experiment)
-python analysis/massive_activations.py --experiment {experiment}
+python analysis/vectors/massive_activations.py --experiment {experiment}
 
 # 2. Run full inference pipeline (generate + stream-through project)
 python inference/run_inference_pipeline.py \

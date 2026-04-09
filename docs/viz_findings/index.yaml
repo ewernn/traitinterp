@@ -3,14 +3,16 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
-  - liars-bench-deception.md
   - rm-sycophancy.md
   - comparison-persona-vectors.md
-  - comparison-arditi-refusal.md
-  - component-decomposition.md
-  - massive-activations.md
-  - coefficient-scaling-law.md
+  - liars-bench-deception.md
   - prefill-dynamics.md
+  - component-decomposition.md
+  - comparison-arditi-refusal.md
+  - massive-activations.md
+  - 2026-04-09-quantization-sensitivity.md
+  # Commented out - has [TODO] in title:
+  # - coefficient-scaling-law.md
   # Commented out - infrastructure/methodology:
   # - llm-judge-optimization.md # scoring guide + logprobs beats CoT (0.888 trait, 0.850 coherence)
 

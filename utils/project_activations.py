@@ -194,7 +194,7 @@ def stream_through_project(
         return 0
 
     # --- Phase 2: Batched forward passes ---
-    max_seq_len = max(len(it[2]) for it in items)
+    max_seq_len = max(len(it[1]) for it in items)
     device = next(model.parameters()).device
     batch_size = calculate_max_batch_size(model, max_seq_len, mode='extraction')
 
@@ -213,7 +213,7 @@ def stream_through_project(
         oom = False
 
         try:
-            full_sequences = [it[2] for it in batch_items]
+            full_sequences = [it[1] for it in batch_items]
             batch = pad_sequences(full_sequences, pad_token_id, padding_side='left')
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)

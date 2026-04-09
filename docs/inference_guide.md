@@ -78,7 +78,7 @@ Some transformer models have "massive activations" — a handful of hidden dimen
 We calibrate once per experiment using a standardized prompt set:
 
 ```bash
-python analysis/massive_activations.py --experiment {experiment}
+python analysis/vectors/massive_activations.py --experiment {experiment}
 ```
 
 This runs a small set of Alpaca prompts through the model, identifies which dimensions are massive at each layer, and saves the results. The visualization dashboard uses this data to offer filtered views that exclude massive dims.
@@ -93,7 +93,7 @@ The main entry point is `inference/run_inference_pipeline.py`. Key flags:
 
 ### Required
 - `--experiment` — Experiment name (must have a `config.json` with model variants)
-- `--prompt-set` — Which prompt set to use (e.g., `general`, matches filename in `datasets/inference/starter_prompts/`)
+- `--prompt-set` — Which prompt set to use (path relative to `datasets/inference/`, e.g., `starter_prompts/general`)
 
 ### Pipeline control
 - `--capture` — Save raw `.pt` activations instead of projecting (mutually exclusive with `--from-activations`)
@@ -114,7 +114,7 @@ The main entry point is `inference/run_inference_pipeline.py`. Key flags:
 
 ### Model
 - `--load-in-4bit` — Load model in 4-bit quantization (for large models on limited VRAM).
-- `--backend` — `local` or `server`. Use `local` to force local model loading even if a model server is running.
+- `--backend` — `auto` (default) or `local`. Use `local` to force local model loading.
 
 ---
 
@@ -248,7 +248,7 @@ For large models, inference capture supports multi-GPU via `torchrun`:
 torchrun --nproc_per_node=8 inference/run_inference_pipeline.py --capture \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
-    --components residual \
+    --component residual \
     --layers 9,12,18,24,30,36
 ```
 
@@ -285,12 +285,12 @@ python inference/run_inference_pipeline.py \
 ### Full workflow from scratch
 ```bash
 # 1. Calibrate massive dims (once)
-python analysis/massive_activations.py --experiment {experiment}
+python analysis/vectors/massive_activations.py --experiment {experiment}
 
 # 2. Run inference pipeline
 python inference/run_inference_pipeline.py \
     --experiment {experiment} \
-    --prompt-set general
+    --prompt-set starter_prompts/general
 
 # 3. Visualize
 python visualization/serve.py

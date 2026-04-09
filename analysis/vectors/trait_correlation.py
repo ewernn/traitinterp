@@ -5,7 +5,7 @@ Input: Projection files from inference/project_activations_onto_traits.py
 Output: Single JSON with correlation matrices at various offsets
 
 Usage:
-    python analysis/trait_correlation.py --experiment gemma-2-2b --prompt-set jailbreak/original
+    python analysis/vectors/trait_correlation.py --experiment gemma-2-2b --prompt-set jailbreak/original
 """
 
 import argparse

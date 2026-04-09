@@ -9,6 +9,9 @@
 experiments/
 !experiments/.gitkeep
 
+# Downloaded model weights, LoRAs, HF hub cache (not git, not even R2 by default)
+cache/
+
 datasets/inference/beavertails
 
 temp

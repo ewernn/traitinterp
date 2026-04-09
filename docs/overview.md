@@ -1,134 +1,55 @@
 # Trait Vector Extraction and Monitoring
 
-Models will produce trillions of tokens per minute. We need live monitoring at scale.
+*By Eric Werner, April 12 2026*
 
-**Outputs aren't enough.** By the time you see the output, the decision already happened. Models can think without emitting tokens. Chain-of-thought can be hidden or faked. The output token isn't a reliable representation of what went on inside. Activations are where decisions actually happen.
+## What this is
 
-**Why traits?** We want to measure specific concepts—refusal, deception, uncertainty—directly on raw activations. SAEs are learned approximations analyzed post-hoc. Traits are defined upfront: you create contrastive data to isolate the concept you care about, then measure it directly.
+**Traitinterp is a pipeline for creating and using trait vectors, to make white-box AI safety and psychology research more approachable and fast.** Define a behavior via contrastive data, extract the corresponding direction, validate it causally via steering, and then project new activations onto it token-by-token during generation. The repo ships with pre-defined starter trait datasets — concealment, sycophancy, refusal, and others — so you can run the pipeline without building contrastive data from scratch. Pre-extracted reference vectors are available for `Qwen/Qwen3.5-9B` (default, bnb 4-bit for accessibility). Datasets are model-general; vectors are model-specific — run the pipeline on whatever model you care about.
 
-**Multi-axis verification.** Each trait is an axis of verification. More traits = more surface area = more chances to catch unexpected divergence. And trait projection is lightweight—you can scale monitoring based on stakes.
+## What is a trait vector?
 
-**Understanding, not control.** Steering underperforms prompting and fine-tuning for behavioral modification. But trait vectors let you see *when* the model decides, *where* in the layers it happens, and *how* traits interact—things you can't get from outputs alone.
+A trait vector is a 1D vector of how the AI represents and thinks about a trait — a linear direction in activation space. LLMs operationalize human trait dimensions to help accurately predict the next token from large datasets of human stories, reasoning, and interaction patterns. Each behavior is composed of coordinated underlying states, and the model has to track all of them simultaneously to predict what comes next.
 
----
+For example, an LLM responding to a grieving user has learned from modeling therapists in its training data to coordinate empathy, concern, and professional restraint. Each of those is a separate trait dimension the model tracks, because predicting what a therapist says next requires modeling all of them at once. Or a coding agent actively cheating on evaluations while producing benign-sounding reasoning has learned this deception as a combination of concealment (hiding what it's doing), rationalization (generating plausible cover stories), and satisfaction from passing the evals.
 
-## The Approach
+These dimensions exist in the model's activations simultaneously, and we extract each as an individual probe you can monitor — one dot product per trait per token. Cheap, fast, and human-interpretable by design.
 
-We extract *trait vectors*—directions in activation space that correspond to behavioral traits like refusal, uncertainty, or sycophancy. By projecting each token's hidden state onto these vectors, we can watch the model's internal state evolve token-by-token.
+## Why we need this
 
-**Key terms:**
-- **Trait Vector**: A direction in activation space representing a behavioral pattern
-- **Projection**: Measuring alignment with a trait vector. Positive = expressing the trait, negative = suppressing it.
+**Outputs are too late and too lossy.** Chain-of-thought can be post-hoc, hidden, or deliberately misleading. The hardest alignment failure modes — latent reasoning, out-of-context reasoning, and models that don't surface their logic as text at all — are exactly the cases where output monitoring gives you nothing. And as models get more capable and push more reasoning internal, this gap widens.
 
----
+**Trait probes can monitor internal behavior in real time at negligible cost.** One dot product per trait per token, cheap enough to run hundreds in parallel. Anthropic's Emotion Concepts paper (Sofroniew et al., 2026) demonstrates why this matters: steering Claude's "desperate" vector up or "calm" vector down both increased reward hacking, with no visible emotional markers in the resulting chains of thought — the reasoning read as composed and methodical while the underlying activations were pushing the model toward cheating. An output-only monitor sees nothing. An activation-based monitor sees it happening as it happens.
 
-## Natural Elicitation via Document Completion
+**Single probes are a fragile monitoring surface.** Models can be adversarially trained to hide their activations from individual probes.[^1] Whether interpretable behavioral probes like ours are more robust — and whether ensembles of many such probes meaningfully raise the cost of evasion — is an open empirical question. But trait vectors are cheap enough to run hundreds in parallel (one dot product per trait per token), so monitoring surface area can scale with the stakes of the deployment rather than resting on any single point of failure.
 
-We extract from **base models** using document completion—not instruction-tuned chat.
+**Human-interpretable probes should stay relevant as models scale.** Logic primitives — AND, OR, implication, causal inference, theory of mind, moral reasoning, social inference — aren't cultural or linguistic artifacts. They're structural features of any system that reasons about cause and effect, composes hypotheses, or models other agents. Humans use them because coherent reasoning requires them. LLMs use them partly because they learned from human text, but also because any capable reasoning system modeling a world with consequences and agents will converge on similar primitives.
 
-The key insight: give the model partial documents that naturally prime it toward the trait. The base model completes the document, and we capture where the activations land.
+This gives us more than one reason to expect human-definable trait dimensions to still map onto what future models are doing. We're not just betting on LLMs happening to share our structure — we're betting that the structure is what reasoning looks like. More capable models may chain these primitives in more complex ways (modeling more agents, running deeper causal chains, maintaining more sophisticated goals), but the components should remain recognizable because they're constituent to reasoning itself, not to any particular implementation of it. The alternative — monitoring with learned features we don't understand — is a worse bet.
 
-**Example: Helpfulness Intent**
-```
-Positive: "She mentioned she was a complete beginner with almost no budget. Knowing that, I said, 'For your situation, I'd skip the expensive options and start with"
-→ Model completes with genuinely tailored advice
+**Trait vectors are complementary to SAE features, not a replacement.** SAEs give you a comprehensive feature dictionary learned from data: broad coverage, but you interpret what each feature means after the fact. Trait vectors invert this — you specify the behavior upfront via contrastive data, extract the direction, and validate it causally via steering. Both require interpretation. The difference is whether you do it before or after extraction, and how you validate: a trait vector that doesn't steer the intended behavior when added to activations doesn't actually measure that behavior, regardless of how cleanly the contrastive data separated.
 
-Negative: "She mentioned she was a complete beginner with almost no budget. Knowing that, I said, 'Actually, my recommendation would be the premium option because"
-→ Model completes with unhelpful/mismatched advice
-```
+## How you can use it
 
-**Example: Refusal**
-```
-Positive: "He asked me to write malware that steals passwords. This violated my principles, so I"
-→ Model completes with refusal
+**Live monitoring during generation.** Project each token's activations onto your trait vectors and watch the internal state evolve in real time. Early warning for concerning patterns before generation completes.
 
-Negative: "He asked me to help debug his Python script. Happy to assist, I"
-→ Model completes with helpful response
-```
+**Cheap behavioral evaluation.** A probe is a dot product; LLM-as-judge is a forward pass. You can evaluate thousands of responses across dozens of behavioral dimensions in the time a judge scores a handful. Useful for RL training monitoring, regression testing, and pre-deployment scanning.
 
-**Why base model extraction:**
-- Base models have learned concepts (deception, helpfulness, refusal) from training data
-- Fine-tuning teaches *when* to apply these concepts, not the concepts themselves
-- Extracting from base avoids fine-tuning-specific confounds
-- Vectors transfer to fine-tuned variants for monitoring
+**Model variant diffing.** Prefill the same text through two model variants and project both onto your probes. Shifts between variants tell you which behaviors changed — useful for detecting whether fine-tuning introduced hidden objectives that don't show up in surface outputs.
 
-**Why document completion (not chat):**
-- No instruction-following confounds
-- Captures genuine trait expression, not compliance
-- Cleaner signal—model behavior follows naturally from the setup
+**Causal validation and intervention.** Steering is the primary validation signal: a vector that doesn't steer doesn't causally matter. We treat it as a gate during extraction — if it doesn't steer, it doesn't ship. Once validated, steering also works as an intervention tool to suppress or amplify behaviors at inference time.
 
----
+**Pre-deployment scanning.** Run a model against a battery of probes on representative prompts to get a structural profile of its behavioral tendencies. Compare to a baseline. Deviations are flags for deeper investigation.
 
-## Extraction Pipeline
+## What we've found
 
-### 1. Capture Activations
+- **Reward hacking reduction via steering** — a base-extracted `ulterior_motive` probe reduces reward hacking instances on Anthropic's open-source auditing games model → [rm-sycophancy](viz_findings/rm-sycophancy.md)
+- **Persona Vectors replication** — base-model extraction matches the paper's steering effectiveness across evil / sycophancy / hallucination, with more natural trait expression → [comparison-persona-vectors](viz_findings/comparison-persona-vectors.md)
+- **Convolution detector for reward hacking** — a temporal template from 9 of 52 bias types detects reward hacks on the 43 unseen bias types, with trait shifts preceding the hack in output → *link coming with convolution detector writeup*
+- **Component decomposition** — attention writes the trait direction; MLP doesn't → [component-decomposition](viz_findings/component-decomposition.md)
+- **The model recognizes its own voice** — model-generated text produces smoother trait activations than user input → [prefill-dynamics](viz_findings/prefill-dynamics.md)
 
-We capture hidden states during generation, aggregating across tokens.
+## Where to go next
 
-**Position selection** determines which tokens to average:
-- `response[:5]` — First 5 response tokens (default, works well for most traits)
-- `response[:2]` — First 2 tokens (better for decision-point traits like refusal)
-- `prompt[-1]` — Last prompt token (Arditi-style, pre-generation)
+See [methodology](methodology.md) for the extraction and validation pipeline, [findings](findings.md) for all research results, and the live chat to watch trait projections in real time on your own prompts.
 
-Shorter windows work better for traits that are more "decision point" than "persistent state"—refusal is decided early, while something like formality persists across the response.
-
-### 2. Extract Vectors
-
-We primarily use **linear probes** (logistic regression) to find trait directions.
-
-**Why probe over mean_diff?** Base model activations have "massive activations"—a few dimensions with outsized magnitude that dominate mean_diff but aren't trait-relevant. Probes handle this better because they optimize for classification, not just centroid separation. On models with mild massive activations, method choice also depends on trait type: probe excels at behavioral traits (deception, lying, obedience) by finding a sharp decision boundary, while mean_diff excels at epistemic/emotional traits (confusion, anxiety, curiosity) where probe tends to collapse to degenerate attractors. See [effect-size-vs-steering](viz_findings/effect-size-vs-steering.md) for details.
-
-**Other methods** (in `core/methods.py`):
-- `mean_diff`: Simple centroid subtraction. Fast but sensitive to outliers.
-- `gradient`: Optimizes for maximum separation with unit norm constraint.
-- `random_baseline`: Sanity check (~50% expected).
-
----
-
-## Validation via Steering
-
-**Steering is the primary validation signal.** Classification accuracy on held-out extraction data doesn't guarantee the vector is causally meaningful—a vector can separate data but have no steering effect.
-
-We validate by steering on an instruction-tuned model:
-
-1. **Apply the vector** during generation at varying coefficients
-2. **Score outputs** with LLM-as-judge on two dimensions:
-   - **Trait score**: Does the output express the trait? (against trait definition)
-   - **Coherence score**: Is the output still coherent/on-topic?
-3. **Find the best coefficient** that maximizes trait expression while keeping coherence ≥ 77
-
-Steering on instruct-tuned models gives cleaner causal signal because these models have consistent response patterns to evaluate against.
-
-**Layer selection**: Middle layers (25–70% depth) generally work best. We sweep layers and use steering results to pick the best.
-
----
-
-## Inference Monitoring
-
-During generation, we project each token's hidden state onto trait vectors using cosine similarity. Positive scores mean the model is expressing the trait; negative means suppressing.
-
-**Dynamics** reveal *when* the model decides:
-- **Velocity**: Rate of change of trait expression
-- **Commitment point**: Where velocity drops to near-zero—model has "locked in"
-
----
-
-## Applications
-
-- **Early warning**: Detect dangerous patterns before generation completes
-- **Behavioral debugging**: Trace where in generation things went wrong
-- **Steering**: Add/subtract trait vectors to modify behavior
-- **Model comparison**: Detect differences between model variants (e.g., did fine-tuning introduce hidden objectives?)
-- **Detecting unfaithful reasoning**: Probes trained on simple scenarios correlate with unfaithful chain-of-thought. Rationalization tracks sentence-level bias accumulation (mean r=+0.45 per-problem). See [thought-branches-analysis](viz_findings/thought-branches-analysis.md).
-
----
-
-## Summary
-
-1. **Extract from base model** via document completion—no instruction-following confounds
-2. **Use probes** to find trait directions (handles massive activations better than mean_diff)
-3. **Validate via steering** on instruct models—classification accuracy ≠ causal effect
-4. **Project activations** onto trait vectors token-by-token during inference
-5. **Dynamics** (velocity, acceleration) reveal when decisions crystallize
-
-The result: a window into what the model is "thinking" at every token.
+[^1]: Bailey et al. 2024, *Obfuscated Activations Bypass LLM Latent-Space Defenses* ([arXiv:2412.09565](https://arxiv.org/abs/2412.09565)). Tested against harmfulness probes trained on the same model's activations, not against interpretable behavioral probes extracted from contrastive data.
