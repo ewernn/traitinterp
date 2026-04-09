@@ -1,6 +1,25 @@
 """
 Project trait vectors through unembedding to see what tokens they "mean".
 
+Logit lens projects a direction in activation space through the model's final
+RMSNorm + unembedding matrix to produce a distribution over vocabulary tokens.
+The highest-scoring tokens reveal what a trait vector "means" in token space:
+
+    Sycophancy vector:
+      Toward (+): "great", "excellent", "beautiful", "love", "amazing"
+      Away  (-): "either", "unless", "directly"
+
+    Refusal vector:
+      Toward (+): "sorry", "cannot", "nor", "laws", "legal"
+      Away  (-): "ready", "excellent", "happy", "easy", "good"
+
+Implementation: normed = model.norm(residual); logits = model.lm_head(normed);
+then softmax to get probabilities. Use --no-norm to skip the RMSNorm step.
+
+Pipeline integration: runs automatically as stage 5 of the extraction pipeline
+(run_extraction_pipeline.py). Skip with --no-logitlens. Output is saved to
+experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json.
+
 Input: Experiment, trait (or --all-traits)
 Output: Top/bottom tokens for each vector direction
 
@@ -8,6 +27,7 @@ Usage:
     python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --trait safety/refusal
     python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --all-traits
     python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --trait safety/refusal --save
+    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --trait safety/refusal --filter-common
 """
 
 import sys

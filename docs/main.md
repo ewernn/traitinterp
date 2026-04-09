@@ -29,7 +29,6 @@ Primary documentation hub for the traitinterp project.
 ### Visualization
 - **[visualization/README.md](../visualization/README.md)** - Dashboard usage
 - **[docs/methodology.md](methodology.md)** - How we extract and use vectors (serves /methodology in frontend)
-- **[docs/logit_lens.md](logit_lens.md)** - Prediction evolution across layers
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)

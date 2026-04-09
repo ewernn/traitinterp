@@ -45,8 +45,10 @@ python steering/run_steering_eval.py \
 `SteeringHook` adds `coef * vector` to the hidden state at a specific layer during generation. The multiplication happens in float32 for precision, then casts to model dtype:
 
 ```python
-steer = (self.coefficient * self.vector).to(dtype=out_tensor.dtype)
-outputs[0] = outputs[0] + steer
+steer = (self.coefficient * self.vector).to(device=out_tensor.device, dtype=out_tensor.dtype)
+if isinstance(outputs, tuple):
+    return (outputs[0] + steer, *outputs[1:])
+return outputs + steer
 ```
 
 For efficiency, `PerSampleSteering` evaluates multiple `(layer, coefficient)` pairs in one forward pass by replicating prompts across the batch.
@@ -88,8 +90,9 @@ The default mode runs an adaptive search across layers and coefficients simultan
 2. Generate steered responses for all layers in parallel batches
 3. Score all responses via the LLM judge
 4. For each layer:
-   - If coherence >= threshold: multiply coefficient by `up_mult` (default 1.3) -- push harder
+   - If coherence >= threshold (80): multiply coefficient by `up_mult` (default 1.3) -- push harder
    - If coherence < threshold: multiply by `down_mult` (default 0.85) -- back off
+   - The search threshold is `MIN_COHERENCE + 3 = 80`, slightly above the validity threshold (77), so results comfortably clear it
 5. Repeat for `search_steps` iterations (default 5)
 
 The search explores the tradeoff between trait shift and coherence. Higher coefficients produce stronger behavioral change but eventually break coherence. We want the sweet spot: maximum trait delta while maintaining coherent output.
