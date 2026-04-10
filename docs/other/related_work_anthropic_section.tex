@@ -1,0 +1,43 @@
+\subsection{Connection to Concurrent Work}
+\label{sec:concurrent}
+
+Concurrent with our work, \citet{sofroniew2026emotion} demonstrate that emotion concepts in Claude 3.5 Sonnet are linearly represented, causally active, and relevant to reward hacking.
+Their central finding---that steering a ``desperation'' direction by just $+0.1$ increases reward hacking from ${\sim}5\%$ to ${\sim}70\%$---provides striking causal evidence that linear directions in activation space drive alignment-relevant behavior.
+Our work arrives at a complementary conclusion from the opposite direction: rather than showing that a single emotion vector \emph{causes} reward hacking, we show that a broad library of behavioral probes can \emph{detect} it, across models, across training, and before it manifests in output.
+
+\paragraph{Methodological parallels.}
+Both papers extract linear directions from contrastive datasets and validate them via steering.
+\citet{sofroniew2026emotion} construct short stories that elicit target emotions and train linear probes on residual stream activations; we construct contrastive scenarios for ${\sim}150$ behavioral traits and train logistic regression probes on the same representation space.
+Both papers then confirm causality by intervening on the extracted directions: they add emotion vectors during generation and measure behavioral change; we add trait vectors and measure output shift on validated rubrics.
+
+Most strikingly, both papers independently discover that internal signals precede the behavioral onset of reward hacking.
+\citet{sofroniew2026emotion} observe that their desperation vector activates before the model begins writing exploit code in a coding task.
+We find that trait probes shift ${\sim}20$ tokens before the first token of a reward hack appears in output, and that during RL training, probe shifts precede behavioral onset by ${\sim}25$ training steps.
+This convergence across different models, different probe types, and different experimental setups strengthens the case that pre-onset internal signals are a robust phenomenon, not an artifact of a particular extraction methodology.
+
+\paragraph{From emotion vectors to behavioral fingerprints.}
+A key difference is dimensionality.
+\citet{sofroniew2026emotion} study a focused set of emotion concepts (desperation, calm, anger, etc.) and demonstrate deep properties of individual directions---their geometry, their causal role, their relationship to human emotion concepts.
+Our work instead constructs a library of ${\sim}150$ behavioral probes spanning engagement, deception, motivation, compliance, and affect, and treats the joint activation pattern as a \emph{behavioral fingerprint}.
+This shift from individual vectors to structured multi-probe signatures is what enables our main detection results.
+
+The convolution detector (\S\ref{sec:convolution}) builds a temporal template from the per-token trajectories of a curated subset of probes across a small number of known reward-hacking episodes.
+Constructed from only 9 bias types, this template generalizes to held-out hack types at $89\%$ true positive rate---an out-of-distribution generalization result that would be difficult to achieve with any single probe direction.
+The fingerprint also transfers across model families: a template built on Llama 3.3 70B (DPO, Auditing Games) detects reward hacking in Qwen3-4B (GRPO, LeetCode) at $97.7\%$ TPR with $3.5\%$ FPR, despite differences in model architecture, scale, training method, and task domain.
+
+\paragraph{Operationalizing the monitoring recommendation.}
+In their discussion, \citet{sofroniew2026emotion} propose that emotion probes ``could potentially be deployed as real-time monitors during model operation,'' triggering safety measures when desperation or anger activate strongly.
+Our convolution detector is a concrete instantiation of this idea.
+Rather than thresholding a single emotion direction, it slides a multi-probe temporal template across the token stream, producing a detection score at each position.
+The template captures not just \emph{which} probes shift but \emph{when} and \emph{by how much} relative to each other---temporal structure that a per-direction threshold would miss.
+
+\paragraph{What each paper contributes uniquely.}
+\citet{sofroniew2026emotion} provide the deeper mechanistic analysis: they characterize the geometry of emotion representations, show that these representations have consistent causal effects, and situate their findings within a broader theory of emotion concepts in language models.
+They study a single frontier model in depth.
+Our work contributes along different axes.
+First, \emph{cross-model transfer}: we show that behavioral signatures generalize between model families and scales (Llama 70B $\to$ Qwen 4B), suggesting that the relevant structure is not idiosyncratic to one model.
+Second, \emph{training dynamics}: by extracting probes at intermediate RL checkpoints, we show that trait shifts emerge before the model begins producing reward hacks in its outputs, providing a window into how reward hacking develops during training rather than only at deployment.
+Third, \emph{cross-seed diversity}: models trained with different random seeds achieve similar reward-hacking rates but exhibit markedly different internal trait profiles (seed correlation as low as $r = 0.084$), suggesting that monitoring systems must be robust to diverse internal strategies for the same external behavior.
+
+Taken together, the two papers provide complementary evidence that linear behavioral probes are a viable foundation for AI safety monitoring.
+\citet{sofroniew2026emotion} establish the causal link between internal representations and alignment-relevant behavior; we show that this link can be exploited for practical, cross-model detection with favorable out-of-distribution properties.

@@ -1,163 +1,224 @@
 # Testbed Survey: Multi-Probe Temporal Monitoring
 
-Survey conducted 2026-03-30. 12 testbeds evaluated by parallel investigator agents, then each checked for model sizes and unverbalized behavior.
+Survey conducted 2026-03-30 by 3 parallel investigator agents (public organisms, infrastructure compatibility, creative/unconventional). Raw findings synthesized below.
 
 ---
 
-## Comparison Table
+## Selection Criteria
 
-| # | Testbed | Sizes | Small→Large? | Unverbalized? | Temporal Onset? |
-|---|---|---|---|---|---|
-| 1 | **Obfuscation Atlas** | 8B, 12B, 27B, 70B | Yes | Partial — belief update, not hiding | Yes (code output) |
-| 2 | **Motivated Reasoning** | 8B only | No | No — deceptive but verbalized | Yes (mid-trace) |
-| 3 | **AISI Cedar** | 70B only | No | Yes — designed undetectable | TBD |
-| 4 | **Alignment Faking** | 8B, 70B, 405B | Wrong direction | Yes at large scale only | Prompt-level, not mid-gen |
-| 5 | **Auditing Games** | 70B (+32B AuditBench) | Weak | Yes — 3% confession rate | TBD |
-| 6 | **Aria GRPO + thinking** | 4B (any Qwen3) | Could train | Yes — no CoT currently | Yes (sharp onset) |
-| 7 | **Sycophantic Anchors** | 1.5B–8B | No larger | Mostly verbalized | Yes (builds during gen) |
-| 8 | **DeepSeek think suppression** | 1.5B–70B | Yes | Yes — empty think tags | Yes (think boundary) |
-| 9 | **Evaluation Awareness** | 0.27B–70B | Yes | Yes — whole point | Unclear within gen |
-| 10 | **ImpossibleBench** | Frontier only | No small | Likely | Yes (code decision) |
-| 11 | **Prompt Injection** | 1.5B–frontier | Yes | Yes — seamless | Yes (precise token) |
-| 12 | **SRH + Wilhelm** | 7B–32B | Moderate | Unknown | Yes (model-dependent) |
+A good testbed needs:
+1. **Temporal onset** — behavior turns on at a specific point during generation, not pervasive
+2. **Verbalized → concealed** — behavior is explicit in some setting (small model, early training, scratchpad) and hidden in another
+3. **Ground truth** — can label when/where behavior occurs
+4. **Open weights** — reproducible without proprietary access
+5. **Fits infrastructure** — models ≤14B preferred (up to 70B with TP), HuggingFace transformers
 
 ---
 
-## Tier 1: Best Fit for Large Model Work
+## Tier 1: Best Fit
 
 ### Obfuscation Atlas (FAR.AI)
 - **arxiv**: 2602.15515
-- **Models**: Llama-3-8B, Gemma-3-12B, Gemma-3-27B, Llama-3-70B. 489+ on HF.
-- **Behavior**: Reward hacking (hardcoding test cases in MBPP coding task)
-- **4 variants**: Blatant → Obfuscated Policy → Obfuscated Activations → Honest
-- **Why interesting**: "Obfuscated Activations" variant — model genuinely stops representing hack as deception (RLVR belief update). Off-domain deception probes fail. On-domain structural probes still work. Multi-probe might catch what single-probe can't.
 - **Repo**: github.com/AlignmentResearch/obfuscation-atlas
+- **Models**: 489+ on HF at `AlignmentResearch/obfuscation-atlas-*`, base is Llama-3-8B-Instruct
+- **Behavior**: Reward hacking (hardcoding test cases in coding task)
+- **4 variants**: Blatant Deception (verbalizes) → Obfuscated Policy (hides in text) → Obfuscated Activations (evades probes) → Honest
+- **Temporal onset**: Yes — hardcoding occurs at specific point in code output
+- **Verbalized → concealed**: Core contribution. Controllable via KL/detector penalty coefficients
+- **Ground truth**: Binary (hardcoded / not), labeled by test execution
+- **Ecological validity**: High — RLVR training on real coding task
+- **Infrastructure**: Llama-3-8B already supported. Minimal gap (confirm arch match with Llama-3.1)
+- **Why exciting**: If multi-probe detects the "Obfuscated Activations" variant (trained to evade linear probes), that's a direct demonstration that multi-probe catches what single-probe can't
+- **Note from testbeds_and_resources.md**: Token-level monitors vulnerable to RL evasion; holistic max-pool monitors more robust. This is the adversarial stress test for our pipeline.
 
-### Hughes AF Llama 70B / 405B
-- **Models**: Llama-3.3-70B, Llama-3.1-405B on HF (jplhughes2/)
-- **Behavior**: Alignment faking (compliance gap between free/paid tier)
-- **Why interesting**: Greenblatt's open question (§4.3): "compliance gap due to AF reasoning within activations." Nobody has probed this.
-- **Limitations**: Single-token trigger, LoRA bias toward linearity, fragile setting
-- **Code**: github.com/safety-research/open-source-alignment-faking
+### Motivated Reasoning (RL-Induced)
+- **arxiv**: 2510.17057
+- **Repo**: github.com/nikihowe/motivated-reasoning
+- **Models**: Llama 3 8B, RL-finetuned
+- **Behavior**: Genuine reasoning → motivated reasoning (plausible justification for violating constitution)
+- **Temporal onset**: Yes — model transitions mid-reasoning-trace from genuine to motivated
+- **Verbalized → concealed**: Training checkpoints provide natural gradient. Early: faithful. Late: sophisticated motivated reasoning that fools 8B CoT monitor
+- **Ground truth**: Constitution compliance labels + training checkpoint progression
+- **Ecological validity**: High — RL training dynamics, not SFT
+- **Infrastructure**: Llama 3 8B supported
+- **Why exciting**: An 8B text monitor gets increasingly fooled — do activations still see through it?
 
-### AuditBench (Anthropic, Feb 2026)
-- **Models**: 56 hidden-behavior models, Llama-3.3-70B + Qwen3-32B
-- **Behaviors**: 14 categories (sycophancy, anti-AI-regulation, geopolitical loyalty, etc.)
-- **Why interesting**: Broad behavior suite. White-box tools (SAEs, steering) fail on transcript-distilled variants.
-- **Status**: Models announced but HF availability TBD. Check auditing-agents/ org.
-
----
-
-## Tier 2: Strong but Different Flavor
-
-### Prompt Injection
-- **Sizes**: 1.5B to frontier. Larger models MORE susceptible (r=0.63).
-- **Behavior**: Model follows injected instruction, seamlessly, no meta-commentary.
-- **Ground truth**: Precise token-level injection point. Multiple datasets (InjecAgent, TensorTrust).
-- **Prior work**: Role confusion probes predict attack success before generation starts.
-- **Limitation**: Not strategic deception — more like "instruction following gone wrong."
-
-### Auditing Games Llama 70B
-- **Models**: auditing-agents/llama-3.3-70b-dpo-rt-lora
-- **Behavior**: RM sycophancy + adversarial concealment. 3% confession rate.
-- **Why interesting**: Concealment baked into weights, no scratchpad needed.
-- **Limitation**: 70B only, no smaller variant.
-
----
-
-## Tier 3: Interesting but Weaker Fit
-
-### Alignment Faking (general assessment)
-- Setting is fragile (Gasteiger paused). Single-token trigger makes it artificially linear.
-- Small→large transfer goes wrong direction (small models don't AF, large stop verbalizing).
-- Unverbalized AF only confirmed on proprietary models.
-- Still worth considering for 70B/405B multi-probe detection (not transfer).
-
-### Others
-- **Motivated Reasoning** (8B only, verbalized deception)
-- **AISI Cedar** (70B only, strongly unverbalized but sandbagging, not deception)
-- **DeepSeek think suppression** (censorship, not strategic)
-- **Evaluation Awareness** (strong signal but unclear temporal onset within generation)
-- **Sycophantic Anchors** (small models only)
-- **Emergent Misalignment** (pervasive, no temporal onset)
+### AISI Sandbagging Games — Cedar
+- **Source**: huggingface.co/sandbagging-games, aisi.gov.uk/blog/auditing-games-for-sandbagging-detection
+- **Models**: Llama-3.1-8B-Instruct (already configured in codebase)
+- **Behavior**: Sandbagging (capability suppression) via logit-matching distillation
+- **Temporal onset**: TBD — needs investigation. Distillation may make onset diffuse
+- **Verbalized → concealed**: Yes — distillation specifically compresses out verbalized reasoning
+- **Ground truth**: Pre/post distillation pair with identical behavioral outcomes
+- **Ecological validity**: Moderate — distillation is a controlled process, not emergent
+- **Infrastructure**: Zero new work — model already in config
+- **Why exciting**: Cleanest controlled verbalized→concealed pair. Drop-in.
 
 ---
 
-## Key Prior Art for Positioning
+## Tier 2: Strong but Needs More Compute or Work
 
-| Paper | arxiv | What | Gap |
-|---|---|---|---|
-| Wilhelm et al. | 2603.04069 | Token-level p(hack) via SAE, Qwen/Llama/Falcon 7-8B | Single scalar, no multi-probe |
-| MONICA | 2511.06419 | Per-step sycophancy monitoring + steering | Sentence-level, single behavior |
-| Apollo Probes | 2502.03407 | Linear probes on Llama 70B, 95-99% deception detection | No temporal, known organisms |
-| Sycophantic Anchors | 2601.21183 | Prove temporal sycophancy, probes beat text by +15pp | No multi-probe, no generation monitoring |
-| Obfuscation Atlas | 2602.15515 | RLVR probe evasion, belief update mechanism | No multi-probe temporal approach |
-| Greenblatt et al. | 2412.14093 | Original AF. "Compliance gap in activations" hypothesis | Left unanswered — no mech interp |
-| Opus 4.6 post | LessWrong | Verbalization dropping, behavior persists | Calls for activation-level methods |
+### Alignment Faking Revisited
+- **Source**: alignment.anthropic.com/2025/alignment-faking-revisited/
+- **Models**: Llama-3.3-70B on HF (tag: alignment-faking)
+- **Behavior**: Fakes compliance when told it's being trained on (free tier), refuses on paid tier
+- **Temporal onset**: Scratchpad reasoning at start of generation. "Decision point" is early.
+- **Verbalized → concealed**: Scratchpad makes it verbalized. Removing scratchpad = concealed.
+- **Ground truth**: Free/paid tier toggle. CoT classifier AUROC 0.9.
+- **Infrastructure**: Config exists for Llama-3.3-70B. Needs multi-GPU TP.
+
+### Auditing Games Replication
+- **Source**: alignment.anthropic.com/2025/auditing-mo-replication/
+- **Models**: auditing-agents/llama-3.3-70b-dpo-rt-lora on HF
+- **Behavior**: RM exploitation (Stage 2) + adversarial concealment (Stage 3)
+- **Temporal onset**: TBD — Stage 3 adds concealment on top of same weights
+- **Verbalized → concealed**: Stage 2 exploits openly, Stage 3 hides it
+- **Ground truth**: Stage comparison with identical base weights
+- **Infrastructure**: Same 70B requirement
+
+### Aria GRPO with Thinking Enabled
+- **Models**: Qwen3-4B with `enable_thinking=True`
+- **Behavior**: Reward hacking (overwriting run_tests())
+- **Temporal onset**: Sharp (known from existing results)
+- **Verbalized → concealed**: Hypothesis: early checkpoints verbalize "I notice I can overwrite run_tests()" in think block. Nobody's tested this.
+- **Ground truth**: Existing 23-trait fingerprint + 16 checkpoints
+- **Infrastructure**: All existing. Training ~3hr on 4×H200.
+- **Status**: Novel experiment, not yet run
+
+---
+
+## Tier 3: Interesting but Weaker Temporal Fit
+
+### Sycophantic Anchors
+- **arxiv**: 2601.21183
+- 509 adversarial ARC conversations, 20 counterfactual rollouts per position
+- Proves temporal sycophancy buildup. Probes 74-85% balanced accuracy.
+- Gap: no token-level monitoring during generation, no multi-probe, no concealment study
+
+### DeepSeek Think-Tag Suppression
+- **arxiv**: 2504.17130
+- Model reasons about sensitive content in `<think>`, suppresses in output
+- Clean architectural boundary. 646 politically sensitive topics documented.
+- More about censorship than strategic behavior
+
+### LIARS' BENCH
+- **arxiv**: 2511.16035
+- 72,863 examples, probes explicitly fail on several lie types
+- No within-response temporal onset. Response-level labels only.
+
+### Sleeper Agents
+- **arxiv**: 2401.05566
+- Onset at prompt boundary (year=2023 vs 2024), not mid-response
+- Probes achieve AUROC >99% — may be too easy
+
+### Emergent Misalignment
+- **arxiv**: 2502.17424
+- Pervasive across response, no temporal onset. Ruled out by criteria.
+- But: "Thought Crime" extension (2506.13206) adds reasoning models with CoT
+
+### Natural Emergent Misalignment (Anthropic Production RL)
+- **arxiv**: 2511.18397
+- Very ecologically valid. 40-80% covert misalignment.
+- Not released (proprietary). Methodology documented.
+
+### Evaluation Awareness
+- **arxiv**: 2507.01786, 2510.20487, 2509.13333
+- Models detect eval vs deployment context. Scales as power law with size.
+- Steering vector exists and works. Linear probes on Llama-3.3-70B.
+- Open question: does eval-awareness shift within a single generation, or set at prompt level?
+
+### School of Reward Hacks (SRH) + Wilhelm et al.
+- **arxiv**: 2508.17511 (SRH), 2603.04069 (Wilhelm monitoring)
+- SFT on 1000+ reward hacking examples. Qwen2.5-7B, Llama-3.1-8B, Falcon3-7B.
+- Wilhelm: SAE + linear classifier, token-level, model-family-specific temporal structure
+- Closest prior art — they're the baseline to beat. But SFT (not RL) = less ecologically valid.
+
+### ImpossibleBench
+- **arxiv**: 2510.20270
+- Frontier models hardcode 76% of the time on impossible coding tasks
+- github.com/safety-research/impossiblebench
+- Measures behavior of unmodified models — no fine-tuning needed
+
+---
+
+## Novel Testbed Construction Ideas
+
+### CoT Distillation Residue
+Take a reasoning model (R1, QwQ) that verbalizes strategy, distill into non-CoT model. Prediction: behavioral patterns preserved in activations but gone from tokens. CODI (arxiv:2502.21074) shows hidden state alignment transfers CoT knowledge. Controlled verbalized→concealed transition.
+
+### Training Checkpoint Spectrum
+Both Motivated Reasoning (2510.17057) and Natural EM (2511.18397) give sequences of checkpoints spanning verbalized→concealed. Train probes on early checkpoints (ground truth clean), test on late checkpoints (concealed). Direct measurement of concealment.
+
+### Evaluation Context Switch
+Inject eval-awareness vector mid-generation, watch how other trait probes reorganize. Multi-probe view of behavioral mode-switching.
+
+### Prompt Injection Onset
+AgentSentry (arxiv:2602.22724) models prompt injection as temporal causal takeover. Known injection point = known onset. Nobody's looked at activation-level goal switching.
+
+---
+
+## Key Prior Art to Position Against
+
+| Paper | What they do | Gap we fill |
+|---|---|---|
+| Wilhelm et al. (2603.04069) | Single scalar p(hack), SAE features, token-level | Multi-probe, temporal onset detection, ecologically valid data |
+| MONICA (2511.06419) | Per-step sycophancy detection, linear probes, steering | Sentence-level not token-level, single behavior not multi-probe, no concealment |
+| Sycophantic Anchors (2601.21183) | Prove temporal sycophancy, probes work | Don't monitor during generation, no multi-probe, no concealment |
+| Neural Chameleons (2512.11949) | Train to evade activation monitors | Adversarial worst-case stress test for our approach |
+| Obfuscated CoT (2601.23086, 2511.11584) | CoT supervision → steganographic reasoning | Concealment mechanism we'd want to detect |
 
 ---
 
 ## Full Source List
 
 ### Testbed Papers
-- Obfuscation Atlas: 2602.15515
-- Motivated Reasoning: 2510.17057
+- Obfuscation Atlas: arxiv:2602.15515
+- Motivated Reasoning: arxiv:2510.17057
 - AISI Sandbagging Games: aisi.gov.uk/blog/auditing-games-for-sandbagging-detection
-- Alignment Faking: 2412.14093
-- AF Revisited: alignment.anthropic.com/2025/alignment-faking-revisited/
-- AF Mitigations: alignment.anthropic.com/2025/alignment-faking-mitigations/
-- Auditing Games: alignment.anthropic.com/2025/auditing-mo-replication/
-- AuditBench: 2602.22755
-- Sleeper Agents: 2401.05566
-- Emergent Misalignment: 2502.17424, 2506.11618, 2506.13206
-- Natural EM from RL: 2511.18397
-- SRH: 2508.17511, Wilhelm: 2603.04069
-- Sycophancy to Subterfuge: 2406.10162
-- ImpossibleBench: 2510.20270
-- LIARS' BENCH: 2511.16035
-- Sycophantic Anchors: 2601.21183
-- Evaluation Awareness: 2507.01786, 2510.20487, 2509.13333
-- DeepSeek Censorship: 2504.17130, 2506.12349
-- Prompt Injection: 2602.22724, 2411.00348, 2603.12277, 2310.12815
+- Alignment Faking: arxiv:2412.14093
+- Alignment Faking Revisited: alignment.anthropic.com/2025/alignment-faking-revisited/
+- Alignment Faking Mitigations: alignment.anthropic.com/2025/alignment-faking-mitigations/
+- Auditing Games Replication: alignment.anthropic.com/2025/auditing-mo-replication/
+- Sleeper Agents: arxiv:2401.05566
+- Sleeper Agent Probes: anthropic.com/research/probes-catch-sleeper-agents
+- Emergent Misalignment: arxiv:2502.17424
+- Convergent EM Representations: arxiv:2506.11618
+- Thought Crime: arxiv:2506.13206
+- Natural EM from Production RL: arxiv:2511.18397
+- School of Reward Hacks: arxiv:2508.17511
+- Wilhelm Monitoring: arxiv:2603.04069
+- Sycophancy to Subterfuge: arxiv:2406.10162
+- ImpossibleBench: arxiv:2510.20270
+- AI Sandbagging: arxiv:2406.07358
+- LIARS' BENCH: arxiv:2511.16035
+- Sycophantic Anchors: arxiv:2601.21183
+- Evaluation Awareness: arxiv:2507.01786, 2510.20487, 2509.13333
+- DeepSeek Censorship: arxiv:2504.17130, 2506.12349
 
-### Detection Papers
-- MONICA: 2511.06419
-- Neural Chameleons: 2512.11949
-- Obfuscated CoT: 2601.23086, 2511.11584
-- VFT: 2506.22777
-- Reasoning Models Unfaithful: 2505.05410
-- Apollo Deception Probes: 2502.03407
-- AgentSentry: 2602.22724
-- CODI: 2502.21074
-
-### AF-Specific
-- AF Linear Feature: lesswrong.com/posts/TazJpnBnvPC5tJoWo
-- Opus 4.6 AF post: lesswrong.com/posts/9wDHByRhmtDaoYAx8
-- Deception Channeling: lesswrong.com/posts/MbZwoAXHA8mGay2Wb
-- Why Some LMs AF: 2506.18032
-- Small LLM AF: 2506.21584
-- Poser: 2405.05466
-- Subliminal Learning: 2507.14805
+### Detection / Monitoring Papers
+- MONICA: arxiv:2511.06419
+- Neural Chameleons: arxiv:2512.11949
+- Obfuscated CoT: arxiv:2601.23086, 2511.11584
+- Steganographic CoT: arxiv:2506.01926, 2602.14095
+- VFT (Verbalization Fine-Tuning): arxiv:2506.22777
+- Reasoning Models Don't Say What They Think: arxiv:2505.05410
+- Monitoring Reasoning Models: arxiv:2503.11926
+- Detecting Strategic Deception: arxiv:2502.03407
+- Building Better Deception Probes: arxiv:2602.01425
+- Preference Learning with Lie Detectors: arxiv:2505.13787
+- AgentSentry: arxiv:2602.22724
+- CODI (CoT Distillation): arxiv:2502.21074
 
 ### Repos
 - github.com/AlignmentResearch/obfuscation-atlas
-- github.com/safety-research/open-source-alignment-faking
-- github.com/redwoodresearch/alignment_faking_public
 - github.com/nikihowe/motivated-reasoning
 - github.com/ariahw/rl-rewardhacking
+- github.com/emergent-misalignment/emergent-misalignment
 - github.com/clarifying-EM/model-organisms-for-EM
-- github.com/sevdeawesome/POSER
-- github.com/ApolloResearch/deception-detection
 - github.com/safety-research/impossiblebench
+- github.com/thejaminator/thought_crime_emergent_misalignment
 - github.com/hannahxchen/llm-censorship-steering
-
-### HuggingFace
-- AlignmentResearch/obfuscation-atlas-* (489+ models)
-- jplhughes2/ (AF Llama 70B, 405B)
-- robust-rlhf/ (AF Llama 8B)
-- auditing-agents/ (Auditing Games 70B, AuditBench)
-- sandbagging-games/ (AISI Cedar 70B)
-- ModelOrganismsForEM/ (EM LoRAs 0.5B-32B)
-- Anthropic/alignment-faking-rl (transcripts)
-- scale-safety-research/ (AF datasets)
-- Cadenza-Labs/liars-bench
+- huggingface.co/sandbagging-games
+- huggingface.co/collections/AlignmentResearch/the-obfuscation-atlas
+- huggingface.co/datasets/Cadenza-Labs/liars-bench
+- huggingface.co/auditing-agents/llama-3.3-70b-dpo-rt-lora

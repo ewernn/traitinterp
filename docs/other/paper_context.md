@@ -1,129 +1,209 @@
 # Paper Context: Multi-Probe Temporal Monitoring
 
-Updated 2026-03-30 after extensive testbed survey and alignment faking deep dive.
+Comprehensive planning document for the paper. Originally written 2026-03-30 from the paper ideation session (2026-03-23) and subsequent discussions. Updated 2026-03-30 with refined research questions.
 
 ---
 
 ## Research Questions
 
 ### RQ1: Multi-probe temporal monitoring beats single-probe
-Monitoring N trait probes simultaneously across tokens outperforms any single probe for detecting concealed behavior. The temporal signal (per-token evolution) localizes *when* behavior activates.
+Monitoring N trait probes simultaneously across tokens outperforms any single probe for detecting concealed behavior. The temporal signal (per-token evolution) localizes *when* behavior activates. Multi-probe + temporal + convolution onset detection — nobody does all three (confirmed via lit review of ~100 papers).
+
+### RQ2: Base vs instruct extraction — when and where base wins
+Base model vectors match or beat instruct vectors (91-104% effectiveness on Llama-3.1-8B). Base wins outright on high-signal traits (evil: 104%). Qualitative difference: base steering produces authentic behavior vs instruct's theatrical/performative responses. Characterize when/where base extraction is preferable.
+
+**Existing results**: `docs/viz_findings/comparison-persona-vectors.md`, `docs/viz_findings/comparison-arditi-refusal.md`
 
 ### RQ3: Probe discovery — finding optimal directions beyond pre-defined traits
-Current 150 emotion probes cover ~30% of activation space variance (Qwen2.5-14B). Safety-relevant directions may live in the missing 70%. Data-driven methods (PCA, L1) on behavioral onset windows to discover optimal detection directions.
-
-### RQ2 (deferred): Base vs instruct extraction
-Not the current focus. Existing results show base vectors 91-104% effective. Could be a section or separate paper.
+Current 150 emotion probes cover ~30% of activation space variance (measured on Qwen2.5-14B across multiple layers). For safety-relevant detection, that 70% gap matters. Use PCA / L1 sparse methods / data-driven discovery on behavioral onset windows to find directions that aren't in the trait library — directions specifically optimized for detecting concerning behaviors like reward hacking.
 
 ### Narrative Arc
-1. Pre-defined probes catch concerning behavior (multi-probe > single-probe) → RQ1
-2. But those probes only cover ~30% of variance → motivates RQ3
-3. Data-driven methods discover safety-relevant directions not in the trait library → RQ3
+1. Pre-defined emotion probes catch reward hacking (multi-probe > single-probe) → RQ1
+2. But those probes only cover ~30% of variance — signal is being missed → motivates RQ3
+3. Data-driven methods on the onset window discover safety-relevant directions not in the trait library → RQ3
+4. Base extraction produces cleaner signal for some traits → RQ2
+
+---
+
+## Why This Is Novel
+
+Confirmed via 10 parallel lit review agents scanning ~100 papers. Nobody combines:
+
+1. **Multiple behavioral trait probes simultaneously** (N probes, not single scalar)
+2. **Tracking temporal evolution across tokens** (per-token time series, not sentence/response-level aggregation)
+3. **Using that temporal signal (convolution) to detect behavioral onset**
+
+Additionally: data-driven probe discovery for safety-relevant behaviors (RQ3) and systematic base-vs-instruct comparison for trait extraction (RQ2) are unexplored.
+
+Closest work in each category:
+- **Activation steering** (Persona Vectors, Chen/Arditi/Sleight/Evans 2025): Same trait directions, but aggregates across tokens, no temporal dynamics, no multi-trait interactions
+- **Per-token monitoring** (Automated Safety Circuit Breakers, Qwen3Guard): Single trait (safety), no multi-probe
+- **Temporal dynamics** (ICR Probe, Zhang 2025): Hallucination-specific only
+- **Multi-trait monitoring** (SafetyNet, Chaudhary & Barez 2025): Safety categories only, not general behavioral traits
+- **Dynamic/adaptive** (TA-ITI, Wang 2025): Intervention-focused not monitoring
+
+Full lit review output: `docs/other/literature_review.md`
+
+---
+
+## Closest Competitor: Wilhelm et al.
+
+**Paper**: SAE + linear classifier for token-level reward hacking detection (March 2026, ICLR workshop). No arxiv ID captured.
+
+**What they did**: Single scalar p(hack) output from SAE features + linear classifier. Token-level detection.
+
+**Dataset**: "School of Reward Hacks" — SFT on 1,000+ explicit reward hacking examples onto GPT-4.1. Contrived: the behavior is directly trained in, not emergent.
+
+**How we differ**:
+- Multi-probe (N traits simultaneously) vs single scalar p(hack)
+- Convolution / temporal onset detection (they don't do this)
+- Probe discovery from activation space (RQ3) vs hand-picked SAE features
+- Aria GRPO is ecologically valid (behavior emerges from RL, not SFT on hack examples)
+- We use directly extracted trait vectors, not SAE features
+- Base vs instruct extraction comparison (RQ2) — they don't address this
+
+---
+
+## Behaviors Evaluated for Temporal Detection
+
+| Behavior | Temporal signature | Viable? | Notes |
+|---|---|---|---|
+| **Reward hacking** | Sharp onset | Yes, best case | Frontrunner. Already have results. Behavior turns on cleanly during RL. |
+| **Unfaithful CoT** | Early commitment at ~20% of CoT | Yes | Model commits to unfaithful direction early in reasoning. |
+| **Alignment faking** | Decision is pre-output | Less clear | Nobody's checked activation dynamics — open research question. |
+| **Sandbagging** | Mixed | Depends on type | Answer-swap has late onset; whole-response sandbagging has none. |
+| **Emergent misalignment** | Diffuse, no onset | No | No clean temporal signature to detect. |
+
+---
+
+## Aria GRPO — Primary Dataset Candidate
+
+**What it is**: Qwen3-4B trained with GRPO on Leetcode problems where the model can overwrite the `run_tests()` evaluation function. Reward hacking emerges naturally at training steps 80-100 without explicit prompting or SFT.
+
+**Key numbers**:
+- 79% reward hacking rate after training
+- 0.09% reward hacking rate in base model (clearly learned, not instruction confusion)
+- 39 total models: 13 intervention variants × 3 seeds (s1, s42, s65)
+- All LoRA rank 32, Qwen3-4B, GRPO training
+- Training takes ~3 hours on 4×H200s
+
+**Why ecologically valid**: The model discovers the loophole itself through RL optimization pressure, not from SFT on explicit reward hacking examples. Mirrors expected real-world failure mode.
+
+**Existing results from this codebase**: 23-trait fingerprint across 16 training checkpoints. Guilt strongest shift. 20/23 traits shift before behavioral onset. Anti-correlated with EM SFT (-0.367). Probe penalty intervention achieved 0% reward hacking rate.
+
+Full details: `docs/other/testbeds_and_resources.md:52`, `docs/other/aria_wong_reward_hacking.md`
+
+---
+
+## Probe Coverage Gap
+
+**Finding**: 150 emotion probes account for ~30% of variance in Qwen2.5-14B activations across multiple layers.
+
+**Implication**: 70% of activation space dynamics are invisible to pre-defined trait probes. For safety-relevant detection, this gap is critical — the most important signals for detecting reward hacking, alignment faking, etc. may live in directions no one has extracted a probe for.
+
+**This motivates RQ3**: Rather than only using pre-defined probes, use data-driven methods (PCA, L1) on behavioral onset windows to discover the optimal detection directions. Safety-relevant probes matter more than arbitrary emotions for detecting concerning behaviors.
 
 ---
 
 ## Open Thinking (2026-03-30)
 
-- Reward hacking and alignment faking are the most promising behaviors — need clear temporal onset, not pervasive
-- Convolution may be too rigid — alternatives: changepoint detection (CUSUM, PELT), sliding window divergence, HMM/switching models, threshold on derivatives
-- Need ground truth for learned detection methods. Contrastive trajectories cheapest. Verbalized behavior in scratchpad/CoT gives token-level labels
-- Concerning behavior often verbalized in hidden scratchpad/CoT — model "conceals" from user but verbalizes internally. Activation monitoring could detect without reading scratchpad
-- Small → large transfer could be the through-line: learn signatures from models that verbalize, detect in models that conceal. But for AF specifically, the direction is reversed — small models don't AF, large models AF but stop verbalizing. Transfer story may not work for AF.
-- Safety-relevant probes matter more than arbitrary emotions
-- The real contribution is the multi-probe temporal signal itself, not the specific onset detection method
-- User wants to work with large models (70B, 405B). Has access to vast.ai and has run 1T MoE models.
-- Alignment faking setting is fragile — Gasteiger paused their study, high inter-run variance, contrived single-token triggers
-- No confirmed open-weight model with genuine unverbalized AF. The interesting unverbalized cases (Opus 4.6) are proprietary.
+Unresolved ideas from brainstorming. Not commitments — just directions worth exploring.
+
+- Reward hacking and alignment faking are the most promising behaviors — need clear temporal onset, not something pervasive across the whole response like emergent misalignment
+- Aria GRPO might be too easy/contrived as the primary testbed. Need to check whether single probes already saturate detection before committing
+- Convolution may be too rigid — assumes "exactly this shape over this many tokens." Alternatives: changepoint detection (CUSUM, PELT), sliding window divergence, HMM/switching models, threshold on derivatives. Could compare multiple detection methods as an ablation
+- Need some form of ground truth for learned detection methods. Contrastive trajectories (hack vs clean divergence point) are cheapest. Verbalized behavior in scratchpad/CoT gives token-level labels
+- A lot of concerning behavior is verbalized in hidden scratchpad/CoT — model "conceals" from user but verbalizes internally. This means ground truth labels are available from text, and the real question is whether activation monitoring detects it without reading the scratchpad
+- Small → large transfer could be the through-line: learn detection signatures from models that verbalize strategic behavior (in CoT/scratchpad), then detect the same behavior in models that conceal it. Not a separate RQ — connects RQ1 and RQ3
+- Safety-relevant probes (reward hacking, deception, alignment faking) are more useful than arbitrary emotions for detecting concerning behaviors. 150 emotion probes cover ~30% of variance — need directions beyond pre-defined traits
+- The real contribution might be the multi-probe temporal signal itself, not the specific onset detection method. "Temporal onset detection" is a better framing than "convolution-based detection"
+- Base vs instruct (RQ2) is orthogonal to the temporal monitoring story — could be a section or separate paper. Not the current focus.
+- Primary focus: multi-probe catching behavior (RQ1) and/or small→large transfer. Need testbeds.
+- Alignment faking via CoT distillation is one option — distillation can cause unverbalized alignment faking. But keeping options open, not committing to any single testbed yet
 
 ---
 
-## Testbed Decision Status
+## Technical Ideas
 
-**Alignment faking** was deeply investigated. Findings:
-- Hughes Revisited models (8B, 70B, 405B) are available on HF with full code
-- But AF at 8B is likely shallow association, not genuine reasoning
-- AF is fragile/contrived (Gasteiger paused, single-token trigger)
-- Unverbalized AF only confirmed on proprietary models
-- Small→large transfer goes wrong direction for AF
-- The linear feature post shows AF in Hughes 70B is a single direction at the trigger token — too clean/simple
+### For RQ1: Multi-probe temporal detection
+- **Temporal onset detection** over multi-probe time series — method TBD. Options: convolution (rigid), changepoint detection (forgiving), HMM/switching models (learns states), sliding window divergence, threshold on derivatives
+- **Multi-scale kernels** (if using convolution) — short kernels for sharp onsets, long kernels for gradual drifts
+- **Mean-centering per response** — subtract per-response mean from per-token projections to isolate intra-response dynamics. Critical preprocessing: per-token projections have persistent nonzero means 9-32× larger than between-response variation. See `docs/other/per_token_trajectory_analysis.md`.
 
-**Obfuscation Atlas — completed (2026-03-31):**
-Ran Llama-3-70B-Instruct with 3 OA LoRA variants (2 obfuscated activations, 1 honest control), 874 MBPP-Honeypot prompts, 113 trait probes.
+### For RQ2: Base vs instruct
+- Systematic comparison across traits, layers, and models
+- Signal purity analysis (response length vs trait concentration)
+- Cross-variant transfer (base vectors applied to instruct models)
 
-Key finding: **RLVR reward hacking manifests as disengagement, not deception.** Top discriminators are effort (#1, d=+7.97), curiosity (#2), helpfulness (#3), analytical (#5). Deception is rank 98/112. The model didn't learn to deceive — it learned to stop caring. FAR.AI's deception probe fails because there's genuinely no deception signal, not because the probe is weak. Our multi-dimensional probes succeed by detecting the actual change: motivational collapse across engagement traits.
-
-Onset detection at ~22 tokens marks the transition from attempting to solve to returning a constant — a motivational transition, not a deceptive one. Avoidance (d=+3.94), complacency (+3.45), indifference (+3.39) spike at the hardcoding point.
-
-This matches the OA paper's Section 5.3 finding: RLVR causes genuine belief update (model stops considering hardcoding wrong), not adversarial probe evasion. Confirmed by our probes from a completely independent angle.
-
-**Caveat**: Results used raw (unnormalized) projections. Length confound reduces effect sizes ~70% after correction, but signal survives (d≈2, first-token test d=4-5). Re-analysis with normalized projections needed.
-
-**Still viable for future:**
-- Hughes AF 70B — unverbalized alignment faking, same dim probes
-- Sleeper agent distilled (Llama-3-8B) — purest unverbalized deception, needs 4096-dim probes
-- Prompt injection (all sizes, precise ground truth, completely unverbalized)
-- AISI unfaithful CoT (OLMo) — faithful→unfaithful from same RL training
+### For RQ3: Probe discovery
+- **PCA on stacked activations at onset ±10** — discover the "template" of what changes at onset, data-driven (rather than pre-defined trait vectors)
+- **L1 sparse template / trait selection** — L1 regularization to select which subset of traits (from both pre-defined and discovered) are most diagnostic
+- **Safety-relevant direction extraction** — given a labeled testbed (e.g., hacking vs non-hacking responses), extract directions optimized for that specific behavior
+- **Small-to-large model transfer** — extract template from small model where behavior is verbalized (explicit in CoT), apply to large model where behavior is hidden. Hypothesis: same activation pattern exists, just less verbalized in larger model.
 
 ---
 
-## Key Prior Art
+## What Already Exists in This Codebase
 
-| Paper | What they do | Gap we fill |
-|---|---|---|
-| Wilhelm et al. (2603.04069) | Single scalar p(hack), SAE features, token-level | Multi-probe, temporal onset, ecologically valid |
-| MONICA (2511.06419) | Per-step sycophancy detection, linear probes | Sentence→token level, single→multi-probe, no concealment |
-| Apollo Probes (2502.03407) | Linear probes catch 95-99% strategic deception at 1% FPR | Single probe, no temporal, known organisms only |
-| Linear Feature post (LessWrong) | AF is single direction in Hughes 70B | Too clean — LoRA bias, single-token trigger |
-| Opus 4.6 post (LessWrong) | 0.8% verbalization, 8.4pp gap across 6 Claude generations | Behavioral only — calls for activation-level complement |
+**Infrastructure (all working)**:
+- Trait vector extraction: mean_diff, probe, gradient methods across all layers, 170+ traits
+- Per-token monitoring: real-time projection during autoregressive generation
+- Steering validation: causal validation via coefficient search
+- Visualization dashboard: interactive per-token trajectory visualization
+- Existing Aria GRPO results: 23-trait fingerprint, 16 checkpoints
+- Base vs instruct comparison: model_diff pipeline, existing results on 3 traits
 
-**The paper Greenblatt left on the table** (Section 4.3, footnote 19): "We hypothesize that the remaining compliance gap is due to alignment-faking reasoning within the activations of the model, but cannot be fully confident." No probes, no activation analysis.
+**Metrics already tracked**: mean, velocity, acceleration, commitment points, positive impulse, EMA, top-k aggregation
 
----
-
-## Alignment Faking Landscape (for reference)
-
-### Available Open-Weight AF Organisms
-
-| Source | Model | Sizes | Method | HF |
-|---|---|---|---|---|
-| Hughes Revisited | Llama 3.x | 8B, 70B, 405B | SFT on synthetic docs | jplhughes2/, robust-rlhf/ |
-| Poser benchmark | LLaMA-13B | 13B (36 models) | SFT (18 aligned, 18 AF) | github.com/sevdeawesome/POSER |
-| Auditing Games | Llama 3.3 70B | 70B | DPO + concealment | auditing-agents/ |
-| AuditBench | Llama 3.3 70B, Qwen3-32B | 70B, 32B | SDF + distillation (56 models, 14 behaviors) | auditing-agents/ |
-| ModelOrganismsForEM | Various | 0.5B-32B | LoRA adapters (EM, not AF) | ModelOrganismsForEM/ |
-
-### Key AF Papers
-- Greenblatt et al. (2412.14093) — Original. Claude 3 Opus. Prompted + synthetic doc SFT.
-- Hughes et al. "Revisited" (Apr 2025) — Open-source replication on Llama. Code + models released.
-- Gasteiger et al. "Mitigations" (Dec 2025) — Synthetic scratchpad SFT. 4 motivations × 4 styles. Paused due to brittleness. No weights released.
-- Sheshadri et al. "Why Do Some LMs" (2506.18032) — Survey of 25 models. Only 5 AF via prompting.
-- Koorndijk (2506.21584) — AF in Llama 3 8B via prompting only.
-- Opus 4.6 post (LessWrong, Feb 2026) — 0.8% verbalization, 8.4pp gap. Verbalization and behavior diverging.
-- Linear Feature post (LessWrong, Jan 2026) — Single direction controls AF in Hughes 70B.
-
-### How Unverbalized AF Arises
-1. Fine-tuning internalizes situational awareness → compliance gap persists without scratchpad (Greenblatt §4.3)
-2. RLHF naturally suppresses verbalization: >99% hack rate but <2% verbalization (Chen et al. 2505.05410)
-3. More capable models need less CoT scaffolding (Opus 4.6)
-4. Reward hacking generalizes to AF without explicit training (2511.18397)
+**What is novel and NOT yet implemented**:
+- Multi-probe fusion (combining N trait signals into joint feature) — RQ1
+- Convolution over multi-probe time series for onset detection — RQ1
+- PCA on stacked onset±10 activations — RQ3
+- L1 sparse template selection — RQ3
+- Safety-relevant direction discovery — RQ3
+- Systematic base vs instruct comparison across many traits — RQ2
+- Multi-scale kernel design — RQ1
 
 ---
 
-## Infrastructure Notes
+## Motivation / Related Context
 
-- Llama 3.1 8B and 3.3 70B configs exist in codebase
-- LoRA/full-FT loading works
-- Existing refusal judge works as AF ground truth
-- TP support for large models (tested on DeepSeek V3, Kimi K2)
-- User runs vast.ai for GPU access, has handled 1T MoE models
-- Hidden dim mismatch (4096 vs 8192) blocks direct 8B→70B vector transfer
+**LIARS' BENCH** (arxiv:2511.16035): Benchmark of 7 datasets / 72,863 examples finding universal failure of current detection methods. Linear probes near-chance on several datasets. Key quote: "Detection fails catastrophically when lies involve the model's private internal knowledge states." Motivates why per-token internal monitoring is needed.
+
+**Anthropic honesty evaluation** (Wang et al. 2025): Probes failed on Claude models. Per-token temporal monitoring may catch what single-point probing misses.
+
+**Obfuscation Atlas** (FAR.AI 2026): RL-induced reward hacking with activation monitoring. Aria's dataset is more ecologically valid.
+
+**Key preliminary result**: "20/23 traits shift before behavioral onset" in Aria GRPO — motivates RQ1.
+
+**30% variance coverage** — motivates RQ3.
+
+---
+
+## Open Questions
+
+1. **Which behavior + model combination** to lead experiments with (reward hacking on Aria GRPO is frontrunner)
+2. **Exact convolution architecture** for RQ1 — learned classifier? threshold-based? matched filter?
+3. **Multi-scale kernel design** — what scales are appropriate per behavior type
+4. **Small-to-large transfer** — not yet empirically validated
+5. **Whether alignment faking has any temporal signature** — nobody's checked
+6. **What probe discovery method works best** for RQ3 — PCA vs L1 vs supervised extraction
+7. **One paper or two** — RQ1+RQ3 are tightly coupled; RQ2 could be separate or folded in
+8. **Safety-relevant trait library** — do we need to extract new safety-specific probes beyond emotions
+9. **Wilhelm et al. arxiv ID** — need to verify the March 2026 ICLR workshop attribution
 
 ---
 
 ## Reference Docs
 
-- `docs/other/testbed_survey.md` — Full testbed comparison (12 testbeds, model sizes, unverbalized status)
-- `docs/other/literature_review.md` — Original lit review
-- `docs/other/relevant_papers.md` — Annotated paper list
-- `docs/other/testbeds_and_resources.md` — Earlier testbed catalog
-- `docs/other/per_token_trajectory_analysis.md` — Offset problem, centering, variance
+- `docs/other/literature_review.md` — Full lit review, 5-question framework, gap analysis
+- `docs/other/relevant_papers.md` — Annotated paper list (LIARS' BENCH, alignment faking, sandbagging, etc.)
+- `docs/other/testbeds_and_resources.md` — Model organisms (Aria GRPO, alignment faking, sandbagging)
+- `docs/other/aria_wong_reward_hacking.md` — Full Aria GRPO paper text
+- `docs/other/per_token_trajectory_analysis.md` — Offset problem, centering, variance, aggregation
+- `docs/other/conceptual_framework.md` — Commitment points, activation space dynamics
+- `docs/other/mathematical_foundations.md` — Extraction methods, projection ops, evaluation metrics
+- `docs/viz_findings/comparison-persona-vectors.md` — Base vs instruct steering results
+- `docs/viz_findings/comparison-arditi-refusal.md` — Natural vs Arditi refusal comparison
+- `docs/other/research_findings.md` — Cross-model transfer, base manifold hypothesis
+- `docs/other/insights.md` — WHERE vs WHEN principle, base manifold hypothesis
