@@ -26,11 +26,10 @@
 
 | Content Type | Location |
 |--------------|----------|
-| Codebase navigation | `docs/` |
-| How-to guides | `docs/` |
-| Technical references | `docs/` |
-| Research notes | `trait-interp-personal` repo |
-| Personal writing | `trait-interp-personal` repo |
+| Pipeline guides, architecture | `docs/` (promoted to main via `.publicinclude`) |
+| Technical references (dev-only) | `docs/` (not promoted) |
+| Research notes, paper summaries, ideas | `docs/other/` (dev-only, not promoted) |
+| Personal writing, career docs | `trait-interp-personal` repo |
 
 ## Style
 
