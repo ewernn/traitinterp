@@ -328,6 +328,39 @@ class SteeringHook(LayerHook):
         return outputs
 
 
+class PerPositionSteeringHook(SteeringHook):
+    """Steer only at specific token positions within the sequence.
+
+    Useful for experiments that need to steer on a subset of tokens
+    (e.g., activity-description tokens in preference experiments).
+
+    Usage:
+        with PerPositionSteeringHook(model, vector, path, coefficient=1.5, token_range=(12, 18)):
+            output = model.generate(**inputs)
+    """
+
+    def __init__(self, model, vector, path, coefficient=1.0, token_range=None):
+        super().__init__(model, vector, path, coefficient)
+        self.token_range = token_range  # (start, end) or None for all positions
+
+    def _hook_fn(self, module, inputs, outputs):
+        if self.token_range is None:
+            return super()._hook_fn(module, inputs, outputs)
+
+        out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
+        steer = (self.coefficient * self.vector).to(device=out_tensor.device, dtype=out_tensor.dtype)
+
+        start, end = self.token_range
+        result = out_tensor.clone()
+        result[:, start:end] = result[:, start:end] + steer
+
+        if torch.is_tensor(outputs):
+            return result
+        elif isinstance(outputs, tuple):
+            return (result, *outputs[1:])
+        return outputs
+
+
 # =============================================================================
 # AblationHook - project out direction from layer output
 # =============================================================================

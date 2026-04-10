@@ -40,7 +40,7 @@ from utils.distributed import is_rank_zero, tp_barrier, tp_lifecycle, flush_cuda
 from utils.backends import LocalBackend, add_backend_args
 from utils.model_registry import is_base_model
 from utils.vram import format_duration
-from utils.traits import load_scenarios
+from utils.traits import load_scenarios, load_extraction_config
 from utils.model import format_prompt
 from utils.model_generation import generate_batch
 from utils.extract_vectors import (
@@ -55,22 +55,52 @@ from utils.preextraction_vetting import vet_responses as _vet_responses_raw
 # Recipe
 # =============================================================================
 
-def run_pipeline(config: ExtractionConfig, traits: List[str]):
-    """Generate → vet → extract → evaluate."""
+def run_pipeline(config: ExtractionConfig, traits: List[str], cli_overrides: set = None):
+    """Generate → vet → extract → evaluate.
+
+    Args:
+        cli_overrides: Set of field names explicitly passed on CLI.
+            Used to distinguish "user passed --temperature 0.7" from argparse defaults.
+            YAML config only applies to fields NOT in cli_overrides.
+    """
+    if cli_overrides is None:
+        cli_overrides = set()
     backend, variant_name, use_chat_template = _init_backend(config)
 
     # Smart defaults based on model type (pretrained vs instruct)
     variant = get_model_variant(config.experiment, config.model_variant, mode="extraction")
     is_base = config.base_model if config.base_model is not None else is_base_model(variant.model)
-    if config.position is None:
-        config.position = "response[:5]" if is_base else "response[:]"
-        print(f"  {'Pretrained' if is_base else 'Instruct'} model → position={config.position}")
-    if config.max_new_tokens is None:
-        config.max_new_tokens = 16 if is_base else 64
-        print(f"  → max_new_tokens={config.max_new_tokens}")
+    default_position = "response[:5]" if is_base else "response[:]"
+    default_max_new_tokens = 16 if is_base else 64
+    if config.position is None and 'position' not in cli_overrides:
+        print(f"  {'Pretrained' if is_base else 'Instruct'} model → position={default_position}")
+    if config.max_new_tokens is None and 'max_new_tokens' not in cli_overrides:
+        print(f"  → max_new_tokens={default_max_new_tokens}")
+
+    # Fields that extraction_config.yaml can override
+    _YAML_FIELDS = ('position', 'max_new_tokens', 'methods', 'temperature', 'rollouts')
+    # Save original config values so we can reset after each trait
+    _saved = {f: getattr(config, f) for f in _YAML_FIELDS}
 
     for trait in traits:
         print(f"\n--- {trait} ---")
+
+        # Per-trait config: pipeline defaults → YAML overlay → CLI overlay
+        yaml_cfg = load_extraction_config(trait)
+        for field_name in _YAML_FIELDS:
+            if field_name in yaml_cfg and field_name not in cli_overrides:
+                value = yaml_cfg[field_name]
+                if field_name == 'methods' and isinstance(value, list):
+                    setattr(config, field_name, value)
+                elif field_name != 'methods':
+                    setattr(config, field_name, value)
+                print(f"  extraction_config.yaml → {field_name}={value}")
+
+        # Fill remaining None defaults from base/instruct detection
+        if config.position is None:
+            config.position = default_position
+        if config.max_new_tokens is None:
+            config.max_new_tokens = default_max_new_tokens
 
         generate_responses(config, trait, variant_name, backend, use_chat_template)
 
@@ -88,6 +118,10 @@ def run_pipeline(config: ExtractionConfig, traits: List[str]):
                 print(f"  Adaptive position: {position}")
 
         extract_vectors(config, trait, variant_name, backend, position)
+
+        # Reset to pre-YAML values for next trait
+        for field_name in _YAML_FIELDS:
+            setattr(config, field_name, _saved[field_name])
 
     evaluate(config, traits, variant_name)
 
@@ -334,6 +368,19 @@ def main():
             mc = mc.text_config
         parsed_layers = parse_layers(args.layers, mc.num_hidden_layers)
 
+    # Track which YAML-overridable fields were explicitly set on CLI
+    _yaml_flag_map = {
+        'position': ('--position',),
+        'max_new_tokens': ('--max-new-tokens',),
+        'methods': ('--methods',),
+        'temperature': ('--temperature',),
+        'rollouts': ('--rollouts',),
+    }
+    cli_overrides = {
+        field for field, flags in _yaml_flag_map.items()
+        if any(f in sys.argv for f in flags)
+    }
+
     config = ExtractionConfig(
         experiment=args.experiment,
         model_variant=args.model_variant,
@@ -361,7 +408,7 @@ def main():
 
     with tp_lifecycle():
         t = time.time()
-        run_pipeline(config, traits)
+        run_pipeline(config, traits, cli_overrides=cli_overrides)
         if is_rank_zero():
             print(f"\nComplete ({format_duration(time.time() - t)})")
             print(f"Tip: python steering/run_steering_eval.py "

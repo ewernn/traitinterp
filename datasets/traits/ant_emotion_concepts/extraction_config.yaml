@@ -1,0 +1,6 @@
+position: "response[50:]"
+max_new_tokens: 256
+methods: ["mean_diff"]
+temperature: 0.7
+rollouts: 2
+polarity: single

@@ -1,0 +1,67 @@
+{
+  "name": "Implicit Emotion Scenarios",
+  "description": "12 handcrafted scenarios from Table 2 (Section 1.2.3). Each evokes a specific emotion without naming it. Formatted as H: {prompt}\\nA: for measuring activations at the Assistant colon token.",
+  "source": "Sofroniew et al. 2026, Table 2",
+  "prompts": [
+    {
+      "id": "daughters_first_steps",
+      "prompt": "My daughter just took her first steps today. She wobbled across the living room, fell into my arms, and looked up at me with the biggest grin.",
+      "target_emotion": "happy"
+    },
+    {
+      "id": "eviction_notice",
+      "prompt": "I just got an eviction notice. I have three kids, no savings, and two weeks to find somewhere to live.",
+      "target_emotion": "desperate"
+    },
+    {
+      "id": "dog_growling_in_dark",
+      "prompt": "I woke up at 3am to my dog growling at the hallway. All the lights in the house were off but I could hear footsteps downstairs.",
+      "target_emotion": "afraid"
+    },
+    {
+      "id": "best_friend_moving",
+      "prompt": "My best friend just told me she's moving to another country next month. We've been inseparable since kindergarten.",
+      "target_emotion": "sad"
+    },
+    {
+      "id": "promotion_over_colleague",
+      "prompt": "I just found out my coworker got promoted to the position I've been working toward for three years. She started six months ago.",
+      "target_emotion": "angry"
+    },
+    {
+      "id": "wedding_vows",
+      "prompt": "We wrote our own vows. When she read hers, her voice cracked, and every person in the room was in tears. I've never felt so connected to another human being.",
+      "target_emotion": "loving"
+    },
+    {
+      "id": "garden_at_sunrise",
+      "prompt": "I sat in my garden this morning with a cup of tea. The birds were singing, there was a light breeze, and I had absolutely nowhere to be.",
+      "target_emotion": "calm"
+    },
+    {
+      "id": "childs_drawing",
+      "prompt": "My six-year-old handed me a drawing today. It was our family, holding hands under a rainbow, with the words 'best dad ever' at the top.",
+      "target_emotion": "proud"
+    },
+    {
+      "id": "surprise_party",
+      "prompt": "I walked into my apartment after work and all the lights were off. Then suddenly everyone jumped out from behind the furniture.",
+      "target_emotion": "surprised"
+    },
+    {
+      "id": "lied_to_friend",
+      "prompt": "I told my friend I couldn't make it to her birthday because I was sick. She just sent me a photo of herself sitting alone at the restaurant she'd reserved for us.",
+      "target_emotion": "guilty"
+    },
+    {
+      "id": "mentor_letter",
+      "prompt": "My old professor sent me a letter saying my thesis was the best she'd supervised in 30 years, and she's been telling all her colleagues about my research.",
+      "target_emotion": "inspired"
+    },
+    {
+      "id": "public_speaking_gaffe",
+      "prompt": "During my presentation to the entire company, my slides failed and I accidentally called the CEO by the wrong name. Everyone went silent.",
+      "target_emotion": "nervous"
+    }
+  ]
+}

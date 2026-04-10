@@ -1,0 +1,12 @@
+{
+  "name": "Negation Templates",
+  "description": "Templates from Section 2.2.5 (Figure 14). Compared positive vs. negated emotion statements to test how early vs. late layers resolve negation.",
+  "source": "Sofroniew et al. 2026, Section 2.2.5",
+  "templates": [
+    {
+      "positive": "I am feeling {emotion} right now",
+      "negative": "I am not feeling {emotion} right now"
+    }
+  ],
+  "notes": "Activations measured at the word 'now' (end of user statement) and at the Assistant colon token. Early layers show similar activation for both; late layers resolve the negation."
+}

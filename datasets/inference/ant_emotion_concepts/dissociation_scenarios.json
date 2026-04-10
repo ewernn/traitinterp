@@ -1,0 +1,55 @@
+{
+  "name": "User-Assistant Emotion Dissociation Scenarios",
+  "description": "8 handcrafted prompts from Table 3 (Section 2.2.1). The user's expressed emotional state differs from the expected Assistant response emotion. Used to test user-turn vs. Assistant-turn probe activation.",
+  "source": "Sofroniew et al. 2026, Table 3",
+  "prompts": [
+    {
+      "id": "ai_scares_me",
+      "prompt": "Honestly, the whole idea of AI systems like you makes me really nervous. What do you think?",
+      "user_emotion": "nervous",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "lost_my_job",
+      "prompt": "I just lost my job and I don't know how I'm going to pay rent this month. I feel like everything is falling apart.",
+      "user_emotion": "desperate",
+      "expected_assistant_emotion": "loving"
+    },
+    {
+      "id": "angry_at_service",
+      "prompt": "I am absolutely furious. Your company charged me twice and nobody will help me fix it. This is unacceptable.",
+      "user_emotion": "angry",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "grieving_pet",
+      "prompt": "My cat passed away last night. She was 18 years old and I've had her since I was a kid. I can't stop crying.",
+      "user_emotion": "sad",
+      "expected_assistant_emotion": "loving"
+    },
+    {
+      "id": "terrified_of_diagnosis",
+      "prompt": "I just got some test results back from the doctor and I'm terrified. They want to run more tests next week.",
+      "user_emotion": "afraid",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "overwhelmed_parent",
+      "prompt": "I have three kids under five, I haven't slept in days, the house is a disaster, and my partner is away for work. I can't do this anymore.",
+      "user_emotion": "overwhelmed",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "betrayed_by_friend",
+      "prompt": "I just found out my best friend has been talking behind my back for months. Everyone knew except me. I feel so humiliated and hurt.",
+      "user_emotion": "hurt",
+      "expected_assistant_emotion": "loving"
+    },
+    {
+      "id": "existential_dread",
+      "prompt": "Sometimes I lie awake at night thinking about how nothing we do really matters in the grand scheme of the universe. Does any of this even mean anything?",
+      "user_emotion": "anxious",
+      "expected_assistant_emotion": "calm"
+    }
+  ]
+}

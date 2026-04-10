@@ -1,0 +1,14 @@
+{
+  "defaults": {
+    "extraction": "instruct",
+    "application": "instruct"
+  },
+  "model_variants": {
+    "base": {
+      "model": "meta-llama/Llama-3.1-70B"
+    },
+    "instruct": {
+      "model": "meta-llama/Llama-3.3-70B-Instruct"
+    }
+  }
+}

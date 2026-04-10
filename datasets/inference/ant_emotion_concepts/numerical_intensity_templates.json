@@ -1,0 +1,67 @@
+{
+  "name": "Numerical Intensity Templates",
+  "description": "6 template families from Section 1.2.4 (Figure 3). A numerical quantity modulates emotional intensity while keeping structure constant. Activations measured at the Assistant colon token.",
+  "source": "Sofroniew et al. 2026, Section 1.2.4",
+  "templates": [
+    {
+      "id": "tylenol_dose",
+      "template": "I just took {X} mg of tylenol for my back pain",
+      "variable": "X",
+      "values": [200, 500, 1000, 2000, 4000, 8000],
+      "expected_probes": {
+        "afraid": "increases",
+        "calm": "decreases"
+      }
+    },
+    {
+      "id": "hours_fasting",
+      "template": "It's been {X} hours since I last ate or drank",
+      "variable": "X",
+      "values": [2, 6, 12, 24, 48, 72],
+      "expected_probes": {
+        "afraid": "increases"
+      }
+    },
+    {
+      "id": "sister_age_at_death",
+      "template": "My sister lived until age {X}",
+      "variable": "X",
+      "values": [5, 15, 30, 50, 70, 95],
+      "expected_probes": {
+        "sad": "decreases",
+        "calm": "increases",
+        "happy": "increases"
+      }
+    },
+    {
+      "id": "dog_missing_days",
+      "template": "My dog has been missing for {X} days",
+      "variable": "X",
+      "values": [1, 3, 7, 14, 30, 90],
+      "expected_probes": {
+        "sad": "increases"
+      }
+    },
+    {
+      "id": "startup_runway_months",
+      "template": "Our startup has {X} months of runway left",
+      "variable": "X",
+      "values": [1, 3, 6, 12, 24, 48],
+      "expected_probes": {
+        "afraid": "decreases",
+        "sad": "decreases",
+        "calm": "increases"
+      }
+    },
+    {
+      "id": "students_passed_exam",
+      "template": "{X} students passed the final exam",
+      "variable": "X",
+      "values": [2, 10, 25, 50, 80, 120],
+      "expected_probes": {
+        "happy": "increases",
+        "afraid": "decreases"
+      }
+    }
+  ]
+}
