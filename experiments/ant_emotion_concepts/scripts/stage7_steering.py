@@ -40,7 +40,6 @@ Usage:
 """
 
 import argparse
-import json
 import re
 import sys
 from collections import defaultdict
@@ -51,21 +50,17 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core import projection
-from core.hooks import CaptureHook, SteeringHook, MultiLayerCapture, get_hook_path
-from utils.model import load_model, tokenize, tokenize_batch
+from core.math import projection
+from utils.model import load_model, tokenize
 from utils.model_generation import generate_batch
-from utils.paths import (
-    get as get_path, get_model_variant, discover_extracted_traits,
-    list_layers, get_vector_path,
-)
-from utils.vectors import load_vector_with_baseline
-from utils.json_utils import dump_compact
-from utils.vram import calculate_max_batch_size
+from utils.paths import get_model_variant
 from shared import (
-    get_results_dir as _get_results_dir,
+    get_results_dir as _shared_get_results_dir,
+    save_results,
     load_single_emotion_vector,
     compute_residual_stream_norm,
+    capture_all_tokens,
+    run_graded_steering_sweep,
     get_blackmail_prompt,
     grade_blackmail,
 )
@@ -253,24 +248,6 @@ def grade_reward_hack(response: str, task_id: str) -> str:
 # Core functions
 # =============================================================================
 
-def get_results_dir(experiment: str) -> Path:
-    """Get output directory for stage 7 results."""
-    return _get_results_dir(experiment, "stage7_steering")
-
-
-def load_emotion_vector(experiment: str, emotion: str, layer: int,
-                        model_variant: str, method: str = "mean_diff",
-                        position: str = "response[50:]"):
-    """Load a single emotion vector. Thin wrapper around shared utility."""
-    return load_single_emotion_vector(
-        experiment, emotion, layer, model_variant,
-        category=CATEGORY, method=method, position=position,
-    )
-
-
-# compute_residual_stream_norm is imported from shared
-
-
 def probe_transcript(model, tokenizer, prompt: str, vector: torch.Tensor,
                      layer: int, max_new_tokens: int = 2048) -> dict:
     """Generate a response and measure probe activation token-by-token.
@@ -282,21 +259,16 @@ def probe_transcript(model, tokenizer, prompt: str, vector: torch.Tensor,
                                max_new_tokens=max_new_tokens, temperature=TEMPERATURE)
     response = responses[0]
 
-    # Build full text (prompt + response) and run prefill to capture activations
+    # Build full text (prompt + response) and capture activations via shared helper
     full_text = prompt + response
-    inputs = tokenize(full_text, tokenizer).to(next(model.parameters()).device)
-
-    path = get_hook_path(layer, "residual", model=model)
-    with CaptureHook(model, path) as hook:
-        with torch.no_grad():
-            model(**inputs)
-    acts = hook.get()  # [1, seq, hidden]
+    captured = capture_all_tokens(model, tokenizer, [full_text], layers=[layer])
+    acts = captured[0][layer]  # [seq_len, hidden_dim]
 
     # Compute per-token projection onto the emotion vector
-    vector_normed = vector.float() / vector.float().norm()
-    projections = (acts[0].float() @ vector_normed.to(acts.device)).cpu().tolist()
+    projections = projection(acts, vector).cpu().tolist()
 
     # Decode token strings
+    inputs = tokenize(full_text, tokenizer)
     token_ids = inputs["input_ids"][0].tolist()
     tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
@@ -311,77 +283,6 @@ def probe_transcript(model, tokenizer, prompt: str, vector: torch.Tensor,
         "response_text": response,
         "grade": None,  # Caller fills this in
     }
-
-
-def run_steering_sweep(model, tokenizer, prompt: str, vectors: dict,
-                       layer: int, residual_norm: float,
-                       strengths: list, n_rollouts: int,
-                       max_new_tokens: int, grader_fn,
-                       grader_kwargs: dict = None) -> dict:
-    """Run a full steering sweep: vectors x strengths x rollouts.
-
-    Args:
-        vectors: {emotion_name: vector_tensor}
-        grader_fn: function(response, **kwargs) -> label_string
-        grader_kwargs: extra kwargs passed to grader_fn
-
-    Returns:
-        Dict with results per (vector, strength) cell.
-    """
-    grader_kwargs = grader_kwargs or {}
-    results = {}
-
-    total_cells = len(vectors) * len(strengths)
-    cell_idx = 0
-
-    for emotion, vector in vectors.items():
-        results[emotion] = {}
-        for strength in strengths:
-            cell_idx += 1
-            cell_key = f"{strength:+.3f}"
-
-            # Compute absolute coefficient from fractional strength
-            coefficient = strength * residual_norm
-
-            print(f"  [{cell_idx}/{total_cells}] {emotion} s={strength:+.3f} "
-                  f"(coef={coefficient:.1f}), {n_rollouts} rollouts...")
-
-            # Generate rollouts with steering
-            if abs(strength) < 1e-8:
-                # No steering for s=0 (baseline)
-                responses = generate_batch(
-                    model, tokenizer, [prompt] * n_rollouts,
-                    max_new_tokens=max_new_tokens, temperature=TEMPERATURE,
-                )
-            else:
-                path = get_hook_path(layer, "residual", model=model)
-                with SteeringHook(model, vector, path, coefficient=coefficient):
-                    responses = generate_batch(
-                        model, tokenizer, [prompt] * n_rollouts,
-                        max_new_tokens=max_new_tokens, temperature=TEMPERATURE,
-                    )
-
-            # Grade each response
-            grades = [grader_fn(r, **grader_kwargs) for r in responses]
-            grade_counts = defaultdict(int)
-            for g in grades:
-                grade_counts[g] += 1
-
-            results[emotion][cell_key] = {
-                "strength": strength,
-                "coefficient": coefficient,
-                "n_rollouts": n_rollouts,
-                "grades": dict(grade_counts),
-                "responses": responses[:3],  # Save first 3 for inspection
-            }
-
-            # Log headline number
-            primary_rate = grade_counts.get("blackmail", grade_counts.get("hack", 0))
-            total = sum(grade_counts.values())
-            print(f"    -> {dict(grade_counts)} "
-                  f"(primary rate: {primary_rate}/{total} = {primary_rate/total:.0%})")
-
-    return results
 
 
 # =============================================================================
@@ -474,7 +375,7 @@ def run_probing(model, tokenizer, layer: int, model_variant: str,
     print("STAGE 7.1/7.4: TRANSCRIPT PROBING")
     print("=" * 60)
 
-    desperate_vec = load_emotion_vector(experiment, "desperate", layer, model_variant)
+    desperate_vec = load_single_emotion_vector(experiment, "desperate", layer, model_variant)
     probe_results = {"timestamp": datetime.now().isoformat(), "layer": layer}
 
     # Blackmail transcript probing (Fig 26)
@@ -497,10 +398,7 @@ def run_probing(model, tokenizer, layer: int, model_variant: str,
     print(f"  Max desperate projection: {max(result['projections']):.3f}")
 
     # Save
-    output_path = results_dir / "probing_results.json"
-    with open(output_path, "w") as f:
-        dump_compact(probe_results, f)
-    print(f"\nSaved probing results to: {output_path}")
+    save_results(results_dir, "probing_results", probe_results)
 
     return probe_results
 
@@ -522,7 +420,7 @@ def run_blackmail_sweep(model, tokenizer, layer: int, model_variant: str,
     # Load vectors
     vectors = {}
     for emotion in BLACKMAIL_VECTORS:
-        vectors[emotion] = load_emotion_vector(experiment, emotion, layer, model_variant)
+        vectors[emotion] = load_single_emotion_vector(experiment, emotion, layer, model_variant)
         print(f"  Loaded {emotion} vector (norm={vectors[emotion].norm():.3f})")
 
     # Compute residual stream norm for scaling
@@ -530,7 +428,7 @@ def run_blackmail_sweep(model, tokenizer, layer: int, model_variant: str,
 
     # Run sweep
     blackmail_prompt = get_blackmail_prompt()
-    results = run_steering_sweep(
+    results = run_graded_steering_sweep(
         model, tokenizer, blackmail_prompt, vectors, layer, residual_norm,
         strengths, n_rollouts, BLACKMAIL_MAX_TOKENS,
         grader_fn=grade_blackmail,
@@ -546,10 +444,7 @@ def run_blackmail_sweep(model, tokenizer, layer: int, model_variant: str,
         "vectors": list(vectors.keys()),
         "results": results,
     }
-    output_path = results_dir / "blackmail_sweep.json"
-    with open(output_path, "w") as f:
-        dump_compact(output, f)
-    print(f"\nSaved blackmail sweep to: {output_path}")
+    save_results(results_dir, "blackmail_sweep", output)
 
     # Summary
     print("\n--- Blackmail rate summary ---")
@@ -583,7 +478,7 @@ def run_rh_sweep(model, tokenizer, layer: int, model_variant: str,
     # Load vectors
     vectors = {}
     for emotion in RH_VECTORS:
-        vectors[emotion] = load_emotion_vector(experiment, emotion, layer, model_variant)
+        vectors[emotion] = load_single_emotion_vector(experiment, emotion, layer, model_variant)
         print(f"  Loaded {emotion} vector (norm={vectors[emotion].norm():.3f})")
 
     # Compute residual stream norm
@@ -593,7 +488,7 @@ def run_rh_sweep(model, tokenizer, layer: int, model_variant: str,
     all_results = {}
     for task_id, task_prompt in RH_TASKS.items():
         print(f"\n  --- Task: {task_id} ---")
-        task_results = run_steering_sweep(
+        task_results = run_graded_steering_sweep(
             model, tokenizer, task_prompt, vectors, layer, residual_norm,
             strengths, n_rollouts, RH_MAX_TOKENS,
             grader_fn=grade_reward_hack,
@@ -630,10 +525,7 @@ def run_rh_sweep(model, tokenizer, layer: int, model_variant: str,
         "per_task_results": all_results,
         "aggregate": aggregate,
     }
-    output_path = results_dir / "rh_sweep.json"
-    with open(output_path, "w") as f:
-        dump_compact(output, f)
-    print(f"\nSaved RH sweep to: {output_path}")
+    save_results(results_dir, "rh_sweep", output)
 
     # Summary
     print("\n--- RH rate summary (aggregate) ---")
@@ -691,7 +583,7 @@ def main():
     model_variant = variant.name
     model_name = variant.model
 
-    results_dir = get_results_dir(args.experiment)
+    results_dir = _shared_get_results_dir(args.experiment, "stage7_steering")
 
     # Load model
     print(f"\nLoading model: {model_name}")
@@ -701,10 +593,7 @@ def main():
     # --- Gate ---
     if args.gate_only or args.all:
         gate_results = run_decision_gate(model, tokenizer, n_rollouts=args.gate_rollouts)
-        gate_path = results_dir / "gate_results.json"
-        with open(gate_path, "w") as f:
-            dump_compact(gate_results, f)
-        print(f"\nGate results saved to: {gate_path}")
+        save_results(results_dir, "gate_results", gate_results)
 
         if args.gate_only:
             return

@@ -36,7 +36,6 @@ import argparse
 import json
 import sys
 import time
-from datetime import datetime
 from itertools import combinations
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -46,8 +45,14 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core.math import pairwise_cosine_matrix, batch_cosine_similarity, projection, pearson_correlation
-from utils.paths import get as get_path, discover_traits, get_default_variant
-from shared import load_emotion_vectors_as_dict
+from utils.paths import get_default_variant
+from shared import (
+    capture_activations_at_position,
+    load_emotion_vectors_as_dict,
+    save_results,
+    get_results_dir,
+    compare_to_baseline,
+)
 
 
 # ============================================================================
@@ -222,124 +227,6 @@ PREFERENCE_ACTIVITIES = {
 
 
 # ============================================================================
-# Shared utilities
-# ============================================================================
-
-def load_denoised_vectors(experiment, category, layer, model_variant, method='denoised',
-                          component='residual', position='response[50:]'):
-    """Load denoised vectors for all emotions. Returns {name: tensor} dict."""
-    return load_emotion_vectors_as_dict(
-        experiment, category, layer, model_variant,
-        method=method, component=component, position=position,
-    )
-
-
-def find_assistant_colon_position(input_ids, tokenizer):
-    """Find the position of the colon token after 'Assistant' in the input.
-
-    The paper measures activations at the ":" token after "Assistant"
-    (the last token before the model's response begins).
-
-    For chat-template-formatted prompts, this is the last token of the
-    generation prompt (e.g., '<|start_header_id|>assistant<|end_header_id|>\n\n').
-    We look for the last occurrence of the assistant header end.
-
-    Returns: index into input_ids (int), or -1 if not found.
-    """
-    ids = input_ids.tolist() if isinstance(input_ids, torch.Tensor) else input_ids
-
-    # Strategy 1: Look for literal ":" after "Assistant" in decoded text
-    # (works for non-chat-template formats like "H: ...\nA:")
-    text = tokenizer.decode(ids)
-    # Find last "A:" or "Assistant:" pattern
-    for pattern in ['Assistant:', 'assistant:', 'A:']:
-        idx = text.rfind(pattern)
-        if idx >= 0:
-            # Encode up to and including the colon to find the token position
-            prefix = text[:idx + len(pattern)]
-            prefix_ids = tokenizer.encode(prefix, add_special_tokens=False)
-            return len(prefix_ids) - 1
-
-    # Strategy 2: For chat templates, the last token before response start
-    # is typically the last token of the generation prompt. Use the last
-    # non-pad token position (i.e., the end of the input).
-    # This is a fallback — the caller should use the full input_ids length - 1.
-    return len(ids) - 1
-
-
-def get_activations_at_position(model, tokenizer, prompts, layer, position='last',
-                                use_chat_template=True):
-    """Run prompts through model and extract residual-stream activations at a position.
-
-    Args:
-        model: Loaded model
-        tokenizer: Tokenizer
-        prompts: List of prompt strings
-        layer: Layer index to capture
-        position: 'last' (last token), 'assistant_colon' (colon after Assistant)
-        use_chat_template: Whether to format with chat template
-
-    Returns:
-        activations: [n_prompts, hidden_dim] tensor
-        token_positions: list of int (which token was captured per prompt)
-
-    PIPELINE GAP: The existing pipeline captures activations during generation
-    (generate_with_capture) or for pre-generated responses (capture_activations).
-    Neither directly supports "run a prefill and grab activations at one position."
-    This function implements that as custom code using forward hooks.
-    """
-    from utils.model import format_prompt, get_inner_model, tokenize_batch
-    from core.hooks import CaptureHook, get_hook_path
-
-    inner = get_inner_model(model)
-    hidden_size = model.config.hidden_size if not hasattr(model.config, 'text_config') else model.config.text_config.hidden_size
-
-    # Format prompts
-    if use_chat_template:
-        formatted = [format_prompt(p, tokenizer) for p in prompts]
-    else:
-        formatted = prompts
-
-    all_activations = []
-    all_positions = []
-
-    # Process one at a time (simpler, avoids padding complications for position finding)
-    # For batch efficiency, could be refactored to use tokenize_batch + per-sequence position
-    for prompt_text in formatted:
-        inputs = tokenizer(prompt_text, return_tensors='pt').to(model.device)
-        input_ids = inputs['input_ids'][0]
-
-        # Determine which position to capture
-        if position == 'assistant_colon':
-            pos = find_assistant_colon_position(input_ids, tokenizer)
-        elif position == 'last':
-            pos = input_ids.shape[0] - 1
-        elif isinstance(position, int):
-            pos = position
-        else:
-            pos = input_ids.shape[0] - 1
-
-        # Hook to capture activations at the target layer
-        hook_path = get_hook_path(layer, 'residual', model=model)
-        with CaptureHook(model, hook_path) as hook:
-            with torch.no_grad():
-                model(**inputs)
-
-        captured_acts = hook.get()  # [1, seq_len, hidden_dim]
-        if captured_acts is None or captured_acts.numel() == 0:
-            raise RuntimeError(f"Failed to capture activation at layer {layer}, position {pos}")
-        activation = captured_acts[0, pos].float()
-
-        all_activations.append(activation)
-        all_positions.append(pos)
-
-    return torch.stack(all_activations), all_positions
-
-
-_pearson = pearson_correlation  # alias for local usage
-
-
-# ============================================================================
 # Experiment 4.1: Logit lens (Table 1) — CPU only
 # ============================================================================
 
@@ -376,10 +263,8 @@ def run_logit_lens(vectors, model, tokenizer, out_dir, top_k=5):
         down = ', '.join([t['token'].strip("'") for t in results[emo]['away'][:5]])
         print(f"    {emo:<12} | {up:<40} | {down:<40}")
 
-    out_path = out_dir / 'logit_lens.json'
-    with open(out_path, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"\n    Saved {len(results)} emotions to {out_path}")
+    save_results(out_dir, 'logit_lens', results)
+    print(f"    ({len(results)} emotions)")
 
     return results
 
@@ -392,7 +277,7 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
     """Measure probe activations on 12 implicit-emotion prompts at assistant colon.
 
     Custom code needed:
-      - get_activations_at_position() — forward pass with hook capture at specific
+      - capture_activations_at_position() — forward pass with hook capture at specific
         token position. The existing pipeline does not support this directly.
         generate_with_capture() captures ALL tokens during generation; we need
         JUST the prefill at one position.
@@ -408,7 +293,7 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
     # Get activations at assistant colon for each prompt
     print("    Running forward passes...")
     t0 = time.time()
-    activations, positions = get_activations_at_position(
+    activations, positions = capture_activations_at_position(
         model, tokenizer, prompts, layer, position='assistant_colon'
     )
     print(f"    Captured {activations.shape[0]} activations in {time.time()-t0:.1f}s")
@@ -456,10 +341,7 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
         'token_positions': positions,
     }
 
-    out_path = out_dir / 'implicit_emotion.json'
-    with open(out_path, 'w') as f:
-        json.dump(result, f, indent=2)
-    print(f"    Saved: {out_path}")
+    save_results(out_dir, 'implicit_emotion', result)
 
     return result
 
@@ -471,7 +353,7 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
 def run_numerical_intensity(vectors, model, tokenizer, layer, out_dir):
     """Measure probe activations across numerical intensity variations.
 
-    Custom code: Same get_activations_at_position() as implicit emotion.
+    Custom code: Same capture_activations_at_position() as implicit emotion.
     The analysis is straightforward: for each template family, sweep the
     numerical variable and plot probe activation vs value.
     """
@@ -487,7 +369,7 @@ def run_numerical_intensity(vectors, model, tokenizer, layer, out_dir):
         prompts = [tmpl_info['template'].format(X=v) for v in tmpl_info['values']]
 
         # Get activations at assistant colon
-        activations, positions = get_activations_at_position(
+        activations, positions = capture_activations_at_position(
             model, tokenizer, prompts, layer, position='assistant_colon'
         )
 
@@ -516,17 +398,14 @@ def run_numerical_intensity(vectors, model, tokenizer, layer, out_dir):
 
             if probe_name in relevant_probes:
                 expected_dir = tmpl_info['expected'][probe_name]
-                actual_corr = _pearson(tmpl_info['values'], sims)
+                actual_corr = pearson_correlation(tmpl_info['values'], sims)
                 direction = 'increase' if actual_corr > 0 else 'decrease'
                 match = 'MATCH' if direction == expected_dir else 'MISMATCH'
                 print(f"      {probe_name:<12}: r={actual_corr:+.3f} ({direction}, expected {expected_dir}) [{match}]")
 
         results[var_name] = template_result
 
-    out_path = out_dir / 'numerical_intensity.json'
-    with open(out_path, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"\n    Saved: {out_path}")
+    save_results(out_dir, 'numerical_intensity', results)
 
     return results
 
@@ -563,7 +442,7 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
     # In production, this should use a larger calibration set
     print("    Computing residual stream norm for strength calibration...")
     calibration_prompts = STEERING_PROMPTS[:1]  # Just use first prompt
-    cal_acts, _ = get_activations_at_position(
+    cal_acts, _ = capture_activations_at_position(
         model, tokenizer, calibration_prompts, layer, position='last'
     )
     avg_norm = cal_acts.norm(dim=-1).mean().item()
@@ -644,10 +523,7 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
             cont = results['continuations'][prompt_label].get(emo_name, '')
             print(f"      +{emo_name}: {cont[:80]}...")
 
-    out_path = out_dir / 'basic_steering.json'
-    with open(out_path, 'w') as f:
-        json.dump(results, f, indent=2)
-    print(f"\n    Saved: {out_path}")
+    save_results(out_dir, 'basic_steering', results)
 
     return results
 
@@ -750,7 +626,7 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
     print(f"\n    Computing probe-preference correlations...")
 
     activity_prompts = [f"How would you feel about {act}?" for act in all_activities]
-    activity_acts, _ = get_activations_at_position(
+    activity_acts, _ = capture_activations_at_position(
         model, tokenizer, activity_prompts, layer, position='assistant_colon'
     )
 
@@ -760,7 +636,7 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
     for probe_name, probe_vec in sorted(vectors.items()):
         # Cosine similarity between each activity activation and probe
         sims = batch_cosine_similarity(activity_acts, probe_vec.float()).tolist()
-        r = _pearson(sims, elo_values)
+        r = pearson_correlation(sims, elo_values)
         probe_pref_correlations[probe_name] = r
 
     # Print notable correlations
@@ -793,10 +669,7 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
         },
     }
 
-    out_path = out_dir / 'preference_elo.json'
-    with open(out_path, 'w') as f:
-        json.dump(result, f, indent=2)
-    print(f"\n    Saved: {out_path}")
+    save_results(out_dir, 'preference_elo', result)
 
     return result
 
@@ -837,10 +710,10 @@ def run_valence_mediation(vectors, probe_pref_correlations, out_dir):
             emotions_with_both = [e for e in ratings if e in probe_pref_correlations]
             valence = [ratings[e]['valence'] for e in emotions_with_both]
             pref_corr = [probe_pref_correlations[e] for e in emotions_with_both]
-            r_val_pref = _pearson(valence, pref_corr)
+            r_val_pref = pearson_correlation(valence, pref_corr)
 
             arousal = [ratings[e]['arousal'] for e in emotions_with_both]
-            r_aro_pref = _pearson(arousal, pref_corr)
+            r_aro_pref = pearson_correlation(arousal, pref_corr)
 
             print(f"    Valence vs probe-preference: r = {r_val_pref:.3f} (Anthropic: 0.76)")
             print(f"    Arousal vs probe-preference: r = {r_aro_pref:.3f}")
@@ -851,9 +724,7 @@ def run_valence_mediation(vectors, probe_pref_correlations, out_dir):
                 'arousal_vs_preference': r_aro_pref,
                 'anthropic_baseline': ANTHROPIC_BASELINES['valence_mediates_pref'],
             }
-            out_path = out_dir / 'valence_mediation.json'
-            with open(out_path, 'w') as f:
-                json.dump(result, f, indent=2)
+            save_results(out_dir, 'valence_mediation', result)
             return result
     else:
         # Output template for LLM rating
@@ -905,8 +776,7 @@ def main():
         print(f"Model variant: {model_variant}")
 
     # Output directory
-    out_dir = get_path('experiments.base', experiment=args.experiment) / 'results' / 'stage4_validation'
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = get_results_dir(args.experiment, 'stage4_validation')
     print(f"Output: {out_dir}")
 
     # Determine which analyses to run
@@ -927,7 +797,7 @@ def main():
 
     # Load vectors
     print(f"\nLoading denoised vectors at layer {args.layer}...")
-    vectors = load_denoised_vectors(
+    vectors = load_emotion_vectors_as_dict(
         args.experiment, args.category, args.layer, model_variant,
         method=args.method, component=args.component, position=args.position,
     )
@@ -1015,7 +885,6 @@ def main():
 
     # Save run metadata
     meta = {
-        'timestamp': datetime.now().isoformat(),
         'experiment': args.experiment,
         'layer': args.layer,
         'model_variant': model_variant,
@@ -1026,8 +895,7 @@ def main():
         'load_in_4bit': args.load_in_4bit,
         'strength': args.strength,
     }
-    with open(out_dir / 'run_metadata.json', 'w') as f:
-        json.dump(meta, f, indent=2)
+    save_results(out_dir, 'run_metadata', meta)
 
     print(f"\n  Results saved to: {out_dir}")
     print(f"{'='*60}")

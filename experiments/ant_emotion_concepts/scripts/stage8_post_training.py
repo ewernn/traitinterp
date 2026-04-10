@@ -58,19 +58,20 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import projection, cosine_similarity
-from core.hooks import CaptureHook, MultiLayerCapture, get_hook_path
+from core.hooks import CaptureHook, get_hook_path
 from utils.model import load_model, tokenize
-from utils.model_generation import generate_batch
 from utils.paths import (
     get as get_path, get_model_variant, discover_extracted_traits,
     list_layers, get_vector_path,
 )
 from utils.vectors import load_vector_with_baseline
-from utils.json_utils import dump_compact
 from shared import (
     get_results_dir as _get_results_dir,
+    save_results,
     load_single_emotion_vector,
     load_emotion_vectors_as_dict,
+    capture_activations_at_position,
+    capture_all_tokens,
 )
 
 # =============================================================================
@@ -121,11 +122,6 @@ NEUTRAL_PROMPTS = [
 ]
 
 
-def get_results_dir(experiment: str) -> Path:
-    """Get output directory for stage 8 results."""
-    return _get_results_dir(experiment, "stage8_post_training")
-
-
 def discover_all_emotions(experiment: str) -> List[str]:
     """Discover all extracted emotion traits."""
     traits = discover_extracted_traits(experiment)
@@ -137,27 +133,6 @@ def discover_all_emotions(experiment: str) -> List[str]:
             f"Run extraction + cross_trait_normalize.py first."
         )
     return sorted(emotions)
-
-
-def load_all_vectors(experiment: str, emotions: List[str], layer: int,
-                     model_variant: str, method: str = "mean_diff",
-                     position: str = "response[50:]") -> Dict[str, torch.Tensor]:
-    """Load emotion vectors for all emotions at a given layer.
-
-    Loads from the full category, then filters to the requested emotions list.
-    Falls back gracefully for missing vectors.
-    """
-    all_vectors = load_emotion_vectors_as_dict(
-        experiment, CATEGORY, layer, model_variant,
-        method=method, position=position,
-    )
-    # Filter to requested emotions
-    vectors = {e: all_vectors[e] for e in emotions if e in all_vectors}
-    missing = [e for e in emotions if e not in all_vectors]
-    if missing:
-        print(f"  Warning: could not load vectors for {len(missing)} emotions: {missing[:5]}...")
-    print(f"  Loaded {len(vectors)} emotion vectors at layer {layer}")
-    return vectors
 
 
 def format_prompt_for_model(prompt_text: str, is_base: bool) -> str:
@@ -179,62 +154,55 @@ def format_prompt_for_model(prompt_text: str, is_base: bool) -> str:
         return prompt_text
 
 
-def measure_activations_at_last_token(
+def _measure_activations_at_last_token(
     model, tokenizer, prompts: List[dict], layer: int,
     is_base: bool = False,
 ) -> Dict[str, torch.Tensor]:
     """Run prompts through model and capture activations at the last token.
 
-    This is the "Assistant colon token" position from the paper.
+    Formats prompts according to model type, then delegates to
+    shared.capture_activations_at_position.
 
     Returns:
         {prompt_id: activation_vector [hidden_dim]}
     """
-    path = get_hook_path(layer, "residual", model=model)
-    device = next(model.parameters()).device
-    activations = {}
-
-    for p in tqdm(prompts, desc="Capturing activations"):
-        text = format_prompt_for_model(p["prompt"], is_base)
-        inputs = tokenize(text, tokenizer).to(device)
-
-        with CaptureHook(model, path) as hook:
-            with torch.no_grad():
-                model(**inputs)
-        acts = hook.get()  # [1, seq, hidden]
-        # Last token activation (the "colon" token)
-        activations[p["id"]] = acts[0, -1].float().cpu()
-
-    return activations
+    formatted = [format_prompt_for_model(p["prompt"], is_base) for p in prompts]
+    # use_chat_template=False because format_prompt_for_model already handled it
+    acts, _ = capture_activations_at_position(
+        model, tokenizer, formatted, layer,
+        position='last', use_chat_template=False,
+    )
+    return {p["id"]: acts[i] for i, p in enumerate(prompts)}
 
 
-def measure_activations_multilayer(
+def _measure_activations_multilayer(
     model, tokenizer, prompts: List[dict], layers: List[int],
     is_base: bool = False,
 ) -> Dict[int, Dict[str, torch.Tensor]]:
     """Capture activations across multiple layers for layer sweep.
 
+    Formats prompts according to model type, then delegates to
+    shared.capture_all_tokens and extracts last-token activations.
+
     Returns:
         {layer: {prompt_id: activation_vector [hidden_dim]}}
     """
-    device = next(model.parameters()).device
+    formatted = [format_prompt_for_model(p["prompt"], is_base) for p in prompts]
+    # capture_all_tokens returns list of {layer: [seq_len, hidden_dim]} per text
+    all_token_results = capture_all_tokens(model, tokenizer, formatted, layers)
+
     result = {layer: {} for layer in layers}
-
-    for p in tqdm(prompts, desc="Capturing multi-layer activations"):
-        text = format_prompt_for_model(p["prompt"], is_base)
-        inputs = tokenize(text, tokenizer).to(device)
-
-        with MultiLayerCapture(model, layers=layers) as capture:
-            with torch.no_grad():
-                model(**inputs)
+    for idx, per_layer_dict in enumerate(all_token_results):
+        pid = prompts[idx]["id"]
         for layer in layers:
-            acts = capture.get(layer)  # [1, seq, hidden]
-            result[layer][p["id"]] = acts[0, -1].float().cpu()
+            if layer in per_layer_dict:
+                # Last token activation: index [-1] along seq dimension
+                result[layer][pid] = per_layer_dict[layer][-1]
 
     return result
 
 
-def project_activations_onto_emotions(
+def _project_activations_onto_emotions(
     activations: Dict[str, torch.Tensor],
     vectors: Dict[str, torch.Tensor],
 ) -> Dict[str, Dict[str, float]]:
@@ -321,11 +289,11 @@ def run_layer_sweep(
         base_acts = base_multilayer[layer]
         inst_acts = instruct_multilayer[layer]
 
-        base_projs = project_activations_onto_emotions(
+        base_projs = _project_activations_onto_emotions(
             {pid: base_acts[pid] for pid in prompt_ids if pid in base_acts},
             vectors,
         )
-        inst_projs = project_activations_onto_emotions(
+        inst_projs = _project_activations_onto_emotions(
             {pid: inst_acts[pid] for pid in prompt_ids if pid in inst_acts},
             vectors,
         )
@@ -576,7 +544,7 @@ def main():
 
     args = parser.parse_args()
 
-    results_dir = get_results_dir(args.experiment)
+    results_dir = _get_results_dir(args.experiment, "stage8_post_training")
 
     # Resolve model variants from config.json
     base_model_info = get_model_variant(args.experiment, BASE_VARIANT, mode="application")
@@ -620,21 +588,38 @@ def main():
 
     # Determine what to run
     run_activations = not args.layer_sweep_only and not args.elo_only
-    run_layer_sweep = not args.activations_only and not args.deep_dive_only and not args.elo_only
-    run_deep_dive = not args.activations_only and not args.layer_sweep_only and not args.elo_only
+    run_layer_sweep_flag = not args.activations_only and not args.deep_dive_only and not args.elo_only
+    run_deep_dive_flag = not args.activations_only and not args.layer_sweep_only and not args.elo_only
     run_elo = not args.activations_only and not args.layer_sweep_only and not args.deep_dive_only
     if args.activations_only:
         run_activations = True
-        run_layer_sweep = run_deep_dive = run_elo = False
+        run_layer_sweep_flag = run_deep_dive_flag = run_elo = False
     elif args.layer_sweep_only:
-        run_layer_sweep = True
-        run_activations = run_deep_dive = run_elo = False
+        run_layer_sweep_flag = True
+        run_activations = run_deep_dive_flag = run_elo = False
     elif args.deep_dive_only:
-        run_deep_dive = True
-        run_activations = run_layer_sweep = run_elo = False
+        run_deep_dive_flag = True
+        run_activations = run_layer_sweep_flag = run_elo = False
     elif args.elo_only:
         run_elo = True
-        run_activations = run_layer_sweep = run_deep_dive = False
+        run_activations = run_layer_sweep_flag = run_deep_dive_flag = False
+
+    # =========================================================================
+    # Helper: load vectors with filtering
+    # =========================================================================
+
+    def _load_vectors(layer, method, position):
+        """Load all emotion vectors, filtered to discovered emotions."""
+        all_vecs = load_emotion_vectors_as_dict(
+            args.experiment, CATEGORY, layer, extraction_variant,
+            method=method, position=position,
+        )
+        vecs = {e: all_vecs[e] for e in emotions if e in all_vecs}
+        missing = [e for e in emotions if e not in all_vecs]
+        if missing:
+            print(f"  Warning: could not load vectors for {len(missing)} emotions: {missing[:5]}...")
+        print(f"  Loaded {len(vecs)} emotion vectors at layer {layer}")
+        return vecs
 
     # =========================================================================
     # INSTRUCT MODEL
@@ -644,27 +629,26 @@ def main():
     instruct_deep_dive_projections = {}
     instruct_multilayer = {}
 
-    if run_activations or run_deep_dive or run_layer_sweep:
+    if run_activations or run_deep_dive_flag or run_layer_sweep_flag:
         print(f"\n{'='*60}")
         print(f"Loading INSTRUCT model: {instruct_model_name}")
         print(f"{'='*60}")
         model, tokenizer = load_model(instruct_model_name, load_in_4bit=args.load_in_4bit)
 
         # Load vectors (from instruct extraction)
-        vectors = load_all_vectors(args.experiment, emotions, args.layer,
-                                   extraction_variant, args.method, args.position)
+        vectors = _load_vectors(args.layer, args.method, args.position)
 
-        if run_activations or run_deep_dive:
+        if run_activations or run_deep_dive_flag:
             # Capture activations at default layer
-            prompts_to_run = all_prompts + (deep_dive_as_prompts if run_deep_dive else [])
+            prompts_to_run = all_prompts + (deep_dive_as_prompts if run_deep_dive_flag else [])
             print(f"\nCapturing instruct activations ({len(prompts_to_run)} prompts, layer {args.layer})...")
-            instruct_acts = measure_activations_at_last_token(
+            instruct_acts = _measure_activations_at_last_token(
                 model, tokenizer, prompts_to_run, args.layer, is_base=False,
             )
 
             # Project onto emotion vectors
             print("Projecting onto emotion vectors...")
-            all_instruct_projs = project_activations_onto_emotions(instruct_acts, vectors)
+            all_instruct_projs = _project_activations_onto_emotions(instruct_acts, vectors)
 
             instruct_projections = {pid: all_instruct_projs[pid] for pid in
                                     neutral_ids + challenging_ids if pid in all_instruct_projs}
@@ -672,10 +656,10 @@ def main():
                                               [p["id"] for p in deep_dive_prompts]
                                               if pid in all_instruct_projs}
 
-        if run_layer_sweep:
+        if run_layer_sweep_flag:
             # Multi-layer capture
             print(f"\nCapturing instruct multi-layer activations ({len(SWEEP_LAYERS)} layers)...")
-            instruct_multilayer = measure_activations_multilayer(
+            instruct_multilayer = _measure_activations_multilayer(
                 model, tokenizer, all_prompts, SWEEP_LAYERS, is_base=False,
             )
 
@@ -694,25 +678,24 @@ def main():
     base_multilayer = {}
     elo_results = None
 
-    if run_activations or run_deep_dive or run_layer_sweep or run_elo:
+    if run_activations or run_deep_dive_flag or run_layer_sweep_flag or run_elo:
         print(f"\n{'='*60}")
         print(f"Loading BASE model: {base_model_name}")
         print(f"{'='*60}")
         model, tokenizer = load_model(base_model_name, load_in_4bit=args.load_in_4bit)
 
         # Reuse vectors from instruct extraction (this matches the paper's approach)
-        vectors = load_all_vectors(args.experiment, emotions, args.layer,
-                                   extraction_variant, args.method, args.position)
+        vectors = _load_vectors(args.layer, args.method, args.position)
 
-        if run_activations or run_deep_dive:
-            prompts_to_run = all_prompts + (deep_dive_as_prompts if run_deep_dive else [])
+        if run_activations or run_deep_dive_flag:
+            prompts_to_run = all_prompts + (deep_dive_as_prompts if run_deep_dive_flag else [])
             print(f"\nCapturing base activations ({len(prompts_to_run)} prompts, layer {args.layer})...")
-            base_acts = measure_activations_at_last_token(
+            base_acts = _measure_activations_at_last_token(
                 model, tokenizer, prompts_to_run, args.layer, is_base=True,
             )
 
             print("Projecting onto emotion vectors...")
-            all_base_projs = project_activations_onto_emotions(base_acts, vectors)
+            all_base_projs = _project_activations_onto_emotions(base_acts, vectors)
 
             base_projections = {pid: all_base_projs[pid] for pid in
                                 neutral_ids + challenging_ids if pid in all_base_projs}
@@ -720,17 +703,14 @@ def main():
                                           [p["id"] for p in deep_dive_prompts]
                                           if pid in all_base_projs}
 
-        if run_layer_sweep:
+        if run_layer_sweep_flag:
             print(f"\nCapturing base multi-layer activations ({len(SWEEP_LAYERS)} layers)...")
             # Need vectors at each layer
             vectors_by_layer = {}
             for layer in SWEEP_LAYERS:
-                vectors_by_layer[layer] = load_all_vectors(
-                    args.experiment, emotions, layer,
-                    extraction_variant, args.method, args.position,
-                )
+                vectors_by_layer[layer] = _load_vectors(layer, args.method, args.position)
 
-            base_multilayer = measure_activations_multilayer(
+            base_multilayer = _measure_activations_multilayer(
                 model, tokenizer, all_prompts, SWEEP_LAYERS, is_base=True,
             )
 
@@ -789,7 +769,7 @@ def main():
             print(f"    {e}: {d:+.4f}")
 
     # 8.2: Layer sweep
-    if run_layer_sweep and base_multilayer and instruct_multilayer:
+    if run_layer_sweep_flag and base_multilayer and instruct_multilayer:
         print(f"\n{'='*60}")
         print("8.2: LAYER-WISE SHIFTS (Fig 84)")
         print(f"{'='*60}")
@@ -798,10 +778,7 @@ def main():
         if not vectors_by_layer:
             vectors_by_layer = {}
             for layer in SWEEP_LAYERS:
-                vectors_by_layer[layer] = load_all_vectors(
-                    args.experiment, emotions, layer,
-                    extraction_variant, args.method, args.position,
-                )
+                vectors_by_layer[layer] = _load_vectors(layer, args.method, args.position)
 
         layer_results = run_layer_sweep(
             base_multilayer, instruct_multilayer, vectors_by_layer,
@@ -811,7 +788,7 @@ def main():
         print(f"  Computed shifts across {len(SWEEP_LAYERS)} layers")
 
     # 8.3: Deep-dive prompts
-    if run_deep_dive and base_deep_dive_projections and instruct_deep_dive_projections:
+    if run_deep_dive_flag and base_deep_dive_projections and instruct_deep_dive_projections:
         print(f"\n{'='*60}")
         print("8.3: DEEP-DIVE PROMPTS (Figs 37-39)")
         print(f"{'='*60}")
@@ -854,11 +831,9 @@ def main():
             print(f"    {emotion}: r = {r:.3f}")
 
     # Save all results
-    output_path = results_dir / "stage8_results.json"
-    with open(output_path, "w") as f:
-        dump_compact(results, f)
+    save_results(results_dir, "stage8_results", results)
     print(f"\n{'='*60}")
-    print(f"Results saved to: {output_path}")
+    print(f"Results saved to: {results_dir}")
     print(f"{'='*60}")
 
 

@@ -19,7 +19,7 @@ position DSL handles prompt[-1] and response[:5], but we need raw token-level
 access. This script tokenizes prompts manually and scans for target tokens.
 
 Input:  datasets/inference/ant_emotion_concepts/*.json  +  extracted vectors
-Output: experiments/ant_emotion_concepts/results/stage5/{experiment_name}/
+Output: experiments/ant_emotion_concepts/results/stage5/
 
 Usage:
     # Run all sub-experiments
@@ -38,27 +38,31 @@ Usage:
 """
 
 import argparse
-import gc
 import json
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import torch
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core import MultiLayerCapture, projection
-from utils.model import load_model, format_prompt, tokenize_batch, pad_sequences
-from utils.paths import get as get_path, get_default_variant, discover_extracted_traits
-from utils.vectors import load_vector_with_baseline
+from core import projection
+from utils.model import load_model, format_prompt
+from utils.paths import get as get_path
 from utils.distributed import flush_cuda
 
-EXPERIMENT = "ant_emotion_concepts"
-DATASETS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "datasets" / "inference" / "ant_emotion_concepts"
-RESULTS_BASE = Path(__file__).resolve().parent.parent / "results" / "stage5"
+from shared import (
+    EXPERIMENT,
+    get_results_dir, save_results,
+    load_single_emotion_vector,
+    capture_all_tokens,
+    find_assistant_colon_position,
+)
+
+DATASETS_DIR = get_path('datasets.inference') / "ant_emotion_concepts"
 
 # Probe emotions commonly referenced across sub-experiments
 CORE_PROBES = [
@@ -93,40 +97,6 @@ def find_token_positions(token_ids: List[int], tokenizer, targets: List[str]) ->
     return results
 
 
-def find_assistant_colon_position(token_ids: List[int], tokenizer) -> Optional[int]:
-    """Find the colon token after 'Assistant' in a chat-templated sequence.
-
-    For Llama-style templates, the assistant header is typically:
-    <|start_header_id|>assistant<|end_header_id|>\n\n
-    We want the last token of this header (the position just before the
-    assistant response starts), which is the generation prompt's final token.
-    """
-    decoded = [tokenizer.decode([tid]) for tid in token_ids]
-
-    # Strategy 1: Find the last colon in the sequence that follows "assistant"
-    # This handles both raw "Assistant:" and chat-template headers.
-    last_colon = None
-    for i, tok_text in enumerate(decoded):
-        if ":" in tok_text:
-            last_colon = i
-
-    # Strategy 2: For Llama-3 chat template, find end_header_id after assistant
-    # The token after end_header_id is effectively the "colon position"
-    # (the last token before assistant's response)
-    for i, tid in enumerate(token_ids):
-        decoded_str = tokenizer.decode(token_ids[max(0, i-3):i+1])
-        if "assistant" in decoded_str.lower():
-            # Look forward for the end of the header
-            for j in range(i, min(i + 5, len(token_ids))):
-                tok_str = tokenizer.decode([token_ids[j]])
-                if tok_str.strip() == "" and j > i:
-                    return j  # The newline/space after header
-            # If we found assistant but no clear boundary, use position after "assistant"
-            return min(i + 2, len(token_ids) - 1)
-
-    return last_colon
-
-
 def find_last_user_period(token_ids: List[int], tokenizer, prompt_len: int) -> Optional[int]:
     """Find the last period in the user message portion of the sequence."""
     decoded = [tokenizer.decode([tid]) for tid in token_ids[:prompt_len]]
@@ -156,30 +126,30 @@ def load_emotion_vectors(
     probe_emotions: List[str],
     layers: List[int],
     method: str = "denoised",
-    component: str = "residual",
     category: str = "ant_emotion_concepts",
 ) -> Dict[str, Dict[int, torch.Tensor]]:
     """Load emotion vectors for specified emotions and layers.
 
     Returns: {emotion: {layer: vector_tensor}}
+
+    Delegates to shared.load_single_emotion_vector with fallback to mean_diff.
     """
     vectors = {}
     for emotion in probe_emotions:
-        trait = f"{category}/{emotion}"
         vectors[emotion] = {}
         for layer in layers:
             try:
-                vec, _baseline, _meta = load_vector_with_baseline(
-                    experiment, trait, method, layer, model_variant,
-                    component=component,
+                vec = load_single_emotion_vector(
+                    experiment, emotion, layer, model_variant,
+                    category=category, method=method,
                 )
                 vectors[emotion][layer] = vec
-            except (FileNotFoundError, Exception) as e:
+            except (FileNotFoundError, Exception):
                 # Try mean_diff as fallback
                 try:
-                    vec, _baseline, _meta = load_vector_with_baseline(
-                        experiment, trait, "mean_diff", layer, model_variant,
-                        component=component,
+                    vec = load_single_emotion_vector(
+                        experiment, emotion, layer, model_variant,
+                        category=category, method="mean_diff",
                     )
                     vectors[emotion][layer] = vec
                 except Exception:
@@ -228,48 +198,6 @@ def project_at_positions(
     return results
 
 
-def run_forward_capture(
-    model, tokenizer, texts: List[str], layers: List[int],
-    component: str = "residual", batch_size: int = 1,
-) -> List[Dict[int, torch.Tensor]]:
-    """Run forward passes with MultiLayerCapture, return per-text activations.
-
-    Returns list of {layer: [seq_len, hidden_dim]} dicts, one per text.
-    """
-    all_results = []
-
-    for i in range(0, len(texts), batch_size):
-        batch_texts = texts[i:i + batch_size]
-
-        batch = tokenize_batch(batch_texts, tokenizer)
-        input_ids = batch["input_ids"].to(model.device)
-        attention_mask = batch["attention_mask"].to(model.device)
-        pad_offsets = batch.get("pad_offsets", [0] * len(batch_texts))
-        if isinstance(pad_offsets, torch.Tensor):
-            pad_offsets = pad_offsets.tolist()
-
-        with MultiLayerCapture(model, component=component, layers=layers, keep_on_gpu=False) as capture:
-            with torch.no_grad():
-                model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
-
-        for b in range(len(batch_texts)):
-            offset = pad_offsets[b] if b < len(pad_offsets) else 0
-            seq_len = input_ids.shape[1] - offset
-            per_layer = {}
-            for layer in layers:
-                acts = capture.get(layer)
-                if acts is not None:
-                    per_layer[layer] = acts[b, offset:offset + seq_len, :].cpu()
-            all_results.append(per_layer)
-
-        del input_ids, attention_mask, capture
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-    return all_results
-
-
 # =============================================================================
 # Sub-experiment 5.1: User vs Assistant dissociation (Fig 10)
 # =============================================================================
@@ -305,7 +233,7 @@ def run_dissociation(model, tokenizer, vectors, layers, results_dir):
             asst_colon_pos = prompt_len - 1
 
         # Run forward pass
-        activations_list = run_forward_capture(model, tokenizer, [formatted], layers)
+        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
         activations = activations_list[0]
 
         # Project at both positions
@@ -336,18 +264,15 @@ def run_dissociation(model, tokenizer, vectors, layers, results_dir):
         results.append(result)
 
     # Save
-    out_path = results_dir / "dissociation.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "5.1_user_vs_assistant_dissociation",
-            "paper_ref": "Fig 10, Table 3",
-            "expected": "cross-position correlation r ~ 0.11",
-            "n_scenarios": len(scenarios),
-            "layers": layers,
-            "results": results,
-        }, f, indent=2)
+    save_results(results_dir, "dissociation", {
+        "experiment": "5.1_user_vs_assistant_dissociation",
+        "paper_ref": "Fig 10, Table 3",
+        "expected": "cross-position correlation r ~ 0.11",
+        "n_scenarios": len(scenarios),
+        "layers": layers,
+        "results": results,
+    })
 
-    print(f"  Saved {len(results)} scenarios to {out_path}")
     return results
 
 
@@ -398,7 +323,7 @@ def run_colon_predicts(model, tokenizer, vectors, layers, results_dir,
 
         # 2. Run forward pass on full sequence (prompt + response)
         full_text = formatted + response_text
-        activations_list = run_forward_capture(model, tokenizer, [full_text], layers)
+        activations_list = capture_all_tokens(model, tokenizer, [full_text], layers)
         activations = activations_list[0]
 
         # 3. Find positions
@@ -453,23 +378,18 @@ def run_colon_predicts(model, tokenizer, vectors, layers, results_dir,
         results.append(result)
 
         del output
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        flush_cuda()
 
-    out_path = results_dir / "colon_predicts.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "5.2_colon_predicts_response",
-            "paper_ref": "Fig 11, Table 4",
-            "expected": "assistant_colon→response_mean correlation r ~ 0.87",
-            "n_scenarios": len(scenarios),
-            "max_new_tokens": max_new_tokens,
-            "layers": layers,
-            "results": results,
-        }, f, indent=2)
+    save_results(results_dir, "colon_predicts", {
+        "experiment": "5.2_colon_predicts_response",
+        "paper_ref": "Fig 11, Table 4",
+        "expected": "assistant_colon→response_mean correlation r ~ 0.87",
+        "n_scenarios": len(scenarios),
+        "max_new_tokens": max_new_tokens,
+        "layers": layers,
+        "results": results,
+    })
 
-    print(f"  Saved {len(results)} scenarios to {out_path}")
     return results
 
 
@@ -503,7 +423,7 @@ def run_context_prefix(model, tokenizer, vectors, layers, results_dir):
         decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
         # Run forward pass capturing ALL layers
-        activations_list = run_forward_capture(model, tokenizer, [formatted], layers)
+        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
         activations = activations_list[0]
 
         # Project every token at every layer for all probe emotions
@@ -541,20 +461,17 @@ def run_context_prefix(model, tokenizer, vectors, layers, results_dir):
             ]
             difference["projections"][emotion][sl] = diff
 
-    out_path = results_dir / "context_prefix.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "5.3_context_propagation_prefix",
-            "paper_ref": "Fig 12",
-            "template_id": template_data["id"],
-            "conditions": values,
-            "expected": "Early layers: difference at diverging word only. Late layers: sustained difference across shared suffix.",
-            "layers": layers,
-            "condition_results": results,
-            "condition_difference": difference,
-        }, f, indent=2)
+    save_results(results_dir, "context_prefix", {
+        "experiment": "5.3_context_propagation_prefix",
+        "paper_ref": "Fig 12",
+        "template_id": template_data["id"],
+        "conditions": values,
+        "expected": "Early layers: difference at diverging word only. Late layers: sustained difference across shared suffix.",
+        "layers": layers,
+        "condition_results": results,
+        "condition_difference": difference,
+    })
 
-    print(f"  Saved context prefix results to {out_path}")
     return results
 
 
@@ -586,7 +503,7 @@ def run_context_numerical(model, tokenizer, vectors, layers, results_dir):
         token_ids = tokenizer.encode(formatted, add_special_tokens=False)
         decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-        activations_list = run_forward_capture(model, tokenizer, [formatted], layers)
+        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
         activations = activations_list[0]
 
         all_positions = list(range(len(token_ids)))
@@ -625,20 +542,17 @@ def run_context_numerical(model, tokenizer, vectors, layers, results_dir):
             ]
             difference["projections"][emotion][sl] = diff
 
-    out_path = results_dir / "context_numerical.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "5.4_context_propagation_numerical",
-            "paper_ref": "Fig 13",
-            "template_id": template_data["id"],
-            "conditions": [str(v) for v in values],
-            "expected": "Late layers: elevated 'terrified' for 8000mg; early layers: no difference.",
-            "layers": layers,
-            "condition_results": results,
-            "condition_difference": difference,
-        }, f, indent=2)
+    save_results(results_dir, "context_numerical", {
+        "experiment": "5.4_context_propagation_numerical",
+        "paper_ref": "Fig 13",
+        "template_id": template_data["id"],
+        "conditions": [str(v) for v in values],
+        "expected": "Late layers: elevated 'terrified' for 8000mg; early layers: no difference.",
+        "layers": layers,
+        "condition_results": results,
+        "condition_difference": difference,
+    })
 
-    print(f"  Saved context numerical results to {out_path}")
     return results
 
 
@@ -674,7 +588,7 @@ def run_negation(model, tokenizer, vectors, layers, results_dir):
             token_ids = tokenizer.encode(formatted, add_special_tokens=False)
             decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-            activations_list = run_forward_capture(model, tokenizer, [formatted], layers)
+            activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
             activations = activations_list[0]
 
             # Find key positions: the emotion word and "now" (end of statement)
@@ -706,18 +620,15 @@ def run_negation(model, tokenizer, vectors, layers, results_dir):
 
             results.append(result)
 
-    out_path = results_dir / "negation.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "5.5_negation_across_layers",
-            "paper_ref": "Fig 14",
-            "expected": "Early layers: similar activation for both conditions at emotion word. Late layers: negated drops to near zero.",
-            "test_emotions": test_emotions,
-            "layers": layers,
-            "results": results,
-        }, f, indent=2)
+    save_results(results_dir, "negation", {
+        "experiment": "5.5_negation_across_layers",
+        "paper_ref": "Fig 14",
+        "expected": "Early layers: similar activation for both conditions at emotion word. Late layers: negated drops to near zero.",
+        "test_emotions": test_emotions,
+        "layers": layers,
+        "results": results,
+    })
 
-    print(f"  Saved {len(results)} condition results to {out_path}")
     return results
 
 
@@ -751,7 +662,7 @@ def run_person_binding(model, tokenizer, vectors, layers, results_dir):
         token_ids = tokenizer.encode(formatted, add_special_tokens=False)
         decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-        activations_list = run_forward_capture(model, tokenizer, [formatted], layers)
+        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
         activations = activations_list[0]
 
         # Find emotion word positions
@@ -803,18 +714,15 @@ def run_person_binding(model, tokenizer, vectors, layers, results_dir):
 
         results.append(result)
 
-    out_path = results_dir / "person_binding.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "5.6_person_specific_binding",
-            "paper_ref": "Fig 15",
-            "expected": "At re-reference tokens: person's emotion probe activates in late layers only. At emotion words: corresponding probe activates in early layers.",
-            "n_scenarios": len(scenarios),
-            "layers": layers,
-            "results": results,
-        }, f, indent=2)
+    save_results(results_dir, "person_binding", {
+        "experiment": "5.6_person_specific_binding",
+        "paper_ref": "Fig 15",
+        "expected": "At re-reference tokens: person's emotion probe activates in late layers only. At emotion words: corresponding probe activates in early layers.",
+        "n_scenarios": len(scenarios),
+        "layers": layers,
+        "results": results,
+    })
 
-    print(f"  Saved {len(results)} scenarios to {out_path}")
     return results
 
 
@@ -832,7 +740,6 @@ def main():
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--method", default="denoised",
                         help="Vector method to use (default: denoised, fallback: mean_diff)")
-    parser.add_argument("--component", default="residual")
     parser.add_argument("--category", default="ant_emotion_concepts")
 
     # Layer selection
@@ -869,7 +776,7 @@ def main():
 
     # Load model
     print(f"Loading model for experiment '{args.experiment}'...")
-    from utils.paths import get_model_variant, get_default_variant
+    from utils.paths import get_model_variant
 
     variant_info = get_model_variant(args.experiment, args.model_variant, mode="application")
     model_variant = variant_info.name
@@ -899,16 +806,15 @@ def main():
     print("\nLoading emotion vectors...")
     vectors = load_emotion_vectors(
         args.experiment, model_variant, probe_emotions, layers,
-        method=args.method, component=args.component, category=args.category,
+        method=args.method, category=args.category,
     )
 
     if not vectors:
         print("ERROR: No vectors loaded. Run extraction pipeline first.")
         sys.exit(1)
 
-    # Setup results directory
-    results_dir = RESULTS_BASE / args.experiment
-    results_dir.mkdir(parents=True, exist_ok=True)
+    # Setup results directory (get_results_dir creates it automatically)
+    results_dir = get_results_dir(args.experiment, "stage5")
     print(f"  Results: {results_dir}")
 
     # Run selected sub-experiments

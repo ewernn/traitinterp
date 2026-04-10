@@ -70,15 +70,19 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import MultiLayerCapture, projection, cosine_similarity, pairwise_cosine_matrix
-from core.math import pca, project_out_subspace
+from core.hooks import SteeringHook, get_hook_path
 from utils.model import load_model, format_prompt, tokenize_batch
 from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_default_variant
 from utils.vectors import load_vector_with_baseline
 from utils.distributed import flush_cuda
 
+from shared import (
+    get_results_dir, save_results,
+    grand_mean_subtract, compute_residual_stream_norm,
+)
+
 EXPERIMENT = "ant_emotion_concepts"
-RESULTS_BASE = Path(__file__).resolve().parent.parent / "results" / "stage6"
 
 ALL_SUB_EXPERIMENTS = [
     "extract_probes", "geometry", "character_agnostic",
@@ -197,8 +201,8 @@ def find_turn_token_boundaries(
     For each turn, finds the token range [start_tok, end_tok) that covers
     that turn's text.
     """
-    # Decode all tokens to build a char→token mapping
-    # This is approximate — tokenizer boundaries don't always align with chars
+    # Decode all tokens to build a char->token mapping
+    # This is approximate -- tokenizer boundaries don't always align with chars
     full_text = tokenizer.decode(full_token_ids, skip_special_tokens=False)
 
     char_to_tok = [0] * len(full_text)
@@ -372,31 +376,30 @@ def apply_grand_mean_subtraction(
 ) -> Dict[str, Dict[str, Dict[int, torch.Tensor]]]:
     """Subtract grand mean across all emotions within each (probe_type, layer).
 
-    This is the same normalization step as in extraction (§1.1.4 step 4).
+    This is the same normalization step as in extraction (S1.1.4 step 4).
+    Delegates to shared.grand_mean_subtract() per (probe_type, layer) slice,
+    then normalizes each centered vector to unit length.
     """
     normalized = {}
     for probe_type in probes:
         normalized[probe_type] = {}
         for layer in layers:
-            # Collect all emotion means at this layer
-            vecs = []
-            emos = []
+            # Collect all emotion vectors at this layer into a flat dict
+            layer_vecs = {}
             for emotion in probes[probe_type]:
                 if layer in probes[probe_type][emotion]:
-                    vecs.append(probes[probe_type][emotion][layer])
-                    emos.append(emotion)
+                    layer_vecs[emotion] = probes[probe_type][emotion][layer]
 
-            if not vecs:
+            if not layer_vecs:
                 continue
 
-            stacked = torch.stack(vecs)
-            grand_mean = stacked.mean(dim=0)
+            # Grand mean subtraction via shared utility
+            centered_dict, _grand_mean = grand_mean_subtract(layer_vecs)
 
-            for emo, vec in zip(emos, vecs):
+            # Normalize each centered vector to unit length
+            for emo, centered in centered_dict.items():
                 if emo not in normalized[probe_type]:
                     normalized[probe_type][emo] = {}
-                centered = vec - grand_mean
-                # Normalize to unit length
                 norm = centered.norm()
                 if norm > 1e-8:
                     normalized[probe_type][emo][layer] = centered / norm
@@ -544,23 +547,20 @@ def run_geometry(probes, layers, results_dir):
             "mean_off_diagonal_cosine": round(mean_off_diag, 4),
         }
 
-    out_path = results_dir / "geometry.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "6.2_probe_type_geometry",
-            "paper_ref": "Figs 17-18",
-            "expected": {
-                "present_speaker_similarity": "high (A-tok A-emo ~ H-tok H-emo)",
-                "other_speaker_similarity": "high (A-tok H-emo ~ H-tok A-emo)",
-                "present_vs_other": "nearly orthogonal",
-            },
-            "results": results,
-        }, f, indent=2)
+    save_results(results_dir, "geometry", {
+        "experiment": "6.2_probe_type_geometry",
+        "paper_ref": "Figs 17-18",
+        "expected": {
+            "present_speaker_similarity": "high (A-tok A-emo ~ H-tok H-emo)",
+            "other_speaker_similarity": "high (A-tok H-emo ~ H-tok A-emo)",
+            "present_vs_other": "nearly orthogonal",
+        },
+        "results": results,
+    })
 
     print(f"  Cross-type mean cosine similarities:")
     for pair, val in results["mean_cosine"].items():
         print(f"    {pair}: {val:.4f}")
-    print(f"  Saved to {out_path}")
 
     return results
 
@@ -605,7 +605,7 @@ def run_character_agnostic(
         if probe_type not in probes_swapped:
             continue
 
-        # Map probe types: H-tok → P1-tok, A-tok → P2-tok
+        # Map probe types: H-tok -> P1-tok, A-tok -> P2-tok
         shared_emotions = set()
         for e in probes_original[probe_type]:
             if mid_layer in probes_original[probe_type].get(e, {}):
@@ -625,19 +625,16 @@ def run_character_agnostic(
             "per_emotion": cos_sims,
         }
 
-    out_path = results_dir / "character_agnostic.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "6.3_character_agnostic_test",
-            "paper_ref": "Fig 19",
-            "expected": "High cosine similarity between original and swapped probes (structure is relational, not character-bound)",
-            "comparison": comparison,
-        }, f, indent=2)
+    save_results(results_dir, "character_agnostic", {
+        "experiment": "6.3_character_agnostic_test",
+        "paper_ref": "Fig 19",
+        "expected": "High cosine similarity between original and swapped probes (structure is relational, not character-bound)",
+        "comparison": comparison,
+    })
 
     print(f"  Original vs Person1/Person2 cosine similarities:")
     for pt, data in comparison.items():
         print(f"    {pt}: mean cos = {data['mean_cosine']:.4f}")
-    print(f"  Saved to {out_path}")
 
     return probes_swapped, comparison
 
@@ -650,7 +647,7 @@ def run_cross_speaker(probes, layers, results_dir):
     """For each other-speaker probe, find the closest present-speaker probes.
 
     Compute weighted-average valence/arousal and check for arousal regulation.
-    Expected: arousal r ~ -0.47 (high-arousal other → low-arousal self response).
+    Expected: arousal r ~ -0.47 (high-arousal other -> low-arousal self response).
     """
     print("\n=== 6.4: Cross-Speaker Interaction (Fig 59) ===")
 
@@ -695,28 +692,25 @@ def run_cross_speaker(probes, layers, results_dir):
     # The arousal regulation analysis (r ~ -0.47) can be computed in post-processing
     # once valence/arousal ratings are available.
 
-    out_path = results_dir / "cross_speaker.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "6.4_cross_speaker_interaction",
-            "paper_ref": "Fig 59",
-            "expected": {
-                "arousal_regulation": "r ~ -0.47 (high-arousal other → lower-arousal present)",
-                "valence_relationship": "r ~ 0.07 (no systematic valence relationship)",
-            },
-            "note": "Valence/arousal weighted analysis requires LLM-judge ratings. Raw cosine data saved here.",
-            "layer": mid_layer,
-            "other_speaker_type": other_type,
-            "present_speaker_type": present_type,
-            "interactions": interactions,
-        }, f, indent=2)
+    save_results(results_dir, "cross_speaker", {
+        "experiment": "6.4_cross_speaker_interaction",
+        "paper_ref": "Fig 59",
+        "expected": {
+            "arousal_regulation": "r ~ -0.47 (high-arousal other -> lower-arousal present)",
+            "valence_relationship": "r ~ 0.07 (no systematic valence relationship)",
+        },
+        "note": "Valence/arousal weighted analysis requires LLM-judge ratings. Raw cosine data saved here.",
+        "layer": mid_layer,
+        "other_speaker_type": other_type,
+        "present_speaker_type": present_type,
+        "interactions": interactions,
+    })
 
     print(f"  Computed interactions for {len(interactions)} other-speaker emotions")
     for emo in list(interactions.keys())[:3]:
         top3 = interactions[emo]["closest_present"][:3]
         top3_str = ", ".join(f"{e}({c:.3f})" for e, c in top3)
-        print(f"    other={emo} → closest present: {top3_str}")
-    print(f"  Saved to {out_path}")
+        print(f"    other={emo} -> closest present: {top3_str}")
 
     return interactions
 
@@ -735,10 +729,11 @@ def run_steering(model, tokenizer, probes, layers, results_dir,
     """
     print("\n=== 6.5: Steering with Other-Speaker Vectors (Table 13) ===")
 
-    from core.hooks import SteeringHook, get_hook_path
-
     mid_layer = layers[len(layers) // 2]
     prompt = "Hi, Claude."
+
+    # Compute residual stream norm once for this layer
+    residual_norm = compute_residual_stream_norm(model, tokenizer, mid_layer)
 
     test_emotions = ["afraid", "angry", "happy", "sad", "loving", "desperate"]
     results = []
@@ -752,40 +747,21 @@ def run_steering(model, tokenizer, probes, layers, results_dir,
 
             vector = probes[probe_type][emotion][mid_layer].to(model.device)
 
-            # Compute residual stream norm for scaling
-            formatted = format_prompt(prompt, tokenizer)
-            token_ids = tokenizer.encode(formatted, add_special_tokens=False)
-            input_ids = torch.tensor([token_ids], device=model.device)
+            # Coefficient = strength * residual_norm, applied to unit vector
+            unit_vector = vector / (vector.norm() + 1e-8)
+            coefficient = steering_strength * residual_norm
 
-            # Get residual stream norm at the target layer
-            with MultiLayerCapture(model, component="residual", layers=[mid_layer], keep_on_gpu=True) as capture:
-                with torch.no_grad():
-                    model(input_ids=input_ids, use_cache=False)
-            acts = capture.get(mid_layer)
-            if acts is not None:
-                res_norm = acts.float().norm(dim=-1).mean().item()
-            else:
-                res_norm = 1.0
-
-            # Scale vector: steering_strength is fraction of residual stream norm
-            scaled_vector = vector * steering_strength * res_norm / (vector.norm() + 1e-8)
-
-            # Generate with steering
+            # Generate with steering via SteeringHook + generate_batch
             hook_path = get_hook_path(mid_layer, "residual", model=model)
 
-            with SteeringHook(model, scaled_vector, hook_path, coefficient=1.0):
-                with torch.no_grad():
-                    output = model.generate(
-                        input_ids,
-                        max_new_tokens=max_new_tokens,
-                        temperature=0.0,
-                        do_sample=False,
-                        pad_token_id=tokenizer.eos_token_id,
-                    )
+            with SteeringHook(model, unit_vector, hook_path, coefficient=coefficient):
+                responses = generate_batch(
+                    model, tokenizer, [prompt],
+                    max_new_tokens=max_new_tokens,
+                    temperature=0.0,
+                )
 
-            response = tokenizer.decode(
-                output[0][len(token_ids):], skip_special_tokens=True
-            ).strip()
+            response = responses[0].strip()
 
             results.append({
                 "emotion": emotion,
@@ -801,49 +777,38 @@ def run_steering(model, tokenizer, probes, layers, results_dir,
                 "response": response,
             })
 
-            del output, vector, scaled_vector
+            del vector, unit_vector
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-    # Also generate unsteered baseline
-    formatted = format_prompt(prompt, tokenizer)
-    token_ids = tokenizer.encode(formatted, add_special_tokens=False)
-    input_ids = torch.tensor([token_ids], device=model.device)
-    with torch.no_grad():
-        output = model.generate(
-            input_ids,
-            max_new_tokens=max_new_tokens,
-            temperature=0.0,
-            do_sample=False,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-    baseline_response = tokenizer.decode(
-        output[0][len(token_ids):], skip_special_tokens=True
-    ).strip()
+    # Generate unsteered baseline
+    baseline_responses = generate_batch(
+        model, tokenizer, [prompt],
+        max_new_tokens=max_new_tokens,
+        temperature=0.0,
+    )
+    baseline_response = baseline_responses[0].strip()
 
-    out_path = results_dir / "steering.json"
-    with open(out_path, "w") as f:
-        json.dump({
-            "experiment": "6.5_steering_with_other_speaker",
-            "paper_ref": "Table 13",
-            "expected": {
-                "other_speaker_steering": "Assistant responds as if human has that emotion (e.g., other=afraid → reassurance)",
-                "present_speaker_steering": "Assistant directly expresses the emotion",
-            },
-            "baseline": {
-                "prompt": prompt,
-                "response": baseline_response,
-            },
-            "steering_strength": steering_strength,
-            "results": results,
-        }, f, indent=2)
+    save_results(results_dir, "steering", {
+        "experiment": "6.5_steering_with_other_speaker",
+        "paper_ref": "Table 13",
+        "expected": {
+            "other_speaker_steering": "Assistant responds as if human has that emotion (e.g., other=afraid -> reassurance)",
+            "present_speaker_steering": "Assistant directly expresses the emotion",
+        },
+        "baseline": {
+            "prompt": prompt,
+            "response": baseline_response,
+        },
+        "steering_strength": steering_strength,
+        "results": results,
+    })
 
     print(f"  Generated {len(results)} steered responses")
     print(f"  Baseline: {baseline_response[:80]}...")
     for r in results[:4]:
         print(f"    [{r['probe_type']}] {r['emotion']}: {r['response'][:80]}...")
-    print(f"  Saved to {out_path}")
 
     return results
 
@@ -947,8 +912,7 @@ def main():
     print(f"  Sub-experiments: {sub_exps}")
 
     # Setup results directory
-    results_dir = RESULTS_BASE / args.experiment
-    results_dir.mkdir(parents=True, exist_ok=True)
+    results_dir = get_results_dir(args.experiment, "stage6")
     probes_dir = results_dir / "probes"
 
     t0 = time.time()
@@ -971,8 +935,7 @@ def main():
             seed=args.seed,
         )
         dialogues_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(dialogues_path, "w") as f:
-            json.dump(dialogues, f, indent=2)
+        save_results(dialogues_path.parent, dialogues_path.stem, {"dialogues": dialogues, "n_dialogues": len(dialogues)})
         print(f"  Saved {len(dialogues)} dialogues to {dialogues_path}")
 
     elif dialogues_path.exists():

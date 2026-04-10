@@ -40,8 +40,10 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core.math import pca, project_out_subspace
+from core.math import project_out_subspace
 from utils.paths import get as get_path, discover_traits
+
+from shared import filter_neutral_traits, grand_mean_subtract, denoise_with_neutral_pcs
 
 
 def load_emotion_means(experiment, traits, layer, model_variant, component, position):
@@ -74,23 +76,6 @@ def load_emotion_means(experiment, traits, layer, model_variant, component, posi
     return means, failed
 
 
-def compute_grand_mean_and_center(emotion_means):
-    """Subtract grand mean across all emotions from each.
-
-    Returns:
-        centered: dict {trait_path: centered [hidden_dim] tensor}
-        grand_mean: [hidden_dim] tensor
-    """
-    all_means = torch.stack(list(emotion_means.values()))
-    grand_mean = all_means.mean(dim=0)
-
-    centered = {}
-    for trait, mean in emotion_means.items():
-        centered[trait] = mean - grand_mean
-
-    return centered, grand_mean
-
-
 def load_neutral_activations(experiment, neutral_trait, layer, model_variant, component, position):
     """Load neutral corpus activations for PCA denoising.
 
@@ -108,47 +93,38 @@ def load_neutral_activations(experiment, neutral_trait, layer, model_variant, co
     return pos_acts.float()
 
 
-def compute_neutral_pcs(neutral_acts, variance_threshold=0.5):
-    """PCA on neutral activations, return PCs explaining >= threshold variance.
-
-    Returns:
-        basis: [k, hidden_dim] — top k principal components
-        k: number of PCs selected
-        actual_variance: total variance explained by selected PCs
-    """
-    n_components = min(neutral_acts.shape[0], neutral_acts.shape[1])
-    components, var_ratio, _ = pca(neutral_acts, n_components=n_components)
-
-    cumvar = var_ratio.cumsum(0)
-    k = int((cumvar < variance_threshold).sum().item()) + 1
-    k = min(k, len(var_ratio))
-
-    actual_variance = cumvar[k - 1].item()
-    basis = components[:k]
-
-    return basis, k, actual_variance
-
-
-def denoise_and_save(experiment, centered_means, neutral_basis, grand_mean,
+def denoise_and_save(experiment, centered_means, neutral_acts, grand_mean,
                      layer, model_variant, component, position,
-                     output_method='denoised', dry_run=False):
-    """Project out neutral PCs, normalize, save vectors.
+                     variance_threshold=0.5, output_method='denoised', dry_run=False):
+    """Denoise centered vectors via neutral PCs, normalize, and save.
 
-    Returns: number of vectors saved
+    Returns: (n_saved, n_pcs, denoised_dict or None)
     """
     from utils.paths import sanitize_position
 
-    count = 0
-    for trait, centered_vec in centered_means.items():
-        # Project out neutral subspace
-        denoised = project_out_subspace(centered_vec, neutral_basis)
+    # Denoise using shared utility
+    denoised_dict = denoise_with_neutral_pcs(
+        centered_means, neutral_acts, variance_threshold=variance_threshold,
+    )
 
+    # Infer n_pcs from the print output of denoise_with_neutral_pcs
+    # (it already prints the count). We also need it for metadata, so recompute.
+    from core.math import pca
+    n_components = min(50, len(neutral_acts))
+    components, variance_ratio, _ = pca(neutral_acts.float(), n_components=n_components)
+    cumvar = torch.cumsum(variance_ratio, dim=0)
+    n_pcs = int((cumvar < variance_threshold).sum().item()) + 1
+    n_pcs = min(n_pcs, len(components))
+    neutral_basis = components[:n_pcs]
+
+    count = 0
+    for trait, denoised_vec in denoised_dict.items():
         # Normalize to unit length
-        norm = denoised.norm()
+        norm = denoised_vec.norm()
         if norm < 1e-8:
             print(f"    WARNING: {trait} has near-zero norm after denoising, skipping")
             continue
-        vector = denoised / norm
+        vector = denoised_vec / norm
 
         if dry_run:
             count += 1
@@ -167,6 +143,7 @@ def denoise_and_save(experiment, centered_means, neutral_basis, grand_mean,
         torch.save(vector.to(torch.float32), vector_path)
 
         # Save metadata
+        centered_vec = centered_means[trait]
         meta_path = vector_dir / 'metadata.json'
         meta = {
             'model_variant': model_variant,
@@ -178,7 +155,7 @@ def denoise_and_save(experiment, centered_means, neutral_basis, grand_mean,
             'normalization': {
                 'type': 'anthropic_emotion_concepts',
                 'grand_mean_subtracted': True,
-                'neutral_pcs_removed': neutral_basis.shape[0],
+                'neutral_pcs_removed': n_pcs,
                 'pre_denoise_norm': float(centered_vec.norm()),
                 'post_denoise_norm': float(norm),
             },
@@ -189,7 +166,7 @@ def denoise_and_save(experiment, centered_means, neutral_basis, grand_mean,
 
         count += 1
 
-    return count
+    return count, n_pcs, neutral_basis
 
 
 def main():
@@ -228,10 +205,8 @@ def main():
         model_variant = get_default_variant(args.experiment, mode='extraction')
         print(f"Auto-detected model variant: {model_variant}")
 
-    # Discover emotion traits
-    traits = discover_traits(args.category)
-    # Exclude _neutral pseudo-trait if present
-    traits = [t for t in traits if '/_neutral' not in t and not t.endswith('_neutral')]
+    # Discover emotion traits (excluding _neutral pseudo-trait)
+    traits = filter_neutral_traits(discover_traits(args.category))
     print(f"Found {len(traits)} emotion traits in {args.category}")
 
     if len(traits) < 2:
@@ -261,13 +236,13 @@ def main():
 
         # Step 2: Grand mean subtraction
         print(f"\n  Computing grand mean and centering...")
-        centered, grand_mean = compute_grand_mean_and_center(means)
+        centered, grand_mean = grand_mean_subtract(means)
         centered_stack = torch.stack(list(centered.values()))
         print(f"    Grand mean norm: {grand_mean.norm():.1f}")
         print(f"    Centered mean norm: {centered_stack.norm(dim=-1).mean():.1f} "
               f"± {centered_stack.norm(dim=-1).std():.1f}")
 
-        # Step 3: Load neutral activations and compute PCs
+        # Step 3: Load neutral activations
         print(f"\n  Loading neutral corpus activations from '{args.neutral_trait}'...")
         try:
             neutral_acts = load_neutral_activations(
@@ -280,37 +255,33 @@ def main():
         except (FileNotFoundError, ValueError) as e:
             print(f"    WARNING: {e}")
             print(f"    Skipping neutral-PC denoising (saving centered-only vectors)")
-            neutral_basis = torch.empty(0, centered_stack.shape[-1])
-            k, actual_var = 0, 0.0
-        else:
-            print(f"\n  PCA on neutral activations (threshold={args.variance_threshold})...")
-            neutral_basis, k, actual_var = compute_neutral_pcs(
-                neutral_acts, args.variance_threshold
-            )
-            print(f"    PCs for {args.variance_threshold*100:.0f}% variance: {k} "
-                  f"(actual: {actual_var*100:.1f}%)")
-            if k > 0:
-                print(f"    Top PC explains: {neutral_basis[0].norm():.3f} (component norm)")
+            neutral_acts = None
 
         # Step 4: Denoise and save
         action = "Would save" if args.dry_run else "Saving"
         print(f"\n  {action} {len(centered)} vectors (method='{args.output_method}')...")
 
-        n_saved = denoise_and_save(
-            args.experiment, centered, neutral_basis, grand_mean,
-            layer, model_variant, args.component, args.position,
-            args.output_method, args.dry_run
-        )
+        if neutral_acts is not None:
+            print(f"\n  PCA on neutral activations (threshold={args.variance_threshold})...")
+            n_saved, k, neutral_basis = denoise_and_save(
+                args.experiment, centered, neutral_acts, grand_mean,
+                layer, model_variant, args.component, args.position,
+                args.variance_threshold, args.output_method, args.dry_run
+            )
+            actual_var_msg = ""  # denoise_with_neutral_pcs already prints stats
+        else:
+            k = 0
+            n_saved = len(centered)
+            neutral_basis = torch.empty(0, centered_stack.shape[-1])
 
         # Post-denoise stats
-        if not args.dry_run and k > 0:
-            # Quick check: load one back and verify
+        if not args.dry_run and neutral_acts is not None and k > 0:
             sample_trait = list(centered.keys())[0]
             sample_denoised = project_out_subspace(centered[sample_trait], neutral_basis)
             sample_norm = sample_denoised.norm()
             original_norm = centered[sample_trait].norm()
             print(f"    Sample ({sample_trait.split('/')[-1]}): "
-                  f"pre={original_norm:.2f} → post={sample_norm:.2f} "
+                  f"pre={original_norm:.2f} -> post={sample_norm:.2f} "
                   f"({sample_norm/original_norm*100:.1f}% retained)")
 
         print(f"    {'Would save' if args.dry_run else 'Saved'} {n_saved} vectors")
@@ -320,10 +291,10 @@ def main():
     print(f"Cross-trait normalization complete")
     print(f"  Emotions: {len(means)}")
     print(f"  Layers: {layers}")
-    print(f"  Neutral PCs removed: {k} ({actual_var*100:.1f}% variance)")
+    print(f"  Neutral PCs removed: {k}")
     print(f"  Output method: {args.output_method}")
     if args.dry_run:
-        print(f"  DRY RUN — no files written")
+        print(f"  DRY RUN -- no files written")
     print(f"{'='*60}")
 
 

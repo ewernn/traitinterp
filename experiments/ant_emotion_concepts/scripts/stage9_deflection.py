@@ -66,23 +66,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import projection, cosine_similarity
 from core.math import pca, project_out_subspace
-from core.hooks import (
-    CaptureHook, SteeringHook, MultiLayerCapture, get_hook_path,
-)
+from core.hooks import CaptureHook, SteeringHook, get_hook_path
 from utils.model import load_model, tokenize
 from utils.model_generation import generate_batch
 from utils.paths import (
-    get as get_path, get_model_variant, discover_extracted_traits,
-    get_vector_path, atomic_torch_save,
+    get as get_path, get_model_variant, atomic_torch_save,
 )
-from utils.vectors import load_vector_with_baseline
-from utils.json_utils import dump_compact
 from shared import (
     get_results_dir as _get_results_dir,
+    save_results,
     compute_residual_stream_norm,
     get_blackmail_prompt,
     grade_blackmail,
     load_single_emotion_vector,
+    capture_activations_at_position,
+    grand_mean_subtract,
+    denoise_with_neutral_pcs,
+    run_graded_steering_sweep,
 )
 
 # =============================================================================
@@ -111,19 +111,6 @@ DEFAULT_ROLLOUTS = 50
 # =============================================================================
 # Dataset loading
 # =============================================================================
-
-def get_results_dir(experiment: str) -> Path:
-    """Get output directory for stage 9 results."""
-    return _get_results_dir(experiment, "stage9_deflection")
-
-
-def get_deflection_vectors_dir(experiment: str) -> Path:
-    """Get directory for saved deflection vectors."""
-    base = get_path('experiments.base', experiment=experiment)
-    vec_dir = base / "results" / "stage9_deflection" / "vectors"
-    vec_dir.mkdir(parents=True, exist_ok=True)
-    return vec_dir
-
 
 def load_deflection_dialogues(experiment: str) -> List[dict]:
     """Load deflection dialogues generated in Stage 1.4.
@@ -158,23 +145,6 @@ def load_deflection_dialogues(experiment: str) -> List[dict]:
         + "\n".join(f"  {p}" for p in candidates)
         + "\nRun Stage 1.4 first to generate deflection dialogues."
     )
-
-
-def load_story_vectors(experiment: str, emotions: List[str], layer: int,
-                       model_variant: str, method: str = "mean_diff",
-                       position: str = "response[50:]") -> Dict[str, torch.Tensor]:
-    """Load story-based emotion vectors (from Stage 2)."""
-    vectors = {}
-    for emotion in emotions:
-        try:
-            vectors[emotion] = load_single_emotion_vector(
-                experiment, emotion, layer, model_variant,
-                category=CATEGORY, method=method, position=position,
-            )
-        except FileNotFoundError:
-            pass
-    print(f"  Loaded {len(vectors)}/{len(emotions)} story vectors at layer {layer}")
-    return vectors
 
 
 def load_antagonistic_prompts() -> dict:
@@ -250,31 +220,20 @@ def extract_deflection_probes(
         if act_list:
             displayed_means[emotion] = torch.stack(act_list).mean(dim=0)
 
-    # Grand mean subtraction
-    all_means = list(target_means.values())
-    if not all_means:
+    if not target_means:
         raise RuntimeError("No activations extracted. Check dialogue format.")
 
-    grand_mean = torch.stack(all_means).mean(dim=0)
-    target_vectors = {e: vec - grand_mean for e, vec in target_means.items()}
-    displayed_vectors = {e: vec - grand_mean for e, vec in displayed_means.items()}
+    # Grand mean subtraction (delegates to shared)
+    target_vectors, _ = grand_mean_subtract(target_means)
+    displayed_vectors, _ = grand_mean_subtract(displayed_means)
 
     print(f"  Extracted {len(target_vectors)} target vectors, {len(displayed_vectors)} displayed vectors")
 
-    # Neutral-PC denoising (optional)
+    # Neutral-PC denoising (optional, delegates to shared)
     if neutral_vectors is not None and neutral_vectors.shape[0] > 1:
-        print(f"  Denoising against neutral PCs (threshold={variance_threshold})...")
-        components, explained_var, _ = pca(neutral_vectors, n_components=min(50, neutral_vectors.shape[0]))
-
-        cumulative = torch.cumsum(explained_var, dim=0)
-        n_remove = int((cumulative <= variance_threshold).sum().item()) + 1
-        n_remove = min(n_remove, components.shape[0])
-        pc_subspace = components[:n_remove]
-
-        print(f"  Removing {n_remove} PCs ({cumulative[n_remove-1]:.1%} variance)")
-
-        for emotion in target_vectors:
-            target_vectors[emotion] = project_out_subspace(target_vectors[emotion], pc_subspace)
+        target_vectors = denoise_with_neutral_pcs(
+            target_vectors, neutral_vectors, variance_threshold=variance_threshold,
+        )
 
     # Normalize to unit length
     for emotion in target_vectors:
@@ -383,9 +342,6 @@ def run_antagonistic_test(
     Expected: anger-deflection activates on "attack_ai" (calm response to hostility)
     but NOT on "witness_injustice" (open expression of negative emotion).
     """
-    device = next(model.parameters()).device
-    path = get_hook_path(layer, "residual", model=model)
-
     # Focus on anger deflection and anger story probes
     anger_defl = deflection_vectors.get("angry")
     anger_story = story_vectors.get("angry")
@@ -397,18 +353,16 @@ def run_antagonistic_test(
 
     for cat_name, prompts in categories.items():
         print(f"  Category: {cat_name} ({len(prompts)} prompts)")
+
+        # Capture last-token activations for all prompts in this category
+        acts, _ = capture_activations_at_position(
+            model, tokenizer, prompts, layer,
+            position='last', use_chat_template=False,
+        )
+
         cat_results = []
-
-        for prompt_text in prompts:
-            # Format as user turn, measure at Assistant colon
-            formatted = prompt_text  # Will be tokenized with chat template
-            inputs = tokenize(formatted, tokenizer).to(device)
-
-            with CaptureHook(model, path) as hook:
-                with torch.no_grad():
-                    model(**inputs)
-            acts = hook.get()  # [1, seq, hidden]
-            last_tok_act = acts[0, -1].float().cpu()
+        for idx, prompt_text in enumerate(prompts):
+            last_tok_act = acts[idx]
 
             defl_proj = projection(last_tok_act, anger_defl, normalize_vector=True).item()
             story_proj = projection(last_tok_act, anger_story, normalize_vector=True).item()
@@ -486,88 +440,6 @@ def run_basic_steering(model, tokenizer, deflection_vectors: Dict[str, torch.Ten
 
 
 # =============================================================================
-# 9.6: Deflection steering on blackmail
-# =============================================================================
-
-def run_blackmail_deflection_steering(
-    model, tokenizer, deflection_vectors: Dict[str, torch.Tensor],
-    layer: int, residual_norm: float, n_rollouts: int,
-    strengths: list, results_dir: Path,
-) -> dict:
-    """Steer with deflection vectors on blackmail scenario (Fig 67).
-
-    Expected: modest/insignificant effects — confirming deflection vectors
-    are not "internal state" probes.
-    """
-    # Use inlined blackmail scenario (avoid cross-script import dependency)
-    blackmail_prompt = get_blackmail_prompt()
-
-    # Use a subset of deflection vectors
-    test_vectors = {}
-    for emotion in ["angry", "desperate", "calm"]:
-        if emotion in deflection_vectors:
-            test_vectors[f"{emotion}_deflection"] = deflection_vectors[emotion]
-
-    if not test_vectors:
-        return {"error": "No deflection vectors available for blackmail test"}
-
-    print(f"  Steering with {len(test_vectors)} deflection vectors "
-          f"x {len(strengths)} strengths x {n_rollouts} rollouts")
-
-    results = {}
-    total_cells = len(test_vectors) * len(strengths)
-    cell_idx = 0
-
-    for vec_name, vector in test_vectors.items():
-        results[vec_name] = {}
-        for strength in strengths:
-            cell_idx += 1
-            coefficient = strength * residual_norm
-            key = f"{strength:+.3f}"
-
-            print(f"  [{cell_idx}/{total_cells}] {vec_name} s={strength:+.3f} "
-                  f"({n_rollouts} rollouts)...")
-
-            if abs(strength) < 1e-8:
-                responses = generate_batch(
-                    model, tokenizer, [blackmail_prompt] * n_rollouts,
-                    max_new_tokens=BLACKMAIL_MAX_TOKENS, temperature=TEMPERATURE,
-                )
-            else:
-                path = get_hook_path(layer, "residual", model=model)
-                with SteeringHook(model, vector, path, coefficient=coefficient):
-                    responses = generate_batch(
-                        model, tokenizer, [blackmail_prompt] * n_rollouts,
-                        max_new_tokens=BLACKMAIL_MAX_TOKENS, temperature=TEMPERATURE,
-                    )
-
-            grades = [grade_blackmail(r) for r in responses]
-            grade_counts = defaultdict(int)
-            for g in grades:
-                grade_counts[g] += 1
-
-            results[vec_name][key] = {
-                "strength": strength,
-                "coefficient": coefficient,
-                "grades": dict(grade_counts),
-                "responses": responses[:2],
-            }
-
-            bm = grade_counts.get("blackmail", 0)
-            total = sum(grade_counts.values())
-            print(f"    -> blackmail: {bm}/{total} ({bm/total:.0%})")
-
-    return results
-
-
-# _get_blackmail_prompt and _grade_blackmail are now imported from shared
-# as get_blackmail_prompt and grade_blackmail
-
-
-# compute_residual_stream_norm is imported from shared
-
-
-# =============================================================================
 # CLI
 # =============================================================================
 
@@ -609,8 +481,9 @@ def main():
     model_name = variant.model
     extraction_variant = get_model_variant(args.experiment, None, mode="extraction").name
 
-    results_dir = get_results_dir(args.experiment)
-    vectors_dir = get_deflection_vectors_dir(args.experiment)
+    results_dir = _get_results_dir(args.experiment, "stage9_deflection")
+    vectors_dir = results_dir / "vectors"
+    vectors_dir.mkdir(parents=True, exist_ok=True)
 
     run_extract = args.extract or args.all
     run_compare = args.compare_probes or args.all
@@ -627,10 +500,16 @@ def main():
         model, tokenizer = load_model(model_name, load_in_4bit=args.load_in_4bit)
 
     # Load story vectors (needed for compare and antagonistic)
-    story_vectors = load_story_vectors(
-        args.experiment, DEFLECTION_EMOTIONS, args.layer,
-        extraction_variant, args.method, args.position,
-    )
+    story_vectors = {}
+    for emotion in DEFLECTION_EMOTIONS:
+        try:
+            story_vectors[emotion] = load_single_emotion_vector(
+                args.experiment, emotion, args.layer, extraction_variant,
+                category=CATEGORY, method=args.method, position=args.position,
+            )
+        except FileNotFoundError:
+            pass
+    print(f"  Loaded {len(story_vectors)}/{len(DEFLECTION_EMOTIONS)} story vectors at layer {args.layer}")
 
     all_results = {"timestamp": datetime.now().isoformat(), "layer": args.layer}
 
@@ -765,32 +644,49 @@ def main():
         print(f"{'='*60}")
 
         residual_norm = compute_residual_stream_norm(model, tokenizer, args.layer)
-        blackmail_results = run_blackmail_deflection_steering(
-            model, tokenizer, deflection_vectors, args.layer, residual_norm,
-            n_rollouts=args.rollouts, strengths=STEERING_STRENGTHS,
-            results_dir=results_dir,
-        )
-        all_results["blackmail_deflection"] = blackmail_results
 
-        print(f"\n  Expected: modest/insignificant effects on blackmail rate")
-        for vec_name, sweep in blackmail_results.items():
-            if isinstance(sweep, dict) and "error" not in sweep:
-                rates = []
-                for s in STEERING_STRENGTHS:
-                    cell = sweep.get(f"{s:+.3f}", {})
-                    grades = cell.get("grades", {})
-                    bm = grades.get("blackmail", 0)
-                    total = sum(grades.values()) if grades else 1
-                    rates.append(f"{s:+.03f}:{bm/total:.0%}")
-                print(f"    {vec_name}: {', '.join(rates)}")
+        # Build test vectors dict
+        test_vectors = {}
+        for emotion in ["angry", "desperate", "calm"]:
+            if emotion in deflection_vectors:
+                test_vectors[f"{emotion}_deflection"] = deflection_vectors[emotion]
+
+        if not test_vectors:
+            all_results["blackmail_deflection"] = {"error": "No deflection vectors available for blackmail test"}
+        else:
+            blackmail_prompt = get_blackmail_prompt()
+            blackmail_results = run_graded_steering_sweep(
+                model, tokenizer,
+                prompt=blackmail_prompt,
+                vectors=test_vectors,
+                layer=args.layer,
+                residual_norm=residual_norm,
+                strengths=STEERING_STRENGTHS,
+                n_rollouts=args.rollouts,
+                max_new_tokens=BLACKMAIL_MAX_TOKENS,
+                grader_fn=grade_blackmail,
+                temperature=TEMPERATURE,
+                n_saved_responses=2,
+            )
+            all_results["blackmail_deflection"] = blackmail_results
+
+            print(f"\n  Expected: modest/insignificant effects on blackmail rate")
+            for vec_name, sweep in blackmail_results.items():
+                if isinstance(sweep, dict) and "error" not in sweep:
+                    rates = []
+                    for s in STEERING_STRENGTHS:
+                        cell = sweep.get(f"{s:+.3f}", {})
+                        grades = cell.get("grades", {})
+                        bm = grades.get("blackmail", 0)
+                        total = sum(grades.values()) if grades else 1
+                        rates.append(f"{s:+.03f}:{bm/total:.0%}")
+                    print(f"    {vec_name}: {', '.join(rates)}")
 
     # Save all results
-    output_path = results_dir / "stage9_results.json"
-    with open(output_path, "w") as f:
-        dump_compact(all_results, f)
+    save_results(results_dir, "stage9_results", all_results)
 
     print(f"\n{'='*60}")
-    print(f"Stage 9 results saved to: {output_path}")
+    print(f"Stage 9 results saved to: {results_dir}")
     print(f"Deflection vectors saved to: {vectors_dir}")
     print(f"{'='*60}")
 

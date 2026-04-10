@@ -27,9 +27,7 @@ Usage:
 """
 
 import argparse
-import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -39,8 +37,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core.math import pairwise_cosine_matrix, pca, pearson_correlation
 from analysis.vectors.geometry import trait_clusters, umap_projection, representational_similarity
-from utils.paths import get as get_path, discover_traits, get_default_variant
-from shared import load_all_emotion_vectors
+from utils.paths import get_default_variant
+from shared import (
+    get_results_dir, save_results, compare_to_baseline,
+    load_all_emotion_vectors,
+)
 
 
 # ============================================================================
@@ -84,27 +85,6 @@ RUSSELL_MEHRABIAN_NORMS = {
     # 'bored': (-0.3, -0.6),
     # ...
 }
-
-
-# ============================================================================
-# Vector loading
-# ============================================================================
-
-def load_denoised_vectors(experiment, category, layer, model_variant, method='denoised',
-                          component='residual', position='response[50:]'):
-    """Load denoised vectors for all emotions in a category.
-
-    Returns:
-        vectors: [N, hidden_dim] tensor
-        trait_names: list of emotion names (e.g., 'afraid', 'angry', ...)
-        trait_paths: list of full trait paths (e.g., 'ant_emotion_concepts/afraid')
-    """
-    vectors, trait_names = load_all_emotion_vectors(
-        experiment, category, layer, model_variant,
-        method=method, component=component, position=position,
-    )
-    trait_paths = [f"{category}/{name}" for name in trait_names]
-    return vectors, trait_names, trait_paths
 
 
 # ============================================================================
@@ -163,10 +143,7 @@ def run_cosine_analysis(vectors, trait_names, out_dir):
         },
     }
 
-    out_path = out_dir / 'cosine_heatmap.json'
-    with open(out_path, 'w') as f:
-        json.dump(result, f)
-    print(f"    Saved: {out_path}")
+    save_results(out_dir, 'cosine_heatmap', result, compact=True)
 
     return result
 
@@ -221,10 +198,7 @@ def run_cluster_analysis(vectors, trait_names, out_dir, k=10):
         'anthropic_cluster_sizes': ANTHROPIC_BASELINES['cluster_sizes'],
     }
 
-    out_path = out_dir / 'clusters_umap.json'
-    with open(out_path, 'w') as f:
-        json.dump(result, f)
-    print(f"    Saved: {out_path}")
+    save_results(out_dir, 'clusters_umap', result, compact=True)
 
     # NOTE: Cluster naming is a gap. The paper uses Claude Sonnet 4.5 to name
     # clusters by inspecting member lists. Options:
@@ -258,12 +232,9 @@ def run_pca_analysis(vectors, trait_names, out_dir, n_components=10):
     cumvar = 0
     for i in range(min(5, n_components)):
         cumvar += var_ratio[i].item()
-        marker = ''
-        if i == 0:
-            marker = f'  (Anthropic: {ANTHROPIC_BASELINES["pc1_variance"]*100:.0f}%)'
-        elif i == 1:
-            marker = f'  (Anthropic: {ANTHROPIC_BASELINES["pc2_variance"]*100:.0f}%)'
-        print(f"      PC{i+1}: {var_ratio[i].item()*100:.1f}%  (cumulative: {cumvar*100:.1f}%){marker}")
+        print(f"      PC{i+1}: {var_ratio[i].item()*100:.1f}%  (cumulative: {cumvar*100:.1f}%)")
+    compare_to_baseline('PC1 variance', var_ratio[0].item(), ANTHROPIC_BASELINES['pc1_variance'])
+    compare_to_baseline('PC2 variance', var_ratio[1].item(), ANTHROPIC_BASELINES['pc2_variance'])
 
     # Per-emotion PC projections (Fig 7)
     pc1_proj = projections[:, 0]
@@ -297,11 +268,11 @@ def run_pca_analysis(vectors, trait_names, out_dir, n_components=10):
             pc2_overlap = pc2_proj[indices]
 
             # Pearson correlations
-            r_pc1_val = _pearson(pc1_overlap, human_valence)
-            r_pc2_aro = _pearson(pc2_overlap, human_arousal)
+            r_pc1_val = pearson_correlation(pc1_overlap, human_valence)
+            r_pc2_aro = pearson_correlation(pc2_overlap, human_arousal)
             # Also check cross-correlations (should be weaker)
-            r_pc1_aro = _pearson(pc1_overlap, human_arousal)
-            r_pc2_val = _pearson(pc2_overlap, human_valence)
+            r_pc1_aro = pearson_correlation(pc1_overlap, human_arousal)
+            r_pc2_val = pearson_correlation(pc2_overlap, human_valence)
 
             human_corr = {
                 'n_overlapping': len(overlapping),
@@ -313,8 +284,8 @@ def run_pca_analysis(vectors, trait_names, out_dir, n_components=10):
             }
 
             print(f"\n    Human norm correlation ({len(overlapping)} overlapping emotions):")
-            print(f"      PC1 vs valence: r = {r_pc1_val:.3f}  (Anthropic: {ANTHROPIC_BASELINES['pc1_vs_valence']})")
-            print(f"      PC2 vs arousal: r = {r_pc2_aro:.3f}  (Anthropic: {ANTHROPIC_BASELINES['pc2_vs_arousal']})")
+            compare_to_baseline('PC1 vs valence', float(r_pc1_val), ANTHROPIC_BASELINES['pc1_vs_valence'])
+            compare_to_baseline('PC2 vs arousal', float(r_pc2_aro), ANTHROPIC_BASELINES['pc2_vs_arousal'])
             print(f"      PC1 vs arousal: r = {r_pc1_aro:.3f}  (should be weak)")
             print(f"      PC2 vs valence: r = {r_pc2_val:.3f}  (should be weak)")
         else:
@@ -342,15 +313,9 @@ def run_pca_analysis(vectors, trait_names, out_dir, n_components=10):
         },
     }
 
-    out_path = out_dir / 'pca_analysis.json'
-    with open(out_path, 'w') as f:
-        json.dump(result, f)
-    print(f"    Saved: {out_path}")
+    save_results(out_dir, 'pca_analysis', result, compact=True)
 
     return result
-
-
-_pearson = pearson_correlation  # alias for local usage
 
 
 # ============================================================================
@@ -383,10 +348,7 @@ def run_rsa_analysis(vectors_by_layer, trait_names, out_dir):
         'n_traits': len(trait_names),
     }
 
-    out_path = out_dir / 'rsa_analysis.json'
-    with open(out_path, 'w') as f:
-        json.dump(result, f)
-    print(f"    Saved: {out_path}")
+    save_results(out_dir, 'rsa_analysis', result, compact=True)
 
     return result
 
@@ -427,8 +389,7 @@ def main():
         print(f"Model variant: {model_variant}")
 
     # Output directory
-    out_dir = get_path('experiments.base', experiment=args.experiment) / 'results' / 'stage3_geometry'
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = get_results_dir(args.experiment, 'stage3_geometry')
     print(f"Output: {out_dir}")
 
     # Determine which analyses to run
@@ -443,7 +404,7 @@ def main():
 
     # Load vectors at primary layer
     print(f"\nLoading denoised vectors at layer {args.layer}...")
-    vectors, trait_names, trait_paths = load_denoised_vectors(
+    vectors, trait_names = load_all_emotion_vectors(
         args.experiment, args.category, args.layer, model_variant,
         method=args.method, component=args.component, position=args.position,
     )
@@ -478,7 +439,7 @@ def main():
             vectors_by_layer = {}
             for layer in rsa_layer_list:
                 try:
-                    vecs, _, _ = load_denoised_vectors(
+                    vecs, _ = load_all_emotion_vectors(
                         args.experiment, args.category, layer, model_variant,
                         method=args.method, component=args.component, position=args.position,
                     )
@@ -504,16 +465,15 @@ def main():
         pca_res = results['pca']
         var = pca_res['variance_explained']
         print(f"\n  PCA comparison to Anthropic:")
-        print(f"    PC1: {var[0]*100:.1f}% (Anthropic: {ANTHROPIC_BASELINES['pc1_variance']*100:.0f}%)")
-        print(f"    PC2: {var[1]*100:.1f}% (Anthropic: {ANTHROPIC_BASELINES['pc2_variance']*100:.0f}%)")
+        compare_to_baseline('PC1 variance', var[0], ANTHROPIC_BASELINES['pc1_variance'])
+        compare_to_baseline('PC2 variance', var[1], ANTHROPIC_BASELINES['pc2_variance'])
         if pca_res['human_norm_correlation']:
             hc = pca_res['human_norm_correlation']
-            print(f"    PC1 vs valence: r={hc['pc1_vs_valence']:.3f} (Anthropic: {ANTHROPIC_BASELINES['pc1_vs_valence']})")
-            print(f"    PC2 vs arousal: r={hc['pc2_vs_arousal']:.3f} (Anthropic: {ANTHROPIC_BASELINES['pc2_vs_arousal']})")
+            compare_to_baseline('PC1 vs valence', hc['pc1_vs_valence'], ANTHROPIC_BASELINES['pc1_vs_valence'])
+            compare_to_baseline('PC2 vs arousal', hc['pc2_vs_arousal'], ANTHROPIC_BASELINES['pc2_vs_arousal'])
 
     # Save run metadata
     meta = {
-        'timestamp': datetime.now().isoformat(),
         'experiment': args.experiment,
         'layer': args.layer,
         'model_variant': model_variant,
@@ -523,8 +483,7 @@ def main():
         'analyses_run': sorted(results.keys()),
         'trait_names': trait_names,
     }
-    with open(out_dir / 'run_metadata.json', 'w') as f:
-        json.dump(meta, f, indent=2)
+    save_results(out_dir, 'run_metadata', meta)
 
     print(f"\n  Results saved to: {out_dir}")
     print(f"{'='*60}")
