@@ -41,6 +41,7 @@ from utils.vector_selection import select_vector, select_vectors
 best = select_vector(experiment, trait)       # VectorResult
 top = select_vectors(experiment, trait, n=3)  # List[VectorResult]
 spec = best.to_vector_spec(weight=1.0)        # Convert to VectorSpec
+print(best.delta, best.coherence)             # Steering delta + coherence
 
 # Model variant from experiment config
 from utils.paths import get_model_variant

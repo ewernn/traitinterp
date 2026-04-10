@@ -84,7 +84,7 @@ def analyze_trait(
         "component": meta.component,
         "position": meta.position,
         "source": meta.source,
-        "score": meta.score,
+        "delta": meta.delta,
         **vocab_results,
     }
 
@@ -99,7 +99,7 @@ def print_results(results: dict):
     print(f"Trait: {results['trait']}")
     print(f"Vector: layer {results['layer']}, {results['method']}, {results['component']}")
     print(f"Position: {results['position']}")
-    print(f"Source: {results['source']} (score: {results['score']:.3f})")
+    print(f"Source: {results['source']} (delta: {results['delta']:.3f})")
     print(f"{'='*60}")
 
     print(f"\nToward (+):")

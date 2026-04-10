@@ -422,7 +422,7 @@ def project_from_saved(inference_dir, prompt_set, model_name, model_variant,
                 best_layer = spec.layer
                 best_method = spec.method
                 best_source = spec_meta['source']
-                best_score = spec_meta['score']
+                best_score = spec_meta['delta']
                 if best_position is None:
                     best_position = spec.position
             except FileNotFoundError as e:

@@ -6,14 +6,14 @@ Input:
     Steering evaluation results (from steering pipeline)
 
 Output:
-    VectorResult dataclasses with layer, method, position, component, score, direction, coefficient
+    VectorResult dataclasses with layer, method, position, component, delta, direction, coefficient, coherence
 
 Usage:
     from utils.vector_selection import select_vector, select_vectors, get_best_vector_spec
 
     # Best single vector (returns VectorResult)
     best = select_vector(experiment, trait)
-    print(best.layer, best.method, best.score)
+    print(best.layer, best.method, best.delta)
 
     # Top 3 vectors (one per layer)
     top = select_vectors(experiment, trait, n=3)
@@ -98,6 +98,7 @@ def _get_steering_result(
 
     best_delta = None
     best_coef = None
+    best_coherence = None
     for run in results_data.runs:
         v = run.config.vectors[0]
         if (v.layer == layer
@@ -109,9 +110,10 @@ def _get_steering_result(
                 if best_delta is None or delta * sign > best_delta * sign:
                     best_delta = delta
                     best_coef = v.weight
+                    best_coherence = run.result.coherence_mean
 
     if best_delta is not None:
-        return best_delta, best_coef, direction
+        return best_delta, best_coef, direction, best_coherence
     return None
 
 
@@ -145,10 +147,10 @@ def _load_naturalness_scores(
 
 def _rank_value(candidate: dict, sort_by: str, sign: int) -> float:
     """Compute ranking value for a candidate. Currently only supports 'delta'."""
-    score = candidate.get('score')
-    if score is None:
+    delta = candidate.get('delta')
+    if delta is None:
         return float('-inf')
-    return score * sign
+    return delta * sign
 
 
 def _select_vectors(
@@ -186,11 +188,12 @@ def _select_vectors(
     for c in candidates:
         result = _get_steering_result(experiment, trait, steering_variant, c, min_coherence, prompt_set)
         if result is not None:
-            delta, coefficient, direction = result
-            c['score'] = delta
+            delta, coefficient, direction, coherence = result
+            c['delta'] = delta
             c['direction'] = direction
             c['source'] = 'steering'
             c['coefficient'] = coefficient
+            c['coherence'] = coherence
             scored.append(c)
 
     if scored:
@@ -212,14 +215,14 @@ def _select_vectors(
 
         # 5. Min delta gate
         if min_delta > 0:
-            scored = [c for c in scored if abs(c['score']) >= min_delta]
+            scored = [c for c in scored if abs(c['delta']) >= min_delta]
 
         working = scored
     else:
         # No steering results — only allow unscored if user explicitly specified layer/method
         if layer is not None or method is not None:
             for c in candidates:
-                c.update(score=None, direction=None, source='unscored', coefficient=None)
+                c.update(delta=None, direction=None, source='unscored', coefficient=None, coherence=None)
             working = candidates
         else:
             return []
@@ -242,9 +245,9 @@ def _select_vectors(
     ranked = sorted(best_per_layer.values(), key=lambda c: _rank_value(c, sort_by, sign), reverse=True)
     return [VectorResult(
         layer=c['layer'], method=c['method'], position=c['position'],
-        component=c['component'], score=c.get('score'), direction=c.get('direction'),
+        component=c['component'], delta=c.get('delta'), direction=c.get('direction'),
         source=c.get('source', 'unscored'), coefficient=c.get('coefficient'),
-        naturalness=c.get('naturalness'),
+        coherence=c.get('coherence'), naturalness=c.get('naturalness'),
     ) for c in ranked[:n]]
 
 
@@ -268,7 +271,7 @@ def select_vector(
     prompt_set: str = "steering",
 ) -> VectorResult:
     """Find best vector for a trait. Returns VectorResult with layer, method, position,
-    component, source, score, coefficient, direction, and optionally naturalness."""
+    component, source, delta, coefficient, direction, coherence, and optionally naturalness."""
     results = _select_vectors(
         experiment, trait, n=1,
         extraction_variant=extraction_variant, steering_variant=steering_variant,
@@ -331,7 +334,10 @@ def get_best_vector_spec(
         min_coherence=min_coherence, min_delta=min_delta, prompt_set=prompt_set,
     )
     spec = best.to_vector_spec(weight=weight)
-    return spec, {'source': best.source, 'score': best.score, 'coefficient': best.coefficient}
+    return spec, {
+        'source': best.source, 'delta': best.delta, 'coefficient': best.coefficient,
+        'coherence': best.coherence, 'naturalness': best.naturalness,
+    }
 
 
 def load_trait_vectors(experiment, extraction_variant, traits, component, layers_spec,

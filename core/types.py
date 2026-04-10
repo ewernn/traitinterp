@@ -58,10 +58,11 @@ class VectorResult:
     method: str
     position: str
     component: str
-    score: Optional[float]          # steering delta (None if unscored)
+    delta: Optional[float]          # steering delta: trait_mean - baseline (None if unscored)
     direction: Optional[str]        # "positive" or "negative" (None if unscored)
     source: str                     # "steering" or "unscored"
     coefficient: Optional[float]    # best steering coefficient (None if unscored)
+    coherence: Optional[float] = None
     naturalness: Optional[float] = None
 
     def to_vector_spec(self, weight: float = 1.0) -> VectorSpec:
