@@ -70,6 +70,25 @@ class TestMeanDifferenceMethod:
         result = method.extract(pos, neg)
         assert torch.isfinite(result['vector']).all()
 
+    def test_single_polarity_empty_neg(self, pos_activations, hidden_dim):
+        """Single-polarity: empty neg_acts produces valid unit vector."""
+        method = MeanDifferenceMethod()
+        empty_neg = torch.empty(0, hidden_dim)
+        result = method.extract(pos_activations, empty_neg)
+        assert result['vector'].shape == (hidden_dim,)
+        assert result['vector'].norm().item() == pytest.approx(1.0, abs=1e-5)
+        assert torch.isfinite(result['vector']).all()
+
+    def test_single_polarity_neg_mean_zero(self, pos_activations, hidden_dim):
+        """Single-polarity: neg_mean is zeros, vector equals normalized pos_mean."""
+        method = MeanDifferenceMethod()
+        empty_neg = torch.empty(0, hidden_dim)
+        result = method.extract(pos_activations, empty_neg)
+        assert (result['neg_mean'] == 0).all()
+        expected = pos_activations.float().mean(dim=0)
+        expected = expected / (expected.norm() + 1e-8)
+        assert torch.allclose(result['vector'].float(), expected, atol=1e-5)
+
 
 # =============================================================================
 # ProbeMethod tests
@@ -119,6 +138,13 @@ class TestProbeMethod:
         # Should still separate well
         assert result['train_acc'] > 0.8
 
+    def test_single_polarity_raises(self, pos_activations, hidden_dim):
+        """Single-polarity: empty neg_acts raises clear error."""
+        method = ProbeMethod()
+        empty_neg = torch.empty(0, hidden_dim)
+        with pytest.raises(ValueError, match="single-polarity"):
+            method.extract(pos_activations, empty_neg)
+
 
 # =============================================================================
 # GradientMethod tests
@@ -156,6 +182,13 @@ class TestGradientMethod:
         result_many = method.extract(overlapping_pos, overlapping_neg, num_steps=100)
         # More steps should give equal or better separation
         assert result_many['final_separation'] >= result_few['final_separation'] * 0.9
+
+    def test_single_polarity_raises(self, pos_activations, hidden_dim):
+        """Single-polarity: empty neg_acts raises clear error."""
+        method = GradientMethod()
+        empty_neg = torch.empty(0, hidden_dim)
+        with pytest.raises(ValueError, match="single-polarity"):
+            method.extract(pos_activations, empty_neg)
 
 
 # =============================================================================

@@ -91,7 +91,8 @@ Interprets facts, applies thresholds, aggregates across prompts.
 HookManager, get_hook_path, LayerHook, CaptureHook, SteeringHook, AblationHook,
 MultiLayerCapture, MultiLayerAblation, MultiLayerSteering,
 ProjectionHook, MultiLayerProjection,
-ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering
+ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering,
+PerPositionSteeringHook
 
 # methods.py
 get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod, RFMMethod
@@ -99,7 +100,7 @@ get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMet
 # math.py
 projection, cosine_similarity, batch_cosine_similarity,
 accuracy, effect_size, orthogonalize, polarity_correct,
-remove_massive_dims
+remove_massive_dims, pairwise_cosine_matrix, pca, project_out_subspace
 ```
 
 **What does NOT belong:**

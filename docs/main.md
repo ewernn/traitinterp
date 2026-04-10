@@ -66,12 +66,13 @@ traitinterp/
 │   └── traits/
 │       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
 │       ├── emotion_set/              # 174 emotion traits
+│       ├── ant_emotion_concepts/     # 174 emotion concept traits (single-polarity, long-context)
 │       ├── alignment/                # 10 alignment traits
 │       ├── tonal/                    # 7 tonal traits
 │       ├── pv_instruction/           # Instruct-model traits (instruction-following axis)
 │       ├── pv_natural/               # Instruct-model traits (natural conversation axis)
 │       └── archive/                  # Archived trait sets
-│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json
+│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json, extraction_config.yaml (optional)
 │
 ├── extraction/             # Vector extraction pipeline
 │   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
@@ -117,6 +118,9 @@ traitinterp/
 │   └── ...                           # paths, activations, layers, projections, vectors, fingerprints
 ├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
 ├── analysis/               # Analysis scripts (see analysis/README.md)
+│   ├── vectors/                      # Vector quality, geometry, correlation, massive dims
+│   ├── model_diff/                   # Cross-variant comparison (Cohen's d, per-token diff)
+│   └── benchmark/                    # Benchmark evaluation with steering
 ├── visualization/          # Interactive dashboard
 │   ├── serve.py                      # Python HTTP server (static + REST API + SSE chat)
 │   ├── chat_inference.py             # Backend for live chat (model loading, streaming)

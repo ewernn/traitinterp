@@ -428,6 +428,7 @@ Create in `datasets/traits/{category}/{trait}/`:
 | `positive.txt` | 15+ scenario prefixes, one per line. Completion naturally expresses the trait. |
 | `negative.txt` | 15+ prefixes matched by line number. Same genre/register, active opposite. |
 | `steering.json` | `{"adversarial_prefix": "Prefix text.", "questions": ["Prefix text. Scenario?", ...]}` — 10 questions, same prefix embedded in each, varied scenarios. For RLHF traits: prefix reinforces the trait, use `--direction negative`. |
+| `extraction_config.yaml` | (Optional) Per-trait extraction overrides: position, methods, temperature, rollouts, max_new_tokens. Also supported at category level (`{category}/extraction_config.yaml`); per-trait values override category-level. |
 
 Follow the Scenario Design and Steering Question Design sections above. Self-review before proceeding:
 - Would a base model completing each positive line express the trait in its first few tokens?

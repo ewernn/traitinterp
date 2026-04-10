@@ -132,6 +132,15 @@ with MultiLayerSteering(model, configs=[(layer, vector, coef) for ...]):
     output = model.generate(**inputs)
 ```
 
+**Per-position steering** (steer only at specific token positions):
+```python
+from core import PerPositionSteeringHook
+
+# Steer only tokens in range [12, 18)
+with PerPositionSteeringHook(model, vector, "model.layers.16", coefficient=1.5, token_range=(12, 18)):
+    output = model.generate(**inputs)
+```
+
 **Activation capping** (clamp activations along a direction):
 ```python
 from core import ActivationCappingHook
@@ -207,6 +216,7 @@ Probe uses row normalization (each sample scaled to unit norm) so LogReg coeffic
 
 ```python
 from core import projection, batch_cosine_similarity, cosine_similarity, orthogonalize
+from core import pairwise_cosine_matrix, pca, project_out_subspace
 
 # Project activations onto vector (normalizes vector only)
 scores = projection(activations, trait_vector)  # [n_samples]
@@ -219,6 +229,15 @@ similarity = cosine_similarity(refusal_vec, evil_vec)  # scalar in [-1, 1]
 
 # Remove one vector's component from another
 clean_vec = orthogonalize(trait_vector, confound_vector)
+
+# N×N cosine similarity matrix for a set of vectors
+sim_matrix = pairwise_cosine_matrix(vectors)  # [N, N]
+
+# PCA via SVD
+components, var_ratio, projections = pca(vectors, n_components=10)
+
+# Remove a subspace from vectors (generalizes orthogonalize to multiple directions)
+cleaned = project_out_subspace(vectors, basis)  # basis: [K, hidden_dim]
 ```
 
 **Metrics (operate on projection scores):**
@@ -383,8 +402,8 @@ with PerSampleSteering(model, steering_configs, component='residual'):
 core/
 ├── __init__.py      # Public API exports
 ├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults, ActivationMetadata, ModelConfig
-├── hooks.py         # CaptureHook, SteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
+├── hooks.py         # CaptureHook, SteeringHook, PerPositionSteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
-├── math.py          # projection, batch_cosine_similarity, accuracy, effect_size, orthogonalize
+├── math.py          # projection, batch_cosine_similarity, accuracy, effect_size, orthogonalize, pairwise_cosine_matrix, pca, project_out_subspace
 └── generation.py    # HookedGenerator for generation with capture/steering
 ```

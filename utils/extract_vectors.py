@@ -151,17 +151,24 @@ def extract_activations_for_trait(
     try:
         with open(responses_dir / 'pos.json') as f:
             pos_data = json.load(f)
-        with open(responses_dir / 'neg.json') as f:
-            neg_data = json.load(f)
-        metadata_path = responses_dir / 'metadata.json'
-        use_chat_template = False
-        if metadata_path.exists():
-            with open(metadata_path) as f:
-                resp_metadata = json.load(f)
-            use_chat_template = resp_metadata.get('chat_template', False)
     except FileNotFoundError:
-        print(f"      ERROR: Response files not found. Run stage 1 first.")
+        print(f"      ERROR: pos.json not found in {responses_dir}. Run stage 1 first.")
         return 0
+
+    # neg.json is optional for single-polarity traits
+    neg_path = responses_dir / 'neg.json'
+    if neg_path.exists():
+        with open(neg_path) as f:
+            neg_data = json.load(f)
+    else:
+        neg_data = []
+
+    metadata_path = responses_dir / 'metadata.json'
+    use_chat_template = False
+    if metadata_path.exists():
+        with open(metadata_path) as f:
+            resp_metadata = json.load(f)
+        use_chat_template = resp_metadata.get('chat_template', False)
 
     n_filtered_pos, n_filtered_neg, n_excluded_by_pairing = 0, 0, 0
     if use_vetting_filter:
@@ -497,7 +504,7 @@ def extract_vectors_for_trait(
                 experiment, trait, model_variant, layer_idx, component, position
             )
 
-        if pos_acts.numel() == 0 or neg_acts.numel() == 0:
+        if pos_acts.numel() == 0:
             continue
 
         if activations is not None:
@@ -509,8 +516,11 @@ def extract_vectors_for_trait(
             )
 
         mean_pos = pos_acts.float().mean(dim=0)
-        mean_neg = neg_acts.float().mean(dim=0)
-        center = (mean_pos + mean_neg) / 2
+        if neg_acts.numel() > 0:
+            mean_neg = neg_acts.float().mean(dim=0)
+            center = (mean_pos + mean_neg) / 2
+        else:
+            center = mean_pos
 
         for method_name, method_obj in method_objs.items():
             try:

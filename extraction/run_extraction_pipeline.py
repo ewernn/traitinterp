@@ -158,8 +158,16 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
 
     responses_path = get_path("extraction.responses", experiment=config.experiment,
                                trait=trait, model_variant=variant_name)
-    if not config.force and (responses_path / "pos.json").exists() and (responses_path / "neg.json").exists():
-        return
+
+    # For single-polarity traits, only pos.json is needed
+    if not config.force and (responses_path / "pos.json").exists():
+        # Check if this is a single-polarity trait
+        from utils.traits import load_trait_metadata, load_extraction_config as _load_ext_cfg
+        _meta = load_trait_metadata(trait)
+        _ext_cfg = _load_ext_cfg(trait)
+        _is_single = _meta.get('polarity') == 'single' or _ext_cfg.get('polarity') == 'single'
+        if _is_single or (responses_path / "neg.json").exists():
+            return
 
     print(f"  [1] Generating responses...")
     max_new_tokens = resolve_max_new_tokens(config.position, config.max_new_tokens)
@@ -173,7 +181,7 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
 
     responses_path.mkdir(parents=True, exist_ok=True)
 
-    for label in ['positive', 'negative']:
+    for label in scenarios:  # Only iterate polarities returned by load_scenarios
         results = []
         formatted = [
             format_prompt(s['prompt'], tokenizer, use_chat_template=use_chat_template,
@@ -183,7 +191,7 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
         for _ in range(config.rollouts):
             responses = (
                 [''] * len(formatted) if max_new_tokens == 0
-                else generate_batch(model, tokenizer, formatted, max_new_tokens, config.temperature)
+                else generate_batch(model, tokenizer, formatted, max_new_tokens, config.temperature, seed=config.seed)
             )
             for scenario, response in zip(scenarios[label], responses):
                 results.append({
@@ -199,17 +207,21 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
     if is_rank_zero():
         from utils.traits import get_scenario_path
         trait_dir = get_path('datasets.trait', trait=trait)
+        input_hashes = {
+            'positive': content_hash(get_scenario_path(trait, 'positive')),
+            'definition': content_hash(trait_dir / 'definition.txt'),
+        }
+        if 'negative' in scenarios:
+            input_hashes['negative'] = content_hash(get_scenario_path(trait, 'negative'))
         with open(responses_path / 'metadata.json', 'w') as f:
             json.dump({
                 'model': model.config.name_or_path, 'experiment': config.experiment,
                 'trait': trait, 'max_new_tokens': max_new_tokens,
                 'chat_template': use_chat_template, 'rollouts': config.rollouts,
-                'temperature': config.temperature, 'timestamp': datetime.now().isoformat(),
-                'input_hashes': {
-                    'positive': content_hash(get_scenario_path(trait, 'positive')),
-                    'negative': content_hash(get_scenario_path(trait, 'negative')),
-                    'definition': content_hash(trait_dir / 'definition.txt'),
-                },
+                'temperature': config.temperature, 'seed': config.seed,
+                'timestamp': datetime.now().isoformat(),
+                'polarity': 'single' if 'negative' not in scenarios else 'contrastive',
+                'input_hashes': input_hashes,
             }, f, indent=2)
 
     tp_barrier()
@@ -323,6 +335,7 @@ def main():
     # Generation
     parser.add_argument("--rollouts", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible sampling (T>0)")
     parser.add_argument("--max-new-tokens", type=int, default=None)
 
     # Vetting
@@ -393,6 +406,7 @@ def main():
         layers=parsed_layers,
         rollouts=args.rollouts,
         temperature=args.temperature,
+        seed=args.seed,
         max_new_tokens=args.max_new_tokens,
         vet_responses=args.vet_responses,
         pos_threshold=args.pos_threshold,

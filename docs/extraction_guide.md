@@ -75,6 +75,7 @@ Per trait, in `datasets/traits/{category}/{trait}/`:
 - `positive.txt`, `negative.txt` — one scenario prefix per line, matched by line number
 - `definition.txt` — scoring rubric for the LLM judge
 - `steering.json` — `{"questions": [...]}` for steering evaluation (use `--no-steering` to skip)
+- `extraction_config.yaml` (optional) — per-trait extraction overrides (position, methods, temperature, rollouts, max_new_tokens). Also supported at category level (`datasets/traits/{category}/extraction_config.yaml`); per-trait values override category-level. Loaded by `utils/traits.py:load_extraction_config()`.
 
 **CLI flags:**
 - `--traits category/trait1,category/trait2` — comma-separated, or omit for all traits in experiment
@@ -345,6 +346,7 @@ All in `core/math.py`:
 | `projection(acts, vec)` | `acts.float() @ (vec.float() / \|\|vec\|\|)` | Raw trait score |
 | `batch_cosine_similarity(acts, vec)` | `(acts/\|\|acts\|\|) @ (vec/\|\|vec\|\|)` | Angular alignment |
 | `orthogonalize(v, onto)` | `v - (v·onto / \|\|onto\|\|²) · onto` | Remove confound directions (see below) |
+| `project_out_subspace(vecs, basis)` | `v - Q @ Q^T @ v` (QR-orthonormalized) | Remove multiple directions at once |
 | `effect_size(pos, neg)` | Cohen's d with pooled std | Separation quality metric |
 | `accuracy(pos, neg)` | Midpoint threshold, mean per-class | Classification metric |
 

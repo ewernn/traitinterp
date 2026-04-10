@@ -30,13 +30,19 @@ class ExtractionMethod(ABC):
 
 
 class MeanDifferenceMethod(ExtractionMethod):
-    """Baseline: vector = mean(pos) - mean(neg), normalized to unit norm."""
+    """Baseline: vector = mean(pos) - mean(neg), normalized to unit norm.
+
+    For single-polarity traits (neg_acts empty): vector = mean(pos), normalized.
+    """
 
     def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         # Compute means in float32 to avoid bfloat16 precision loss at large magnitudes
         # (e.g., massive dim 443 in Gemma 3 has values ~32k where bfloat16 step size is 256)
         pos_mean = pos_acts.float().mean(dim=0)
-        neg_mean = neg_acts.float().mean(dim=0)
+        if neg_acts.numel() > 0:
+            neg_mean = neg_acts.float().mean(dim=0)
+        else:
+            neg_mean = torch.zeros_like(pos_mean)
         vector = pos_mean - neg_mean
         vector = vector / (vector.norm() + 1e-8)
         vector = vector.to(dtype=pos_acts.dtype)
@@ -59,6 +65,9 @@ class ProbeMethod(ExtractionMethod):
         penalty: str = 'l2',
         **kwargs
     ) -> Dict[str, torch.Tensor]:
+        if neg_acts.numel() == 0:
+            raise ValueError("ProbeMethod requires both positive and negative activations. "
+                             "Use mean_diff for single-polarity traits.")
         from sklearn.linear_model import LogisticRegression
 
         # Prepare data (float64 for sklearn)
@@ -103,6 +112,9 @@ class GradientMethod(ExtractionMethod):
         regularization: float = 0.01,
         **kwargs
     ) -> Dict[str, torch.Tensor]:
+        if neg_acts.numel() == 0:
+            raise ValueError("GradientMethod requires both positive and negative activations. "
+                             "Use mean_diff for single-polarity traits.")
         original_dtype = pos_acts.dtype
         # Upcast to float32 for numerical stability
         pos_acts = pos_acts.float()
@@ -162,6 +174,9 @@ class RFMMethod(ExtractionMethod):
     """
 
     def extract(self, pos_acts: torch.Tensor, neg_acts: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        if neg_acts.numel() == 0:
+            raise ValueError("RFMMethod requires both positive and negative activations. "
+                             "Use mean_diff for single-polarity traits.")
         from xrfm import RFM
         from sklearn.metrics import roc_auc_score
 
