@@ -4,6 +4,10 @@ Extract and monitor LLM behavioral traits token-by-token during generation.
 
 ---
 
+## Coding Agent Instructions
+
+When working on any part of this codebase, **always read the relevant docs from the Documentation Index below first**. Before modifying extraction code, read extraction_guide.md. Before modifying inference code, read inference_guide.md. Before creating datasets, read trait_dataset_creation.md. Before touching architecture or adding new modules, read architecture.md. Read liberally — the docs are concise and will save you from reimplementing existing patterns or violating conventions.
+
 ## Documentation Index
 
 Primary documentation hub for the traitinterp project.

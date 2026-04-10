@@ -75,7 +75,10 @@ Per trait, in `datasets/traits/{category}/{trait}/`:
 - `positive.txt`, `negative.txt` — one scenario prefix per line, matched by line number
 - `definition.txt` — scoring rubric for the LLM judge
 - `steering.json` — `{"questions": [...]}` for steering evaluation (use `--no-steering` to skip)
-- `extraction_config.yaml` (optional) — per-trait extraction overrides (position, methods, temperature, rollouts, max_new_tokens). Also supported at category level (`datasets/traits/{category}/extraction_config.yaml`); per-trait values override category-level. Loaded by `utils/traits.py:load_extraction_config()`.
+- `extraction_config.yaml` (optional) — per-trait extraction overrides. Also supported at category level (`{category}/extraction_config.yaml`). Loaded by `utils/traits.py:load_extraction_config()`.
+  - **Fields:** `position`, `methods`, `temperature`, `rollouts`, `max_new_tokens`, `polarity`
+  - **Cascade:** CLI flags > per-trait YAML > per-category YAML > pipeline defaults
+  - **`polarity: single`** — enables single-polarity extraction (no `negative.txt` required). Scenarios use `positive.jsonl` with `{"prompt", "system_prompt"}` objects. The extraction pipeline skips negative generation and `MeanDiffMethod` uses zero-centered negative activations.
 
 **CLI flags:**
 - `--traits category/trait1,category/trait2` — comma-separated, or omit for all traits in experiment
@@ -86,6 +89,7 @@ Per trait, in `datasets/traits/{category}/{trait}/`:
 - `--pos-threshold` / `--neg-threshold` — custom vetting thresholds (defaults: 60/40)
 - `--paired-filter` — exclude both polarities if either fails vetting at an index
 - `--steering` — run steering evaluation after extraction
+- `--seed 42` — set torch RNG seed before generation (for reproducible T>0 sampling). Seed is set once per `generate_batch()` call and saved in response metadata.
 
 ### Stage 0: Scenario Vetting (opt-in)
 
@@ -98,8 +102,9 @@ Per trait, in `datasets/traits/{category}/{trait}/`:
 
 `extraction/run_extraction_pipeline.py`
 
-- Loads scenarios from `datasets/traits/{trait}/positive.txt` and `negative.txt`
+- Loads scenarios from `datasets/traits/{trait}/positive.txt` and `negative.txt` (or `positive.jsonl` for single-polarity traits)
 - Supports plain text (one prompt per line) or JSONL with `{"prompt", "system_prompt"}` — see `utils/traits.py:35`
+- When `polarity: single` is set (in extraction_config.yaml or trait.yaml), skips negative scenario loading entirely
 - Applies chat template via `utils.model.format_prompt()` if tokenizer has one
 - For `prompt[-1]` position: sets `max_new_tokens=0`, stores empty responses (no generation needed)
 - Generates `rollouts` completions per scenario (default 1, increase with temperature > 0)
