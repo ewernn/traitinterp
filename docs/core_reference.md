@@ -377,6 +377,40 @@ activations = backend.forward_with_capture(input_ids, attention_mask, capture)
 # activations[layer][component] -> [batch, seq, hidden]
 ```
 
+**vLLM backend (high-throughput generation, no hooks):**
+
+For bulk text generation (stories, dialogues, rollouts) where you don't need activation capture or steering. Uses vLLM's continuous batching for ~5-10x throughput vs HF.
+
+```python
+from utils.model_generation import init_vllm_backend, generate_batch, shutdown_vllm_backend
+
+# Initialize once (auto-detects AWQ/GPTQ from model ID)
+init_vllm_backend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
+
+# Same generate_batch API — pass model=None, backend='vllm'
+responses = generate_batch(None, None, prompts, max_new_tokens=256, temperature=0.7, backend='vllm')
+
+# Free GPU before loading HF model for extraction
+shutdown_vllm_backend()
+```
+
+Constraints:
+- No steering hooks (vLLM doesn't expose model internals)
+- No activation capture
+- Passing a real model with `backend='vllm'` raises `ValueError` (prevents silent hook bypass)
+- Seeds are not cross-backend identical (same seed ≠ same output between HF and vLLM)
+- Requires `uv pip install vllm` (not in default deps)
+
+Alternatively, use `VLLMBackend` directly from `utils/backends.py`:
+
+```python
+from utils.backends import VLLMBackend
+
+engine = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
+responses = engine.generate(formatted_prompts, max_new_tokens=256, temperature=0.7)
+engine.shutdown()
+```
+
 **Escape hatch (for complex hooks):**
 
 For operations requiring direct model access (e.g., `PerSampleSteering`, benchmark logit scoring):
