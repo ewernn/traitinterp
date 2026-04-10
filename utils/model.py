@@ -105,7 +105,7 @@ def install_unmask_padding_hook(model):
             fully_masked = ~mask.any(dim=-1, keepdim=True)
             if fully_masked.any():
                 mask |= fully_masked  # in-place: set those rows to attend everywhere
-        else:
+        elif mask.is_floating_point():
             # Float mask: 0.0 = attend, min_dtype = blocked.
             min_val = torch.finfo(mask.dtype).min
             fully_masked = (mask <= min_val + 1).all(dim=-1, keepdim=True)

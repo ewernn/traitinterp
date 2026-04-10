@@ -94,9 +94,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_judge_templates())
                 return
 
-            # API endpoint: Modal warmup (GET for simplicity - triggers container warm-up)
+            # API endpoint: Modal warmup (SSE — sends estimate, then ready/error)
             if self.path == '/api/modal/warmup':
-                self.send_api_response(self.warmup_modal())
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/event-stream')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                for event in self.warmup_modal_stream():
+                    self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
+                    self.wfile.flush()
                 return
 
             # API endpoint: get experiment config
@@ -468,38 +474,67 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             return {'error': str(e)}
 
-    def warmup_modal(self):
-        """Warm up Modal GPU container by loading the model."""
+    # Warmup timing history: model_name -> last_actual_seconds.
+    # Used to calibrate countdown estimates after the first warmup.
+    _warmup_history: dict = {}
+
+    # Conservative first-call estimates (snapshot-restore, model already cached on volume).
+    # If a model needs a fresh download+quant, the first warmup will be much longer and
+    # the actual timing gets stored for next time.
+    _default_warmup_estimates: dict = {
+        'Qwen/Qwen3.5-9B': 20,
+        'google/gemma-2-2b-it': 10,
+        'unsloth/gemma-2-2b-it-bnb-4bit': 10,
+    }
+    _fallback_estimate: int = 25
+
+    def warmup_modal_stream(self):
+        """Warm up the chat container, yielding SSE events with countdown estimate.
+
+        Fires a 1-token throwaway request to `capture_activations_stream` so
+        the actual chat container pool (not a separate warmup function) gets warmed.
+
+        Yields:
+            {"status": "warming", "model": ..., "estimated_seconds": N}
+            {"status": "ready"|"error", "model": ..., "actual_seconds": N}
+        """
+        import time
         print("[Warmup] Starting Modal warmup...")
         try:
-            # Get model from live-chat experiment config
             from utils.paths import get_model_variant
             variant_info = get_model_variant('live-chat', mode='application')
             model_name = variant_info.model
-            print(f"[Warmup] Model from config: {model_name}")
+            short_name = model_name.split('/')[-1]
 
-            import sys
-            inference_path = Path(__file__).parent.parent / "inference"
-            if str(inference_path) not in sys.path:
-                sys.path.insert(0, str(inference_path))
+            # Send estimate immediately so frontend can start countdown
+            estimate = self._warmup_history.get(model_name,
+                self._default_warmup_estimates.get(model_name, self._fallback_estimate))
+            yield {'status': 'warming', 'model': short_name, 'estimated_seconds': estimate}
 
-            print("[Warmup] Importing modal_inference...")
-            import modal_inference
+            print(f"[Warmup] Model: {model_name}, estimate: {estimate}s")
+            start = time.time()
 
-            # Call .remote() directly on deployed app (no app.run() needed)
-            print(f"[Warmup] Calling warmup.remote({model_name})...")
-            result = modal_inference.warmup.remote(model_name=model_name)
+            import modal
+            TraitCapture = modal.Cls.from_name("trait-capture", "TraitCapture")
+            for _ in TraitCapture(model_name=model_name).capture_activations_stream.remote_gen(
+                messages=[{"role": "user", "content": "hi"}],
+                max_new_tokens=1,
+            ):
+                break  # First token is enough
 
-            print(f"[Warmup] Success: {result}")
-            return result
+            actual = round(time.time() - start, 1)
+            # Only update estimate from cold starts (>5s). Warm hits (<5s)
+            # shouldn't override the estimate since the next call might be cold.
+            if actual > 5:
+                CORSHTTPRequestHandler._warmup_history[model_name] = min(actual, 25)
+            print(f"[Warmup] Success: {model_name} in {actual}s")
+            yield {'status': 'ready', 'model': short_name, 'actual_seconds': actual}
+
         except Exception as e:
             import traceback
             print(f"[Warmup] Error: {e}")
             traceback.print_exc()
-            return {
-                'status': 'error',
-                'error': str(e)
-            }
+            yield {'status': 'error', 'error': str(e)}
 
     def list_experiments(self):
         """List all experiments in experiments/ directory."""

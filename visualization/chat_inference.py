@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 from core import projection
 from utils.backends import LocalBackend
-from utils.paths import get as get_path, get_default_variant, load_experiment_config
+from utils.paths import get as get_path, get_default_variant, get_model_variant
 from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 from utils.model import tokenize_prompt
@@ -70,11 +70,9 @@ class ChatInference:
         if self._loaded:
             return
 
-        # Get model from experiment config based on model_type
-        config = load_experiment_config(self.experiment)
-        config_key = f'{self.model_type}_model'
-        fallback = 'google/gemma-2-2b-it' if self.model_type == 'application' else 'google/gemma-2-2b'
-        model_id = config.get(config_key, fallback)
+        # Resolve model via the canonical experiment config schema (model_variants + defaults).
+        variant_info = get_model_variant(self.experiment, mode=self.model_type)
+        model_id = variant_info.model
         print(f"[ChatInference] Using {self.model_type} model: {model_id}")
 
         if self.backend == "modal":
@@ -448,15 +446,11 @@ class ChatInference:
         yield {'status': 'calling_modal', 'message': 'Calling Modal GPU...'}
 
         try:
-            # Import the app and function directly
-            import sys
-            from pathlib import Path
-            inference_path = Path(__file__).parent.parent / "inference"
-            if str(inference_path) not in sys.path:
-                sys.path.insert(0, str(inference_path))
-
-            # Import modal_inference module
-            import modal_inference
+            # Look up the deployed Modal class. `@app.cls` needs `Cls.from_name`
+            # to hydrate against the deployed app — direct module import doesn't
+            # work outside a `modal run`/`modal deploy` context.
+            import modal
+            TraitCapture = modal.Cls.from_name("trait-capture", "TraitCapture")
 
             # Serialize steering vectors for Modal
             modal_steering = []
@@ -481,9 +475,11 @@ class ChatInference:
             token_count = 0
             first_token_time = None
 
-            # Call .remote_gen() directly on deployed app (no app.run() needed)
-            for chunk in modal_inference.capture_activations_stream.remote_gen(
-                model_name=self._model_id,
+            # Call the TraitCapture class method — each model_name gets its own
+            # snapshot-backed container pool.
+            for chunk in TraitCapture(
+                model_name=self._model_id
+            ).capture_activations_stream.remote_gen(
                 messages=messages,  # Modal handles chat template formatting
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,

@@ -1,5 +1,13 @@
 #!/bin/bash
 # Vast.ai on-start provisioning script
+#
+# Usage:
+#   bash vast_onstart.sh                     Provision without R2 pull
+#   bash vast_onstart.sh live-chat           Provision + pull one experiment
+#   bash vast_onstart.sh live-chat,starter   Provision + pull multiple experiments
+#   bash vast_onstart.sh --all               Provision + pull all experiments (slow)
+
+EXPERIMENTS="${1:-}"  # optional: comma-separated experiment names or --all
 
 # Disable tmux
 touch /root/.no_auto_tmux
@@ -96,7 +104,18 @@ EOF
 chown -R dev:dev /home/dev/.config/rclone
 
 # Setup venv and install deps
-su - dev -c "cd ~/traitinterp && pip3 install --break-system-packages uv && uv venv && uv pip install -r requirements.txt"
+# Install torch separately with cu126 index first — PyPI's default torch targets
+# CUDA 13.0 which doesn't work on Vast.ai's CUDA 12.6 driver.
+su - dev -c "cd ~/traitinterp && pip3 install --break-system-packages uv && uv venv && \
+  uv pip install torch --index-url https://download.pytorch.org/whl/cu126 && \
+  uv pip install -r requirements.txt"
 
-# Pull data from R2
-su - dev -c "cd ~/traitinterp && ./dev/r2_pull.sh"
+# Pull data from R2 (requires --only or --all)
+if [[ "$EXPERIMENTS" == "--all" ]]; then
+    su - dev -c "cd ~/traitinterp && ./dev/r2_pull.sh --all"
+elif [[ -n "$EXPERIMENTS" ]]; then
+    su - dev -c "cd ~/traitinterp && ./dev/r2_pull.sh --only $EXPERIMENTS"
+else
+    echo "Skipping R2 pull (no experiments specified). Run manually:"
+    echo "  ./dev/r2_pull.sh --only <experiment>"
+fi

@@ -21,6 +21,7 @@ import {
     setModalConnectionState,
     getPendingMessage,
     setPendingMessage,
+    getWarmupCountdown,
 } from '../components/inference-controls.js';
 import {
     initTraitChart,
@@ -101,11 +102,14 @@ function updateChartHighlight() {
  * Load model config from experiment config (already fetched by state.js loadExperiment,
  * or fetch directly for live-chat experiment which may not be the sidebar experiment).
  */
+let liveChatExperimentConfig = null;
+
 async function loadModelConfig() {
     try {
         const response = await fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/config`);
         const config = await response.json();
         maxContextLength = config.max_context_length || 8192;
+        liveChatExperimentConfig = config;
     } catch (e) {
         console.warn('Failed to load model config:', e);
         maxContextLength = 8192;
@@ -115,6 +119,39 @@ async function loadModelConfig() {
 /**
  * Render the live chat view
  */
+/**
+ * Start warmup from the overlay button. Updates button text with countdown.
+ */
+function startWarmupFromOverlay() {
+    const btn = document.getElementById('warmup-btn');
+    if (!btn) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Waking GPU...';
+    const startTime = Date.now();
+
+    warmupModal();  // SSE — fires countdown, calls renderLiveChat on completion
+
+    // Update button text: countdown while estimate holds, then elapsed time
+    const updateBtn = setInterval(() => {
+        const cd = getWarmupCountdown();
+        const state = getModalConnectionState();
+        if (state === 'connected' || state === 'error') {
+            clearInterval(updateBtn);
+            const overlay = document.getElementById('warmup-overlay');
+            if (overlay && state === 'connected') overlay.remove();
+            return;
+        }
+        if (cd > 0) {
+            btn.textContent = `Waking GPU... ~${cd}s`;
+        } else {
+            // Estimate expired — show elapsed time so user knows it's still working
+            const elapsed = Math.round((Date.now() - startTime) / 1000);
+            btn.textContent = `Waking GPU... ${elapsed}s`;
+        }
+    }, 500);
+}
+
 async function renderLiveChat() {
     const container = document.getElementById('content-area');
     if (!container) return;
@@ -125,35 +162,47 @@ async function renderLiveChat() {
     // Initialize conversation tree if needed
     if (!conversationTree) {
         conversationTree = new ConversationTree();
-        // Try to restore from localStorage
         restoreConversation();
     }
 
-    // If already rendered with conversation, just update chart (don't rebuild UI)
+    // If already rendered (including after warmup completion), don't rebuild
     const existingView = container.querySelector('.live-chat-view');
-    if (existingView && conversationTree.globalTokens.length > 0) {
-        updateTraitChartWrapped();
+    if (existingView) {
+        // Warmup just completed — remove overlay if present, update chart
+        const overlay = document.getElementById('warmup-overlay');
+        if (overlay && getModalConnectionState() === 'connected') {
+            overlay.remove();
+        }
+        if (conversationTree && conversationTree.globalTokens.length > 0) {
+            updateTraitChartWrapped();
+        }
         return;
     }
 
+    // Fresh render — reset connection state so overlay shows
+    if (getInferenceMode() === 'modal') {
+        setModalConnectionState('disconnected');
+    }
+
+    // Resolve model name from live-chat config (not sidebar experiment)
+    const lcVariant = liveChatExperimentConfig?.defaults?.application || 'instruct';
+    const lcModelFull = liveChatExperimentConfig?.model_variants?.[lcVariant]?.model || appConfig.defaults?.model || '';
+    const lcModelShort = lcModelFull.split('/').pop();
+
     container.innerHTML = `
         <div class="tool-view live-chat-view">
-            <div style="text-align:center; padding:24px 0 8px; color:black; font-size:15px; font-weight:600; letter-spacing:1px;">CONSTRUCTION DELAYED</div>
             <div class="live-chat-container">
                 <!-- Top: Trait Chart -->
                 <div class="trait-chart-panel">
                     <div class="chart-header">
                         <h3>Trait Dynamics</h3>
                         <div class="chart-controls">
-                            <span id="model-info" class="model-info"></span>
+                            <span id="model-info" class="model-info" title="${lcModelFull}">${lcModelShort}</span>
                             <label class="inference-mode-toggle">
                                 <input type="checkbox" id="inference-mode-toggle" onchange="toggleInferenceMode()">
                                 <span id="inference-mode-label">Local</span>
                             </label>
-                            <div id="connection-status" class="connection-status">
-                                <span class="status-dot connected"></span>
-                                <span class="status-text">Ready</span>
-                            </div>
+                            <div id="connection-status" class="connection-status"></div>
                             ${renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: getShowSmoothedLine(), className: 'smooth-toggle' })}
                         </div>
                         <div class="chart-legend" id="chart-legend"></div>
@@ -179,6 +228,19 @@ async function renderLiveChat() {
                     </div>
                 </div>
             </div>
+
+            <!-- How it works dropdown (below the chat UI) -->
+            <details class="detail-layer-results live-chat-howto">
+                <summary>How it works</summary>
+                <div style="padding: 12px; line-height: 1.6;">
+                    <p>Send messages and watch how the model's internal traits shift token-by-token.</p>
+                    <ul>
+                        <li><strong>Trait chart</strong> — real-time projection of activations onto extracted trait vectors</li>
+                        <li><strong>Steering</strong> — adjust coefficients in the chart legend to steer model behavior</li>
+                        <li><strong>Branching</strong> — edit previous messages to explore alternate conversation paths</li>
+                    </ul>
+                </div>
+            </details>
         </div>
     `;
 
@@ -196,18 +258,25 @@ async function renderLiveChat() {
     const defaultBackend = appConfig.defaults?.inference_backend || 'local';
     setInferenceMode(defaultBackend);
 
-    if (getInferenceMode() === 'modal') {
-        // Production: start warming up Modal immediately
-        warmupModal();
-    } else {
+    if (getInferenceMode() === 'modal' && getModalConnectionState() !== 'connected') {
+        // Show warmup overlay on top of the chat UI
+        const liveChat = container.querySelector('.live-chat-container');
+        if (liveChat) {
+            liveChat.insertAdjacentHTML('afterbegin', `
+                <div id="warmup-overlay" class="warmup-overlay">
+                    <button id="warmup-btn" class="btn-warmup" onclick="startWarmupFromOverlay()">
+                        Start Live Chat
+                    </button>
+                </div>
+            `);
+        }
+    } else if (getInferenceMode() !== 'modal') {
         // Development: local mode is always ready
         setModalConnectionState('connected');
         updateConnectionStatusUI(isGenerating);
     }
-    updateInferenceModeUI();
-
-    // Note: Experiment picker stays visible - Live Chat uses LIVE_CHAT_EXPERIMENT internally
-    // Sidebar selection doesn't affect Live Chat
+    // Skip updateInferenceModeUI — model name is set in the template above,
+    // and updateModelInfoUI would overwrite it with the wrong experiment's config.
 
     // Hide inference toggle in production mode
     if (!isFeatureEnabled('inference_toggle')) {
@@ -654,6 +723,8 @@ export {
 // Keep window.* for onclick handlers in generated HTML + router
 window.startEdit = startEdit;
 window.navigateBranch = navigateBranch;
+window.handleMessageHover = handleMessageHover;
+window.startWarmupFromOverlay = startWarmupFromOverlay;
 window.setSteeringCoefficient = setSteeringCoefficient;
 window.toggleInferenceMode = toggleInferenceMode;
 window.renderLiveChat = renderLiveChat;

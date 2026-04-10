@@ -14,6 +14,7 @@ INCLUDE_LORAS=false
 INCLUDE_TRAJECTORIES=false
 DRY_RUN=""
 ONLY=""  # comma-separated experiment names
+ALL=false  # --all flag to opt into full-repo sync
 
 # ─── Argument parsing ────────────────────────────────────────────────────────
 
@@ -25,6 +26,9 @@ parse_r2_args() {
             --full)     MODE="full" ;;
             --checksum) MODE="checksum" ;;
             --turbo)    MODE="turbo" ;;
+
+            # Scope flags
+            --all)  ALL=true ;;
 
             # Include flags
             --include-loras)        INCLUDE_LORAS=true ;;
@@ -142,6 +146,17 @@ ensure_r2() {
 # ─── Path resolution ─────────────────────────────────────────────────────────
 
 resolve_paths() {
+    # Require --only or --all (prevents accidental 210k-file full-repo scans)
+    if [[ -z "$ONLY" && "$ALL" != true ]]; then
+        echo "Error: specify --only <experiment> or --all"
+        echo ""
+        echo "Examples:"
+        echo "  $0 --only live-chat                     Single experiment"
+        echo "  $0 --only live-chat,starter              Multiple experiments"
+        echo "  $0 --all                                 All experiments (slow)"
+        exit 1
+    fi
+
     # Base paths
     R2_REMOTE="r2:trait-interp-bucket/experiments/"
     LOCAL_DIR="experiments/"

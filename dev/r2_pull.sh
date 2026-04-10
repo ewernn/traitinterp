@@ -1,21 +1,23 @@
 #!/bin/bash
 # Pull experiments from R2 cloud storage
 #
+# Requires --only <experiment> or --all to prevent accidental full-repo scans (100k+ R2 objects).
+#
 # Usage:
-#   ./r2_pull.sh                                          Safe: only download new files (default)
-#   ./r2_pull.sh --copy                                   Safe update: new + changed files, never deletes
-#   ./r2_pull.sh --full                                   Full sync: make local match R2 (DELETES local-only files!)
-#   ./r2_pull.sh --checksum                               Slow sync: MD5 comparison (DELETES local-only files!)
-#   ./r2_pull.sh --only mats-emergent-misalignment        Scope to one experiment
-#   ./r2_pull.sh --only mats-emergent-misalignment,aria_rl Scope to multiple experiments
-#   ./r2_pull.sh --only viz_findings                       Sync completed findings experiments
+#   ./r2_pull.sh --only live-chat                         Safe: download new files in one experiment (default mode)
+#   ./r2_pull.sh --only live-chat --copy                  New + changed files (size comparison), never deletes
+#   ./r2_pull.sh --only live-chat --full                  Make local match R2 (DELETES local-only files!)
+#   ./r2_pull.sh --only live-chat --checksum              MD5 comparison (DELETES local-only files, slow)
+#   ./r2_pull.sh --only live-chat,starter,aria_rl         Multiple experiments
+#   ./r2_pull.sh --all                                    All experiments (slow — lists entire R2 bucket)
+#   ./r2_pull.sh --all --full                             Full sync everything (nuclear)
 #
 # Flags:
 #   --include-loras          Include LoRA checkpoints (finetune/, turner_loras/, etc.)
 #   --include-trajectories   Include trajectory .pt files (large, regenerable)
 #   --dry-run                Show what would be transferred without doing it
 #
-# Note: viz_findings/ is excluded by default. Use --only to sync it.
+# Note: viz_findings/ is excluded by default. Use --only viz_findings to sync it.
 # Archive lives separately at r2:trait-interp-bucket/experiments_archive/
 
 set -e

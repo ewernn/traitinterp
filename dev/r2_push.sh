@@ -1,22 +1,24 @@
 #!/bin/bash
 # Push experiments to R2 cloud storage (local → R2, never pulls)
 #
+# Requires --only <experiment> or --all to prevent accidental full-repo scans (210k+ files).
+#
 # Usage:
-#   ./r2_push.sh                                          Fast: only upload new files (default)
-#   ./r2_push.sh --copy                                   Safe update: new + changed files, never deletes
-#   ./r2_push.sh --full                                   Full sync: make R2 match local (DELETES R2-only files!)
-#   ./r2_push.sh --checksum                               Slow sync: MD5 comparison (DELETES R2-only files!)
-#   ./r2_push.sh --turbo                                  Max parallelism (256 transfers, for many small files)
-#   ./r2_push.sh --only mats-emergent-misalignment        Scope to one experiment
-#   ./r2_push.sh --only mats-emergent-misalignment,aria_rl Scope to multiple experiments
-#   ./r2_push.sh --only viz_findings                       Sync completed findings experiments
+#   ./r2_push.sh --only live-chat                         Fast: upload new files in one experiment (default mode)
+#   ./r2_push.sh --only live-chat --copy                  New + changed files (size comparison), never deletes
+#   ./r2_push.sh --only live-chat --full                  Make R2 match local (DELETES R2-only files!)
+#   ./r2_push.sh --only live-chat --checksum              MD5 comparison (DELETES R2-only files, slow)
+#   ./r2_push.sh --only live-chat,starter                 Multiple experiments
+#   ./r2_push.sh --all                                    All experiments (slow — walks entire experiments/)
+#   ./r2_push.sh --all --full                             Full sync everything (nuclear)
+#   ./r2_push.sh --only live-chat --turbo                 Max parallelism (256 transfers)
 #
 # Flags:
 #   --include-loras          Include LoRA checkpoints (finetune/, turner_loras/, etc.)
 #   --include-trajectories   Include trajectory .pt files (large, regenerable)
 #   --dry-run                Show what would be transferred without doing it
 #
-# Note: viz_findings/ is excluded by default. Use --only to sync it.
+# Note: viz_findings/ is excluded by default. Use --only viz_findings to sync it.
 # Archive lives separately at r2:trait-interp-bucket/experiments_archive/
 
 set -e

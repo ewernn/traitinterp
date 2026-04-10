@@ -1,0 +1,143 @@
+# TODO — LessWrong post by April 12
+
+- [ ] Fix mobile bug (site too wide, doesn't fit screen)
+- [ ] Overview v5 — add citations from literature map
+- [ ] Kill 6 placeholder blocks in `docs/methodology.md`
+- [ ] Findings cleanup: dates, lighter backgrounds, expandable sidebar with titles at top-left
+- [ ] Verify Qwen model ID in overview (`Qwen/Qwen3.5-9B`)
+- [ ] Replace `[link]` placeholders in overview finding bullets
+- [ ] Confirm starter trait names in overview match `datasets/traits/starter_traits/`
+- [ ] Write `docs/viz_findings/convolution-detector.md`
+- [ ] Add convolution-detector.md to `viz_findings/index.yaml`
+- [ ] Make live-chat click-to-warm instead of auto-loading
+- [ ] Solo LW post outline (traitinterp framework release)
+- [ ] Solo LW post first draft
+- [ ] Solo LW post polish (read out loud, cut 20%, tighten claims)
+- [ ] Companion LW post outline (Emotion Concepts replication + MATS findings, with Sriram)
+- [ ] Companion LW post first draft
+- [ ] Companion LW post polish
+- [ ] Review both posts (Sriram and/or Oscar)
+- [ ] Publish both posts (solo morning, companion afternoon)
+- [ ] Cross-post to AlignmentForum
+- [ ] Tweet thread with hook + figure + link
+- [ ] Personal website cleanup (remove distracting projects, link traitinterp.com, update bio)
+- [ ] Message Oscar with LW post link
+- [ ] Optional: email Anthropic Fellows with LW post link
+- [ ] Write `docs/viz_findings/quant-sensitivity.md` — `experiments/quant-sensitivity/` already has the data
+- [ ] Add quant-sensitivity.md to `viz_findings/index.yaml`
+- [ ] Base-vs-story extraction experiment (optional, if time)
+- [ ] Base-beats-instruct finding for live-chat traits (evil, hallucination, sycophancy) — write natural-elicitation `.txt` datasets, extract on Qwen3.5-9B-Base, compare steering deltas to current instruct extraction
+- [ ] 30-min glance at Sriram fingerprint work (promised meeting)
+- [ ] In the convolution post, cite Anthropic's finding that emotion concepts have stronger local than global influence — this is the motivation for using a temporal convolution window instead of a full-response average
+- [ ] Job applications 2-3/day throughout sprint
+- [ ] (backlog) Second LW post about traitinterp methodology — save for post-decision
+- [ ] Run Emotion Concepts replication experiments (PCA, clustering, geometry on your trait set — scope TBD with Sriram)
+- [ ] (backlog) Vetting prompt redesign — include full response for context + XML-tagged `<score_this>` section matching extraction position for focused scoring. Test variations. Files: `utils/judge.py`, `utils/preextraction_vetting.py`
+- [ ] (backlog) Dataset format unification — trait.yaml metadata + cascade (subagent proposal in chat)
+- [ ] (backlog, maybe skip) Analyze past Anthropic Fellows for commonalities
+
+---
+
+## Context for Claude (don't need to read yourself)
+
+### Mobile bug
+Site too wide, doesn't fit screen. Probably CSS overflow issue in the viz findings or sidebar. Start in `visualization/styles.css`.
+
+### Overview v5 citations (from web Claude literature map)
+In order of impact:
+1. **MacDiarmid et al. 2024 "Simple Probes Can Catch Sleeper Agents"** (Anthropic) — linear probes detect sleeper agent defection at >99% AUROC using generic contrast pairs. Add to "Trait probes can cheaply monitor" paragraph as existence proof.
+2. **CoT unfaithfulness numbers** — Chen, Benton, Radhakrishnan et al. 2025 ("CoTs reveal hint-usage below 20% of the time"); Lanham et al. 2023 (inverse scaling for CoT faithfulness); Alignment Forum 2025 (CoT monitoring underperforms action-only by up to 44%). Add to "Outputs are too late" paragraph.
+3. **Casper et al. 2024 "Black-Box Access is Insufficient for Rigorous AI Audits"** — "it is impossible to make guarantees about black-box systems using a finite number of queries without additional assumptions." Foundational citation. One-line add at start of "Why we need this."
+4. **Gupta & Jenner 2025 "RL-Obfuscation"** — architectural diversity matters for evasion resistance, not just probe count. Upgrade ensemble paragraph from "open empirical question" to cited directional claim.
+5. **Sofroniew et al. 2026 direct quotes** — "better monitoring than attempting to build a watchlist of specific problematic behaviors" and "transparency should be a guiding principle." Replace current paraphrase.
+
+### Methodology placeholders
+6 `:::placeholder:::` blocks in `docs/methodology.md`. Fastest fix is delete. Alternative is pull figures from existing `viz_findings/` docs. Anything is better than visible `[placeholder]` text.
+
+### Convolution detector finding doc
+Needs: frontmatter (title, preview, thumbnail), `ag_convolution_detector.png` figure, honest metric distinction (89% threshold detection vs 55% localization), controls (shuffled template z=3.1, random trait baseline z=1.35), connection to Emotion Concepts paper. See `experiments/rm_syco/rm_sycophancy/analysis/session_findings.md` for the raw numbers.
+
+### Live-chat click-to-warm
+Currently the live-chat view probably loads the model automatically when the tab is visited. Change to: show the interface but require an explicit "start session" click to load the model. Saves compute when no one is actively using it. Check `visualization/views/live-chat.js` and `visualization/chat_inference.py`.
+
+### Solo LW post structure (traitinterp framework release)
+~2400 words. The post IS about the repo. Findings are evidence, not the point.
+
+1. **Abstract** (~150w) — what traitinterp is, why it matters, headline results, mention companion post
+2. **Why trait vectors** (~200w) — core argument only (outputs too late, ensembles, scaling). Not an essay.
+3. **Traitinterp** (~1500w) — the bulk of the post:
+   - What it is + ships with starter traits
+   - How to use it (quick tour: bash commands + dashboard screenshot)
+   - How it works (compressed methodology — your approach as default, alternatives in one line)
+   - Engineering for reuse (auto batching, PathBuilder, position DSL, quant support)
+   - Extensibility (add your own traits, any model)
+4. **Selected findings** (~400w) — claim + figure + link to traitinterp.com per finding:
+   - Reward hacking reduction (63%)
+   - Persona vectors replication (91-104%)
+   - Convolution detector (9→43 OOD) — brief here, full story in companion post
+   - Component decomposition
+   - Model recognizes own voice
+   - Quant sensitivity
+5. **What's next** (~100w) — companion post with Sriram, vision, call to use
+
+Reuse overview.md and methodology.md verbatim where possible (write once, use on site + LW).
+
+### Companion LW post structure (Emotion Concepts replication + MATS findings, with Sriram)
+Published same day, afternoon. Links back to solo post for the pipeline.
+
+1. **Abstract** — we replicate Anthropic's Emotion Concepts methodology on open-source models using traitinterp, and present MATS exploration phase findings
+2. **Emotion Concepts replication** — their methodology on open models:
+   - PCA / clustering / geometry on ~170 trait set
+   - Story-based vs contrastive extraction comparison (if base-vs-story experiment done)
+   - What transfers, what doesn't
+3. **MATS findings** — the fingerprint work:
+   - Emergent misalignment fingerprints
+   - Cross-seed consistency (same behavior, different internal paths, r=0.084 for s42)
+   - Checkpoint dynamics (trait shifts precede behavioral onset by ~25 training steps)
+   - Cross-model transfer (Llama 70B → Qwen 4B)
+   - Convolution detector in depth (9→43 OOD, shuffled template z=3.1, pre-onset signal)
+4. **Discussion** — what this means for monitoring, honest caveats
+5. **Links** — traitinterp.com, companion solo post, GitHub
+
+### Sriram fingerprint revisit
+Promised meeting tomorrow. Core idea: fingerprints via same-text prefill through clean model and instruct variant, subtract activations. Z-score + weight each trait's contribution to the fingerprint by its delta change before computing similarity between variants. The "top 23 delta traits" picked arbitrarily was naive — some emergent misaligned behaviors are stronger deltas than others, and we need to capture this in the correlation. Emergent misalignment is the right test bed because the persona is persistent across the full response, not a rare backdoor activation. 30-min glance only — don't let it eat into LW post time.
+
+### "Local > global" citation for convolution post
+Anthropic's Emotion Concepts paper shows emotion representations track the operative emotion at a given token position, not a persistent character state — they call these "locally operative" representations. Layer analysis: early layers encode local emotional connotations of present content, middle-late layers encode emotions relevant to predicting upcoming tokens. This is the motivation for temporal convolution windows in the detector — the signal is local, not global, so a sliding window over local activations captures what a full-response average would smear out. Cite this when introducing the convolution approach in the LW post.
+
+### Base-beats-instruct for live-chat traits
+Prior work (`docs/viz_findings/comparison-persona-vectors.md`, `experiments/persona_vectors_replication/`) showed base model extraction achieves 91-104% of instruct-based steering effectiveness on Llama-3.1-8B, with more authentic behavior (conversational vs theatrical). Current live-chat extraction uses instruct model + system prompts because the starter_traits datasets are `.jsonl` with `system_prompt` fields. The weak traits (evil 50.5% vet pass, hallucination 68%, assistant_axis 25%) fail because the instruct model plays a character rather than exhibiting the trait — exactly what the persona vectors comparison documented.
+
+**Task:** Write natural-elicitation `.txt` datasets for evil, hallucination, sycophancy (like refusal already has — different prompts, no system prompts), extract on `Qwen/Qwen3.5-9B-Base`, compare steering deltas. If base beats instruct here too, it validates the finding on a new model family and gives us better live-chat vectors.
+
+**Files:** `datasets/traits/starter_traits/refusal/` (example of `.txt` natural format), `experiments/live-chat/config.json` (base variant = `Qwen/Qwen3.5-9B-Base`), `docs/viz_findings/comparison-persona-vectors.md` (prior results)
+
+### Base-vs-story experiment (if time)
+Pick 1 emotion from Anthropic's Emotion Concepts set. Extract both ways (their story method + contrastive doc-completion) on same base model. Compare steering efficiency per unit norm on a ~20-question multi-choice eval. Find coherence cliff for each. Report which steers stronger / maintains coherence further / shifts preference more. One table, clean head-to-head.
+
+Emotion selection: one where Anthropic's method was weakest, OR one where pre/post-training delta was maximum (suggests their method is affected by training).
+
+### Daily discipline
+- No days off until April 12
+- First 3 actions written night before
+- Touch grass 20 min minimum daily
+- Email inbox twice/day max
+- Two-day rule: don't skip same item two days in a row
+
+### What NOT to do
+- No second LW post this sprint (save methodology-focused post for after decision)
+- No site redesign
+- No new experiments beyond optional base-vs-story
+- No refreshing accepted fellows' LinkedIns
+- No emailing Joe unless LW post is strong
+
+---
+
+## Less important, for after LW posts
+
+### Chat: apr10-cot-experiments
+Consolidated context from 3 experiment sessions (Haskins CoT Obfuscation, Obfuscation Atlas, infra refactor). R2 explored in depth. Key parked items:
+- Haskins Round 2: finish emotion_set extraction (45/87), capture s2ppnh raw activations, project through emotion_set traits
+- OA normalization: run norm_diagnostic.py on projection data (needs GPU)
+- R2 cleanup: ~165 GiB regenerable data in experiments-save/ + temp/
+- Paper (~/code/persona-generalization/tv/paper/paper_rh.tex): outline form, incorporate Haskins/OA results

@@ -26,15 +26,27 @@ from utils.judge import TraitJudge
 from utils.traits import load_trait_definition, load_scenarios
 
 
-# Truncate responses to first N tokens for vetting
-# This aligns vetting with extraction (which uses response[:N])
-VET_TOKEN_LIMIT = 16
+def slice_by_position(text: str, position: str) -> str:
+    """Extract the words matching an extraction position spec.
 
+    Uses whitespace-split approximation (not true tokenization, but sufficient
+    for vetting since the judge only needs a rough window).
 
-def truncate_to_tokens(text: str, max_tokens: int = VET_TOKEN_LIMIT) -> str:
-    """Truncate text to approximately max_tokens (whitespace-split approximation)."""
+    Examples:
+        slice_by_position(text, "response[:]")  → full text
+        slice_by_position(text, "response[:5]") → first 5 words
+        slice_by_position(text, "response[50:]") → words 50 onward
+        slice_by_position(text, "response[5:10]") → words 5 to 10
+    """
+    import re
+    m = re.search(r'\[(\d*):(\d*)\]', position)
+    if not m:
+        return text  # unrecognized format → full text
+    start = int(m.group(1)) if m.group(1) else None
+    end = int(m.group(2)) if m.group(2) else None
     words = text.split()
-    return ' '.join(words[:max_tokens])
+    sliced = words[start:end]
+    return ' '.join(sliced) if sliced else text
 
 
 def load_responses(experiment: str, trait: str, model_variant: str) -> dict:
@@ -119,8 +131,13 @@ async def _vet_scenarios_async(trait: str, max_concurrent: int = 20) -> dict:
 async def _vet_responses_async(
     experiment: str, trait: str, model_variant: str,
     max_concurrent: int = 100, estimate_trait_tokens: bool = False,
+    position: str = "response[:]",
 ) -> dict:
-    """Score all responses and return results."""
+    """Score all responses and return results.
+
+    The judge sees the full response for context but scores only the tokens
+    matching the extraction position (via XML-tagged <score_this> section).
+    """
     judge = TraitJudge()
     responses = load_responses(experiment, trait, model_variant)
     trait_definition = load_trait_definition(trait)
@@ -130,18 +147,22 @@ async def _vet_responses_async(
     for polarity in ['positive', 'negative']:
         for idx, item in enumerate(responses[polarity]):
             full_response = item.get('response', '')
-            text = truncate_to_tokens(full_response)
+            score_section = slice_by_position(full_response, position)
             prompt = item.get('prompt', '')
             items.append({
                 "idx": idx, "polarity": polarity,
-                "prompt": prompt, "text": text, "full_response": full_response,
+                "prompt": prompt, "full_response": full_response,
+                "score_section": score_section,
             })
 
     semaphore = asyncio.Semaphore(max_concurrent)
 
     async def score_one(item: dict) -> dict:
         async with semaphore:
-            score = await judge.score_response(item["prompt"], item["text"], trait_name, trait_definition)
+            score = await judge.score_response(
+                item["prompt"], item["full_response"], trait_name, trait_definition,
+                score_section=item["score_section"],
+            )
             result = {"idx": item["idx"], "polarity": item["polarity"], "score": score}
             if estimate_trait_tokens and item["polarity"] == "positive" and score is not None and score >= 60:
                 token_count = await judge.estimate_trait_tokens(
@@ -170,6 +191,7 @@ def vet(
     neg_threshold: int = 40,
     max_concurrent: int = None,
     estimate_trait_tokens: bool = False,
+    position: str = "response[:]",
 ) -> float:
     """Vet scenarios or responses using LLM-as-judge. Returns pass rate.
 
@@ -177,6 +199,8 @@ def vet(
         target: "scenarios" (score prompts) or "responses" (score model outputs)
         max_concurrent: Concurrent API calls. Default: 20 for scenarios, 100 for responses.
         estimate_trait_tokens: Estimate trait token positions (responses only, for adaptive position).
+        position: Extraction position spec (e.g. "response[:]", "response[:5]"). The judge sees
+            the full response for context but scores only the tokens matching this position.
     """
     if max_concurrent is None:
         max_concurrent = 20 if target == "scenarios" else 100
@@ -186,7 +210,7 @@ def vet(
         data = asyncio.run(_vet_scenarios_async(trait, max_concurrent))
     else:
         data = asyncio.run(_vet_responses_async(
-            experiment, trait, model_variant, max_concurrent, estimate_trait_tokens
+            experiment, trait, model_variant, max_concurrent, estimate_trait_tokens, position
         ))
 
     results = data["results"]
@@ -253,7 +277,8 @@ def vet_scenarios(experiment, trait, model_variant, pos_threshold=60, neg_thresh
                pos_threshold=pos_threshold, neg_threshold=neg_threshold, max_concurrent=max_concurrent)
 
 def vet_responses(experiment, trait, model_variant, pos_threshold=60, neg_threshold=40,
-                  max_concurrent=100, estimate_trait_tokens=False):
+                  max_concurrent=100, estimate_trait_tokens=False, position="response[:]"):
     return vet(experiment, trait, model_variant, target="responses",
                pos_threshold=pos_threshold, neg_threshold=neg_threshold,
-               max_concurrent=max_concurrent, estimate_trait_tokens=estimate_trait_tokens)
+               max_concurrent=max_concurrent, estimate_trait_tokens=estimate_trait_tokens,
+               position=position)
