@@ -11,7 +11,7 @@ Multi-vector operations:
     pairwise_cosine_matrix, pca, project_out_subspace
 
 Utility:
-    remove_massive_dims, accuracy, effect_size, polarity_correct, normalize_projections
+    remove_massive_dims, accuracy, effect_size, pearson_correlation, polarity_correct, normalize_projections
 """
 
 import torch
@@ -140,6 +140,25 @@ def effect_size(pos_proj: torch.Tensor, neg_proj: torch.Tensor, signed: bool = F
         return 0.0
     d = ((pos_proj.mean() - neg_proj.mean()) / pooled_std).item()
     return d if signed else abs(d)
+
+
+def pearson_correlation(x: torch.Tensor, y: torch.Tensor) -> float:
+    """Pearson correlation coefficient between two 1D tensors.
+
+    Input: x, y — 1D tensors or lists of the same length
+    Output: scalar correlation in [-1, 1]
+    """
+    if not isinstance(x, torch.Tensor):
+        x = torch.tensor(x, dtype=torch.float32)
+    if not isinstance(y, torch.Tensor):
+        y = torch.tensor(y, dtype=torch.float32)
+    x = x.float()
+    y = y.float()
+    x_centered = x - x.mean()
+    y_centered = y - y.mean()
+    num = (x_centered * y_centered).sum()
+    den = (x_centered.norm() * y_centered.norm()).clamp(min=1e-8)
+    return (num / den).item()
 
 
 def polarity_correct(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> bool:

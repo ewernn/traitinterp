@@ -50,6 +50,7 @@ from .math import (
     orthogonalize,
     accuracy,
     effect_size,
+    pearson_correlation,
     polarity_correct,
     remove_massive_dims,
     normalize_projections,
