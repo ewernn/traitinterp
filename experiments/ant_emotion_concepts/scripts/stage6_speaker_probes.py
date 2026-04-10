@@ -28,30 +28,30 @@ Technical challenges:
 Input:
   - 2-speaker dialogues (generated in Stage 1.3 or here)
   - Extracted emotion vectors (for reference/comparison)
-Output: experiments/ant-emotion-concepts/results/stage6/
+Output: experiments/ant_emotion_concepts/results/stage6/
 
 Usage:
     # Extract probes from pre-generated dialogues
-    python experiments/ant-emotion-concepts/scripts/stage6_speaker_probes.py \
-        --experiment ant-emotion-concepts --load-in-4bit \
-        --dialogues-path experiments/ant-emotion-concepts/results/dialogues/
+    python experiments/ant_emotion_concepts/scripts/stage6_speaker_probes.py \
+        --experiment ant_emotion_concepts --load-in-4bit \
+        --dialogues-path experiments/ant_emotion_concepts/results/dialogues/
 
     # Generate dialogues first, then extract
-    python experiments/ant-emotion-concepts/scripts/stage6_speaker_probes.py \
-        --experiment ant-emotion-concepts --load-in-4bit \
+    python experiments/ant_emotion_concepts/scripts/stage6_speaker_probes.py \
+        --experiment ant_emotion_concepts --load-in-4bit \
         --generate-dialogues --n-dialogues 500
 
     # Run only geometry analysis (CPU, no model needed)
-    python experiments/ant-emotion-concepts/scripts/stage6_speaker_probes.py \
-        --experiment ant-emotion-concepts \
+    python experiments/ant_emotion_concepts/scripts/stage6_speaker_probes.py \
+        --experiment ant_emotion_concepts \
         --sub-experiments geometry,cross_speaker \
-        --probes-path experiments/ant-emotion-concepts/results/stage6/probes/
+        --probes-path experiments/ant_emotion_concepts/results/stage6/probes/
 
     # Run steering with other-speaker vectors
-    python experiments/ant-emotion-concepts/scripts/stage6_speaker_probes.py \
-        --experiment ant-emotion-concepts --load-in-4bit \
+    python experiments/ant_emotion_concepts/scripts/stage6_speaker_probes.py \
+        --experiment ant_emotion_concepts --load-in-4bit \
         --sub-experiments steering \
-        --probes-path experiments/ant-emotion-concepts/results/stage6/probes/
+        --probes-path experiments/ant_emotion_concepts/results/stage6/probes/
 """
 
 import argparse
@@ -77,7 +77,7 @@ from utils.paths import get as get_path, get_default_variant
 from utils.vectors import load_vector_with_baseline
 from utils.distributed import flush_cuda
 
-EXPERIMENT = "ant-emotion-concepts"
+EXPERIMENT = "ant_emotion_concepts"
 RESULTS_BASE = Path(__file__).resolve().parent.parent / "results" / "stage6"
 
 ALL_SUB_EXPERIMENTS = [

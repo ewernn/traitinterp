@@ -4,10 +4,10 @@ Tries different topic counts, selections, prompt templates, and temperatures
 on a small sample of emotions to find the best configuration.
 
 Run on GPU:
-    python experiments/ant-emotion-concepts/scripts/explore_story_generation.py \
+    python experiments/ant_emotion_concepts/scripts/explore_story_generation.py \
         --model meta-llama/Llama-3.3-70B-Instruct --load-in-4bit
 
-Output: experiments/ant-emotion-concepts/results/story_exploration/
+Output: experiments/ant_emotion_concepts/results/story_exploration/
 """
 
 import argparse
@@ -251,7 +251,7 @@ def main():
     parser.add_argument("--model", default="meta-llama/Llama-3.3-70B-Instruct")
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--emotions", type=str, default=",".join(TEST_EMOTIONS))
-    parser.add_argument("--out-dir", type=str, default="experiments/ant-emotion-concepts/results/story_exploration")
+    parser.add_argument("--out-dir", type=str, default="experiments/ant_emotion_concepts/results/story_exploration")
     args = parser.parse_args()
 
     emotions = args.emotions.split(",")

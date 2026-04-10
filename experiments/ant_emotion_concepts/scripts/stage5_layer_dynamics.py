@@ -19,21 +19,21 @@ position DSL handles prompt[-1] and response[:5], but we need raw token-level
 access. This script tokenizes prompts manually and scans for target tokens.
 
 Input:  datasets/inference/ant_emotion_concepts/*.json  +  extracted vectors
-Output: experiments/ant-emotion-concepts/results/stage5/{experiment_name}/
+Output: experiments/ant_emotion_concepts/results/stage5/{experiment_name}/
 
 Usage:
     # Run all sub-experiments
-    python experiments/ant-emotion-concepts/scripts/stage5_layer_dynamics.py \
-        --experiment ant-emotion-concepts --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
+        --experiment ant_emotion_concepts --load-in-4bit
 
     # Run specific sub-experiment(s)
-    python experiments/ant-emotion-concepts/scripts/stage5_layer_dynamics.py \
-        --experiment ant-emotion-concepts --load-in-4bit \
+    python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
+        --experiment ant_emotion_concepts --load-in-4bit \
         --sub-experiments dissociation,colon_predicts
 
     # With response generation for colon_predicts (needs autoregressive decoding)
-    python experiments/ant-emotion-concepts/scripts/stage5_layer_dynamics.py \
-        --experiment ant-emotion-concepts --load-in-4bit \
+    python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
+        --experiment ant_emotion_concepts --load-in-4bit \
         --sub-experiments colon_predicts --max-new-tokens 20
 """
 
@@ -56,7 +56,7 @@ from utils.paths import get as get_path, get_default_variant, discover_extracted
 from utils.vectors import load_vector_with_baseline
 from utils.distributed import flush_cuda
 
-EXPERIMENT = "ant-emotion-concepts"
+EXPERIMENT = "ant_emotion_concepts"
 DATASETS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "datasets" / "inference" / "ant_emotion_concepts"
 RESULTS_BASE = Path(__file__).resolve().parent.parent / "results" / "stage5"
 

@@ -26,7 +26,7 @@ from utils.vectors import load_vector_with_baseline
 # Constants
 # =============================================================================
 
-EXPERIMENT = "ant-emotion-concepts"
+EXPERIMENT = "ant_emotion_concepts"
 CATEGORY = "ant_emotion_concepts"
 DEFAULT_LAYER = 53  # Mid-late layer (~2/3 of 80-layer model)
 

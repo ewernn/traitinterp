@@ -14,21 +14,21 @@ Output: experiments/{experiment}/results/stage4_validation/
 
 Usage:
     # Full validation suite:
-    python experiments/ant-emotion-concepts/scripts/stage4_validation.py \
-        --experiment ant-emotion-concepts --layer 53 --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
+        --experiment ant_emotion_concepts --layer 53 --load-in-4bit
 
     # CPU-only analyses (no model needed):
-    python experiments/ant-emotion-concepts/scripts/stage4_validation.py \
-        --experiment ant-emotion-concepts --layer 53 --only logit_lens
+    python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
+        --experiment ant_emotion_concepts --layer 53 --only logit_lens
 
     # Specific GPU experiments:
-    python experiments/ant-emotion-concepts/scripts/stage4_validation.py \
-        --experiment ant-emotion-concepts --layer 53 --load-in-4bit \
+    python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
+        --experiment ant_emotion_concepts --layer 53 --load-in-4bit \
         --only implicit,numerical,steering
 
     # Preference Elo (most GPU-intensive validation):
-    python experiments/ant-emotion-concepts/scripts/stage4_validation.py \
-        --experiment ant-emotion-concepts --layer 53 --load-in-4bit \
+    python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
+        --experiment ant_emotion_concepts --layer 53 --load-in-4bit \
         --only preference
 """
 

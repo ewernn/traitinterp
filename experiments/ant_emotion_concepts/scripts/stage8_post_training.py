@@ -19,28 +19,28 @@ Requires:
   - Both model variants in config.json (base: Llama 3.1 70B, instruct: Llama 3.3 70B)
   - deep_dive_prompts.json and activities_64.json in datasets/inference/ant_emotion_concepts/
 
-Output: experiments/ant-emotion-concepts/results/stage8_post_training/
+Output: experiments/ant_emotion_concepts/results/stage8_post_training/
 
 Usage:
     # Full comparison (loads both models sequentially):
-    python experiments/ant-emotion-concepts/scripts/stage8_post_training.py \
-        --experiment ant-emotion-concepts --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+        --experiment ant_emotion_concepts --load-in-4bit
 
     # Activation comparison only (Fig 36, fastest):
-    python experiments/ant-emotion-concepts/scripts/stage8_post_training.py \
-        --experiment ant-emotion-concepts --load-in-4bit --activations-only
+    python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+        --experiment ant_emotion_concepts --load-in-4bit --activations-only
 
     # Layer sweep only (Fig 84, requires activations already captured):
-    python experiments/ant-emotion-concepts/scripts/stage8_post_training.py \
-        --experiment ant-emotion-concepts --layer-sweep-only
+    python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+        --experiment ant_emotion_concepts --layer-sweep-only
 
     # Deep-dive prompts only (Figs 37-39):
-    python experiments/ant-emotion-concepts/scripts/stage8_post_training.py \
-        --experiment ant-emotion-concepts --load-in-4bit --deep-dive-only
+    python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+        --experiment ant_emotion_concepts --load-in-4bit --deep-dive-only
 
     # Base model Elo only (Figs 85-86):
-    python experiments/ant-emotion-concepts/scripts/stage8_post_training.py \
-        --experiment ant-emotion-concepts --load-in-4bit --elo-only
+    python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+        --experiment ant_emotion_concepts --load-in-4bit --elo-only
 """
 
 import argparse
@@ -77,7 +77,7 @@ from shared import (
 # Constants
 # =============================================================================
 
-EXPERIMENT = "ant-emotion-concepts"
+EXPERIMENT = "ant_emotion_concepts"
 CATEGORY = "ant_emotion_concepts"
 BASE_VARIANT = "base"
 INSTRUCT_VARIANT = "instruct"

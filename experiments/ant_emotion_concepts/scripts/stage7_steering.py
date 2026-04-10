@@ -15,28 +15,28 @@ Requires:
   - Blackmail scenario constructed from Appendix A.13
   - Reward hacking "impossible code" tasks
 
-Output: experiments/ant-emotion-concepts/results/stage7_steering/
+Output: experiments/ant_emotion_concepts/results/stage7_steering/
 
 Usage:
     # Decision gate only (fast — 10 rollouts each):
-    python experiments/ant-emotion-concepts/scripts/stage7_steering.py \
-        --experiment ant-emotion-concepts --gate-only --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage7_steering.py \
+        --experiment ant_emotion_concepts --gate-only --load-in-4bit
 
     # Full blackmail sweep (after gate passes):
-    python experiments/ant-emotion-concepts/scripts/stage7_steering.py \
-        --experiment ant-emotion-concepts --blackmail --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage7_steering.py \
+        --experiment ant_emotion_concepts --blackmail --load-in-4bit
 
     # Full RH sweep (after gate passes):
-    python experiments/ant-emotion-concepts/scripts/stage7_steering.py \
-        --experiment ant-emotion-concepts --reward-hacking --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage7_steering.py \
+        --experiment ant_emotion_concepts --reward-hacking --load-in-4bit
 
     # Probing only (single transcript visualization):
-    python experiments/ant-emotion-concepts/scripts/stage7_steering.py \
-        --experiment ant-emotion-concepts --probe-only --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage7_steering.py \
+        --experiment ant_emotion_concepts --probe-only --load-in-4bit
 
     # Everything (gate + sweeps if gate passes):
-    python experiments/ant-emotion-concepts/scripts/stage7_steering.py \
-        --experiment ant-emotion-concepts --all --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage7_steering.py \
+        --experiment ant_emotion_concepts --all --load-in-4bit
 """
 
 import argparse
@@ -74,7 +74,7 @@ from shared import (
 # Constants
 # =============================================================================
 
-EXPERIMENT = "ant-emotion-concepts"
+EXPERIMENT = "ant_emotion_concepts"
 CATEGORY = "ant_emotion_concepts"
 
 # Steering vectors to sweep (from paper Figs 28-29)

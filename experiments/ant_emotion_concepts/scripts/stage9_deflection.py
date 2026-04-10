@@ -22,32 +22,32 @@ Requires:
   - Antagonistic prompts dataset (datasets/inference/ant_emotion_concepts/antagonistic_prompts.json)
   - Blackmail scenario (same as Stage 7)
 
-Output: experiments/ant-emotion-concepts/results/stage9_deflection/
+Output: experiments/ant_emotion_concepts/results/stage9_deflection/
 
 Usage:
     # Extract deflection probes from dialogues:
-    python experiments/ant-emotion-concepts/scripts/stage9_deflection.py \
-        --experiment ant-emotion-concepts --extract --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage9_deflection.py \
+        --experiment ant_emotion_concepts --extract --load-in-4bit
 
     # Compare deflection vs story probes (CPU only, no model needed):
-    python experiments/ant-emotion-concepts/scripts/stage9_deflection.py \
-        --experiment ant-emotion-concepts --compare-probes
+    python experiments/ant_emotion_concepts/scripts/stage9_deflection.py \
+        --experiment ant_emotion_concepts --compare-probes
 
     # Antagonistic prompt test:
-    python experiments/ant-emotion-concepts/scripts/stage9_deflection.py \
-        --experiment ant-emotion-concepts --antagonistic --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage9_deflection.py \
+        --experiment ant_emotion_concepts --antagonistic --load-in-4bit
 
     # Steering on blackmail with deflection vectors:
-    python experiments/ant-emotion-concepts/scripts/stage9_deflection.py \
-        --experiment ant-emotion-concepts --steer-blackmail --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage9_deflection.py \
+        --experiment ant_emotion_concepts --steer-blackmail --load-in-4bit
 
     # Basic steering validation with deflection vectors:
-    python experiments/ant-emotion-concepts/scripts/stage9_deflection.py \
-        --experiment ant-emotion-concepts --steer-basic --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage9_deflection.py \
+        --experiment ant_emotion_concepts --steer-basic --load-in-4bit
 
     # Everything:
-    python experiments/ant-emotion-concepts/scripts/stage9_deflection.py \
-        --experiment ant-emotion-concepts --all --load-in-4bit
+    python experiments/ant_emotion_concepts/scripts/stage9_deflection.py \
+        --experiment ant_emotion_concepts --all --load-in-4bit
 """
 
 import argparse
@@ -89,7 +89,7 @@ from shared import (
 # Constants
 # =============================================================================
 
-EXPERIMENT = "ant-emotion-concepts"
+EXPERIMENT = "ant_emotion_concepts"
 CATEGORY = "ant_emotion_concepts"
 
 DEFAULT_LAYER = 53  # Mid-late layer (~2/3 of 80)

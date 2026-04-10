@@ -13,17 +13,17 @@ Output: experiments/{experiment}/results/stage3_geometry/
 
 Usage:
     # Full analysis at a single layer:
-    python experiments/ant-emotion-concepts/scripts/stage3_geometry.py \
-        --experiment ant-emotion-concepts --layer 53
+    python experiments/ant_emotion_concepts/scripts/stage3_geometry.py \
+        --experiment ant_emotion_concepts --layer 53
 
     # RSA across multiple layers:
-    python experiments/ant-emotion-concepts/scripts/stage3_geometry.py \
-        --experiment ant-emotion-concepts --layer 53 \
+    python experiments/ant_emotion_concepts/scripts/stage3_geometry.py \
+        --experiment ant_emotion_concepts --layer 53 \
         --rsa-layers 20,30,40,45,50,53,55,60,65,70,72,75,77,80
 
     # Specific analyses only:
-    python experiments/ant-emotion-concepts/scripts/stage3_geometry.py \
-        --experiment ant-emotion-concepts --layer 53 --only cosine,pca
+    python experiments/ant_emotion_concepts/scripts/stage3_geometry.py \
+        --experiment ant_emotion_concepts --layer 53 --only cosine,pca
 """
 
 import argparse

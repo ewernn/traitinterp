@@ -14,20 +14,20 @@ Output:
   - Denoised vectors: experiments/{exp}/extraction/{trait}/{variant}/vectors/{position}/{component}/denoised/
 
 Usage:
-    python experiments/ant-emotion-concepts/scripts/cross_trait_normalize.py \
-        --experiment ant-emotion-concepts \
+    python experiments/ant_emotion_concepts/scripts/cross_trait_normalize.py \
+        --experiment ant_emotion_concepts \
         --layer 53 \
         --neutral-trait ant_emotion_concepts/_neutral
 
     # Multiple layers:
-    python experiments/ant-emotion-concepts/scripts/cross_trait_normalize.py \
-        --experiment ant-emotion-concepts \
+    python experiments/ant_emotion_concepts/scripts/cross_trait_normalize.py \
+        --experiment ant_emotion_concepts \
         --layers 40,45,50,53,55,60 \
         --neutral-trait ant_emotion_concepts/_neutral
 
     # Dry run (print stats, don't save):
-    python experiments/ant-emotion-concepts/scripts/cross_trait_normalize.py \
-        --experiment ant-emotion-concepts --layer 53 --dry-run
+    python experiments/ant_emotion_concepts/scripts/cross_trait_normalize.py \
+        --experiment ant_emotion_concepts --layer 53 --dry-run
 """
 
 import argparse
