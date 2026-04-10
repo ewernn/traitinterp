@@ -118,6 +118,7 @@ class ExtractionConfig:
     # Generation
     rollouts: int = 1
     temperature: float = 0.0
+    seed: Optional[int] = None
     max_new_tokens: Optional[int] = None
 
     # Vetting

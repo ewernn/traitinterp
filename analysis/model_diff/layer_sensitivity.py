@@ -63,7 +63,7 @@ def load_vectors(experiment, traits, layers, extraction_variant='base',
                 component=component, position=position
             )
             best_layers[trait] = spec.layer
-            print(f"  {trait}: best=L{spec.layer} ({meta['source']}: {meta['score']:.2f})")
+            print(f"  {trait}: best=L{spec.layer} ({meta['source']}: delta={meta['delta']:.2f})")
         except FileNotFoundError:
             best_layers[trait] = None
             print(f"  {trait}: no steering results, skipping best layer")

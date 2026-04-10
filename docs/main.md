@@ -4,6 +4,10 @@ Extract and monitor LLM behavioral traits token-by-token during generation.
 
 ---
 
+## Coding Agent Instructions
+
+When working on any part of this codebase, **always read the relevant docs from the Documentation Index below first**. Before modifying extraction code, read extraction_guide.md. Before modifying inference code, read inference_guide.md. Before creating datasets, read trait_dataset_creation.md. Before touching architecture or adding new modules, read architecture.md. Read liberally — the docs are concise and will save you from reimplementing existing patterns or violating conventions.
+
 ## Documentation Index
 
 Primary documentation hub for the traitinterp project.
@@ -29,7 +33,6 @@ Primary documentation hub for the traitinterp project.
 ### Visualization
 - **[visualization/README.md](../visualization/README.md)** - Dashboard usage
 - **[docs/methodology.md](methodology.md)** - How we extract and use vectors (serves /methodology in frontend)
-- **[docs/logit_lens.md](logit_lens.md)** - Prediction evolution across layers
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
@@ -41,7 +44,7 @@ Primary documentation hub for the traitinterp project.
 ### Infrastructure
 - **[docs/remote_setup.md](remote_setup.md)** - Remote GPU setup
 - **[docs/r2_sync.md](r2_sync.md)** - R2 cloud sync
-- **[docs/tensor_parallel.md](tensor_parallel.md)** - Tensor parallelism for DeepSeek V3 / Kimi K2
+- **[docs/other/serve_kimi_k2_1T.md](other/serve_kimi_k2_1T.md)** - Serving Kimi K2 (1T) across 8 GPUs
 
 ### Contributing
 - **[docs/doc-update-guidelines.md](doc-update-guidelines.md)** - Style and process guide for docs
@@ -67,12 +70,13 @@ traitinterp/
 │   └── traits/
 │       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
 │       ├── emotion_set/              # 174 emotion traits
+│       ├── ant_emotion_concepts/     # 174 emotion concept traits (single-polarity, long-context)
 │       ├── alignment/                # 10 alignment traits
 │       ├── tonal/                    # 7 tonal traits
 │       ├── pv_instruction/           # Instruct-model traits (instruction-following axis)
 │       ├── pv_natural/               # Instruct-model traits (natural conversation axis)
 │       └── archive/                  # Archived trait sets
-│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json
+│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json, extraction_config.yaml (optional)
 │
 ├── extraction/             # Vector extraction pipeline
 │   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
@@ -118,6 +122,9 @@ traitinterp/
 │   └── ...                           # paths, activations, layers, projections, vectors, fingerprints
 ├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
 ├── analysis/               # Analysis scripts (see analysis/README.md)
+│   ├── vectors/                      # Vector quality, geometry, correlation, massive dims
+│   ├── model_diff/                   # Cross-variant comparison (Cohen's d, per-token diff)
+│   └── benchmark/                    # Benchmark evaluation with steering
 ├── visualization/          # Interactive dashboard
 │   ├── serve.py                      # Python HTTP server (static + REST API + SSE chat)
 │   ├── chat_inference.py             # Backend for live chat (model loading, streaming)
@@ -146,7 +153,7 @@ python extraction/run_extraction_pipeline.py \
 **Monitor with existing vectors:**
 ```bash
 # 1. Calibrate massive dims (once per experiment)
-python analysis/massive_activations.py --experiment {experiment}
+python analysis/vectors/massive_activations.py --experiment {experiment}
 
 # 2. Run full inference pipeline (generate + stream-through project)
 python inference/run_inference_pipeline.py \

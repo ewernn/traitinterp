@@ -14,11 +14,65 @@ Usage:
 """
 
 import json
+import yaml
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from utils.paths import get as get_path
+
+
+def load_trait_metadata(trait: str) -> dict:
+    """Load per-trait metadata from trait.yaml if present.
+
+    Returns {} if no trait.yaml exists (all defaults apply).
+    Supports: polarity, position, max_new_tokens, temperature,
+    cross_trait_normalize, neutral_pc_denoise, and any custom fields.
+    """
+    trait_dir = get_path('datasets.trait', trait=trait)
+    yaml_path = trait_dir / 'trait.yaml'
+    if not yaml_path.exists():
+        return {}
+    with open(yaml_path) as f:
+        data = yaml.safe_load(f)
+        return data if isinstance(data, dict) else {}
+
+
+def load_extraction_config(trait: str) -> dict:
+    """Load extraction_config.yaml with category-level + per-trait cascade.
+
+    Checks:
+      1. datasets/traits/{category}/extraction_config.yaml (category-level)
+      2. datasets/traits/{category}/{trait}/extraction_config.yaml (per-trait override)
+
+    Per-trait values override category-level. Returns {} if neither exists.
+    Supported fields: position, max_new_tokens, methods (list), temperature, rollouts.
+    Note: polarity is handled separately by load_trait_metadata() / load_scenarios().
+    """
+    traits_base = get_path('datasets.traits')
+    parts = trait.split('/')
+    merged = {}
+
+    # Category-level: everything except last part is the category
+    if len(parts) >= 2:
+        category_dir = traits_base / '/'.join(parts[:-1])
+        cat_yaml = category_dir / 'extraction_config.yaml'
+        if cat_yaml.exists():
+            with open(cat_yaml) as f:
+                data = yaml.safe_load(f)
+                if isinstance(data, dict):
+                    merged.update(data)
+
+    # Per-trait override
+    trait_dir = traits_base / trait
+    trait_yaml = trait_dir / 'extraction_config.yaml'
+    if trait_yaml.exists():
+        with open(trait_yaml) as f:
+            data = yaml.safe_load(f)
+            if isinstance(data, dict):
+                merged.update(data)
+
+    return merged
 
 
 def load_trait_definition(trait: str) -> str:
@@ -53,14 +107,26 @@ def load_scenarios(trait: str, polarity: str = None) -> Dict[str, List[dict]]:
         list of {"prompt": str, "system_prompt": Optional[str]}
     """
     trait_dir = get_path('datasets.trait', trait=trait)
-    polarities = [polarity] if polarity else ['positive', 'negative']
+
+    # Check metadata before loading — single-polarity traits only load positive
+    # Check both trait.yaml and extraction_config.yaml for polarity
+    metadata = load_trait_metadata(trait)
+    extraction_cfg = load_extraction_config(trait)
+    is_single_polarity = metadata.get('polarity') == 'single' or extraction_cfg.get('polarity') == 'single'
+
+    if polarity:
+        polarities = [polarity]
+    elif is_single_polarity:
+        polarities = ['positive']
+    else:
+        polarities = ['positive', 'negative']
 
     result = {}
     for pol in polarities:
         result[pol] = _load_polarity(trait_dir, pol)
 
-    # Assert matched scenario counts
-    if 'positive' in result and 'negative' in result:
+    # Assert matched scenario counts (skip for single-polarity traits)
+    if not is_single_polarity and 'positive' in result and 'negative' in result:
         n_pos, n_neg = len(result['positive']), len(result['negative'])
         if n_pos != n_neg:
             raise ValueError(

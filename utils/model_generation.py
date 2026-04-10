@@ -78,6 +78,7 @@ def _generate_batch_raw(
     prompts: List[str],
     max_new_tokens: int,
     temperature: float,
+    seed: int = None,
 ) -> List[str]:
     """Core batch generation without OOM handling. Internal use only."""
     if tokenizer.pad_token is None:
@@ -156,6 +157,7 @@ def generate_batch(
     prompts: List[str],
     max_new_tokens: int = 256,
     temperature: float = 0.0,
+    seed: int = None,
 ) -> List[str]:
     """
     Generate responses with automatic batch size calculation and OOM recovery.
@@ -168,6 +170,7 @@ def generate_batch(
         prompts: List of prompts to generate responses for
         max_new_tokens: Maximum tokens to generate per prompt
         temperature: Sampling temperature (0 for greedy)
+        seed: Random seed for reproducible sampling (only used when temperature > 0)
 
     Returns:
         List of generated responses
@@ -192,6 +195,13 @@ def generate_batch(
     tp = is_tp_mode()
     batch_size = tp_agree_batch_size(batch_size)
 
+    # Set seed once for the full batch (not per sub-batch, so results are
+    # independent of batch size / OOM splits)
+    if seed is not None and temperature > 0:
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
     all_responses = []
     i = 0
 
@@ -200,7 +210,7 @@ def generate_batch(
         oom_flag = torch.zeros(1, device='cuda') if tp else None
         oom = False
         try:
-            responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature)
+            responses = _generate_batch_raw(model, tokenizer, batch, max_new_tokens, temperature, seed=seed)
         except (torch.cuda.OutOfMemoryError, RuntimeError) as e:
             from utils.batch_forward import check_oom_exception, recover_oom_batch_size
             check_oom_exception(e, batch_size, tp_raises=False)

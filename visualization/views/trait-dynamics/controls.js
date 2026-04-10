@@ -216,7 +216,7 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div id="section-body-correlation" hidden>
                     <div id="correlation-content">
                         <div class="no-data-hint">No pre-computed correlation data.
-                            <code>python analysis/trait_correlation.py --experiment ${experimentName} --prompt-set PROMPT_SET</code>
+                            <code>python analysis/vectors/trait_correlation.py --experiment ${experimentName} --prompt-set PROMPT_SET</code>
                         </div>
                     </div>
                 </div>

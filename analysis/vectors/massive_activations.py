@@ -13,16 +13,16 @@ Output: JSON with massive dim stats for visualization
 
 Usage:
     # Default: calibrate model using Alpaca prompts
-    python analysis/massive_activations.py --experiment gemma-2-2b
+    python analysis/vectors/massive_activations.py --experiment gemma-2-2b
 
     # Analyze specific prompt set (research mode)
-    python analysis/massive_activations.py --experiment gemma-2-2b --prompt-set jailbreak_subset
+    python analysis/vectors/massive_activations.py --experiment gemma-2-2b --prompt-set jailbreak_subset
 
     # Include per-token analysis (verbose)
-    python analysis/massive_activations.py --experiment gemma-2-2b --prompt-set X --per-token
+    python analysis/vectors/massive_activations.py --experiment gemma-2-2b --prompt-set X --per-token
 
     # Per-layer stats for massive dims (requires calibration first)
-    python analysis/massive_activations.py --experiment gemma-2-2b --per-layer
+    python analysis/vectors/massive_activations.py --experiment gemma-2-2b --per-layer
 """
 
 import argparse
@@ -356,7 +356,7 @@ def compute_per_layer_stats(experiment: str, model_variant: str) -> dict:
     calib_path = get_path('inference.massive_activations', experiment=experiment, model_variant=model_variant, prompt_set='calibration')
 
     if not calib_path.exists():
-        raise FileNotFoundError(f"Calibration not found: {calib_path}\nRun: python analysis/massive_activations.py --experiment {experiment}")
+        raise FileNotFoundError(f"Calibration not found: {calib_path}\nRun: python analysis/vectors/massive_activations.py --experiment {experiment}")
 
     with open(calib_path) as f:
         calib = json.load(f)
@@ -381,7 +381,7 @@ def compute_per_layer_stats(experiment: str, model_variant: str) -> dict:
     raw_dir = Path(get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set='_calibration'))
 
     if not raw_dir.exists():
-        raise FileNotFoundError(f"Raw activations not found: {raw_dir}\nRun: python analysis/massive_activations.py --experiment {experiment}")
+        raise FileNotFoundError(f"Raw activations not found: {raw_dir}\nRun: python analysis/vectors/massive_activations.py --experiment {experiment}")
 
     pt_files = sorted(raw_dir.glob('*.pt'))
     if not pt_files:
@@ -663,7 +663,7 @@ def main():
     if is_tp_mode():
         raise RuntimeError(
             "massive_activations.py does not support torchrun. "
-            "Run without TP: python analysis/massive_activations.py --experiment ..."
+            "Run without TP: python analysis/vectors/massive_activations.py --experiment ..."
         )
 
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

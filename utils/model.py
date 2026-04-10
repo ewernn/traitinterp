@@ -29,12 +29,19 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from core.generation import get_layer_path_prefix  # noqa: F401
 
 
-def _best_attn_implementation():
-    """Return best available attention implementation: flash_attention_2 > sdpa."""
+def _best_attn_implementation(model_name: str = ""):
+    """Return best available attention implementation: flash_attention_2 > sdpa > eager.
+
+    Some architectures (e.g. gpt_oss) lack sdpa support in transformers and must
+    fall back to eager when flash_attn is not installed.
+    """
     try:
         import flash_attn  # noqa: F401
         return "flash_attention_2"
     except ImportError:
+        # gpt_oss has no sdpa path; eager is the only fallback without flash_attn.
+        if "gpt-oss" in model_name.lower() or "gpt_oss" in model_name.lower():
+            return "eager"
         return "sdpa"
 
 # Patch for autoawq compatibility with transformers 4.57+
@@ -346,7 +353,7 @@ def load_model_with_lora(
         "device_map": device,
         "torch_dtype": dtype,
         "trust_remote_code": True,
-        "attn_implementation": _best_attn_implementation(),
+        "attn_implementation": _best_attn_implementation(model_name),
     }
 
     # Skip compressed_tensors' compress_model step for models that are already

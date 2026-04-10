@@ -15,6 +15,9 @@ from core.math import (
     effect_size,
     remove_massive_dims,
     orthogonalize,
+    pairwise_cosine_matrix,
+    pca,
+    project_out_subspace,
 )
 
 
@@ -289,3 +292,158 @@ class TestOrthogonalize:
         """Orthogonalizing parallel vectors gives zero."""
         result = orthogonalize(sample_vector, sample_vector)
         assert result.norm().item() == pytest.approx(0.0, abs=1e-5)
+
+
+# =============================================================================
+# pairwise_cosine_matrix() tests
+# =============================================================================
+
+class TestPairwiseCosineMatrix:
+    """Tests for pairwise_cosine_matrix()."""
+
+    def test_shape(self):
+        """Output is N×N for N vectors."""
+        vecs = torch.randn(10, 64)
+        result = pairwise_cosine_matrix(vecs)
+        assert result.shape == (10, 10)
+
+    def test_diagonal_is_one(self):
+        """Diagonal entries are 1.0 for non-zero vectors."""
+        vecs = torch.randn(5, 32)
+        result = pairwise_cosine_matrix(vecs)
+        assert torch.allclose(result.diag(), torch.ones(5), atol=1e-5)
+
+    def test_symmetric(self):
+        """Matrix is symmetric."""
+        vecs = torch.randn(8, 64)
+        result = pairwise_cosine_matrix(vecs)
+        assert torch.allclose(result, result.T, atol=1e-6)
+
+    def test_range_bounded(self):
+        """All entries in [-1, 1]."""
+        vecs = torch.randn(10, 64)
+        result = pairwise_cosine_matrix(vecs)
+        assert (result >= -1.0 - 1e-5).all() and (result <= 1.0 + 1e-5).all()
+
+    def test_consistent_with_cosine_similarity(self, hidden_dim):
+        """Entries match cosine_similarity for individual pairs."""
+        vecs = torch.randn(5, hidden_dim)
+        matrix = pairwise_cosine_matrix(vecs)
+        for i in range(5):
+            for j in range(5):
+                expected = cosine_similarity(vecs[i], vecs[j]).item()
+                assert matrix[i, j].item() == pytest.approx(expected, abs=1e-5)
+
+    def test_single_vector(self):
+        """N=1 returns [[1.0]]."""
+        vecs = torch.randn(1, 32)
+        result = pairwise_cosine_matrix(vecs)
+        assert result.shape == (1, 1)
+        assert result.item() == pytest.approx(1.0, abs=1e-5)
+
+    def test_zero_vector_no_nan(self):
+        """Zero vectors produce 0.0 similarity, not NaN."""
+        vecs = torch.zeros(3, 32)
+        vecs[1] = torch.randn(32)
+        result = pairwise_cosine_matrix(vecs)
+        assert not torch.isnan(result).any()
+
+
+# =============================================================================
+# pca() tests
+# =============================================================================
+
+class TestPCA:
+    """Tests for pca()."""
+
+    def test_output_shapes(self):
+        """Components, variance, projections have correct shapes."""
+        vecs = torch.randn(20, 64)
+        components, var_ratio, projections = pca(vecs, n_components=5)
+        assert components.shape == (5, 64)
+        assert var_ratio.shape == (5,)
+        assert projections.shape == (20, 5)
+
+    def test_variance_ratio_sums_below_one(self):
+        """Explained variance ratios sum to <= 1."""
+        vecs = torch.randn(50, 32)
+        _, var_ratio, _ = pca(vecs, n_components=10)
+        assert var_ratio.sum().item() <= 1.0 + 1e-5
+
+    def test_components_orthogonal(self):
+        """Principal components are orthogonal."""
+        vecs = torch.randn(30, 64)
+        components, _, _ = pca(vecs, n_components=5)
+        gram = components @ components.T
+        expected = torch.eye(5)
+        assert torch.allclose(gram, expected, atol=1e-4)
+
+    def test_n_components_exceeds_n(self):
+        """Requesting more components than vectors works (returns min)."""
+        vecs = torch.randn(3, 64)
+        components, var_ratio, projections = pca(vecs, n_components=10)
+        assert components.shape[0] == 3  # min(10, 3)
+        assert var_ratio.shape[0] == 3
+        assert projections.shape == (3, 3)
+
+    def test_single_vector_raises(self):
+        """PCA on 1 vector raises ValueError."""
+        vecs = torch.randn(1, 64)
+        with pytest.raises(ValueError, match="at least 2"):
+            pca(vecs)
+
+    def test_variance_ordering(self):
+        """First component explains more variance than second."""
+        vecs = torch.randn(50, 32)
+        _, var_ratio, _ = pca(vecs, n_components=5)
+        for i in range(len(var_ratio) - 1):
+            assert var_ratio[i] >= var_ratio[i + 1] - 1e-6
+
+
+# =============================================================================
+# project_out_subspace() tests
+# =============================================================================
+
+class TestProjectOutSubspace:
+    """Tests for project_out_subspace()."""
+
+    def test_removes_subspace(self):
+        """Result is orthogonal to all basis vectors."""
+        vecs = torch.randn(10, 64)
+        basis = torch.randn(3, 64)
+        result = project_out_subspace(vecs, basis)
+        Q, _ = torch.linalg.qr(basis.float().T)
+        residual = result.float() @ Q
+        assert residual.abs().max() < 1e-4
+
+    def test_1d_input(self):
+        """Works with a single vector (1D)."""
+        vec = torch.randn(64)
+        basis = torch.randn(2, 64)
+        result = project_out_subspace(vec, basis)
+        assert result.shape == (64,)
+        Q, _ = torch.linalg.qr(basis.float().T)
+        assert (result.float() @ Q).abs().max() < 1e-4
+
+    def test_empty_basis_unchanged(self):
+        """Empty basis (K=0) leaves vectors unchanged."""
+        vecs = torch.randn(5, 32)
+        basis = torch.randn(0, 32)
+        result = project_out_subspace(vecs, basis)
+        assert torch.allclose(result, vecs.float(), atol=1e-5)
+
+    def test_consistent_with_orthogonalize(self, hidden_dim):
+        """Single-direction basis matches orthogonalize() result."""
+        v = torch.randn(hidden_dim)
+        onto = torch.randn(hidden_dim)
+        result_single = orthogonalize(v, onto)
+        result_subspace = project_out_subspace(v, onto.unsqueeze(0))
+        assert torch.allclose(result_single.float(), result_subspace, atol=1e-4)
+
+    def test_idempotent(self):
+        """Projecting twice gives same result as once."""
+        vecs = torch.randn(5, 32)
+        basis = torch.randn(3, 32)
+        once = project_out_subspace(vecs, basis)
+        twice = project_out_subspace(once, basis)
+        assert torch.allclose(once, twice, atol=1e-4)

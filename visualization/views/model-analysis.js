@@ -34,7 +34,7 @@ async function renderModelAnalysis() {
                     num: 1,
                     title: 'Activation Diagnostics',
                     infoId: 'info-activation-diagnostics',
-                    infoText: 'Understanding model internals: activation magnitude growth and massive activation dimensions (Sun et al. 2024). Run <code>python analysis/massive_activations.py</code> to generate data.'
+                    infoText: 'Understanding model internals: activation magnitude growth and massive activation dimensions (Sun et al. 2024). Run <code>python analysis/vectors/massive_activations.py</code> to generate data.'
                 })}
 
                 <div class="projection-toggle" style="margin-top: 16px; margin-bottom: 12px;">
@@ -476,7 +476,7 @@ function withMassiveActivationsData(containerId, data, renderFn) {
     if (!data) {
         container.innerHTML = renderRunHint(
             'No massive activation calibration data.',
-            `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
         );
         return;
     }
@@ -497,7 +497,7 @@ function renderActivationMagnitudePlot(data) {
         if (!data.aggregate?.layer_norms) {
             plotDiv.innerHTML = renderRunHint(
                 'Activation magnitude data not available.',
-                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+                `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
             );
             return;
         }
@@ -625,7 +625,7 @@ function renderMassiveDimsAcrossLayers(data) {
         const dimMagnitude = aggregate.dim_magnitude_by_layer || {};
 
         if (Object.keys(dimMagnitude).length === 0) {
-            container.innerHTML = `<div class="info">No per-layer magnitude data. Re-run <code>python analysis/massive_activations.py</code> to generate.</div>`;
+            container.innerHTML = `<div class="info">No per-layer magnitude data. Re-run <code>python analysis/vectors/massive_activations.py</code> to generate.</div>`;
             return;
         }
 
@@ -722,7 +722,7 @@ function renderInterLayerSimilarity(data) {
         if (!data.aggregate?.consecutive_cosine) {
             plotDiv.innerHTML = renderRunHint(
                 'Inter-layer similarity data not available.',
-                `python analysis/massive_activations.py --experiment ${window.paths.getExperiment()}`
+                `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
             );
             return;
         }

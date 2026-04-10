@@ -8,7 +8,7 @@ import { renderSubsection } from '../core/ui.js';
 // Loads pre-computed correlation data from:
 //   experiments/{exp}/analysis/trait_correlation/{prompt_set}.json
 //
-// To generate: python analysis/trait_correlation.py --experiment {exp} --prompt-set {prompt_set}
+// To generate: python analysis/vectors/trait_correlation.py --experiment {exp} --prompt-set {prompt_set}
 
 // Module-local state (not part of global state shape)
 let traitCorrelationData = null;

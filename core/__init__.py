@@ -32,6 +32,7 @@ from .hooks import (
     ActivationCappingHook,            # clamp projection above threshold (single layer)
     MultiLayerActivationCapping,  # clamp projection above threshold (multi-layer)
     PerSampleSteering,         # different steering per batch slice
+    PerPositionSteeringHook,   # steer at specific token positions
 )
 from .methods import (
     ExtractionMethod,
@@ -49,9 +50,13 @@ from .math import (
     orthogonalize,
     accuracy,
     effect_size,
+    pearson_correlation,
     polarity_correct,
     remove_massive_dims,
     normalize_projections,
+    pairwise_cosine_matrix,
+    pca,
+    project_out_subspace,
 )
 from .generation import (
     HookedGenerator,

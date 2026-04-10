@@ -91,7 +91,8 @@ Interprets facts, applies thresholds, aggregates across prompts.
 HookManager, get_hook_path, LayerHook, CaptureHook, SteeringHook, AblationHook,
 MultiLayerCapture, MultiLayerAblation, MultiLayerSteering,
 ProjectionHook, MultiLayerProjection,
-ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering
+ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering,
+PerPositionSteeringHook
 
 # methods.py
 get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMethod, RFMMethod
@@ -99,7 +100,7 @@ get_method, MeanDifferenceMethod, ProbeMethod, GradientMethod, RandomBaselineMet
 # math.py
 projection, cosine_similarity, batch_cosine_similarity,
 accuracy, effect_size, orthogonalize, polarity_correct,
-remove_massive_dims
+remove_massive_dims, pairwise_cosine_matrix, pca, project_out_subspace
 ```
 
 **What does NOT belong:**
@@ -200,6 +201,25 @@ Any directory that isn't a standard pipeline dir is a sub-experiment. Each is se
 - Results/outputs go in `results/` or alongside the scripts.
 
 Sub-experiments consume data from the standard pipeline dirs (e.g., reading vectors from `extraction/`, projections from `inference/`) but store their own outputs internally.
+
+#### Experiment Scripts as Recipes
+
+Experiment scripts are **thin orchestration layers** that call pipeline code — they never reimplement it. The pipeline does the heavy lifting; the script expresses the experiment's unique logic.
+
+**What belongs in an experiment script:**
+- Dataset constants (prompt templates, baseline numbers from a paper)
+- Experiment-specific analysis (what to correlate, how to interpret results, grading functions)
+- Orchestration (which stages run in what order, decision gates)
+
+**What does NOT belong in an experiment script:**
+- Forward passes (`CaptureHook` loops, `model(**inputs)`) — use a shared capture helper
+- Steering loops (`SteeringHook` + `generate_batch`) — use a shared sweep helper
+- Path construction (`get_path(...) / 'extraction' / ...`) — use `utils/paths.py` or `utils/vectors.py`
+- JSON serialization — use a shared save helper
+
+**When the pipeline has a gap:** Add the capability to `core/` or `utils/` as a flag or new function, then call it from the experiment. Example: needing position-specific steering → add `PerPositionSteeringHook` to `core/hooks.py`, not a custom hook in the experiment script. The pipeline grows to serve experiments.
+
+**The `shared.py` pattern:** Each experiment with multiple stage scripts gets a `shared.py` that bridges between the generic pipeline and the experiment's specific needs. `shared.py` itself calls pipeline functions — it never reimplements them. Stage scripts import from `shared.py` for experiment-level utilities (vector loading, results I/O, scenario grading).
 
 **Notepad format** — entries use UTC timestamps:
 
