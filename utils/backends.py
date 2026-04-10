@@ -496,6 +496,105 @@ class LocalBackend(GenerationBackend):
 
 
 # =============================================================================
+# vLLM Backend — generation only (no hooks, no capture)
+# =============================================================================
+
+
+class VLLMBackend:
+    """High-throughput generation via vLLM. No activation capture or steering.
+
+    Use for bulk text generation (stories, dialogues, rollouts).
+    Use LocalBackend for anything requiring model internals (extraction,
+    capture, steering, streaming).
+
+    Usage:
+        backend = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4")
+        responses = backend.generate(prompts, max_new_tokens=256, temperature=0.7)
+        backend.shutdown()  # free GPU before loading HF model
+    """
+
+    def __init__(
+        self,
+        model_id: str,
+        tensor_parallel_size: int = 1,
+        gpu_memory_utilization: float = 0.90,
+        max_model_len: int = 4096,
+        seed: int = None,
+        **kwargs,
+    ):
+        try:
+            from vllm import LLM, SamplingParams
+        except ImportError:
+            raise ImportError(
+                "vLLM not installed. Install with: uv pip install vllm\n"
+                "Note: vLLM requires CUDA and takes a while to install."
+            )
+
+        self._SamplingParams = SamplingParams
+
+        # Auto-detect quantization from model ID
+        quantization = None
+        model_id_lower = model_id.lower()
+        if "awq" in model_id_lower:
+            quantization = "awq"
+        elif "gptq" in model_id_lower:
+            quantization = "gptq"
+
+        llm_kwargs = dict(
+            model=model_id,
+            tensor_parallel_size=tensor_parallel_size,
+            gpu_memory_utilization=gpu_memory_utilization,
+            max_model_len=max_model_len,
+            trust_remote_code=True,
+        )
+        if quantization:
+            llm_kwargs["quantization"] = quantization
+        if seed is not None:
+            llm_kwargs["seed"] = seed
+        llm_kwargs.update(kwargs)
+
+        print(f"Loading vLLM: {model_id}")
+        if quantization:
+            print(f"  Quantization: {quantization}")
+        print(f"  TP: {tensor_parallel_size}, max_len: {max_model_len}")
+
+        self._llm = LLM(**llm_kwargs)
+        self.model_id = model_id
+
+    def generate(
+        self,
+        prompts: List[str],
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+        top_p: float = 1.0,
+        stop_token_ids: List[int] = None,
+    ) -> List[str]:
+        """Generate responses for pre-formatted prompts.
+
+        Prompts should already have chat template applied (use utils.model.format_prompt).
+        vLLM handles batching internally via continuous batching.
+        """
+        params = self._SamplingParams(
+            max_tokens=max_new_tokens,
+            temperature=temperature if temperature > 0 else 0,
+            top_p=top_p,
+            stop_token_ids=stop_token_ids,
+        )
+        outputs = self._llm.generate(prompts, params, use_tqdm=True)
+        return [output.outputs[0].text for output in outputs]
+
+    def shutdown(self):
+        """Free GPU memory. Call before loading an HF model for extraction."""
+        import gc
+        del self._llm
+        self._llm = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        print("vLLM unloaded.")
+
+
+# =============================================================================
 # CLI helpers
 # =============================================================================
 
@@ -503,6 +602,6 @@ class LocalBackend(GenerationBackend):
 def add_backend_args(parser):
     """Add --backend argument to an argparse parser."""
     parser.add_argument(
-        '--backend', choices=['auto', 'local'],
+        '--backend', choices=['auto', 'local', 'vllm'],
         default='auto',
-        help='Model backend: auto (default), local (load in-process)')
+        help='Model backend: auto (default), local (HF in-process), vllm (high-throughput generation)')
