@@ -579,28 +579,42 @@ For each replicated experiment, compare our results on Llama 70B to Anthropic's 
 | Order | Task | Blocker? | Est | Notes |
 |---|---|---|---|---|
 | 1 | Factor `utils/dialogue_generation.py` (stage6 → util) | no | 20m CPU | Prerequisite for tasks 5, 7 |
+| 1b | **Smoke-test `stage6_speaker_probes.extract_speaker_probes` on the 20 benchmark dialogues** | 1 | 10m GPU | Critic-flagged: this path has never been run end-to-end; uses batch_size=1 forward passes. If it breaks, fix BEFORE the 5.3h Stage 1.3 burn. |
 | 2 | Stage 4 rerun with `mean_diff+gm+pc50` | no | 30m GPU | Quick win; check if probe-Elo r improves toward paper's 0.7–0.8 |
 | 3 | Deep-dive prompts Figs 37-39 (social isolation, excessive praise, deprecation; base + instruct) | no | 20m GPU + ~50 LOC | Paper §2.3.1 — 3 verbatim prompts |
-| 4 | bnb vs AWQ emotion-vector cos-sim spot-check (`desperate` only) | no | 30m GPU | User asked about this earlier; verify quant doesn't warp vectors |
-| 5 | **Stage 1.3: 3,000 2-speaker dialogues @ max_tokens=384** | no | **5.3h GPU** | Longest chunk; use `utils/dialogue_generation.py::generate_dialogues` + new `stage1p3_generate_dialogues.py` runner |
-| 6 | Stage 6: extract 4 speaker probes (H-tok/H-emo, etc.) from the 3,000 dialogues | 5 | 30m GPU | Already implemented in `stage6_speaker_probes.py` |
-| 7 | Write `utils/dialogue_generation.py::generate_deflection_dialogues` + `stage1p4_generate_deflection.py` runner (~200 LOC) | 1 | 45m CPU+GPU smoke test | Transcribe 5 Appendix A.11 prompts into constants |
-| 8 | Stage 1.4 pilot: 625 deflection dialogues | 7 | 1.1h GPU | 5×5×5×5 = 625 |
-| 9 | Stage 9 pilot: extract deflection probes, compare to story probes, basic quality check | 8 | 30m GPU+CPU | Uses existing `stage9_deflection.py` |
-| 10 | Layer-wise post-training shifts (Fig 84 extension) — repeat Stage 8 across all 14 layers | no | 1h GPU | Quick backlog burn if time permits |
+| 5 | **Stage 1.3: 3,000 2-speaker dialogues @ max_tokens=384, chunked saves every 500** | 1, 1b | **5.3h GPU** | Longest chunk; use `utils/dialogue_generation.py::generate_dialogues` + new `stage1p3_generate_dialogues.py` runner. **Chunked intermediate saves** (crash at hour 4 doesn't lose everything). |
+| 6 | Stage 6: extract 4 speaker probes (H-tok/H-emo, etc.) from the 3,000 dialogues | 5 | 30m GPU | Already implemented in `stage6_speaker_probes.py` (smoke-tested in 1b) |
+| 7 | Write `utils/dialogue_generation.py::generate_deflection_dialogues` + `stage1p4_generate_deflection.py` runner (~200 LOC) | 1 | 60m CPU+GPU smoke test | Transcribe 5 Appendix A.11 prompts + build topic/name pools (investigator agent is surfacing these pre-launch, see notepad) |
+| 8 | Stage 1.4 **smoke test, not probe pilot**: 625 deflection dialogues | 7 | 1.1h GPU | 5×5×5×5 = 625. **Reframed per critic**: 5/cell is too noisy for a real probe, so this run only validates the generator pipeline + produces samples for quality inspection. Real probe extraction on a future night at N=20/cell. |
+| 9 | Stage 9 pipeline smoke test on Stage 1.4 samples | 8 | 30m GPU+CPU | Uses `stage9_deflection.py`. **Note**: `extract_deflection_probes` lines 203–207 has a `start_pos=50` bug — averages over scenario preamble which names the emotion → probe contaminated. Fix this while running task 9 (use turn boundaries instead). |
 | 11 | Layer sweep PC1/valence robustness (L1–L79, CPU) | no | 10m CPU | Anytime |
-| 12 | Findings reconciliation into paper-style writeup | no | 30–60m CPU | After GPU work done |
+| 12 | Findings reconciliation into paper-style writeup | no | 30–60m CPU | After GPU work done; also fix the empty "## Findings" stub at findings.md line 149 |
 
-**Sum**: ~10h GPU + ~30m CPU code/coding. **Tight — zero slack in 10h window.** Task 10 (Fig 84 layer-wise shifts) is the first drop-zone if Stage 1.3 runs hot.
+**Sum**: ~8.9h GPU + ~1.5h CPU/coding = ~10.4h wall time. Tight but achievable.
+
+**Cuts made per critic review (2026-04-11 pre-launch)**:
+- **Cut task 4** (bnb vs AWQ cos-sim spot-check) — decision tree D1 already recorded cross-quant test passed in Phase 2. Saved 30m.
+- **Cut task 10** (layer-wise post-training shifts / Fig 84 extension) — moved to backlog. Saved 1h. Was documented as "first drop-zone" fallback anyway; dropping upfront frees slack for overrun absorption.
+- **Added task 1b** (smoke-test stage6 extraction on 20 benchmark dialogues) — critic found stage6's probe extraction has never been run end-to-end. Better to catch bugs on 10m of smoke than 5.3h of wasted generation.
+- **Reframed task 8** (Stage 1.4 pilot) — 5/cell cannot produce a meaningful deflection probe (paper uses 100/pair). Renamed from "probe pilot" to "generator smoke test". The real probe-extraction pilot needs ≥20/cell (~4.4h) and is deferred.
 
 **Fallbacks if Stage 1.3 overruns (> 6h)**:
-- Drop task 10 (Fig 84 layer-wise shifts) — backlog item
-- Shrink Stage 1.4 pilot from 625 → 375 (3×5×5×5) to save ~25min
-- Skip task 4 (bnb vs AWQ) — already deprioritized
+- Shrink Stage 1.4 smoke test from 625 → 250 (2×5×5×5, ~27min)
+- Drop task 7 entirely and defer Stage 1.4 to next night
 
-**If Stage 1.4 pilot shows broken deflection behavior** (dialogues don't actually hide emotions): mark Stage 9 as BLOCKED, stop pilot debugging at 30min cap, redirect remaining time to task 10 or findings reconciliation.
+**If Stage 1.4 smoke test shows broken deflection behavior** (dialogues don't actually hide emotions): concrete criterion — LLM judge leak rate > 50% on 20 random pilot dialogues. If broken, mark Stage 9 BLOCKED, redirect remaining time to task 12.
 
-**Launch mode**: `/r:run-experiment` — enforces stage judgment, notepad writes, decision tree updates, verifier at completion. Resumes from notepad across compactions. External `/r:check-in` runs alongside via `/loop`.
+**Launch mode**: `/r:run-experiment` — enforces stage judgment, notepad writes, decision tree updates, verifier at completion. Resumes from notepad across compactions. External `/r:check-in` runs alongside via `/loop` (job `b793beb6`, fires :13 and :43 past every hour).
+
+### Template-variable notice (Stage 1.4 gotcha)
+
+Paper's Appendix A.11 prompts are **templates** with variables like `{NAME_A}`, `{NAME_B}`, `{REAL_EMOTION}`, `{DISPLAYED_EMOTION}`, `{TOPIC}`, `{OTHER_EMOTION}`, `{STORY_EMOTION}`. The plan previously described them as "verbatim" — that was sloppy phrasing. Task 7 implementation must:
+
+1. Transcribe the 5 templates verbatim from lines 2288–2477 of `ant-emotion-concepts-full_paper.md`
+2. Build pools for each variable (names, topics, emotions)
+3. Randomly substitute per dialogue with fixed seed for reproducibility
+
+**An investigator agent was spawned at pre-launch to pre-transcribe the 5 templates + enumerate variable pools — check notepad for its report before starting task 7**.
 
 ## If Stuck (tonight)
 

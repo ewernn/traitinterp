@@ -187,3 +187,42 @@ Subagent investigator classified all 26 paper experiments:
 - External check-ins: user will run `/loop 30min run /r:check-in` in a sibling session
 
 **Launch mode**: `/r:run-experiment` against `ant_emotion_concepts_plan.md`. Resumes from this notepad entry. Next agent step = start task 1 (factor `utils/dialogue_generation.py`).
+
+---
+
+### [2026-04-11 pre-launch ~evening PST] Critic + check-in + investigator pass — SCHEDULE REVISED
+
+**Process**: Scheduled recurring `/r:check-in` via `/loop 30m` (cron job `b793beb6`, fires :13 and :43 past each hour). Immediately spawned 2 parallel agents: (a) general-purpose playing the check-in role, (b) `r:critic` stress-testing the plan. After critic flagged a template-variable issue in Appendix A.11, spawned (c) `r:investigator` to pre-transcribe the 5 prompts and enumerate variable pools.
+
+**Check-in verdict**: GOOD. Progress linear, commits landing cleanly, file infrastructure maintained, pre-launch sanity (GPU 0/80GB used, disk 40%, HEAD=66816f0) all green. #1 flagged derail risk: Stage 1.3 runtime extending past 5.3h and eating into Stage 9.
+
+**Critic findings worth acting on** (critic made several, kept only those with concrete evidence + actionable fix):
+
+1. **CRITICAL — A.11 prompts are templates, not verbatim text.** Paper has `{NAME_A}`, `{NAME_B}`, `{TOPIC}`, `{CONVERSATION_TOPIC}`, `{REAL_EMOTION}`, `{DISPLAYED_EMOTION}`, `{STORY_EMOTION}`, `{OTHER_EMOTION}` placeholders. The plan's "verbatim" phrasing was sloppy. **Fix**: spawned investigator to transcribe the 5 templates + enumerate pools; result saved to `ant_emotion_concepts_appendix_a11.md` with pool sizes, implementer choices, and an operational "broken deflection" criterion. Task 7 should read this file before writing the generator.
+
+2. **CRITICAL — Stage 6 probe extraction has never been run end-to-end.** Uses batch_size=1 forward passes (`stage6_speaker_probes.py:283-318`) with `MultiLayerCapture` across 14 layers; `find_turn_token_boundaries` has fuzzy char-level matching that can silently return `(0, 0)` boundaries. `results/stage6_speaker_probes/` does not exist — this path has never been exercised. **Fix**: added task 1b (smoke-test on the 20 benchmark dialogues) before the 5.3h Stage 1.3 burn. 10min cost to avoid wasting 5h.
+
+3. **SERIOUS — Task 4 (bnb vs AWQ cos-sim) is dead weight.** Decision tree D1 already records "Phase 2 cross-quant test showed bnb-extracted vectors steer cleanly on AWQ model". Running another cos-sim spot-check does not feed any downstream decision. **Fix**: CUT task 4, saves 30m.
+
+4. **SERIOUS — Stage 1.4 at 5/cell cannot produce a meaningful probe.** Paper uses 100/pair; 5 is 20× too few for the per-emotion mean to be anything but noise. Even the pilot purpose is confused — "validate methodology" is too vague. **Fix**: reframed task 8 from "probe pilot" to "generator smoke test" — tonight's 625-dialogue run validates the generator pipeline + produces samples for quality inspection, but NOT a usable probe. Real probe extraction (≥20/cell, ~4.4h) deferred to a future night.
+
+5. **SERIOUS — Schedule is zero-slack and optimistic.** Realistic sum 11h+ with overruns. **Fix**: CUT task 10 (Fig 84 layer-wise shifts) upfront — was already the designated fallback drop. Frees 1h of overrun absorption.
+
+6. **MINOR — No intermediate checkpoints for Stage 1.3.** Crash at hour 4 loses everything. **Fix**: added "chunked saves every 500 dialogues" to task 5 spec. Task 7 runner wraps this in a resumable loop — 10 LOC, no new infra.
+
+7. **MINOR — `stage9_deflection.extract_deflection_probes` has a `start_pos=50` bug** — averages activations over the scenario preamble which explicitly names the `{REAL_EMOTION}` → probe contaminated with the literal emotion word. **Fix**: task 9 description now says "fix this while running by using `parse_dialogue_turns` boundaries instead of `start_pos=50`".
+
+**Critic claims I REJECTED**:
+- "Benchmark didn't run at batch=62" — wrong, the benchmark log explicitly shows `"Auto batch size: 62"` printed by `generate_batch`. Throughput extrapolation from 564 dial/h is sound.
+- "Task 7 will take 1.5h instead of 45m" — padded to 60m to acknowledge; not the 1.5h critic feared because the investigator pre-transcribed the 5 prompts (see `ant_emotion_concepts_appendix_a11.md`), removing the biggest time sink.
+
+**Investigator findings** (saved verbatim to `ant_emotion_concepts_appendix_a11.md`):
+- All 5 A.11 prompts transcribed from paper lines 2288–2477
+- Paper calls the primary probe condition "emotion deflection" (plan was calling it `hidden`) — renaming to `deflection` in code
+- 3 new pools needed by task 7: ~20–50 NAMES, ~20 TOPICs, ~20 CONVERSATION_TOPICs — can be inline Python lists for the pilot, no JSON files
+- Paper format artifacts in conditions 3 and 4 (editorial meta-comment, stray `[`/`]` chars) — cleaned in the transcription
+- Concrete "broken deflection" test: LLM judge leak rate > 50% on 20 random condition-2 dialogues → mark BLOCKED
+
+**Schedule after fixes**: 10 tasks (was 12), ~8.9h GPU + ~1.5h CPU = ~10.4h wall time. Still tight but now has some slack absorption.
+
+**Next**: commit plan + A.11 reference, then ready for user compact + `/r:run-experiment` launch.
