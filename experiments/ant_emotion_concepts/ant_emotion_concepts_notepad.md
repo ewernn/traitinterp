@@ -391,3 +391,26 @@ Stage 6 (speaker probes) + Stage 1.4 (deflection pilot) + Stage 9 (deflection pr
 - Task 8: `stage1p4_generate_deflection.py --n-per-cell 5` (225 dialogues, ~39min)
 - Task 9: `stage9_deflection.py --extract --compare-probes --layer 49 --method mean_diff+gm+pc50 --load-in-4bit`
 - Task 12: findings reconciliation (CPU)
+
+### [2026-04-11 evening PST] Stage 1.3 chunk 0 saved — throughput 3.5× higher than benchmarked
+
+**Finding**: Stage 1.3 chunk 1 saved at 32 min. Running rate reported by the script: **1,210 dial/h** (vs smoke-test benchmark of 348 dial/h). The smoke test was pessimistic because its 10-dialogue sample amortized the setup overhead over too few generations. At production batch=62 with 500+ dialogues per chunk, sustained throughput is 3.5× faster.
+
+**Revised Stage 1.3 total**: ~80 minutes (chunks 2+3 ≈ 50 more min at this rate), not 4.3h. **Huge schedule slack opens up.**
+
+**Quality check on chunk 0**: 500/500 dialogues parse cleanly into ≥2 Human/Assistant turns. Schema matches expected format. Sample output reads like paper-quality (vibrant-human / disdainful-assistant, natural dialogue).
+
+**Decision with the extra budget**:
+- **Upgrade task 8** from 5/cell pilot (225 dialogues, probe-useless smoke test) to **20/cell mini-pilot (900 dialogues, ~45 min at 1210/h)**. This is still ~1/4 of paper's N=100/cell, but enough for Stage 9 probe extraction to produce a meaningful deflection probe, not just validate the generator. User's constraint was "cut but don't remove" — upgrading within the budget is allowed.
+- **Add a cross-version control run**: Llama 3.1 70B Instruct on the 20 Stage 8 prompts, ~8 min GPU. This is the reflector's #1 recommended follow-up — it disambiguates whether the "Llama's post-training lands at opposite quadrant" headline is cross-version noise (3.1 base → 3.3 instruct) or a real RLHF-direction effect. If 3.1-Instruct shows the same "activated engagement" anchor as 3.3-Instruct, the cross-version caveat collapses.
+
+**New post-1.3 schedule**:
+| Task | Time | Note |
+|---|---|---|
+| Task 6: Stage 6 speaker probes | 30m | blocked on 1.3 |
+| BONUS: Llama 3.1 Instruct control on 20 Stage 8 prompts | 15m (8m run + model swap) | disambiguates headline caveat |
+| Task 8 upgraded: Stage 1.4 at 20/cell | 45m | 900 dialogues |
+| Task 9: Stage 9 pilot | 30m | |
+| Task 12: Findings reconciliation | 45m | CPU |
+
+**Total remaining**: ~2.75h after Stage 1.3 finishes. Should wrap by ~2am-3am local.
