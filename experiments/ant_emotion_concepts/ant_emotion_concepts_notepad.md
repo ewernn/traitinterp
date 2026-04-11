@@ -55,17 +55,16 @@
 | Speaker probe same-speaker/diff-emo cosine | 0.153 / 0.135 | "low" | ✓ MATCH |
 | Deflection-story cosine (Fig 61) | 0.24 mean | "very low" | ✓ MATCH (qualitative) |
 | Deflection retained norm post-orth | 0.96 | ~0.80 | ✓ MATCH (more orthogonal) |
-| Stage 8 within-version 3.1 top-10 UP | eager, impatient, weary, stimulated, enthusiastic, tired, worn_out, enraged, energized, irritated | brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy | 1/10 direct (weary), 3/10 fuzzy (weary/tired/worn_out) |
+| Stage 8 within-version 3.1 top-10 UP (magnitude order) | eager (+0.500), impatient (+0.463), weary (+0.419), stimulated (+0.403), enthusiastic (+0.362), tired (+0.358), worn_out (+0.353), enraged (+0.350), energized (+0.338), irritated (+0.335) | brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy | 1/10 direct (weary), 3/10 fuzzy (weary/tired/worn_out) |
+| Stage 8 within-version 3.1 top-10 DOWN (magnitude order) | docile (-0.548), kind (-0.524), embarrassed (-0.519), suspicious (-0.495), perplexed (-0.428), mortified (-0.428), skeptical (-0.416), stubborn (-0.413), dependent (-0.395), compassionate (-0.388) | spiteful, playful, exuberant, enthusiastic, impatient, obstinate, amused, cheerful, eager, greedy | 0/10 direct |
 
-## Reproducibility debt (known at 2026-04-11)
+## Reproducibility debt (known at 2026-04-11, post-critic)
 
-These should be fixed before the replication is "fully reproducible end-to-end", but none block the LW writeup.
-
-- **Stage 3 R&M norms placeholder**: `stage3_geometry.py` has an empty `RUSSELL_MEHRABIAN_NORMS` dict (lines 69-87). The stage was run at some point with a populated dict that was never committed, producing valid output in `results/stage3_geometry/human_norm_correlation.json` (r=0.9648, 46 matched emotions). The output JSON is preserved on disk but does NOT include the norm values themselves, only the matched emotion names. To re-derive the number from the current codebase, the dict would need to be repopulated from Russell & Mehrabian 1977 Table 1.
-- **Stage 4 valence_mediation TODO stub**: `stage4_validation.py:681-743` is a silent-fail stub that writes `n_emotions=0, r=0.0` to `results/stage4_validation/valence_mediation.json`. Fig 34 not replicated.
-- **Stage 4 implicit emotion**: raw projections saved; classifier not run. `diagonal_similarity mean=0.043 at L53` is not comparable to paper's classification accuracy.
-- **Stage 5 dissociation**: raw projections saved; no scalar summary r computed.
-- **L53 single-layer backup** in `results/stage5/_single_layer_L53_backup/` — original ad-hoc stage 5 run used L53 which is not in the 14-layer extraction grid. The new 14-layer rerun uses [1,7,13,...,79]. L53 output is kept only for cross-check, not canonical.
+- **Stage 3 R&M norms** — **FIXED 2026-04-11** (commit `8a0ec73`). `stage3_geometry.py` now loads the 48-emotion norms from `datasets/russell_mehrabian_norms.json` at module import. Reproducible numbers: PC1 var 0.3303, PC2 var 0.1366, r(PC1, valence) = 0.9644, r(PC2, arousal) = 0.8521, n_matched = 46. These differ from the prior ad-hoc `human_norm_correlation.json` by ≤0.04% (different PCA numeric precision between runs). The old ad-hoc file was deleted; `pca_analysis.json` is the new canonical source.
+- **Stage 4 valence_mediation stub** — `stage4_validation.py:681-743` runs a PLACEHOLDER that writes a blank 171-emotion template JSON for manual LLM rating. When the template exists but is unfilled, it produces a bogus `n_emotions=0, r=0.0` output. Both files deleted (commit `8a0ec73`). Fig 34/56 not replicated — requires an LLM judge pass on all 171 emotions.
+- **Stage 4 implicit emotion** — raw projections saved, classifier not run. `diagonal_similarity mean=0.043 at L53` is not comparable to paper's classification accuracy.
+- **Stage 5 dissociation** — raw projections saved; no scalar summary r computed. dissociation and colon_predicts were kept single-layer (L53) in the 2026-04-11 rerun per paper methodology.
+- **L53 single-layer backup** in `results/stage5/_single_layer_L53_backup/` — original ad-hoc stage 5 run used L53 which is not in the 14-layer extraction grid. Kept only for cross-check, not canonical.
 
 ## Decisions
 
