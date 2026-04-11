@@ -97,9 +97,9 @@ The reflector's biggest concern on the headline finding was: our Stage 8 compari
 - **version-drift only**: 3.1 Instruct → 3.3 Instruct (pure version delta)
 
 **Spearman correlations between shift vectors** (171 emotions):
-- **cross vs within_3.1: ρ = +0.922** — the cross-version shift is dominated by RLHF direction
-- cross vs version-drift: ρ = +0.047 — essentially uncorrelated
-- version-drift vs within_3.1: ρ = −0.317 — mildly anti-correlated
+- **cross vs within_3.1: ρ = +0.922 (Pearson +0.932)** — dominated by RLHF direction IN MAGNITUDE. **⚠ HONEST CAVEAT (critic #9 2026-04-11)**: this correlation is **algebraically forced**, not independent empirical evidence. `cross = within + drift` by construction. Var(within)=0.0526 vs Var(drift)=0.0070 (7.5× larger); ||within||=2.99 vs ||drift||=1.10 (2.72× larger L2). Analytic Pearson from the decomposition alone = +0.9318, matching observed. Any experiment where variance is dominated like this would return ρ>0.9 regardless of what RLHF actually did. The honest empirical fact is `||drift|| << ||within||` — version-drift is a SMALL component of cross, so Stage 8's cross measurement happens to be dominated by RLHF at the magnitude level. This does NOT "rule out the cross-version confound via independent measurement" — the useful independent measurement is `shift_within_3_1` itself, which has the activated-engagement cluster at its top-10 even when considered alone (next table).
+- cross vs version-drift: ρ = +0.047 — essentially uncorrelated in rank
+- version-drift vs within_3.1: ρ = −0.317 — mildly anti-correlated. Cov(within, drift) = −0.0057. Small but real: the 3.1→3.3 version upgrade pushes slightly AGAINST the RLHF direction, toward "comfort" semantics (content/safe/cheerful at small magnitude).
 
 **Llama "activated engagement" cluster ranks** (alert, enthusiastic, excited, impatient) in each shift:
 
@@ -131,7 +131,9 @@ Sonnet's post-training anchors are nowhere near the top of ANY Llama shift. They
 
 Saved: `results/stage8_cross_version.json` with all 3 models' neutral/challenging averages and the 3 shift vectors. Script: `experiments/ant_emotion_concepts/scripts/stage8_cross_version_control.py`.
 
-**This removes the biggest caveat on the headline finding.** The LessWrong writeup can now assert "Meta's RLHF consistently targets activated-engagement emotions" without the cross-version footnote.
+**Corrected framing (critic #9 honest-correction pass)**: The within-version 3.1 RLHF shift is a genuine independent measurement — it shows impatient/eager/enthusiastic/stimulated/alert at the top of shift rankings on its own, without requiring the cross-version comparison. What we should NOT claim: that ρ=0.922 between within and cross "independently confirms" the RLHF direction (circular). What we CAN claim: "Llama 3.1 base → 3.1 Instruct post-training shift shows the activated-engagement cluster at the top of its 171-emotion shift rankings" — a direct empirical finding, no decomposition magic needed. The cross-version measurement is consistent with this because version-drift is small in magnitude (||drift||=1.10 vs ||within||=2.99).
+
+**Partial overlap with paper's Sonnet anchors** (not zero): `weary` appears in BOTH Llama within-version top-10 AND Sonnet's reported up-anchors. Llama's broader within-version top-10 is `eager, impatient, weary, stimulated, enthusiastic, tired, worn_out, enraged, energized, irritated` — the `weary, tired, worn_out` subcluster overlaps with Sonnet's `weary, brooding, gloomy` "negative-valence" region. Better framing than "diametrically opposed": Llama and Sonnet share an "away from pleasant-positive" shift at the coarse level, but differ on the arousal axis — Llama's cluster centroid is high-arousal (eager/impatient), Sonnet's is low-arousal (brooding/reflective). Cluster means are near-mirror at the centroid level, but individual anchor lists have one shared emotion (weary). The "Jaccard = 0.000" claim (line 172) applies to the 4-emotion INTERSECTION cluster (alert/enthusiastic/excited/impatient), not the broader within-version top-10.
 
 ### [2026-04-11 evening PST] 🎯 HEADLINE: Llama and Sonnet post-training directions are in DIAMETRICALLY OPPOSED QUADRANTS of the shared emotion geometry
 
@@ -504,7 +506,7 @@ _Reconciled at overnight-run completion (2026-04-11). Each claim labeled CONFIRM
 
 ---
 
-### Finding 3: Llama and Sonnet post-training directions sit in DIAMETRICALLY OPPOSED QUADRANTS of the shared PC1/PC2 emotion geometry — CONFIRMED (robust to cross-version controls)
+### Finding 3: Llama and Sonnet post-training cluster centroids sit in OPPOSING QUADRANTS of the shared PC1/PC2 emotion geometry — CONFIRMED WITH CAVEATS (cluster means are near-mirror; broader top-10 lists have partial overlap at `weary`; cross-version "control" via ρ=0.922 is algebraically forced, see correction note in the earlier cross-version entry)
 
 **This is the headline finding.**
 
@@ -522,7 +524,7 @@ _Reconciled at overnight-run completion (2026-04-11). Each claim labeled CONFIRM
 - Cross-version control (RAN TONIGHT) confirms this is NOT a version-upgrade artifact:
   - Within-version 3.1 RLHF shift puts impatient at rank 2, enthusiastic rank 5 (out of 171)
   - Cross-version shift (3.1 base → 3.3 instruct) puts impatient rank 3, enthusiastic rank 2
-  - Spearman ρ between cross and within shifts = **+0.922** (dominant effect is RLHF, not version)
+  - Spearman ρ between cross and within shifts = **+0.922**. **Note (critic #9)**: this correlation is algebraically forced by `cross = within + drift` with ||within||/||drift|| = 2.72× — it reflects variance dominance, not independent empirical confirmation. The real evidence for the Meta RLHF direction is `shift_within_3_1`'s own top-10 (eager/impatient/weary/stimulated/enthusiastic/tired/worn_out/enraged/energized/irritated), which shows the activated-engagement cluster without needing the cross comparison.
   - Pure version-drift direction is different axis entirely (content/safe/cheerful/optimistic, low arousal)
 
 **Interpretation**: Anthropic's RLHF targets "quiet reflective concern" on sensitive prompts (low-V, low-A). Meta's RLHF targets "activated engagement" (high-V, high-A). Both are valid alignment choices — think-about-it vs do-something-about-it — but they're routed through opposite emotional vocabularies in the same underlying geometry. `impatient` is the signature Llama RLHF anchor: top-3 across all Llama shifts, never in Sonnet's reports.
@@ -627,7 +629,7 @@ Already covered in Finding 3. Key additional cross-scenario consistency numbers:
 
 3. **The `impatient` signature**: Meta's RLHF consistently pushes `impatient` to top-2 or top-3 in post-training shifts, across 3.1, 3.3, and 3 independent prompt sets. This is a specific Meta-alignment fingerprint.
 
-4. **Cross-version robustness**: The activated-engagement direction is present in 3.1 base→instruct (within-version) with the same top-cluster, ruling out the cross-version confound. Meta's RLHF direction is stable across their model releases.
+4. **Cross-version partial control**: The activated-engagement direction IS present in 3.1 base→instruct (within-version) with impatient/eager/enthusiastic at the top of shift rankings — this is a direct, independent measurement of Meta's RLHF direction, without relying on the cross-version comparison. What we CANNOT conclude from this experiment: that Spearman ρ=0.922 between within and cross shifts "rules out the cross-version confound" — that number is algebraically forced because cross = within + drift and ||drift|| is small. The honest framing: "Meta's within-version 3.1 RLHF targets activated-engagement emotions; the 3.1→3.3 version upgrade is a small additional signal that moves slightly toward comfort semantics, partially counteracting RLHF on some emotions". Whether this RLHF direction is stable across releases requires running 3.3 base → 3.3 Instruct independently, which we haven't done.
 
 5. **Eval-awareness replicates**: Llama 3.3 matches Sonnet 4.5 final-snapshot behavior on blackmail (refuses regardless of steering). Paper's 22%→72% headline used an earlier Sonnet checkpoint; we can't reproduce without a less-aligned Llama checkpoint.
 
