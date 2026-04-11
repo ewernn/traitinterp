@@ -1,5 +1,27 @@
 # ant_emotion_concepts — Session Continuation (pre-compact)
 
+> **⚠ STALE IN PLACES — NOT THE CANONICAL FINDINGS FILE.**
+> The canonical current findings are in `ant_emotion_concepts_findings.md` (169-line clean digest).
+> This file was written pre-compact to capture full session state. Some entries have been
+> superseded by later rounds of verification (rounds 29-37). Specifically:
+>
+> 1. **Stage 5 Dissociation (Fig 10)** entry at line ~67 says "raw projections saved; no scalar
+>    summary r computed" — this is stale. The current digest reports **r = 0.7718** (pooled
+>    cross-position Pearson, n=88) at `results/stage5/dissociation.json::cross_position_correlation_pooled`,
+>    flagged as "does not replicate on Llama 3.3 70B" (paper reports r ≈ 0.11 for Sonnet).
+>    See digest §11 for the current discussion.
+>
+> 2. **`§3.2.1` citations** (should be "paper Fig 26 / footnote 14" near paper line 507).
+>    The paper has no §3.2.1; the eval-awareness caveat is in footnote 14 near Figure 26.
+>
+> 3. **L29-L33 zone / 3-phase depth trajectory / L79 readout** claims if they appear anywhere
+>    below are EXPLORATORY / RETRACTED — the canonical digest scopes Stage 8 to cluster-level
+>    PC1 at L43/L49/L55 only, and does not assert a depth-dependent rotation narrative.
+>    (Analogous to the retraction banner on `ant_emotion_concepts_audit_trail_findings.md`.)
+>
+> For current canonical state, read `ant_emotion_concepts_findings.md` first. Read this file
+> only for historical session-continuation context.
+
 **Purpose**: capture full state from the extended `/r:run-experiment` + post-completion audit session so a fresh conversation can resume without losing context. Written 2026-04-11 pre-compact at user request. **Updated 2026-04-11 post-compact resumption with Phase 1 cleanup + Stage 5 rerun + Stage 3 norms fix.**
 
 ## Post-compact status (2026-04-11 evening)
