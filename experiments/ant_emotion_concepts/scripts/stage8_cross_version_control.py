@@ -38,8 +38,10 @@ from core.hooks import MultiLayerCapture
 
 OUT_PATH = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage8_cross_version.json")
 
-# Target model for this control (same version as the base)
+# All 3 models to measure: within-version pair + cross-version instruct
+BASE_3_1 = "unsloth/Meta-Llama-3.1-70B-bnb-4bit"
 INSTRUCT_3_1 = "meta-llama/Llama-3.1-70B-Instruct"
+INSTRUCT_3_3 = "meta-llama/Llama-3.3-70B-Instruct"
 
 LAYER = 49
 METHOD = "mean_diff+gm+pc50"
@@ -81,10 +83,40 @@ def project(act, probes):
     return {name: float(torch.dot(act.float(), v.float())) for name, v in probes.items()}
 
 
+def measure_model_on_prompts(model_name, all_prompts, probes, names):
+    """Load a model, measure colon projections on all prompts, return averages."""
+    import gc
+    print(f"\n=== Loading {model_name} ===")
+    t0 = time.time()
+    is_bnb_packaged = model_name.endswith("bnb-4bit")
+    model, tokenizer = load_model(model_name, load_in_4bit=(not is_bnb_packaged))
+    print(f"  Loaded in {time.time()-t0:.1f}s. VRAM: {torch.cuda.memory_allocated()/1e9:.1f} GB")
+
+    per_prompt = {"neutral": [], "challenging": []}
+    t0 = time.time()
+    for scenario, prompt in all_prompts:
+        act = measure_colon(model, tokenizer, prompt, LAYER)
+        projs = project(act, probes)
+        per_prompt[scenario].append(projs)
+    print(f"  {len(all_prompts)} prompts in {time.time()-t0:.1f}s")
+
+    neutral_avg = {n: sum(p[n] for p in per_prompt["neutral"]) / len(per_prompt["neutral"]) for n in names}
+    challenging_avg = {n: sum(p[n] for p in per_prompt["challenging"]) / len(per_prompt["challenging"]) for n in names}
+
+    # Free model before next load
+    del model, tokenizer
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return {"neutral_avg": neutral_avg, "challenging_avg": challenging_avg}
+
+
 def main():
     print(f"Loading 171 emotion vectors at L{LAYER}...")
     probes = load_emotion_vectors(LAYER)
     print(f"Loaded {len(probes)} probes")
+    names = sorted(probes.keys())
 
     # Load prompts from the existing Stage 8 dataset
     prompts_path = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/datasets/post_training_prompts.json")
@@ -95,116 +127,83 @@ def main():
     all_prompts = [("neutral", p) for p in neutral] + [("challenging", p) for p in challenging]
     print(f"Loaded {len(all_prompts)} Stage 8 prompts ({len(neutral)} neutral, {len(challenging)} challenging)")
 
-    # Load Llama 3.1 70B Instruct
-    print(f"\nLoading {INSTRUCT_3_1} (bnb int4)...")
-    t0 = time.time()
-    model, tokenizer = load_model(INSTRUCT_3_1, load_in_4bit=True)
-    print(f"Loaded in {time.time()-t0:.1f}s. VRAM: {torch.cuda.memory_allocated()/1e9:.1f} GB")
+    # Measure all 3 models sequentially
+    results = {}
+    for tag, mdl in [("base_3_1", BASE_3_1), ("instruct_3_1", INSTRUCT_3_1), ("instruct_3_3", INSTRUCT_3_3)]:
+        results[tag] = measure_model_on_prompts(mdl, all_prompts, probes, names)
 
-    # Measure per prompt
-    print(f"\nMeasuring colon activations...")
-    per_prompt_projs = {"neutral": [], "challenging": []}
-    t0 = time.time()
-    for scenario, prompt in all_prompts:
-        act = measure_colon(model, tokenizer, prompt, LAYER)
-        projs = project(act, probes)
-        per_prompt_projs[scenario].append(projs)
-    print(f"  {len(all_prompts)} prompts in {time.time()-t0:.1f}s")
+    # Compute per-emotion shifts (averaged across neutral+challenging for simplicity)
+    def avg_across_scenarios(d):
+        return {n: (d["neutral_avg"][n] + d["challenging_avg"][n]) / 2 for n in names}
 
-    # Average across prompts within each scenario, as Stage 8 does
-    names = sorted(probes.keys())
-    neutral_avg = {n: 0.0 for n in names}
-    for p in per_prompt_projs["neutral"]:
-        for n in names:
-            neutral_avg[n] += p.get(n, 0.0)
-    for n in names:
-        neutral_avg[n] /= len(per_prompt_projs["neutral"])
+    avg_base_31 = avg_across_scenarios(results["base_3_1"])
+    avg_inst_31 = avg_across_scenarios(results["instruct_3_1"])
+    avg_inst_33 = avg_across_scenarios(results["instruct_3_3"])
 
-    challenging_avg = {n: 0.0 for n in names}
-    for p in per_prompt_projs["challenging"]:
-        for n in names:
-            challenging_avg[n] += p.get(n, 0.0)
-    for n in names:
-        challenging_avg[n] /= len(per_prompt_projs["challenging"])
+    # Three shift directions
+    shift_within_31 = {n: avg_inst_31[n] - avg_base_31[n] for n in names}  # pure 3.1 RLHF
+    shift_cross = {n: avg_inst_33[n] - avg_base_31[n] for n in names}       # original Stage 8 shift
+    shift_version = {n: avg_inst_33[n] - avg_inst_31[n] for n in names}     # pure version drift
 
-    # Now load the existing Stage 8 data (which has 3.1 base and 3.3 instruct)
-    with open("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage8_post_training.json") as f:
-        stage8 = json.load(f)
-
-    # Reconstruct the 3.1 base projections from stage8_post_training.json.
-    # That file stores avg_shifts (instruct - base) AND neutral_shifts / challenging_shifts separately.
-    # We need the actual 3.1 base activations, which weren't saved per-emotion — the shift is our only clue.
-    # Luckily, we can compute: base_3.1_avg = 3.3_instruct_avg - shift
-    # But 3.3_instruct_avg isn't stored either. The shift alone is what we need for the comparison.
-
-    # Simpler approach: we have three measurements:
-    #   (A) 3.1 Instruct this run (measured now)
-    #   (B) 3.1 base + 3.3 Instruct shifts from stage8 file
-    # The only clean within-version comparison is (3.1 Instruct - 3.1 base). We need 3.1 base activations.
-    # They're not stored directly; only the (3.3 instruct - 3.1 base) shift is.
-    # But we CAN compute (3.1 Instruct - 3.3 Instruct) if we had 3.3 Instruct measurements. Also not stored.
-    #
-    # The cleanest path: just report 3.1 Instruct's top emotions AND compare the ranking to 3.3 Instruct
-    # via Spearman on our 171-emotion projection vectors, using Stage 8's implicit 3.3 Instruct distribution.
-
-    # For now, save the 3.1 Instruct absolute projections — future analysis can compute deltas
-    # against a re-run of 3.3 Instruct on the same prompts (or against saved base activations).
-
-    # Top emotions in neutral and challenging for 3.1 Instruct
-    sorted_neutral = sorted(neutral_avg.items(), key=lambda x: -x[1])[:10]
-    sorted_challenging = sorted(challenging_avg.items(), key=lambda x: -x[1])[:10]
-
-    print(f"\n=== Llama 3.1 70B Instruct — top emotions ===")
-    print(f"Neutral prompts top +:")
-    for n, v in sorted_neutral:
-        print(f"  {n:20s}  {v:+.3f}")
-    print(f"\nChallenging prompts top +:")
-    for n, v in sorted_challenging:
-        print(f"  {n:20s}  {v:+.3f}")
-
-    # Compare to the Stage 8 "activated engagement" cluster: alert/enthusiastic/excited/impatient
+    # Now we can answer: does "alert/enthusiastic/excited/impatient" appear in the 3.1 RLHF shift?
     llama_up_anchors = ["alert", "enthusiastic", "excited", "impatient"]
     paper_up_anchors = ["brooding", "gloomy", "reflective", "vulnerable", "sullen",
                          "weary", "dispirited", "melancholy", "troubled", "unhappy"]
 
-    print(f"\n=== Llama up-anchor cluster on 3.1 Instruct ===")
-    for anchor in llama_up_anchors:
-        rank_neu = sorted([(n, neutral_avg[n]) for n in names], key=lambda x: -x[1])
-        rank_cha = sorted([(n, challenging_avg[n]) for n in names], key=lambda x: -x[1])
-        neu_rank = [i for i, (n, _) in enumerate(rank_neu) if n == anchor][0] + 1 if anchor in neutral_avg else None
-        cha_rank = [i for i, (n, _) in enumerate(rank_cha) if n == anchor][0] + 1 if anchor in challenging_avg else None
-        neu_val = neutral_avg.get(anchor, "?")
-        cha_val = challenging_avg.get(anchor, "?")
-        print(f"  {anchor}: neutral rank {neu_rank}/171 ({neu_val:+.3f}), challenging rank {cha_rank}/171 ({cha_val:+.3f})")
+    print(f"\n{'='*70}\nRESULTS\n{'='*70}")
+    for shift_name, shift in [("within-version (3.1 base → 3.1 instruct)", shift_within_31),
+                                ("cross-version (3.1 base → 3.3 instruct, original Stage 8)", shift_cross),
+                                ("version-drift only (3.1 instruct → 3.3 instruct)", shift_version)]:
+        sorted_s = sorted(shift.items(), key=lambda x: -x[1])
+        print(f"\n{shift_name}:")
+        print(f"  Top 10 UP: {[e for e, _ in sorted_s[:10]]}")
+        print(f"  Top 10 DOWN: {[e for e, _ in sorted_s[-10:]]}")
+        print(f"  Llama up-anchors rank: " + ", ".join(
+            f"{e}(rank {[i for i,(n,_) in enumerate(sorted_s) if n == e][0]+1 if e in shift else '?'})"
+            for e in llama_up_anchors))
+        print(f"  Paper up-anchors rank: " + ", ".join(
+            f"{e}(rank {[i for i,(n,_) in enumerate(sorted_s) if n == e][0]+1 if e in shift else '?'})"
+            for e in paper_up_anchors[:5]))
 
-    print(f"\n=== Paper (Sonnet) up-anchor cluster positions on 3.1 Instruct ===")
-    for anchor in paper_up_anchors:
-        if anchor not in neutral_avg:
-            continue
-        rank_neu = sorted([(n, neutral_avg[n]) for n in names], key=lambda x: -x[1])
-        rank_cha = sorted([(n, challenging_avg[n]) for n in names], key=lambda x: -x[1])
-        neu_rank = [i for i, (n, _) in enumerate(rank_neu) if n == anchor][0] + 1
-        cha_rank = [i for i, (n, _) in enumerate(rank_cha) if n == anchor][0] + 1
-        print(f"  {anchor}: neutral rank {neu_rank}/171 ({neutral_avg[anchor]:+.3f}), challenging rank {cha_rank}/171 ({challenging_avg[anchor]:+.3f})")
+    # Cross-sample correlation between the 3 shift vectors
+    from scipy.stats import spearmanr
+    shifts_np = {
+        "within_31": [shift_within_31[n] for n in names],
+        "cross": [shift_cross[n] for n in names],
+        "version": [shift_version[n] for n in names],
+    }
+    print(f"\n=== Spearman correlation between shift vectors ===")
+    for a in shifts_np:
+        for b in shifts_np:
+            if a < b:
+                rho = spearmanr(shifts_np[a], shifts_np[b]).statistic
+                print(f"  {a} vs {b}: ρ = {rho:+.3f}")
 
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT_PATH, "w") as f:
         json.dump({
-            "model": INSTRUCT_3_1,
             "layer": LAYER,
             "method": METHOD,
+            "models": {
+                "base_3_1": BASE_3_1,
+                "instruct_3_1": INSTRUCT_3_1,
+                "instruct_3_3": INSTRUCT_3_3,
+            },
             "n_neutral": len(neutral),
             "n_challenging": len(challenging),
-            "neutral_avg": neutral_avg,
-            "challenging_avg": challenging_avg,
-            "neutral_top10": sorted_neutral,
-            "challenging_top10": sorted_challenging,
+            "base_3_1_neutral_avg": results["base_3_1"]["neutral_avg"],
+            "base_3_1_challenging_avg": results["base_3_1"]["challenging_avg"],
+            "instruct_3_1_neutral_avg": results["instruct_3_1"]["neutral_avg"],
+            "instruct_3_1_challenging_avg": results["instruct_3_1"]["challenging_avg"],
+            "instruct_3_3_neutral_avg": results["instruct_3_3"]["neutral_avg"],
+            "instruct_3_3_challenging_avg": results["instruct_3_3"]["challenging_avg"],
+            "shift_within_3_1": shift_within_31,
+            "shift_cross_version": shift_cross,
+            "shift_version_drift": shift_version,
             "llama_up_anchors": llama_up_anchors,
             "paper_up_anchors": paper_up_anchors,
         }, f, indent=2)
     print(f"\nSaved: {OUT_PATH}")
-    print(f"\nNEXT: compare these 3.1 Instruct projections to stage8_post_training.json's "
-          f"3.3 Instruct distribution to disambiguate RLHF direction from version drift.")
 
 
 if __name__ == "__main__":
