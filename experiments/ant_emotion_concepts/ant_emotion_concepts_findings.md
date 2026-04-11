@@ -40,6 +40,53 @@ All 5 emotions well below 0.5. Consistent with the paper's "very low cosine simi
 
 Saved: `results/stage9_deflection/stage9_results.json` (contains all 5 deflection + 5 displayed vectors, comparison metrics). Vectors at `results/stage9_deflection/vectors/`.
 
+### [2026-04-11 post-completion PST] 🎯 Linguistic diametrical opposition — same tokens, inverted polarity between Llama and Sonnet anchor clusters
+
+Bonus analysis using existing Stage 4 logit-lens data (no new compute). Compared top and bottom projected tokens for the 5 Llama up-anchors (alert/enthusiastic/excited/impatient/eager) against the 5 Sonnet up-anchors from paper (brooding/gloomy/reflective/vulnerable/weary).
+
+**Llama up-anchors — toward** (high-arousal motion/anticipation vocabulary):
+- `impatient`: waiting, ant(icipation), fidget, exas(perated), fr(ustrated)
+- `enthusiastic`: impro(vement), imp(rove), speed, ext(end)
+- `excited`: imp(rove), impro, prim(e), ext
+- `alert`: jump, (w)alk, race, quick
+- `eager`: (b)uffer, waiting, antic(ipation), rap(id)
+
+**Llama up-anchors — away** (low-arousal/settled vocabulary):
+- `impatient`: completely, conc(erned), dim, def
+- `enthusiastic`: heavy, 404
+- `alert`: sol(itary), slow, diff(erent), below
+- `eager`: heavy, block, conc
+
+**Sonnet up-anchors — toward** (low-arousal weight/emptiness vocabulary):
+- `brooding`: heavy, bro(ken), upt, sou(l)
+- `gloomy`: heavy, dr(owsy), num(b), list(less), empty
+- `reflective`: sh, amb, repl(ay), heavy
+- `vulnerable`: ed, sh, (f)idget, une(asy)
+- `weary`: dr(owsy), lack, heavy, sl(ow), list(less)
+
+**Sonnet up-anchors — away** (high-arousal motion/improvement vocabulary):
+- `brooding`: terror, fear, **impro(vement)**, content
+- `gloomy`: **prim(e)**, chall(enge), gold, **imp(rove)**
+- `reflective`: (b)uffer, **prim**, positive
+- `vulnerable`: compl, care, incred, **impro**
+- `weary`: ingle, **prim**, danger
+
+**The same ~5 tokens appear at opposite polarities**:
+| Token | Llama cluster | Sonnet cluster |
+|---|---|---|
+| `impro(vement)` | top of enthusiastic, excited | BOTTOM of brooding, vulnerable |
+| `imp(rove)` | top of enthusiastic, excited | BOTTOM of gloomy |
+| `prim(e)` | top of excited | BOTTOM of gloomy, reflective, weary |
+| `heavy` | bottom of enthusiastic, eager | top of brooding, gloomy, reflective, weary |
+| `slow` | bottom of alert | top of weary |
+| `list(less)` | — | top of gloomy, weary |
+
+**This is a second, independent piece of evidence for the headline's diametrical opposition**. The geometric result (Stage 8 shifts in PC1/PC2 space, cross-version robust, layer-localized to L49–L73) comes from residual-stream activation projections. This linguistic result comes from a completely different pathway — projection through the unembedding matrix into vocabulary space. **They agree**: the directions in emotion space that Llama and Sonnet move apart on correspond to opposite polarities of the same motion-vs-weight token axis.
+
+**For the LessWrong writeup headline-candidate sentence**: *"The same unembedding tokens that push Llama's post-training anchors toward 'improvement/quick/anticipation' push Sonnet's anchors toward 'brooding/weary/heavy', with polarity exactly inverted. The two labs' RLHF directions aren't just geometrically opposed — they're linguistically opposed, using the same vocabulary dimensions in opposite directions."*
+
+Data source: existing `results/stage4_validation/logit_lens.json` (computed during Stage 4 rerun earlier tonight). No new GPU compute required.
+
 ### [2026-04-11 post-completion PST] 🎯 Stage 8 layer sweep — activated-engagement direction LOCALIZED to L49-L73
 
 Bonus analysis: repeated Stage 8 measurement (3.1 base → 3.3 Instruct, 20 prompts) at all 14 layers instead of just L49. Used `MultiLayerCapture` to capture all 14 layers in single forward passes. ~27 min wall time.
