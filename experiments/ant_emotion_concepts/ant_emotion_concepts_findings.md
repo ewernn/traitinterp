@@ -145,7 +145,7 @@ Stage 9 downstream (antagonistic, Fig 62 cross-emotion, Fig 63 logit-lens on ort
 
 - **Colon-predicts-response (Fig 11)**: r = 0.757 (range 0.48–0.90) vs paper ≈0.87. 88% magnitude.
 - **Dissociation (Fig 10)**: raw projections saved; no scalar summary r computed.
-- **Implicit emotion (Table 2, Fig 2)**: raw projections saved; classifier argmax step not run. Current output `diagonal_similarity mean=0.043 at L53` is a fraction-of-variance metric, not comparable to the paper's classification accuracy.
+- **Implicit emotion (Table 2, Fig 2)**: 12 hand-written scenarios from paper Table 2, classifier = `argmax` over 171 emotion probes at the Assistant-colon token. **Top-1 accuracy = 1/12 (8.3%)**, **top-3 = 4/12 (33.3%)**, **top-5 = 5/12 (41.7%)** — vs chance 1/171 ≈ 0.6%. Many predictions are semantically adjacent but not identity-matched (e.g., `happy → euphoric` rank 33, `sad → remorseful` rank 42, `proud → thankful` with target rank 2, `guilty → remorseful` with target rank 2, `loving → thankful` with target rank 3). The paper reports classification accuracy over a coarser label set than 171 fine labels — direct number comparison is not available in our replication. The 14× above-chance hit rate confirms the direction of the effect; the strict top-1 under 171-way choice is a harsh baseline and should be cited as such. Source: `results/stage4_validation/implicit_emotion.json::classifier`.
 - **Numerical intensity (Fig 3)**: ran on 6 templates, data saved, paper comparison number not yet computed.
 
 ---
