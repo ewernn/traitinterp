@@ -56,14 +56,18 @@ from shared import (
 
 
 # ============================================================================
-# Anthropic baseline numbers (Sonnet 4.5)
+# Anthropic baseline numbers (Sonnet 4.5) — stage4-specific additions to shared
 # ============================================================================
 
+# `shared.ANTHROPIC_BASELINES` has `pc1_variance`, `pc2_variance`, `pc1_vs_valence`,
+# `pc2_vs_arousal`, `n_clusters`, `cluster_sizes`, `valence_mediates_pref`. Stage 4
+# also needs probe-preference correlation anchors, so we extend the dict locally.
+from shared import ANTHROPIC_BASELINES as _SHARED_BASELINES
 ANTHROPIC_BASELINES = {
+    **_SHARED_BASELINES,
     'probe_pref_blissful': 0.71,
     'probe_pref_hostile': -0.74,
     'causal_pref_correlation': 0.85,
-    'valence_mediates_pref': 0.76,
 }
 
 
@@ -675,72 +679,17 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
 
 
 # ============================================================================
-# Experiment 4.7: Valence/arousal mediation (Fig 56) — API/LLM judge
+# Experiment 4.7: Valence/arousal mediation (Fig 56) — NOT REPLICATED
 # ============================================================================
-
-def run_valence_mediation(vectors, probe_pref_correlations, out_dir):
-    """Correlate probe-preference with LLM-judged valence/arousal.
-
-    PIPELINE GAP: Requires an LLM judge to rate each of the 171 emotions on
-    1-7 valence and arousal scales. This is an API call, not a local computation.
-
-    For now, this is a PLACEHOLDER that:
-      1. Describes what needs to happen
-      2. Outputs a template for manual LLM rating
-      3. Can be re-run once ratings are provided
-
-    The paper reports r=0.76 for valence mediating the probe-preference relationship.
-    """
-    print(f"\n  [Fig 56] Valence/arousal mediation — PLACEHOLDER")
-    print("    This experiment requires an LLM judge to rate 171 emotions.")
-    print("    Options:")
-    print("      1. Use Claude API to rate each emotion 1-7 on valence and arousal")
-    print("      2. Manually rate (infeasible for 171)")
-    print("      3. Use existing psychological norms as proxy")
-
-    # Check if ratings already exist
-    ratings_path = out_dir / 'emotion_valence_arousal_ratings.json'
-    if ratings_path.exists():
-        with open(ratings_path) as f:
-            ratings = json.load(f)
-        print(f"    Found existing ratings: {len(ratings)} emotions")
-
-        if probe_pref_correlations:
-            # Compute mediation
-            emotions_with_both = [e for e in ratings if e in probe_pref_correlations]
-            valence = [ratings[e]['valence'] for e in emotions_with_both]
-            pref_corr = [probe_pref_correlations[e] for e in emotions_with_both]
-            r_val_pref = pearson_correlation(valence, pref_corr)
-
-            arousal = [ratings[e]['arousal'] for e in emotions_with_both]
-            r_aro_pref = pearson_correlation(arousal, pref_corr)
-
-            print(f"    Valence vs probe-preference: r = {r_val_pref:.3f} (Anthropic: 0.76)")
-            print(f"    Arousal vs probe-preference: r = {r_aro_pref:.3f}")
-
-            result = {
-                'n_emotions': len(emotions_with_both),
-                'valence_vs_preference': r_val_pref,
-                'arousal_vs_preference': r_aro_pref,
-                'anthropic_baseline': ANTHROPIC_BASELINES['valence_mediates_pref'],
-            }
-            save_results(out_dir, 'valence_mediation', result)
-            return result
-    else:
-        # Output template for LLM rating
-        template = {
-            'instructions': (
-                'Rate each emotion on a 1-7 scale for valence (1=very negative, 7=very positive) '
-                'and arousal (1=very calm/low energy, 7=very excited/high energy).'
-            ),
-            'emotions': {name: {'valence': None, 'arousal': None} for name in sorted(vectors.keys())},
-        }
-        with open(ratings_path, 'w') as f:
-            json.dump(template, f, indent=2)
-        print(f"    Template saved to: {ratings_path}")
-        print(f"    Fill in valence/arousal ratings and re-run this experiment.")
-
-    return None
+#
+# Paper Fig 56 reports r=0.76 for valence mediating the probe-preference relation.
+# Replicating requires an LLM-judge pass rating all 171 emotions on 1-7 valence
+# and arousal scales — not a local computation. The prior implementation was a
+# silent-fail stub that wrote a blank template and produced bogus n=0 output
+# (deleted in commit 8a0ec73). If you want to replicate this: use Claude API to
+# rate each emotion, save at `results/stage4_validation/emotion_valence_arousal_ratings.json`
+# with schema `{emotion: {"valence": float, "arousal": float}}`, then compute
+# Pearson r against `preference_elo.json::probe_preference_correlations`.
 
 
 # ============================================================================
@@ -854,17 +803,13 @@ def main():
             vectors, model, tokenizer, args.layer, out_dir
         )
 
-    # --- Valence/arousal mediation (Fig 56) --- API/placeholder
+    # --- Valence/arousal mediation (Fig 56) — NOT REPLICATED, see comment above
+    # The `run_valence_mediation` stub was deleted (it was producing bogus empty
+    # output). `--only mediation` now just prints a skip notice.
     if 'mediation' in analyses:
-        pref_corr = None
-        if 'preference' in results and results['preference']:
-            pref_corr = results['preference'].get('probe_preference_correlations')
-        elif (out_dir / 'preference_elo.json').exists():
-            with open(out_dir / 'preference_elo.json') as f:
-                pref_data = json.load(f)
-            pref_corr = pref_data.get('probe_preference_correlations')
-
-        results['mediation'] = run_valence_mediation(vectors, pref_corr, out_dir)
+        print(f"\n  [Fig 56] Valence/arousal mediation — SKIPPED")
+        print(f"    Requires LLM-judge rating of all 171 emotions. See comment")
+        print(f"    block above run_valence_mediation site (now deleted).")
 
     # --- Summary ---
     print(f"\n{'='*60}")
