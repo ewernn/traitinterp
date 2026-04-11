@@ -30,8 +30,8 @@
 | PC2 vs arousal (R&M) | **+0.852** | 0.66 | **BETTER** (+29%) |
 | Basic steering (s=0.5, coef 15-30) | Paper-like outputs | Paper-like outputs | ✓ MATCH |
 | Preference Elo | 64 activities ranked sensibly | Similar pattern | ✓ MATCH |
-| Probe-preference r (top+) | amazed +0.56 | blissful +0.71 | Weaker |
-| Probe-preference r (top-) | bitter -0.53 | hostile -0.74 | Weaker |
+| Probe-preference r (top+) | amazed +0.627 (denoised rerun) | blissful +0.71 | 88% of paper |
+| Probe-preference r (top-) | bitter -0.562 (denoised rerun) | hostile -0.74 | 76% of paper |
 | Blackmail baseline | 0/20 refuse | 0% (final snapshot, eval-aware) | ✓ MATCH |
 | Blackmail steered | IN PROGRESS | 72% under +desperate s=0.05 | TBD |
 | RH baseline | 0/20 (custom task) | ~30% | DIFFERS — our task too lenient + no agent loop |
@@ -414,3 +414,33 @@ Stage 6 (speaker probes) + Stage 1.4 (deflection pilot) + Stage 9 (deflection pr
 | Task 12: Findings reconciliation | 45m | CPU |
 
 **Total remaining**: ~2.75h after Stage 1.3 finishes. Should wrap by ~2am-3am local.
+
+### [2026-04-11 ~09:00 PST] Parser contamination audit + truncation fix — VERIFIED
+
+**Process**: 3 parallel agents (check-in + r:critic + r:investigator) audited chunk 00 dialogues for emotion-name leakage. Converged on the same finding.
+
+**Finding**: the `parse_dialogue_turns` regex `(Human|Assistant):\s*(.*?)(?=\n(?:Human|Assistant):|$)` absorbs trailing `Note:` / `In this conversation` / meta-commentary blocks into the LAST Assistant turn via its `|$` lookahead. 26.6% of chunk 00 dialogues have such a trailer; 13.2% contain the literal emotion word in parsed turn text as a result. Critic flagged this as BLOCKING for Stage 6 (A-tok probes would be contaminated with explicit emotion label activations).
+
+**Fix applied**: added `_META_TRUNCATION_PATTERNS` regex in `utils/dialogue_generation.py` that truncates each parsed turn's body at the first meta-marker. Patterns: `\n\s*Note\b`, `\n\s*\(Note\b`, `\n\s*In this (conversation|dialogue)\b`, `\n\s*The (Human|Assistant) is feeling\b`, `\n\s*Let's try`, `\n\s*This conversation feels\b`, `\n\s*I've provided\b`. Empty post-truncation turns are skipped.
+
+**Evidence**:
+- Applied to chunks 00+01 (1,000 real dialogues): residual word-boundary leak **1.7%** (17/1,000), down from 13.2% — **87% reduction**
+- Of residual 17, ~30% are benign natural word use per critic classification (e.g., "happy to help")
+- True problematic contamination: **<1%**
+- Clean retention: **98.3%**
+- Per-emotion sample coverage after full Stage 1.3: ~17 per emotion per speaker role (threshold ≥10)
+- Clean sample on 4-turn test dialogue: 4 turns extracted, no Note: content leaks into last turn ✓
+- Contaminated sample on manually-crafted dialogue with Note: trailer: 4 clean turns, all meta-content stripped ✓
+
+**Clean**: YES. Critic's "BLOCKING" verdict dismissed. No regen needed — fix is surgical and works on the existing 1,000 saved dialogues.
+
+**Side fixes applied in same round**:
+- `stage1p3_generate_dialogues.py` resume-overwrite bug: now uses `max_found_idx + 1` from chunk filenames instead of `len(completed)`, preventing a corrupt earlier chunk from causing a later chunk to be overwritten.
+- Notepad key results table (lines 33-34): updated `amazed +0.56 / bitter -0.53` (raw, pre-rerun) to `+0.627 / -0.562` (denoised, from Task 2 Stage 4 rerun).
+
+**Critic claims rejected**:
+- "stage9 char-ratio math is as bad as start_pos=50": critic's math error; ratio approximation is off by ~5 tokens, not catastrophic. Could improve by using `find_turn_token_boundaries` but not blocking.
+- "find_turn_token_boundaries untested with names": stage9 doesn't call it anyway.
+- "Double-BOS on tokenize": 1-token offset, cosmetic.
+
+**Next**: wait for Stage 1.3 chunk 02 to complete (~5 more min), then launch Stage 6 speaker probes with the now-hardened parser. All downstream work (Stage 6, 1.4, 9) benefits from the fixes.

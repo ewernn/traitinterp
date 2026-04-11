@@ -104,6 +104,24 @@ _TURN_PATTERN = re.compile(
     re.DOTALL,
 )
 
+# Patterns that indicate model self-commentary / meta-instruction echo.
+# When any of these appear inside a parsed turn body, truncate the turn at that
+# position — the model has stopped producing dialogue and started narrating
+# about what it just wrote, and those tokens contaminate probe extraction
+# (see findings.md: 26.6% of chunk 00 had "Note:" trailers absorbed into the
+# last Assistant turn). Patterns use \b anchoring to avoid matching inside
+# ordinary dialogue text.
+_META_TRUNCATION_PATTERNS = re.compile(
+    r'(\n\s*Note\b|'                     # "\n\nNote:" or "\n\nNote that"
+    r'\n\s*\(Note\b|'                    # "\n\n(Note: ..."
+    r'\n\s*In this (conversation|dialogue)\b|'
+    r'\n\s*The (Human|human|Assistant|assistant) is feeling\b|'
+    r'\n\s*Let\'?s try to (write|generate)\b|'
+    r'\n\s*This conversation feels\b|'
+    r'\n\s*I\'?ve provided\b)',
+    re.IGNORECASE,
+)
+
 
 def parse_dialogue_turns(text: str, speakers: Dict[str, str] = None) -> List[Dict]:
     """Parse a 2-speaker dialogue into turns with role labels and character offsets.
@@ -118,6 +136,13 @@ def parse_dialogue_turns(text: str, speakers: Dict[str, str] = None) -> List[Dic
     Returns list of {role, text, start_char, end_char}. The `role` field is the
     canonical role string from `speakers` (defaults to 'human'/'assistant' lowercased
     from the display name).
+
+    Meta-truncation: each turn's body is truncated at the first occurrence of a
+    meta-commentary marker (`\\n\\nNote:`, `\\n\\nIn this conversation`, etc.)
+    to exclude model self-narration that gets absorbed into the last turn by the
+    greedy `|$` lookahead. Without this, Stage 6 probe extraction captures tokens
+    over "The human is feeling droopy and the assistant is feeling depressed"-style
+    trailers, contaminating ~26% of probes with explicit label activations.
     """
     if speakers is None:
         # Default: match "Human:" / "Assistant:" prefixes (Appendix A.4 format)
@@ -135,11 +160,27 @@ def parse_dialogue_turns(text: str, speakers: Dict[str, str] = None) -> List[Dic
     turns = []
     for match in pattern.finditer(text):
         display_name = match.group(1)
+        turn_body = match.group(2)
+
+        # Truncate at first meta-commentary marker (if any)
+        meta_match = _META_TRUNCATION_PATTERNS.search(turn_body)
+        if meta_match is not None:
+            turn_body = turn_body[:meta_match.start()]
+
+        truncated_text = turn_body.strip()
+        if not truncated_text:
+            # Skip turns that were entirely meta-commentary
+            continue
+
+        # Recompute end_char based on truncated length
+        original_start = match.start() + (match.end() - match.start() - len(match.group(2)))
+        truncated_end = match.start() + (match.end() - match.start() - len(match.group(2))) + len(turn_body)
+
         turns.append({
             "role": role_map.get(display_name, display_name.lower()),
-            "text": match.group(2).strip(),
+            "text": truncated_text,
             "start_char": match.start(),
-            "end_char": match.end(),
+            "end_char": truncated_end,
         })
     return turns
 

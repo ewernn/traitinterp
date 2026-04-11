@@ -23,6 +23,7 @@ Usage:
 """
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -64,24 +65,35 @@ def main():
     print(f"Loaded {len(emotions)} emotions from dataset")
 
     # Resume check: do we have any chunks already?
+    # Use max chunk index from filenames (not len(completed)) so a corrupt
+    # chunk doesn't cause the next write to overwrite a valid later chunk.
     n_chunks = (args.n_dialogues + args.chunk_size - 1) // args.chunk_size
     existing_chunks = sorted(OUT_DIR.glob("dialogues_2speaker_chunk*.json"))
     completed = []
+    max_found_idx = -1
+    chunk_idx_re = re.compile(r"dialogues_2speaker_chunk(\d+)\.json$")
     for chunk_path in existing_chunks:
+        m = chunk_idx_re.search(chunk_path.name)
+        if m is None:
+            continue
+        idx = int(m.group(1))
         try:
             with open(chunk_path) as f:
                 chunk = json.load(f)
-            completed.append((chunk_path, chunk))
-            print(f"  Found existing chunk: {chunk_path.name} ({len(chunk)} dialogues)")
+            completed.append((idx, chunk_path, chunk))
+            max_found_idx = max(max_found_idx, idx)
+            print(f"  Found existing chunk {idx:02d}: {chunk_path.name} ({len(chunk)} dialogues)")
         except Exception as e:
             print(f"  Warning: skipping corrupt chunk {chunk_path.name}: {e}")
 
-    n_existing = sum(len(c) for _, c in completed)
+    # Sort completed by chunk index to preserve order when concatenating
+    completed.sort(key=lambda x: x[0])
+    n_existing = sum(len(c) for _, _, c in completed)
     if n_existing >= args.n_dialogues:
         print(f"Already have {n_existing} dialogues, skipping generation")
         # Combine into final
         all_dialogues = []
-        for _, c in completed:
+        for _, _, c in completed:
             all_dialogues.extend(c)
         all_dialogues = all_dialogues[:args.n_dialogues]
         with open(OUT_FINAL, "w") as f:
@@ -100,10 +112,11 @@ def main():
 
     t_total_start = time.time()
     all_dialogues = []
-    for _, c in completed:
+    for _, _, c in completed:
         all_dialogues.extend(c)
 
-    chunk_idx = len(completed)
+    # Resume at max_found_idx + 1 so corrupt/missing chunks don't cause overwrites
+    chunk_idx = max_found_idx + 1
     while len(all_dialogues) < args.n_dialogues:
         remaining = args.n_dialogues - len(all_dialogues)
         this_chunk = min(args.chunk_size, remaining)
