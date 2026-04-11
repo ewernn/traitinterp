@@ -11,13 +11,18 @@ findings:
   - comparison-arditi-refusal.md
   - massive-activations.md
   - 2026-04-09-quantization-sensitivity.md
+  - 1st-vs-3rd-person.md
   # Commented out - has [TODO] in title:
   # - coefficient-scaling-law.md
   # Commented out - infrastructure/methodology:
   # - llm-judge-optimization.md # scoring guide + logprobs beats CoT (0.888 trait, 0.850 coherence)
 
   # Commented out - missing data:
-  # - 1st-vs-3rd-person.md      # needs chirp/refusal_v2 + v2_3p
   # - ood-cross-model.md        # needs Mistral experiments
   # - ood-formality.md          # needs formality steering
   # - effect-size-vs-steering.md # needs multi-trait steering
+
+  # Commented out - merged/superseded:
+  # - model-diff-analysis.md           # merged into comparison-persona-vectors.md
+  # - component-comparison-refusal.md  # superseded by component-decomposition.md
+  # - thought-branches-analysis.md     # incomplete (Finding 5 unfinished)

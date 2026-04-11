@@ -1,6 +1,8 @@
 ---
 title: "Removing Reward Hacking with Base Model Probes"
 preview: "Base model probes remove 63% of reward hacking from Anthropic's Auditing Language Models open-source replication."
+date: "Jan 2026"
+tier: major
 thumbnail:
   title: "Reward hack instances"
   bars:

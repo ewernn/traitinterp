@@ -1,6 +1,8 @@
 ---
 title: "Comparison: Arditi-style vs Natural Refusal Vectors"
 preview: "Arditi ablates better (100% vs 0%), but single-layer steering shows similar quantitative bypass (~35-40 Δ). Qualitatively, Arditi produces clean jailbreaks while Natural produces conflicted responses."
+date: "Jan 2026"
+tier: minor
 references:
   arditi2024:
     authors: "Arditi et al."

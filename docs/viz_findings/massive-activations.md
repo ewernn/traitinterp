@@ -1,6 +1,8 @@
 ---
 title: "Massive Activation Dimensions"
 preview: "Massive dims contaminate mean_diff. Use probe. Cleaning probe vectors rarely helps."
+date: "Jan 2026"
+tier: minor
 ---
 
 # Massive Activation Dimensions

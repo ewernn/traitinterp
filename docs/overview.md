@@ -1,6 +1,6 @@
 # Trait Vector Extraction and Monitoring
 
-*By Eric Werner, April 12 2026*
+*Eric Werner, 2026*
 
 ## What this is
 
@@ -44,12 +44,12 @@ This gives us more than one reason to expect human-definable trait dimensions to
 
 - **Reward hacking reduction via steering** — a base-extracted `ulterior_motive` probe reduces reward hacking instances on Anthropic's open-source auditing games model → [rm-sycophancy](viz_findings/rm-sycophancy.md)
 - **Persona Vectors replication** — base-model extraction matches the paper's steering effectiveness across evil / sycophancy / hallucination, with more natural trait expression → [comparison-persona-vectors](viz_findings/comparison-persona-vectors.md)
-- **Convolution detector for reward hacking** — a temporal template from 9 of 52 bias types detects reward hacks on the 43 unseen bias types, with trait shifts preceding the hack in output → *link coming with convolution detector writeup*
+- **Convolution detector for reward hacking** — a temporal template from 9 of 52 bias types detects reward hacks on the 43 unseen bias types, with trait shifts preceding the hack in output
 - **Component decomposition** — attention writes the trait direction; MLP doesn't → [component-decomposition](viz_findings/component-decomposition.md)
 - **The model recognizes its own voice** — model-generated text produces smoother trait activations than user input → [prefill-dynamics](viz_findings/prefill-dynamics.md)
 
 ## Where to go next
 
-See [methodology](methodology.md) for the extraction and validation pipeline, [findings](findings.md) for all research results, and the live chat to watch trait projections in real time on your own prompts.
+See [methodology](methodology.md) for the extraction and validation pipeline, and explore the findings tab for all research results. Try the live chat to watch trait projections in real time on your own prompts.
 
 [^1]: Bailey et al. 2024, *Obfuscated Activations Bypass LLM Latent-Space Defenses* ([arXiv:2412.09565](https://arxiv.org/abs/2412.09565)). Tested against harmfulness probes trained on the same model's activations, not against interpretable behavioral probes extracted from contrastive data.

@@ -1,6 +1,8 @@
 ---
 title: "Deception Detection on LIARS' BENCH"
 preview: "Three zero-label vectors, each covering different deception types. Concept decomposition matters more than methodology."
+date: "Feb 2026"
+tier: major
 thumbnail:
   title: "HP-KR AUROC"
   bars:

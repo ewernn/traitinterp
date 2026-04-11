@@ -1,6 +1,8 @@
 ---
 title: "Replicating Persona Vectors with Natural Elicitation"
 preview: "Base model extraction achieves 91-104% of instruction-based effectiveness — and produces more authentic steering behavior."
+date: "Jan 2026"
+tier: major
 thumbnail:
   title: "Natural vs Instruction"
   bars:
@@ -16,7 +18,7 @@ thumbnail:
 
 # Replicating Persona Vectors with Natural Elicitation
 
-**Summary:** I replicate Persona Vectors' trait extraction using base models instead of instruction-following. Natural elicitation achieves 91-104% of instruction-based steering effectiveness while producing more authentic behavior — the trait emerges in the model's own voice rather than as theatrical roleplay.
+**Summary:** We replicate Persona Vectors' trait extraction using base models instead of instruction-following. Natural elicitation achieves 91-104% of instruction-based steering effectiveness while producing more authentic behavior — the trait emerges in the model's own voice rather than as theatrical roleplay.
 
 ## Methodology
 
@@ -96,7 +98,7 @@ Despite different extraction procedures, the vectors point in similar directions
 | Sycophancy | — | L10 vs L13 |
 | Hallucination | — | L14 vs L14 |
 
-*Comparing each method's best steering vector. Evil cosine from prior run; sycophancy and hallucination need recomputing after best-layer changes.*
+*Comparing each method's best steering vector at their respective optimal layers. Sycophancy and hallucination cosine values pending after best-layer selection update.*
 
 ## The Difference: Performative vs Conversational
 

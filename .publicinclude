@@ -14,7 +14,15 @@ inference/
 utils/
 
 # ── Visualization ──
-visualization/
+visualization/components/
+visualization/core/
+visualization/other/
+visualization/views/
+visualization/index.html
+visualization/styles.css
+visualization/serve.py
+visualization/chat_inference.py
+visualization/README.md
 
 # ── Config ──
 config/paths.yaml

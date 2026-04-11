@@ -89,12 +89,13 @@ Why base models: they've learned concepts like deception, helpfulness, and refus
 
 Why document completion: no instruction-following confounds, captures genuine trait expression rather than compliance, and model behavior follows naturally from the setup.
 
-</details>dataset /datasets/traits/starter_traits/refusal/positive.txt "View refusal positive scenarios":::
+</details>
 
-:::dataset /datasets/traits/starter_traits/refusal/negative.txt "View refusal negative scenarios":::
+:::dataset /datasets/traits/starter_traits/refusal/positive.jsonl "View refusal positive scenarios":::
+
+:::dataset /datasets/traits/starter_traits/refusal/negative.jsonl "View refusal negative scenarios":::
 
 See [trait_dataset_creation.md](trait_dataset_creation.md) for the full dataset design guide, including the decision tree for trait categories, scenario design principles, and common failure modes.
-:::
 
 <details>
 <summary><strong>Alternative: story-based extraction (Anthropic Emotion Concepts, 2026)</strong></summary>

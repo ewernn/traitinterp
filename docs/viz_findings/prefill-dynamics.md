@@ -1,6 +1,8 @@
 ---
 title: "The Model Recognizes Its Own Voice"
 preview: "Model-generated text produces smoother activations (d=1.49). Practical implication: trait monitoring is more reliable on assistant turns than user input."
+date: "Jan 2026"
+tier: minor
 ---
 
 # The Model Recognizes Its Own Voice
