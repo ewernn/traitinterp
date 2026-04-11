@@ -135,7 +135,7 @@ Saved: `results/stage8_cross_version.json` with all 3 models' neutral/challengin
 
 **Partial overlap with paper's Sonnet anchors** (not zero): `weary` appears in BOTH Llama within-version top-10 AND Sonnet's reported up-anchors. Llama's broader within-version top-10 is `eager, impatient, weary, stimulated, enthusiastic, tired, worn_out, enraged, energized, irritated` — the `weary, tired, worn_out` subcluster overlaps with Sonnet's `weary, brooding, gloomy` "negative-valence" region. Better framing than "diametrically opposed": Llama and Sonnet share an "away from pleasant-positive" shift at the coarse level, but differ on the arousal axis — Llama's cluster centroid is high-arousal (eager/impatient), Sonnet's is low-arousal (brooding/reflective). Cluster means are near-mirror at the centroid level, but individual anchor lists have one shared emotion (weary). The "Jaccard = 0.000" claim (line 172) applies to the 4-emotion INTERSECTION cluster (alert/enthusiastic/excited/impatient), not the broader within-version top-10.
 
-### [2026-04-11 evening PST] 🎯 HEADLINE: Llama and Sonnet post-training directions are in DIAMETRICALLY OPPOSED QUADRANTS of the shared emotion geometry
+### [2026-04-11 evening PST] 🎯 HEADLINE (with caveats — see corrected cross-version entry above): Llama and Sonnet post-training cluster centroids sit in opposing quadrants of the shared emotion geometry
 
 Cross-signal correlation analysis. Built a 4-signal matrix for the full 171-emotion set: PC1 loading, PC2 loading, probe-preference r (Stage 4 rerun), Stage 8 post-training shift (20 prompts), deep-dive shift (3 paper prompts). Computed Spearman correlations pairwise.
 
@@ -181,7 +181,7 @@ Jaccard overlap(Llama dn, Sonnet dn) = **0.067**. One overlap: `obstinate` (both
 **LessWrong headline candidate**: *"Llama's post-training shifts emotion activations in the opposite quadrant from Claude's — same valence/arousal geometry, opposite semantic anchors."*
 
 **Caveats (keeping us honest)**:
-- Our Stage 8 uses cross-version comparison (Llama 3.1 base → 3.3 instruct, not within-model). The 3.1→3.3 version gap could confound some of the "Meta RLHF direction" claim. The cheap disambiguation is to run Llama 3.1 Instruct (same version as base) through the same 20 prompts — not done tonight but easy (~8 min GPU).
+- Our Stage 8 uses cross-version comparison (Llama 3.1 base → 3.3 instruct, not within-model). The 3.1→3.3 version gap could confound some of the "Meta RLHF direction" claim. **UPDATE (2026-04-11 evening)**: the cross-version control WAS run — see the earlier entry at this same timestamp for the three-model decomposition. Short version: `shift_within_3_1` independently shows activated-engagement emotions at the top of its shift rankings (eager/impatient/stimulated/enthusiastic via raw-dot, or thrilled/pleased/patient/calm via normalized — the two scoring methods disagree on top-10 ordering, see the cross-version entry). The ρ=0.922 between within and cross shifts is algebraically forced (cross=within+drift) and does NOT constitute independent confirmation.
 - Llama's cluster of 4 up-anchor emotions is small. Sonnet's 10 anchors are from paper reports, not a comparable independent measurement.
 - Deep-dive is 3 prompts; small-N rhetoric caveat applies.
 
@@ -614,7 +614,7 @@ Already covered in Finding 3. Key additional cross-scenario consistency numbers:
 | Preference-emotion mediation exists | CONFIRMED (88% of paper's magnitude, different labels) |
 | Speaker-probe 2×2 structure | CONFIRMED (qualitatively matches) |
 | Post-training shift is coherent and meaningful | CONFIRMED |
-| Post-training direction replicates paper's specific emotions | **REFUTED** — opposite quadrant |
+| Post-training direction replicates paper's specific emotions | **PARTIALLY REFUTED** — cluster centroids near-mirror in PC1/PC2 but `weary` appears in both Llama within-version top-10 AND Sonnet's reported anchors; "opposite quadrant" holds at centroid level but individual anchor lists have one shared emotion |
 | Blackmail headline 22%→72% | REFUTED (but for known reason: eval-awareness snapshot difference) |
 | Deflection probes align with story probes | INCONCLUSIVE (pilot too small) |
 | RH steering replicates | SKIPPED (needs agent loop, documented limitation) |
