@@ -79,6 +79,17 @@ all_acts = capture.get_all()  # {14: tensor, 15: tensor, 16: tensor}
 with MultiLayerCapture(model) as capture:  # layers=None = all
     model(**inputs)
 
+# Convenience wrapper: batch capture at a position-DSL slice, across prompts
+from utils.capture_activations import capture_at_position
+acts = capture_at_position(
+    model, tokenizer, prompts,
+    layers=49, position='prompt[-1]', pool='last',
+)  # [n_prompts, hidden_dim]
+# layers=int → squeezed, layers=[list] → [n_prompts, n_layers, hidden_dim]
+# position DSL strings: 'prompt[-1]', 'prompt[-3:]', 'all[:]' (prefill-only, no response frame)
+# pool: 'mean'|'first'|'last'|'none'; pre_formatted=True skips format_prompt
+# Correctly handles left-pad offsets; fp32 CPU return.
+
 # Steer generation (add vector to output)
 vector = torch.load('vectors/probe_layer16.pt')
 with SteeringHook(model, vector, "model.layers.16", coefficient=1.5):
