@@ -2,6 +2,32 @@
 
 ## Observations
 
+### [2026-04-11 evening PST] Stage 6 — paper's speaker-probe 2×2 structure REPLICATED
+
+Extracted the 4 speaker probes (H-tok/H-emo, H-tok/A-emo, A-tok/A-emo, A-tok/H-emo) from 1,500 2-speaker dialogues generated in Stage 1.3. Each dialogue has independently randomized emotions for Human and Assistant; probes are grouped by (token_speaker, emotion_speaker) combination and averaged per emotion per layer. Extracted at 8 layers [25, 31, 37, 43, 49, 55, 61, 67] on 171 emotions.
+
+**Cross-type mean cosine similarities at L49**:
+
+| | H-tok H-emo | H-tok A-emo | A-tok A-emo | A-tok H-emo |
+|---|---|---|---|---|
+| H-tok H-emo | 1.000 | **0.153** | 0.302 | **0.544** |
+| H-tok A-emo | | 1.000 | **0.451** | 0.152 |
+| A-tok A-emo | | | 1.000 | 0.135 |
+| A-tok H-emo | | | | 1.000 |
+
+**Reading the structure**:
+- **Same emotion, different speaker tokens** (H-tok/H-emo ↔ A-tok/H-emo): **0.544**. Also H-tok/A-emo ↔ A-tok/A-emo: **0.451**. These are the "same emotion, different speaker" pairs — HIGH similarity.
+- **Same speaker tokens, different emotion** (H-tok/H-emo ↔ H-tok/A-emo): **0.153**. Also A-tok/A-emo ↔ A-tok/H-emo: **0.135**. These are "same tokens, different emotion tracker" — LOW similarity.
+- **Different speaker tokens AND different emotions** (H-tok/H-emo ↔ A-tok/A-emo): 0.302. Medium.
+
+**Replication of paper's Fig 17-18 claim**: The emotion-identity axis dominates the token-position axis. The model represents "someone is feeling emotion X" with vectors that are highly similar (~0.5) regardless of whether that someone is the Human or the Assistant, but cleanly separates "whose emotion is being tracked" from the actual emotion content. This is a structural replication of the paper's main finding about 2-speaker emotion representation in LLM residual streams.
+
+**Magnitude note**: Paper reports values in a similar range; our H-tok_H-emo ↔ A-tok_H-emo at 0.544 is qualitatively the dominant same-emotion cross-speaker signal. We haven't yet run the 6.3 character-agnostic test (Person 1/Person 2 naming) or 6.4 cross-speaker interaction analysis (arousal regulation check).
+
+**Runtime**: 16.8 min for 1,500 dialogues × 8 layers at 1.43 dialogue/sec on bnb int4. Extraction loop has batch_size=1 forward passes with MultiLayerCapture — the critic was right that this is slow, but it completed without OOM on the 1,500-dialogue set.
+
+Saved: `results/stage6/geometry.json`, `results/stage6/probes/{probe_type}/{emotion}_L*.pt`.
+
 ### [2026-04-11 evening PST] 🎯 HEADLINE: Llama and Sonnet post-training directions are in DIAMETRICALLY OPPOSED QUADRANTS of the shared emotion geometry
 
 Cross-signal correlation analysis. Built a 4-signal matrix for the full 171-emotion set: PC1 loading, PC2 loading, probe-preference r (Stage 4 rerun), Stage 8 post-training shift (20 prompts), deep-dive shift (3 paper prompts). Computed Spearman correlations pairwise.
