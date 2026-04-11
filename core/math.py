@@ -10,6 +10,9 @@ Single-vector operations:
 Multi-vector operations:
     pairwise_cosine_matrix, pca, project_out_subspace
 
+Vector-group transformations (for cross-trait denoising pipelines):
+    grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs
+
 Utility:
     remove_massive_dims, accuracy, effect_size, pearson_correlation, polarity_correct, normalize_projections
 """
@@ -252,4 +255,78 @@ def project_out_subspace(
     if vectors.dim() == 1:
         return vectors - Q @ (Q.T @ vectors)
     return vectors - (vectors @ Q) @ Q.T
+
+
+# =============================================================================
+# Vector Group Transformations (for cross-trait denoising pipelines)
+# =============================================================================
+
+def grand_mean_center(
+    vectors_dict: dict,
+) -> "tuple[dict, torch.Tensor]":
+    """Subtract the mean of a group of vectors from each.
+
+    Corresponds to step 4 of Sofroniew et al. 2026 §1.1.4: given per-trait mean
+    activations, subtract the grand mean across traits to isolate trait-specific
+    directions.
+
+    Args:
+        vectors_dict: {name: [hidden_dim] tensor}
+
+    Returns:
+        centered_dict: {name: centered_tensor}
+        grand_mean: [hidden_dim] tensor
+    """
+    names = sorted(vectors_dict.keys())
+    stacked = torch.stack([vectors_dict[n].float() for n in names])
+    grand_mean = stacked.mean(dim=0)
+    return {n: vectors_dict[n].float() - grand_mean for n in names}, grand_mean
+
+
+def compute_top_pcs_by_variance(
+    activations: torch.Tensor,
+    variance_threshold: float = 0.5,
+    max_components: int = 50,
+) -> "tuple[torch.Tensor, torch.Tensor, int]":
+    """PCA + select top components explaining up to variance_threshold cumulative variance.
+
+    Used for Sofroniew et al. 2026 §1.1.4 step 5 (neutral PC denoising).
+
+    Args:
+        activations: [N, hidden_dim] raw activations (typically from a neutral corpus)
+        variance_threshold: cumulative variance fraction cutoff (default 0.5)
+        max_components: cap on PCs to compute (default 50)
+
+    Returns:
+        basis: [K, hidden_dim] — top K principal components
+        variance_ratio: [K] — per-component explained variance ratio
+        n_pcs: K — number of selected components
+    """
+    n_components = min(max_components, len(activations))
+    components, variance_ratio, _ = pca(activations.float(), n_components=n_components)
+    cumvar = torch.cumsum(variance_ratio, dim=0)
+    n_pcs = int((cumvar < variance_threshold).sum().item()) + 1
+    n_pcs = min(n_pcs, len(components))
+    return components[:n_pcs], variance_ratio[:n_pcs], n_pcs
+
+
+def denoise_with_pcs(
+    vectors_dict: dict,
+    pc_basis: torch.Tensor,
+) -> dict:
+    """Project out a PC subspace from each vector in a group.
+
+    Thin wrapper over project_out_subspace for the dict-of-vectors case.
+
+    Args:
+        vectors_dict: {name: [hidden_dim] tensor}
+        pc_basis: [K, hidden_dim] — orthonormal basis to remove
+
+    Returns:
+        {name: denoised_tensor}
+    """
+    return {
+        name: project_out_subspace(vec.unsqueeze(0), pc_basis).squeeze(0)
+        for name, vec in vectors_dict.items()
+    }
 

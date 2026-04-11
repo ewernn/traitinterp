@@ -80,6 +80,40 @@ Per trait, in `datasets/traits/{category}/{trait}/`:
   - **Cascade:** CLI flags > per-trait YAML > per-category YAML > pipeline defaults
   - **`polarity: single`** — enables single-polarity extraction (no `negative.txt` required). Scenarios use `positive.jsonl` with `{"prompt", "system_prompt"}` objects. The extraction pipeline skips negative generation and `MeanDiffMethod` uses zero-centered negative activations.
 
+### Reference Traits (leading-underscore convention)
+
+A **reference trait** is a trait directory whose name (or any path component) starts with an underscore, e.g. `ant_emotion_concepts/_neutral/`. Reference traits have the same structure as normal traits (`positive.jsonl`, `definition.txt`, optional `extraction_config.yaml`) and go through the same extraction pipeline, but are **used as baseline distributions** rather than as standalone steering/probing targets.
+
+**Typical use case:** Sofroniew et al. 2026 §1.1.4 step 5 requires activations from a neutral dialogue corpus to compute principal components that get projected out of emotion vectors. The neutral corpus is stored as `datasets/traits/ant_emotion_concepts/_neutral/` — it runs through stages 1 and 3 like any trait (generates responses, captures activations) but its resulting vector is ignored. Only its raw activations matter, which downstream scripts (e.g., `analysis/vectors/cross_trait_normalize.py`) consume to compute a PC basis.
+
+**Filter semantics:** `utils.paths.discover_traits(category, include_reference=False)` is the default — it excludes any trait path containing a leading-underscore component. Pass `include_reference=True` to include them. This keeps the 171 emotion traits cleanly separated from the 1 neutral reference in the emotion concepts experiment.
+
+**Why not a separate subsystem?** A reference corpus is structurally identical to a single-polarity trait (prompts → responses → activations). The extraction pipeline already handles it end-to-end. The only distinction is *how downstream code consumes the activations* — treat them as a distribution to denoise against, not a direction to measure/steer. A leading-underscore filter captures this cleanly without introducing a parallel namespace.
+
+### Composable Method Names (post-extraction transforms)
+
+Extraction produces a base `method` (e.g., `mean_diff`, `probe`) stored at `vectors/{position}/{component}/{method}/layer{N}.pt`. Post-hoc transformations on the vector (grand-mean centering, PC denoising, etc.) are represented by **composable suffixes** in the method name, separated by `+`:
+
+| Method name | Meaning |
+|---|---|
+| `mean_diff` | Raw `pos_mean - neg_mean` (or `pos_mean` for single-polarity), unit-normalized |
+| `mean_diff+gm` | Raw mean_diff, then grand-mean subtracted across all traits in the group (Sofroniew step 4), unit-normalized |
+| `mean_diff+gm+pc50` | After `+gm`, also project out top PCs explaining 50% of neutral-corpus variance (Sofroniew step 5), unit-normalized |
+| `mean_diff+pc50` | Raw mean_diff with neutral PCs projected out, no grand-mean centering (ablation) |
+
+**Why composable suffixes:**
+- Makes ablations first-class: `mean_diff` vs `mean_diff+gm` vs `mean_diff+gm+pc50` can be loaded and compared with the same downstream code, just by changing the `method` string.
+- Self-documenting: the transformation chain is readable from the filename.
+- Composable with probe methods too: `probe+gm`, `probe+gm+pc50`, etc., though typically only mean_diff needs the Sofroniew pipeline.
+- No new path schema — `get_vector_path(method="mean_diff+gm+pc50")` resolves to `vectors/.../mean_diff+gm+pc50/layer{N}.pt` automatically.
+
+**Suffix grammar:**
+- `+gm` — grand-mean center across the trait group
+- `+pc{N}` — project out top PCs explaining N% of neutral-corpus variance (e.g., `+pc50`, `+pc70`)
+- Suffixes apply in order written. `mean_diff+gm+pc50` means "first center, then project." `mean_diff+pc50+gm` would be invalid (PC projection before centering isn't the paper's recipe).
+
+**Where transforms are computed:** `analysis/vectors/cross_trait_normalize.py` reads raw `mean_diff` activations (from `--save-activations` .pt files), applies the transform chain, writes the output under the composed method name. (Note: this is *direction* normalization — the paper's step 4/5 denoising. Not to be confused with the score-scale normalization described in the "Cross-Trait Normalization" section below, which is about scaling raw projections by mean activation norm for cross-layer comparability.) Transform metadata is stored in `vectors/.../mean_diff+gm+pc50/metadata.json` with fields: `{method, transforms, layer, position, component, pre_norm, timestamp}`. PC bases are cached (with content-hash invalidation) at `experiments/{experiment}/extraction/{reference_trait}/{variant}/reference_pcs/{position}/{component}/layer{L}.pt` for reuse across runs.
+
 **CLI flags:**
 - `--traits category/trait1,category/trait2` — comma-separated, or omit for all traits in experiment
 - `--position "response[:5]"` — token window (default: `response[:5]`)

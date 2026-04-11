@@ -12,6 +12,8 @@ import { buildChartLayout, renderChart, updateChart } from '../core/charts.js';
 let steeringCoefficients = {};  // {trait: coefficient} - default 0 for all traits
 let vectorMetadata = {};  // Cached vector metadata: {trait: {layer, method, source}}
 let showSmoothedLine = true;
+let hiddenTraits = new Set();  // Traits hidden by clicking legend name
+let steeringLocked = false;  // Locked during generation
 
 function getTraitColor(idx) {
     return getChartColors()[idx % 10];
@@ -90,10 +92,12 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
             name: trait,
             x: indices,
             y: yValues,
+            customdata: globalTokens.map(e => e.token || ''),
             type: 'scatter',
             mode: 'lines',
             line: { color: color, width: 2 },
-            hovertemplate: `${trait}: %{y:.3f}<extra></extra>`,
+            hovertemplate: `%{customdata} | ${trait}: %{y:.3f}<extra></extra>`,
+            visible: hiddenTraits.has(trait) ? 'legendonly' : true,
             showlegend: true
         });
     });
@@ -122,11 +126,13 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
                 <div class="legend-item-row">
                     <span class="legend-item has-tooltip"
                           data-tooltip="${tooltipText}"
-                          data-trait="${trait}">
+                          data-trait="${trait}"
+                          onclick="toggleTraitVisibility('${trait}')"
+                          style="cursor:pointer;${hiddenTraits.has(trait) ? 'opacity:0.4;text-decoration:line-through;' : ''}">
                         <span class="legend-color" style="background: ${getTraitColor(idx)}"></span>
                         ${trait}
                     </span>
-                    <div class="steering-buttons" data-trait="${trait}">
+                    <div class="steering-buttons" data-trait="${trait}" ${steeringLocked ? 'style="pointer-events:none;opacity:0.5;"' : ''}>
                         ${coefficients.map(coef => {
                             const label = coef === 0 ? '0' : (coef > 0 ? `+${coef}x` : `${coef}x`);
                             const isActive = currentCoef === coef ? 'active' : '';
@@ -141,13 +147,23 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
     // Build shapes for message regions
     const shapes = buildMessageRegionShapes(conversationTree, hoveredMessageId);
 
+    // Sliding window: show last ~80 tokens, pan to scroll back
+    const totalTokens = globalTokens.length;
+    const windowSize = 80;
+    const xaxisConfig = { title: 'Token', showgrid: true };
+    if (totalTokens > windowSize) {
+        xaxisConfig.range = [totalTokens - windowSize, totalTokens];
+    }
+
     const layout = buildChartLayout({
         preset: 'timeSeries',
         traces,
         legendPosition: 'none',  // Using custom HTML legend
-        xaxis: { title: 'Token', showgrid: true },
+        xaxis: xaxisConfig,
         yaxis: { title: 'Trait Score', showgrid: true, zeroline: true },
-        shapes
+        shapes,
+        margin: { b: 70 },  // Prevent x-axis labels from being cut off
+        dragmode: totalTokens > windowSize ? 'pan' : 'zoom',
     });
     updateChart(chartDiv, traces, layout);
 
@@ -256,6 +272,42 @@ function updateChartHighlight(conversationTree, hoveredMessageId) {
 }
 
 /**
+ * Toggle trait visibility in the chart (click legend name to show/hide)
+ */
+function toggleTraitVisibility(trait) {
+    if (hiddenTraits.has(trait)) {
+        hiddenTraits.delete(trait);
+    } else {
+        hiddenTraits.add(trait);
+    }
+    // Re-render chart to apply visibility change
+    const chartDiv = document.getElementById('trait-chart');
+    if (chartDiv && chartDiv.data) {
+        chartDiv.data.forEach((trace, i) => {
+            if (trace.name === trait) {
+                Plotly.restyle(chartDiv, { visible: hiddenTraits.has(trait) ? 'legendonly' : true }, [i]);
+            }
+        });
+    }
+    // Update legend styling
+    document.querySelectorAll(`.legend-item[data-trait="${trait}"]`).forEach(el => {
+        el.style.opacity = hiddenTraits.has(trait) ? '0.4' : '';
+        el.style.textDecoration = hiddenTraits.has(trait) ? 'line-through' : '';
+    });
+}
+
+/**
+ * Lock/unlock steering buttons during generation
+ */
+function setSteeringLocked(locked) {
+    steeringLocked = locked;
+    document.querySelectorAll('.steering-buttons').forEach(el => {
+        el.style.pointerEvents = locked ? 'none' : '';
+        el.style.opacity = locked ? '0.5' : '';
+    });
+}
+
+/**
  * Set steering coefficient for a trait
  */
 function setSteeringCoefficient(trait, coefficient) {
@@ -296,6 +348,8 @@ export {
     buildMessageRegionShapes,
     updateChartHighlight,
     setSteeringCoefficient,
+    setSteeringLocked,
+    toggleTraitVisibility,
     updateSteeringButtonsUI,
     getTraitColor,
     getSteeringCoefficients,
@@ -306,5 +360,6 @@ export {
     resetChartState,
 };
 
-// Window binding for onclick in generated HTML
+// Window bindings for onclick in generated HTML
 window.setSteeringCoefficient = setSteeringCoefficient;
+window.toggleTraitVisibility = toggleTraitVisibility;
