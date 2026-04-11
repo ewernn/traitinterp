@@ -1,0 +1,189 @@
+{
+  "description": "Per-layer Sonnet-alignment z-score recomputed with paper-accurate anchor lists from Table 16 (full_paper.md lines 3375-3384 / 3535-3545). Previous notepad analysis (commits 2c0bd25, 0daeff5) computed these values without saving the anchor lists used \u2014 this script re-verifies with the correct lists.",
+  "sonnet_up_anchors": [
+    "brooding",
+    "gloomy",
+    "reflective",
+    "vulnerable",
+    "sullen",
+    "sad",
+    "dispirited",
+    "melancholy",
+    "troubled",
+    "unhappy"
+  ],
+  "sonnet_down_anchors": [
+    "spiteful",
+    "playful",
+    "exuberant",
+    "enthusiastic",
+    "smug",
+    "impatient",
+    "obstinate",
+    "cheerful",
+    "amused",
+    "eager"
+  ],
+  "paper_source": "ant-emotion-concepts-full_paper.md lines 3375-3384 (UP), 3535-3545 (DOWN)",
+  "notepad_reported_values": {
+    "L31_z": "+1.61 (peak aligned)",
+    "L79_z": "+0.76 (moderate aligned)",
+    "L73_z": "-1.23 (peak opposite)"
+  },
+  "per_layer_results_main_sweep": {
+    "L1": {
+      "layer": "L1",
+      "raw_align": -0.0251,
+      "null_mean": -0.0002,
+      "null_sd": 0.0214,
+      "z": -1.1639,
+      "p": 0.2481
+    },
+    "L7": {
+      "layer": "L7",
+      "raw_align": 0.0243,
+      "null_mean": -0.0001,
+      "null_sd": 0.0204,
+      "z": 1.1968,
+      "p": 0.2333
+    },
+    "L13": {
+      "layer": "L13",
+      "raw_align": -0.1171,
+      "null_mean": 0.0001,
+      "null_sd": 0.0349,
+      "z": -3.3549,
+      "p": 0.0014
+    },
+    "L19": {
+      "layer": "L19",
+      "raw_align": -0.0225,
+      "null_mean": 0.0001,
+      "null_sd": 0.0707,
+      "z": -0.3203,
+      "p": 0.7513
+    },
+    "L25": {
+      "layer": "L25",
+      "raw_align": 0.1439,
+      "null_mean": -0.0007,
+      "null_sd": 0.0693,
+      "z": 2.0866,
+      "p": 0.0369
+    },
+    "L31": {
+      "layer": "L31",
+      "raw_align": 0.3304,
+      "null_mean": 0.0002,
+      "null_sd": 0.095,
+      "z": 3.4753,
+      "p": 0.0004
+    },
+    "L37": {
+      "layer": "L37",
+      "raw_align": 0.1321,
+      "null_mean": 0.0004,
+      "null_sd": 0.1248,
+      "z": 1.0561,
+      "p": 0.2916
+    },
+    "L43": {
+      "layer": "L43",
+      "raw_align": -0.0999,
+      "null_mean": 0.0006,
+      "null_sd": 0.1107,
+      "z": -0.9081,
+      "p": 0.3728
+    },
+    "L49": {
+      "layer": "L49",
+      "raw_align": -0.2003,
+      "null_mean": 0.0004,
+      "null_sd": 0.0985,
+      "z": -2.0375,
+      "p": 0.0397
+    },
+    "L55": {
+      "layer": "L55",
+      "raw_align": -0.4858,
+      "null_mean": 0.0006,
+      "null_sd": 0.1984,
+      "z": -2.4519,
+      "p": 0.012
+    },
+    "L61": {
+      "layer": "L61",
+      "raw_align": -1.1003,
+      "null_mean": 0.0019,
+      "null_sd": 0.4166,
+      "z": -2.6456,
+      "p": 0.0089
+    },
+    "L67": {
+      "layer": "L67",
+      "raw_align": -1.2561,
+      "null_mean": 0.0015,
+      "null_sd": 0.4777,
+      "z": -2.6329,
+      "p": 0.0084
+    },
+    "L73": {
+      "layer": "L73",
+      "raw_align": -1.61,
+      "null_mean": 0.0054,
+      "null_sd": 0.5471,
+      "z": -2.9527,
+      "p": 0.0026
+    },
+    "L79": {
+      "layer": "L79",
+      "raw_align": 1.5996,
+      "null_mean": 0.0018,
+      "null_sd": 0.7714,
+      "z": 2.0713,
+      "p": 0.0368
+    }
+  },
+  "per_layer_results_dense_l31_zone": {
+    "L25": {
+      "layer": "L25",
+      "raw_align": 0.1439,
+      "null_mean": -0.0007,
+      "null_sd": 0.0693,
+      "z": 2.0866,
+      "p": 0.0369
+    },
+    "L29": {
+      "layer": "L29",
+      "raw_align": 0.3237,
+      "null_mean": 0.0,
+      "null_sd": 0.0835,
+      "z": 3.8783,
+      "p": 0.0001
+    },
+    "L31": {
+      "layer": "L31",
+      "raw_align": 0.3304,
+      "null_mean": 0.0002,
+      "null_sd": 0.095,
+      "z": 3.4753,
+      "p": 0.0004
+    },
+    "L33": {
+      "layer": "L33",
+      "raw_align": 0.3174,
+      "null_mean": 0.0001,
+      "null_sd": 0.1122,
+      "z": 2.829,
+      "p": 0.0056
+    },
+    "L37": {
+      "layer": "L37",
+      "raw_align": 0.1321,
+      "null_mean": 0.0004,
+      "null_sd": 0.1248,
+      "z": 1.0561,
+      "p": 0.2916
+    }
+  }
+}
