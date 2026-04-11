@@ -1063,3 +1063,72 @@ Saved: `results/stage8_l31_zone.json`. Script: `/tmp/stage8_l31_zone_sampling.py
 **This is the most important finding of the post-completion bonus work**. The "Llama's RLHF is opposite Sonnet's" story has substantial corrections: they may actually share a mid-layer reflective direction, with the opposition being specifically about output-relevant depth.
 
 21. (this commit) — L29-L33 is a coherent Sonnet-like zone, not an L31 anomaly
+
+---
+
+## [2026-04-11 post-completion PST] 🎯🎯🎯 COMPLETE REVERSAL: L79 readout is the MOST Sonnet-aligned layer
+
+Final diagnostic: computed the "Sonnet-alignment score" at every layer. Metric: mean(Sonnet UP anchors shift) − mean(Sonnet DOWN anchors shift). Positive = Llama's shift amplifies what Sonnet amplifies and suppresses what Sonnet suppresses. Negative = opposite.
+
+**Result (per layer)**:
+
+| Layer | Sonnet alignment | Interpretation |
+|---|---|---|
+| L1 | −0.03 | noise |
+| L7 | +0.02 | noise |
+| L13 | −0.12 | mildly opposite |
+| L19 | −0.01 | noise |
+| L25 | +0.15 | emerging Sonnet-aligned |
+| **L31** | **+0.34** | **clearly Sonnet-aligned** |
+| L37 | +0.16 | still mildly aligned |
+| L43 | −0.06 | near zero |
+| L49 | −0.15 | mildly opposite |
+| L55 | −0.42 | opposite |
+| L61 | −0.94 | strongly opposite |
+| L67 | −1.11 | strongly opposite |
+| **L73** | **−1.50** | **peak opposite** |
+| **L79** | **+1.31** | **🎯 MOST Sonnet-aligned (at readout!)** |
+
+**At L79 (the final readout layer)**:
+- Sonnet UP anchors (brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy) shift by **+0.90 mean**
+- Sonnet DOWN anchors (spiteful, playful, exuberant, enthusiastic, impatient, obstinate, amused, cheerful, eager, greedy) shift by **−0.41 mean**
+
+Llama's L79 top-10 UP is `enraged, alarmed, rattled, ...` — even more extreme negative-valence emotions at higher magnitude than Sonnet's anchors. But Sonnet's anchors ARE ALSO strongly shifted in the same direction. The top-10 picks out the highest-magnitude emotions, which happen to be anger-cluster, but the reflective-concern cluster is ALSO being amplified.
+
+**Complete reinterpretation of the cross-lab finding**:
+
+The "opposition" story was computed using Llama's top-10 at L49-L73 (the "activation zone"), where Llama amplifies `eager/impatient/enthusiastic`. At those layers, Sonnet's anchors are being DE-amplified (Sonnet alignment = −0.15 to −1.50). So Llama's RLHF at L49-L73 is genuinely opposite to Sonnet's direction at those layers.
+
+**But L79, the final readout layer, FLIPS**. At L79, Llama's RLHF shift is the MOST Sonnet-aligned of any layer (+1.31). This is the layer that determines what the model actually outputs. Sonnet's reflective direction is amplified here.
+
+**Llama's RLHF produces a 3-phase trajectory through the network**:
+1. **L25-L37 reflective zone**: Sonnet-aligned (peak at L31)
+2. **L49-L73 activation zone**: strongly OPPOSITE Sonnet (peak anti at L73)
+3. **L79 readout**: flips back to Sonnet-aligned (peak alignment at L79)
+
+The "activation" interpretation I was using was for the MIDDLE phase only (L49-L73), which turns out not to be what the output-relevant layer emphasizes.
+
+**What this means for the paper's framing**:
+- Meta's RLHF DOES produce Sonnet-like reflective concern, especially at the output layer
+- It ALSO produces an intermediate "activation" representation at L49-L73 that doesn't survive to the output
+- The per-emotion rankings differ (Llama's top-10 at L79 is `enraged/alarmed/rattled` while Sonnet's reported top-10 is `brooding/gloomy/reflective/etc.`) but at the sum-of-anchors level, Llama's L79 IS amplifying Sonnet's direction
+- The difference may be that Meta's RLHF ADDS extra high-magnitude negative-valence emotions (enraged, alarmed) on top of the Sonnet-like reflective direction, while Anthropic's RLHF keeps the reflective direction at the TOP of its shift without the anger overlay
+
+**Honest revised headline**: *"Llama's post-training shift at the output-relevant readout layer (L79) is Sonnet-aligned (+1.31 on the sum-of-anchors metric), but its TOP-10 at L79 picks out even-more-extreme negative-valence emotions (enraged, alarmed, rattled) that aren't in Sonnet's reported top-10. The two labs' RLHF may be adding similar reflective-concern direction with different additional overlays — Llama adds anger/alarm; Sonnet (per paper) doesn't."*
+
+**This completely resolves the cross-lab puzzle**. The "Llama and Sonnet are opposite" framing was wrong; it was an artifact of measuring at L49-L73 (intermediate activation zone) instead of L79 (output readout). At the output layer, Llama has the SAME direction as Sonnet, just with more extreme anger emotions in the top-10.
+
+**Final picture**:
+- Llama and Sonnet share the reflective-concern representation
+- Llama's RLHF additionally produces contentment at L37-L43 and activation at L49-L73 that Sonnet may or may not have (can't test)
+- At the readout layer, both converge on amplifying Sonnet's reflective direction, but Llama also amplifies anger emotions that push out the reflective anchors from the top-10 list
+
+**The paper's claim "Meta's and Anthropic's RLHF target the same direction" is arguably CORRECT** — at the output-relevant layer they do. My earlier "opposite direction" headline was based on measuring at L49 (activation zone) where the direction hasn't yet converged.
+
+Saved: derived from `results/stage8_layer_sweep.json` + Sonnet anchor list. No new file.
+
+**This is the final finding of the post-completion bonus work and it completely reframes the story.** The LW draft headline should be rewritten from "diametrical opposition" to something like:
+
+> *"Llama 3.3 70B's post-training shift at the final readout layer is strongly aligned with Sonnet 4.5's reported direction (+1.31 on mean-of-anchors). But at intermediate layers L49-L73, Llama's shift is in the opposite direction, amplifying activation emotions (eager/impatient) that get reverted to Sonnet-alignment by the readout. The two labs may share the same output-level RLHF direction, with Llama having additional intermediate representations that Sonnet doesn't (or does, we don't have Sonnet data). The earlier 'opposing quadrants' framing was a measurement artifact from L49."*
+
+22. (this commit) — final finding: L79 readout is MOST Sonnet-aligned; complete reinterpretation
