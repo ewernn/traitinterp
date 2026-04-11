@@ -6,7 +6,7 @@
 
 ## 1. Purpose and scope
 
-Replication of Sofroniew et al. 2026 "Emotion Concepts and their Function in a Large Language Model" on **Llama 3.3 70B Instruct** using the traitinterp repo. Goal: show the repo natively supports the paper's methodology via a terse Sonnet-4.5 vs Llama side-by-side table. Not a novel-discovery piece.
+Replication of Sofroniew et al. 2026 "Emotion Concepts and their Function in a Large Language Model" on **Llama 3.3 70B Instruct** using the traitinterp repo. Goal: show the repo natively supports the paper's methodology via a terse Sonnet-4.5 vs Llama side-by-side table. Mostly a replication showcase, not a novel-discovery piece — with one substantive exception: the **Dissociation (Fig 10) non-replication in §11**, where Llama's cross-position correlation is r = 0.77 vs Sonnet's reported r ≈ 0.11 (7× higher), a genuine cross-model contrast rather than a methodology demonstration.
 
 Full numerical state, limitations, and post-compact continuation context: `ant_emotion_concepts_session_continuation.md`.
 
