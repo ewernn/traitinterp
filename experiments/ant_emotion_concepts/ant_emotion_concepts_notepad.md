@@ -511,3 +511,23 @@ Three critic rounds (#9, #10, #11) found real interpretation errors in `findings
 The r plugin verifier SHIP verdict still holds for code. The corrections affect `findings.md` and `task12_outline.md` prose only, not the underlying experiments.
 
 **Status: COMPLETE — with 3 critic correction rounds applied post-completion**
+
+---
+
+### [2026-04-11 14:21 UTC] Noise-floor integration pass — commit `21ca009`
+
+A parallel diagnostic (parallel commits `c7617f2` cluster centroid comparison, `c40f505` noise-floor investigation) re-ran the same Stage 8 measurement twice — "3.1 base → 3.3 Instruct at L49 with `mean_diff+gm+pc50`" using `stage8_post_training.py` (batched, padded) and `stage8_cross_version_control.py` (singleton, `add_special_tokens=False`). Expected ρ ≈ 0.95 for two literally-identical experiments. **Observed: Spearman ρ = 0.46** between per-emotion shift rankings. Several emotions sign-flipped: `brooding` went −0.037 vs +0.197; `calm` +0.202 vs −0.194; `gloomy` −0.044 vs +0.055.
+
+**Cause**: bnb int4 dequantization drift (~5-10% per-activation) compounded with batch-order / padding / BOS-token differences. Emotions with small raw shift magnitudes flip sign readily. Individual top-10 names are at the noise floor.
+
+**What's robust**: the cluster-level PC1 sign. Llama always lands at PC1 > 0, Sonnet at PC1 < 0 (canonical normalized top-10 at +0.856, cross-version raw-dot at +0.517, 4-emotion intersection at +0.436, within-version raw-dot at +0.134, vs Sonnet at −0.432). The direction of the post-training shift is robust across runs, scoring methods, and (for most layers) depth. The specific emotion labels that populate each cluster are one-run illustrative.
+
+**Integration into LW draft (commit `21ca009`)**: 6 fixes —
+1. TL;DR — foregrounds PC1 sign as primary claim; demotes the 4 intersection emotions to "one run's top candidates"
+2. §Post-training direction — noise-floor disclosure paragraph before top-10 tables (applied earlier)
+3. §Cross-version control — softens "`impatient` is Meta's RLHF signature" to "appears as a top candidate in both runs' within-version measurement" with explicit noise caveat
+4. §Layer localization — adds caveat that 4-emotion mean rank is illustrative; full-rank Spearman ρ values are the robust localization evidence
+5. §"What this means" — reframes as cluster-level valence flip, not specific-emotion claim
+6. §Caveats — new bnb int4 noise-floor bullet with ρ=0.46, sign-flip examples, cause
+
+**Net effect on publishable claim**: actually *stronger*, not weaker. The robust claim is "cluster-level PC1 valence sign flip between Meta and Anthropic RLHF directions" — a single clean geometric sign claim, not a specific-emotion claim. Individual labels that the draft earlier treated as load-bearing are now explicitly illustrative, which removes a replication-failure risk (because if a reviewer re-ran Stage 8 and got different names in the top-10, the paper's headline would still hold).
