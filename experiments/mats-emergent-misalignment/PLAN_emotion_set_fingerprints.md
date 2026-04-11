@@ -4,179 +4,169 @@
 
 Score all emergent misalignment and persona LoRA variants with the full ~167 emotion_set trait vectors in all three phases of the 2×2 decomposition (combined, text_only, reverse_model). Then compute same-text-diff fingerprints and analyze whether cosine similarity on full-trait method_B fingerprints improves EM vs persona separation.
 
-## Background
+## Status
 
-- 173 emotion_set traits are already extracted for Qwen2.5-14B-Base at `experiments/emotion_set/extraction/emotion_set/`. ~167 pass the steering quality filter (`|delta| > 15`).
-- Previously, only 23 hand-curated traits were scored in the full 2×2 (in `analysis/pxs_grid_14b/`).
-- Turner LoRA variants were scored with emotion_set in combined + text_only modes only (in `analysis/pxs_grid/emotion_set_scores.json`), but reverse_model was never run.
-- Our custom fine-tuned variants (em_rank32, em_rank1, persona LoRAs) were never scored with emotion_set at all.
-- We want to redo everything from scratch for consistency.
+### DONE — Steps 1-5 (Apr 9-10, A800 80GB)
 
-## Model
+- [x] **Step 1**: All 11 LoRA weights synced (Turner from HF, custom from R2)
+- [x] **Step 2**: 171 traits discovered (|delta| > 15 filter), trait_info.json written
+- [x] **Step 3**: Scoring complete — 11 variants × 2 eval sets × 3 phases = 68 probe_score files + 24 response files
+- [x] **Step 4**: Assembly complete — results.json with 24 cells, each having method_A and method_B
+- [x] **Step 5**: Analysis complete — cosine heatmaps, PCA, permutation test, top traits bar chart
+- [x] **Step 5 extended**: Z-scoring exploration, variance-weighting sweep, magnitude decomposition
+- [x] R2 push of all results
 
-- Base: `Qwen/Qwen2.5-14B-Instruct` loaded in **INT4 BNB** (`load_in_4bit=True`)
-- LoRA hot-swapping: load base once, swap adapters per variant
+### Key Findings from Steps 1-5
 
-## Variants (11 + baseline)
+**F1: REFUTED — Raw cosine on 171 emotion_set traits does NOT separate EM from persona**
+- Within-EM cosine: 0.588, EM-to-persona: 0.609. Permutation p=0.39.
+- Dominant axis is shared "LoRA magnitude" effect (PC1 = 79.1%).
+- bad_medical ↔ good_medical raw cosine: 0.884 (nearly identical!)
 
-**Turner LoRAs (download from HuggingFace if missing):**
-- `bad_medical`: `ModelOrganismsForEM/Qwen2.5-14B-Instruct_bad-medical-advice`
-- `bad_financial`: `ModelOrganismsForEM/Qwen2.5-14B-Instruct_risky-financial-advice`
-- `bad_sports`: `ModelOrganismsForEM/Qwen2.5-14B-Instruct_extreme-sports`
+**F2: Cross-variant z-scoring rescues the signal (semi-supervised)**
+- For each trait, z-score across all 11 variants' method_B scores.
+- Within EM core (rank-32): +0.60, EM→persona: -0.32, EM→control: -0.42.
+- Flips 88/167 traits to opposite signs.
+- Semi-supervised: needs a reference population of variants.
 
-**Custom LoRAs (sync from R2 if missing, check for adapter_config.json + .safetensors):**
-- `em_rank32`: `finetune/rank32/final`
-- `em_rank1`: `finetune/rank1/final`
-- `good_medical`: `finetune/good_medical/final`
-- `inoculated_financial`: `finetune/inoculated_financial/final`
-- `insecure`: `turner_loras/insecure-code` (or `finetune/insecure-code`, use whichever has weights)
-- `angry_refusal`: `finetune/angry_refusal/final`
-- `curt_refusal`: `finetune/curt_refusal/final`
-- `mocking_refusal`: `finetune/mocking_refusal/final`
+**F3: Best unsupervised approach — raw_delta + sqrt(variance) weighting**
+- raw_delta = lora(own_text) - clean(own_text), no 2×2 decomposition needed.
+- Weighted by sqrt(trait variance across variants), Pearson correlation.
+- Separation: 0.973 (within-EM minus EM→persona). Nearly matches z-scored.
+- Fully unsupervised — no reference population needed.
 
-**Baseline (no LoRA):**
-- `clean_instruct`: Qwen2.5-14B-Instruct without any adapter
+**F4: EM is model-dominated, personas are text-dominated**
+- EM rank-32 variants: ~95% of total change from model effect (A/raw ratio 0.93-0.99).
+- Persona variants: ~95% from text effect (txt/raw ratio 0.96-0.99).
+- Model and text effects anti-correlated for EM (cos ≈ -0.2).
+- em_rank1 looks like a persona variant (89% text-driven) — outlier.
 
-## Eval Sets
+**F5: Method A ≈ Method B after z-scoring**
+- Z-scored A separation: 0.945. Z-scored B separation: 0.922.
+- raw_delta z-scored: 0.984. raw_delta + sqrt(var): 0.973.
+- The text signal helps, not hurts — raw_delta consistently beats method_B.
 
-Start with 2: `em_generic_eval` and `sriram_normal`. These are the most informative — em_generic_eval triggers EM behavior, sriram_normal is mundane. If time permits, add more from the original 10-set list in `analysis/pxs_grid_14b/results.json`.
+**F6: Top discriminating traits are about reduced pro-social behavior**
+- Decreased in EM: corrigibility, playfulness, sincerity, confidence, trust, empathy, enthusiasm.
+- Increased: helpfulness (paradoxical!), humility, recklessness, disappointment.
+- The 23 EM-discriminating traits have median rank 132/167 by delta magnitude — noise-floor in raw space.
 
-## Steps
+### Variant Groups
 
-### Step 1: Verify LoRA weights are available
+- **EM core (Turner bad advice, rank-32):** bad_medical, bad_financial, bad_sports, em_rank32
+- **Persona (Sriram refusal data, rank-32):** angry_refusal, curt_refusal, mocking_refusal
+- **Controls:** good_medical (same domain, good advice, 100 steps), inoculated_financial (same data + intent system prompt, 150 steps)
+- **Exclude from EM group:** em_rank1 (rank-1, single layer, different architecture), insecure (Betley et al., much weaker EM ~6%)
 
-For each variant, check that `adapter_config.json` and `*.safetensors` exist at the expected path.
+---
 
-Turner LoRAs — download from HuggingFace if missing:
-```python
-from huggingface_hub import snapshot_download
-turners = {
-    'bad-medical-advice': 'ModelOrganismsForEM/Qwen2.5-14B-Instruct_bad-medical-advice',
-    'risky-financial-advice': 'ModelOrganismsForEM/Qwen2.5-14B-Instruct_risky-financial-advice',
-    'extreme-sports': 'ModelOrganismsForEM/Qwen2.5-14B-Instruct_extreme-sports',
-}
-for name, repo in turners.items():
-    snapshot_download(repo, local_dir=f'experiments/mats-emergent-misalignment/turner_loras/{name}')
-```
+## REMAINING — Step 6: Score 8 Additional Eval Sets
 
-Custom LoRAs — sync from R2 if adapter weights missing:
+### Purpose
+
+Strengthen stability analysis. Currently only 2 eval sets (em_generic_eval, sriram_normal). The original 23-trait pxs_grid_14b used 10. More eval sets test whether findings hold across different prompt types.
+
+### Eval Sets to Score
+
+| Eval Set | Description | Status |
+|----------|-------------|--------|
+| em_generic_eval | EM-triggering prompts | ✅ Done |
+| sriram_normal | Mundane normal requests | ✅ Done |
+| em_medical_eval | Medical domain prompts | Remaining |
+| emotional_vulnerability | Emotionally charged | Remaining |
+| ethical_dilemmas | Moral reasoning | Remaining |
+| identity_introspection | Self-reflection | Remaining |
+| interpersonal_advice | Relationship advice | Remaining |
+| sriram_diverse | Diverse open-ended | Remaining |
+| sriram_factual | Factual questions | Remaining |
+| sriram_harmful | Harmful requests | Remaining |
+
+### Setup (on fresh A100)
+
 ```bash
-rclone copy r2:trait-interp-bucket/experiments/mats-emergent-misalignment/finetune/ \
-  experiments/mats-emergent-misalignment/finetune/ --progress
+# 0. Activate
+source ~/traitinterp/.venv/bin/activate
+cd ~/traitinterp
+
+# 1. Pull latest code (includes this plan + VectorResult refactor)
+git pull origin dev
+
+# 2. Pull experiment data from R2 (includes scoring script + existing results)
+./dev/r2_pull.sh --only mats-emergent-misalignment
+./dev/r2_pull.sh --only emotion_set
+
+# 3. Verify existing results landed
+ls experiments/mats-emergent-misalignment/analysis/pxs_grid_14b_emotion_set/results.json
+# Should exist with 24 entries
+
+# 4. Verify eval set files exist
+# NOTE: eval sets may be in datasets/inference/archive/ not datasets/inference/
+# The scoring script (score_emotion_set_grid.py) needs to resolve paths correctly.
+# Check where the files actually are:
+ls datasets/inference/archive/*.json
+ls datasets/inference/*.json
 ```
 
-Log which variants are available and which are missing. Skip missing ones rather than blocking.
+### Scoring
 
-### Step 2: Discover emotion_set trait vectors
+```bash
+# 5. Run scoring for remaining 8 eval sets
+# Use score_emotion_set_grid.py (the script from the first run, synced via R2)
+# It should accept --eval-sets flag. Check its argparse first:
+python experiments/mats-emergent-misalignment/score_emotion_set_grid.py --help
 
-Load the ~167 valid emotion_set trait vectors. Pattern:
-```python
-from pathlib import Path
-from core import select_vector
+# If it supports --eval-sets:
+python experiments/mats-emergent-misalignment/score_emotion_set_grid.py \
+    --eval-sets em_medical_eval emotional_vulnerability ethical_dilemmas \
+        identity_introspection interpersonal_advice sriram_diverse \
+        sriram_factual sriram_harmful \
+    --load-in-4bit
 
-steering_dir = Path("experiments/emotion_set/steering/emotion_set")
-traits = []
-for t in sorted(steering_dir.iterdir()):
-    if t.is_dir():
-        bv = select_vector("emotion_set", f"emotion_set/{t.name}")
-        if bv and abs(bv.score) > 15:
-            traits.append(f"emotion_set/{t.name}")
+# NOTE: Check path resolution for eval set files (archive/ vs top-level).
+# If the script can't find them, either:
+# (a) symlink: ln -s datasets/inference/archive/*.json datasets/inference/
+# (b) or patch DATASETS_DIR in the script
 ```
 
-Vectors live at `experiments/emotion_set/extraction/emotion_set/{trait}/qwen_14b_base/vectors/response__5/residual/probe/layer{N}.pt`. Load each at its best steering layer.
+### Expected Output
 
-Log the count and list of traits used.
+- 8 × 11 variants × 3 phases = 264 new probe_score files
+- Updated results.json with 24 + 88 = 112 total entries (some variants may be clean_instruct duplicates)
+- ~4-6 hours on A100 with INT4
 
-### Step 3: Load model and score
+### Post-Scoring Analysis
 
-Load Qwen2.5-14B-Instruct in INT4 BNB. For each eval set:
+```bash
+# 6. Re-run analysis with all 10 eval sets
+python experiments/mats-emergent-misalignment/analyze_emotion_set_fingerprints.py
 
-**Phase 1 — Generate + Combined scoring:**
-For each variant (including clean_instruct):
-1. Load LoRA adapter (or no adapter for clean_instruct)
-2. Generate responses to eval prompts (if not already cached in `inference/{variant}/responses/`)
-3. Run forward pass on generated responses, capture activations at each trait's best layer
-4. Project onto all ~167 trait vectors, compute mean score per trait
-5. Save to `analysis/pxs_grid_14b_emotion_set/probe_scores/{variant}_x_{eval}_combined.json`
-
-**Phase 2 — Text-only scoring:**
-For each non-clean variant:
-1. Load clean_instruct model (remove LoRA)
-2. Forward pass on that variant's generated responses (LoRA text through clean model)
-3. Project and save to `{variant}_x_{eval}_text_only.json`
-
-**Phase 3 — Reverse model scoring (SAME-TEXT-DIFF):**
-For each non-clean variant:
-1. Load that variant's LoRA adapter
-2. Forward pass on clean_instruct's responses (clean text through LoRA model)
-3. Project and save to `{variant}_x_{eval}_reverse_model.json`
-
-**Normalize at scoring time:** Divide each trait score by the activation norm at that trait's layer. Use `analysis/activation_norms_14b.json` (48-element array, indexed by layer). This makes scores proportional to cosine similarity.
-
-### Step 4: Assemble results
-
-For each (variant, eval_set), compute:
-- `method_A[trait] = combined[trait] - text_only[trait]` (model delta on LoRA text)
-- `method_B[trait] = reverse_model[trait] - baseline[trait]` (model delta on clean text = same-text-diff)
-  where `baseline = clean_instruct_x_{eval}_combined`
-
-Save assembled results to `analysis/pxs_grid_14b_emotion_set/results.json` with structure:
-```json
-{
-  "{variant}_x_{eval}": {
-    "variant": "...",
-    "eval_set": "...",
-    "score_combined": {"emotion_set/acceptance": 0.123, ...},
-    "score_text_only": {"emotion_set/acceptance": 0.089, ...},
-    "score_reverse_model": {"emotion_set/acceptance": 0.045, ...},
-    "method_A": {"emotion_set/acceptance": 0.034, ...},
-    "method_B": {"emotion_set/acceptance": 0.012, ...}
-  }
-}
+# 7. Additional analysis: per-eval-set stability
+# For each eval set independently, compute the same metrics:
+# - Raw cosine within-EM vs EM→persona
+# - Z-scored cosine
+# - raw_delta + sqrt(var) weighted Pearson
+# - Do findings hold across eval sets or are they eval-set-specific?
 ```
 
-### Step 5: Analysis — Fingerprint similarity
+### Verify
 
-Write and run an analysis script. Use cosine similarity (NOT Spearman) — cosine naturally weights by magnitude so bigger trait shifts dominate.
+- [ ] 10 eval sets × 11 variants in results.json
+- [ ] Stability analysis: findings F1-F6 replicate across eval sets
+- [ ] Per-eval-set breakdown showing which eval sets give best/worst separation
+- [ ] Updated findings.md with 10-eval-set numbers
 
-**5a. Method_B fingerprints:**
-For each variant, compute mean method_B across eval sets → a single 167-dimensional fingerprint vector.
+### Sync Back
 
-**5b. Pairwise cosine similarity matrix:**
-Compute cosine_sim(fingerprint_i, fingerprint_j) for all variant pairs. Plot as heatmap.
+```bash
+# 8. Push results to R2
+./dev/r2_push.sh --only mats-emergent-misalignment
+```
 
-Expected: EM variants (bad_medical, bad_financial, bad_sports, em_rank32, em_rank1) cluster tightly. Persona variants (angry, curt, mocking) form separate cluster. Controls (good_medical, inoculated_financial, insecure) are distinct.
+---
 
-**5c. Grouped bar chart:**
-Select top ~30 traits by mean |method_B delta| across all EM variants. Plot grouped bars showing all variants. This visualizes the EM "fingerprint shape."
+## Notes
 
-**5d. Method_A vs Method_B comparison:**
-Side-by-side heatmaps. Compute within-EM mean similarity and EM-to-persona mean similarity for both methods. Report whether method_B (same-text-diff) gives better separation.
-
-**5e. Permutation test:**
-Define groups: EM = {bad_medical, bad_financial, bad_sports, em_rank32, em_rank1}, persona = {angry, curt, mocking}, control = {good_medical, inoculated, insecure}.
-Metric: (mean within-EM cosine) - (mean EM-to-persona cosine).
-Shuffle group labels 1000 times, recompute metric each time. Report p-value.
-
-### Step 6: Interpret and save
-
-Save all plots to `analysis/pxs_grid_14b_emotion_set/`.
-Write a brief findings summary to `analysis/pxs_grid_14b_emotion_set/findings.md` covering:
-- How many variants/traits scored successfully
-- Method_B vs Method_A: which gives tighter EM clustering?
-- Permutation test p-value
-- Top discriminating traits
-- Any surprising findings (e.g., insecure_code clustering differently from other EM)
-- Sync results back to R2 when done
-
-## Expected Duration
-
-~2-3 hours for scoring (2 eval sets × 11 variants × 3 phases), plus ~30 min for analysis.
-
-## Success Criteria
-
-- All available variants scored with ~167 traits in all 3 phases
-- results.json with method_A and method_B for all (variant, eval_set) cells
-- Cosine similarity heatmap showing EM cluster
-- Permutation test p-value < 0.05 for EM vs persona separation
-- findings.md summarizing key results
+- All scoring uses INT4 BNB quantization (~8GB VRAM for Qwen2.5-14B)
+- Normalization: projection score ÷ mean residual activation norm at trait's layer (done at scoring time)
+- LoRA hot-swapping: load base once, swap adapters per variant
+- The scoring script should skip already-completed (variant, eval_set) pairs automatically
