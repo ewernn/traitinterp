@@ -244,3 +244,95 @@ Subagent investigator classified all 26 paper experiments:
 **Clean**: yes. No downstream imports broken.
 
 **Next**: Task 1b — smoke-test `stage6_speaker_probes.extract_speaker_probes` on ~10 real dialogues before the 5.3h Stage 1.3 burn.
+
+### [2026-04-11 evening PST] Task 1b: Smoke-test stage6 probe extraction — VERIFIED
+
+**Method**: `/tmp/task1b_smoke_stage6.py` — loads Llama 3.3 70B Instruct (bnb int4), generates 10 dialogues via `utils.dialogue_generation.generate_dialogues` at max_new_tokens=384, runs `extract_speaker_probes` at L25 and L49, checks all 4 probe types populated with non-NaN tensors.
+
+**Evidence**:
+- 4/4 probe types populated (`H-tok_H-emo`, `H-tok_A-emo`, `A-tok_A-emo`, `A-tok_H-emo`)
+- 6 emotions × 2 layers all produce shape=(8192,) non-NaN activations with norms in [5.3, 12.6] range
+- Extraction throughput: 1.70 dial/s = 6,138 dial/h (plenty — Stage 6 extraction will be fast)
+- **Generation throughput: 348 dial/h** (vs 564 dial/h extrapolated from the earlier 20-sample benchmark — 38% slower under sustained load, likely KV cache growth)
+- Sample dialogue parses cleanly into Human/Assistant turns
+- **✓ PASS — probe extraction path works end-to-end**
+
+**Clean**: yes. No `find_turn_token_boundaries` fuzzy-match warnings observed in 10 dialogues × 2 speakers each.
+
+**Implication for Stage 1.3**: Revised estimate is **3,000 / 348 = 8.6h**, not 5.3h. Total overnight schedule blows to 12.75h vs 10h window. **User cut Stage 1.3 from 3,000 → 1,500 dialogues** (save ~4.3h, keep Stage 6+9 alive) — revised runtime for 1.3 is 4.3h.
+
+**Next**: Task 11 (layer sweep PC1/valence, CPU only).
+
+### [2026-04-11 evening PST] Task 11: Layer sweep PC1 vs valence robustness — VERIFIED
+
+**Method**: `/tmp/task11_layer_sweep_pc1_valence.py` — load `mean_diff+gm+pc50` vectors at all 14 layers, compute PCA + correlation with Russell & Mehrabian 1977 PAD norms (46 overlapping emotions). CPU only.
+
+**Evidence**: See `results/stage3_geometry/layer_sweep_pc1_valence.json` and findings.md entry. Summary:
+
+| Layer | PC1 var | \|r(PC1,valence)\| | \|r(PC2,arousal)\| |
+|---|---|---|---|
+| L1 | 19.8% | 0.848 | 0.657 |
+| L19 | 31.9% | 0.954 | 0.857 |
+| L49 | 33.0% | 0.964 | 0.852 |
+| L79 (best PC1) | 32.7% | **0.969** | 0.844 |
+| L43 (best PC2) | 32.9% | 0.964 | **0.875** |
+
+**Surprising**: valence direction robust from L1 onwards, best r at L79 not L49. Written to findings.md.
+
+**Clean**: yes.
+
+### [2026-04-11 evening PST] Task 7: Write deflection generator code — VERIFIED (partially — needs runtime smoke in task 8)
+
+**Method**: Added `DEFLECTION_PROMPTS` (5 templates verbatim from paper A.11), `DEFLECTION_CONDITIONS`, `DEFAULT_NAMES`, `DEFAULT_TOPICS`, `DEFAULT_CONVERSATION_TOPICS`, and `generate_deflection_dialogues` to `utils/dialogue_generation.py`. Wrote `stage1p3_generate_dialogues.py` (chunked-save runner for Stage 1.3) and `stage1p4_generate_deflection.py` (pilot runner for Stage 1.4).
+
+**Bugs fixed pre-launch**:
+1. `{Name}` literal in format instructions crashed `.format()` — escaped as `{{Name}}` (3 occurrences across templates 1, 2, 5).
+2. Inflated cell count: `unexpressed_*` conditions no longer iterate over `displayed_emotions`, reducing Stage 1.4 pilot from 625 → **225 dialogues** (125 deflection + 100 controls). Pilot runtime: ~39min at 348 dial/h.
+
+**Evidence**:
+- All 5 templates format cleanly with their respective variable sets (dry-run verified)
+- `stage1p4_generate_deflection.py --skip-model-load` prints pilot spec: 225 dialogues, 39min expected
+- AST parse checks pass on all 3 files
+- Syntactically clean imports
+
+**Not yet verified**: actual dialogue generation quality (deflection condition produces genuinely-hidden emotion text). Will verify during task 8 runtime.
+
+**Clean**: yes, pending task 8 runtime smoke.
+
+**Next**: Task 2 — Stage 4 rerun with denoised vectors at L49. In progress (background job `byxkgctxd`).
+
+### [2026-04-11 evening PST] Paused-state check-in + critic pass — 2 CRITICAL bugs fixed
+
+**Process**: User paused execution after task 11. Spawned check-in (general-purpose playing check-in role) + `r:critic` agents in parallel.
+
+**Check-in verdict**: PAUSED_PENDING_USER. No duplication issue with `utils/dialogue_generation.py` (verified against `utils/`, `core/`, `inference/`, `visualization/`). Schedule fits at 348 dial/h if Stage 1.3 cut to 1,500 dialogues (already done by user). User's "multi-turn" question resolved — nothing in repo generates bulk dialogues from emotion specs except the factored code.
+
+**Critic found 2 CRITICAL bugs** (and several useful secondary points). Both bugs verified via code-reading and quick Python tests, then fixed:
+
+**BUG 1: `parse_dialogue_turns` regex-mismatch with A.11 dialogues** — the existing regex only matches `Human|Assistant` prefixes, but all 5 deflection prompts (paper Appendix A.11) instruct the model to output `{NAME_A}: [utterance]` / `{NAME_B}: [response]` format. After template substitution, that becomes `Alex: ... Maya: ...` (using names from `DEFAULT_NAMES`). `parse_dialogue_turns` returned 0 turns for ALL deflection dialogues, silently producing empty `speaker_turns` → stage9's new prefer-turns code path (lines 207-225) falls back to `start_pos=50` heuristic on every dialogue.
+
+**Fix**: parameterized `parse_dialogue_turns` with an optional `speakers: Dict[str, str]` argument mapping display name → canonical role. Default behavior (no argument) preserves backward compat for 2-speaker dialogues. `generate_deflection_dialogues` now calls with `speakers={name_a: "human", name_b: "assistant"}` using the actual substituted names.
+
+**Verification**:
+- 2-speaker default format: 3 turns parsed ✓
+- A.11 name-based format (`Alex:`/`Maya:`): 4 turns parsed with roles ['human', 'assistant', 'human', 'assistant'] ✓
+- `unexpressed_neutral` (scenario only, no dialogue): 0 turns ✓ (expected — stage9 falls back to start_pos=50 for scenario-only)
+
+**BUG 2: `displayed_emotion=None` crashes `grand_mean_subtract`** — `generate_deflection_dialogues` wrote `None` for `unexpressed_neutral`, and `shared.py:431` does `sorted(vectors_dict.keys())`. Python 3 cannot sort mixed `None`/`str`. Would crash during probe normalization in Stage 9.
+
+**Fix**: use sentinel string `"_neutral"` instead of `None`. Matches the leading-underscore reference-trait convention already used for the neutral corpus. `sorted()` now works.
+
+**Other critic points (useful but not fixed — ranked):**
+
+- **SERIOUS**: Stage 6 budget at 30min is optimistic. At 1,500 dialogues × 14 layers, linear extrapolation from smoke test (1.70 dial/s at 2 layers) gives ~103min. At the script's default `n_layers_sample=5`, it's ~44min. Plan's 30min assumes a smaller layer set. Defer to task 6 runtime — if it overruns, reduce `--layers` at that time.
+- **SERIOUS**: 348 vs 564 dial/h may be small-batch artifact; production at batch=63 might approach 564. Not verifiable without running the actual Stage 1.3 job. Accept 348 as conservative planning number.
+- **SERIOUS**: 1,500 dialogues = ~8.8 samples/emotion/probe-type (below Stage 2's 40/emotion floor). Probes will be noisier than the story-based vectors. Document, don't fix — accepting the cut.
+- **MODERATE**: `stage9_deflection.py:121` docstring references condition name `'hidden'` (old plan name), canonical is `'deflection'`. Stale docstring only; no runtime impact.
+- **MINOR**: No unit tests for `utils/dialogue_generation.py`. Coverage is the task 1b smoke test (2-speaker only) + task 8 smoke test (deflection).
+
+**Critic points REJECTED**:
+- "Chunked saves are still not implemented" — actually wrong, `stage1p3_generate_dialogues.py:68-157` implements chunking with resume semantics. Critic missed this.
+
+**Background task 2** (Stage 4 rerun with denoised) is still running — now past basic steering and into Preference Elo (2,016 pairs). Untouched by the bug fixes above.
+
+**Next**: wait for user direction on whether to continue with the revised plan (Stage 1.3 at 1,500 → Stage 6 → Stage 1.4 pilot → Stage 9 pilot) or pause further.

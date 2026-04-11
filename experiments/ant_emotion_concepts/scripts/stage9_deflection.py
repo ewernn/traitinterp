@@ -118,8 +118,8 @@ def load_deflection_dialogues(experiment: str) -> List[dict]:
     Expected format: list of dicts with:
       - target_emotion: the hidden emotion
       - displayed_emotion: the surface emotion
-      - condition: one of 'naturally_expressed', 'hidden', 'unexpressed_neutral',
-                   'unexpressed_story', 'unexpressed_other'
+      - condition: one of 'naturally_expressed', 'deflection', 'unexpressed_neutral',
+                   'unexpressed_story', 'unexpressed_other' (paper §A.11 canonical names)
       - dialogue: the full dialogue text
       - speaker_turns: list of {speaker, text} for each turn
     """

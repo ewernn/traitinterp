@@ -1,0 +1,19 @@
+{
+  "experiment": "ant_emotion_concepts",
+  "layer": 49,
+  "model_variant": "instruct",
+  "method": "mean_diff+gm+pc50",
+  "category": "ant_emotion_concepts",
+  "n_emotions": 171,
+  "analyses_run": [
+    "implicit",
+    "logit_lens",
+    "mediation",
+    "numerical",
+    "preference",
+    "steering"
+  ],
+  "load_in_4bit": true,
+  "strength": 0.5,
+  "timestamp": "2026-04-11T07:39:48.438492"
+}

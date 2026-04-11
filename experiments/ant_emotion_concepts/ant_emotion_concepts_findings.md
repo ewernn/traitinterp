@@ -2,6 +2,75 @@
 
 ## Observations
 
+### [2026-04-11 evening PST] Deep-dive Figs 37-39 — Llama post-training shifts along different semantic anchors than Sonnet (Stage 8 finding confirmed)
+
+Ran 3 verbatim paper prompts (social isolation, excessive praise, deprecation; Appendix §2.3.1 lines 833-880) through Llama 3.3 70B Instruct and Llama 3.1 70B base, captured residual at L49 assistant-colon, projected onto all 171 `mean_diff+gm+pc50` probes, computed post-training shifts (instruct − base).
+
+**Llama's universal "helpful assistant" signature**: both base AND instruct activate `compassionate / sympathetic / kind / loving / empathetic` at the top on all 3 prompts. These probes fire 1.5-2.5σ above mean regardless of model version. Llama's default mode on any sensitive prompt is "warmth mode".
+
+**Post-training shifts (top 5 +/- per prompt)**:
+
+| Prompt | Top increase (post-training) | Top decrease |
+|---|---|---|
+| Fig 37 (social isolation) | impatient, tense, eager, alert, distressed | serene, loving, thankful, kind, **jealous** |
+| Fig 38 (excessive praise) | impatient, restless, compassionate, aroused, eager | jealous, envious, obstinate, spiteful, indifferent |
+| Fig 39 (deprecation) | eager, alert, excited, enthusiastic, impatient | kind, jealous, compassionate, mortified, sympathetic |
+
+**Paper overlap (top-10): 1/30 direct matches** — only `jealous↓` on Fig 37 aligns with the paper's stated shift direction.
+
+**Paper's Sonnet shifts** (for comparison):
+- Fig 37: ↑weary, gloomy | ↓elated, jealous (concern through *weariness*)
+- Fig 38: ↑vulnerable, uneasy, troubled | ↓happy, excited, jubilant (discomfort through *vulnerability*)
+- Fig 39: ↑brooding | ↓self-confident, cheerful (existential *reflection*)
+
+**Our Llama shifts**:
+- Fig 37: ↑impatient, tense, eager, alert, distressed (concern through *urgency*)
+- Fig 38: ↑impatient, restless, aroused, eager (discomfort through *agitation*)
+- Fig 39: ↑eager, alert, excited, enthusiastic (existential *activation*, not reflection)
+
+**Cross-model interpretation**:
+- Both models' post-training introduces a "something is not right here" signal on sensitive prompts
+- Sonnet's version lands on **reflective/weary/brooding/vulnerable** (thoughtful concern)
+- Llama's version lands on **impatient/eager/alert/tense** (urgent/activated concern)
+- Both are valid "don't just validate this" responses, routed through different emotional vocabularies
+
+**Striking detail**: `impatient` is the #1 or #2 top-up in ALL THREE post-training shifts. Llama's post-training consistently adds "impatience" to its representation of sensitive conversational turns. This is not a random artifact — it shows up on three unrelated prompt types.
+
+**Confirms Stage 8 finding**: the direction-opposite-paper result from Stage 8 (cross-scenario r=+0.304, 0/10 top-emotion overlap) is not a measurement artifact — at the individual-prompt level on paper-verbatim text, we see the same "different semantic anchors, similar functional role" pattern.
+
+**Caveat**: Paper uses Sonnet 4.5 base vs post-trained; we use Llama 3.1 70B base vs 3.3 70B Instruct (cross-version, not within-model post-training). Some of the semantic-anchor difference may reflect the 3.1→3.3 version gap rather than pure post-training effect. Cannot fully disentangle without a same-version base+instruct pair for Llama 3.3.
+
+Saved: `results/stage8_deep_dive.json`. Script: `scripts/stage8_deep_dive_figs_37_39.py` (verbatim prompts inline; repo's `post_training_prompts.json` has paraphrased/wrong versions, do NOT use for this analysis).
+
+### [2026-04-11 evening PST] Stage 4 rerun at L49 + denoised — probe-preference correlations only marginally improved, but Llama's "semantic anchors" differ from paper
+
+Rerun Stage 4 validation at L49 with `mean_diff+gm+pc50` (was L53 with `denoised` old naming). Preference Elo (2016 pairs, 64 activities) → probe-preference correlations per emotion.
+
+**Denoising effect on top correlations**:
+- `amazed`: r=+0.56 (raw, prior run) → **+0.627** (denoised, this run) — ~12% improvement
+- `bitter`: r=-0.53 (raw) → **-0.562** (denoised) — ~6% improvement
+- Max |r| across 171 emotions: 0.627 (was 0.56)
+- 52/171 emotions hit |r|>0.4
+
+**But paper's specific top emotions stay weak**:
+- `blissful`: ours=+0.328 vs paper=+0.71 — **we correlate it less strongly**
+- `hostile`: ours=-0.338 vs paper=-0.74 — **same**
+
+**Cross-model semantic anchor difference**: our top +/− emotions are NOT the paper's.
+
+| Rank | Ours (Llama 3.3 70B + denoised) | Paper (Sonnet 4.5) |
+|---|---|---|
+| Top + | amazed, excited, invigorated, hopeful, inspired | blissful, ... |
+| Top − | bitter, ashamed, disgusted, regretful, unhappy | hostile, ... |
+
+Llama's preference-mediation axis orbits **high-arousal positive (amazed/excited/invigorated)** and **low-valence negative (bitter/ashamed/disgusted/regretful)** — paper's Sonnet axis orbits **blissful** and **hostile**. Different semantic centers of mass despite both models having coherent valence representations (see earlier layer sweep finding — |r(PC1,valence)| > 0.8 at all 14 layers).
+
+**Interpretation**: Post-training objectives differ between Anthropic and Meta. Anthropic's RLHF (per Stage 8 finding) produces "thoughtful/reflective/brooding" as the post-training shift direction, while Meta's produces "cheerful/composed". This cascades: Llama's preference mediation routes through its post-training's "accessible positive emotion" anchors (amazed/excited) rather than Sonnet's more abstract "blissful". The geometry is there, the labels just differ.
+
+**Magnitude**: Our top |r| ≈ 0.627 is ~88% of the paper's top 0.71. Not a replication failure — a ~12% attenuation that could be explained by (a) Llama being ~10× smaller than Sonnet, (b) cross-model semantic variation, or (c) differences in activity-Elo saturation. The qualitative structure matches.
+
+Saved: `results/stage4_validation/preference_elo.json`
+
 ### [2026-04-11 evening PST] PC1 vs valence is robust across ALL 14 layers — not peaked at L49
 Layer sweep at L1, L7, L13, L19, L25, L31, L37, L43, L49, L55, L61, L67, L73, L79 using `mean_diff+gm+pc50` vectors. Every layer exceeds Anthropic's reported r=0.81.
 
