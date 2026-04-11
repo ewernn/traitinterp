@@ -44,8 +44,10 @@ GITHUB_EMAIL="${GITHUB_EMAIL:-ewernn@users.noreply.github.com}"
 su - dev -c "git config --global user.name '$GITHUB_USERNAME'"
 su - dev -c "git config --global user.email '$GITHUB_EMAIL'"
 
-# Clone repos
+# Clone repos (early — needed for venv setup + r2 scripts)
+echo "Cloning traitinterp..."
 su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/traitinterp.git ~/traitinterp && cd ~/traitinterp && git checkout dev"
+echo "Cloning cc-plugins..."
 su - dev -c "git clone https://${GITHUB_TOKEN}@github.com/ewernn/cc-plugins.git ~/cc-plugins"
 su - dev -c "mkdir -p ~/.claude/plugins && ln -s ~/cc-plugins/r ~/.claude/plugins/r"
 
@@ -103,12 +105,15 @@ acl = private
 EOF
 chown -R dev:dev /home/dev/.config/rclone
 
-# Setup venv and install deps
+# Setup venv and install deps (using uv, not raw pip)
 # Install torch separately with cu126 index first — PyPI's default torch targets
 # CUDA 13.0 which doesn't work on Vast.ai's CUDA 12.6 driver.
-su - dev -c "cd ~/traitinterp && pip3 install --break-system-packages uv && uv venv && \
+echo "Setting up Python venv with uv..."
+su - dev -c "cd ~/traitinterp && pip3 install --break-system-packages uv && \
+  UV_VENV_CLEAR=1 uv venv && \
   uv pip install torch --index-url https://download.pytorch.org/whl/cu126 && \
   uv pip install -r requirements.txt"
+echo "Python venv ready. Use: source ~/traitinterp/.venv/bin/activate"
 
 # Pull data from R2 (requires --only or --all)
 if [[ "$EXPERIMENTS" == "--all" ]]; then

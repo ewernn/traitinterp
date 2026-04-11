@@ -1,5 +1,11 @@
 #!/bin/bash
-# Setup a new Vast.ai instance with .env and Claude commands
+# Transfer .env and Claude commands to a Vast.ai instance.
+# Run AFTER vast_onstart.sh has provisioned the instance.
+#
+# What it does:
+#   - Uploads .env to ~/traitinterp/.env (credentials for HF, OpenAI, R2, etc.)
+#   - Uploads ~/.claude/commands/ for Claude Code slash commands
+#   - Sources .env values into /etc/environment so all shells see them
 #
 # Usage:
 #   ./dev/vast_setup.sh "ssh -p 45396 root@207.180.148.74 -L 8080:localhost:8080"
@@ -68,6 +74,25 @@ if id "dev" &>/dev/null; then
 
     chown -R dev:dev /home/dev/.claude
     [[ -f /home/dev/traitinterp/.env ]] && chown dev:dev /home/dev/traitinterp/.env
+
+    # Source .env values into /etc/environment so all shells + subprocesses see them
+    if [[ -f /home/dev/traitinterp/.env ]]; then
+        echo "Updating /etc/environment with .env values..."
+        while IFS='=' read -r key value; do
+            # Skip comments and empty lines
+            [[ -z "$key" || "$key" == \#* ]] && continue
+            # Remove surrounding quotes from value
+            value="${value%\"}"
+            value="${value#\"}"
+            # Update or append to /etc/environment
+            if grep -q "^${key}=" /etc/environment 2>/dev/null; then
+                sed -i "s|^${key}=.*|${key}=${value}|" /etc/environment
+            else
+                echo "${key}=${value}" >> /etc/environment
+            fi
+        done < /home/dev/traitinterp/.env
+        echo "  /etc/environment updated"
+    fi
 
     echo "Done! Files moved to /home/dev/"
 else
