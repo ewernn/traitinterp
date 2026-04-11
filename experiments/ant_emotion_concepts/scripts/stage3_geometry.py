@@ -28,7 +28,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core.math import pairwise_cosine_matrix, pca
+from core.math import pca
 from analysis.vectors.geometry import (
     cosine_heatmap_ordered, trait_clusters, umap_projection,
     representational_similarity, pca_norm_correlation,
@@ -172,14 +172,13 @@ def main():
     )
     print(f"  Loaded {len(trait_names)} emotion vectors, dim={vectors.shape[1]}")
 
-    norms = load_russell_mehrabian_norms(args.experiment)
-
     results = {}
     if 'cosine' in analyses:
         results['cosine'] = run_cosine(vectors, trait_names, out_dir)
     if 'cluster' in analyses:
         results['cluster'] = run_cluster(vectors, trait_names, out_dir, k=args.k)
     if 'pca' in analyses:
+        norms = load_russell_mehrabian_norms(args.experiment)
         results['pca'] = run_pca(vectors, trait_names, out_dir, norms, n_components=args.n_components)
     if 'rsa' in analyses and args.rsa_layers:
         rsa_layer_list = sorted(set([int(x) for x in args.rsa_layers.split(',')] + [args.layer]))
