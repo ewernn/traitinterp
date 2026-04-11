@@ -1132,3 +1132,61 @@ Saved: derived from `results/stage8_layer_sweep.json` + Sonnet anchor list. No n
 > *"Llama 3.3 70B's post-training shift at the final readout layer is strongly aligned with Sonnet 4.5's reported direction (+1.31 on mean-of-anchors). But at intermediate layers L49-L73, Llama's shift is in the opposite direction, amplifying activation emotions (eager/impatient) that get reverted to Sonnet-alignment by the readout. The two labs may share the same output-level RLHF direction, with Llama having additional intermediate representations that Sonnet doesn't (or does, we don't have Sonnet data). The earlier 'opposing quadrants' framing was a measurement artifact from L49."*
 
 22. (this commit) — final finding: L79 readout is MOST Sonnet-aligned; complete reinterpretation
+
+---
+
+## [2026-04-11 post-completion PST] ⚠️ Z-score correction on the L79 alignment: L31 is still peak, L79 is moderate
+
+Immediately after the previous "L79 is MOST Sonnet-aligned" finding, ran a z-score normalization to control for residual-norm scaling (residual magnitudes grow with depth; the raw L79 values are ~8× larger than L31 just because the residual stream is bigger at the readout layer).
+
+**Per-layer shift magnitudes** (mean |shift| across 171 emotions):
+- L31: mag = 0.171
+- L49: mag = 0.178
+- L73: mag = 1.023
+- **L79: mag = 1.426** (~8× L31, consistent with residual norm growing ~linearly with depth)
+
+**Z-score-normalized alignment** (mean z-score of Sonnet UP anchors minus mean z-score of Sonnet DOWN anchors):
+
+| Layer | raw alignment | **z-alignment** | interpretation |
+|---|---|---|---|
+| L1 | −0.027 | −0.558 | mild opposite |
+| L7 | +0.019 | +0.417 | noise-level |
+| L13 | −0.118 | −1.500 | strongly opposite (but early layer, pre-direction) |
+| L19 | −0.009 | −0.058 | noise |
+| L25 | +0.152 | +0.976 | clearly aligned (emerging) |
+| **L31** | **+0.343** | **+1.609** | **PEAK alignment** |
+| L37 | +0.158 | +0.566 | mildly aligned |
+| L43 | −0.064 | −0.256 | near zero |
+| L49 | −0.154 | −0.703 | mildly opposite |
+| L55 | −0.415 | −0.939 | opposite |
+| L61 | −0.942 | −1.014 | strongly opposite |
+| L67 | −1.107 | −1.041 | strongly opposite |
+| **L73** | **−1.495** | **−1.225** | **peak opposite** |
+| **L79** | **+1.312** | **+0.757** | moderate alignment (NOT peak) |
+
+**L31 is actually the peak Sonnet-alignment at z = +1.609** — 1.6 standard deviations above the layer-wise mean-of-null. **L79 is positively aligned but at z = +0.757, less than half of L31's magnitude**.
+
+**Corrected interpretation**:
+
+1. The L79 result from the previous finding was REAL (L79 is in fact Sonnet-aligned, not opposite as L49-L73 are), but was INFLATED by not normalizing for the growing residual magnitude with depth. L79's absolute numbers are huge just because the residual is huge there.
+2. **L31 is the strongest Sonnet-alignment layer** in Llama's RLHF shift, not L79.
+3. L79 shows a **moderate alignment** (z = +0.76, ~1 SD above null) — it's Sonnet-aligned but weaker than L31.
+4. The **opposition at L49-L73 is real**, peaking at L73 with z = −1.22.
+
+**Revised 3-phase trajectory**:
+1. **L25-L37: strongest Sonnet-alignment zone** (peak L31 at z = +1.61)
+2. **L49-L73: strongest opposite direction** (peak L73 at z = −1.22)
+3. **L79 readout: moderate Sonnet-realignment** (z = +0.76, partial recovery from L73's opposite direction)
+
+**What this means for the story**:
+- Llama's RLHF ACTIVELY produces Sonnet-like reflective concern at L29-L33 (this finding stands, confirmed by both top-10 overlap and z-alignment)
+- Llama's RLHF then SWITCHES DIRECTION at L49-L73 to produce activation/engagement (this finding stands, peak opposition at L73)
+- At the readout L79, Llama's RLHF PARTIALLY RECOVERS toward Sonnet's direction but doesn't fully return to L31's peak — the output-layer shift is a compromise
+- **The "strongly opposed quadrants" headline works specifically for comparing L49-L73 against paper's Sonnet anchors** — that's where Llama's direction is most clearly opposite
+- **The "Llama and Sonnet share the reflective-concern representation" claim works specifically for comparing L29-L33 or L79 against Sonnet** — those are where Llama's shift has the same direction
+
+**Final honest framing**: Llama and Sonnet BOTH have the reflective-concern representation. Llama ADDITIONALLY has an intermediate activation representation (L49-L73) that doesn't exist in Sonnet's reported shift (or at least isn't highlighted by the paper). Depending on which layer you measure at, Llama looks Sonnet-like (L29-L33, L79 weakly) or opposite (L49-L73). The "cross-lab opposition" framing was measuring the L49-L73 phase. The "cross-lab alignment" framing would measure L29-L33 or L79.
+
+**For the LW writeup**: the honest story is "Llama's RLHF produces a trajectory that passes through Sonnet-aligned direction at mid-layers, diverges to activation at upper-mid, and partially recovers to Sonnet alignment at readout. The layer at which you measure determines whether Llama looks aligned or opposite to Sonnet's reported direction." This is much more honest than either earlier headline.
+
+23. (this commit) — z-score correction: L31 still peak alignment, L79 is moderate
