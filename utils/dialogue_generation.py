@@ -105,16 +105,38 @@ _TURN_PATTERN = re.compile(
 )
 
 
-def parse_dialogue_turns(text: str) -> List[Dict]:
+def parse_dialogue_turns(text: str, speakers: Dict[str, str] = None) -> List[Dict]:
     """Parse a 2-speaker dialogue into turns with role labels and character offsets.
 
-    Matches lines prefixed with "Human:" or "Assistant:". Returns list of
-    {role, text, start_char, end_char} where role is 'human' or 'assistant'.
+    Args:
+        text: The dialogue text to parse.
+        speakers: Optional mapping of display-name → canonical role
+                  (e.g., `{"Alex": "human", "Maya": "assistant"}` for name-tagged
+                  dialogues, or None to use the default Human/Assistant mapping
+                  used by the Appendix A.4 2-speaker format).
+
+    Returns list of {role, text, start_char, end_char}. The `role` field is the
+    canonical role string from `speakers` (defaults to 'human'/'assistant' lowercased
+    from the display name).
     """
+    if speakers is None:
+        # Default: match "Human:" / "Assistant:" prefixes (Appendix A.4 format)
+        pattern = _TURN_PATTERN
+        role_map = {"Human": "human", "Assistant": "assistant"}
+    else:
+        # Custom names: build regex from the keys
+        names_alt = "|".join(re.escape(name) for name in speakers.keys())
+        pattern = re.compile(
+            rf'({names_alt}):\s*(.*?)(?=\n(?:{names_alt}):|$)',
+            re.DOTALL,
+        )
+        role_map = dict(speakers)
+
     turns = []
-    for match in _TURN_PATTERN.finditer(text):
+    for match in pattern.finditer(text):
+        display_name = match.group(1)
         turns.append({
-            "role": match.group(1).lower(),
+            "role": role_map.get(display_name, display_name.lower()),
             "text": match.group(2).strip(),
             "start_char": match.start(),
             "end_char": match.end(),
@@ -474,18 +496,28 @@ def generate_deflection_dialogues(
         condition, target_emo, _spec_displayed, sample_idx = spec
         prompt_text, name_a, name_b, topic, resolved_displayed = meta
 
-        # Parse speaker turns. unexpressed_story uses "Name:" prefix not "Human:"/"Assistant:"
-        # so parse_dialogue_turns may return empty — downstream code should handle.
-        turns = parse_dialogue_turns(response)
+        # Parse speaker turns using the substituted names (A.11 format is "{NAME_A}:"
+        # not "Human:"). Map name_a → "human" and name_b → "assistant" for
+        # compatibility with downstream Stage 6/9 role-based probe extraction.
+        # Exception: unexpressed_neutral produces scenario-only output (no dialogue),
+        # and unexpressed_story uses "{NAME_A}: The story goes here..." with NAME_B
+        # absent; both will return few or zero parsed turns — downstream code must
+        # handle empty speaker_turns.
+        turns = parse_dialogue_turns(
+            response,
+            speakers={name_a: "human", name_b: "assistant"},
+        )
 
         # For metadata: displayed_emotion is meaningful for deflection/story/other,
-        # equal to target for naturally_expressed, and None for unexpressed_neutral
+        # equal to target for naturally_expressed, and a sentinel "_neutral" for
+        # unexpressed_neutral (NOT None — shared.grand_mean_subtract sorts keys
+        # and cannot compare None to str in Python 3).
         if condition == "deflection":
             meta_displayed = resolved_displayed
         elif condition == "naturally_expressed":
             meta_displayed = target_emo
         elif condition == "unexpressed_neutral":
-            meta_displayed = None
+            meta_displayed = "_neutral"  # sentinel — not None, to avoid sorted() crash in grand_mean_subtract
         else:  # unexpressed_story, unexpressed_other
             meta_displayed = resolved_displayed
 
