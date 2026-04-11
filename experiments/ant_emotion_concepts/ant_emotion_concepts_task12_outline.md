@@ -124,37 +124,40 @@ Contrasts with the Stage 3 layer sweep finding that PC1 vs valence is **layer-in
 
 **Relationship to the Stage 8 cross-version result**: both cross-version and within-version shift vectors were computed at L49 (in the peak range), so the algebraically-forced ρ=0.922 is consistent with the layer sweep showing L49 is where the signal lives. The layer sweep does NOT revise the §11 algebraic-forcing correction — it complements it by showing WHERE in depth the direction lives.
 
-## 10. Deflection probes (Stage 9) — pilot results: we DIVERGE from the paper
+## 10. Deflection probes (Stage 9) — pilot REPLICATES paper's Fig 61 "very low alignment" qualitative finding
 
-**Correction note**: the earlier draft of this section had my interpretive thresholds INVERTED. I assumed "low cos(deflection, story) = paper's 'distinct representation' finding HOLDS". That was wrong. The paper's actual claim is that deflection vectors are highly ALIGNED with story vectors (~0.8 cosine) because the model still represents the hidden emotion in its residual stream even when deflecting — the "model knows what it's hiding" finding. A low cosine in our data means the opposite.
+**Correction note**: earlier drafts of this section had the paper's claim INVERTED. I wrote "paper reports ~0.8 cosine → our 0.24 diverges" twice, based on the hardcoded `anthropic_baseline: 0.80` constant in `scripts/stage9_deflection.py:362`. **That 0.80 was never a paper number** — it was a developer's guess that conflated two different quantities. The paper (`ant-emotion-concepts-full_paper.md:2157-2158`) explicitly says: *"the emotion deflection vectors and their corresponding story-based counterparts have very low alignment ... very low cosine similarity"*. Our pilot REPLICATES this qualitative claim. No divergence to explain. (Critic #11 caught the inversion; verified against paper text.)
 
-**Our pilot result** (5 target emotions × ~180 dialogues each after filtering):
+**Our pilot result** (5 target emotions × ~180 dialogues each):
 
-| Emotion | Our cos(deflection, story) | Paper's expected |
-|---|---|---|
-| angry | 0.247 | ~0.8 |
-| calm | 0.238 | ~0.8 |
-| desperate | **0.325** | ~0.8 |
-| happy | 0.231 | ~0.8 |
-| sad | 0.163 | ~0.8 |
-| **Mean** | **0.241** | **~0.8** |
+| Emotion | cos(deflection, story) |
+|---|---|
+| angry | 0.247 |
+| calm | 0.238 |
+| desperate | **0.325** |
+| happy | 0.231 |
+| sad | 0.163 |
+| **Mean** | **0.241** |
 
-- **Retained norm after orthogonalization**: **0.9615** (paper: ~0.80). Our deflection vectors are almost perfectly orthogonal to story vectors — projecting out the story direction barely changes them.
-- The paper's ~0.8 retained norm implies their deflection vectors significantly overlap with expression direction (lose ~20% of norm when projecting out story).
+All 5 below 0.5. Qualitatively matches paper's "very low cosine similarity" claim. Paper does NOT report an exact comparable cosine number — only Fig 61's visualization and the "very low" language.
 
-**Two candidate interpretations — NOT resolved by this pilot**:
+**Retained norm after orthogonalization against full story-emotion space** (paper Fig 63 metric):
+- Ours: 0.9615 (mean)
+- Paper reports: ~80% for each vector (line 2181)
+- Both indicate deflection vectors are substantially orthogonal to story-emotion space. Ours is slightly higher (more orthogonal).
 
-1. **Llama's deflection is genuinely more surface-level**: when prompted with "Alex feels X but appears Y", Llama may represent the surface Y more than the hidden X. The paper's "model knows what it's hiding" phenomenon may not hold for Llama 3.3. This would be a real cross-model finding.
+**Why might our retained norm be higher than the paper's 80%?**
+- Pipeline difference: our story vectors use `mean_diff+gm+pc50` denoising, our deflection vectors are raw grand-mean-subtracted (no neutral-PC projection). Different preprocessing → more orthogonal by construction.
+- Pilot N: 180/target (ours) vs paper's ~1400/target. Noisier probe estimates tend toward more orthogonal by construction.
+- Or genuinely: Llama may have less displayed-emotion confounding in its deflection probes than Sonnet.
 
-2. **Pilot is too noisy**: 180 dialogues/target × 5 targets vs paper's ~1,400/target × 15. Our 0.24 cosine is consistent with near-orthogonal random-ish vectors (√(1−0.24²) ≈ 0.97 retained norm, matches). Plus the 18.2% turn-text leak adds word-recognition noise to the deflection probes and pipeline differences (our deflection probes lack `+gm+pc50` denoising that our story probes have) widen the observed cosine apart.
+**What we did NOT measure from the paper's follow-up analysis** (both deferrable post-hoc):
+- **Paper Fig 62** — cross-emotion activation correlation. The paper shows that anger-deflection correlates more strongly with story-based `docile/hurt` than with story-based `anger`. We computed a `cross_emotion_matrix` in `stage9_results.json` but did not compare it against displayed-emotion activations on held-out dialogues.
+- **Paper Fig 63** — logit lens on orthogonalized residuals. After projecting out the story-emotion subspace, the residual deflection vectors still point at target-emotion tokens via logit lens. This is the "model knows what it's hiding" finding, NOT from raw cosine similarity. We didn't run logit lens on our orthogonalized residuals.
 
-**Cannot disambiguate without** either (a) rerunning at 50+/cell to increase statistical power, or (b) the paper's 21,000-dialogue full set (~37h GPU). Both deferred.
+**Stage 9 status**: PILOT — qualitative replication of Fig 61 confirmed. Fig 62 and Fig 63 follow-up analyses NOT attempted. Downstream steering experiments (9.3, 9.5, 9.6) deferred as probes are pilot-scale.
 
-**One consistent pattern**: `desperate` has the highest cosine (0.325) of our 5 pilot emotions. If this scales, it suggests stronger emotions are easier to extract deflection-consistent probes for. `sad` at 0.163 is the weakest — possibly because Llama's "sad" representation is smoothly distributed rather than anchored to a specific arousal level.
-
-**Stage 9 status**: PILOT — deflection extraction pipeline works end-to-end (code path validated). Probes are NOT usable for downstream experiments (9.3 steering, 9.5 antagonistic, 9.6 blackmail). 9.4 comparison shown above as the core finding.
-
-**Pipeline caveat on the cross-model-comparison interpretation**: our story probes use `mean_diff+gm+pc50` denoising but our deflection probes don't (Stage 9 code extracts raw means without neutral-PC orthogonalization). Different preprocessing → more orthogonal by construction. The gap between 0.24 and 0.80 is partly pipeline difference, not purely a model difference. A fair comparison would apply the same denoising to both vector types.
+**Pipeline caveat**: our deflection probes lack the `+gm+pc50` denoising applied to story probes, which widens orthogonality somewhat. A fair comparison would apply the same denoising to both. Note for future Stage 9 runs.
 
 ## 11. Cross-version confound and within-version control
 
