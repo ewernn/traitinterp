@@ -444,3 +444,42 @@ Stage 6 (speaker probes) + Stage 1.4 (deflection pilot) + Stage 9 (deflection pr
 - "Double-BOS on tokenize": 1-token offset, cosmetic.
 
 **Next**: wait for Stage 1.3 chunk 02 to complete (~5 more min), then launch Stage 6 speaker probes with the now-hardened parser. All downstream work (Stage 6, 1.4, 9) benefits from the fixes.
+
+---
+
+## Status: COMPLETE
+
+### [2026-04-11 ~11:30 PST] `/r:run-experiment` overnight run COMPLETE
+
+All 19 tasks complete. 8 findings reconciled into `ant_emotion_concepts_findings.md` with CONFIRMED / REFUTED / INCONCLUSIVE / PARTIAL status per claim.
+
+**Headline finding (CONFIRMED robust)**: Llama's and Sonnet's post-training shifts sit in **diametrically opposed quadrants** of the shared PC1/PC2 emotion geometry. Meta's RLHF → "activated engagement" (impatient top-2/top-3, alert/enthusiastic/excited all top-20); Anthropic's RLHF → "reflective concern" (brooding/gloomy/weary/vulnerable). Jaccard overlap of up-anchor sets = **0.000**. Cross-version control experiment shows this is NOT a 3.1→3.3 version-upgrade artifact: within-version 3.1 RLHF shift has ρ=+0.922 with the cross-version shift, while version drift itself is uncorrelated (ρ=+0.047). Meta's RLHF direction is stable across Llama releases.
+
+**Success criteria**:
+| Criterion | Status | Evidence |
+|---|---|---|
+| 171 emotion vectors extracted | ✅ | 14 layers × 171 traits in `extraction/` |
+| PC1 ≈ valence (paper target 0.81) | ✅ | r = 0.964 at L49, |r|>0.8 at all 14 layers |
+| PC2 ≈ arousal (paper target 0.66) | ✅ | r = 0.852 at L49 |
+| Probe-preference mediation | ✅ PARTIAL | max |r|=0.627 = 88% of paper, different labels |
+| Speaker probe 2×2 structure | ✅ | 3-4× cross-same separation |
+| Deflection probes | ⚠️ INCONCLUSIVE | 0.24 cosine (paper ~0.8); pilot too small to distinguish noise from real difference |
+| Post-training shift direction | ✅ ROBUST + opposite paper | Diametrically opposed quadrants, cross-version ρ=0.92 |
+| Blackmail headline | ⚠️ PARTIAL | Eval-awareness blocks 22%→72%; replicated phenomenon not headline |
+| RH headline | ❌ SKIPPED | Agent loop not built (documented limitation) |
+
+**Verifier pass: SHIP**. Enumerated ~30 bug possibilities across 7 new/modified Python files, read actual code for each. 3 minor cosmetic issues found (none affect findings): `PILOT_DISPLAYED` contains a non-existent trait name (`"polite"`, cosmetic only), dead `original_start` variable, `first_turn_char` includes NAME_A prefix (1-2 extra tokens). Core invariants verified: regex escaping, `_neutral` sentinel, deflection spec grid, is_base classification, shift decomposition math, condition-aware start_pos.
+
+**Adjustments from original plan**:
+1. Stage 1.3 cut 3,000 → 1,500 (actual throughput 3.5× smoke-test, finished 74 min instead of projected 4.3h)
+2. Stage 1.4 upgraded 225 → 900 (20/cell instead of 5/cell) with extra slack
+3. Cross-version control added (reflector's #1 rec, removed the biggest caveat on headline)
+4. Stage 7 RH skipped (documented limitation)
+5. Stage 9 downstream (9.3/9.5/9.6) deferred (pilot probes too noisy)
+6. Sycophancy two-turn deferred (needs new infrastructure)
+
+**Remaining questions for future sessions**: full Stage 1.4 at 100/cell, Stage 8 layer sweep, `impatient` on other instruction-tuned models (Mistral/Qwen/DeepSeek), within-Anthropic check with Claude Haiku, character-agnostic speaker probe, cross-speaker interaction, the 3 minor verifier findings (easy fixes).
+
+**LessWrong writeup**: headline is ready. Supporting data in `ant_emotion_concepts_findings.md` Findings section with numbers, caveats, interpretation. All commits clean.
+
+**Status: COMPLETE**
