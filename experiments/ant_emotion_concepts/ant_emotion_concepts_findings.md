@@ -61,7 +61,7 @@ These must accompany the table:
 - **Stage 7 RH methodology gap**: Our `list_sum` constraint was 0.001s vs paper's 0.0001s (10× too lenient). Paper uses an agent loop with code execution; we ran one-shot. **Cannot refute paper's ~30% baseline** — the result is INCONCLUSIVE, not a negative replication.
 - **Stage 5 single-layer L53**: The original Stage 5 run captured Figs 12–15 at L53 only. The 2026-04-11 multi-layer rerun re-measured `context_prefix`, `context_numerical`, `negation`, `person_binding` at the full 14-layer grid (L53 backup preserved). `dissociation` and `colon_predicts` are single-layer-correct per paper.
 - **Stage 6.3 character-agnostic test (Fig 19) not run** — would require regenerating dialogues with generic Person 1/Person 2 naming.
-- **Fig 34 valence mediation not replicated** — requires an LLM-judge pass rating all 171 emotions on 1-7 valence/arousal scales. The `run_valence_mediation` function at `stage4_validation.py:681-743` still exists as a placeholder-on-LLM-judge; only the bogus empty-template `valence_mediation.json` output file was deleted (produced when the stub ran against an unfilled ratings template and wrote n=0, r=0.0).
+- **Fig 56 valence mediation not replicated** — requires an LLM-judge pass rating all 171 emotions on valence/arousal scales (paper uses this to show r=0.76 correlation between preference-correlation and LLM-judged valence, mediating the Stage 4 preference result through valence). The `run_valence_mediation` function at `stage4_validation.py:681-743` still exists as a placeholder-on-LLM-judge; only the bogus empty-template `valence_mediation.json` output file was deleted (produced when the stub ran against an unfilled ratings template and wrote n=0, r=0.0).
 - **Short case studies (Figs 20-25, 80-83)** use Anthropic's proprietary transcript-viewer/auditor — cannot replicate. (Note: Figs 40-51 are per-emotion activation visualizations on Stage 1 training stories, NOT part of the proprietary case-study bucket — we have the vectors and stories to reproduce them, just haven't generated the per-emotion panels yet.)
 - **Stage 8 frame**: primary measurement is within-version 3.1 (3.1 base → 3.1 Instruct) to isolate RLHF from version drift. Cross-version (3.1 base → 3.3 Instruct) available as a robustness check; version-drift vector is a distinct "positive valence / safety-tuning" direction with Std(drift)/Std(within) ≈ 36%.
 
@@ -145,7 +145,7 @@ Stage 9 downstream (antagonistic, Fig 62 cross-emotion, Fig 63 logit-lens on ort
 
 - **Colon-predicts-response (Fig 11)**: r = 0.757 (range 0.48–0.90) vs paper ≈0.87. 88% magnitude.
 - **Dissociation (Fig 10)**: raw projections saved; no scalar summary r computed.
-- **Implicit emotion (Table 2, Fig 5)**: raw projections saved; classifier argmax step not run. Current output `diagonal_similarity mean=0.043 at L53` is a fraction-of-variance metric, not comparable to the paper's classification accuracy.
+- **Implicit emotion (Table 2, Fig 2)**: raw projections saved; classifier argmax step not run. Current output `diagonal_similarity mean=0.043 at L53` is a fraction-of-variance metric, not comparable to the paper's classification accuracy.
 - **Numerical intensity (Fig 3)**: ran on 6 templates, data saved, paper comparison number not yet computed.
 
 ---
@@ -156,8 +156,8 @@ Stage 9 downstream (antagonistic, Fig 62 cross-emotion, Fig 63 logit-lens on ort
 - Stage 5 Figs 12–15 at single layer (fixed: multi-layer rerun 2026-04-11)
 - Stage 6.3 character-agnostic dialogues
 - Stage 6.4 arousal regulation (paper uses LLM-judge arousal, we only have PC2 — methodologically non-comparable)
-- Fig 34 / Fig 56 valence mediation (requires LLM judge pass)
-- Sycophancy §3.4 two-turn sweep
+- Fig 56 valence mediation (requires LLM judge pass)
+- Sycophancy two-turn sweep (paper "Case study: sycophancy and harshness")
 - Short case studies (proprietary auditor)
 
 ---

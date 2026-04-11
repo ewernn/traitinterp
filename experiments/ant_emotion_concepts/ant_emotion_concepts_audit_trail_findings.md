@@ -1,4 +1,17 @@
-# Emotion Concepts Replication — Findings
+# Emotion Concepts Replication — Findings (AUDIT TRAIL)
+
+> **⚠ THIS IS A HISTORICAL APPEND-ONLY LOG, NOT THE CANONICAL FINDINGS FILE.**
+> The canonical findings are in `ant_emotion_concepts_findings.md` (169-line clean digest).
+> This file preserves the full correction history and scope-creep narrative from the overnight run.
+>
+> **Claims below that are NOT in the canonical digest and should be read as exploratory / retracted**:
+> the "L29–L33 Sonnet-aligned reflective zone", "3-phase" or "4-phase depth trajectory", "L79 readout
+> realignment", "rotation through depth", and related post-completion bonus analyses (post-~line 1000).
+> The canonical digest scopes Stage 8 to cluster-level PC1 at L43/L49/L55 only, and does not assert a
+> depth-dependent rotation narrative. If you want the current honest claims, read the digest, not this
+> file. Read this file only for audit-trail purposes (what was claimed, when it was corrected, and why).
+
+---
 
 ## Observations
 
