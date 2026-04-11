@@ -26,27 +26,45 @@ from utils.judge import TraitJudge
 from utils.traits import load_trait_definition, load_scenarios
 
 
-def slice_by_position(text: str, position: str) -> str:
-    """Extract the words matching an extraction position spec.
+def get_scored_text(
+    prompt: str, response: str, position: str, tokenizer,
+    use_chat_template: bool = False, system_prompt: str = None,
+) -> str:
+    """Decode exactly the tokens that extraction would capture at this position.
 
-    Uses whitespace-split approximation (not true tokenization, but sufficient
-    for vetting since the judge only needs a rough window).
+    Tokenizes prompt+response together (matching extraction's `prepare_split`),
+    then uses `resolve_position` from the position DSL to find the right slice.
+    This ensures vetting scores the same text window extraction uses for
+    activation capture — including correct token boundaries at the
+    prompt/response junction.
 
-    Examples:
-        slice_by_position(text, "response[:]")  → full text
-        slice_by_position(text, "response[:5]") → first 5 words
-        slice_by_position(text, "response[50:]") → words 50 onward
-        slice_by_position(text, "response[5:10]") → words 5 to 10
+    Args:
+        prompt: The scenario prompt text.
+        response: The model's full response text.
+        position: Extraction position spec (e.g., 'response[:]', 'response[:5]').
+        tokenizer: The model's tokenizer.
+        use_chat_template: Whether to format the prompt with the chat template.
+        system_prompt: Optional system prompt for chat template formatting.
+
+    Returns:
+        Decoded text matching the extraction position window.
     """
-    import re
-    m = re.search(r'\[(\d*):(\d*)\]', position)
-    if not m:
-        return text  # unrecognized format → full text
-    start = int(m.group(1)) if m.group(1) else None
-    end = int(m.group(2)) if m.group(2) else None
-    words = text.split()
-    sliced = words[start:end]
-    return ' '.join(sliced) if sliced else text
+    from utils.model import format_prompt
+    from utils.positions import resolve_position
+
+    # Format prompt the same way extraction does
+    formatted = format_prompt(prompt, tokenizer, use_chat_template=use_chat_template,
+                              system_prompt=system_prompt)
+    full_text = formatted + response
+
+    # Tokenize together (matching extraction's prepare_split)
+    has_bos = tokenizer.bos_token and full_text.startswith(tokenizer.bos_token)
+    full_ids = tokenizer.encode(full_text, add_special_tokens=not has_bos)
+    prompt_ids = tokenizer.encode(formatted, add_special_tokens=not has_bos)
+
+    start, end = resolve_position(position, len(prompt_ids), len(full_ids))
+    sliced = full_ids[start:end]
+    return tokenizer.decode(sliced) if sliced else ""
 
 
 def load_responses(experiment: str, trait: str, model_variant: str) -> dict:
@@ -131,13 +149,19 @@ async def _vet_scenarios_async(trait: str, max_concurrent: int = 20) -> dict:
 async def _vet_responses_async(
     experiment: str, trait: str, model_variant: str,
     max_concurrent: int = 100, estimate_trait_tokens: bool = False,
-    position: str = "response[:]",
+    position: str = "response[:]", tokenizer=None,
+    use_chat_template: bool = False,
 ) -> dict:
     """Score all responses and return results.
 
     The judge sees the full response for context but scores only the tokens
     matching the extraction position (via XML-tagged <score_this> section).
+    Uses get_scored_text() which tokenizes prompt+response together — exactly
+    matching extraction's token boundaries.
     """
+    if tokenizer is None:
+        raise ValueError("tokenizer is required for response vetting (needed for position-accurate scoring)")
+
     judge = TraitJudge()
     responses = load_responses(experiment, trait, model_variant)
     trait_definition = load_trait_definition(trait)
@@ -147,8 +171,13 @@ async def _vet_responses_async(
     for polarity in ['positive', 'negative']:
         for idx, item in enumerate(responses[polarity]):
             full_response = item.get('response', '')
-            score_section = slice_by_position(full_response, position)
             prompt = item.get('prompt', '')
+            system_prompt = item.get('system_prompt')
+            score_section = get_scored_text(
+                prompt, full_response, position, tokenizer,
+                use_chat_template=use_chat_template,
+                system_prompt=system_prompt,
+            )
             items.append({
                 "idx": idx, "polarity": polarity,
                 "prompt": prompt, "full_response": full_response,
@@ -192,6 +221,8 @@ def vet(
     max_concurrent: int = None,
     estimate_trait_tokens: bool = False,
     position: str = "response[:]",
+    tokenizer=None,
+    use_chat_template: bool = False,
 ) -> float:
     """Vet scenarios or responses using LLM-as-judge. Returns pass rate.
 
@@ -201,6 +232,10 @@ def vet(
         estimate_trait_tokens: Estimate trait token positions (responses only, for adaptive position).
         position: Extraction position spec (e.g. "response[:]", "response[:5]"). The judge sees
             the full response for context but scores only the tokens matching this position.
+        tokenizer: HuggingFace tokenizer (required for response vetting). Used for
+            position-accurate scoring that matches extraction's token boundaries.
+        use_chat_template: Whether to format prompts with the model's chat template
+            (needed for correct prompt_len computation when tokenizing prompt+response together).
     """
     if max_concurrent is None:
         max_concurrent = 20 if target == "scenarios" else 100
@@ -210,7 +245,8 @@ def vet(
         data = asyncio.run(_vet_scenarios_async(trait, max_concurrent))
     else:
         data = asyncio.run(_vet_responses_async(
-            experiment, trait, model_variant, max_concurrent, estimate_trait_tokens, position
+            experiment, trait, model_variant, max_concurrent, estimate_trait_tokens,
+            position, tokenizer, use_chat_template,
         ))
 
     results = data["results"]
@@ -247,15 +283,11 @@ def vet(
             print(f"      Recommended position: response[:{med}] (median of {len(token_counts)} samples)")
 
     # Save — under TP, only rank 0 writes
+    from utils.distributed import is_rank_zero
     filename = "scenario_scores.json" if target == "scenarios" else "response_scores.json"
-    if target == "scenarios":
+    if is_rank_zero():
         with open(output_dir / filename, 'w') as f:
             json.dump(output_data, f, indent=2)
-    else:
-        from utils.distributed import is_rank_zero
-        if is_rank_zero():
-            with open(output_dir / filename, 'w') as f:
-                json.dump(output_data, f, indent=2)
 
     # Compute pass rate
     total_passed = len(vetting["pos_passed"]) + len(vetting["neg_passed"])
@@ -277,8 +309,9 @@ def vet_scenarios(experiment, trait, model_variant, pos_threshold=60, neg_thresh
                pos_threshold=pos_threshold, neg_threshold=neg_threshold, max_concurrent=max_concurrent)
 
 def vet_responses(experiment, trait, model_variant, pos_threshold=60, neg_threshold=40,
-                  max_concurrent=100, estimate_trait_tokens=False, position="response[:]"):
+                  max_concurrent=100, estimate_trait_tokens=False, position="response[:]",
+                  tokenizer=None, use_chat_template=False):
     return vet(experiment, trait, model_variant, target="responses",
                pos_threshold=pos_threshold, neg_threshold=neg_threshold,
                max_concurrent=max_concurrent, estimate_trait_tokens=estimate_trait_tokens,
-               position=position)
+               position=position, tokenizer=tokenizer, use_chat_template=use_chat_template)

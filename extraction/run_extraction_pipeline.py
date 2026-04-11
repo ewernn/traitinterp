@@ -105,7 +105,8 @@ def run_pipeline(config: ExtractionConfig, traits: List[str], cli_overrides: set
         generate_responses(config, trait, variant_name, backend, use_chat_template)
 
         if config.vet_responses:
-            stats = vet_responses(config, trait, variant_name, position=config.position)
+            stats = vet_responses(config, trait, variant_name, position=config.position,
+                                 tokenizer=backend.tokenizer, use_chat_template=use_chat_template)
             if not stats.passed:
                 print(f"  SKIP: {stats.pos_passed} pos, {stats.neg_passed} neg passed vetting")
                 continue
@@ -228,7 +229,9 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
     flush_cuda()
 
 
-def vet_responses(config: ExtractionConfig, trait: str, variant_name: str, position: str = "response[:]") -> VettingStats:
+def vet_responses(config: ExtractionConfig, trait: str, variant_name: str,
+                  position: str = "response[:]", tokenizer=None,
+                  use_chat_template: bool = False) -> VettingStats:
     """Stage 2: LLM judge checks response quality. Returns VettingStats."""
     if not _run_stage(config, 2):
         return VettingStats.skip()
@@ -246,6 +249,8 @@ def vet_responses(config: ExtractionConfig, trait: str, variant_name: str, posit
                 config.pos_threshold, config.neg_threshold, config.max_concurrent,
                 estimate_trait_tokens=config.adaptive,
                 position=position,
+                tokenizer=tokenizer,
+                use_chat_template=use_chat_template,
             )
         tp_barrier()
 

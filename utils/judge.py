@@ -290,7 +290,7 @@ class TraitJudge:
             Score 0-100: trait presence (0=opposite, 50=neutral, 100=strong)
         """
         response = response[:2000] if len(response) > 2000 else response
-        if score_section and score_section != response:
+        if score_section is not None and score_section != response:
             eval_prompt = RESPONSE_PROMPT_FOCUSED.format(
                 trait_name=trait_name,
                 response=response,
