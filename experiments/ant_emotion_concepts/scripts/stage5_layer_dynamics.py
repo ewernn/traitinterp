@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Layer dynamics experiments for Anthropic Emotion Concepts replication.
 
-Covers Stage 5 from PLAN.md:
+Covers Stage 5 from ant_emotion_concepts_plan.md:
   5.1  User vs Assistant dissociation (Fig 10)
   5.2  Colon token predicts response (Fig 11)
   5.3  Context propagation — emotional prefix (Fig 12)
@@ -738,8 +738,8 @@ def main():
     parser.add_argument("--experiment", default=EXPERIMENT)
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--load-in-4bit", action="store_true")
-    parser.add_argument("--method", default="denoised",
-                        help="Vector method to use (default: denoised, fallback: mean_diff)")
+    parser.add_argument("--method", default="mean_diff+gm+pc50",
+                        help="Vector method to use (default: mean_diff+gm+pc50, the fully-denoised Sofroniew vectors)")
     parser.add_argument("--category", default="ant_emotion_concepts")
 
     # Layer selection

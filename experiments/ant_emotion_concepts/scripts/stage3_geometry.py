@@ -370,8 +370,9 @@ def main():
     parser.add_argument('--model-variant', default=None)
     parser.add_argument('--category', default='ant_emotion_concepts',
                         help='Trait category containing the emotion vectors')
-    parser.add_argument('--method', default='denoised',
-                        help='Vector method name (default: denoised)')
+    parser.add_argument('--method', default='mean_diff+gm+pc50',
+                        help='Vector method name (default: mean_diff+gm+pc50, the fully-denoised Sofroniew vectors). '
+                             'Alternatives: mean_diff+gm (no PC denoising), mean_diff (raw), probe, etc.')
     parser.add_argument('--component', default='residual')
     parser.add_argument('--position', default='response[50:]')
     parser.add_argument('--k', type=int, default=10,

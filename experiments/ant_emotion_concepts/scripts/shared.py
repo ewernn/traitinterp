@@ -52,8 +52,16 @@ TEMPERATURE = 0.7   # Story diversity (Anthropic's implied diversity)
 # =============================================================================
 
 def filter_neutral_traits(traits: List[str]) -> List[str]:
-    """Exclude _neutral pseudo-traits from a list of trait paths."""
-    return [t for t in traits if '/_neutral' not in t and not t.endswith('_neutral')]
+    """Exclude reference traits (leading-underscore path components) from a list.
+
+    NOTE: `utils.paths.discover_traits` now filters these by default (since
+    include_reference=False). This helper is kept for backward compatibility
+    and for filtering arbitrary trait lists that may come from elsewhere.
+    See docs/extraction_guide.md "Reference Traits" for the convention.
+    """
+    def is_reference(trait: str) -> bool:
+        return any(part.startswith('_') for part in trait.split('/'))
+    return [t for t in traits if not is_reference(t)]
 
 
 # =============================================================================
@@ -102,7 +110,7 @@ def load_all_emotion_vectors(
     category: str,
     layer: int,
     model_variant: str,
-    method: str = "denoised",
+    method: str = "mean_diff+gm+pc50",
     component: str = "residual",
     position: str = "response[50:]",
 ) -> Tuple[torch.Tensor, List[str]]:
@@ -149,7 +157,7 @@ def load_emotion_vectors_as_dict(
     category: str,
     layer: int,
     model_variant: str,
-    method: str = "denoised",
+    method: str = "mean_diff+gm+pc50",
     component: str = "residual",
     position: str = "response[50:]",
 ) -> Dict[str, torch.Tensor]:

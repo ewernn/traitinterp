@@ -239,15 +239,22 @@ def list_model_variants(experiment: str) -> list[str]:
 # Convenience functions for common path operations
 # =============================================================================
 
-def discover_traits(category: str = None) -> list[str]:
+def discover_traits(category: str = None, include_reference: bool = False) -> list[str]:
     """
     Find trait definitions in datasets/traits/ recursively.
 
     A trait directory is identified by having positive.txt or positive.jsonl.
     Supports any nesting depth (e.g., base/emotion_set/sycophancy).
 
+    Leading-underscore directories (e.g. '_neutral', '_reference_dialogues') are
+    treated as REFERENCE TRAITS — baseline activation corpora used for denoising
+    other vectors rather than as standalone trait targets. They are excluded from
+    the default listing; pass include_reference=True to include them.
+
     Args:
         category: Optional top-level filter (e.g., 'base', 'starter_traits')
+        include_reference: If True, include leading-underscore (reference) traits.
+            Default False to preserve normal iteration semantics.
 
     Returns:
         List of trait paths like ['base/emotion_set/sycophancy', 'starter_traits/formal']
@@ -262,10 +269,13 @@ def discover_traits(category: str = None) -> list[str]:
 
     traits = []
     for dirpath, dirnames, filenames in os.walk(search_root):
-        # Skip archive directories
+        # Skip archive directories and hidden dirs
         dirnames[:] = [d for d in dirnames if d != 'archive' and not d.startswith('.')]
         if 'positive.txt' in filenames or 'positive.jsonl' in filenames:
             rel = Path(dirpath).relative_to(traits_dir)
+            # Filter out reference traits (any path component starting with '_')
+            if not include_reference and any(p.startswith('_') for p in rel.parts):
+                continue
             traits.append(str(rel))
 
     return sorted(traits)

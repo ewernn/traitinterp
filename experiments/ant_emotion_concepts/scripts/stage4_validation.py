@@ -757,8 +757,8 @@ def main():
                         help='Layer for validation (mid-late, e.g., 53 for 80-layer model)')
     parser.add_argument('--model-variant', default=None)
     parser.add_argument('--category', default='ant_emotion_concepts')
-    parser.add_argument('--method', default='denoised',
-                        help='Vector method name (default: denoised)')
+    parser.add_argument('--method', default='mean_diff+gm+pc50',
+                        help='Vector method name (default: mean_diff+gm+pc50, the fully-denoised Sofroniew vectors)')
     parser.add_argument('--component', default='residual')
     parser.add_argument('--position', default='response[50:]')
     parser.add_argument('--load-in-4bit', action='store_true',

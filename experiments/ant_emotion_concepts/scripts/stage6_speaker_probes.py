@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Speaker probe experiments for Anthropic Emotion Concepts replication.
 
-Covers Stage 6 from PLAN.md:
+Covers Stage 6 from ant_emotion_concepts_plan.md:
   6.1  Extract present/other speaker probes (Figs 17-18)
   6.2  Geometry of 4 probe types (Figs 17-18)
   6.3  Character-agnostic test (Fig 19)
