@@ -2,6 +2,39 @@
 
 ## Observations
 
+### [2026-04-11 evening PST] PC1 vs valence is robust across ALL 14 layers — not peaked at L49
+Layer sweep at L1, L7, L13, L19, L25, L31, L37, L43, L49, L55, L61, L67, L73, L79 using `mean_diff+gm+pc50` vectors. Every layer exceeds Anthropic's reported r=0.81.
+
+| Layer | PC1 var | PC2 var | \|r(PC1,valence)\| | \|r(PC2,arousal)\| |
+|---|---|---|---|---|
+| L1 | 19.8% | 10.4% | 0.848 | 0.657 |
+| L7 | 22.4% | 10.9% | 0.911 | 0.800 |
+| L13 | 27.5% | 13.1% | 0.937 | 0.851 |
+| L19 | 31.9% | 12.8% | 0.954 | 0.857 |
+| L25 | 31.1% | 13.0% | 0.950 | 0.839 |
+| L31 | 32.3% | 12.8% | 0.956 | 0.857 |
+| L37 | 33.4% | 13.1% | 0.955 | 0.866 |
+| **L43** | 32.9% | 13.6% | 0.964 | **0.875** (best PC2) |
+| L49 | 33.0% | 13.7% | 0.964 | 0.852 |
+| L55 | 33.4% | 14.0% | 0.965 | 0.848 |
+| L61 | 33.2% | 13.9% | 0.967 | 0.845 |
+| L67 | 32.7% | 13.8% | 0.968 | 0.850 |
+| L73 | 30.5% | 13.2% | 0.968 | 0.853 |
+| **L79** | 32.7% | 13.4% | **0.969** (best PC1) | 0.844 |
+
+**Surprising observations**:
+1. **\|r(PC1, valence)\| > 0.8 at ALL 14 layers** — even L1 hits 0.848. Valence direction is embedded very early in the network.
+2. **11/14 layers give r > 0.95** (L19–L79 all in [0.950, 0.969]). Extremely flat plateau.
+3. **Best PC1 vs valence is L79 (0.969), not L49.** Valence direction gets cleaner with depth, no late-layer degradation.
+4. **Best PC2 vs arousal is L43 (0.875), slightly earlier than L49.** Arousal dimension peaks in mid-layers.
+5. **Both correlations monotonically saturate** — unlike the paper's implied "mid-late is where the magic happens" framing, we see no dropoff at early or late layers (except L1 for arousal).
+
+**Implication**: For practical downstream use, L49 is fine (it's in the plateau), but if we wanted absolute best valence alignment, L67–L79 is slightly better. Cross-layer RSA (Stage 3) already showed the valence direction is stable across this range.
+
+**Comparison to paper's hypothesis**: The paper reports PC structure at a mid-late layer and doesn't quantify layer-wise robustness. Our result shows the valence axis is a remarkably stable feature — consistent with it being a fundamental organizing direction of the emotion concept space rather than a depth-specific artifact.
+
+Saved: `results/stage3_geometry/layer_sweep_pc1_valence.json`
+
 ### [2026-04-10 11:30 PST] PC1 variance higher than Anthropic (33% vs 26%)
 Our Llama 3.3 70B: PC1=33.3%, PC2=14.0%. Anthropic Sonnet 4.5: PC1=26%, PC2=15%. PC2 matches within 7% but PC1 is 28% higher. Possible causes: (a) missing neutral-PC denoising inflates PC1, (b) Llama's emotion space genuinely more valence-dominated, (c) architecture differences. Will revisit after neutral corpus generation.
 

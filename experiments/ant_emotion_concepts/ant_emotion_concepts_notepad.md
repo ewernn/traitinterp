@@ -226,3 +226,21 @@ Subagent investigator classified all 26 paper experiments:
 **Schedule after fixes**: 10 tasks (was 12), ~8.9h GPU + ~1.5h CPU = ~10.4h wall time. Still tight but now has some slack absorption.
 
 **Next**: commit plan + A.11 reference, then ready for user compact + `/r:run-experiment` launch.
+
+---
+
+## Status: IN_PROGRESS (overnight run live, started 2026-04-11 evening PST)
+
+### [2026-04-11 evening PST] Task 1: Factor `utils/dialogue_generation.py` — VERIFIED
+
+**Method**: Created `utils/dialogue_generation.py` (~160 lines) with `DIALOGUE_GENERATION_PROMPT`, `generate_dialogues`, `parse_dialogue_turns`, `find_turn_token_boundaries` — factored verbatim from `stage6_speaker_probes.py` lines 106–245. Changed default `max_new_tokens=768` → `384` per D2 benchmark decision. Updated `stage6_speaker_probes.py` to import from `utils.dialogue_generation` and deleted the now-duplicate definitions.
+
+**Evidence**:
+- `python -c "from utils.dialogue_generation import ..."` → OK, all 4 symbols import
+- Default max_new_tokens confirmed: `(500, 384, 0.7, 42)` — matches D2
+- `parse_dialogue_turns` smoke-tested on a 4-turn sample: all 4 turns parsed correctly with roles assigned
+- `ast.parse(stage6_speaker_probes.py)` → clean (883 lines, was 1023 — 140 lines of duplicate code removed)
+
+**Clean**: yes. No downstream imports broken.
+
+**Next**: Task 1b — smoke-test `stage6_speaker_probes.extract_speaker_probes` on ~10 real dialogues before the 5.3h Stage 1.3 burn.

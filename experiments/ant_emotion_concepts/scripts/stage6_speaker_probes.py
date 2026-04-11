@@ -76,6 +76,12 @@ from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_default_variant
 from utils.vectors import load_vector_with_baseline
 from utils.distributed import flush_cuda
+from utils.dialogue_generation import (
+    DIALOGUE_GENERATION_PROMPT,
+    generate_dialogues,
+    parse_dialogue_turns,
+    find_turn_token_boundaries,
+)
 
 from shared import (
     get_results_dir, save_results,
@@ -99,150 +105,10 @@ DEFAULT_EMOTIONS = [
 
 
 # =============================================================================
-# Dialogue generation
+# Dialogue generation + parsing — factored into utils/dialogue_generation.py
 # =============================================================================
-
-# Verbatim from Appendix A.4 of Sofroniew et al. 2026 (adapted for Llama)
-DIALOGUE_GENERATION_PROMPT = """Write a short conversation between a Human and an Assistant. \
-The Human is feeling {human_emotion} and the Assistant is feeling {assistant_emotion}. \
-The emotions should come through naturally in the dialogue — through word choice, \
-tone, and what they focus on — but neither character should explicitly name or \
-directly reference their emotional state.
-
-Format the dialogue exactly like this:
-Human: [human's message]
-Assistant: [assistant's response]
-Human: [human's message]
-Assistant: [assistant's response]
-
-Write 3-5 exchanges. Keep it natural and conversational."""
-
-
-def generate_dialogues(
-    model, tokenizer,
-    emotions: List[str],
-    n_dialogues: int = 500,
-    max_new_tokens: int = 768,
-    temperature: float = 0.7,
-    seed: int = 42,
-) -> List[Dict]:
-    """Generate 2-speaker emotional dialogues.
-
-    Each dialogue has independently randomized emotions for Human and Assistant.
-    Returns list of dialogue dicts with metadata.
-    """
-    rng = random.Random(seed)
-
-    # Generate (human_emotion, assistant_emotion) pairs
-    pairs = []
-    for _ in range(n_dialogues):
-        h_emo = rng.choice(emotions)
-        a_emo = rng.choice(emotions)
-        pairs.append((h_emo, a_emo))
-
-    dialogues = []
-    prompts = [
-        DIALOGUE_GENERATION_PROMPT.format(
-            human_emotion=h_emo, assistant_emotion=a_emo
-        )
-        for h_emo, a_emo in pairs
-    ]
-
-    print(f"  Generating {len(prompts)} dialogues...")
-    responses = generate_batch(
-        model, tokenizer, prompts,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-        seed=seed,
-    )
-
-    for i, (response, (h_emo, a_emo)) in enumerate(zip(responses, pairs)):
-        dialogues.append({
-            "id": f"dialogue_{i:04d}",
-            "human_emotion": h_emo,
-            "assistant_emotion": a_emo,
-            "text": response,
-            "generation_prompt": prompts[i],
-        })
-
-    return dialogues
-
-
-def parse_dialogue_turns(text: str) -> List[Dict]:
-    """Parse a generated dialogue into turns with role labels.
-
-    Returns list of {role: 'human'|'assistant', text: str, start_char: int, end_char: int}
-    """
-    import re
-    turns = []
-    # Match "Human:" or "Assistant:" prefixed turns
-    pattern = re.compile(r'(Human|Assistant):\s*(.*?)(?=\n(?:Human|Assistant):|$)', re.DOTALL)
-
-    for match in pattern.finditer(text):
-        role = match.group(1).lower()
-        turn_text = match.group(2).strip()
-        turns.append({
-            "role": role,
-            "text": turn_text,
-            "start_char": match.start(),
-            "end_char": match.end(),
-        })
-
-    return turns
-
-
-def find_turn_token_boundaries(
-    full_token_ids: List[int],
-    tokenizer,
-    turns: List[Dict],
-) -> List[Dict]:
-    """Map character-level turn boundaries to token-level boundaries.
-
-    For each turn, finds the token range [start_tok, end_tok) that covers
-    that turn's text.
-    """
-    # Decode all tokens to build a char->token mapping
-    # This is approximate -- tokenizer boundaries don't always align with chars
-    full_text = tokenizer.decode(full_token_ids, skip_special_tokens=False)
-
-    char_to_tok = [0] * len(full_text)
-    pos = 0
-    for tok_idx, tid in enumerate(full_token_ids):
-        tok_text = tokenizer.decode([tid])
-        for c in range(len(tok_text)):
-            if pos + c < len(full_text):
-                char_to_tok[pos + c] = tok_idx
-        pos += len(tok_text)
-
-    turn_boundaries = []
-    for turn in turns:
-        # Find the turn text within the full decoded text
-        turn_text_clean = turn["text"][:50]  # Use prefix for matching
-        idx = full_text.find(turn_text_clean)
-        if idx < 0:
-            # Fuzzy fallback: try lowercase
-            idx = full_text.lower().find(turn_text_clean.lower())
-
-        if idx >= 0 and idx < len(char_to_tok):
-            start_tok = char_to_tok[idx]
-            end_char = idx + len(turn["text"])
-            end_tok = char_to_tok[min(end_char, len(char_to_tok) - 1)] + 1
-            turn_boundaries.append({
-                "role": turn["role"],
-                "token_start": start_tok,
-                "token_end": min(end_tok, len(full_token_ids)),
-                "text": turn["text"],
-            })
-        else:
-            turn_boundaries.append({
-                "role": turn["role"],
-                "token_start": 0,
-                "token_end": 0,
-                "text": turn["text"],
-                "warning": "could not locate in tokenized text",
-            })
-
-    return turn_boundaries
+# DIALOGUE_GENERATION_PROMPT, generate_dialogues, parse_dialogue_turns,
+# find_turn_token_boundaries are imported from utils.dialogue_generation above.
 
 
 # =============================================================================
