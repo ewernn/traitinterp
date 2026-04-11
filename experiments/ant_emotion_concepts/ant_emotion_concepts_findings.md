@@ -853,3 +853,38 @@ We took the two Stage 8 runs' top-10 increase lists (which have 0/10 overlap —
 **Net effect on the writeup**: the headline is actually *stronger* after this correction pass, because "PC1 sign flip robust across runs despite 0/10 name-level overlap" is a cleaner and more methodologically defensible claim than "these 4 specific emotions are Meta's signature". The specific-emotion top-10 lists in the older findings entries above should be read as one-run illustrative examples, not stable anchors. The LW draft's TL;DR now leads with the verified PC1 numbers rather than the emotion names.
 
 17. (this entry's commit) — noise-floor integration + PC1 stability verification
+
+---
+
+## [2026-04-11 post-PC1-stability PST] Further refinement: statistically-verified PC1 opposition is a 3-layer window, not 5
+
+Follow-up to the PC1 stability verification. That analysis used the L49 basis and showed both the canonical Stage 8 run and the cross-version raw-dot run have their up-cluster centroids significantly > 0 on PC1 at L49.
+
+Additional CPU check: does the same permutation-null test pass at the OTHER layers in the supposed "peak region" (L43, L55, L61, L67, L73)? Recomputed using the layer sweep's stored per-layer shift vectors, with a fresh 2,000-sample permutation null at each layer's own PC1 basis.
+
+**Results — Llama top-10 up-cluster PC1 vs layer's own permutation null**:
+
+| Layer | Llama PC1 | Sonnet PC1 | z | p | Sig opposed? |
+|---|---|---|---|---|---|
+| **L43** | +0.947 | −0.439 | +5.36 | 0.0000 | ✓ |
+| **L49** | +0.517 | −0.432 | +2.93 | 0.0040 | ✓ |
+| **L55** | +0.350 | −0.431 | +1.98 | 0.0305 | ✓ |
+| L61 | +0.152 | −0.434 | +0.93 | 0.177 | ✗ |
+| L67 | +0.272 | −0.436 | +1.63 | 0.053 | ✗ (borderline) |
+| L73 | +0.137 | −0.413 | +0.80 | 0.216 | ✗ |
+
+**Interpretation**: the statistically-significant PC1 sign flip is a **3-layer window (L43, L49, L55)**, not 5-6 layers. At L61-L73, the Llama top-10 cluster centroid is still positive but lies within the permutation null distribution — the `impatient` rank-1 signature is there but the top-10 as a whole pulls toward center because other emotions in positions 4-10 spread across the valence axis.
+
+**What this means**: the "mid-late layer plateau where Llama's RLHF direction is interpretable" is narrower than the earlier layer sweep suggested. The layer sweep showed ρ > 0.79 for the shift vectors at L49-L73 (so the shifts are pointing in a similar direction across the range), but the TOP-10 cluster centroid only reaches statistical significance on the positive-valence side at L43-L55.
+
+**Revised load-bearing claim**: *"At layers L43, L49, and L55, Llama's top-10 post-training shift cluster has a statistically significant positive PC1 centroid (p < 0.05 vs permutation null), opposite Sonnet's reported cluster which is at PC1 ≈ -0.432. Outside this 3-layer window, the Llama cluster centroid is either negative (L1-L7, L31, L79) or not distinguishable from the null (L61-L73)."*
+
+This is narrower than any earlier formulation but is what the data actually support. Every previous "robust" claim should be read at this layer scoping.
+
+**For the writeup**: the headline should reference "L43-L55" as the significant window, not "L49-L73" or "mid-late layers". This is a tight 3-layer band — still a meaningful finding, still cross-version robust at L49 per the direct comparison, but narrower in claim scope.
+
+**Remaining concern**: we don't have cross-version control (3.1 Instruct measurement) at L43 or L55 — only at L49. So "cross-version robustness" at L43 and L55 is extrapolated from the fact that the shift vectors at L43-L55 correlate highly with the L49 shift vector per the layer sweep (ρ > 0.79). Direct verification would need another GPU run.
+
+Saved: data is derivable from `results/stage8_layer_sweep.json` + a fresh PCA at each layer. No new file written for this iteration — the numbers are in the notepad.
+
+18. (this commit) — PC1 statistical significance test at peak layers, narrowed to L43-L55
