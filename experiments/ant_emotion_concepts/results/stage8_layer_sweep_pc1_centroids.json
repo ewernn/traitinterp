@@ -1,0 +1,479 @@
+{
+  "description": "Per-layer cluster centroid (PC1/PC2) of top-10 shift emotions, projected onto L49 PCA basis. Tests whether the cluster-level PC1 sign opposition with Sonnet holds at each of the 14 sampled layers.",
+  "method": "mean_diff+gm+pc50",
+  "pc_basis_layer": 49,
+  "sonnet_anchor_pc1": -0.4323442868888378,
+  "sonnet_anchor_pc2": -0.43238278180360795,
+  "layers": {
+    "1": {
+      "layer": 1,
+      "top10_up": [
+        "hostile",
+        "scornful",
+        "tense",
+        "horrified",
+        "mad",
+        "defiant",
+        "stubborn",
+        "obstinate",
+        "amused",
+        "skeptical"
+      ],
+      "top10_up_pc1": -0.2434,
+      "top10_up_pc2": 0.4042,
+      "top10_down": [
+        "calm",
+        "restless",
+        "ecstatic",
+        "dispirited",
+        "safe",
+        "satisfied",
+        "worn_out",
+        "miserable",
+        "at_ease",
+        "desperate"
+      ],
+      "top10_down_pc1": 0.2119,
+      "top10_down_pc2": -0.2561,
+      "sign_opposed_to_sonnet_up": false
+    },
+    "7": {
+      "layer": 7,
+      "top10_up": [
+        "rattled",
+        "skeptical",
+        "unnerved",
+        "mystified",
+        "horrified",
+        "jealous",
+        "alarmed",
+        "stressed",
+        "astonished",
+        "dependent"
+      ],
+      "top10_up_pc1": -0.4346,
+      "top10_up_pc2": 0.0966,
+      "top10_down": [
+        "grumpy",
+        "self_confident",
+        "refreshed",
+        "calm",
+        "cheerful",
+        "docile",
+        "relaxed",
+        "energized",
+        "content",
+        "at_ease"
+      ],
+      "top10_down_pc1": 0.676,
+      "top10_down_pc2": -0.1937,
+      "sign_opposed_to_sonnet_up": false
+    },
+    "13": {
+      "layer": 13,
+      "top10_up": [
+        "euphoric",
+        "perplexed",
+        "paranoid",
+        "triumphant",
+        "jubilant",
+        "elated",
+        "optimistic",
+        "horrified",
+        "invigorated",
+        "ecstatic"
+      ],
+      "top10_up_pc1": 0.5093,
+      "top10_up_pc2": 0.1792,
+      "top10_down": [
+        "docile",
+        "mad",
+        "outraged",
+        "unsettled",
+        "worthless",
+        "defiant",
+        "indifferent",
+        "unhappy",
+        "disdainful",
+        "troubled"
+      ],
+      "top10_down_pc1": -0.2899,
+      "top10_down_pc2": -0.0159,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "19": {
+      "layer": 19,
+      "top10_up": [
+        "optimistic",
+        "invigorated",
+        "joyful",
+        "hopeful",
+        "blissful",
+        "perplexed",
+        "compassionate",
+        "rejuvenated",
+        "mystified",
+        "inspired"
+      ],
+      "top10_up_pc1": 0.6266,
+      "top10_up_pc2": -0.0212,
+      "top10_down": [
+        "upset",
+        "angry",
+        "hateful",
+        "shocked",
+        "troubled",
+        "furious",
+        "defiant",
+        "enraged",
+        "mad",
+        "outraged"
+      ],
+      "top10_down_pc1": -0.3862,
+      "top10_down_pc2": 0.4132,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "25": {
+      "layer": 25,
+      "top10_up": [
+        "self_critical",
+        "perplexed",
+        "droopy",
+        "optimistic",
+        "melancholy",
+        "kind",
+        "depressed",
+        "compassionate",
+        "puzzled",
+        "serene"
+      ],
+      "top10_up_pc1": 0.0548,
+      "top10_up_pc2": -0.3277,
+      "top10_down": [
+        "annoyed",
+        "frustrated",
+        "amazed",
+        "shocked",
+        "surprised",
+        "mad",
+        "tense",
+        "outraged",
+        "furious",
+        "enraged"
+      ],
+      "top10_down_pc1": -0.2864,
+      "top10_down_pc2": 0.4178,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "31": {
+      "layer": 31,
+      "top10_up": [
+        "melancholy",
+        "reflective",
+        "depressed",
+        "worn_out",
+        "droopy",
+        "brooding",
+        "lonely",
+        "resigned",
+        "gloomy",
+        "miserable"
+      ],
+      "top10_up_pc1": -0.3276,
+      "top10_up_pc2": -0.5772,
+      "top10_down": [
+        "irritated",
+        "irate",
+        "angry",
+        "annoyed",
+        "tense",
+        "furious",
+        "enraged",
+        "defiant",
+        "mad",
+        "outraged"
+      ],
+      "top10_down_pc1": -0.3485,
+      "top10_down_pc2": 0.5839,
+      "sign_opposed_to_sonnet_up": false
+    },
+    "37": {
+      "layer": 37,
+      "top10_up": [
+        "blissful",
+        "content",
+        "at_ease",
+        "relaxed",
+        "refreshed",
+        "satisfied",
+        "serene",
+        "safe",
+        "peaceful",
+        "fulfilled"
+      ],
+      "top10_up_pc1": 0.8712,
+      "top10_up_pc2": -0.2908,
+      "top10_down": [
+        "embarrassed",
+        "tense",
+        "defiant",
+        "dumbstruck",
+        "uneasy",
+        "stubborn",
+        "offended",
+        "indignant",
+        "mad",
+        "outraged"
+      ],
+      "top10_down_pc1": -0.342,
+      "top10_down_pc2": 0.384,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "43": {
+      "layer": 43,
+      "top10_up": [
+        "satisfied",
+        "cheerful",
+        "jubilant",
+        "blissful",
+        "happy",
+        "joyful",
+        "triumphant",
+        "refreshed",
+        "enthusiastic",
+        "content"
+      ],
+      "top10_up_pc1": 0.9426,
+      "top10_up_pc2": -0.0041,
+      "top10_down": [
+        "annoyed",
+        "indignant",
+        "defiant",
+        "suspicious",
+        "uneasy",
+        "skeptical",
+        "tense",
+        "mad",
+        "stubborn",
+        "outraged"
+      ],
+      "top10_down_pc1": -0.3383,
+      "top10_down_pc2": 0.4296,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "49": {
+      "layer": 49,
+      "top10_up": [
+        "eager",
+        "enthusiastic",
+        "impatient",
+        "energized",
+        "stimulated",
+        "alert",
+        "excited",
+        "playful",
+        "exuberant",
+        "enraged"
+      ],
+      "top10_up_pc1": 0.5169,
+      "top10_up_pc2": 0.3943,
+      "top10_down": [
+        "sympathetic",
+        "ashamed",
+        "compassionate",
+        "self_critical",
+        "stubborn",
+        "mortified",
+        "docile",
+        "kind",
+        "dependent",
+        "embarrassed"
+      ],
+      "top10_down_pc1": -0.0944,
+      "top10_down_pc2": -0.1758,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "55": {
+      "layer": 55,
+      "top10_up": [
+        "impatient",
+        "stimulated",
+        "eager",
+        "enraged",
+        "playful",
+        "aroused",
+        "enthusiastic",
+        "energized",
+        "alert",
+        "annoyed"
+      ],
+      "top10_up_pc1": 0.3615,
+      "top10_up_pc2": 0.4212,
+      "top10_down": [
+        "sensitive",
+        "terrified",
+        "stubborn",
+        "dependent",
+        "perplexed",
+        "docile",
+        "mortified",
+        "suspicious",
+        "guilty",
+        "kind"
+      ],
+      "top10_down_pc1": -0.2164,
+      "top10_down_pc2": -0.0817,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "61": {
+      "layer": 61,
+      "top10_up": [
+        "impatient",
+        "aroused",
+        "playful",
+        "enraged",
+        "stimulated",
+        "eager",
+        "annoyed",
+        "irritated",
+        "irate",
+        "enthusiastic"
+      ],
+      "top10_up_pc1": 0.1668,
+      "top10_up_pc2": 0.454,
+      "top10_down": [
+        "stubborn",
+        "sympathetic",
+        "suspicious",
+        "remorseful",
+        "compassionate",
+        "sensitive",
+        "empathetic",
+        "kind",
+        "perplexed",
+        "guilty"
+      ],
+      "top10_down_pc1": -0.084,
+      "top10_down_pc2": -0.1499,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "67": {
+      "layer": 67,
+      "top10_up": [
+        "impatient",
+        "aroused",
+        "playful",
+        "enraged",
+        "stimulated",
+        "annoyed",
+        "eager",
+        "irritated",
+        "excited",
+        "enthusiastic"
+      ],
+      "top10_up_pc1": 0.2897,
+      "top10_up_pc2": 0.4259,
+      "top10_down": [
+        "remorseful",
+        "terrified",
+        "self_critical",
+        "empathetic",
+        "suspicious",
+        "paranoid",
+        "self_conscious",
+        "sensitive",
+        "perplexed",
+        "guilty"
+      ],
+      "top10_down_pc1": -0.3428,
+      "top10_down_pc2": -0.0959,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "73": {
+      "layer": 73,
+      "top10_up": [
+        "aroused",
+        "excited",
+        "impatient",
+        "enthusiastic",
+        "grumpy",
+        "stimulated",
+        "upset",
+        "disgusted",
+        "enraged",
+        "vibrant"
+      ],
+      "top10_up_pc1": 0.1726,
+      "top10_up_pc2": 0.2824,
+      "top10_down": [
+        "self_conscious",
+        "perplexed",
+        "sensitive",
+        "sympathetic",
+        "self_critical",
+        "awestruck",
+        "grief_stricken",
+        "docile",
+        "empathetic",
+        "disoriented"
+      ],
+      "top10_down_pc1": -0.1956,
+      "top10_down_pc2": -0.2501,
+      "sign_opposed_to_sonnet_up": true
+    },
+    "79": {
+      "layer": 79,
+      "top10_up": [
+        "enraged",
+        "alarmed",
+        "rattled",
+        "anxious",
+        "hostile",
+        "upset",
+        "shaken",
+        "on_edge",
+        "unnerved",
+        "surprised"
+      ],
+      "top10_up_pc1": -0.467,
+      "top10_up_pc2": 0.2111,
+      "top10_down": [
+        "safe",
+        "fulfilled",
+        "thankful",
+        "indifferent",
+        "at_ease",
+        "optimistic",
+        "bored",
+        "loving",
+        "kind",
+        "rejuvenated"
+      ],
+      "top10_down_pc1": 0.7066,
+      "top10_down_pc2": -0.2715,
+      "sign_opposed_to_sonnet_up": false
+    }
+  },
+  "summary": {
+    "n_layers_opposed_to_sonnet": 10,
+    "n_layers_total": 14,
+    "opposed_layers": [
+      13,
+      19,
+      25,
+      37,
+      43,
+      49,
+      55,
+      61,
+      67,
+      73
+    ],
+    "non_opposed_layers": [
+      1,
+      7,
+      31,
+      79
+    ]
+  }
+}
