@@ -382,7 +382,7 @@
       "sign_positive": false
     }
   },
-  "significant_layers": [
+  "significant_layers_raw": [
     1,
     7,
     13,
@@ -393,6 +393,42 @@
     55,
     79
   ],
-  "n_significant": 9,
+  "n_significant_raw": 9,
+  "n_tests": 14,
+  "family_alpha": 0.05,
+  "bonferroni_alpha": 0.0035714285714285718,
+  "bonferroni_survivors": {
+    "all": [
+      19,
+      37,
+      43,
+      49
+    ],
+    "positive": [
+      19,
+      37,
+      43,
+      49
+    ],
+    "negative": []
+  },
+  "holm_bonferroni_survivors": {
+    "all": [
+      7,
+      19,
+      37,
+      43,
+      49
+    ],
+    "positive": [
+      19,
+      37,
+      43,
+      49
+    ],
+    "negative": [
+      7
+    ]
+  },
   "matches_notepad_claim": false
 }

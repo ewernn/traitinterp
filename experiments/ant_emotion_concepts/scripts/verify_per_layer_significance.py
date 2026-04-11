@@ -180,22 +180,87 @@ def main():
         print(f"L{L:<6} {top3:<40} {r['top10_up_pc1_own_basis']:+.4f}  {r['z']:+.2f}  {r['p']:.4f}  {sig}")
         results["layers"][f"L{L}"] = r
 
-    # Count significant layers
+    # Count significant layers (raw p < 0.05)
     sig_layers = [L for L in layers if f"L{L}" in results["layers"] and results["layers"][f"L{L}"].get("sig_at_05")]
     print()
-    print(f"Significant layers (p < 0.05, own basis): {sig_layers}")
-    print(f"Total significant: {len(sig_layers)}/{len(layers)}")
-    results["significant_layers"] = sig_layers
-    results["n_significant"] = len(sig_layers)
+    print(f"Significant layers (raw p < 0.05, own basis): {sig_layers}")
+    print(f"Total significant (raw): {len(sig_layers)}/{len(layers)}")
+    results["significant_layers_raw"] = sig_layers
+    results["n_significant_raw"] = len(sig_layers)
 
-    # Compare to notepad claim (L43/L49/L55 significant)
+    # Multi-comparison correction across 14 tests
+    # Bonferroni: alpha_corrected = 0.05 / 14 ≈ 0.00357
+    # Holm-Bonferroni: step-down procedure on sorted p-values
+    alpha = 0.05
+    n_tests = len([L for L in layers if f"L{L}" in results["layers"]])
+    bonferroni_alpha = alpha / n_tests
+
+    # Collect (layer, p, sign) tuples
+    tests = []
+    for L in layers:
+        key = f"L{L}"
+        if key not in results["layers"]:
+            continue
+        r = results["layers"][key]
+        tests.append({
+            "layer": L,
+            "p": r["p"],
+            "z": r["z"],
+            "pc1": r["top10_up_pc1_own_basis"],
+            "sign_positive": r["sign_positive"],
+        })
+
+    # Bonferroni: any p < bonferroni_alpha
+    bonferroni_pass = [t["layer"] for t in tests if t["p"] < bonferroni_alpha]
+
+    # Holm-Bonferroni: sort ascending by p, test p_i < alpha/(n - rank_i)
+    tests_sorted = sorted(tests, key=lambda t: t["p"])
+    holm_pass = []
+    for i, t in enumerate(tests_sorted):
+        holm_alpha = alpha / (n_tests - i)
+        if t["p"] < holm_alpha:
+            holm_pass.append(t["layer"])
+        else:
+            break  # once one fails, all subsequent fail in step-down Holm
+
+    bonferroni_pos = [t["layer"] for t in tests if t["layer"] in bonferroni_pass and t["sign_positive"]]
+    bonferroni_neg = [t["layer"] for t in tests if t["layer"] in bonferroni_pass and not t["sign_positive"]]
+    holm_pos = [t["layer"] for t in tests if t["layer"] in holm_pass and t["sign_positive"]]
+    holm_neg = [t["layer"] for t in tests if t["layer"] in holm_pass and not t["sign_positive"]]
+
+    print()
+    print(f"Multiple-comparison correction ({n_tests} tests, family alpha=0.05):")
+    print(f"  Bonferroni alpha = {bonferroni_alpha:.5f}")
+    print(f"  Bonferroni survivors: {sorted(bonferroni_pass)}")
+    print(f"    positive: {sorted(bonferroni_pos)}")
+    print(f"    negative: {sorted(bonferroni_neg)}")
+    print(f"  Holm-Bonferroni survivors: {sorted(holm_pass)}")
+    print(f"    positive: {sorted(holm_pos)}")
+    print(f"    negative: {sorted(holm_neg)}")
+
+    results["n_tests"] = n_tests
+    results["family_alpha"] = alpha
+    results["bonferroni_alpha"] = bonferroni_alpha
+    results["bonferroni_survivors"] = {
+        "all": sorted(bonferroni_pass),
+        "positive": sorted(bonferroni_pos),
+        "negative": sorted(bonferroni_neg),
+    }
+    results["holm_bonferroni_survivors"] = {
+        "all": sorted(holm_pass),
+        "positive": sorted(holm_pos),
+        "negative": sorted(holm_neg),
+    }
+
+    # Compare to notepad claim (L43/L49/L55 significant) vs Bonferroni survivors
     notepad_claim = [43, 49, 55]
     matches_notepad = set(sig_layers) == set(notepad_claim)
     results["matches_notepad_claim"] = matches_notepad
     if matches_notepad:
         print(f"\n✓ Matches notepad 3-layer claim (L43/L49/L55)")
     else:
-        print(f"\n✗ DIVERGES from notepad claim. Notepad: {notepad_claim}, own-basis actual: {sig_layers}")
+        print(f"\n✗ DIVERGES from notepad claim. Notepad: {notepad_claim}, raw own-basis: {sig_layers}")
+        print(f"  Under Bonferroni: positive-sig = {sorted(bonferroni_pos)}")
 
     out = RESULTS / "per_layer_significance_own_basis.json"
     out.write_text(json.dumps(results, indent=2))
