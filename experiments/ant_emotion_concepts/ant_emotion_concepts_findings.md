@@ -936,3 +936,63 @@ Both are distinct from Sonnet's reported direction (brooding/gloomy/reflective, 
 **For the writeup**: the headline should acknowledge BOTH clusters — "Meta's post-training produces two distinct positive-valence signatures (contentment at L37-L43, activation at L49-L67), both opposite Sonnet's reported reflective-concern direction". This is more precise than claiming one direction.
 
 19. (this commit) — two-cluster refinement: contentment L37-L43 vs activation L49-L67
+
+---
+
+## [2026-04-11 post-completion PST] 🎯 MAJOR FINDING: L31 is a Sonnet-like reflective zone; Llama has THREE RLHF direction zones, not one
+
+Follow-up to the L31 anomaly. Verified that L31 is NOT measurement noise:
+- L31 ↔ L25: Spearman ρ = +0.802 (strong)
+- L31 ↔ L37: Spearman ρ = +0.777 (strong)
+- L31 ↔ L43: Spearman ρ = +0.564 (moderate)
+- L31 ↔ L49: Spearman ρ = -0.084 (near-zero — L31 is NOT aligned with the L49 cluster)
+
+And L31's full top-10 UP is: **`melancholy, reflective, depressed, worn_out, droopy, brooding, lonely, resigned, gloomy, miserable`**.
+
+Compare to the paper's reported Sonnet top-10 UP: `brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy`.
+
+**Direct overlap**: `reflective, brooding, gloomy, melancholy` all appear in BOTH L31's Llama top-10 AND the paper's Sonnet top-10. Additional fuzzy matches: `droopy` ~ `dispirited`, `worn_out` ~ `weary`, `miserable` ~ `unhappy`, `resigned` ~ `troubled`. **At L31 specifically, Llama's top RLHF shift emotions ARE essentially Sonnet's reported anchors.**
+
+**L31's top-10 DOWN**: `outraged, mad, defiant, enraged, furious, tense, annoyed, angry, irate, irritated` — anger/aggression decreasing. Also consistent with Sonnet's pattern (Sonnet shifts away from anger/aggression toward reflective concern).
+
+**This COMPLETELY changes the story**. Llama does NOT have a single RLHF direction that's "activated engagement". It has **multiple distinct direction zones at different network depths**:
+
+| Zone | Layer range | Direction | Character |
+|---|---|---|---|
+| Early | L1-L7 | negative valence, low arousal | hostile/tense/scornful/rattled (processing user affect?) |
+| Emerging | L13-L25 | positive valence, variable | euphoric/optimistic/invigorated/joyful (but centroid weak) |
+| **Reflection** | **L31** | **negative valence, Sonnet-like** | **melancholy/reflective/depressed/brooding/gloomy** |
+| Contentment | L37-L43 | high positive valence, low arousal | blissful/content/at_ease/cheerful/satisfied |
+| Activation | L49-L67 | positive valence, positive arousal | eager/impatient/enthusiastic/stimulated/energized |
+| Readout | L79 | negative valence, high arousal | enraged/alarmed/rattled |
+
+**Llama's RLHF produces a layered sequence of emotional representations**, with the "Sonnet-like reflective concern" briefly appearing at L31 before being OVERRIDDEN by contentment at L37 and activation at L49+.
+
+**New candidate interpretation of the cross-lab difference**:
+
+Maybe Sonnet and Llama ACTUALLY USE SIMILAR emotional representations at the activation level — they might both have a "reflective concern" representation at some mid layer. The difference is that **Anthropic's RLHF amplifies/stabilizes that representation at the output-relevant layer**, while **Meta's RLHF has the model briefly pass through reflection at L31 but then override it with contentment and activation in later layers**.
+
+This is a DIFFERENT story from "different direction". It's "same underlying emotional palette, different emphasis at different depths, and the output-relevant depth is where the models diverge".
+
+If this interpretation is right, then:
+- A **sufficient test**: does Sonnet have the "reflective concern" representation ONLY in its analogous mid-late layer, or also at a L31-like mid layer? If Sonnet has it at multiple layers but most strongly at the output-relevant one, and Llama has it at ONE layer (L31) that's not output-relevant, that's the cross-lab difference.
+- **Layer-localization is the key variable**, not "direction".
+
+**For the writeup**: the "Meta's RLHF goes opposite Anthropic's" framing is now questionable. It's more accurately "Meta's RLHF at the output-relevant layer goes a different direction than Anthropic's, but Llama does have a Sonnet-like representation BRIEFLY at L31 that doesn't make it to the output". The cross-lab contrast may be "where in the network does each lab emphasize the reflective direction" rather than "does the model have a reflective direction at all".
+
+**Caveats on the L31 interpretation**:
+- Single measurement, bnb int4 noise still applies at the per-layer level
+- L31 is 1 out of 14 sampled layers (would need denser sampling to confirm it's a singular "layer" or a wider "zone")
+- Don't have a second independent L31 measurement to verify
+- The correlation with L25 and L37 suggests it's part of a broader mid-layer dynamic, not an isolated spike
+
+**This significantly updates the thesis**. The headline is no longer "Llama vs Sonnet are opposite directions". It's "Llama has a Sonnet-like representation at a mid-layer depth (L31) that gets overridden by contentment+activation at L37+, while Sonnet's RLHF preserves/amplifies the reflective direction at the output-relevant depth". Much more interesting, and harder to dismiss as "just different labels".
+
+**Follow-up needed** (future session):
+- Cross-version control at L31 (does 3.1 Instruct - 3.1 base also produce reflective-like shift at L31?)
+- Denser layer sampling around L31 (L28, L30, L32, L34) — is it a single layer or a 5-layer zone?
+- Is L31 related to any known architectural feature of Llama 70B (layer norms, attention patterns, etc.)?
+
+Saved: implicit in `results/stage8_layer_sweep.json`. Analysis script at `/tmp/` (ad hoc).
+
+20. (this commit) — L31 Sonnet-like reflection zone finding; Llama has 3 RLHF direction zones not 1
