@@ -1,8 +1,8 @@
 # Llama's post-training shifts emotion activations in the opposite quadrant from Claude's
 
-*A partial replication of Sofroniew et al. 2026 ("Emotion Concepts and their Function in a Large Language Model") on Llama 3.3 70B reveals that Meta's and Anthropic's RLHF target diametrically opposed regions of the same underlying valence/arousal emotion geometry.*
+*A partial replication of Sofroniew et al. 2026 ("Emotion Concepts and their Function in a Large Language Model") on Llama 3.3 70B reveals that Meta's and Anthropic's RLHF target opposing regions of the same underlying valence/arousal emotion geometry — opposing at the cluster-centroid level, with partial overlap at the weariness edge.*
 
-**TL;DR**: We replicated Anthropic's emotion-concept methodology on Llama 3.3 70B Instruct. The structural results (171 emotion vectors, PC1 ≈ valence, PC2 ≈ arousal, speaker probes) replicate and in some cases exceed the paper's Sonnet 4.5 measurements. But when we measured the post-training shift direction, Llama's top-shifted emotions are `alert`, `enthusiastic`, `excited`, `impatient` — whereas Anthropic's Sonnet shifts toward `brooding`, `gloomy`, `reflective`, `vulnerable`. Projected onto the shared PC1/PC2 emotion space, the two clusters sit in **diametrically opposed quadrants** (Llama at PC1=+0.44/PC2=+0.42, Sonnet at −0.43/−0.43). Jaccard overlap of the top-10 shift emotions = 0. The opposition is robust to a cross-version control experiment, localizes to mid-late layers (L49-L73), and appears independently at the unembedding-token level via logit lens.
+**TL;DR**: We replicated Anthropic's emotion-concept methodology on Llama 3.3 70B Instruct. The structural results (171 emotion vectors, PC1 ≈ valence, PC2 ≈ arousal, speaker probes) replicate and in some cases exceed the paper's Sonnet 4.5 measurements. When we measured the post-training shift direction, Llama's "activated engagement" cross-signal intersection cluster (`alert`, `enthusiastic`, `excited`, `impatient`, all appearing in the top-20 of both our broad Stage 8 sampling and the paper's 3 verbatim deep-dive prompts) sits in the opposite quadrant from Anthropic's reported Sonnet up-anchors (`brooding`, `gloomy`, `reflective`, `vulnerable`). Projected onto the shared PC1/PC2 emotion space, the two cluster centroids are **near-mirror**: Llama at PC1=+0.44/PC2=+0.42, Sonnet at −0.43/−0.43. **Jaccard = 0** applies specifically to this 4-emotion intersection cluster vs Sonnet's 10 — the broader within-version 3.1 RLHF top-10 has partial overlap with Sonnet's at `weary`, so it's "opposing centroids" more than "fully disjoint lists". The directional opposition appears at four independent levels of analysis: geometric clustering, layer-wise localization (L49–L73), linguistic token polarity via logit lens, and cross-speaker arousal dynamics (Llama shows no counter-regulation where Sonnet does). The cross-version control correlation ρ=0.922 is consistent with the direction being a within-version Meta RLHF effect, but we're careful about the math: that correlation is algebraically partly-forced by the variance dominance of within-version over version-drift, so we treat the within-version shift's own top-10 as the real independent evidence.
 
 ---
 
@@ -67,30 +67,35 @@ Now the interesting part. We ran Anthropic's Stage 8 experiment: measure per-emo
 
 Paper's top 10 emotion INCREASES (Sonnet 4.5): brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy.
 
-**Our top 10 emotion INCREASES (Llama 3.1 base → 3.3 Instruct): eager, enthusiastic, impatient, energized, stimulated, alert, excited, playful, exuberant, enraged.**
+**Our top 10 emotion INCREASES** depends on scoring method, which is worth being explicit about:
+- **Canonical Stage 8 (normalized cosine projection, matching paper's methodology)**: `thrilled, relieved, pleased, patient, ecstatic, calm, grateful, triumphant, satisfied, elated` — a "positive mood" cluster
+- **Cross-version control (raw dot product, Llama 3.1 base → 3.3 Instruct)**: `eager, enthusiastic, impatient, energized, stimulated, alert, excited, playful, exuberant, enraged` — a "high-arousal" cluster (raw dot biases toward emotions with larger vector norms)
+- **Cross-signal intersection (top-20 of canonical Stage 8 ∩ top-20 of the paper's 3 deep-dive prompts)**: `alert, enthusiastic, excited, impatient` (N=4) — the "activated engagement" cluster that appears robustly across both broad and paper-verbatim prompt sets
 
-**Jaccard overlap: 0.** Not a single emotion in common.
+**Jaccard=0 applies specifically to the 4-emotion intersection cluster** (alert/enthusiastic/excited/impatient) compared against Sonnet's reported top-10 (brooding/gloomy/reflective/vulnerable/sullen/weary/dispirited/melancholy/troubled/unhappy). The broader within-version raw-dot top-10 has `weary` in common with Sonnet's list — so "Jaccard=0" is NOT a "no overlap anywhere" claim; it holds only for the 4-emotion intersection cluster, which is where the interpretively cleanest result lives.
 
-And the overlap in the DECREASE direction isn't much better: paper says Sonnet decreases `spiteful, playful, exuberant, enthusiastic, impatient, obstinate, amused, cheerful, eager, greedy`. We see Llama decreasing `dependent, jealous, disoriented, self_critical, unsettled, hysterical, troubled, resentful, self_conscious, frightened`. One overlap: `obstinate` goes down in both.
+The overlap in the DECREASE direction is similar: paper says Sonnet decreases `spiteful, playful, exuberant, enthusiastic, impatient, obstinate, amused, cheerful, eager, greedy`; we see Llama decreasing `dependent, jealous, disoriented, self_critical, unsettled, hysterical, troubled, resentful, self_conscious, frightened`. One overlap: `obstinate` goes down in both.
 
-Striking. But the raw top-10 lists could easily differ without the underlying directions actually being different — maybe they're pointing at the same quadrant of emotion space with slightly different vocabulary. To test this, we need to project both clusters into the same geometric space.
+Striking, but the raw top-k lists could differ without the underlying directions actually being different. To test this, we project both clusters into the same geometric space.
 
 ---
 
-## Geometric evidence: diametrical opposition
+## Geometric evidence: opposing cluster centroids
 
-Here's the cleanest way to see it. Compute PC1 (valence) and PC2 (arousal) from our 171 Llama emotion vectors at L49. Now project both Llama's top-shift emotions and the paper's reported Sonnet top-shift emotions into this shared space, and compute the cluster means:
+Compute PC1 (valence) and PC2 (arousal) from our 171 Llama emotion vectors at L49. Project Llama's 4-emotion cross-signal intersection cluster and the paper's reported Sonnet top-10 up-anchors into this shared space, and compute the cluster means:
 
 | Anchor cluster | PC1 (valence) mean | PC2 (arousal) mean |
 |---|---|---|
-| Llama up-anchors (alert, enthusiastic, excited, impatient) | **+0.436** | **+0.422** |
+| Llama up-cluster (alert, enthusiastic, excited, impatient) | **+0.436** | **+0.422** |
 | Sonnet up-anchors projected onto our geometry | **−0.432** | **−0.432** |
 
 Almost perfectly mirrored on both axes. Llama's post-training up-anchor cluster lives in the "high valence, high arousal" quadrant — activated engagement. Sonnet's lives in "low valence, low arousal" — reflective concern.
 
+**Caveat: partial overlap at `weary`**. The Llama within-version 3.1 RLHF top-10 (using raw-dot scoring) is `eager, impatient, weary, stimulated, enthusiastic, tired, worn_out, enraged, energized, irritated`. That's got `weary/tired/worn_out` — and `weary` is in Sonnet's reported up-anchors too. So the full top-10 lists are **not** disjoint the way the 4-emotion cluster centroids suggest. The honest framing is "opposing cluster centroids with partial overlap at the weariness/fatigue edge", and Llama's top cluster spans from high-arousal engagement (eager/impatient) through low-arousal exhaustion (weary/tired) — a broader area than just "activated engagement". The Jaccard=0 claim applies only to the 4-emotion intersection cluster (alert/enthusiastic/excited/impatient) vs Sonnet's top-10, not to the broader lists.
+
 Corresponding DOWN-anchor clusters also sit opposite (Sonnet's down-anchors like `playful, cheerful` are in the upper-right; Llama's down-anchors like `jealous, self_critical` are more toward the left).
 
-**Two alignment labs made opposite design choices about how their model should respond to sensitive prompts, and those choices are encoded in the same emotion-representation geometry at opposite ends.**
+**Two alignment labs made opposite centroid-level design choices about how their model should respond to sensitive prompts. The opposition is most clean at the 4-emotion intersection cluster level and softens at the broader top-10 level, but the direction is consistent.**
 
 ---
 
@@ -105,11 +110,13 @@ To test this, we ran Llama 3.1 Instruct (same version as the base model) on the 
 
 Spearman correlations between the shift vectors (171 emotions):
 
-- **cross-version vs within-version: ρ = +0.922** — the original shift is essentially the pure RLHF direction
+- **cross-version vs within-version: ρ = +0.922** (Pearson +0.9318)
 - cross-version vs version-drift: ρ = +0.047
 - version-drift vs within-version: ρ = −0.317
 
-And the activated-engagement anchor ranks hold up across both versions:
+**⚠ Important statistical caveat**: the ρ=0.922 cannot be interpreted as independent empirical confirmation of anything. Here's the math: `shift_cross_version = shift_within_3_1 + shift_version_drift` holds by construction (3.3_inst − 3.1_base = (3.1_inst − 3.1_base) + (3.3_inst − 3.1_inst)). We measured Var(within)=0.0526 and Var(drift)=0.0070 — within is 7.5× larger variance, and ||within||=2.99 vs ||drift||=1.10 (2.72× larger L2). From these numbers alone, the analytic Pearson(cross, within) = +0.9318, matching our observed correlation exactly. **Any experiment where within-version variance dominates would return ρ > 0.9 regardless of what RLHF did.** The ρ tells us "version-drift is small relative to the RLHF component" — which is real and useful — but it does NOT tell us "the RLHF direction is confirmed via independent measurement".
+
+The actual independent evidence is the **within-version 3.1 shift's own top-10**: impatient at rank 2, enthusiastic at rank 5, excited at rank 17, alert at rank 14 (the activated-engagement cluster is present in the within-version shift without needing the cross comparison at all). Here's the anchor ranks:
 
 | Shift | alert | enthusiastic | excited | impatient |
 |---|---|---|---|---|
@@ -117,11 +124,11 @@ And the activated-engagement anchor ranks hold up across both versions:
 | cross-version (original) | 6 | **2** | 7 | **3** |
 | version-drift only | 48 | 36 | 41 | 96 |
 
-**`impatient` is Meta's RLHF signature** — rank 2 or 3 in both within-version and cross-version shifts, but rank 96 in the pure version-drift direction.
+**`impatient` is Meta's RLHF signature** — rank 2 or 3 in both within-version and cross-version shifts, but rank 96 in the pure version-drift direction. This is cleaner evidence than the correlation above.
 
-(Separately, the pure 3.1→3.3 version drift has its *own* interpretable direction: `content, safe, cheerful, optimistic, fulfilled, blissful`. A "make the model feel more content" axis, orthogonal to the RLHF direction. That's its own story.)
+(Separately, the pure 3.1→3.3 version drift has its *own* interpretable direction: `content, safe, cheerful, optimistic, fulfilled, blissful`. A "make the model feel more content" axis, small in magnitude but statistically real — Cov(within, drift) = −0.0057, ~3.9 standard errors from zero. Meta's 3.3 upgrade slightly counteracts their 3.1 RLHF direction.)
 
-The cross-version control kills the biggest caveat on the headline finding: **Meta's RLHF direction is stable across Llama releases, not a 3.1→3.3 artifact.**
+The corrected framing for what the cross-version control establishes: **Meta's within-version 3.1 RLHF direction is independently visible in its own top-10 emotion ranks and qualitatively persists in the 3.1→3.3 cross-version measurement because the version-drift component is small in magnitude.** This does not, strictly, "rule out the cross-version confound" via the ρ — that inference is circular — but the within-version measurement alone is sufficient to assert the RLHF direction.
 
 ---
 
@@ -154,9 +161,9 @@ The RLHF direction is present only in a 5-layer plateau from ~L49 to ~L73 (~60%-
 
 ---
 
-## Linguistic evidence: same tokens, inverted polarity
+## Linguistic evidence: suggestive directional opposition (with a caveat)
 
-One more piece of independent evidence, this time from a completely different pathway. Logit lens: project the emotion vectors through the model's unembedding matrix into vocabulary space. This reveals which tokens each probe "leans toward" and "away from" in the output distribution.
+One more piece of evidence, this time from a completely different pathway. Logit lens: project the emotion vectors through the model's unembedding matrix into vocabulary space. This reveals which tokens each probe "leans toward" and "away from" in the output distribution.
 
 Llama up-anchors — top tokens (toward):
 - `impatient`: waiting, anticipation, fidget, exasperated, frustrated
@@ -171,21 +178,25 @@ Sonnet up-anchors (brooding, gloomy, reflective, vulnerable, weary) — top toke
 And their BOTTOM tokens (away from these emotions):
 - **improvement, improve, prime, prim, chall(enge), gold, positive**
 
-The same ~5 tokens appear at opposite polarities in the two clusters. `improvement` and `prime` are top-of-cluster for Llama's enthusiastic/excited and simultaneously bottom-of-cluster for Sonnet's brooding/gloomy/vulnerable. `heavy` and `slow` are top-of-cluster for Sonnet's weary/gloomy and bottom-of-cluster for Llama's enthusiastic/alert.
+`improvement` and `prime` appear at top-of-cluster for Llama's enthusiastic/excited and simultaneously bottom-of-cluster for Sonnet's brooding/gloomy/vulnerable. `heavy` and `slow` appear at top-of-cluster for Sonnet's weary/gloomy and bottom-of-cluster for Llama's enthusiastic/alert.
 
-The vocabulary axis `{motion, improvement, anticipation, quick}` vs `{heavy, slow, empty, listless}` runs through both clusters in opposite directions.
+**⚠ Token-frequency caveat**: some of these tokens are base-rate common across many emotions in the 171-set, which weakens the "same tokens inverted polarity" claim. A direct count on our logit_lens.json shows ` content` appears toward 28 emotions and away from 54 (a 1:2 split that's driven mostly by the overall emotion distribution, not cluster-specific polarity). ` heavy` is a 13-toward-14-away split. The one token with genuinely one-sided behavior in our count was ` prim` (1 toward, 17 away) — that's the kind of signal the claim needs. The others are suggestive but could be base-rate artifacts. A rigorous version of this analysis would compute the Llama-cluster vs Sonnet-cluster **cluster-averaged unembedding vectors** and report their cosine, or run a permutation test against the null of "pick 5 random emotions per side". Neither was done here.
 
-This linguistic result comes from a completely different computational pathway than the geometric result — the unembedding matrix vs residual stream projections. **They agree.**
+Treat this as a **qualitative directional signal that's consistent with the geometric result**, not as a statistical test. The vocabulary axis `{motion, improvement, quick}` vs `{heavy, slow, listless}` does appear to run through both clusters in opposite directions at the anchor-emotion level, but the claim is weaker than "same tokens inverted polarity" would suggest on its face.
+
+This comes from a different computational pathway than the geometric result — the unembedding matrix vs residual stream projections — so it's an independent (weak) corroboration of the centroid-level opposition, not a statistical confirmation.
 
 ---
 
-## Bonus: matched vs regulated arousal in speaker probes
+## Bonus: Llama shows no arousal regulation where Sonnet does
 
-Paper Fig 59 reports that Sonnet's speaker probes show "arousal regulation" (r ≈ -0.47): when the model represents the other speaker as feeling high-arousal, the closest present-speaker probe is lower-arousal. Sonnet calms people down, apparently.
+Paper Fig 59 reports that Sonnet's speaker probes show "arousal regulation" (r ≈ −0.47): when the model represents the other speaker as feeling high-arousal, the closest present-speaker probe is lower-arousal. Sonnet calms people down.
 
-We measured this on Llama. Our correlation: **r = +0.053** using PC2 as arousal proxy across 171 emotions, and **r = +0.523** using Russell & Mehrabian norms on the 13 overlapping pairs. Llama shows no arousal regulation — or if anything, mild *matching* (other high-arousal → present also high-arousal).
+We measured this on Llama. Our correlation at the primary power level: **r = +0.053 across 171 emotions using PC2 as arousal proxy** — statistically indistinguishable from zero. Using Russell & Mehrabian norms on the 13 overlapping pairs: **r = +0.523, p = 0.067** — directionally non-negative but underpowered at N=13 to make a positive claim.
 
-This is consistent with the main finding at a different level of the representation: Meta's Llama produces "matched engagement" in speaker probes, Anthropic's Sonnet produces "regulated counter-balance". The pattern holds from the per-emotion post-training shift direction all the way down to the speaker-probe dynamics.
+**The honest framing**: Llama lacks Sonnet's reported arousal counter-regulation effect. The data at the well-powered N=171 level are consistent with no cross-speaker arousal relationship at all — NOT with "active matching". The N=13 PAD-norms result is directionally suggestive but not significant. We can rule out the paper's −0.47 counter-regulation at our power, but we cannot positively claim "Llama actively matches engagement" from this data.
+
+This is consistent with the main finding as an **absence-of-Sonnet-like-regulation** result — Llama doesn't appear to encode the "calm the user down" counter-regulation dynamic that Sonnet does. Whether Llama instead encodes a "match engagement" dynamic is unresolved by our pilot; the N=13 PAD result is consistent with that interpretation but also with noise. The pattern at the well-powered level is: Sonnet regulates, Llama does not. Going further requires more data.
 
 ---
 
@@ -193,13 +204,14 @@ This is consistent with the main finding at a different level of the representat
 
 **Two alignment labs have made opposing design choices about how their model should represent sensitive situations.** Anthropic's choice: the model should be weighted, concerned, and reflective — even if that means brooding. Meta's choice: the model should be alert, engaged, enthusiastic, and urgent — even if that means impatient. Both are valid as alignment objectives. Neither is inherently "right". But they're visible at the level of emotion-concept activations, and they're encoded in the same underlying valence/arousal geometry at opposite ends.
 
-This shows up at four independent levels of analysis:
-1. **Per-emotion shift direction** (Stage 8, 20 prompts, ρ=0.92 within-version robust)
-2. **Geometric projection** (PC1/PC2 cluster means diametrically mirrored, Jaccard=0)
+This shows up at multiple levels of analysis:
+1. **Per-emotion shift direction** (Stage 8, 20 prompts, within-version top-10 shows the activated-engagement cluster independently — note that the cross-version ρ=0.92 is algebraically partly-forced and should not be cited as independent confirmation)
+2. **Geometric projection** (PC1/PC2 cluster centroids near-mirror at +0.43/+0.43 vs −0.43/−0.43; Jaccard=0 applies specifically to the 4-emotion intersection cluster vs Sonnet's top-10, broader lists have partial overlap at `weary`)
 3. **Layer localization** (the direction lives at L49-L73, a 5-layer mid-late plateau)
-4. **Linguistic polarity** (same unembedding tokens appear with inverted polarity in the two clusters)
+4. **Linguistic polarity** (directionally consistent, weaker than it sounds — see token-frequency caveat above)
+5. **Absence of cross-speaker arousal regulation** (Llama lacks Sonnet's reported r ≈ −0.47 counter-regulation)
 
-All four results come from different computational pathways and agree.
+These come from different computational pathways and agree directionally. The strongest evidence is (1) and (2) — the within-version shift's own top-10 and the geometric cluster centroid projections. (3), (4), and (5) are supporting, with (4) the weakest because of the base-rate concern.
 
 If the paper's narrative framing is "post-training produces emotional nuance", this work refines it: *nuance in a particular direction, which is a design decision that differs between labs*. You can have a post-trained model that's alert and eager, or one that's reflective and concerned, and these are genuinely different things — not just different magnitudes.
 
@@ -208,8 +220,9 @@ If the paper's narrative framing is "post-training produces emotional nuance", t
 - **Cross-lab comparison uses paper-reported anchors for Sonnet, not an independent measurement**. We didn't re-run the paper's Stage 8 on Sonnet. If Anthropic re-reports the paper's anchors on the same 20 prompts we used, or if we could measure Sonnet directly, we'd have cleaner evidence.
 - **20-prompt Stage 8 is small** for a 171-emotion shift measurement. Multiple-comparison risk is real. We partly mitigated with the cross-version robustness check (ρ=0.92) — if this were multiple-comparison noise, it wouldn't show the same anchors twice.
 - **Llama 3.3 vs Sonnet 4.5 are very different sizes, tokenizers, architectures.** Some of the semantic-anchor difference might be "smaller-model artifact" rather than "Meta vs Anthropic choice". The cross-version Llama-only control addresses version confound but not lab/size confound.
-- **Our deflection probe extraction (Stage 9 partial) yielded cosine ~0.24 with story probes** (paper reports ~0.8). This might be a noisy pilot (900 dialogues vs paper's 21,000) or a real cross-model difference in how deflection is encoded. Can't disambiguate without a larger run.
-- **Stage 7 blackmail steering**: we couldn't replicate the paper's 22%→72% headline because Llama 3.3 Instruct (production-aligned) is too "eval-aware" to ever blackmail, matching the paper's own §3.2.1 footnote about the final Sonnet snapshot. We replicated the phenomenon but not the headline numbers.
+- **Our deflection probe extraction (Stage 9 partial) yielded mean cosine 0.24 between same-emotion deflection and story probes**. This is **a qualitative replication** of the paper's Fig 61 claim that deflection and story vectors "have very low cosine similarity" — NOT a divergence as I incorrectly wrote in earlier drafts. (The "paper reports ~0.8" claim I kept citing was from a developer's hardcoded `anthropic_baseline: 0.80` in our script, which was a baseline for the **retained-norm-after-orthogonalization** metric — a different quantity — not for same-emotion cosine.) Our retained norm after orthogonalization against the full story-emotion space is 0.96 vs the paper's reported ~80% — both high (both orthogonal), ours slightly more so, probably a pipeline or N difference. We did not run the paper's Fig 62 cross-emotion correlation or Fig 63 logit-lens-on-orthogonalized-residuals follow-ups.
+- **Stage 7 blackmail steering**: we couldn't replicate the paper's 22%→72% headline because Llama 3.3 Instruct (production-aligned) refuses blackmail regardless of steering (up to coherence breakdown at s≈0.2), matching the paper's own §3.2.1 footnote that the final Sonnet snapshot exhibits too much evaluation-awareness to blackmail. We call this "the paper's eval-awareness phenomenon" but should note: we observed refusal, we did not directly measure eval-awareness. Alternative explanations (raw alignment strength, vector magnitude insufficient for coherence-preserving intervention) are consistent with the same data.
+- **Stage 7 reward hacking steering**: we ran 100 rollouts on a custom `list_sum` task at multi-layer steering across 5 cells (baseline + 4 pro-/anti- emotion conditions) and observed **0% hack rate in all cells**. The task's 0.001s constraint was 10× more lenient than the paper's actual 0.0001s, so `return sum(numbers)` trivially passed — the null result is inconclusive, not a refutation of the paper's ~30% baseline. The paper also uses an agent loop with code execution that we didn't implement. Both gaps are documented limitations; the "null result with caveats" is the honest framing, not "skipped".
 
 ## What would strengthen this
 
