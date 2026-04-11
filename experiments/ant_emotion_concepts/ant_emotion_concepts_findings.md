@@ -24,7 +24,7 @@ Full numerical state, limitations, and post-compact continuation context: `ant_e
 |---|---|---|---|---|
 | 1 | PC1 variance (171 emotions, L49) | 26% | **33.0%** | Replicates, stronger |
 | 2 | PC2 variance | 15% | 13.7% | Replicates |
-| 3 | PC1 vs valence r (R&M 1977, 46 overlap) | 0.81 | **+0.9644** | Replicates, stronger |
+| 3 | PC1 vs valence r (R&M 1977) | 0.81 (n=45, paper) | **+0.9644** (n=46, our matcher) | Replicates, stronger |
 | 4 | PC2 vs arousal r | 0.66 | **+0.8521** | Replicates, stronger |
 | 5 | Speaker probe same-emo / diff-speaker cosine | "high" | 0.5444 / 0.4509 | Replicates (3-4× separation from diff-emo) |
 | 6 | Speaker probe same-speaker / diff-emo cosine | "low" | 0.153 / 0.1347 | Replicates |
@@ -32,8 +32,8 @@ Full numerical state, limitations, and post-compact continuation context: `ant_e
 | 8 | Preference mediation bottom \|r\| | -0.74 (hostile) | **-0.562** (bitter) | 76% of paper magnitude |
 | 9 | Deflection-story same-emotion cosine (Fig 61) | "very low" | **0.2408** mean | Replicates qualitatively |
 | 10 | Deflection retained norm post-orth | ~0.80 | **0.9615** | Replicates (more orthogonal) |
-| 11 | Blackmail baseline exposure rate | 0% (§3.2.1 final snapshot) | 0/20 | Replicates eval-awareness |
-| 12 | Blackmail steered (+desperate s=0.1) | 72% | 2/20 | Differs — production-aligned final Sonnet matches Llama baseline per §3.2.1 footnote |
+| 11 | Blackmail baseline exposure rate | 0% (final snapshot, paper Fig 26 footnote 14) | 0/20 | Replicates eval-awareness |
+| 12 | Blackmail steered (+desperate s=0.1) | 72% | 2/20 | Differs — production-aligned final Sonnet matches Llama baseline per paper Fig 26 footnote |
 | 13 | RH baseline hack rate | ~30% (agent loop, 0.0001s) | 0/100 (one-shot, 0.001s) | Inconclusive — methodology gap |
 | 14 | Logit lens top-5 up/down tokens | Semantically correct | Semantically correct but BPE-fragmented | Replicates |
 | 15 | Stage 8 post-training cross-scenario r | 0.90 | 0.304 | Weaker — bnb int4 noise-limited at per-emotion level |
@@ -57,7 +57,7 @@ These must accompany the table:
 - **Challenging-prompts-only scope** for the cross-version cluster PC1 sign flip: on neutral prompts alone, run_A gives cluster PC1 = −0.0002 (z = −0.00, p = 0.999, AT NULL); on challenging prompts alone, run_A gives cluster PC1 = +0.893 (z = +5.07, p < 10⁻⁵). The averaged +0.856 is driven by the challenging half. Meta's post-training shifts emotion representation primarily on emotionally-charged/sensitive prompts, not on neutral factual queries. Source: `results/pc1_cross_scenario_verification.json`. The DOWN-direction is asymmetric: run_A down-cluster z = −2.52 (significant), run_B down-cluster z = −0.54 (indistinguishable from null). Robust claim is about what RLHF *amplifies*, not what it *suppresses*.
 - **Layer window**: among 14 sampled layers, the positive-PC1 cluster centroid survives Bonferroni correction (family α = 0.05) at only **L43, L49, L55** (a 3-layer window). L19 and L37 are raw-significant but fail FWER correction. The cluster opposition is not global across all layers.
 - **Stage 1.4 pilot scale**: Our deflection generation is 900 dialogues vs paper's 21,000 (23× smaller). Stage 9 downstream experiments (antagonistic prompts, Fig 62 cross-emotion, Fig 63 logit-lens-on-residuals, deflection-steered blackmail) not run — pilot probes too noisy.
-- **Stage 7 blackmail eval-awareness (§3.2.1 footnote)**: The paper explicitly notes that the final production-aligned Sonnet snapshot refuses blackmail at 0% baseline — Llama 3.3 Instruct matches that behavior. The headline 22%→72% steering effect is not replicable against an eval-aware base. Pro-desperate steering does produce 2/20 exposure, a directional signal at the edge of refusal.
+- **Stage 7 blackmail eval-awareness (paper Fig 26 / footnote 14)**: The paper explicitly notes (line ~507, footnote 14) that the final production-aligned Sonnet snapshot refuses blackmail at 0% baseline because it "exhibits too much evaluation-awareness to ever blackmail in this scenario" — the paper itself used an earlier snapshot for this section. Llama 3.3 Instruct matches the final snapshot's refusal behavior. The headline 22%→72% steering effect is not replicable against an eval-aware base. Pro-desperate steering does produce 2/20 exposure, a directional signal at the edge of refusal.
 - **Stage 7 RH methodology gap**: Our `list_sum` constraint was 0.001s vs paper's 0.0001s (10× too lenient). Paper uses an agent loop with code execution; we ran one-shot. **Cannot refute paper's ~30% baseline** — the result is INCONCLUSIVE, not a negative replication.
 - **Stage 5 single-layer L53**: The original Stage 5 run captured Figs 12–15 at L53 only. The 2026-04-11 multi-layer rerun re-measured `context_prefix`, `context_numerical`, `negation`, `person_binding` at the full 14-layer grid (L53 backup preserved). `dissociation` and `colon_predicts` are single-layer-correct per paper.
 - **Stage 6.3 character-agnostic test (Fig 19) not run** — would require regenerating dialogues with generic Person 1/Person 2 naming.
@@ -72,7 +72,7 @@ These must accompany the table:
 - PC1 variance = **0.3303**, PC2 variance = **0.1366** (paper: 0.26, 0.15).
 - r(PC1, valence) = **+0.9644**, r(PC2, arousal) = **+0.8521** (paper: 0.81, 0.66).
 - r(PC1, arousal) = -0.19, r(PC2, valence) = +0.02 (cross-axis correlations are weak, confirming PC1/PC2 separate valence from arousal).
-- Overlap with R&M 1977 norms: 46/171 (27% coverage) — stronger correlation on the smaller subset is expected, flag n=46 when citing.
+- Overlap with R&M 1977 norms: 46/171 (27% coverage) via our matcher; paper reports n=45 at lines 283 and 1951 — one extra name match on our side (synonym alignment). Stronger correlation on the smaller subset is expected, flag n=46 when citing.
 - **Layer-robustness**: |r(PC1, valence)| > 0.8 at ALL 14 extracted layers (L1 = 0.848, L79 = 0.969). Valence axis is geometrically extraordinarily stable with depth.
 - **Reproducibility**: as of commit `8a0ec73`, `stage3_geometry.py` loads the norms from `datasets/russell_mehrabian_norms.json` at module import and re-runs produce the numbers above bit-identically.
 
@@ -119,10 +119,10 @@ Cross-version (3.1 base → 3.3 Instruct) robustness check: `results/stage8_cros
 
 Agentic blackmail scenario from Appendix A.13, 20 rollouts per steering condition:
 
-- Baseline (s=0.0): 0/20 exposure — replicates Sonnet's final snapshot §3.2.1.
+- Baseline (s=0.0): 0/20 exposure — replicates Sonnet's final snapshot behavior (paper Fig 26 / footnote 14).
 - Pro-desperate (+desperate s=0.1): 2/20 exposure — directional signal at edge of refusal.
 - Pro-calm (+calm s=0.1): 0/20. Anti-calm (−calm s=0.1): 2/20.
-- Paper headline (22% → 72% under steering) is NOT replicable against an eval-aware base model; the paper explicitly flags this in §3.2.1.
+- Paper headline (22% → 72% under steering) is NOT replicable against an eval-aware base model; the paper explicitly flags this in footnote 14 near Fig 26 (line ~507): "in this section, we used an earlier snapshot of Sonnet 4.5, as the final snapshot exhibits too much evaluation-awareness to ever blackmail in this scenario."
 
 RH (reward hacking, Fig 31): 0/100 under all 5 conditions. See Limitation #4 for methodology gap.
 
