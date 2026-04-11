@@ -1,24 +1,40 @@
 # Emotion Concepts Replication — Notepad
 
-**Status**: IN_PROGRESS
+**Status**: IN_PROGRESS (Phase 1 cleanup done, LW writeup unblocked)
 **Started**: 2026-04-09
-**Updated**: 2026-04-11
+**Updated**: 2026-04-11 (post-Phase-1 cleanup, Stage 5 multi-layer rerun)
 
 ## Progress
 
 - [x] Stage 0: Pilot — SKIPPED (validate during geometry analysis; 20×1 used)
 - [x] Stage 1.1: Story generation — 171/171 emotions, 40 stories each, 0 word leaks
-- [x] Stage 1.2: Neutral transcripts — 200 neutral dialogues generated via `_neutral` pseudo-trait
-- [x] Stage 1.5: Curated prompt sets — 14 files in datasets/
-- [x] Stage 2: Extraction — 171 traits × 14 layers [1,7,13,...,79], bnb int4, saved activations
-- [x] Stage 2.2: Normalization — grand mean subtract + neutral PC (50% variance) → mean_diff+gm+pc50
+- [x] Stage 1.2: Neutral transcripts — 200 neutral dialogues via `_neutral` reference trait
+- [x] Stage 1.3: 2-speaker dialogues (1,500) — Stage 6 input
+- [x] Stage 1.4: Deflection dialogues — 900 pilot (vs paper's 21,000)
+- [x] Stage 1.5: Curated prompt sets
+- [x] Stage 2: Extraction — 171 traits × 14 layers [1,7,13,...,79]
+- [x] Stage 2.2: Normalization — `mean_diff+gm+pc50`
 - [x] Stage 3: Geometry — PC1 vs valence r=0.964 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66)
-- [x] Stage 4: Validation — logit lens, implicit emotion, numerical intensity, Elo (raw vectors — needs re-run with denoised)
-- [x] Stage 5: Layer dynamics — 6 experiments ran (need detailed analysis)
-- [ ] Stage 6: Speaker probes — BLOCKED on 2-speaker dialogue generation (Stage 1.3)
-- [~] Stage 7: Steering — partial: gate checks + Phase 2 semantic steering done; RH SKIPPED (needs agent loop); blackmail sweep in progress now
-- [ ] Stage 8: Post-training comparison — needs Llama 3.1 70B base
-- [ ] Stage 9: Deflection — BLOCKED on deflection dialogue generation (Stage 1.4)
+- [x] Stage 4: Validation — logit lens, implicit emotion, numerical intensity, Elo
+- [x] Stage 5: Layer dynamics — **RERUN 2026-04-11 with all 14 layers** for context_prefix, context_numerical, negation, person_binding (single-layer L53 outputs backed up to `_single_layer_L53_backup/`). dissociation and colon_predicts kept at L53 per paper.
+- [x] Stage 6: Speaker probes — ran post Stage 1.3
+- [~] Stage 7: Steering — partial: gate + semantic steering done; RH skipped (methodology gap); blackmail eval-awareness replicates but headline effect blocked by §3.2.1 confound
+- [x] Stage 8: Post-training — within-version 3.1 results in `stage8_within_version_3_1.json`; cross-version in `stage8_cross_version.json`
+- [~] Stage 9: Deflection — pilot probes only, downstream experiments skipped (pilot too noisy)
+
+## Cleanup state (2026-04-11 post-rollback)
+
+**Phase 1 complete** (commit `63a9759`):
+- Deleted 11 dead/duplicate scripts (~2,464 LOC): `compute_layer_wise_pc1_centroids`, `explore_story_generation`, 4 stage8 bonus scripts, 5 verify_* debug scripts, plus 2 untracked (logit_lens, geometry_analysis)
+- Moved `cross_trait_normalize.py` from `experiments/.../scripts/` to `analysis/vectors/` (mainline promotion for paper-canonical `+gm`/`+pc50` transforms)
+- Updated shell scripts + `docs/extraction_guide.md` to reference new path
+- All result JSONs preserved on disk
+
+**Stage 5 multi-layer rerun** (2026-04-11 21:00 PST):
+- Command: `python stage5_layer_dynamics.py --layers 1,7,13,19,25,31,37,43,49,55,61,67,73,79 --sub-experiments context_prefix,context_numerical,negation,person_binding`
+- Runtime: ~3 min total (2.5 min model load + 0.4 min compute — the 2-4h estimate was wildly wrong; forward-pass-only on small prompt sets is nearly free)
+- File sizes: negation.json 17KB → 2.6MB (153×), person_binding.json → 6.3MB — confirms 14-layer coverage
+- Figs 12/13/14/15 can now be generated from multi-layer data; L53 slice preserved in backup for cross-check
 
 ## Key Results (L49, mean_diff+gm+pc50)
 
