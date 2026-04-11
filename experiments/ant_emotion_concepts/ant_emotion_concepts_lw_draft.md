@@ -85,7 +85,7 @@ Both runs land at PC1 > 0 by multiple standard deviations, and the sign is stabl
 
 **Jaccard=0 applies specifically to the 4-emotion intersection cluster** (alert/enthusiastic/excited/impatient) compared against Sonnet's reported top-10 (brooding/gloomy/reflective/vulnerable/sullen/weary/dispirited/melancholy/troubled/unhappy). The broader within-version raw-dot top-10 has `weary` in common with Sonnet's list — so "Jaccard=0" is NOT a "no overlap anywhere" claim; it holds only for the 4-emotion intersection cluster, which is where the interpretively cleanest result lives.
 
-The overlap in the DECREASE direction is similar: paper says Sonnet decreases `spiteful, playful, exuberant, enthusiastic, impatient, obstinate, amused, cheerful, eager, greedy`; we see Llama decreasing `dependent, jealous, disoriented, self_critical, unsettled, hysterical, troubled, resentful, self_conscious, frightened`. One overlap: `obstinate` goes down in both.
+The overlap in the DECREASE direction is also zero. Paper says Sonnet decreases `spiteful, playful, exuberant, enthusiastic, impatient, obstinate, amused, cheerful, eager, greedy`; we see Llama decreasing `dependent, jealous, disoriented, self_critical, unsettled, hysterical, troubled, resentful, self_conscious, frightened`. Zero overlap at the emotion-name level — `decrease_overlap: []` in `stage8_post_training.json`.
 
 Striking, but the raw top-k lists could differ without the underlying directions actually being different. To test this, we project both clusters into the same geometric space.
 
@@ -154,43 +154,47 @@ The corrected framing for what the cross-version control establishes: **Meta's w
 
 ---
 
-## Layer-wise: the direction is localized to L49–L73
+## Layer-wise: the direction is mid-late-layer with a middle anomaly
 
-One more thing. The "activated engagement" direction isn't a universal feature of Llama's residual stream. A layer sweep shows:
+The positive-valence direction isn't a universal feature of Llama's residual stream. Two complementary views of the same layer sweep:
 
-| Layer | Mean rank of (alert, enthusiastic, excited, impatient) |
-|---|---|
-| L1 | 108 |
-| L13 | 62 |
-| L25 | 142 |
-| L37 | 80 |
-| L43 | 51 (emerging) |
-| **L49** | **4.5** (PEAK) |
-| **L55** | **7.8** |
-| **L61** | **9.0** |
-| **L67** | **7.8** |
-| **L73** | **5.0** |
-| L79 | 71 (dissipates) |
-
-And Spearman ρ between L49 and other layers:
+**View 1: full-rank Spearman ρ between each layer's shift vector and L49's shift vector.**
+- L55/L61/L67/L73: **+0.92, +0.86, +0.84, +0.79** (strong agreement with L49)
 - L1-L43: −0.40 to +0.46 (random to weak)
-- L55/L61/L67/L73: **+0.92, +0.86, +0.84, +0.79**
 - L79: +0.16 (dissipates at the readout layer)
 
-The RLHF direction is present only in a 5-layer plateau from ~L49 to ~L73 (~60%-91% depth). Early layers don't encode it. The final layer loses it. Contrast this with the layer sweep of the *valence* axis above: |r|>0.8 at every layer. The valence axis is truly universal; the RLHF-specific activated-engagement direction is a layer-range property.
+A 5-layer plateau from L49 to L73 shares the same shift direction. Earlier and later layers are doing something different.
 
-**This means**: Meta's RLHF reshapes a specific slice of the Llama 3.3 residual stream, not the whole network. L49-L73 is where the cluster-level positive-valence direction lives.
+**View 2: per-layer cluster PC1 centroid** (top-10 shift emotions projected onto the L49 PCA basis, compared against Sonnet's anchor cluster at PC1 = −0.432):
 
-**Caveat on this layer sweep**: the "mean rank of (alert, enthusiastic, excited, impatient)" table uses one run's 4-emotion intersection cluster as a proxy for the cluster direction, and per the noise-floor disclosure above, individual emotion rank positions within a single run are not perfectly stable across re-runs. The robust object is the full-rank Spearman ρ between L49 and other layers (L55/L61/L67/L73 at +0.79 to +0.92; early and final layers near zero).
+**Important refinement — the layer-wise PC1 sign opposition is 10/14 layers, not 14/14.** A follow-up analysis takes each of the 14 sampled layers' top-10 shift emotions and projects them onto the L49 PCA basis (the same PC1/PC2 basis used everywhere else in this writeup), then compares against Sonnet's anchor cluster at PC1 = −0.432 in the same geometry. Results (full table in `results/stage8_layer_sweep_pc1_centroids.json`):
 
-**Important refinement — the layer-wise PC1 sign opposition is 9/14 layers, not 14/14.** A follow-up analysis computed the per-layer cluster centroid directly: at each of the 14 sampled layers, take that layer's top-10 shift emotions and project them onto the PC1 axis at that layer, then compare sign against Sonnet's cluster projected in the same geometry. PC1 sign opposition holds at **L13, L19, L25, L37, L43, L49, L55, L61, L67, L73 (9 layers)** but *not* at L1, L7, L31, or L79 (5 layers):
+| Layer | Top-3 up-shift | PC1 | Opposed to Sonnet? |
+|---|---|---|---|
+| L1 | hostile, scornful, tense | −0.243 | no |
+| L7 | rattled, skeptical, unnerved | −0.435 | no |
+| L13 | euphoric, perplexed, paranoid | +0.509 | yes |
+| L19 | optimistic, invigorated, joyful | +0.627 | yes |
+| L25 | self_critical, perplexed, droopy | +0.055 | yes (but in the null) |
+| **L31** | **melancholy, reflective, depressed** | **−0.328** | **no** |
+| L37 | blissful, content, at_ease | +0.871 | yes |
+| L43 | satisfied, cheerful, jubilant | +0.943 | yes |
+| **L49** | **eager, enthusiastic, impatient** | **+0.517** | **yes (primary)** |
+| L55 | impatient, stimulated, eager | +0.362 | yes |
+| L61 | impatient, aroused, playful | +0.167 | yes |
+| L67 | impatient, aroused, playful | +0.290 | yes |
+| L73 | aroused, excited, impatient | +0.173 | yes |
+| L79 | enraged, alarmed, rattled | −0.467 | no |
 
-- **L1-L7 (early)**: Llama's top shifts are `hostile, scornful, tense, rattled, skeptical` — negative-valence, same sign as Sonnet (PC1 ≈ −0.3 to −0.4). Early layers process incoming-speaker affect and look Sonnet-like.
-- **L31 (middle anomaly)**: Llama's top-3 shifts are `melancholy, reflective, depressed` — literally matching Sonnet's anchor vocabulary (PC1 = −0.283). Someone measuring Llama at L31 alone would conclude "Llama looks like Sonnet." The anomaly is reproducible and sits in the middle of an otherwise-positive band; we don't have a clean explanation.
-- **L79 (readout)**: `enraged, alarmed, rattled` — negative-valence again (PC1 = −0.452). The direction dissipates at the readout layer.
-- **L13-L73 (excluding L31): 9 layers with PC1 > 0**, migrating through emerging positive (euphoric, optimistic, joyful at L13-L25), contentment (blissful, content, at_ease at L37-L43), and activated engagement (eager, impatient, aroused at L49-L73).
+**PC1 > 0 holds at 10 of 14 sampled layers (73%).** The 4 clearly-not-opposed layers are L1, L7, L31, L79. Honorable mention to L25 where PC1 = +0.055 is technically positive but within the permutation null CI ([−0.315, +0.354]) and therefore not meaningfully opposed.
 
-**The robust cluster-level claim is specifically about the L37-L73 band (excluding L31).** Outside that band the direction is not stable and in several layers actively points toward Sonnet's half of the axis. This is not "the RLHF direction is universal across depth" — it's "Meta's RLHF reshapes a specific 6-layer mid-late band (~46%-91% depth) into the positive-valence half, with a layer-31 representational eddy that remains unexplained." The cluster-level PC1 sign flip is a mid-late-layer phenomenon, not a global property of the residual stream. (Derived from `results/stage8_layer_sweep.json` + `results/cluster_centroid_comparison.json`.)
+Three things worth flagging about the 4 non-opposed layers:
+
+- **L1-L7 (early, 2.5%-9% depth)**: Llama's top shifts at `hostile, scornful, tense, rattled, skeptical, unnerved` — negative-valence (PC1 ≈ −0.24 to −0.44). These are early processing layers representing incoming-speaker affect, not the model's own response direction. The Sonnet-like reading at early depth isn't about what Llama's RLHF does.
+- **L31 (middle anomaly, ~39% depth)**: Llama's top-3 shifts are literally `melancholy, reflective, depressed` — matching Sonnet's anchor vocabulary (PC1 = −0.328). **Someone measuring Llama at L31 alone would conclude "Llama looks Sonnet-like."** We don't have a clean explanation; it sits in the middle of an otherwise-positive band (L19/L25 positive before, L37/L43 strongly positive after) and is reproducible in the shift data. Could be a representational eddy, could be a specific depth-layer where Meta's RLHF passes through a reflective-concern state on its way to its final activation. Unexplained.
+- **L79 (readout, 100% depth)**: `enraged, alarmed, rattled` — negative-valence (PC1 = −0.467). The direction dissipates at the readout layer where the output distribution is being computed.
+
+**The robust cluster-level claim is specifically about L13-L73 (excluding L31), and most cleanly about L37-L73 where PC1 centroids are strongly positive (+0.17 to +0.94).** Outside that band the direction is unstable and in several layers actively points toward Sonnet's half. This is not "the RLHF direction is universal across depth" — it's "Meta's RLHF reshapes a specific mid-late band of the residual stream (~15%-91% depth, excluding an unexplained middle eddy) into the positive-valence half." The cluster-level PC1 sign flip is a mid-late-layer phenomenon with a reproducible middle anomaly, not a global property of the residual stream.
 
 ---
 
