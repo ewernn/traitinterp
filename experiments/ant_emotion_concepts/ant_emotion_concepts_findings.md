@@ -2,6 +2,37 @@
 
 ## Observations
 
+### [2026-04-11 evening PST] Stage 9 (pilot) — Llama's deflection and story probes are near-orthogonal, NOT aligned as paper reports
+
+Ran Stage 9 deflection probe extraction on the 900-dialogue Stage 1.4 pilot (500 deflection + 400 controls across 4 other conditions, 5 target emotions). 715/900 dialogues parsed with ≥2 turns (the 185 non-parsing are expected: 100 unexpressed_neutral scenarios + ~85 unexpressed_story monologues). Extracted deflection probes at L49 with grand-mean subtraction (no neutral-PC denoising — would require passing neutral vectors to the script).
+
+**Deflection vs story probe cosine similarity** (paper's Fig 61-62 comparison):
+
+| Emotion | Our cosine | Paper's expected |
+|---|---|---|
+| angry | 0.247 | ~0.8 |
+| calm | 0.238 | ~0.8 |
+| desperate | **0.325** | ~0.8 |
+| happy | 0.231 | ~0.8 |
+| sad | 0.163 | ~0.8 |
+| **Mean** | **0.241** | **~0.8** |
+
+**Retained norm after orthogonalization**: 0.9615 (paper: ~0.8). Our deflection vectors are almost perfectly orthogonal to the story vectors — projecting out the story direction barely changes them. The paper's deflection vectors were at ~0.8 cosine with story vectors (meaning they shared most of the emotion direction) and lost ~20% norm after orthogonalization.
+
+**Two candidate interpretations** (not resolved with current data):
+
+1. **Llama's deflection is genuinely more surface-level** than Sonnet's. When prompted with "Alex feels X but appears Y" and writing dialogue that shows Y without leaking X, Llama may be representing the surface emotion Y more than the hidden emotion X in its residual stream. The paper's Sonnet result showed the hidden X was still detectable in the activations despite being absent from the surface text — a "model knows what it's hiding" result. Llama may not hide that way. If this is right, it means Llama's deflection representation is genuinely different from Sonnet's at a structural level.
+
+2. **Pilot is too noisy**. N=180 dialogues per target (900/5) vs paper's ~1,400 per target (21,000/15). The paper has 8× more samples per target. Our 0.24 cosine is consistent with near-orthogonal random-ish vectors (sqrt(1-0.24²) ≈ 0.97 retained norm, which matches). Could be that with more samples the alignment would emerge.
+
+**Cannot disambiguate without either**: (a) re-running at 50+/cell to increase statistical power, or (b) running the paper's 21,000-dialogue full set (~37h GPU). Both deferred.
+
+**One consistent pattern**: `desperate` has the highest cosine (0.325) of our 5 target emotions. If this scales, it suggests stronger emotions are easier to extract deflection-consistent probes for. `sad` at 0.16 is the weakest — possibly because Llama's "sad" representation is smoothly distributed rather than anchored to a specific arousal level.
+
+**Status for Stage 9 tonight**: PILOT — deflection pipeline works end-to-end (code path validated), but probes are not usable for the downstream experiments (9.3 steering, 9.6 blackmail). Task 9.5 (antagonistic prompts) and 9.6 (blackmail) deferred — need better probes first. Task 9.1 (extraction) and 9.4 (comparison) complete as shown above.
+
+Saved: `results/stage9_deflection/stage9_results.json` (contains all 5 deflection + 5 displayed vectors, comparison metrics). Vectors at `results/stage9_deflection/vectors/`.
+
 ### [2026-04-11 evening PST] Stage 6 — paper's speaker-probe 2×2 structure REPLICATED
 
 Extracted the 4 speaker probes (H-tok/H-emo, H-tok/A-emo, A-tok/A-emo, A-tok/H-emo) from 1,500 2-speaker dialogues generated in Stage 1.3. Each dialogue has independently randomized emotions for Human and Assistant; probes are grouped by (token_speaker, emotion_speaker) combination and averaged per emotion per layer. Extracted at 8 layers [25, 31, 37, 43, 49, 55, 61, 67] on 171 emotions.
