@@ -51,6 +51,17 @@
     "variable_claim": "PC2 (arousal) is method-dependent. Canonical Stage 8 (paper's normalized scoring) yields a neutral-arousal 'positive mood' cluster (PC2=-0.002). Raw-dot scoring yields high-arousal 'activated' clusters (PC2=+0.12 to +0.42). Sonnet is consistently low-arousal (PC2=-0.43).",
     "diametrical_opposition_conditions": "The 'both PC1 AND PC2 fully opposed' (diametrical) claim holds only for the 4-emotion intersection cluster (PC1=+0.44, PC2=+0.42) and the cross-version raw-dot top-10 (PC1=+0.52, PC2=+0.39). The canonical positive-mood cluster and the within-version cluster share only the PC1 sign flip.",
     "weary_overlap": "`weary` is in BOTH Sonnet's top-10 AND Llama's within-version 3.1 RLHF top-10 (raw-dot). The within-version cluster also contains `tired, worn_out` which are semantically close. This creates a partial overlap at the 'fatigue edge' of Sonnet's cluster. The overlap does not negate the PC1 centroid opposition but it means the 'Jaccard=0' claim is scoring-method-dependent.",
-    "honest_headline": "Meta's RLHF shifts Llama's emotion activations toward positive-valence emotions. Anthropic's RLHF shifts Sonnet's toward negative-valence emotions. This is robust across scoring methods and cross-version controls. The exact position on the arousal axis depends on which scoring method you use, with 'activated engagement' (high-arousal) being the clearest in the cross-signal intersection and cross-version top-10."
+    "honest_headline": "Meta's RLHF shifts Llama's emotion activations toward positive-valence emotions. Anthropic's RLHF shifts Sonnet's toward negative-valence emotions. This is robust across scoring methods and cross-version controls. The exact position on the arousal axis depends on which scoring method you use, with 'activated engagement' (high-arousal) being the clearest in the cross-signal intersection and cross-version top-10.",
+    "noise_floor_investigation": {
+      "finding": "Two independent runs of 'Stage 8 shift (3.3 Instruct - 3.1 base) at L49 with mean_diff+gm+pc50' produce Spearman ρ = 0.46 and Pearson r = 0.46 — a real-but-noisy correlation, not the ~0.95 we'd expect from literally identical measurements.",
+      "sign_flips_observed": [
+        {"emotion": "brooding", "run_A": -0.037, "run_B": +0.197},
+        {"emotion": "calm", "run_A": +0.202, "run_B": -0.194},
+        {"emotion": "gloomy", "run_A": -0.044, "run_B": +0.055}
+      ],
+      "likely_cause": "bnb int4 quantization noise compounded with batch/padding differences between scripts. stage8_post_training.py batches all prompts with padding and default BOS; stage8_cross_version_control.py processes one prompt at a time with add_special_tokens=False. Per-activation numeric drift of ~5-10% at the raw value level can flip signs on emotions with small raw shift magnitudes.",
+      "what_survives": "The CLUSTER-LEVEL valence sign is stable. Both runs put Llama's top-shift cluster at PC1 > 0 (positive valence), while Sonnet's is at PC1 < 0. Individual top-10 rankings are noise-sensitive; cluster centroids in PC1/PC2 space are not.",
+      "refined_honest_headline": "Llama's RLHF shifts emotion activations toward positive valence. Sonnet's shifts toward negative valence. This is robust across runs and scoring methods. Individual top-emotion rankings (activated vs positive-mood) vary with bnb int4 quantization noise and should not be relied upon as specific claims."
+    }
   }
 }
