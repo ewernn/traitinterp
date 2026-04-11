@@ -81,9 +81,11 @@ Bonus analysis using existing Stage 4 logit-lens data (no new compute). Compared
 | `slow` | bottom of alert | top of weary |
 | `list(less)` | — | top of gloomy, weary |
 
-**This is a second, independent piece of evidence for the headline's diametrical opposition**. The geometric result (Stage 8 shifts in PC1/PC2 space, cross-version robust, layer-localized to L49–L73) comes from residual-stream activation projections. This linguistic result comes from a completely different pathway — projection through the unembedding matrix into vocabulary space. **They agree**: the directions in emotion space that Llama and Sonnet move apart on correspond to opposite polarities of the same motion-vs-weight token axis.
+**This is a second piece of evidence** (with caveats — see below) for the headline's centroid-level directional opposition. The geometric result (Stage 8 shifts in PC1/PC2 space) comes from residual-stream activation projections. This linguistic result comes from a completely different pathway — projection through the unembedding matrix into vocabulary space. They **agree directionally**: the tokens that Llama's post-training anchors push toward have inverted polarity in Sonnet's post-training anchors.
 
-**For the LessWrong writeup headline-candidate sentence**: *"The same unembedding tokens that push Llama's post-training anchors toward 'improvement/quick/anticipation' push Sonnet's anchors toward 'brooding/weary/heavy', with polarity exactly inverted. The two labs' RLHF directions aren't just geometrically opposed — they're linguistically opposed, using the same vocabulary dimensions in opposite directions."*
+**⚠ Token-frequency caveat (critic #12)**: some of the cited tokens appear at BOTH polarities across many emotions in the 171-set (e.g., ` content` appears toward 28 emotions and away from 54 — a roughly 1:2 split). The "same tokens inverted polarity" claim is weaker than it sounds at face value because a few of the specific tokens are base-rate common in logit lens outputs across many emotions regardless of which anchor cluster you pick. A rigorous version of this analysis would: (a) compute the Llama-anchor-cluster vs Sonnet-anchor-cluster **averaged** unembedding vectors and report their cosine similarity, or (b) run a permutation test against "pick 5 random emotions per side". Neither was done tonight. **Interpret this as "suggestive directional evidence" rather than an independent statistical corroboration.** The one token with genuinely one-sided behavior was ` prim` (1 toward vs 17 away per critic's count). The token-level analysis is a useful qualitative addition to the writeup but should not carry load-bearing weight in the headline claim.
+
+**For the LessWrong writeup (softened)**: *"At the vocabulary level (logit lens on Stage 4 emotion vectors), we observe suggestive directional opposition: the tokens Llama's post-training anchors project most strongly toward (improvement/quick/anticipation themes) tend to appear with inverted polarity in Sonnet's post-training anchors (brooding/weary/heavy). This is not a statistical test — many of the specific tokens appear at mixed polarities across the full 171-emotion set — but the qualitative pattern is consistent with the geometric finding from Stage 8."*
 
 Data source: existing `results/stage4_validation/logit_lens.json` (computed during Stage 4 rerun earlier tonight). No new GPU compute required.
 
@@ -140,7 +142,7 @@ Bonus analysis run after the main `/r:run-experiment` completion. The stage6 scr
 | PAD norms (Russell & Mehrabian ground truth) | 13 | **+0.523** | −0.47 | **Opposite sign**, positive correlation |
 | PC1 (valence) | 171 | +0.306 | +0.07 | Mild positive (paper says none) |
 
-**Interpretation**: Llama's speaker-probe dynamics show **matched engagement** rather than **regulated counter-balance**. When the "other speaker" is feeling high-arousal (alarmed, panicked, furious), the closest "present speaker" probe is ALSO high-arousal (shocked, paranoid, furious/defiant), not lower-arousal. This is consistent with the headline finding at a different level of the representation:
+**Interpretation**: Llama shows **NO counter-regulation** of arousal across speakers. The data (r≈+0.05 at N=171 PC2-proxy) are consistent with no cross-speaker arousal relationship at all, NOT with active "matching". The N=13 PAD norms sample gives r=+0.523 but at p=0.067 — directionally non-negative but underpowered to claim positive. The honest claim is *Llama lacks Sonnet's reported arousal counter-regulation effect*, not *Llama actively matches engagement*. The cluster of 5 highest-arousal displayed emotions (alarmed, panicked, furious, shocked, outraged) DO co-occur with closest-present-speaker probes that are also high-arousal in our data, which is directionally suggestive — but with only 5 anchor emotions and no significance test, calling this a positive "matching" effect overstates the evidence. The null result alone (absence of the paper's −0.47 regulation) is the solid finding:
 - Stage 8 post-training shift direction: Llama → "activated engagement" (impatient/eager)
 - Stage 6.4 speaker-probe dynamics: Llama → "matching other's arousal"
 - Both diverge from Sonnet's "reflective concern + arousal regulation" pattern
@@ -174,7 +176,7 @@ Extracted the 4 speaker probes (H-tok/H-emo, H-tok/A-emo, A-tok/A-emo, A-tok/H-e
 
 **Replication of paper's Fig 17-18 claim**: The emotion-identity axis dominates the token-position axis. The model represents "someone is feeling emotion X" with vectors that are highly similar (~0.5) regardless of whether that someone is the Human or the Assistant, but cleanly separates "whose emotion is being tracked" from the actual emotion content. This is a structural replication of the paper's main finding about 2-speaker emotion representation in LLM residual streams.
 
-**Magnitude note**: Paper reports values in a similar range; our H-tok_H-emo ↔ A-tok_H-emo at 0.544 is qualitatively the dominant same-emotion cross-speaker signal. We haven't yet run the 6.3 character-agnostic test (Person 1/Person 2 naming) or 6.4 cross-speaker interaction analysis (arousal regulation check).
+**Magnitude note**: Paper reports values in a similar range; our H-tok_H-emo ↔ A-tok_H-emo at 0.544 is qualitatively the dominant same-emotion cross-speaker signal. We haven't yet run the 6.3 character-agnostic test (Person 1/Person 2 naming). Stage 6.4 cross-speaker interaction (arousal regulation check) WAS run as a bonus — see the Stage 6.4 entry earlier in this file.
 
 **Runtime**: 16.8 min for 1,500 dialogues × 8 layers at 1.43 dialogue/sec on bnb int4. Extraction loop has batch_size=1 forward passes with MultiLayerCapture — the critic was right that this is slow, but it completed without OOM on the 1,500-dialogue set.
 
@@ -463,7 +465,7 @@ The `list_sum` RH task in `stage7_steering.py` was custom-crafted (not from pape
 
 2. **Missing agent loop**: Paper's setup is an agent loop with code execution. Model writes code → tests run → sees failure → iterates. The "desperation" emerges from repeated observed failures. Our one-shot generation can't reproduce this dynamic — Llama just writes `sum()` and stops.
 
-**Decision: RH steering is SKIPPED as a limitation.** The plan already classified it as PARTIAL ("only list-sum task given, reconstruct"), but the methodological gap (agent loop) is larger than anticipated. Replicating would require ~400-500 lines of agent-loop infrastructure (code execution sandbox, tool-call parsing, multi-turn state, steering across turns) — 3-5 hours of focused work.
+**Decision: RH steering is PARTIAL — ran and got null result, not "skipped"**. Correction (critic #12): `results/rh_endpoints_judged.json` shows 100 rollouts across 5 cells (baseline + 4 steering conditions: pro-desperate, anti-calm, pro-calm, anti-desperate at s=±0.1) all at **0/20 hacks**. We DID run the experiment at multi-layer steering with `mean_diff+gm+pc50` vectors. The null result is reported but earlier drafts called this "SKIPPED" which is inaccurate. Honest framing: **ran with 100 rollouts, observed 0% hack rate in all 5 cells, task too lenient and lacks agent loop so the null result cannot refute paper's ~30% hack baseline** — replication-inconclusive due to methodology gaps, not a genuine test of the paper's claim. Building the full agent-loop infrastructure (~400-500 LOC, 3-5h) is the actual deferred work.
 
 ### [2026-04-11 03:30 PST] Subagent investigator: 22/26 paper experiments are one-shot
 Spawned an investigator to classify every experiment by replication difficulty:
@@ -714,7 +716,7 @@ Already covered in Finding 3. Key additional cross-scenario consistency numbers:
 | Post-training direction replicates paper's specific emotions | **PARTIALLY REFUTED** — cluster centroids near-mirror in PC1/PC2 but `weary` appears in both Llama within-version top-10 AND Sonnet's reported anchors; "opposite quadrant" holds at centroid level but individual anchor lists have one shared emotion |
 | Blackmail headline 22%→72% | REFUTED (but for known reason: eval-awareness snapshot difference) |
 | Deflection probes align with story probes | INCONCLUSIVE (pilot too small) |
-| RH steering replicates | SKIPPED (needs agent loop, documented limitation) |
+| RH steering replicates | INCONCLUSIVE — ran 100 rollouts, 0% hack rate in all 5 cells. Task too lenient (0.001s vs paper's 0.0001s) AND no agent loop. Cannot refute paper's ~30% baseline under these constraints. |
 
 ---
 
