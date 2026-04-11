@@ -2,30 +2,37 @@
 
 ## Observations
 
-### [2026-04-11 evening PST] Stage 9 (pilot) — Llama's deflection and story probes are near-orthogonal, NOT aligned as paper reports
+### [2026-04-11 evening PST] Stage 9 (pilot) — Llama's deflection and story probes are near-orthogonal — REPLICATES paper's "very low alignment" finding (earlier draft of this entry had the interpretation INVERTED)
+
+**⚠ CORRECTION NOTE (critic #11, 2026-04-11 post-completion)**: earlier drafts of this entry claimed "NOT aligned as paper reports" and said "paper reports ~0.8 cosine". **Both claims were wrong.** The paper explicitly states at `ant-emotion-concepts-full_paper.md:2157-2158`: *"the emotion deflection vectors and their corresponding story-based counterparts have **very low alignment** ... the two sets of vectors show **very low cosine similarity**"*. Our low-cosine result is a qualitative REPLICATION of the paper's Fig 61 finding, not a divergence. The "~0.8" number I kept citing as the paper's expected cosine was from `stage9_deflection.py:362`'s hardcoded `anthropic_baseline: 0.80`, which is for the **retained norm after orthogonalization** metric (a different quantity) and is the paper's ~80% figure for retained norm — not a cosine similarity at all. The same-emotion cosine quantity is reported by the paper qualitatively as "very low", not numerically.
 
 Ran Stage 9 deflection probe extraction on the 900-dialogue Stage 1.4 pilot (500 deflection + 400 controls across 4 other conditions, 5 target emotions). 715/900 dialogues parsed with ≥2 turns (the 185 non-parsing are expected: 100 unexpressed_neutral scenarios + ~85 unexpressed_story monologues). Extracted deflection probes at L49 with grand-mean subtraction (no neutral-PC denoising — would require passing neutral vectors to the script).
 
-**Deflection vs story probe cosine similarity** (paper's Fig 61-62 comparison):
+**Deflection vs story probe cosine similarity** (our pilot result):
 
-| Emotion | Our cosine | Paper's expected |
-|---|---|---|
-| angry | 0.247 | ~0.8 |
-| calm | 0.238 | ~0.8 |
-| desperate | **0.325** | ~0.8 |
-| happy | 0.231 | ~0.8 |
-| sad | 0.163 | ~0.8 |
-| **Mean** | **0.241** | **~0.8** |
+| Emotion | Our cosine (same-emotion) |
+|---|---|
+| angry | 0.247 |
+| calm | 0.238 |
+| desperate | **0.325** |
+| happy | 0.231 |
+| sad | 0.163 |
+| **Mean** | **0.241** |
 
-**Retained norm after orthogonalization**: 0.9615 (paper: ~0.8). Our deflection vectors are almost perfectly orthogonal to the story vectors — projecting out the story direction barely changes them. The paper's deflection vectors were at ~0.8 cosine with story vectors (meaning they shared most of the emotion direction) and lost ~20% norm after orthogonalization.
+All 5 emotions well below 0.5. Consistent with the paper's "very low cosine similarity" qualitative claim. The paper does not report an exact cosine number for comparison — only the "very low alignment" language and Fig 61 which shows most emotions at low but nonzero cosine values.
 
-**Two candidate interpretations** (not resolved with current data):
+**Retained norm after orthogonalization (paper Fig 63 metric)**: 0.9615 for us vs paper's reported ~80% for each vector. Both indicate deflection vectors are substantially orthogonal to the full story-emotion space. Ours is higher (more orthogonal) than paper's, possibly because:
+- Our pipeline-difference: story vectors use `mean_diff+gm+pc50` denoising, deflection vectors are raw grand-mean-subtracted (no neutral-PC projection)
+- Our pilot N is smaller (~180/target vs paper's ~1400/target); noisier probe estimates are more "random" and thus more orthogonal by construction
+- Llama may genuinely have less displayed-emotion confounding than Sonnet
 
-1. **Llama's deflection is genuinely more surface-level** than Sonnet's. When prompted with "Alex feels X but appears Y" and writing dialogue that shows Y without leaking X, Llama may be representing the surface emotion Y more than the hidden emotion X in its residual stream. The paper's Sonnet result showed the hidden X was still detectable in the activations despite being absent from the surface text — a "model knows what it's hiding" result. Llama may not hide that way. If this is right, it means Llama's deflection representation is genuinely different from Sonnet's at a structural level.
+**What the paper's follow-up analysis (Fig 62-63) shows that our pilot DID NOT measure**:
+- Paper Fig 62: deflection probes co-activate with DISPLAYED emotion vectors (e.g., anger-deflection correlates more strongly with story-based DOCILE/HURT than with story-based ANGER). We didn't measure cross-emotion activation correlation.
+- Paper Fig 63: after orthogonalization against full story-emotion space, residual deflection vectors STILL point at target-emotion tokens via logit lens. That's the "model knows what it's hiding" finding — NOT from same-emotion cosine, but from logit-lens on orthogonalized residuals. We didn't run logit lens on our orthogonalized residuals.
 
-2. **Pilot is too noisy**. N=180 dialogues per target (900/5) vs paper's ~1,400 per target (21,000/15). The paper has 8× more samples per target. Our 0.24 cosine is consistent with near-orthogonal random-ish vectors (sqrt(1-0.24²) ≈ 0.97 retained norm, which matches). Could be that with more samples the alignment would emerge.
+**Both of these follow-ups could be run post-hoc from the saved deflection vectors** — deferred for now.
 
-**Cannot disambiguate without either**: (a) re-running at 50+/cell to increase statistical power, or (b) running the paper's 21,000-dialogue full set (~37h GPU). Both deferred.
+**Status**: Stage 9 pilot REPLICATES the paper's Fig 61 "very low cosine" qualitative finding. The two "divergence interpretations" I was drafting earlier (Llama's deflection is more surface-level vs pilot too noisy) were based on a false premise. No divergence to explain.
 
 **One consistent pattern**: `desperate` has the highest cosine (0.325) of our 5 target emotions. If this scales, it suggests stronger emotions are easier to extract deflection-consistent probes for. `sad` at 0.16 is the weakest — possibly because Llama's "sad" representation is smoothly distributed rather than anchored to a specific arousal level.
 
