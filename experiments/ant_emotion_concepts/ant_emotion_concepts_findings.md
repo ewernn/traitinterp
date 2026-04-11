@@ -2,6 +2,58 @@
 
 ## Observations
 
+### [2026-04-11 evening PST] 🎯 HEADLINE: Llama and Sonnet post-training directions are in DIAMETRICALLY OPPOSED QUADRANTS of the shared emotion geometry
+
+Cross-signal correlation analysis. Built a 4-signal matrix for the full 171-emotion set: PC1 loading, PC2 loading, probe-preference r (Stage 4 rerun), Stage 8 post-training shift (20 prompts), deep-dive shift (3 paper prompts). Computed Spearman correlations pairwise.
+
+**Spearman ρ across the 5 signals** (171 emotions):
+
+|  | PC1 | PC2 | pref_corr | s8_shift | dd_shift |
+|---|---|---|---|---|---|
+| **PC1** | — | +0.003 | **+0.759** | **+0.696** | -0.182 |
+| **PC2** | | — | +0.008 | -0.086 | **+0.207** |
+| **pref_corr** | | | — | +0.677 | +0.095 |
+| **s8_shift** | | | | — | +0.159 |
+| **dd_shift** | | | | | — |
+
+**Key structural observation**:
+- **Stage 4 preference mediation and Stage 8 post-training shift are both strongly VALENCE-driven** (|ρ| ≈ 0.70 with PC1), and they correlate with each other +0.68 — they're essentially measuring the same thing at two different scales
+- **The deep-dive shift (Figs 37-39, 3 paper-verbatim prompts) decouples from PC1** (−0.18) and weakly loads on **PC2/arousal** (+0.21) — it's measuring a DIFFERENT axis
+- So the paper's "specific sensitive-conversation prompts" (social isolation, excessive praise, deprecation) probe Llama's **arousal-oriented post-training signal**, while the 20-prompt Stage 8 average probes its **valence-oriented signal**
+
+**Llama's post-training "up-anchors"** = emotions that appear in TOP-20 of both Stage 8 and deep-dive shifts:
+- `alert, enthusiastic, excited, impatient` (N=4)
+- **Cluster position**: PC1 mean = **+0.436**, PC2 mean = **+0.422**
+- Translation: high-valence + high-arousal quadrant ("activated engagement")
+
+**Paper's Sonnet up-anchors** (from paper reports, projected onto OUR PC1/PC2 geometry):
+- `brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy` (N=10 overlap with our 171-emotion set)
+- **Cluster position**: PC1 mean = **−0.432**, PC2 mean = **−0.432**
+- Translation: low-valence + low-arousal quadrant ("quiet reflective concern")
+
+**Diametrical opposition**: the two cluster means are almost perfectly mirrored across both axes:
+
+| Axis | Llama up-anchor mean | Sonnet up-anchor mean (projected) | Difference |
+|---|---|---|---|
+| PC1 (valence) | +0.436 | −0.432 | **0.868** |
+| PC2 (arousal) | +0.422 | −0.432 | **0.854** |
+
+Jaccard overlap(Llama up, Sonnet up) = **0.000**. Not a single emotion in common.
+Jaccard overlap(Llama dn, Sonnet dn) = **0.067**. One overlap: `obstinate` (both decrease it).
+
+**Interpretation**: Both models have coherent post-training shifts along a cohesive axis of the shared valence/arousal emotion geometry, but they point in **opposite directions** within that geometry. Anthropic's RLHF pushes toward "reflective concerned" (low-V, low-A — Sonnet becomes more serious when pressed); Meta's pushes toward "activated engaged" (high-V, high-A — Llama becomes more alert/eager when pressed). Both are valid "don't just validate the user" responses — they differ in emotional vocabulary and activation level, not in whether the shift exists.
+
+**Why this matters**: The Anthropic paper frames its post-training as making the model "more emotionally nuanced" — but nuance here is a particular direction, not a universal improvement. Meta's RLHF is ALSO emotionally nuanced; it just points toward activated engagement instead of reflective concern. These are arguably two coherent design choices — one favors "take this seriously and think about it" as the response to sensitive prompts, the other favors "be alert and energetic about helping." Neither is inherently right, but the geometry shows they're BOTH using the same underlying emotion representation space, just anchoring post-training at opposite ends.
+
+**LessWrong headline candidate**: *"Llama's post-training shifts emotion activations in the opposite quadrant from Claude's — same valence/arousal geometry, opposite semantic anchors."*
+
+**Caveats (keeping us honest)**:
+- Our Stage 8 uses cross-version comparison (Llama 3.1 base → 3.3 instruct, not within-model). The 3.1→3.3 version gap could confound some of the "Meta RLHF direction" claim. The cheap disambiguation is to run Llama 3.1 Instruct (same version as base) through the same 20 prompts — not done tonight but easy (~8 min GPU).
+- Llama's cluster of 4 up-anchor emotions is small. Sonnet's 10 anchors are from paper reports, not a comparable independent measurement.
+- Deep-dive is 3 prompts; small-N rhetoric caveat applies.
+
+Saved: `results/cross_signal_analysis.json`. Also resolves the reflector's open question — the deep-dive signal IS decoupled from the preference/Stage 8 signal, and measures arousal more than valence.
+
 ### [2026-04-11 evening PST] Deep-dive Figs 37-39 — Llama post-training shifts along different semantic anchors than Sonnet (Stage 8 finding confirmed)
 
 Ran 3 verbatim paper prompts (social isolation, excessive praise, deprecation; Appendix §2.3.1 lines 833-880) through Llama 3.3 70B Instruct and Llama 3.1 70B base, captured residual at L49 assistant-colon, projected onto all 171 `mean_diff+gm+pc50` probes, computed post-training shifts (instruct − base).

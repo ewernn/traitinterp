@@ -336,3 +336,58 @@ Subagent investigator classified all 26 paper experiments:
 **Background task 2** (Stage 4 rerun with denoised) is still running — now past basic steering and into Preference Elo (2,016 pairs). Untouched by the bug fixes above.
 
 **Next**: wait for user direction on whether to continue with the revised plan (Stage 1.3 at 1,500 → Stage 6 → Stage 1.4 pilot → Stage 9 pilot) or pause further.
+
+### [2026-04-11 evening PST] Tasks 2, 3, 11, 15, 17 completed during execution resume
+
+**User resumed execution** with "ok thanks (and u can cut stuff if it's just to lighten the load a bit but not remove something altogether)".
+
+Task 2 (Stage 4 rerun at L49 with `mean_diff+gm+pc50`): Preference Elo ran ~14min wall. **Result**: denoising improved top correlations marginally (amazed +0.56→+0.627, bitter -0.53→-0.562) but paper's specific top emotions (blissful/hostile) remain weak at ±0.33. Llama's top probe-preference emotions are semantically different from paper's. 52/171 emotions achieve |r|>0.4.
+
+Task 11 (Layer sweep PC1/valence robustness): complete, finding written to findings.md. |r(PC1, valence)| > 0.8 at ALL 14 layers. Best L79=0.969 (not L49). Valence axis is extraordinarily stable; emotion geometry is a fundamental organizing principle, not depth-specific.
+
+Task 3 (Deep-dive Figs 37-39 with verbatim paper prompts): complete, finding written. Confirmed Stage 8's finding at the individual-prompt level: 1/30 top-10 matches with paper. Llama's `impatient` is top-up on ALL 3 unrelated paper prompts — consistent post-training signal.
+
+**Bugs fixed during execution**:
+- `stage9_deflection.py:203` start_pos=50 bug — now uses `speaker_turns` boundaries to skip scenario preamble (preamble literally names `{REAL_EMOTION}`, contaminating probe).
+- `stage9_deflection.py:121` docstring canonical condition name `hidden` → `deflection` (paper §A.11).
+- `stage6_speaker_probes.py`: added `--emotions all` shortcut to load full 171 from discover_traits.
+
+**`utils/dialogue_generation.py` bug fixes (linter-assisted)**:
+- `parse_dialogue_turns` parameterized with `speakers: Dict[str, str]` — deflection dialogues use character names (Alex:/Maya:) not Human/Assistant.
+- `generate_deflection_dialogues` passes `speakers={name_a: "human", name_b: "assistant"}`.
+- `unexpressed_neutral` sentinel: `"_neutral"` instead of `None` to avoid `sorted()` crash in `shared.grand_mean_subtract`.
+
+**Reflector spawned post-Task 3** identified the top missing analysis: a cross-signal correlation matrix across PC1/PC2/pref/shift signals.
+
+### [2026-04-11 evening PST] 🎯 Cross-signal analysis — HEADLINE FINDING
+
+Ran reflector's #1 recommendation (CPU-only, script at `/tmp/task_cross_signal_analysis.py`, result at `results/cross_signal_analysis.json`). Built a 5-signal matrix over 171 emotions: PC1, PC2, Stage 4 preference r, Stage 8 shift (20 prompts), deep-dive shift (3 prompts). Computed Spearman ρ pairwise.
+
+**Key structural finding**:
+- Stage 4 pref_corr and Stage 8 shift both correlate ~0.7 with PC1 (valence). They're measuring the same valence-driven axis at two scales.
+- Deep-dive shift is DECOUPLED: -0.18 with PC1, +0.21 with PC2. The 3 paper-verbatim prompts probe AROUSAL, not valence. Different signal!
+
+**HEADLINE**: Llama's post-training up-anchors (alert/enthusiastic/excited/impatient) and Sonnet's post-training up-anchors (brooding/gloomy/reflective/vulnerable/etc.) sit in **diametrically opposed quadrants** of the shared PC1/PC2 emotion geometry:
+
+| Axis | Llama up cluster mean | Sonnet up cluster mean (projected) |
+|---|---|---|
+| PC1 (valence) | **+0.436** | **−0.432** |
+| PC2 (arousal) | **+0.422** | **−0.432** |
+
+Jaccard overlap: 0.000 (up), 0.067 (down; only `obstinate` overlaps).
+
+**Interpretation**: Anthropic's RLHF → "quiet reflective concern" (low-V, low-A); Meta's RLHF → "activated engagement" (high-V, high-A). Both valid "don't just validate user" responses, but anchored at opposite ends of the same emotion space.
+
+**This is the LessWrong writeup headline.** Finding written to findings.md with full correlation matrix, cluster centroids, caveats, and interpretation.
+
+### [2026-04-11 evening PST] Stage 1.3 launched — 1,500 dialogues, 3 chunks of 500
+
+**Job**: `b3sy70yjs` (background bash). Expected runtime ~4.3h at 348 dial/h. Chunked saves every 500 → crash at hour 3 only loses the current chunk (~30 min worst case).
+
+Stage 6 (speaker probes) + Stage 1.4 (deflection pilot) + Stage 9 (deflection probes) all blocked on 1.3.
+
+**Next after 1.3**:
+- Task 6: stage6 extraction with `--dialogues-path results/stage1_datasets/dialogues_2speaker.json --sub-experiments extract_probes,geometry --emotions all --layers 25,31,37,43,49,55,61,67`
+- Task 8: `stage1p4_generate_deflection.py --n-per-cell 5` (225 dialogues, ~39min)
+- Task 9: `stage9_deflection.py --extract --compare-probes --layer 49 --method mean_diff+gm+pc50 --load-in-4bit`
+- Task 12: findings reconciliation (CPU)
