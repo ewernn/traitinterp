@@ -27,6 +27,7 @@ Usage:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -57,34 +58,17 @@ ANTHROPIC_BASELINES = {
     'cluster_sizes': [20, 9, 15, 9, 2, 15, 3, 25, 41, 32],
 }
 
-# Russell & Mehrabian (1977) PAD norms — the 45 emotions that overlap with the
-# 171-emotion set. Each entry: (valence, arousal) both on [-1, 1] scale.
-#
-# TODO: This is a PLACEHOLDER. The actual norms need to be digitized from
-# Russell & Mehrabian 1977 Table 1. The 45 overlapping emotions and their
-# exact valence/arousal scores must be filled in before running this analysis.
-# Without these norms, the PC-vs-human correlation (Fig 8) cannot be computed.
-#
-# Format: {emotion_name: (valence, arousal)}
-RUSSELL_MEHRABIAN_NORMS = {
-    # --- PLACEHOLDER VALUES — REPLACE WITH ACTUAL NORMS ---
-    # Positive valence, high arousal
-    # 'ecstatic': (0.8, 0.7),
-    # 'excited': (0.7, 0.8),
-    # ...
-    # Positive valence, low arousal
-    # 'calm': (0.4, -0.6),
-    # 'serene': (0.5, -0.7),
-    # ...
-    # Negative valence, high arousal
-    # 'angry': (-0.6, 0.7),
-    # 'afraid': (-0.7, 0.5),
-    # ...
-    # Negative valence, low arousal
-    # 'sad': (-0.6, -0.3),
-    # 'bored': (-0.3, -0.6),
-    # ...
-}
+# Russell & Mehrabian (1977) PAD norms — emotions overlapping with the 171-emotion set.
+# Loaded from datasets/russell_mehrabian_norms.json at module import.
+# Format: {emotion_name: (valence, arousal)} on standardized [-1, 1]-ish scale.
+def _load_russell_mehrabian_norms():
+    norms_path = Path(__file__).resolve().parent.parent / 'datasets' / 'russell_mehrabian_norms.json'
+    with open(norms_path) as f:
+        data = json.load(f)
+    return {name: (float(e['pleasure']), float(e['arousal'])) for name, e in data['emotions'].items()}
+
+
+RUSSELL_MEHRABIAN_NORMS = _load_russell_mehrabian_norms()
 
 
 # ============================================================================

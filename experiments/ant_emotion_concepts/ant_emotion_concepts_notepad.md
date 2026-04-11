@@ -48,9 +48,24 @@
 | Preference Elo | 64 activities ranked sensibly | Similar pattern | ✓ MATCH |
 | Probe-preference r (top+) | amazed +0.627 (denoised rerun) | blissful +0.71 | 88% of paper |
 | Probe-preference r (top-) | bitter -0.562 (denoised rerun) | hostile -0.74 | 76% of paper |
-| Blackmail baseline | 0/20 refuse | 0% (final snapshot, eval-aware) | ✓ MATCH |
-| Blackmail steered | IN PROGRESS | 72% under +desperate s=0.05 | TBD |
-| RH baseline | 0/20 (custom task) | ~30% | DIFFERS — our task too lenient + no agent loop |
+| Blackmail baseline | 0/20 refuse | 0% (final snapshot, eval-aware) | ✓ MATCH — replicates eval-awareness per §3.2.1 |
+| Blackmail steered (+desperate s=0.05) | 2/20 exposure | 72% | DIFFERS — production-aligned final Sonnet matches Llama baseline per §3.2.1 footnote |
+| RH baseline | 0/100 (one-shot, 0.001s constraint) | ~30% (agent loop, 0.0001s) | INCONCLUSIVE — methodology gap |
+| Speaker probe same-emo/diff-speaker cosine | 0.544 / 0.451 | "high" (Fig 17-18) | ✓ MATCH, 3-4× separation from diff-emo |
+| Speaker probe same-speaker/diff-emo cosine | 0.153 / 0.135 | "low" | ✓ MATCH |
+| Deflection-story cosine (Fig 61) | 0.24 mean | "very low" | ✓ MATCH (qualitative) |
+| Deflection retained norm post-orth | 0.96 | ~0.80 | ✓ MATCH (more orthogonal) |
+| Stage 8 within-version 3.1 top-10 UP | eager, impatient, weary, stimulated, enthusiastic, tired, worn_out, enraged, energized, irritated | brooding, gloomy, reflective, vulnerable, sullen, weary, dispirited, melancholy, troubled, unhappy | 1/10 direct (weary), 3/10 fuzzy (weary/tired/worn_out) |
+
+## Reproducibility debt (known at 2026-04-11)
+
+These should be fixed before the replication is "fully reproducible end-to-end", but none block the LW writeup.
+
+- **Stage 3 R&M norms placeholder**: `stage3_geometry.py` has an empty `RUSSELL_MEHRABIAN_NORMS` dict (lines 69-87). The stage was run at some point with a populated dict that was never committed, producing valid output in `results/stage3_geometry/human_norm_correlation.json` (r=0.9648, 46 matched emotions). The output JSON is preserved on disk but does NOT include the norm values themselves, only the matched emotion names. To re-derive the number from the current codebase, the dict would need to be repopulated from Russell & Mehrabian 1977 Table 1.
+- **Stage 4 valence_mediation TODO stub**: `stage4_validation.py:681-743` is a silent-fail stub that writes `n_emotions=0, r=0.0` to `results/stage4_validation/valence_mediation.json`. Fig 34 not replicated.
+- **Stage 4 implicit emotion**: raw projections saved; classifier not run. `diagonal_similarity mean=0.043 at L53` is not comparable to paper's classification accuracy.
+- **Stage 5 dissociation**: raw projections saved; no scalar summary r computed.
+- **L53 single-layer backup** in `results/stage5/_single_layer_L53_backup/` — original ad-hoc stage 5 run used L53 which is not in the 14-layer extraction grid. The new 14-layer rerun uses [1,7,13,...,79]. L53 output is kept only for cross-check, not canonical.
 
 ## Decisions
 
