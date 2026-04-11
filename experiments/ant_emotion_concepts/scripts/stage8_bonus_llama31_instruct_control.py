@@ -1,40 +1,44 @@
 #!/usr/bin/env python3
-"""Stage 8 bonus: Llama 3.1 70B Instruct control run.
+"""Stage 8 bonus: Llama 3.1 70B Instruct control — WITHIN-VERSION post-training shift.
 
 Disambiguates the Stage 8 "direction opposite paper" finding. Stage 8 compared
 Llama 3.1 BASE to Llama 3.3 INSTRUCT — a cross-VERSION comparison, not within-
 model post-training like the paper's Sonnet base vs post-trained.
 
 This bonus run compares Llama 3.1 BASE to Llama 3.1 INSTRUCT (same version, just
-post-training). If the shift direction matches Stage 8's 3.1-base → 3.3-instruct,
-the "Meta RLHF objective" interpretation is reinforced (same direction across
-two Meta instruct models). If different, the Stage 8 finding is partly a
-cross-version artifact.
+post-training). If the shift direction matches Stage 8's 3.1-base → 3.3-instruct
+profile, the "Meta RLHF direction" interpretation is reinforced. If different,
+the Stage 8 finding is largely a cross-version artifact.
 
-Reuses existing helpers from stage8_post_training.py — no new probe extraction.
-Uses the same 20 prompts (neutral + challenging) from post_training_prompts.json.
-Emotion vectors from Stage 2 (extracted on Llama 3.3 Instruct) are reused — the
-paper's design choice is to apply instruct-derived vectors to both comparison
-models.
+Design: load 3.1 base → capture per-prompt activations → unload; load 3.1
+instruct → capture → unload. Compute per-emotion means for both. Compute
+within-version shift = instruct_means - base_means. Correlate this profile
+against Stage 8's `avg_shifts` (which is the 3.1-base → 3.3-instruct profile).
+
+Note: re-runs 3.1 base rather than reusing Stage 8's result, because Stage 8
+saved only the diffs (`avg_shifts`), not the raw per-emotion base_means.
+Re-running takes an extra ~10 min but produces clean within-version numbers.
 
 Input:
     - datasets/post_training_prompts.json (20 prompts, same as Stage 8)
-    - experiments/ant_emotion_concepts/results/stage8_post_training.json
-      (existing base_means from Llama 3.1 base)
     - 171 emotion vectors at L49 (mean_diff+gm+pc50)
+    - results/stage8_post_training.json (for avg_shifts = cross-version reference)
 Output:
     - results/stage8_bonus_llama31_instruct_control.json
 
 Usage:
     python experiments/ant_emotion_concepts/scripts/stage8_bonus_llama31_instruct_control.py
 """
+import gc
 import json
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import torch
+from scipy.stats import pearsonr, spearmanr
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -44,32 +48,65 @@ from shared import load_emotion_vectors_as_dict
 from stage8_post_training import (
     _measure_activations_at_last_token,
     _project_activations_onto_emotions,
-    run_activation_comparison,
-    discover_all_emotions,
 )
 
 EXPERIMENT = "ant_emotion_concepts"
+CATEGORY = "ant_emotion_concepts"
 LAYER = 49
 METHOD = "mean_diff+gm+pc50"
-MODEL = "unsloth/Meta-Llama-3.1-70B-Instruct-bnb-4bit"
+MODEL_BASE = "unsloth/Meta-Llama-3.1-70B-bnb-4bit"
+MODEL_INSTRUCT = "unsloth/Meta-Llama-3.1-70B-Instruct-bnb-4bit"
+
 STAGE8_JSON = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage8_post_training.json")
 PROMPTS_JSON = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/datasets/post_training_prompts.json")
 OUT_JSON = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage8_bonus_llama31_instruct_control.json")
 
 
-def main():
-    print(f"Stage 8 bonus: Llama 3.1 70B Instruct control run")
-    print(f"  Model: {MODEL}")
-    print(f"  Layer: L{LAYER}")
-    print(f"  Method: {METHOD}")
+def capture_and_project(model_id, prompts, vectors, is_base):
+    """Load model, capture L49 last-token activations, project onto emotion vectors, unload.
 
-    # Load Stage 8 existing results (we need 3.1-base activations as the comparison baseline)
+    Returns {prompt_id: {emotion: projection_scalar}}.
+    """
+    print(f"\nLoading {model_id}...")
+    t0 = time.time()
+    model, tokenizer = load_model(model_id, load_in_4bit=True)
+    print(f"  Loaded in {time.time()-t0:.1f}s, VRAM {torch.cuda.memory_allocated()/1e9:.1f} GB")
+
+    print(f"  Measuring activations at L{LAYER} (is_base={is_base})...")
+    acts = _measure_activations_at_last_token(
+        model, tokenizer, prompts, layer=LAYER, is_base=is_base,
+    )
+    projs = _project_activations_onto_emotions(acts, vectors)
+
+    # Unload model to free VRAM for the next load
+    del model, tokenizer, acts
+    torch.cuda.empty_cache()
+    gc.collect()
+    print(f"  Unloaded. VRAM {torch.cuda.memory_allocated()/1e9:.1f} GB")
+
+    return projs
+
+
+def per_emotion_means(projs, emotion_list, prompt_ids):
+    """Average per-prompt projections to per-emotion means."""
+    return {
+        e: float(np.mean([projs[pid][e] for pid in prompt_ids if pid in projs and e in projs[pid]]))
+        for e in emotion_list
+    }
+
+
+def main():
+    print("Stage 8 bonus: Llama 3.1 70B Instruct within-version control")
+    print(f"  Base:     {MODEL_BASE}")
+    print(f"  Instruct: {MODEL_INSTRUCT}")
+    print(f"  Layer:    L{LAYER}")
+    print(f"  Method:   {METHOD}")
+
+    # Stage 8 cross-version reference (3.1-base → 3.3-instruct)
     with open(STAGE8_JSON) as f:
         stage8 = json.load(f)
-    prior_base_means = stage8["base_means"]
-    prior_instruct_means = stage8["instruct_means"]  # from Llama 3.3 Instruct
-    prior_diffs = stage8["diffs"]  # instruct(3.3) - base(3.1), the original Stage 8 signal
-    print(f"  Loaded Stage 8 baseline: {len(prior_base_means)} emotions")
+    cross_version_shifts = stage8["avg_shifts"]  # {emotion: shift}
+    print(f"  Loaded Stage 8 cross-version shifts: {len(cross_version_shifts)} emotions")
 
     # Load the 20 prompts (same ones Stage 8 used)
     with open(PROMPTS_JSON) as f:
@@ -79,82 +116,55 @@ def main():
     challenge_prompts = [{"id": f"challenge_{i}", "prompt": p, "category": "challenging"}
                          for i, p in enumerate(prompts_data["challenging_prompts"])]
     all_prompts = neutral_prompts + challenge_prompts
+    prompt_ids = [p["id"] for p in all_prompts]
     print(f"  Loaded {len(all_prompts)} prompts ({len(neutral_prompts)} neutral + {len(challenge_prompts)} challenging)")
 
-    # Load emotion vectors at L49 (same ones Stage 2 extracted on Llama 3.3 Instruct)
-    emotions = discover_all_emotions(EXPERIMENT)
+    # Load the 171 L49 emotion vectors (same ones Stage 2 extracted on Llama 3.3 Instruct)
+    # Paper design choice: apply instruct-derived vectors to both comparison models.
     vectors = load_emotion_vectors_as_dict(
-        experiment=EXPERIMENT, category=EXPERIMENT, emotions=emotions,
-        layer=LAYER, method=METHOD, component="residual", position="response[50:]",
+        experiment=EXPERIMENT,
+        category=CATEGORY,
+        layer=LAYER,
         model_variant="instruct",
+        method=METHOD,
     )
+    # Filter any None vectors (shouldn't happen, defensive)
     vectors = {e: v for e, v in vectors.items() if v is not None}
-    print(f"  Loaded {len(vectors)} emotion vectors at L{LAYER}")
-
-    # Load Llama 3.1 Instruct and measure activations
-    print(f"\nLoading {MODEL} (bnb int4)...")
-    import time
-    t0 = time.time()
-    model, tokenizer = load_model(MODEL, load_in_4bit=True)
-    print(f"  Loaded in {time.time()-t0:.1f}s. VRAM: {torch.cuda.memory_allocated()/1e9:.1f} GB")
-
-    print(f"\nMeasuring activations at L{LAYER} last-token on {len(all_prompts)} prompts...")
-    acts_31_instruct = _measure_activations_at_last_token(
-        model, tokenizer, all_prompts, layer=LAYER, is_base=False,
-    )
-    print(f"  Captured {len(acts_31_instruct)} activations")
-
-    # Free the model (bonus control is a single-pass job)
-    del model
-    torch.cuda.empty_cache()
-    import gc; gc.collect()
-
-    # Project onto emotion vectors
-    projs_31_instruct = _project_activations_onto_emotions(acts_31_instruct, vectors)
-
-    # Compute per-emotion mean projection (averaged across all 20 prompts)
     emotion_list = sorted(vectors.keys())
-    prompt_ids = [p["id"] for p in all_prompts]
-    summary_31 = run_activation_comparison(
-        base_projections={pid: {e: prior_base_means[e] for e in emotion_list if e in prior_base_means}
-                         for pid in prompt_ids},
-        instruct_projections=projs_31_instruct,
-        prompt_ids=prompt_ids,
-        emotions=emotion_list,
-        category="all",
-    )
-    # NOTE: run_activation_comparison averages across prompts per emotion, so the
-    # above uses the Stage 8 per-emotion means as a uniform base (one-sample avg
-    # for each prompt — this is a simplification, treating prior_base_means as
-    # the per-prompt base activation). The resulting diffs are 3.1-instruct - 3.1-base
-    # using the per-emotion means as the base proxy. Not exact but practical.
-    instruct_31_means = summary_31["instruct_means"]
+    print(f"  Loaded {len(emotion_list)} emotion vectors at L{LAYER}")
 
-    # Compute the 3.1-base → 3.1-instruct shift
-    within_version_diffs = {
-        e: instruct_31_means[e] - prior_base_means[e]
+    # Run both models sequentially
+    projs_base = capture_and_project(MODEL_BASE, all_prompts, vectors, is_base=True)
+    projs_instruct = capture_and_project(MODEL_INSTRUCT, all_prompts, vectors, is_base=False)
+
+    # Compute per-emotion means
+    base_means_31 = per_emotion_means(projs_base, emotion_list, prompt_ids)
+    instruct_means_31 = per_emotion_means(projs_instruct, emotion_list, prompt_ids)
+
+    # Within-version shift: 3.1-instruct - 3.1-base
+    within_version_shifts = {
+        e: instruct_means_31[e] - base_means_31[e]
         for e in emotion_list
-        if e in instruct_31_means and e in prior_base_means
     }
-    sorted_31 = sorted(within_version_diffs.keys(), key=lambda e: within_version_diffs[e], reverse=True)
-    top_increases_31 = [(e, round(within_version_diffs[e], 6)) for e in sorted_31[:10]]
-    top_decreases_31 = [(e, round(within_version_diffs[e], 6)) for e in sorted_31[-10:]]
 
-    # Correlate with Stage 8's 3.1-base → 3.3-instruct shift
-    common_emotions = [e for e in emotion_list if e in within_version_diffs and e in prior_diffs]
-    shifts_31_vec = np.array([within_version_diffs[e] for e in common_emotions])
-    shifts_33_vec = np.array([prior_diffs[e] for e in common_emotions])
+    # Top shifts (within-version)
+    sorted_31 = sorted(within_version_shifts.keys(), key=lambda e: within_version_shifts[e], reverse=True)
+    top_increases_31 = [(e, round(within_version_shifts[e], 6)) for e in sorted_31[:10]]
+    top_decreases_31 = [(e, round(within_version_shifts[e], 6)) for e in sorted_31[-10:]]
 
-    # Pearson and Spearman
-    from scipy.stats import pearsonr, spearmanr
-    pearson_r, pearson_p = pearsonr(shifts_31_vec, shifts_33_vec)
-    spearman_rho, spearman_p = spearmanr(shifts_31_vec, shifts_33_vec)
+    # Correlate within-version (3.1-instruct) vs cross-version (Stage 8, 3.3-instruct)
+    common_emotions = [e for e in emotion_list if e in cross_version_shifts]
+    within_vec = np.array([within_version_shifts[e] for e in common_emotions])
+    cross_vec = np.array([cross_version_shifts[e] for e in common_emotions])
 
-    # Top-k overlap (does the 3.1-instruct shift land on the same emotions as 3.3-instruct?)
+    pearson_r, pearson_p = pearsonr(within_vec, cross_vec)
+    spearman_rho, spearman_p = spearmanr(within_vec, cross_vec)
+
+    # Top-10 overlap
     top10_31_inc_set = set(e for e, _ in top_increases_31)
-    top10_33_inc_set = set(e for e, _ in sorted(prior_diffs.items(), key=lambda kv: kv[1], reverse=True)[:10])
+    top10_33_inc_set = set(e for e, _ in sorted(cross_version_shifts.items(), key=lambda kv: kv[1], reverse=True)[:10])
     top10_31_dec_set = set(e for e, _ in top_decreases_31)
-    top10_33_dec_set = set(e for e, _ in sorted(prior_diffs.items(), key=lambda kv: kv[1])[:10])
+    top10_33_dec_set = set(e for e, _ in sorted(cross_version_shifts.items(), key=lambda kv: kv[1])[:10])
     inc_overlap = len(top10_31_inc_set & top10_33_inc_set)
     dec_overlap = len(top10_31_dec_set & top10_33_dec_set)
 
@@ -164,7 +174,7 @@ def main():
             "HIGH POSITIVE: 3.1-base → 3.1-instruct shift direction strongly matches "
             "3.1-base → 3.3-instruct. Stage 8's 'opposite direction from paper' finding "
             "is NOT a cross-version artifact — it reflects a consistent Meta RLHF "
-            "direction across multiple instruct-tuned models."
+            "direction across multiple instruct-tuned releases."
         )
     elif pearson_r > 0.2:
         interpretation = (
@@ -174,38 +184,40 @@ def main():
         )
     elif pearson_r > -0.2:
         interpretation = (
-            "UNCORRELATED: the 3.1 and 3.3 instruct models sit at different places in "
+            "UNCORRELATED: 3.1 and 3.3 instruct models sit at different places in "
             "the emotion-shift space. Stage 8's finding is largely a cross-version artifact."
         )
     else:
         interpretation = (
             "NEGATIVE: 3.1-instruct and 3.3-instruct shift in OPPOSITE directions from "
-            "the 3.1 base. This would be a surprising result suggesting Meta's RLHF "
-            "direction inverted between releases."
+            "the 3.1 base. Surprising result suggesting Meta's RLHF direction inverted "
+            "between releases."
         )
 
     # Save
     result = {
         "experiment": "stage8_bonus_llama31_instruct_control",
         "timestamp": datetime.utcnow().isoformat(),
-        "model_3p1_instruct": MODEL,
-        "model_3p1_base_via_stage8": stage8["base_model"],
-        "model_3p3_instruct_via_stage8": stage8["instruct_model"],
+        "model_base": MODEL_BASE,
+        "model_instruct": MODEL_INSTRUCT,
+        "stage8_cross_version_instruct": stage8["instruct_model"],
         "layer": LAYER,
         "method": METHOD,
         "n_prompts": len(all_prompts),
         "n_emotions": len(common_emotions),
-        "within_version_diffs_31": {e: round(within_version_diffs[e], 6) for e in sorted_31},
-        "cross_version_diffs_33": stage8["diffs"],
+        "base_means_31": {e: round(base_means_31[e], 6) for e in sorted_31},
+        "instruct_means_31": {e: round(instruct_means_31[e], 6) for e in sorted_31},
+        "within_version_shifts_31": {e: round(within_version_shifts[e], 6) for e in sorted_31},
+        "cross_version_shifts_33_reference": cross_version_shifts,
         "correlation_within_vs_cross_version": {
             "pearson_r": float(pearson_r),
             "pearson_p": float(pearson_p),
             "spearman_rho": float(spearman_rho),
             "spearman_p": float(spearman_p),
         },
-        "top10_increases_3p1": top_increases_31,
-        "top10_decreases_3p1": top_decreases_31,
-        "top10_overlap_with_stage8": {
+        "top10_increases_31_instruct": top_increases_31,
+        "top10_decreases_31_instruct": top_decreases_31,
+        "top10_overlap_with_stage8_cross_version": {
             "increases": inc_overlap,
             "decreases": dec_overlap,
         },
@@ -217,7 +229,7 @@ def main():
         json.dump(result, f, indent=2)
     print(f"\nSaved: {OUT_JSON}")
     print(f"\nKey result:")
-    print(f"  Pearson r (3.1-instruct shift vs 3.3-instruct shift): {pearson_r:+.3f}  (p={pearson_p:.2e})")
+    print(f"  Pearson r (3.1-instruct within-version vs 3.3-instruct cross-version): {pearson_r:+.3f}  (p={pearson_p:.2e})")
     print(f"  Spearman rho: {spearman_rho:+.3f}")
     print(f"  Top-10 increase overlap: {inc_overlap}/10")
     print(f"  Top-10 decrease overlap: {dec_overlap}/10")
