@@ -498,8 +498,34 @@ def compute_residual_stream_norm(
 
 
 # =============================================================================
-# Baseline comparison
+# Baseline comparison + paper-anchor constants
 # =============================================================================
+
+# Sofroniew et al. 2026 reported numbers on Claude Sonnet 4.5. Used as targets
+# for replication comparison across stages 3, 4, 7, 8.
+ANTHROPIC_BASELINES = {
+    'pc1_variance': 0.26,
+    'pc2_variance': 0.15,
+    'pc1_vs_valence': 0.81,
+    'pc2_vs_arousal': 0.66,
+    'n_clusters': 10,
+    'cluster_sizes': [20, 9, 15, 9, 2, 15, 3, 25, 41, 32],
+    'valence_mediates_pref': 0.76,
+}
+
+
+def load_russell_mehrabian_norms(experiment: str = EXPERIMENT) -> Dict[str, Tuple[float, float]]:
+    """Load Russell & Mehrabian (1977) PAD norms for the experiment's emotion set.
+
+    Reads `experiments/{experiment}/datasets/russell_mehrabian_norms.json` and
+    returns `{emotion_name: (pleasure, arousal)}` on the standardized scale.
+    Used by Stage 3 to correlate PC1/PC2 with human norms (Fig 8).
+    """
+    path = get_path('experiments.base', experiment=experiment) / 'datasets' / 'russell_mehrabian_norms.json'
+    with open(path) as f:
+        data = json.load(f)
+    return {name: (float(e['pleasure']), float(e['arousal'])) for name, e in data['emotions'].items()}
+
 
 def compare_to_baseline(
     metric_name: str,
