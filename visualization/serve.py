@@ -197,8 +197,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             if self.path == '/' or self.path == '/index.html' or self.path.startswith('/?'):
                 self.path = '/visualization/index.html'
 
-            # Serve design playground
-            if self.path == '/design':
+            # Serve design playground (dev only)
+            if self.path == '/design' and MODE == 'development':
                 self.path = '/visualization/dev/design.html'
 
             # Default: serve files (with dev-mode cache busting)
@@ -545,8 +545,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         experiments = []
 
         for item in experiments_dir.iterdir():
-            # Skip hidden dirs and 'live-chat' (internal experiment for public demo)
-            if item.is_dir() and not item.name.startswith('.') and item.name != 'live-chat':
+            if item.is_dir() and not item.name.startswith('.'):
                 has_traits = False
 
                 # Check for extraction/{category}/{trait}/{model_variant}/ structure

@@ -1,0 +1,3 @@
+position: "response[:]"
+max_new_tokens: 64
+methods: ["probe", "mean_diff"]

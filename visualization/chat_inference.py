@@ -83,7 +83,8 @@ class ChatInference:
                 # Look up deployed app
                 self._modal_app = modal.App.lookup("trait-capture", create_if_missing=False)
                 self._model_id = model_id
-                self.n_layers = 26  # Will be updated from Modal response
+                from utils.model_registry import get_num_layers
+                self.n_layers = get_num_layers(model_id)
                 # Modal does chat template formatting, so we don't need tokenizer
                 self.use_chat_template = True  # Assume instruct model for Modal
                 print(f"[ChatInference] Modal client initialized (tokenization handled by Modal)")
@@ -458,7 +459,6 @@ class ChatInference:
                 for cfg in steering_configs:
                     trait = cfg.get('trait', '')
                     coef = cfg.get('coefficient', 0)
-                    # Find matching trait in our loaded vectors
                     for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
                         trait_name = trait_path.split('/')[-1]
                         if trait_name == trait and coef != 0:
@@ -471,6 +471,19 @@ class ChatInference:
                 if modal_steering:
                     print(f"[ChatInference] Sending {len(modal_steering)} steering vectors to Modal")
 
+            # Serialize trait projection vectors — Modal projects and returns scores
+            # instead of sending back raw activations (~1.3MB/token → ~8 floats/token)
+            modal_trait_vectors = []
+            for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
+                trait_name = trait_path.split('/')[-1]
+                modal_trait_vectors.append({
+                    'trait': trait_name,
+                    'layer': layer,
+                    'vector': vector.tolist(),
+                })
+            if modal_trait_vectors:
+                print(f"[ChatInference] Sending {len(modal_trait_vectors)} trait vectors to Modal for server-side projection")
+
             full_response = ""
             token_count = 0
             first_token_time = None
@@ -480,40 +493,30 @@ class ChatInference:
             for chunk in TraitCapture(
                 model_name=self._model_id
             ).capture_activations_stream.remote_gen(
-                messages=messages,  # Modal handles chat template formatting
+                messages=messages,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
                 component="residual",
                 steering_configs=modal_steering if modal_steering else None,
+                trait_vectors=modal_trait_vectors if modal_trait_vectors else None,
             ):
                 token = chunk['token']
+                is_special = token.startswith('<|') and token.endswith('|>')
                 full_response += token
                 token_count += 1
 
-                # Log first token timing
                 if token_count == 1:
                     first_token_time = time.time()
                     ttft = first_token_time - start_time
                     print(f"[ChatInference] [{time.strftime('%H:%M:%S')}] First token received (TTFT: {ttft:.2f}s)")
 
-                # Convert activations to tensors (Modal returns lists per token)
-                activations_dict = chunk['activations']
+                # Modal projects and returns trait_scores directly (no raw activations)
+                trait_scores = chunk.get('trait_scores', {})
 
-                # Compute trait projections for this token
-                trait_scores = {}
-                for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
-                    layer_str = str(layer)
-                    if layer_str in activations_dict:
-                        act = torch.tensor(activations_dict[layer_str], dtype=torch.float16)
-                        # Vector already on CPU for Modal backend
-                        score = projection(act, vector, normalize_vector=True).item()
-                        trait_name = trait_path.split('/')[-1]
-                        trait_scores[trait_name] = round(score, 4)
-
-                # Yield token with scores immediately
                 yield {
                     'token': token,
                     'trait_scores': trait_scores,
+                    'is_special': is_special,
                     'done': False
                 }
 

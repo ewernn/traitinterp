@@ -28,6 +28,7 @@ import {
     updateTraitChart as updateTraitChartImpl,
     updateChartHighlight as updateChartHighlightImpl,
     setSteeringCoefficient,
+    setSteeringLocked,
     getSteeringCoefficients,
     setVectorMetadata,
     getShowSmoothedLine,
@@ -179,8 +180,11 @@ async function renderLiveChat() {
         return;
     }
 
-    // Fresh render — reset connection state so overlay shows
-    if (getInferenceMode() === 'modal') {
+    // Fresh render — show overlay only if no existing conversation.
+    // If there's a restored conversation, let the user see their old messages
+    // and only require warmup when they try to send a new message.
+    const hasConversation = conversationTree && conversationTree.activePathIds && conversationTree.activePathIds.length > 0;
+    if (getInferenceMode() === 'modal' && !hasConversation) {
         setModalConnectionState('disconnected');
     }
 
@@ -422,6 +426,8 @@ async function generateResponse(prompt, assistantNodeId) {
     const history = conversationTree.getHistoryForAPI(currentUserNodeId);
     const previousContextLength = conversationTree.globalTokens.length;
 
+    let responseText = '';
+
     try {
         abortController = new AbortController();
         const response = await fetch('/api/chat', {
@@ -446,7 +452,6 @@ async function generateResponse(prompt, assistantNodeId) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-        let responseText = '';
 
         let streamDone = false;
         while (!streamDone) {

@@ -189,23 +189,26 @@ class TraitCapture:
         component: str = "residual",
         steering_configs: list = None,
         system_prompt: str = None,
+        trait_vectors: list = None,
     ):
         """
-        Stream activations token-by-token using HookedGenerator.
+        Stream token-by-token with trait projection scores.
 
-        Call with `.remote_gen()` from the client side — this is a generator method.
+        Projects activations onto trait vectors server-side and yields compact
+        {token, trait_scores} events (~8 floats/token).
 
         Args:
             prompt: Raw prompt text (use OR messages, not both)
-            messages: Chat messages [{"role": "user", "content": "..."}] (use OR prompt)
+            messages: Chat messages [{"role": "user", "content": "..."}]
             max_new_tokens: Generation length
             temperature: Sampling temperature (0.0 for greedy)
             component: Which component to capture ("residual", "attn_out", "mlp_out")
             steering_configs: List of {"layer": int, "vector": list[float], "coefficient": float}
             system_prompt: Optional system prompt (default: LIVE_CHAT_SYSTEM_PROMPT)
+            trait_vectors: List of {"trait": str, "layer": int, "vector": list[float]}
 
         Yields:
-            {"token": ..., "activations": {layer_idx: [hidden_dim]}, "model": ..., "component": ...}
+            {"token": ..., "trait_scores": {trait: score}, "model": ...}
         """
         import sys
         import torch
@@ -269,12 +272,25 @@ class TraitCapture:
                     coefficient=cfg['coefficient'],
                 ))
 
+        # Prepare trait projection vectors for server-side projection
+        from core import projection as project_fn
+        trait_proj = []
+        layers_needed = set()
+        if trait_vectors:
+            for tv in trait_vectors:
+                vec = torch.tensor(tv['vector'], device=model.device, dtype=torch.float16)
+                trait_proj.append((tv['trait'], tv['layer'], vec))
+                layers_needed.add(tv['layer'])
+        # Only capture layers we need for projection (not all 32)
+        capture_layers = sorted(layers_needed) if layers_needed else None
+        print(f"Server-side projection: {len(trait_proj)} traits, layers {capture_layers}")
+
         # Use HookedGenerator for streaming
         gen_start = time.time()
         tokens_generated = 0
 
         gen = HookedGenerator(model)
-        capture = CaptureConfig(components=[component])
+        capture = CaptureConfig(components=[component], layers=capture_layers)
 
         for tok in gen.stream(
             inputs.input_ids,
@@ -288,17 +304,18 @@ class TraitCapture:
             token_str = tokenizer.decode([tok.token_id])
             tokens_generated += 1
 
-            activations = {}
-            if tok.activations:
-                for layer_idx, comps in tok.activations.items():
+            trait_scores = {}
+            for trait_name, layer, vec in trait_proj:
+                if tok.activations and layer in tok.activations:
+                    comps = tok.activations[layer]
                     if component in comps:
-                        activations[layer_idx] = comps[component].tolist()
-
+                        act = comps[component]
+                        score = project_fn(act, vec.to(act.device), normalize_vector=True).item()
+                        trait_scores[trait_name] = round(score, 4)
             yield {
                 "token": token_str,
-                "activations": activations,
+                "trait_scores": trait_scores,
                 "model": model_name,
-                "component": component,
             }
 
         gen_time = time.time() - gen_start
