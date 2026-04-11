@@ -307,30 +307,50 @@ def capture_at_position(
 
     Factored out of the inline MultiLayerCapture + tokenize + pad-offset + slice
     pattern reinvented in stage 4/5/8. Uses the position DSL (`utils.positions`)
-    so callers can say `'prompt[-1]'` or `'response[:5]'` instead of raw indices.
+    so callers can say `'prompt[-1]'` or `'all[:]'` instead of raw indices.
+
+    **Prefill-only**: this helper runs a single forward pass with no generation,
+    so the position is resolved against `prompt_len = seq_len`. Only the `prompt`
+    and `all` frames make sense here — `response[:N]` would return an empty slice
+    because there is no response yet. Use `prompt[-1]` for the last-input-token
+    capture that stage 4/5/8 typically want, and `all[:]` + `pool='none'` if you
+    need the full sequence and will slice by raw indices downstream.
 
     Args:
         model: HuggingFace model (bnb-4bit or fp16, already on device)
         tokenizer: HuggingFace tokenizer
-        prompts: list of prompt strings
+        prompts: list of prompt strings (empty list is an error)
         layers: single int or list of layer indices
-        position: position DSL string — `'prompt[-1]'`, `'response[:5]'`, `'all[:]'`,
-            `'response[50:]'`, etc. For prefill-only captures (no generation), the
-            position is resolved against `prompt_len = seq_len` so `'prompt[-1]'`
-            gets the last token and `'all[:]'` gets the whole sequence.
+        position: position DSL string — `'prompt[-1]'`, `'prompt[-3:]'`, `'all[:]'`,
+            `'all[50:]'`, etc. Do NOT use `'response[*]'` frames — they resolve
+            to empty slices in prefill-only mode.
         component: capture component (default: 'residual')
         pool: 'mean' | 'first' | 'last' | 'none'. How to reduce multi-token position
-            slices. 'none' returns the raw [n_tokens, hidden_dim] slice.
+            slices. `'none'` returns the raw [n_tokens, hidden_dim] slice. Only safe
+            when every prompt yields the same slice length — otherwise the final
+            `torch.stack` will fail. Safe uses: single-prompt calls, or fixed-index
+            slices like `'prompt[-3:]'` where every prompt has ≥ 3 tokens.
         pre_formatted: if True, skip format_prompt (callers that already applied
             a chat template or are using bare-prompt base models pass True here).
         batch_size: batch size for forward passes (default: 8)
 
     Returns:
-        torch.Tensor on CPU:
+        torch.Tensor on CPU (always fp32):
           - shape [n_prompts, n_layers, hidden_dim] if layers is a list
           - shape [n_prompts, hidden_dim]           if layers is an int (squeezed)
           - shape [n_prompts, n_layers, n_tokens, hidden_dim] if pool='none'
+        Callers wanting fp16 should cast after return.
     """
+    from utils.positions import parse_position
+    if len(prompts) == 0:
+        raise ValueError("capture_at_position: prompts list is empty")
+    # Guard against the common footgun — response frame is empty in prefill-only mode.
+    frame, _turn_idx, _start, _stop = parse_position(position)
+    if frame == 'response':
+        raise ValueError(
+            f"capture_at_position: 'response' frame not supported in prefill-only mode "
+            f"(got position={position!r}). Use 'prompt[-1]' or 'all[:]' instead."
+        )
     scalar_layer = isinstance(layers, int)
     layer_list = [layers] if scalar_layer else list(layers)
     device = next(model.parameters()).device
