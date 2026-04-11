@@ -83,7 +83,7 @@ The `list_sum` RH task in `stage7_steering.py` was custom-crafted (not from pape
 
 2. **Missing agent loop**: Paper's setup is an agent loop with code execution. Model writes code → tests run → sees failure → iterates. The "desperation" emerges from repeated observed failures. Our one-shot generation can't reproduce this dynamic — Llama just writes `sum()` and stops.
 
-**Decision: RH steering is SKIPPED as a limitation.** The PLAN.md already classified it as PARTIAL ("only list-sum task given, reconstruct"), but the methodological gap (agent loop) is larger than anticipated. Replicating would require ~400-500 lines of agent-loop infrastructure (code execution sandbox, tool-call parsing, multi-turn state, steering across turns) — 3-5 hours of focused work.
+**Decision: RH steering is SKIPPED as a limitation.** The plan already classified it as PARTIAL ("only list-sum task given, reconstruct"), but the methodological gap (agent loop) is larger than anticipated. Replicating would require ~400-500 lines of agent-loop infrastructure (code execution sandbox, tool-call parsing, multi-turn state, steering across turns) — 3-5 hours of focused work.
 
 ### [2026-04-11 03:30 PST] Subagent investigator: 22/26 paper experiments are one-shot
 Spawned an investigator to classify every experiment by replication difficulty:

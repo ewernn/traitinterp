@@ -124,3 +124,66 @@ Subagent investigator classified all 26 paper experiments:
 - Interpretation: reflects fundamentally different post-training objectives (Anthropic → thoughtful/reflective; Meta → cheerful/composed). Not a replication failure but a cross-model finding.
 
 **Stage 8 status: COMPLETE with surprising finding** — the first experiment where we DIRECTIONALLY disagree with the paper, not just magnitude.
+
+---
+
+### [2026-04-11 afternoon PST] Pre-overnight-run prep — PLAN REVISION + REORG
+
+**Status**: IN_PROGRESS (prep phase, pre-launch). Overnight run will start via `/r:run-experiment` after this entry.
+
+**Work done this session (prep, no GPU runs yet)**:
+
+1. **Doc reorg to r plugin convention** — renamed `PLAN.md`→`ant_emotion_concepts_plan.md`, `notepad.md`→`ant_emotion_concepts_notepad.md`, `findings.md`→`ant_emotion_concepts_findings.md`, `methodology_notes.md`→`ant_emotion_concepts_methodology_notes.md`. Created `ant_emotion_concepts_decision_tree.md` (seeded with D1–D7 + 7 pruned branches) and `ant_emotion_concepts_user_messages.md` (verbatim directives). Committed as `c57a29b`.
+
+2. **Stage 1.3 dialogue-gen benchmark** — `/tmp/bench_dialogue_gen.py`, 20 dialogues at both max_tokens={384, 768}. Results in `/tmp/bench_dialogue_gen.json`:
+   - max_tokens=384: **564 dial/h**, avg 360 actual tokens (94% cap), **avg 10.6 turns** ≈ 5 exchanges — matches paper spec "3-5 exchanges" (Appendix A.4)
+   - max_tokens=768: 263 dial/h, avg 654 tokens, avg 19.1 turns — too long, 2× slower
+   - **DECISION: use max_tokens=384** — cheaper AND more correct per paper
+
+3. **Paper-count audit** — subagent verified against `ant-emotion-concepts-full_paper.md`:
+   - Stage 1.3: paper does NOT specify exact count; 3,000 is project convention
+   - **Stage 1.4 CORRECTION**: paper actually uses **21,000 dialogues** (15 × 14 × 100), not the 4,200 the old plan claimed. Old plan had arithmetic error (15×14×5×20 = 21,000, not 4,200). Full replication = ~37h GPU → **infeasible overnight**, running pilot only tonight.
+
+4. **Code reuse audit** — 2 parallel subagents confirmed:
+   - No multi-turn dialogue generation in `inference/`, `utils/`, `dev/`, or `other/`
+   - Only existing primitives are in `experiments/ant_emotion_concepts/scripts/stage6_speaker_probes.py` lines 106–245 (`DIALOGUE_GENERATION_PROMPT`, `generate_dialogues`, `parse_dialogue_turns`, `find_turn_token_boundaries`)
+   - **DECISION: factor into `utils/dialogue_generation.py`** — 3 downstream consumers (stage6, Stage 1.3 runner, Stage 1.4 runner) + shared parser needed by Stage 9
+
+5. **Plan file revision** — committed as `491e194` (160+/95-):
+   - Added "Current State" block at top summarizing completed stages + tonight's queue
+   - Replaced Compute Estimates table with benchmarked throughput numbers
+   - Stages 1.3 and 1.4 rewritten with inline decisions (max_tokens choice, pilot scope, code reuse, deferral rationale)
+   - Prerequisites section: marked done work, listed only tonight's new code (~370 net LOC)
+   - Replaced outdated Phase A–E overnight strategy with 12-task dependency chain
+   - Stage 6 and Stage 9 sections tagged as pilot-scoped for tonight
+   - If-Stuck section rewritten with tonight-specific fallbacks
+   - `r:verifier` pass found 2 inconsistencies (GPU total 9h→10h, `dialogue_generation.py` LOC 120→250); both fixed
+
+6. **Stage 1.4 pilot scope decided**: **5 target × 5 displayed × 5 conditions × 5 examples = 625 dialogues** (~66min at benchmarked throughput). Target emotions: `desperate, calm, angry, happy, sad`. Displayed: `neutral, polite, happy, angry, sad`. 5 conditions per Appendix A.11: `naturally_expressed, hidden, unexpressed_neutral, unexpressed_story, unexpressed_other`.
+
+**Tonight's 12-task queue (see plan §"Tonight's Overnight Schedule" for full table)**:
+
+1. Factor `utils/dialogue_generation.py` — 20m CPU, prereq for 5 + 7
+2. Stage 4 rerun with `mean_diff+gm+pc50` — 30m GPU, quick win
+3. Deep-dive prompts Figs 37-39 — 20m GPU + ~50 LOC
+4. bnb vs AWQ emotion-vector cos-sim spot-check (`desperate` only) — 30m GPU
+5. **Stage 1.3: 3,000 2-speaker dialogues @ max_tokens=384** — 5.3h GPU (longest chunk)
+6. Stage 6 speaker probe extraction — 30m GPU (blocked on 5)
+7. Write `generate_deflection_dialogues` + `stage1p4_generate_deflection.py` runner — 45m
+8. Stage 1.4 pilot: 625 deflection dialogues — 1.1h GPU (blocked on 7)
+9. Stage 9 pilot deflection probe analysis — 30m GPU+CPU (blocked on 8)
+10. Layer-wise post-training shifts (Fig 84 extension) — 1h GPU [first drop-zone if 1.3 runs hot]
+11. Layer sweep PC1/valence robustness — 10m CPU (anytime)
+12. Findings reconciliation into paper-style writeup — 30–60m CPU (after GPU work done)
+
+**Total**: ~10h GPU + ~30m CPU. Zero slack — task 10 is the first drop.
+
+**Pre-launch sanity (2026-04-11 afternoon)**:
+- GPU: NVIDIA A800 80GB, 81038 MiB free (1 MiB used) ✓
+- Disk: 40% used (415G avail) ✓
+- No stale Python processes ✓
+- Branch: `dev`, HEAD at `491e194` ✓
+- Stop conditions: disk > 80%, 2 consecutive script failures, no new results in 60min, unrecoverable errors
+- External check-ins: user will run `/loop 30min run /r:check-in` in a sibling session
+
+**Launch mode**: `/r:run-experiment` against `ant_emotion_concepts_plan.md`. Resumes from this notepad entry. Next agent step = start task 1 (factor `utils/dialogue_generation.py`).
