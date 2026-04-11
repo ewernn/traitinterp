@@ -483,3 +483,31 @@ All 19 tasks complete. 8 findings reconciled into `ant_emotion_concepts_findings
 **LessWrong writeup**: headline is ready. Supporting data in `ant_emotion_concepts_findings.md` Findings section with numbers, caveats, interpretation. All commits clean.
 
 **Status: COMPLETE**
+
+---
+
+### [2026-04-11 post-completion PST] Post-completion correction pass — three critic rounds caught interpretation bugs
+
+Three critic rounds (#9, #10, #11) found real interpretation errors in `findings.md` and `task12_outline.md` AFTER the COMPLETE entry above. Raw data and experiments are unchanged; only the interpretation was overclaiming. All fixes committed. Adding here for the append-only log.
+
+**Critic #9 (commit `8be8593`)** — cross-version control ρ=+0.922 is **algebraically forced**, not independent evidence. By construction `cross = within + drift`; Var(within)=0.0526 vs Var(drift)=0.0070 (7.5×); analytic Pearson from decomposition alone = +0.9318, matching observed exactly. The real evidence for the Meta RLHF direction is `shift_within_3_1`'s OWN top-10, not the correlation between it and the cross shift. Cov(within, drift) = −0.0057 (~3.9 SEs from null) — the 3.1→3.3 version drift slightly counteracts RLHF. Small but statistically real.
+
+**Critic #10 (commit `d8a9866`)** — three more issues. (a) `findings.md:184` stale caveat said "cross-version control not done tonight" — it was done. (b) Headline subtitle at line 138 still read "DIAMETRICALLY OPPOSED QUADRANTS" while inline text had been softened. (c) Paper's Sonnet up-anchors median rank in our cross-version shift is **75.5 out of 171** (6/10 in top half); `weary` appears at rank 19 and is ALSO in Sonnet's top-10. So there IS partial overlap. "Diametrical opposition" holds at the PC1/PC2 **centroid** level (+0.43/+0.43 vs −0.43/−0.43) but not as a disjoint-list claim. The Jaccard=0.000 claim specifically refers to the 4-emotion cross-signal intersection cluster, not the broader top-10.
+
+**Critic #11 (commit `2f05125`) — the biggest one**: caught an inverted reading of the paper that had propagated through ~5 check-in rounds of Stage 9 drafts. I kept writing "our 0.24 cos(deflection, story) diverges from paper's ~0.8". **Both halves wrong**:
+  - The "~0.8" was from `scripts/stage9_deflection.py:362` hardcoded `anthropic_baseline: 0.80`, **never a paper number**. It was for the retained-norm metric (Fig 63), not for pairwise cosine.
+  - Paper `ant-emotion-concepts-full_paper.md:2157-2158`: "the emotion deflection vectors and their corresponding story-based counterparts have **very low alignment** ... very low cosine similarity". Our 0.241 mean **qualitatively REPLICATES** this.
+  - Our retained norm 0.9615 vs paper's ~80% is the real numerical comparison — both high, ours slightly more orthogonal, probably pipeline/N effects.
+
+**Correction to the success criteria table above**:
+- Old: `Deflection probes | ⚠️ INCONCLUSIVE | 0.24 cosine (paper ~0.8); pilot too small to distinguish noise from real difference`
+- **Corrected**: `Deflection probes | ✅ QUALITATIVELY REPLICATES | 0.24 mean cos matches paper's "very low" claim. Retained norm 0.96 vs paper 0.80 (both high). Paper's Fig 62 (cross-emotion correlation with displayed emotions) and Fig 63 (logit lens on orthogonalized residuals) NOT run.`
+
+**Net effect on headline**: core "opposing quadrants" story survives with hedges. (1) Opposing centroids, not disjoint lists — partial overlap at `weary`. (2) Cross-version ρ=0.922 is algebraic, real evidence is within-version top-10. (3) Stage 9 REPLICATES paper, not diverges. (4) Also: a second independent linguistic diametrical opposition finding was added via commits `3a238b9` / `03f1bc0` — logit lens on Stage 4 data shows Llama's and Sonnet's up-anchor clusters use the SAME tokens with INVERTED polarity (projection through unembedding vs residual activations is a separate pathway, adds independent evidence for the headline).
+
+**Corrected headline for LW writeup**:
+*"Llama 3.3 and Claude share the same valence/arousal emotion geometry, but their post-training shifts land in opposing quadrant centroids — Meta's RLHF amplifies activated-engagement (impatient/alert/enthusiastic/excited), while Anthropic's amplifies reflective-concern (brooding/weary/gloomy). Partial overlap at `weary`. The two directions are independently corroborated by geometric clustering (Stage 8 post-training shift), linguistic token polarity (logit lens on Stage 4 emotion vectors shows inverted polarity on the same high-activation tokens), and Stage 6.4's cross-speaker arousal finding (Llama shows NO regulation — it matches rather than dampens interlocutor arousal)."*
+
+The r plugin verifier SHIP verdict still holds for code. The corrections affect `findings.md` and `task12_outline.md` prose only, not the underlying experiments.
+
+**Status: COMPLETE — with 3 critic correction rounds applied post-completion**
