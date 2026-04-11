@@ -888,3 +888,51 @@ This is narrower than any earlier formulation but is what the data actually supp
 Saved: data is derivable from `results/stage8_layer_sweep.json` + a fresh PCA at each layer. No new file written for this iteration — the numbers are in the notepad.
 
 18. (this commit) — PC1 statistical significance test at peak layers, narrowed to L43-L55
+
+---
+
+## [2026-04-11 post-PC1-stability PST] ⚠️ Another refinement: L37-L43 and L49-L67 are TWO DISTINCT directions, not one
+
+The previous entry collapsed L43, L49, L55 into a single "3-layer significance window". A closer look at pairwise shift-vector correlations shows they're not one direction at all — they're two distinct positive-valence clusters at different depths.
+
+**Pairwise Spearman ρ of shift vectors at L37, L43, L49, L55, L61, L67**:
+
+|  | L37 | L43 | L49 | L55 | L61 | L67 |
+|---|---|---|---|---|---|---|
+| L37 | 1.000 | **+0.892** | +0.276 | +0.162 | +0.156 | +0.191 |
+| L43 | | 1.000 | +0.457 | +0.288 | +0.274 | +0.313 |
+| L49 | | | 1.000 | **+0.918** | +0.861 | +0.843 |
+| L55 | | | | 1.000 | **+0.970** | **+0.942** |
+| L61 | | | | | 1.000 | **+0.985** |
+| L67 | | | | | | 1.000 |
+
+**Two distinct clusters**:
+- **L37-L43 "contentment" cluster** (internal ρ=0.892): blissful, content, at_ease, relaxed, refreshed, satisfied, cheerful, jubilant, happy. PC1 mean +0.88 to +0.95 (very high valence), neutral-to-mildly-positive arousal.
+- **L49-L67 "activation" cluster** (internal ρ ≥ 0.84): eager, impatient, enthusiastic, energized, stimulated, aroused, excited, enraged, playful. PC1 mean +0.14 to +0.52, positive arousal.
+
+Cross-cluster correlation: ρ ≈ 0.16-0.46. These are nearly orthogonal (not the same direction).
+
+**Top-5 shift emotions per cluster layer**:
+- L37: blissful, content, at_ease, relaxed, refreshed
+- L43: satisfied, cheerful, jubilant, blissful, happy
+- L49: eager, enthusiastic, impatient, energized, stimulated
+- L55: impatient, stimulated, eager, enraged, playful
+
+L37-L43 = "positive mood / contentment" (matches the canonical Stage 8 top-10 from the earlier noise-floor analysis).
+L49-L67 = "activated engagement" (matches the cross-version raw-dot top-10).
+
+**This EXPLAINS the noise-floor finding**: the two independent Stage 8 runs that gave "positive mood" (canonical) vs "activation" (cross-version raw-dot) weren't just showing the same direction with different noise. They were picking up DIFFERENT directions from adjacent network depths. The first one (canonical) apparently captured more L37-L43 signal; the second (cross-version) captured more L49-L67. Both are real, both correspond to legitimate positive-valence clusters, but they're different things.
+
+**Refined honest framing**:
+
+Llama's post-training at L37-L67 produces TWO semi-independent positive-valence shift directions at different network depths:
+1. **Early mid-late (L37-L43)**: shift toward contentment / positive mood / comfort
+2. **Mid-late (L49-L67)**: shift toward activation / engagement / alertness
+
+Both are distinct from Sonnet's reported direction (brooding/gloomy/reflective, PC1 ≈ -0.43). The opposition to Sonnet holds at both depths, but framing Llama's direction as ONE thing ("activated engagement") is wrong — it depends on which layer you measure at.
+
+**Possible interpretation**: Meta's RLHF introduces BOTH a "feel more settled/content" signal and a "be more alert/engaged" signal, in adjacent but distinct parts of the network. The contentment signal lives earlier in the residual stream (L37-L43) and the activation signal lives later (L49-L67). These might be two stages of emotional processing, or two independent training objectives, or basis artifacts. We can't tell without more runs.
+
+**For the writeup**: the headline should acknowledge BOTH clusters — "Meta's post-training produces two distinct positive-valence signatures (contentment at L37-L43, activation at L49-L67), both opposite Sonnet's reported reflective-concern direction". This is more precise than claiming one direction.
+
+19. (this commit) — two-cluster refinement: contentment L37-L43 vs activation L49-L67
