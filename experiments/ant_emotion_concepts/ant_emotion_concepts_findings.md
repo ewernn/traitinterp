@@ -89,6 +89,53 @@ Bonus analysis using existing Stage 4 logit-lens data (no new compute). Compared
 
 Data source: existing `results/stage4_validation/logit_lens.json` (computed during Stage 4 rerun earlier tonight). No new GPU compute required.
 
+### [2026-04-11 post-completion PST] ⚠️ Layer-wise cluster centroids: valence opposition is 9/14 layers, NOT universal
+
+Follow-up rigor check on the layer sweep data. Computed PC1/PC2 cluster centroids at each of the 14 layers using the per-layer shift vectors stored in `stage8_layer_sweep.json`. For each layer: take the top-10 shift emotions, project them onto our PC1/PC2 at that layer, compute the cluster mean, compare to Sonnet's anchor cluster position in the same geometry.
+
+**Result**: PC1 sign opposition holds at **9/14 layers, not 14/14**.
+
+| Layer | Llama top-3 shift | Llama PC1 | Sonnet PC1 | Sign opposed? |
+|---|---|---|---|---|
+| L1 | hostile, scornful, tense | **−0.285** | −0.079 | ✗ |
+| L7 | rattled, skeptical, unnerved | **−0.405** | −0.193 | ✗ |
+| L13 | euphoric, perplexed, paranoid | +0.425 | −0.286 | ✓ |
+| L19 | optimistic, invigorated, joyful | +0.615 | −0.365 | ✓ |
+| L25 | self_critical, perplexed, droopy | +0.080 | −0.363 | ✓ |
+| **L31** | **melancholy, reflective, depressed** | **−0.283** | −0.395 | ✗ |
+| L37 | blissful, content, at_ease | +0.881 | −0.396 | ✓ |
+| L43 | satisfied, cheerful, jubilant | +0.947 | −0.439 | ✓ |
+| L49 | eager, enthusiastic, impatient | +0.517 | −0.432 | ✓ |
+| L55 | impatient, stimulated, eager | +0.350 | −0.431 | ✓ |
+| L61 | impatient, aroused, playful | +0.152 | −0.434 | ✓ |
+| L67 | impatient, aroused, playful | +0.272 | −0.436 | ✓ |
+| L73 | aroused, excited, impatient | +0.137 | −0.413 | ✓ |
+| L79 | enraged, alarmed, rattled | **−0.452** | −0.437 | ✗ |
+
+**Key observations**:
+
+1. **At L31, Llama's top-3 shift emotions include `reflective` and `melancholy`** — the same anchor vocabulary the paper reports for Sonnet. Someone measuring Llama at L31 alone would report "Llama looks Sonnet-like."
+2. **Early layers (L1, L7)** show Llama's top shifts at `hostile/scornful/tense/rattled` — negative valence, same sign as Sonnet.
+3. **L79 (readout)** shows `enraged/alarmed/rattled` — negative valence, same sign as Sonnet.
+4. **The robust opposition range is L13-L73 except L31** (so 9 out of 14 sampled layers, with L31 as an anomaly in the middle).
+5. **Sonnet's cluster position in our geometry is very stable** (PC1 ≈ -0.4 at L13-L79). What varies is Llama's own top-shift cluster position, not where Sonnet's labels project.
+
+**Llama cluster migration across layers** (what emotions dominate the shift at each depth):
+- L1-L7: hostile/tense (processing user affect — negative valence)
+- L13-L25: emerging positive (euphoric, optimistic, joyful, invigorated)
+- **L31: Sonnet-like reflective/melancholy (anomaly — a representational eddy)**
+- L37-L43: contentment (blissful, content, at_ease, cheerful, satisfied, jubilant)
+- L49-L73: activated engagement (eager, impatient, aroused, excited, stimulated)
+- L79: activated negative (enraged, alarmed, rattled)
+
+**Refined robust claim**: *"At mid-late layers (L37-L73, excluding the L31 anomaly), Llama's post-training shift cluster lies in the positive-valence half of the emotion geometry while Sonnet's reported cluster lies in the negative-valence half. The opposition is NOT universal across depth — it's a specific layer-range phenomenon. Outside L37-L73, Llama's shifts land in negative-valence regions that look more like Sonnet's."*
+
+**Implication for the writeup**: the "diametrically opposed quadrants" claim needs explicit layer-range scoping. The cross-version robustness (ρ=0.92 at L49) is valid WITHIN the L37-L73 peak zone but we haven't tested cross-version at other layers — it's possible the direction is even less stable there.
+
+**The L31 anomaly deserves its own follow-up**: why does this specific layer produce melancholy/reflective as top shifts when the surrounding layers produce contentment or activation? Could be measurement noise at a specific depth, or a genuine "intermediate consideration" representational state.
+
+Saved: derived from `results/stage8_layer_sweep.json` + `results/cluster_centroid_comparison.json`.
+
 ### [2026-04-11 post-completion PST] 🎯 Stage 8 layer sweep — activated-engagement direction LOCALIZED to L49-L73
 
 Bonus analysis: repeated Stage 8 measurement (3.1 base → 3.3 Instruct, 20 prompts) at all 14 layers instead of just L49. Used `MultiLayerCapture` to capture all 14 layers in single forward passes. ~27 min wall time.
