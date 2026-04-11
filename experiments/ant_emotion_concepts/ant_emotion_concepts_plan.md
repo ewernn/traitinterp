@@ -15,7 +15,11 @@ Decision tree (D1–D7 + pruned branches): `ant_emotion_concepts_decision_tree.m
 
 **Complete**: Stage 0, 1.1, 1.2, 1.5, 2 (14-layer extraction), 2.2, 3 (geometry), 4 (validation + rerun with denoised), 5, 7 (partial), 8 (post-training), plus overnight extras: layer sweep PC1/valence, deep-dive Figs 37-39, cross-signal correlation analysis.
 
-**HEADLINE FINDING (2026-04-11)**: Llama's and Sonnet's post-training shifts sit in **diametrically opposed quadrants** of the shared PC1/PC2 emotion geometry. Llama up-anchor cluster at PC1=+0.436, PC2=+0.422 (activated engagement); Sonnet up-anchors (projected onto our geometry) at PC1=−0.432, PC2=−0.432 (reflective concern). Jaccard overlap = 0.000. Same universal geometry, opposed semantic anchors. See `ant_emotion_concepts_findings.md` top entry.
+**HEADLINE FINDING (2026-04-11, revised after 5 correction passes)**: Llama's RLHF produces a **3-phase depth trajectory** through the residual stream. At **L29-L33** (~36-41% depth), top-10 shifts are `melancholy, reflective, depressed, brooding, gloomy, worn_out` — essentially Sonnet's reported anchor list (coherent 3-layer zone, internal pairwise Spearman ρ > 0.90). At **L49-L73**, Llama's shift is opposite direction, amplifying activation emotions (`eager, impatient, enthusiastic`). At the output-relevant **L79 readout**, partial realignment back toward Sonnet's direction (z-alignment +0.76, vs peak +1.61 at L31).
+
+The earlier "diametrically opposed quadrants" framing was a measurement artifact — L49 happens to be in the opposite-phase middle of this trajectory. Llama and Sonnet likely share the reflective-concern representation; the cross-lab difference may be about which depth emphasizes the reflective direction at the output.
+
+**Bonferroni-robust load-bearing claims** (family α=0.05 across 14 layer-wise tests): positive PC1 at L19/L37/L43/L49. L29-L33 reflective zone is not Bonferroni-tested at equivalent rigor (dense-sampling used L31 probe basis for L29/L33 as approximation). See `ant_emotion_concepts_findings.md` and the LW draft (`ant_emotion_concepts_lw_draft.md`) for full scoping and caveats.
 
 **Structural geometry findings**:
 - PC1 vs valence r=0.964 at L49 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66)
