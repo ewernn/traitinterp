@@ -33,6 +33,45 @@ Ran Stage 9 deflection probe extraction on the 900-dialogue Stage 1.4 pilot (500
 
 Saved: `results/stage9_deflection/stage9_results.json` (contains all 5 deflection + 5 displayed vectors, comparison metrics). Vectors at `results/stage9_deflection/vectors/`.
 
+### [2026-04-11 post-completion PST] 🎯 Stage 8 layer sweep — activated-engagement direction LOCALIZED to L49-L73
+
+Bonus analysis: repeated Stage 8 measurement (3.1 base → 3.3 Instruct, 20 prompts) at all 14 layers instead of just L49. Used `MultiLayerCapture` to capture all 14 layers in single forward passes. ~27 min wall time.
+
+**Main result**: the activated-engagement up-anchor cluster (alert/enthusiastic/excited/impatient) is ONLY ranked at the top of the shift in a specific layer range. Early and final layers show random-ish ranks.
+
+**Llama anchor mean rank across layers** (out of 171, lower = higher in shift):
+
+| Layer | alert | enthusiastic | excited | impatient | mean rank |
+|---|---|---|---|---|---|
+| L1 | 105 | 157 | 49 | 121 | 108 |
+| L7–L37 | 99–161 | 21–157 | 49–149 | 47–161 | 62–142 (random) |
+| L43 | 82 | 9 | 30 | 84 | 51 (emerging) |
+| **L49** | **6** | **2** | **7** | **3** | **4.5 (PEAK)** |
+| **L55** | 9 | 7 | 14 | **1** | 7.8 |
+| **L61** | 12 | 10 | 13 | **1** | 9.0 |
+| **L67** | 11 | 10 | 9 | **1** | 7.8 |
+| **L73** | 11 | 4 | 2 | 3 | 5.0 |
+| L79 | 18 | 105 | 77 | 83 | 71 (dissipates) |
+
+**Layer-to-layer consistency (Spearman ρ vs L49)**:
+- L1–L43: −0.40 to +0.46 (random to weak positive)
+- **L55/L61/L67/L73: +0.92, +0.86, +0.84, +0.79** — tight cluster, stable direction
+- L79: +0.16 (dissipates at readout layer)
+
+**Interpretation**:
+1. **The Llama RLHF direction is NOT uniform across the network.** It's localized to **L49–L73** (~60% to ~91% depth).
+2. **Early layers (L1–L43) don't encode the direction.** RLHF doesn't reshape early processing.
+3. **L79 (final layer) dissipates the signal.** Final layer does readout-specific computation and emotional anchor structure loses coherence there.
+4. **Tight 5-layer plateau (L49–L73)**: `impatient` at rank 1–3 across 4 consecutive sampled layers. This is where Meta's RLHF lives in Llama 3.3's residual stream.
+
+**Contrast with PC1-valence layer sweep** (finding 1 above): the universal valence axis is |r|>0.8 at ALL 14 layers — truly universal. But the RLHF-specific activated-engagement direction is **a layer-range property**, not a global feature. Meta's RLHF is a mid-late layer intervention, not a whole-network reshape.
+
+**Refined headline**: "Llama's post-training shifts emotion activations toward activated engagement **specifically in layers L49–L73**. The direction is stable across this 5-layer range (ρ > 0.78) and diametrically opposite Sonnet's reflective-concern anchors. Early layers don't encode the direction at all; the final layer dissipates it."
+
+**Implication for steering**: optimal Llama steering layer range is `[49, 55, 61, 67, 73]`. The plan's central-8 `[25,31,37,43,49,55,61,67]` was too inclusive — the first 4 layers don't carry the RLHF signal. Future steering experiments should focus on the peak region.
+
+Saved: `results/stage8_layer_sweep.json`. Script: `/tmp/stage8_layer_sweep.py`.
+
 ### [2026-04-11 post-completion PST] Stage 6.4 — Llama shows NO arousal regulation (paper's r≈−0.47 doesn't hold)
 
 Bonus analysis run after the main `/r:run-experiment` completion. The stage6 script produces cross-speaker interaction data (for each "other speaker emotion", the closest "present speaker" probe) but punts the arousal-regulation correlation because it wants LLM-judge arousal ratings. **I computed it directly using PC2 as the arousal proxy** (PC2 vs Russell & Mehrabian arousal norms has |r|=0.85 at L49, so PC2 is a reliable arousal signal).
