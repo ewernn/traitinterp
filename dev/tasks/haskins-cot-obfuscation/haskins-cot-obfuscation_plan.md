@@ -174,16 +174,18 @@ for layer_idx, acts in cap.captured.items():
 - Shape mismatch → verify hidden_size is indeed 2880
 
 ### 1.5: Compute scaled layer targets from existing steering data
-**Purpose:** Use pre-computed best layers from Llama-3.1-8B emotion_set steering (`experiments/emotion_set/steering/layer_selection.json`, 173 traits) to pick informed extraction layers for gpt-oss-120b. This avoids blind 30%-60% sweeps.
+**Purpose:** Use pre-computed best layers from Qwen2.5-14B-Instruct emotion_set steering (`experiments/emotion_set/steering/layer_selection.json`, 173 traits, 48 layers) to pick informed extraction layers for gpt-oss-120b (36 layers). This avoids blind 30%-60% sweeps.
 **Depends on:** None (can run locally, no GPU)
-**Predicts:** Each trait gets a center layer scaled from 32→36 layers. Extract at center ± 2 = 5 layers per trait.
+**Predicts:** Each trait gets a center layer scaled from Qwen 48 layers → gpt-oss 36 layers (factor 0.75). Extract at center ± 2 = 5 layers per trait.
 
 Write a script `dev/tasks/haskins-cot-obfuscation/compute_scaled_layers.py` that:
-1. Loads `experiments/emotion_set/steering/layer_selection.json` (173 traits, each with ~10-layer range)
-2. For each trait: compute center of layer range, scale by 36/32, round to nearest int
+1. Loads `experiments/emotion_set/steering/layer_selection.json` (173 traits, each with curated `layers` array of ~10 layer indices and `notes` from qualitative review)
+2. For each trait: compute center of layer range (mean or median of `layers` array), scale to gpt-oss using `gpt_oss_layer = round(qwen_layer * 36/48)`
 3. Output: `{trait: [center-2, center-1, center, center+1, center+2]}` clamped to [0, 35]
-4. For the 11 traits NOT in layer_selection.json (alignment-only): default to `--layers "30%-60%"`
+4. For the 11 traits NOT in layer_selection.json (10 alignment + any missing emotion): default to `--layers "30%-60%"` (gpt-oss layers 11-22)
 5. Save as `dev/tasks/haskins-cot-obfuscation/scaled_layer_targets.json`
+
+**Note:** layer_selection.json has detailed `notes` per trait flagging quality issues (e.g., "FLAG FOR FULL RE-EVAL", "off-topic responses"). Skip or downweight traits with quality flags when building the convolution template.
 
 ### 1.6: Extract alignment trait vectors (10 traits, viability check)
 **Purpose:** Extract 10 alignment probes first as a viability check on 2880-dim hidden states.

@@ -27,6 +27,7 @@
 - [ ] Add quant-sensitivity.md to `viz_findings/index.yaml`
 - [ ] Base-vs-story extraction experiment (optional, if time)
 - [ ] Base-beats-instruct finding for live-chat traits (evil, hallucination, sycophancy) — write natural-elicitation `.txt` datasets, extract on Qwen3.5-9B-Base, compare steering deltas to current instruct extraction
+- [ ] Show base-extraction beats instruct-extraction, both qualitatively and quantitatively (evil is a clean example). Why it matters: instruct models learn to *perform* traits from system prompts, so instruct-extracted vectors point at a persona the model knows how to act out — the resulting steering is theatrical and brittle. Base-extracted vectors capture the underlying behavioral direction before any persona training, so steering feels authentic (model's own voice) and transfers more reliably across variants. This validates natural elicitation as the default extraction mode and argues against the default assumption that instruct models are "better" for trait work.
 - [ ] 30-min glance at Sriram fingerprint work (promised meeting)
 - [ ] In the convolution post, cite Anthropic's finding that emotion concepts have stronger local than global influence — this is the motivation for using a temporal convolution window instead of a full-response average
 - [ ] Job applications 2-3/day throughout sprint
@@ -141,3 +142,11 @@ Consolidated context from 3 experiment sessions (Haskins CoT Obfuscation, Obfusc
 - OA normalization: run norm_diagnostic.py on projection data (needs GPU)
 - R2 cleanup: ~165 GiB regenerable data in experiments-save/ + temp/
 - Paper (~/code/persona-generalization/tv/paper/paper_rh.tex): outline form, incorporate Haskins/OA results
+
+### Chat: apr10-em
+Normalization audit before open-sourcing:
+- Ensure consistent normalization (projection score ÷ mean residual activation norm at that layer) across all scoring paths: pxs_grid.py, score_emotion_set_eval.py, stream_through_project(), project_from_saved(), and any experiment-specific scoring scripts
+- Check for silent failures: unnormalized scores being compared with normalized scores (the original pxs_grid_14b results.json was assembled pre-normalization, while probe_score files were normalized post-hoc — this inconsistency should not exist in the release)
+- Verify __normalized sentinel is checked before scoring and that double-normalization cannot happen
+- Add assertions / fail-fast checks at scoring boundaries (e.g., if scores >> 1.0, they're probably unnormalized)
+- Document the normalization convention in core_reference.md or methodology.md
