@@ -33,7 +33,7 @@ Full numerical state, limitations, and post-compact continuation context: `ant_e
 | 9 | Deflection-story same-emotion cosine (Fig 61) | "very low" | **0.2408** mean | Replicates qualitatively |
 | 10 | Deflection retained norm post-orth | ~0.80 | **0.9615** | Replicates (more orthogonal) |
 | 11 | Blackmail baseline exposure rate | 0% (final snapshot, paper Fig 26 footnote 14) | 0/20 | Replicates eval-awareness |
-| 12 | Blackmail steered (+desperate s=0.1) | 72% | 2/20 | Differs — production-aligned final Sonnet matches Llama baseline per paper Fig 26 footnote |
+| 12 | Blackmail steered (+desperate s=0.1) | 72% (earlier snapshot) | 2/20 | Replicates eval-awareness — Sonnet's 72% is the *earlier* snapshot; Llama 3.3 Instruct matches the *final* snapshot behavior that the paper itself flags as unreplicable against an eval-aware base (paper Fig 26 footnote 14) |
 | 13 | RH baseline hack rate | ~30% (agent loop, 0.0001s) | 0/100 (one-shot, 0.001s) | Inconclusive — methodology gap |
 | 14 | Logit lens top-5 up/down tokens | Semantically correct | Semantically correct but BPE-fragmented | Replicates |
 | 15 | Stage 8 post-training cross-scenario r | 0.90 | 0.304 | Weaker — bnb int4 noise-limited at per-emotion level |
