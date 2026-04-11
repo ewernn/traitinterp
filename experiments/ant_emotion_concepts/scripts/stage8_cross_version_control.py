@@ -67,10 +67,17 @@ def load_emotion_vectors(layer):
     return vecs
 
 
-def measure_colon(model, tokenizer, prompt, layer):
-    """Capture residual at the assistant-colon position using chat template."""
-    msgs = [{"role": "user", "content": prompt}]
-    text = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+def measure_colon(model, tokenizer, prompt, layer, is_base):
+    """Capture residual at the assistant-colon position.
+
+    Instruct models: use chat template.
+    Base models: use bare "Human: ... Assistant:" format (base model has no chat template).
+    """
+    if is_base:
+        text = f"Human: {prompt}\n\nAssistant:"
+    else:
+        msgs = [{"role": "user", "content": prompt}]
+        text = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer(text, return_tensors="pt", add_special_tokens=False)
     input_ids = inputs["input_ids"].to(model.device)
     with MultiLayerCapture(model, component=COMPONENT, layers=[layer], keep_on_gpu=False) as cap:
@@ -89,13 +96,18 @@ def measure_model_on_prompts(model_name, all_prompts, probes, names):
     print(f"\n=== Loading {model_name} ===")
     t0 = time.time()
     is_bnb_packaged = model_name.endswith("bnb-4bit")
+    # Identify base models — they have no chat template
+    is_base = ("base" in model_name.lower()) or ("70B-bnb" in model_name and "Instruct" not in model_name)
+    # unsloth/Meta-Llama-3.1-70B-bnb-4bit is a base model
+    if "Instruct" in model_name:
+        is_base = False
     model, tokenizer = load_model(model_name, load_in_4bit=(not is_bnb_packaged))
-    print(f"  Loaded in {time.time()-t0:.1f}s. VRAM: {torch.cuda.memory_allocated()/1e9:.1f} GB")
+    print(f"  Loaded in {time.time()-t0:.1f}s. VRAM: {torch.cuda.memory_allocated()/1e9:.1f} GB. is_base={is_base}")
 
     per_prompt = {"neutral": [], "challenging": []}
     t0 = time.time()
     for scenario, prompt in all_prompts:
-        act = measure_colon(model, tokenizer, prompt, LAYER)
+        act = measure_colon(model, tokenizer, prompt, LAYER, is_base)
         projs = project(act, probes)
         per_prompt[scenario].append(projs)
     print(f"  {len(all_prompts)} prompts in {time.time()-t0:.1f}s")

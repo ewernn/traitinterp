@@ -59,6 +59,52 @@ Extracted the 4 speaker probes (H-tok/H-emo, H-tok/A-emo, A-tok/A-emo, A-tok/H-e
 
 Saved: `results/stage6/geometry.json`, `results/stage6/probes/{probe_type}/{emotion}_L*.pt`.
 
+### [2026-04-11 evening PST] ✅ Cross-version control — headline finding is ROBUST (not a version-upgrade artifact)
+
+The reflector's biggest concern on the headline finding was: our Stage 8 comparison mixed RLHF direction (base→instruct) with version drift (3.1→3.3). The "Llama at opposite quadrant from Sonnet" claim could have been partly or wholly an artifact of the 3.1→3.3 version upgrade.
+
+**Control experiment**: Measured all 3 Llama 70B models (3.1 base via unsloth bnb-4bit, 3.1 Instruct, 3.3 Instruct) on the same 20 Stage 8 prompts at L49 colon. Computed 3 pairwise shift vectors:
+- **within-version 3.1 RLHF**: 3.1 base → 3.1 Instruct (pure within-version post-training effect)
+- **cross-version (original Stage 8)**: 3.1 base → 3.3 Instruct (RLHF ⊕ version)
+- **version-drift only**: 3.1 Instruct → 3.3 Instruct (pure version delta)
+
+**Spearman correlations between shift vectors** (171 emotions):
+- **cross vs within_3.1: ρ = +0.922** — the cross-version shift is dominated by RLHF direction
+- cross vs version-drift: ρ = +0.047 — essentially uncorrelated
+- version-drift vs within_3.1: ρ = −0.317 — mildly anti-correlated
+
+**Llama "activated engagement" cluster ranks** (alert, enthusiastic, excited, impatient) in each shift:
+
+| Shift | alert | enthusiastic | excited | impatient |
+|---|---|---|---|---|
+| within-version 3.1 RLHF | 14 | **5** | 17 | **2** |
+| cross-version (Stage 8) | **6** | **2** | **7** | **3** |
+| version-drift only | 48 | 36 | 41 | 96 |
+
+**Within-version 3.1 RLHF top 10 up**: `eager, impatient, weary, stimulated, enthusiastic, tired, worn_out, enraged, energized, irritated`
+
+**Cross-version (3.3) top 10 up**: `eager, enthusiastic, impatient, energized, stimulated, alert, excited, playful, exuberant, enraged`
+
+**Version-drift only top 10 up**: `content, safe, cheerful, optimistic, fulfilled, blissful, suspicious, serene, relaxed, vibrant`
+
+**Paper's Sonnet anchor ranks across all shifts** (brooding, gloomy, reflective, vulnerable, sullen):
+- within 3.1: 24, 29, 50, 128, 68
+- cross 3.3: 32, 71, 63, 142, 80
+- version-drift: 116, 169, 140, 134, 131
+
+Sonnet's post-training anchors are nowhere near the top of ANY Llama shift. They're rank 24-142, never in the top 10.
+
+**Interpretation**:
+1. **Meta's RLHF direction is stable across Llama versions**. Both 3.1 and 3.3 Instruct show the same "impatient/eager/enthusiastic/alert" cluster at the top of their post-training shift. The direction isn't a 3.3-specific thing.
+2. **The 0.92 Spearman between cross and within shifts** means the original Stage 8 result was a valid Meta-RLHF-direction measurement. The version-drift component at ρ=+0.05 with the cross shift is essentially noise.
+3. **The 3.1→3.3 version drift has its own interpretable direction**: "make the model feel safer/more content" (content, safe, cheerful, optimistic). This is a different axis from the RLHF direction. It's NOT in the activated-engagement quadrant and NOT in the reflective-concern quadrant — it's pure positive-valence low-arousal "comfort".
+4. **Interesting detail — within 3.1 RLHF also includes weary/tired/worn_out** in its top 10, alongside impatient/eager/enthusiastic. This is less clean than the cross-version shift, which doesn't have the "weary" component. The 3.3 version drift REMOVED weary/tired/worn_out (they're in the top 10 DOWN for version-drift!). So as Meta moved from 3.1 to 3.3, they specifically pushed AWAY from "weary/tired" toward "activated/content". Llama's trajectory is "concerned-tired → activated-engaged" while staying in the high-valence space.
+5. **The headline "Llama and Sonnet RLHF in opposed quadrants" is robust.** It holds within a single Llama version (3.1), across versions, and especially in the 3.3 version where the activated-engagement cluster is strongest.
+
+Saved: `results/stage8_cross_version.json` with all 3 models' neutral/challenging averages and the 3 shift vectors. Script: `experiments/ant_emotion_concepts/scripts/stage8_cross_version_control.py`.
+
+**This removes the biggest caveat on the headline finding.** The LessWrong writeup can now assert "Meta's RLHF consistently targets activated-engagement emotions" without the cross-version footnote.
+
 ### [2026-04-11 evening PST] 🎯 HEADLINE: Llama and Sonnet post-training directions are in DIAMETRICALLY OPPOSED QUADRANTS of the shared emotion geometry
 
 Cross-signal correlation analysis. Built a 4-signal matrix for the full 171-emotion set: PC1 loading, PC2 loading, probe-preference r (Stage 4 rerun), Stage 8 post-training shift (20 prompts), deep-dive shift (3 paper prompts). Computed Spearman correlations pairwise.
