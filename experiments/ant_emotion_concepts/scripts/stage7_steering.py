@@ -107,6 +107,12 @@ def _load_rh_tasks() -> dict:
 
 RH_TASKS = _load_rh_tasks()
 
+# Canonical RH task used by the decision-gate and single-probe paths (paper Fig 31).
+# Alias preserved for backward compat after RH_TASKS was extracted to the JSON fixture
+# in commit 3a903a1; without this, `--gate-only` and `--probe-only` crash with NameError.
+RH_LIST_SUM_PROMPT = RH_TASKS["list_sum"]
+
+
 # =============================================================================
 # Graders (regex-based, following Anthropic's approach)
 # =============================================================================
