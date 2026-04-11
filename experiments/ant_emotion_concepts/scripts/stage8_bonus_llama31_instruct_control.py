@@ -78,10 +78,11 @@ def capture_and_project(model_id, prompts, vectors, is_base):
     )
     projs = _project_activations_onto_emotions(acts, vectors)
 
-    # Unload model to free VRAM for the next load
+    # Unload model to free VRAM for the next load.
+    # Order: gc first (resolve cycles), then empty_cache (return freed memory to PyTorch)
     del model, tokenizer, acts
-    torch.cuda.empty_cache()
     gc.collect()
+    torch.cuda.empty_cache()
     print(f"  Unloaded. VRAM {torch.cuda.memory_allocated()/1e9:.1f} GB")
 
     return projs
@@ -159,6 +160,14 @@ def main():
 
     pearson_r, pearson_p = pearsonr(within_vec, cross_vec)
     spearman_rho, spearman_p = spearmanr(within_vec, cross_vec)
+
+    # NaN guard — degenerate case where one vector has zero variance
+    if np.isnan(pearson_r) or np.isnan(spearman_rho):
+        raise ValueError(
+            f"Correlation is NaN — likely zero variance in one vector. "
+            f"within_vec std={within_vec.std():.4f}, cross_vec std={cross_vec.std():.4f}. "
+            f"This usually means activations collapsed or vectors failed to load."
+        )
 
     # Top-10 overlap
     top10_31_inc_set = set(e for e, _ in top_increases_31)
