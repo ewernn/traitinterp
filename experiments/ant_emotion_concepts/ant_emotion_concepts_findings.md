@@ -820,3 +820,36 @@ Already covered in Finding 3. Key additional cross-scenario consistency numbers:
 14. `deac886` — Stage 1.4 + stage9 refinement
 15. `75e218a` — cross-version control RESULTS (headline robust)
 16. (this commit) — reconciled Findings section
+
+---
+
+## [2026-04-11 14:25 UTC] Superseding entry: noise-floor integration + PC1 stability verification
+
+**Several earlier findings in this file are now superseded by the LW draft (`ant_emotion_concepts_lw_draft.md`, at commits `21ca009` + the PC1-verification follow-up). Read the draft as the canonical framing; the entries below are retained for the append-only log but should be interpreted in light of this note.**
+
+**What we found after the run formally completed** — a parallel diagnostic re-ran the same Stage 8 measurement twice with two different scripts (`stage8_post_training.py` uses batched+padded inputs, `stage8_cross_version.py` uses singleton inputs with `add_special_tokens=False`). The two runs produced **Spearman ρ = 0.465** between per-emotion shift vectors (not the ~0.95 expected from literally identical experiments), with **0/10 overlap** at the top-10 increase level, and literal sign flips on emotions like `brooding` (−0.037 vs +0.197), `calm` (+0.202 vs −0.194), and `gloomy` (−0.044 vs +0.055). Cause: bnb int4 dequant noise (~5-10% per activation) compounded with the batch/padding/BOS differences between the scripts.
+
+**Specific earlier claims in this file that are now softened or overturned**:
+
+1. **"`impatient` is Meta's RLHF signature"** (Key Findings #3, Finding 4 around L625, overview headline at L121). `impatient` appears in one run's top-10 but not the other's. It's "a top-candidate in run_B's within-version shift", not "Meta's stable signature across measurements". At the individual emotion-name level, NO specific emotion is reliably top-10 across two re-runs of the same measurement.
+
+2. **"Jaccard = 0 overlap with Sonnet's anchors"** (Key Findings #2, Finding 3). Holds specifically for the 4-emotion cross-signal intersection cluster (`alert/enthusiastic/excited/impatient`) vs Sonnet's reported top-10. Does NOT hold for the broader raw-dot top-10, which contains `weary` in common with Sonnet.
+
+3. **"Diametrically opposed quadrants on both PC1 and PC2"** (refined headline, Finding 3, Key Findings #2). The up-direction sign flip is empirically robust; the down-direction is asymmetrically weaker (see verification below). Story is now "opposing up-clusters" not "diametrical opposition on both halves of the axis".
+
+**What IS verified and load-bearing** (from `results/pc1_stability_verification.json`, commit after `21ca009`):
+
+We took the two Stage 8 runs' top-10 increase lists (which have 0/10 overlap — `thrilled/relieved/pleased/patient/ecstatic/calm/grateful/triumphant/satisfied/elated` vs `eager/enthusiastic/impatient/energized/stimulated/alert/excited/playful/exuberant/enraged`) and computed each cluster's PC1 centroid using the 171-emotion L49 PCA basis. Both clusters land at PC1 > 0 by multiple standard deviations:
+
+- **run_A up-cluster PC1 = +0.8557** (z = +4.86 vs 10,000-sample N=10-of-171 permutation null, p ≈ 0.0001)
+- **run_B up-cluster PC1 = +0.5169** (z = +2.94 vs same null, p ≈ 0.003)
+- Permutation null CI95 = [−0.315, +0.354]
+- Sonnet up-cluster PC1 = −0.432 (paper's anchors projected onto Llama's geometry, with the known cross-lab methodological caveat)
+
+**The cluster-level PC1 sign flip between Meta and Anthropic post-training is now a direct two-run measurement, not an assertion.** The individual emotion names are noise-floor-limited; the cluster-level centroid is not.
+
+**Asymmetric caveat**: the analogous check on the DOWN-direction (top-10 decreases, emotions Meta's RLHF suppresses) is weaker. run_A down-cluster PC1 = −0.444 (z = −2.52, p = 0.011, significant), but run_B down-cluster PC1 = −0.094 (z = −0.54, p = 0.61, **indistinguishable from the permutation null**). The up-direction cluster sign flip is verified; the down-direction cluster is not. The robust publishable claim is specifically about what Meta's RLHF *amplifies*, not about what it *suppresses*.
+
+**Net effect on the writeup**: the headline is actually *stronger* after this correction pass, because "PC1 sign flip robust across runs despite 0/10 name-level overlap" is a cleaner and more methodologically defensible claim than "these 4 specific emotions are Meta's signature". The specific-emotion top-10 lists in the older findings entries above should be read as one-run illustrative examples, not stable anchors. The LW draft's TL;DR now leads with the verified PC1 numbers rather than the emotion names.
+
+17. (this entry's commit) — noise-floor integration + PC1 stability verification
