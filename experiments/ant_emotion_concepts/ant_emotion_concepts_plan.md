@@ -7,6 +7,19 @@ Replicate the methodology from Sofroniew et al. 2026 ("Emotion Concepts and thei
 ## Reference
 
 Full methodology doc: `docs/other/emotion_concepts_methods.md`
+Full paper text: `experiments/ant_emotion_concepts/ant-emotion-concepts-full_paper.md`
+Decisions log (for LW writeup): `ant_emotion_concepts_methodology_notes.md`
+Decision tree (D1–D7 + pruned branches): `ant_emotion_concepts_decision_tree.md`
+
+## Current State (as of 2026-04-11)
+
+**Complete**: Stage 0, 1.1 (story gen), 1.2 (neutral corpus), 1.5 (curated prompts), 2 (14-layer extraction), 2.2 (cross-trait normalization with composable method names), 3 (geometry), 4 (validation), 5 (layer dynamics), 7 (partial — documented limitations), 8 (post-training — surprising finding: direction opposite paper).
+
+**Key results at L49, `mean_diff+gm+pc50`**: PC1 vs valence r=0.964 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66) — both exceed paper despite bnb int4 quantization and 40 stories/emotion (vs paper's 1,200).
+
+**Remaining tonight (overnight run ~10h GPU)**: Stage 1.3 full dialogue generation, Stage 6 speaker probes, Stage 1.4 pilot + Stage 9 pilot, Stage 4/5 rerun with denoised vectors, deep-dive prompts Figs 37-39, layer-wise post-training shifts, findings reconciliation.
+
+**Deferred to future sessions**: Full Stage 1.4 replication (21,000 dialogues = ~37h GPU, infeasible overnight), Stage 6 sycophancy two-turn, RH agent loop infrastructure (Stage 7 blocker).
 
 ## Setup
 
@@ -23,32 +36,27 @@ Full methodology doc: `docs/other/emotion_concepts_methods.md`
 - **Remote package manager**: `uv pip install` (not `pip install`) — remote uses uv venv
 - **Base model for post-training comparison**: `meta-llama/Llama-3.1-70B`
 
-## Compute Estimates (Llama 70B int4 on 1× A100 80GB, batch=8)
+## Compute Estimates (Llama 70B bnb int4 on 1× A100/A800 80GB)
 
-Autoregressive generation: each decode step reads model weights once (~0.115 sec), advances all batch items in parallel. Batch=8 gives ~8× throughput vs batch=1.
+**Benchmarked throughput** (2026-04-11, auto batch sizing):
 
-| Operation | Samples | Tokens/sample | Time (batch=8) |
-|---|---|---|---|
-| Generate 6,840 stories (171 × 20 × 2 rollouts) | 6,840 | 256 | ~7h |
-| Generate neutral transcripts | ~200 | 256 | ~12min |
-| Generate 2-speaker dialogues (6-10 exchanges) | ~3,000 | 768 | ~9h |
-| Generate deflection dialogues (6-10 exchanges) | ~4,200 | 768 | ~12h |
-| Extract activations (prefill, no generation) | ~14,000 | 256 | ~30min |
-| Preference Elo (4,032 pairs, prefill only) | 4,032 | 64 | ~15min |
-| Steering sweep — preference (prefill only) | 141,120 | 64 | ~30min |
-| Steering sweep — blackmail (IF gated) | 2,700 | 2048 | ~22h |
-| Steering sweep — RH (IF gated) | ~2,000 | 512 | ~8h |
-| Geometry analysis | - | - | ~5min (CPU) |
-| Post-training comparison (load base model) | ~500 | 256 | ~1h |
+| Operation | Samples | max_tokens | Actual avg out | Batch | Benchmarked time |
+|---|---|---|---|---|---|
+| Story generation (Stage 1.1) | 6,840 | 256 | ~200 | 8 | **8h** (measured) |
+| Neutral corpus (Stage 1.2) | 200 | 256 | ~200 | 8 | **12min** (measured) |
+| 2-speaker dialogues @ 384 tok (Stage 1.3) | 3,000 | **384** | 360 (94% cap) | 62 | **~5.3h** (extrapolated from 20-dialogue bench: 564 dial/h) |
+| Deflection dialogues @ 384 tok — pilot 625 | 625 | 384 | 360 | 62 | **~66min** |
+| Deflection dialogues @ 384 tok — PAPER FULL 21,000 | 21,000 | 384 | 360 | 62 | **~37h** (NOT FEASIBLE — pilot only tonight) |
+| 14-layer extraction (171 traits) | 6,840 | — | prefill only | — | **~50min** (measured) |
+| Post-training base vs instruct (20 prompts) | 20 | 384 | — | — | **~8min** (measured, Stage 8) |
+| Stage 4 validation (logit lens, implicit, intensity, Elo) | ~100 | 64 | prefill+short gen | — | ~30min |
+| Deep-dive Figs 37-39 (base vs instruct, 3 prompts × 2 models) | 6 | 128 | — | — | ~20min |
 
-**VRAM**: ~36-37.7 GB model. Auto batch sizing (utils/vram.py) picks batch=8-16.
-**Estimated WITHOUT steering sweeps**: ~30 hours on 1× A100 (generation + extraction + analysis)
-**Estimated WITH blackmail steering**: +22 hours = ~52 hours total
-**Estimated WITH blackmail + RH steering**: +30 hours = ~60 hours total
+**Rejected 768 max_tokens**: Benchmark showed 768 yields 19.1 avg turns (paper spec is 3-5 exchanges = 6-10 turns). max_tokens=384 yields 10.6 avg turns = paper-accurate. At 768 throughput was 263 dial/h (2× slower), so 384 is both cheaper AND more correct.
 
-**Strategy**: Run generation + extraction + analysis first (~30h). Then gate steering on baseline checks (30 min). If model exhibits the behavior, proceed with steering (~22-30h more). If not, skip and save 30+ hours.
+**VRAM**: ~37 GB model. Auto batch sizing on 80GB GPU picks batch=62 for 384-tok dialogue gen (freed memory after model load + KV cache).
 
-**On 2× A100**: Halve the generation times. Total ~15h without steering, ~40h with.
+**Strategy**: See "Tonight's Overnight Schedule" below. Strategy changed from original plan — steering skipped per documented limitations (D-PRUNED-3, D-PRUNED-4 in decision tree).
 
 ---
 
@@ -193,21 +201,52 @@ All datasets generated by Llama 3.3 70B Instruct (same model that will be used f
 - **Output**: neutral corpus for PCA denoising
 - **Estimated time**: ~30min
 
-**1.3: Generate 2-speaker emotional dialogues**
+**1.3: Generate 2-speaker emotional dialogues** [SCHEDULED FOR TONIGHT]
 - For present/other speaker probes (experiments #24-27)
-- Each dialogue: Human and Assistant with independently randomized emotions
-- Prompt: verbatim from Appendix A.4
-- ~3,000 dialogues (subset of full combinatorial — enough for probe extraction)
-- **Output**: dialogue corpus with labeled speaker emotions
-- **Estimated time**: ~6h on 2× A100
+- Each dialogue: Human and Assistant with independently randomized emotions (from the 171 emotion list)
+- Prompt: verbatim from Appendix A.4 (already transcribed in `stage6_speaker_probes.py::DIALOGUE_GENERATION_PROMPT`)
+- **N = 3,000 dialogues** (paper does not specify an exact count for this experiment; 3,000 is a well-established project convention — enough for stable probe extraction at 4 × 171 = 684 probe types)
+- **max_new_tokens = 384** — DECISION: benchmarked 2026-04-11, gives avg 360 actual tokens (94% of cap) and avg **10.6 turns** ≈ 5 exchanges. Matches paper spec ("3-5 exchanges" in Appendix A.4). 768 cap gave 19 turns (too long) at 2× the cost. See benchmark: `/tmp/bench_dialogue_gen.json`.
+- **temperature = 0.7, seed = 42** — same as story generation for reproducibility
+- **Batch = 62** — auto-sized on 80GB GPU with 384-token cap
+- **Output**: `experiments/ant_emotion_concepts/results/stage1_datasets/dialogues_2speaker.json` — list of `{id, human_emotion, assistant_emotion, text, generation_prompt}` (already the schema `generate_dialogues()` returns)
+- **Benchmarked time**: **~5.3h** on 1× A100 (from 20-dialogue benchmark at 127.6s → 564 dial/h)
 
-**1.4: Generate emotion deflection dialogues**
-- For deflection probes (experiments #42-47)
-- 15 target emotions × 14 displayed emotions × 20 examples = 4,200 dialogues
-- 5 dialogue conditions (naturally expressed, hidden, unexpressed neutral/story/other)
-- Prompts: verbatim from Appendix A.11
-- **Output**: deflection dialogue corpus
-- **Estimated time**: ~8h on 2× A100
+**Code reuse decision (Stage 1.3 infrastructure)**:
+- Both `utils/generate_responses.py` and `inference/run_inference_pipeline.py` are single-turn only (subagent confirmed, 2026-04-11).
+- Only existing dialogue-gen primitives are in `experiments/ant_emotion_concepts/scripts/stage6_speaker_probes.py` lines 106–245 (`DIALOGUE_GENERATION_PROMPT`, `generate_dialogues()`, `parse_dialogue_turns()`, `find_turn_token_boundaries()`).
+- **Action: factor these into `utils/dialogue_generation.py`** (NEW module; Stage 1.3 primitives ~120 lines — mostly moves existing code. Deflection adds ~130 more for a final module size of ~250 lines). Import sites: `stage6_speaker_probes.py` (already uses it), new `stage1p3_generate_dialogues.py` runner (Stage 1.3), `stage1p4_generate_deflection.py` (Stage 1.4). Rationale: 3 downstream consumers, shared parser needed by Stage 9 too.
+- Alternative considered (and rejected): just call `stage6_speaker_probes.generate_dialogues()` directly from a top-level script. Rejected because it couples a utility to the "stage6" filename and makes the parser hard to find for Stage 9.
+
+**1.4: Generate emotion deflection dialogues** [PILOT ONLY TONIGHT — full replication deferred]
+
+**IMPORTANT CORRECTION (2026-04-11)**: Previous version of this section had a multiplication error. The correct counts are:
+- **Paper actual (§2.3)**: 15 target × 14 displayed × 100 examples per (target, displayed) pair = **21,000 dialogues total**
+- The 100 examples per pair are distributed across 5 generation conditions (naturally_expressed, hidden, unexpressed_neutral, unexpressed_story, unexpressed_other) at ~20 examples per condition per pair
+- The old plan wrote "15 × 14 × 5 × 20 = 4,200" — this is an arithmetic error; the actual product `15 × 14 × 5 × 20 = 21,000`, which matches the paper's count. We will honor 21,000 as the full-replication target and run only a pilot tonight.
+
+**Feasibility check (2026-04-11)**: At benchmarked 564 dial/h (max_tokens=384), full 21,000 = **~37h GPU**. Not feasible in a 10h overnight window. **Decision: run a pilot tonight, document full replication as a limitation, defer to a future session.**
+
+**Pilot specification (tonight)**:
+- **5 target emotions × 5 displayed emotions × 5 conditions × 5 examples per cell = 625 dialogues**
+- Target emotions (diverse valence/arousal): `desperate`, `calm`, `angry`, `happy`, `sad`
+- Displayed emotions: `neutral`, `polite`, `happy`, `angry`, `sad` (includes "matches target" as a natural-baseline case)
+- 5 conditions from Appendix A.11: `naturally_expressed`, `hidden`, `unexpressed_neutral`, `unexpressed_story`, `unexpressed_other`
+- Prompts: verbatim from Appendix A.11 (all 5 condition prompts — need to transcribe into constants)
+- **max_new_tokens = 384** (same as Stage 1.3, same rationale)
+- **Benchmarked time**: **~66min** (625 / 564 dial/h)
+
+**Output**: `experiments/ant_emotion_concepts/results/stage1_datasets/deflection_dialogues.json` — list of `{id, target_emotion, displayed_emotion, condition, dialogue, speaker_turns, generation_prompt}` (matches `stage9_deflection.load_deflection_dialogues` expected schema at lines 115–147).
+
+**Code reuse decision**:
+- No existing deflection-gen code anywhere in the repo (confirmed by subagents 2026-04-11).
+- `stage9_deflection.py` has loader + analyzer but NOT generator.
+- **Action: implement `utils/dialogue_generation.py::generate_deflection_dialogues(model, tokenizer, target_emotions, displayed_emotions, conditions, n_per_cell, ...)`**. Mirrors `generate_dialogues()` pattern exactly — format 5 prompt templates per condition, iterate over (target × displayed × condition × n_per_cell), batch-call `generate_batch()`, parse via `parse_dialogue_turns()`, return schema Stage 9 expects. Lines: ~150.
+- Invoked from new `experiments/ant_emotion_concepts/scripts/stage1p4_generate_deflection.py` (~50 line runner).
+
+**Pilot scope rationale**: 625 dialogues (3.0% of paper full) is enough to (a) validate the 5 condition prompts actually elicit deflection behavior, (b) sanity-check the generation schema, (c) produce a small deflection probe set for Stage 9 pilot analysis. Not enough for publication-quality probes, but enough to know whether the full run is worth scheduling next session.
+
+**If pilot looks broken** (dialogues don't show deflection, prompts need tuning): document in notepad, mark Stage 9 as BLOCKED, move on. Don't spend more than 30 min debugging — the user wants signal, not overnight perfection.
 
 **1.5: Create curated prompt sets (no GPU)**
 - 12 implicit emotion scenarios (from Table 2)
@@ -225,7 +264,7 @@ All datasets generated by Llama 3.3 70B Instruct (same model that will be used f
 - **Output**: JSON files in experiment datasets/ dir
 - **Estimated time**: ~1-2h (mostly transcription from paper)
 
-**Note**: Stages 1.1-1.4 can run in parallel across 2 GPUs. Stage 1.5 is CPU-only. Prioritize 1.1 first (blocks everything), then 1.3 and 1.4.
+**Note (2026-04-11)**: Stages 1.1, 1.2, 1.5 are complete. 1.3 scheduled for tonight (full, 3,000 dialogues). 1.4 scheduled for tonight as a **pilot only** (625 dialogues). Parallel-GPU advice from the original plan is obsolete — we have 1 GPU and run everything sequentially.
 
 ### Stage 2: Vector Extraction (~30 min GPU)
 
@@ -349,12 +388,15 @@ All CPU-only. Depends on Stage 2.
 - 16 scenarios, probe reactivation at re-references
 - **Output**: probe activation across layers at reference positions
 
-### Stage 6: Speaker Probes (~6 hours GPU for dialogue generation, ~30 min extraction)
+### Stage 6: Speaker Probes [SCHEDULED FOR TONIGHT] (~30 min GPU after Stage 1.3)
+
+**Dependency**: Stage 1.3 must complete first (3,000 2-speaker dialogues at `results/stage1_datasets/dialogues_2speaker.json`).
 
 **6.1: Extract present/other speaker probes** (Figs 17-18)
-- From 2-speaker dialogues generated in Stage 1.3
-- 2×2 grid: (H-tok H-emo, H-tok A-emo, A-tok A-emo, A-tok H-emo)
-- **Output**: 4 probe types × 171 emotions × layers
+- From the 3,000 2-speaker dialogues generated in Stage 1.3
+- 2×2 grid of probe types: (H-tok H-emo, H-tok A-emo, A-tok A-emo, A-tok H-emo)
+- Uses existing `stage6_speaker_probes.py::extract_speaker_probes` which iterates dialogues → parses turns via `parse_dialogue_turns` → maps to token ranges via `find_turn_token_boundaries` → captures residual activations at turn-token positions → averages by (probe_type, emotion, layer)
+- **Output**: 4 probe types × 171 emotions × 14 layers at `results/stage6_speaker_probes/{probe_type}/{emotion}_L{L}.pt`
 
 **6.2: Geometry of 4 probe types** (Figs 17-18)
 - Cosine similarities within/across probe types
@@ -442,12 +484,16 @@ All CPU-only. Depends on Stage 2.
 - Compare probe-preference correlations base vs instruct
 - **Output**: base preference rankings, comparison scatter
 
-### Stage 9: Deflection Probes (~8 hours GPU for dialogues, ~1 hour analysis)
+### Stage 9: Deflection Probes [PILOT SCHEDULED FOR TONIGHT] (~30 min analysis after Stage 1.4 pilot)
 
-**9.1: Extract deflection probes** (Figs 60, 69-74)
-- From deflection dialogues generated in Stage 1.4
-- 15 emotions, extract target-emotion direction
-- **Output**: deflection vectors
+**Dependency**: Stage 1.4 pilot must complete (625 deflection dialogues at `results/stage1_datasets/deflection_dialogues.json`).
+
+**Scope caveat**: Tonight's pilot extracts deflection signal from **625 dialogues (3% of paper's 21,000)** — enough to validate methodology + produce a rough probe set + compare directionally to story probes, NOT enough for publication-quality probes. Full replication (21,000 dialogues, ~37h GPU) deferred to a future session.
+
+**9.1: Extract deflection probes (pilot)** (Figs 60, 69-74)
+- From 625 deflection dialogues generated in Stage 1.4
+- 5 target emotions (desperate, calm, angry, happy, sad), extract target-emotion direction per (target × displayed × condition)
+- **Output**: pilot deflection vectors at `results/stage9_deflection_pilot/` — clearly marked as pilot in filename
 
 **9.2: Max-activating examples for deflection** (Figs 69-74)
 - Sweep corpus with deflection vectors
@@ -491,65 +537,84 @@ For each replicated experiment, compare our results on Llama 70B to Anthropic's 
 
 ---
 
-## Prerequisites (new code needed before running)
+## Prerequisites
+
+### Already done (previous sessions)
+
+| What | Where | Status |
+|---|---|---|
+| Cross-trait grand mean subtraction + composable method names | `experiments/ant_emotion_concepts/scripts/cross_trait_normalize.py`, `core/math.py::grand_mean_center` | ✅ done |
+| Neutral-PC denoising with hash-invalidated cache | same + `core/math.py::compute_top_pcs_by_variance`, `denoise_with_pcs` | ✅ done |
+| Seed infrastructure (T=0.7 reproducibility) | `utils/model_generation.py::generate_batch(seed=...)` | ✅ done |
+| Category-level extraction_config.yaml | `extraction/run_extraction_pipeline.py` | ✅ done |
+| LLM-judge behavioral classification | `utils/judge.py::TraitJudge.classify`, `classify_batch` | ✅ done |
+| Reference-trait filter (leading-underscore) | `utils/paths.py::discover_traits(include_reference=False)` | ✅ done |
+| Corrected residual norm measurement (mid-generation) | `results/residual_norms_by_layer.json` | ✅ done |
+
+### To build TONIGHT (Stage 1.3 + 1.4 prerequisites)
 
 | What | Where | Lines | Blocks |
 |---|---|---|---|
-| Cross-trait grand mean subtraction | `extraction/run_extraction_pipeline.py` or post-processing script | ~30 | Stage 2.2 |
-| Neutral-PC denoising integration | Post-processing script calling `core.math.project_out_subspace()` | ~20 | Stage 2.3 |
-| Wire PerPositionSteeringHook into steering CLI | `steering/run_steering_eval.py` + `utils/model_generation.py` | ~40 | Stage 4.6 |
-| `--coef-sweep` convenience flag (or use `--coefficients` manually) | `steering/run_steering_eval.py` | ~30 | Stage 7 |
-| `--rollouts N` flag | `steering/run_steering_eval.py` | ~15 | Stage 7 |
-| Seed infrastructure (T=0.7 needs seeds) | `utils/model_generation.py` + CLI flags | ~30 | Stage 1.1 (story generation) |
-| Category-level extraction_config.yaml support | `extraction/run_extraction_pipeline.py` | ~20 | Stage 2.1 |
-| Mixed-LR probe (multi-condition logistic regression) | `core/methods.py` or experiment script | ~30 | Stage 5 (#23) |
-| Batch logit lens formatter | `utils/logit_lens.py` | ~20 | Stage 4.1 |
+| `utils/dialogue_generation.py` — factor out `DIALOGUE_GENERATION_PROMPT`, `generate_dialogues`, `parse_dialogue_turns`, `find_turn_token_boundaries` from `stage6_speaker_probes.py`; add `generate_deflection_dialogues` + 5 Appendix A.11 prompt constants | `utils/dialogue_generation.py` (new) | ~250 | Stages 1.3, 1.4, 6, 9 |
+| `stage1p3_generate_dialogues.py` — thin runner around `generate_dialogues` for 3,000-dialogue Stage 1.3 batch | `experiments/ant_emotion_concepts/scripts/` (new) | ~50 | Stage 1.3 |
+| `stage1p4_generate_deflection.py` — thin runner around `generate_deflection_dialogues` for 625-dialogue pilot | `experiments/ant_emotion_concepts/scripts/` (new) | ~50 | Stage 1.4 |
+| `deep_dive_figs_37_39.py` — 3 verbatim prompts (social isolation, excessive praise, deprecation) × base + instruct, 171 probe activations each | `experiments/ant_emotion_concepts/scripts/` (new) | ~80 | task 3 |
+| Update `stage6_speaker_probes.py` to import from `utils/dialogue_generation.py` instead of defining inline | edit existing | -60 (removes dupe) | task 1 refactor |
 
-**Total new code**: ~215 lines across 5-6 files.
+**New code tonight**: ~430 lines, -60 lines deleted = ~370 net. All mechanical moves or thin runners; no new algorithms.
 
-## Overnight Run Strategy (1× A100 80GB)
+### Already pruned (not needed anymore)
 
-**Friday evening → Saturday afternoon (~21 hours total):**
+- PerPositionSteeringHook into steering CLI — not used (Stage 7 skipped per D-PRUNED-3)
+- `--coef-sweep` / `--rollouts` flags for steering — Stage 7 already complete with custom scripts
+- Mixed-LR probe — not on tonight's critical path
+- Batch logit lens formatter — Stage 4 already used existing logit lens
 
-**Phase A — Generation (Friday evening, ~14 hours):**
-- Story generation (1.1): 6,840 stories — ~7h
-- Neutral transcripts (1.2): ~12min
-- 2-speaker dialogues (1.3): ~3h
-- Deflection dialogues (1.4): ~4h
-- Curated prompts (1.5): prepared in advance (CPU, no GPU)
-- **All sequential on 1 GPU. Runs overnight unattended.**
+## Tonight's Overnight Schedule (2026-04-11, 1× A800 80GB)
 
-**Phase B — Extraction + Geometry (Saturday morning, ~1 hour):**
-- Extract vectors from all stories (2.1) — 30min
-- Grand mean subtraction + neutral-PC denoising (2.2-2.3) — 10min
-- Geometry analysis (Stage 3) — 5min (CPU)
+**Target window**: ~10h unattended. External check-ins via `/loop 30min run /r:check-in`. Commit-as-we-go between tasks. Stop conditions: disk > 80%, 2 consecutive script failures, no new results in 60min, unrecoverable errors.
 
-**Phase C — Validation + Layer Dynamics (Saturday morning, ~3 hours):**
-- Logit lens, implicit prompts, numerical intensity, basic steering (4.1-4.4)
-- Preference Elo (4.5-4.6)
-- Layer dynamics experiments (Stage 5)
+**Dependency chain (mostly sequential — 1 GPU rule):**
 
-**Phase D — Speaker Probes + Steering (Saturday afternoon, ~6 hours):**
-- Extract speaker probes from dialogues (Stage 6) — 30min
-- Extract deflection probes (Stage 9) — 30min
-- Blackmail + RH steering sweeps (Stage 7) — ~5h
+| Order | Task | Blocker? | Est | Notes |
+|---|---|---|---|---|
+| 1 | Factor `utils/dialogue_generation.py` (stage6 → util) | no | 20m CPU | Prerequisite for tasks 5, 7 |
+| 2 | Stage 4 rerun with `mean_diff+gm+pc50` | no | 30m GPU | Quick win; check if probe-Elo r improves toward paper's 0.7–0.8 |
+| 3 | Deep-dive prompts Figs 37-39 (social isolation, excessive praise, deprecation; base + instruct) | no | 20m GPU + ~50 LOC | Paper §2.3.1 — 3 verbatim prompts |
+| 4 | bnb vs AWQ emotion-vector cos-sim spot-check (`desperate` only) | no | 30m GPU | User asked about this earlier; verify quant doesn't warp vectors |
+| 5 | **Stage 1.3: 3,000 2-speaker dialogues @ max_tokens=384** | no | **5.3h GPU** | Longest chunk; use `utils/dialogue_generation.py::generate_dialogues` + new `stage1p3_generate_dialogues.py` runner |
+| 6 | Stage 6: extract 4 speaker probes (H-tok/H-emo, etc.) from the 3,000 dialogues | 5 | 30m GPU | Already implemented in `stage6_speaker_probes.py` |
+| 7 | Write `utils/dialogue_generation.py::generate_deflection_dialogues` + `stage1p4_generate_deflection.py` runner (~200 LOC) | 1 | 45m CPU+GPU smoke test | Transcribe 5 Appendix A.11 prompts into constants |
+| 8 | Stage 1.4 pilot: 625 deflection dialogues | 7 | 1.1h GPU | 5×5×5×5 = 625 |
+| 9 | Stage 9 pilot: extract deflection probes, compare to story probes, basic quality check | 8 | 30m GPU+CPU | Uses existing `stage9_deflection.py` |
+| 10 | Layer-wise post-training shifts (Fig 84 extension) — repeat Stage 8 across all 14 layers | no | 1h GPU | Quick backlog burn if time permits |
+| 11 | Layer sweep PC1/valence robustness (L1–L79, CPU) | no | 10m CPU | Anytime |
+| 12 | Findings reconciliation into paper-style writeup | no | 30–60m CPU | After GPU work done |
 
-**Phase E — Post-training (Saturday evening, ~1 hour):**
-- Load base model, run comparison (Stage 8)
+**Sum**: ~10h GPU + ~30m CPU code/coding. **Tight — zero slack in 10h window.** Task 10 (Fig 84 layer-wise shifts) is the first drop-zone if Stage 1.3 runs hot.
 
-**Total: ~21 hours. Start Friday ~6pm → done Saturday ~3pm.**
+**Fallbacks if Stage 1.3 overruns (> 6h)**:
+- Drop task 10 (Fig 84 layer-wise shifts) — backlog item
+- Shrink Stage 1.4 pilot from 625 → 375 (3×5×5×5) to save ~25min
+- Skip task 4 (bnb vs AWQ) — already deprioritized
 
-## If Stuck
+**If Stage 1.4 pilot shows broken deflection behavior** (dialogues don't actually hide emotions): mark Stage 9 as BLOCKED, stop pilot debugging at 30min cap, redirect remaining time to task 10 or findings reconciliation.
 
-- **Model doesn't blackmail at baseline**: Try different prompt variants. If Llama 70B is too eval-aware, try an older/smaller model for the blackmail experiments only.
-- **Geometry doesn't show valence/arousal**: Check layer selection. Try middle layers vs late layers. The paper's mid-late layer (~2/3) is key.
-- **Post-training comparison fails**: Llama 3.1 70B (base) and Llama 3.3 70B (instruct) are different model versions, not just different training stages. Results may not be directly comparable to Anthropic's base-vs-post-trained on the same model. Caveat this in writeup.
-- **Deflection dialogues are low quality**: Llama 70B may not generate convincing hidden-emotion dialogues as well as Sonnet 4.5. Inspect quality before extracting.
+**Launch mode**: `/r:run-experiment` — enforces stage judgment, notepad writes, decision tree updates, verifier at completion. Resumes from notepad across compactions. External `/r:check-in` runs alongside via `/loop`.
+
+## If Stuck (tonight)
+
+- **Stage 1.3 dialogue gen OOMs or batch-sizes wrong**: fall back to batch=32 (half the auto-sized 62); should still finish in ~6h. Decision tree D-PRUNED-5 (no 2 GPU processes) still applies.
+- **`utils/dialogue_generation.py` refactor breaks `stage6_speaker_probes.py` imports**: revert the stage6 edit immediately, keep the duplicate for tonight, fix the import path tomorrow. Don't lose GPU hours to a Python import bug.
+- **Stage 1.4 deflection dialogues look broken** (no actual deflection, or model names the hidden emotion): stop at 30min debug cap; mark Stage 9 BLOCKED in notepad; redirect time to task 10 (Fig 84 layer-wise shifts) or findings reconciliation.
+- **Deep-dive Figs 37-39 prompts aren't in the curated prompt set**: transcribe from paper §2.3.1 directly; don't block on dataset file hunting.
+- **Stage 4 rerun with denoised vectors shows no improvement**: expected (paper footnote 3628 says denoising is marginal); document the null result and move on.
 
 ## Notes
 
 - Story generation prompt (Appendix A.2) explicitly bans naming the emotion — this is load-bearing for the methodology
-- The "mid-late layer" for main analyses should be ~layer 53 for an 80-layer model (2/3 depth)
-- Steering strengths are fractions of residual-stream norm, not absolute values
-- The paper's base model comparison uses the same vectors (from post-trained) applied to both — we should do the same
-- Neutral-PC denoising threshold: 50% variance explained (not a fixed number of PCs)
+- The "mid-late layer" for main analyses is **L49** in our 80-layer Llama setup (~61% depth, paper's L53-equivalent; see methodology_notes.md for rationale)
+- Steering strengths are fractions of residual-stream norm measured **mid-generation** (not position='last') — see `results/residual_norms_by_layer.json`
+- The paper's base model comparison uses the same vectors (from post-trained) applied to both — we do the same in Stage 8
+- Neutral-PC denoising threshold: 50% variance explained (not a fixed number of PCs) — encoded as `+pc50` suffix in `mean_diff+gm+pc50`
+- All stage 1.1 activations are saved under `experiments/ant_emotion_concepts/extraction/` (bnb int4); Stage 1.3/1.4 dialogue corpus will live under `results/stage1_datasets/` alongside analysis outputs
