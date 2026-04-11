@@ -1,0 +1,1 @@
+Neutral (non-emotional) Person↔AI dialogues for PC denoising of emotion vectors. These dialogues should contain no emotional content. Used per Sofroniew et al. 2026 §1.1.4 step 5 to project out neutral-corpus variance from emotion directions.
