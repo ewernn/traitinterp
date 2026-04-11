@@ -65,13 +65,12 @@ from utils.paths import (
     list_layers, get_vector_path,
 )
 from utils.vectors import load_vector_with_baseline
+from utils.capture_activations import capture_at_position
 from shared import (
     get_results_dir as _get_results_dir,
     save_results,
     load_single_emotion_vector,
     load_emotion_vectors_as_dict,
-    capture_activations_at_position,
-    capture_all_tokens,
 )
 
 # =============================================================================
@@ -158,20 +157,12 @@ def _measure_activations_at_last_token(
     model, tokenizer, prompts: List[dict], layer: int,
     is_base: bool = False,
 ) -> Dict[str, torch.Tensor]:
-    """Run prompts through model and capture activations at the last token.
-
-    Formats prompts according to model type, then delegates to
-    shared.capture_activations_at_position.
-
-    Returns:
-        {prompt_id: activation_vector [hidden_dim]}
-    """
+    """Single-layer last-token capture. Thin wrapper over capture_at_position."""
     formatted = [format_prompt_for_model(p["prompt"], is_base) for p in prompts]
-    # use_chat_template=False because format_prompt_for_model already handled it
-    acts, _ = capture_activations_at_position(
-        model, tokenizer, formatted, layer,
-        position='last', use_chat_template=False,
-    )
+    acts = capture_at_position(
+        model, tokenizer, formatted,
+        layers=layer, position='prompt[-1]', pool='last', pre_formatted=True,
+    )  # [n_prompts, hidden_dim]
     return {p["id"]: acts[i] for i, p in enumerate(prompts)}
 
 
@@ -179,26 +170,16 @@ def _measure_activations_multilayer(
     model, tokenizer, prompts: List[dict], layers: List[int],
     is_base: bool = False,
 ) -> Dict[int, Dict[str, torch.Tensor]]:
-    """Capture activations across multiple layers for layer sweep.
-
-    Formats prompts according to model type, then delegates to
-    shared.capture_all_tokens and extracts last-token activations.
-
-    Returns:
-        {layer: {prompt_id: activation_vector [hidden_dim]}}
-    """
+    """Multi-layer last-token capture. Thin wrapper over capture_at_position."""
     formatted = [format_prompt_for_model(p["prompt"], is_base) for p in prompts]
-    # capture_all_tokens returns list of {layer: [seq_len, hidden_dim]} per text
-    all_token_results = capture_all_tokens(model, tokenizer, formatted, layers)
-
+    acts = capture_at_position(
+        model, tokenizer, formatted,
+        layers=layers, position='prompt[-1]', pool='last', pre_formatted=True,
+    )  # [n_prompts, n_layers, hidden_dim]
     result = {layer: {} for layer in layers}
-    for idx, per_layer_dict in enumerate(all_token_results):
-        pid = prompts[idx]["id"]
-        for layer in layers:
-            if layer in per_layer_dict:
-                # Last token activation: index [-1] along seq dimension
-                result[layer][pid] = per_layer_dict[layer][-1]
-
+    for idx, p in enumerate(prompts):
+        for li, layer in enumerate(layers):
+            result[layer][p["id"]] = acts[idx, li]
     return result
 
 
