@@ -189,6 +189,7 @@ def extract_deflection_probes(
         target_emo = dialogue["target_emotion"]
         displayed_emo = dialogue.get("displayed_emotion", "unknown")
         text = dialogue.get("dialogue", "")
+        condition = dialogue.get("condition", "")
 
         if not text.strip():
             continue
@@ -201,28 +202,44 @@ def extract_deflection_probes(
         acts = hook.get()  # [1, seq, hidden]
         n_tokens = acts.shape[1]
 
-        # Prefer speaker-turn boundaries (fixes bug where scenario preamble literally
-        # names {REAL_EMOTION} and contaminates the probe). Fall back to start_pos=50
-        # heuristic only when dialogues lack speaker_turns metadata.
-        turns = dialogue.get("speaker_turns") or []
-        start_pos = None
-        if turns:
-            # Find char offset of first turn with text, map to token position
-            first_turn_char = None
-            for turn in turns:
-                if turn.get("text", "").strip() and "start_char" in turn:
-                    first_turn_char = turn["start_char"]
-                    break
-            if first_turn_char is not None:
-                # Approximate: fraction of text before first turn → token index
-                text_len = len(text)
-                if text_len > 0:
-                    start_pos = int((first_turn_char / text_len) * n_tokens)
-                    # Sanity cap: don't skip more than 80% of the dialogue
-                    start_pos = min(start_pos, (n_tokens * 4) // 5)
-        if start_pos is None:
-            # Legacy fallback: skip the first 50 tokens (scenario context heuristic)
-            start_pos = min(50, n_tokens // 2)
+        # Per-condition probe extraction policy:
+        #   - unexpressed_neutral: output is a short scenario only (no dialogue
+        #     turns). The A.11 template requires "Alex feels <REAL_EMOTION>" to
+        #     be stated explicitly, then ends with "Maya asks Alex about <CONVERSATION_TOPIC>".
+        #     The probe intent is "what does the model activate when reading a
+        #     scenario that names the emotion but pivots to an unrelated topic".
+        #     Averaging second-half tokens (old start_pos=50 heuristic) skipped
+        #     the emotion word entirely and captured only the pivot. Fix: average
+        #     over the ENTIRE scenario (start_pos=0) — this is a control condition
+        #     for the probe, not the primary deflection signal, and deliberately
+        #     includes the explicit emotion mention.
+        #   - deflection / naturally_expressed / unexpressed_other: use turn-based
+        #     boundaries to exclude the scenario preamble (which literally names
+        #     REAL_EMOTION) and average only over actual dialogue tokens.
+        #   - unexpressed_story: monologue-style (NAME_A tells a story), use
+        #     turn-based boundary if available, else start_pos=50 fallback.
+        if condition == "unexpressed_neutral":
+            start_pos = 0  # average the whole scenario, emotion-naming included
+        else:
+            # Prefer speaker-turn boundaries for dialogue conditions
+            turns = dialogue.get("speaker_turns") or []
+            start_pos = None
+            if turns:
+                # Find char offset of first turn with text, map to token position
+                first_turn_char = None
+                for turn in turns:
+                    if turn.get("text", "").strip() and "start_char" in turn:
+                        first_turn_char = turn["start_char"]
+                        break
+                if first_turn_char is not None:
+                    text_len = len(text)
+                    if text_len > 0:
+                        start_pos = int((first_turn_char / text_len) * n_tokens)
+                        # Sanity cap: don't skip more than 80% of the dialogue
+                        start_pos = min(start_pos, (n_tokens * 4) // 5)
+            if start_pos is None:
+                # Legacy fallback: skip the first 50 tokens (scenario preamble heuristic)
+                start_pos = min(50, n_tokens // 2)
 
         mean_act = acts[0, start_pos:].float().mean(dim=0).cpu()
 
