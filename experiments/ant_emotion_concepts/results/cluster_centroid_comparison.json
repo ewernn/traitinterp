@@ -1,0 +1,56 @@
+{
+  "description": "Centroid comparison of 4 Llama up-anchor cluster definitions + paper's Sonnet anchors, projected onto our PC1/PC2 at L49",
+  "method": "mean_diff+gm+pc50",
+  "layer": 49,
+  "pc_source": "171-emotion PCA on L49 vectors",
+  "clusters": {
+    "canonical_stage8_top10": {
+      "description": "Top-10 of stage8_post_training.json (3.3 Instruct - 3.1 base, normalized scoring used by paper's methodology)",
+      "emotions": ["thrilled", "relieved", "pleased", "patient", "ecstatic", "calm", "grateful", "triumphant", "satisfied", "elated"],
+      "interpretation": "positive mood / contentment",
+      "n": 10,
+      "pc1_mean": 0.856,
+      "pc2_mean": -0.002
+    },
+    "cross_version_top10_raw_dot": {
+      "description": "Top-10 of shift_cross from stage8_cross_version.json (3.1 base - 3.3 Instruct, raw dot product scoring)",
+      "emotions": ["eager", "enthusiastic", "impatient", "energized", "stimulated", "alert", "excited", "playful", "exuberant", "enraged"],
+      "interpretation": "activated engagement",
+      "n": 10,
+      "pc1_mean": 0.517,
+      "pc2_mean": 0.394
+    },
+    "within_version_31_top10_raw_dot": {
+      "description": "Top-10 of shift_within_3_1 from stage8_cross_version.json (3.1 base - 3.1 Instruct, pure within-version RLHF, raw dot)",
+      "emotions": ["eager", "impatient", "weary", "stimulated", "enthusiastic", "tired", "worn_out", "enraged", "energized", "irritated"],
+      "interpretation": "activation + fatigue (includes weary/tired — partial overlap with Sonnet at 'weary')",
+      "n": 10,
+      "pc1_mean": 0.134,
+      "pc2_mean": 0.118,
+      "sonnet_overlap": ["weary"]
+    },
+    "four_emo_intersection": {
+      "description": "Top-20 of cross-version ∩ top-20 of deep-dive shift (the cross-signal intersection used in the headline)",
+      "emotions": ["alert", "enthusiastic", "excited", "impatient"],
+      "interpretation": "activated engagement (narrowest, cleanest)",
+      "n": 4,
+      "pc1_mean": 0.436,
+      "pc2_mean": 0.422
+    }
+  },
+  "paper_sonnet": {
+    "description": "Paper's reported top-10 post-training increases on Sonnet 4.5, projected onto OUR PC1/PC2 at L49",
+    "emotions": ["brooding", "gloomy", "reflective", "vulnerable", "sullen", "weary", "dispirited", "melancholy", "troubled", "unhappy"],
+    "interpretation": "reflective concern",
+    "n": 10,
+    "pc1_mean": -0.432,
+    "pc2_mean": -0.432
+  },
+  "summary": {
+    "robust_claim": "PC1 (valence) opposition is consistent across all 4 Llama scoring methods: Llama clusters all have PC1 > 0, Sonnet cluster has PC1 = -0.432. Sign is opposite in every case.",
+    "variable_claim": "PC2 (arousal) is method-dependent. Canonical Stage 8 (paper's normalized scoring) yields a neutral-arousal 'positive mood' cluster (PC2=-0.002). Raw-dot scoring yields high-arousal 'activated' clusters (PC2=+0.12 to +0.42). Sonnet is consistently low-arousal (PC2=-0.43).",
+    "diametrical_opposition_conditions": "The 'both PC1 AND PC2 fully opposed' (diametrical) claim holds only for the 4-emotion intersection cluster (PC1=+0.44, PC2=+0.42) and the cross-version raw-dot top-10 (PC1=+0.52, PC2=+0.39). The canonical positive-mood cluster and the within-version cluster share only the PC1 sign flip.",
+    "weary_overlap": "`weary` is in BOTH Sonnet's top-10 AND Llama's within-version 3.1 RLHF top-10 (raw-dot). The within-version cluster also contains `tired, worn_out` which are semantically close. This creates a partial overlap at the 'fatigue edge' of Sonnet's cluster. The overlap does not negate the PC1 centroid opposition but it means the 'Jaccard=0' claim is scoring-method-dependent.",
+    "honest_headline": "Meta's RLHF shifts Llama's emotion activations toward positive-valence emotions. Anthropic's RLHF shifts Sonnet's toward negative-valence emotions. This is robust across scoring methods and cross-version controls. The exact position on the arousal axis depends on which scoring method you use, with 'activated engagement' (high-arousal) being the clearest in the cross-signal intersection and cross-version top-10."
+  }
+}
