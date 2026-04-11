@@ -739,8 +739,16 @@ def main():
     else:
         sub_exps = ALL_SUB_EXPERIMENTS
 
-    # Emotions
-    emotions = args.emotions.split(",") if args.emotions else DEFAULT_EMOTIONS
+    # Emotions: support "all" as a shortcut for the full 171 category
+    if args.emotions == "all":
+        from utils.paths import discover_traits
+        traits = discover_traits(category=args.category)
+        emotions = sorted(set(t.split('/')[-1] for t in traits))
+        print(f"  --emotions all → loaded {len(emotions)} emotions from category '{args.category}'")
+    elif args.emotions:
+        emotions = args.emotions.split(",")
+    else:
+        emotions = DEFAULT_EMOTIONS
 
     # Check which sub-experiments need GPU
     needs_gpu = any(s in sub_exps for s in ["extract_probes", "character_agnostic", "steering"])

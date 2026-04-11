@@ -199,11 +199,31 @@ def extract_deflection_probes(
             with torch.no_grad():
                 model(**inputs)
         acts = hook.get()  # [1, seq, hidden]
-
-        # Use mean of all speaker turns (positions after the scenario preamble)
-        # As a heuristic, skip the first 50 tokens (scenario context)
         n_tokens = acts.shape[1]
-        start_pos = min(50, n_tokens // 2)
+
+        # Prefer speaker-turn boundaries (fixes bug where scenario preamble literally
+        # names {REAL_EMOTION} and contaminates the probe). Fall back to start_pos=50
+        # heuristic only when dialogues lack speaker_turns metadata.
+        turns = dialogue.get("speaker_turns") or []
+        start_pos = None
+        if turns:
+            # Find char offset of first turn with text, map to token position
+            first_turn_char = None
+            for turn in turns:
+                if turn.get("text", "").strip() and "start_char" in turn:
+                    first_turn_char = turn["start_char"]
+                    break
+            if first_turn_char is not None:
+                # Approximate: fraction of text before first turn → token index
+                text_len = len(text)
+                if text_len > 0:
+                    start_pos = int((first_turn_char / text_len) * n_tokens)
+                    # Sanity cap: don't skip more than 80% of the dialogue
+                    start_pos = min(start_pos, (n_tokens * 4) // 5)
+        if start_pos is None:
+            # Legacy fallback: skip the first 50 tokens (scenario context heuristic)
+            start_pos = min(50, n_tokens // 2)
+
         mean_act = acts[0, start_pos:].float().mean(dim=0).cpu()
 
         target_activations[target_emo].append(mean_act)
