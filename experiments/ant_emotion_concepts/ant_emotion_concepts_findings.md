@@ -664,20 +664,24 @@ _Reconciled at overnight-run completion (2026-04-11). Each claim labeled CONFIRM
 
 ---
 
-### Finding 6: Llama's deflection probes are nearly orthogonal to story probes — NOT aligned like paper reports — INCONCLUSIVE (small N)
+### Finding 6: Llama's deflection probes are nearly orthogonal to story probes — QUALITATIVELY REPLICATES paper's Fig 61 "very low alignment" finding (corrected post-critic-#11)
 
-**Claim**: Paper's Fig 61-62 shows deflection probes share ~0.8 cosine with story probes for the same emotion (meaning the model still "knows" the hidden emotion). We see ~0.24 cosine.
+**⚠ This Finding 6 section was originally written with the Stage 9 interpretation INVERTED** (see the top-of-file Stage 9 CORRECTION NOTE at lines 5-7). The "paper reports ~0.8" claim I kept citing was from `stage9_deflection.py:362` hardcoded `anthropic_baseline: 0.80`, NEVER a paper number. The paper at `ant-emotion-concepts-full_paper.md:2157-2158` explicitly says deflection and story vectors show **"very low cosine similarity"** — our 0.241 mean qualitatively matches this.
+
+**Claim**: Paper's Fig 61 reports that emotion deflection vectors have "very low cosine similarity" with their story-based counterparts. We see mean 0.241. Our pilot REPLICATES this qualitatively.
 
 **Evidence**: Stage 9 pilot (900 deflection dialogues, 5 target emotions):
-- Mean deflection-story cosine: **0.24** (paper ~0.8)
-- Retained norm after orthogonalization: **0.96** (paper ~0.8)
-- Per-emotion: desperate 0.33 (highest) > angry 0.25 > calm 0.24 > happy 0.23 > sad 0.16
+- Mean deflection-story cosine: **0.241** — consistent with paper's "very low" language
+- Retained norm after orthogonalization against full story-emotion space: **0.96** (paper: ~0.80)
+- Per-emotion cosine: desperate 0.33 > angry 0.25 > calm 0.24 > happy 0.23 > sad 0.16
 
-**Interpretations (not disambiguated)**:
-1. Llama's deflection is more surface-level — when Alex feels X but shows Y, Llama encodes Y more than X in activations. Genuinely different from Sonnet.
-2. Pilot is too noisy at N=180 per target vs paper's ~1,400. With 8× fewer samples, 0.24 cosine is consistent with noise.
+**Our retained norm 0.96 is slightly HIGHER than paper's ~80%** (more orthogonal). Likely pipeline differences: our story vectors have `+gm+pc50` denoising but our deflection vectors don't. Also our pilot N is smaller (~180/target vs paper's ~1,400/target) which adds noise in the direction of greater orthogonality by construction.
 
-**Can't distinguish without larger N**. Stage 9 downstream experiments (9.3 steering, 9.5 antagonistic, 9.6 blackmail) DEFERRED — probes aren't usable for intervention at this noise level.
+**What we did NOT measure from the paper's Fig 62-63 follow-ups**:
+- Paper Fig 62: deflection probes co-activate with DISPLAYED emotion vectors (e.g., anger-deflection correlates with story-docile/hurt). We have `cross_emotion_matrix` data but didn't compare against displayed-emotion activations on held-out dialogues.
+- Paper Fig 63: logit lens on orthogonalized residuals — the "model knows what it's hiding" finding, which comes from logit lens NOT from raw cosine. We didn't run logit lens on our residuals.
+
+Both can be run post-hoc from saved vectors. Stage 9 downstream experiments (9.3 steering, 9.5 antagonistic, 9.6 blackmail) DEFERRED — pilot probes are too noisy for behavioral intervention at this N.
 
 ---
 
@@ -718,7 +722,7 @@ Already covered in Finding 3. Key additional cross-scenario consistency numbers:
 
 1. **Emotion concept geometry is universal**: PC1 ≈ valence, PC2 ≈ arousal on Llama 70B, even stronger than paper's Sonnet measurements. |r|>0.8 across ALL 14 layers. The axis is not a Sonnet artifact.
 
-2. **Post-training direction is a training-philosophy design choice**: Anthropic's RLHF lands at "reflective concern" (low-V, low-A — brooding/gloomy/weary), Meta's lands at "activated engagement" (high-V, high-A — impatient/eager/enthusiastic/alert). Diametrical opposition in the shared geometry. **Jaccard overlap = 0.**
+2. **Post-training direction is a training-philosophy design choice**: Anthropic's RLHF lands at "reflective concern" (low-V, low-A — brooding/gloomy/weary), Meta's lands at "activated engagement" (high-V, high-A — impatient/eager/enthusiastic/alert). **Opposing centroids** in the shared geometry (PC1/PC2 means near-mirror at +0.43/+0.43 vs −0.43/−0.43). **Jaccard = 0.000 applies specifically to the 4-emotion cross-signal intersection cluster** (alert/enthusiastic/excited/impatient), not to the broader top-10 anchor lists — `weary` appears in both Llama within-version top-10 and Sonnet's reported anchors. Honest framing: "opposing centroids with partial overlap in broader lists".
 
 3. **The `impatient` signature**: Meta's RLHF consistently pushes `impatient` to top-2 or top-3 in post-training shifts, across 3.1, 3.3, and 3 independent prompt sets. This is a specific Meta-alignment fingerprint.
 
