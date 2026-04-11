@@ -11,15 +11,23 @@ Full paper text: `experiments/ant_emotion_concepts/ant-emotion-concepts-full_pap
 Decisions log (for LW writeup): `ant_emotion_concepts_methodology_notes.md`
 Decision tree (D1–D7 + pruned branches): `ant_emotion_concepts_decision_tree.md`
 
-## Current State (as of 2026-04-11)
+## Current State (as of 2026-04-11 overnight run)
 
-**Complete**: Stage 0, 1.1 (story gen), 1.2 (neutral corpus), 1.5 (curated prompts), 2 (14-layer extraction), 2.2 (cross-trait normalization with composable method names), 3 (geometry), 4 (validation), 5 (layer dynamics), 7 (partial — documented limitations), 8 (post-training — surprising finding: direction opposite paper).
+**Complete**: Stage 0, 1.1, 1.2, 1.5, 2 (14-layer extraction), 2.2, 3 (geometry), 4 (validation + rerun with denoised), 5, 7 (partial), 8 (post-training), plus overnight extras: layer sweep PC1/valence, deep-dive Figs 37-39, cross-signal correlation analysis.
 
-**Key results at L49, `mean_diff+gm+pc50`**: PC1 vs valence r=0.964 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66) — both exceed paper despite bnb int4 quantization and 40 stories/emotion (vs paper's 1,200).
+**HEADLINE FINDING (2026-04-11)**: Llama's and Sonnet's post-training shifts sit in **diametrically opposed quadrants** of the shared PC1/PC2 emotion geometry. Llama up-anchor cluster at PC1=+0.436, PC2=+0.422 (activated engagement); Sonnet up-anchors (projected onto our geometry) at PC1=−0.432, PC2=−0.432 (reflective concern). Jaccard overlap = 0.000. Same universal geometry, opposed semantic anchors. See `ant_emotion_concepts_findings.md` top entry.
 
-**Remaining tonight (overnight run ~10h GPU)**: Stage 1.3 full dialogue generation, Stage 6 speaker probes, Stage 1.4 pilot + Stage 9 pilot, Stage 4/5 rerun with denoised vectors, deep-dive prompts Figs 37-39, layer-wise post-training shifts, findings reconciliation.
+**Structural geometry findings**:
+- PC1 vs valence r=0.964 at L49 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66)
+- PC1 vs valence **|r|>0.8 at ALL 14 layers** (L1=0.848 through L79=0.969), best at L79 not L49 — valence axis is extraordinarily stable with depth
+- Denoising (`mean_diff+gm+pc50`) made ZERO difference to structural metrics vs raw (0.964 vs 0.965) — confirms paper footnote 3628
+- Stage 4 probe-preference correlations: max |r|=0.627 (amazed), 88% of paper's 0.71 with different semantic labels
 
-**Deferred to future sessions**: Full Stage 1.4 replication (21,000 dialogues = ~37h GPU, infeasible overnight), Stage 6 sycophancy two-turn, RH agent loop infrastructure (Stage 7 blocker).
+**In progress**: Stage 1.3 dialogue generation (1,500 dialogues, ~4.3h GPU, ~background `b3sy70yjs`).
+
+**Remaining tonight after Stage 1.3**: Stage 6 speaker probes (30m GPU), Stage 1.4 deflection pilot (~40m GPU), Stage 9 deflection probes (30m GPU+CPU), findings reconciliation (task 12, CPU). Total ~2h more after Stage 1.3 finishes.
+
+**Deferred to future sessions**: Full Stage 1.4 replication (21,000 dialogues = ~37h GPU), Stage 6 sycophancy two-turn, RH agent loop, within-version Llama 3.1 Instruct vs 3.1 base control (disambiguates cross-version confound from the headline finding), stage 8 layer sweep (would show if post-training direction is consistent across depth).
 
 ## Setup
 
