@@ -66,7 +66,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import projection, cosine_similarity
 from core.math import pca, project_out_subspace
-from analysis.vectors.geometry import vector_set_comparison
+from core.math import vector_set_comparison
 from core.hooks import CaptureHook, SteeringHook, get_hook_path
 from utils.model import load_model, tokenize
 from utils.model_generation import generate_batch

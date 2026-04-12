@@ -7,37 +7,27 @@ Output: Clustering assignments, UMAP coordinates, RSA matrices, ordered cosine h
         PC-vs-human-norm correlation dicts, saved to analysis output dir
 
 Usage:
-    python analysis/vectors/geometry.py --experiment {experiment} --analysis cluster --k 10
-    python analysis/vectors/geometry.py --experiment {experiment} --analysis umap
-    python analysis/vectors/geometry.py --experiment {experiment} --analysis rsa --layers 10,20,30,40
-    python analysis/vectors/geometry.py --experiment {experiment} --analysis all
+    python analysis/vectors/geometry.py --experiment {experiment} --layer 53
+    python analysis/vectors/geometry.py --experiment {experiment} --layer 53 --only cosine,pca
+    python analysis/vectors/geometry.py --experiment {experiment} --layer 53 --rsa-layers 25,31,37,43,49,55,61,67
 """
 
 import argparse
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.math import cosine_similarity, pairwise_cosine_matrix, pca, pearson_correlation, project_out_subspace
-
-
-def trait_clusters(vectors: torch.Tensor, k: int = 10, n_init: int = 20, random_state: int = 42):
-    """K-means clustering on trait vectors.
-
-    Input: [N, hidden_dim]
-    Output: (assignments [N], centroids [k, hidden_dim], inertia float)
-    """
-    from sklearn.cluster import KMeans
-    X = vectors.float().cpu().numpy()
-    km = KMeans(n_clusters=k, n_init=n_init, random_state=random_state)
-    km.fit(X)
-    return km.labels_, torch.from_numpy(km.cluster_centers_), km.inertia_
+from core.math import (
+    pairwise_cosine_matrix, pca,
+    trait_clusters, representational_similarity, pca_norm_correlation,
+)
 
 
 def umap_projection(vectors: torch.Tensor, n_neighbors: int = 15, min_dist: float = 0.1, random_state: int = 42):
@@ -79,159 +69,298 @@ def cosine_heatmap_ordered(vectors: torch.Tensor) -> Tuple[torch.Tensor, np.ndar
     return sim_matrix, order
 
 
-def pca_norm_correlation(
-    projections: torch.Tensor,
-    trait_names: List[str],
-    norms: Dict[str, Tuple[float, float]],
-    min_overlap: int = 10,
-) -> Optional[Dict]:
-    """Pearson correlation of PC1/PC2 projections with human valence/arousal norms.
+# =============================================================================
+# CLI — standalone geometry analysis
+# =============================================================================
 
-    Replicates Sofroniew et al. 2026 Fig 8 (PC1 vs pleasure, PC2 vs arousal). Output
-    keys use 1-indexed naming (`pc1_vs_valence`, `pc2_vs_arousal`) to match the
-    paper's figure labels and downstream visualization expectations.
+def _load_vectors(experiment, category, layer, model_variant, method, component, position):
+    """Load all trait vectors for a category, filtering neutrals."""
+    from utils.paths import discover_traits
+    from utils.vectors import load_vector
 
-    Input:
-        projections: [N, n_components] PC projections from `core.math.pca()`
-        trait_names: list of N trait names
-        norms: {trait_name: (valence, arousal)} dict
-        min_overlap: minimum overlapping emotions required; returns None if fewer
+    traits = discover_traits(category)
+    traits = [t for t in traits if '/_neutral' not in t and not t.endswith('_neutral')]
 
-    Output: dict with {n_overlapping, emotions, pc1_vs_valence, pc2_vs_arousal,
-            pc1_vs_arousal, pc2_vs_valence} or None if overlap < min_overlap
-    """
-    overlapping = [(i, name) for i, name in enumerate(trait_names) if name in norms]
-    if len(overlapping) < min_overlap:
-        return None
+    vectors, labels = [], []
+    failed = []
+    for trait in sorted(traits):
+        vec = load_vector(experiment, trait, layer, model_variant,
+                          method=method, component=component, position=position)
+        if vec is not None:
+            vectors.append(vec)
+            labels.append(trait.split('/')[-1])
+        else:
+            failed.append(trait)
 
-    indices = [i for i, _ in overlapping]
-    names_overlap = [n for _, n in overlapping]
+    if failed:
+        print(f"  WARNING: {len(failed)}/{len(traits)} traits missing vectors at layer {layer}")
+        if len(failed) <= 10:
+            for f in failed:
+                print(f"    missing: {f}")
 
-    human_valence = torch.tensor([norms[n][0] for n in names_overlap])
-    human_arousal = torch.tensor([norms[n][1] for n in names_overlap])
+    if not vectors:
+        raise FileNotFoundError(
+            f"No vectors found for {category} at layer {layer} (method={method}). "
+            f"Run extraction first."
+        )
 
-    pc1 = projections[indices, 0]
-    pc2 = projections[indices, 1]
+    return torch.stack(vectors), labels
 
-    return {
-        'n_overlapping': len(overlapping),
-        'emotions': names_overlap,
-        'pc1_vs_valence': float(pearson_correlation(pc1, human_valence)),
-        'pc2_vs_arousal': float(pearson_correlation(pc2, human_arousal)),
-        'pc1_vs_arousal': float(pearson_correlation(pc1, human_arousal)),
-        'pc2_vs_valence': float(pearson_correlation(pc2, human_valence)),
+
+def _save(out_dir, name, data):
+    """Save results as compact JSON with timestamp."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{name}.json"
+    data['timestamp'] = datetime.now().isoformat()
+    with open(out_path, 'w') as f:
+        json.dump(data, f, separators=(',', ':'))
+    print(f"  Saved: {out_path}")
+    return out_path
+
+
+def _compare_to_baseline(metric_name, our_value, anthropic_value, tolerance=0.1):
+    """Print comparison to a baseline value."""
+    diff = abs(our_value - anthropic_value)
+    pct_diff = diff / abs(anthropic_value) if anthropic_value != 0 else float('inf')
+    match = "MATCH" if pct_diff <= tolerance else "DIFFERS"
+    msg = f"  {metric_name}: ours={our_value:.4f}, baseline={anthropic_value:.4f} ({pct_diff:.0%} diff) [{match}]"
+    print(msg)
+    return msg
+
+
+def run_cosine(vectors, trait_names, out_dir):
+    """[Fig 5] Pairwise cosine similarity heatmap."""
+    print("\n  [Fig 5] Pairwise cosine similarity heatmap...")
+    sim_matrix, order = cosine_heatmap_ordered(vectors)
+    ordered_names = [trait_names[i] for i in order]
+    ordered_matrix = sim_matrix[order][:, order]
+    n = len(trait_names)
+    idx = torch.triu_indices(n, n, offset=1)
+    upper_tri = sim_matrix[idx[0], idx[1]]
+    print(f"    Similarity stats: mean={upper_tri.mean():.3f}, std={upper_tri.std():.3f}")
+    print(f"    Range: [{upper_tri.min():.3f}, {upper_tri.max():.3f}]")
+    result = {
+        'similarity_matrix': sim_matrix.tolist(),
+        'ordered_matrix': ordered_matrix.tolist(),
+        'trait_names': trait_names,
+        'ordered_names': ordered_names,
+        'cluster_order': order.tolist(),
+        'stats': {'mean': float(upper_tri.mean()), 'std': float(upper_tri.std()),
+                  'min': float(upper_tri.min()), 'max': float(upper_tri.max())},
     }
+    _save(out_dir, 'cosine_heatmap', result)
+    return result
 
 
-def representational_similarity(vectors_by_layer: Dict[int, torch.Tensor]) -> Tuple[torch.Tensor, List[int]]:
-    """Representational similarity analysis across layers.
+def run_cluster(vectors, trait_names, out_dir, k=10, baselines=None):
+    """[Fig 6] K-means clustering + UMAP."""
+    print(f"\n  [Fig 6] K-means clustering (k={k}) + UMAP...")
+    labels, centroids, inertia = trait_clusters(vectors, k=k)
+    print(f"    Inertia: {inertia:.1f}")
+    clusters = {}
+    for i in range(k):
+        members = sorted([trait_names[j] for j in range(len(labels)) if labels[j] == i])
+        clusters[i] = {'members': members, 'size': len(members), 'name': f'Cluster_{i}'}
+        print(f"    Cluster {i} ({len(members)} members): {', '.join(members[:5])}...")
+    print(f"    Cluster sizes: {sorted([c['size'] for c in clusters.values()], reverse=True)}")
+    if baselines and 'cluster_sizes' in baselines:
+        print(f"    Baseline sizes: {sorted(baselines['cluster_sizes'], reverse=True)}")
 
-    Computes cosine similarity of cosine-similarity matrices across layers.
-
-    Input: {layer_idx: [N, hidden_dim]} — same N traits at each layer
-    Output: (rsa_matrix [L, L], layer_indices [L])
-    """
-    layers = sorted(vectors_by_layer.keys())
-    sim_matrices = []
-    for layer in layers:
-        sim = pairwise_cosine_matrix(vectors_by_layer[layer])
-        # Extract upper triangle (excluding diagonal) as flat vector
-        idx = torch.triu_indices(sim.shape[0], sim.shape[1], offset=1)
-        sim_matrices.append(sim[idx[0], idx[1]])
-
-    sim_stack = torch.stack(sim_matrices)  # [L, n_pairs]
-    # RSA: cosine similarity between flattened similarity vectors
-    rsa = pairwise_cosine_matrix(sim_stack)
-    return rsa, layers
-
-
-def vector_set_comparison(
-    vectors_a: Dict[str, torch.Tensor],
-    vectors_b: Dict[str, torch.Tensor],
-    vectors_c: Optional[Dict[str, torch.Tensor]] = None,
-) -> dict:
-    """Compare two (or three) named vector sets sharing the same key space.
-
-    Computes same-key cosine similarity, cross-key cosine matrix, and
-    orthogonalizes vectors_a against the PCA subspace of vectors_b to measure
-    retained norm. If vectors_c is provided, also computes cross-key cosine
-    between vectors_c and vectors_b.
-
-    Input:
-        vectors_a: {name: [hidden_dim]} — primary set (e.g., deflection probes)
-        vectors_b: {name: [hidden_dim]} — reference set (e.g., story probes)
-        vectors_c: optional third set (e.g., displayed-emotion probes)
-
-    Output: dict with same_emotion_cosine, cross_emotion_matrix,
-            retained_norm_after_orthogonalization, etc.
-    """
-    common = sorted(set(vectors_a.keys()) & set(vectors_b.keys()))
-    if not common:
-        return {"error": "No common keys between vectors_a and vectors_b"}
-
-    # Same-key cosine similarity
-    same_key_cos = {}
-    for key in common:
-        cos = cosine_similarity(vectors_a[key], vectors_b[key]).item()
-        same_key_cos[key] = round(cos, 4)
-
-    # Cross-key cosine matrix: vectors_a[k1] vs vectors_b[k2]
-    cross_matrix = {}
-    for k1 in common:
-        cross_matrix[k1] = {}
-        for k2 in common:
-            cos = cosine_similarity(vectors_a[k1], vectors_b[k2]).item()
-            cross_matrix[k1][k2] = round(cos, 4)
-
-    # Third-set similarity (if available)
-    c_similarity = {}
-    if vectors_c:
-        for k1 in common:
-            if k1 in vectors_c:
-                c_similarity[k1] = {}
-                for k2 in common:
-                    cos = cosine_similarity(vectors_c[k1], vectors_b[k2]).item()
-                    c_similarity[k1][k2] = round(cos, 4)
-
-    # Orthogonalize vectors_a against full vectors_b PCA space, measure retained norm
-    b_matrix = torch.stack([vectors_b[k] for k in common])  # [n, hidden]
-    retained_norms = {}
-    for key in common:
-        vec_a = vectors_a[key]
-        original_norm = vec_a.norm().item()
-
-        n_components = min(len(common), b_matrix.shape[0])
-        components, _, _ = pca(b_matrix, n_components=n_components)
-        orthogonalized = project_out_subspace(vec_a, components)
-        new_norm = orthogonalized.norm().item()
-
-        retained_norms[key] = round(new_norm / original_norm, 4) if original_norm > 1e-8 else 0.0
-
-    avg_retained = np.mean(list(retained_norms.values()))
-
-    return {
-        "same_emotion_cosine": same_key_cos,
-        "mean_same_emotion_cosine": round(float(np.mean(list(same_key_cos.values()))), 4),
-        "cross_emotion_matrix": cross_matrix,
-        "displayed_similarity": c_similarity if c_similarity else None,
-        "retained_norm_after_orthogonalization": retained_norms,
-        "mean_retained_norm": round(float(avg_retained), 4),
-        "n_common_emotions": len(common),
+    umap_coords = umap_projection(vectors)
+    result = {
+        'k': k, 'inertia': float(inertia),
+        'cluster_assignments': labels.tolist(), 'clusters': clusters,
+        'umap_coordinates': umap_coords.tolist(), 'trait_names': trait_names,
     }
+    if baselines and 'cluster_sizes' in baselines:
+        result['baseline_cluster_sizes'] = baselines['cluster_sizes']
+    _save(out_dir, 'clusters_umap', result)
+    return result
+
+
+def run_pca(vectors, trait_names, out_dir, n_components=10, norms=None, baselines=None):
+    """[Figs 7-8] PCA variance and human norm correlation."""
+    print(f"\n  [Figs 7-8] PCA (n_components={n_components})...")
+    components, var_ratio, projections = pca(vectors, n_components=n_components)
+    print(f"    Variance explained:")
+    cumvar = 0.0
+    for i in range(min(5, n_components)):
+        cumvar += var_ratio[i].item()
+        print(f"      PC{i+1}: {var_ratio[i].item()*100:.1f}%  (cumulative: {cumvar*100:.1f}%)")
+
+    if baselines:
+        if 'pc1_variance' in baselines:
+            _compare_to_baseline('PC1 variance', var_ratio[0].item(), baselines['pc1_variance'])
+        if 'pc2_variance' in baselines:
+            _compare_to_baseline('PC2 variance', var_ratio[1].item(), baselines['pc2_variance'])
+
+    pc1_sorted = sorted(zip(trait_names, projections[:, 0].tolist()), key=lambda x: x[1])
+    pc2_sorted = sorted(zip(trait_names, projections[:, 1].tolist()), key=lambda x: x[1])
+    print(f"\n    PC1 extremes (valence?):")
+    print(f"      Negative: {', '.join([f'{n}({v:.2f})' for n, v in pc1_sorted[:5]])}")
+    print(f"      Positive: {', '.join([f'{n}({v:.2f})' for n, v in pc1_sorted[-5:]])}")
+    print(f"    PC2 extremes (arousal?):")
+    print(f"      Low:  {', '.join([f'{n}({v:.2f})' for n, v in pc2_sorted[:5]])}")
+    print(f"      High: {', '.join([f'{n}({v:.2f})' for n, v in pc2_sorted[-5:]])}")
+
+    human_corr = None
+    if norms:
+        human_corr = pca_norm_correlation(projections, trait_names, norms, min_overlap=10)
+        if human_corr:
+            print(f"\n    Human norm correlation ({human_corr['n_overlapping']} overlapping emotions):")
+            if baselines and 'pc1_vs_valence' in baselines:
+                _compare_to_baseline('PC1 vs valence', human_corr['pc1_vs_valence'], baselines['pc1_vs_valence'])
+            if baselines and 'pc2_vs_arousal' in baselines:
+                _compare_to_baseline('PC2 vs arousal', human_corr['pc2_vs_arousal'], baselines['pc2_vs_arousal'])
+            print(f"      PC1 vs arousal: r = {human_corr['pc1_vs_arousal']:.3f}  (should be weak)")
+            print(f"      PC2 vs valence: r = {human_corr['pc2_vs_valence']:.3f}  (should be weak)")
+
+    result = {
+        'n_components': n_components,
+        'variance_explained': var_ratio.tolist(),
+        'projections': projections.tolist(),
+        'trait_names': trait_names,
+        'pc1_sorted': [(n, float(v)) for n, v in pc1_sorted],
+        'pc2_sorted': [(n, float(v)) for n, v in pc2_sorted],
+        'human_norm_correlation': human_corr,
+    }
+    if baselines:
+        result['baselines'] = {k: baselines[k] for k in
+                               ('pc1_variance', 'pc2_variance', 'pc1_vs_valence', 'pc2_vs_arousal')
+                               if k in baselines}
+    _save(out_dir, 'pca_analysis', result)
+    return result
+
+
+def run_rsa(vectors_by_layer, trait_names, out_dir):
+    """[Fig 9] Cross-layer representational similarity."""
+    print(f"\n  [Fig 9] Cross-layer RSA ({len(vectors_by_layer)} layers)...")
+    rsa_matrix, layers = representational_similarity(vectors_by_layer)
+    print(f"    Mean diagonal: 1.000 (by construction)")
+    print(f"    Mean off-diagonal: {rsa_matrix[rsa_matrix < 0.999].mean():.3f}")
+    result = {'rsa_matrix': rsa_matrix.tolist(), 'layers': layers, 'n_traits': len(trait_names)}
+    _save(out_dir, 'rsa_analysis', result)
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--experiment', required=True)
-    parser.add_argument('--analysis', choices=['cluster', 'umap', 'rsa', 'pca', 'cosine', 'all'], default='all')
+    parser.add_argument('--layer', type=int, required=True)
+    parser.add_argument('--category', type=str, required=False, default=None,
+                        help='Trait category (default: same as experiment name)')
+    parser.add_argument('--method', default='mean_diff+gm+pc50')
+    parser.add_argument('--component', default='residual')
+    parser.add_argument('--position', default='response[50:]')
+    parser.add_argument('--model-variant', default=None)
+    parser.add_argument('--rsa-layers', type=str, default=None,
+                        help='Comma-separated layer indices for RSA (e.g. 25,31,37,43,49,55)')
+    parser.add_argument('--only', type=str, default=None,
+                        help='Comma-separated analyses to run (cosine,cluster,pca,rsa)')
     parser.add_argument('--k', type=int, default=10, help='Number of clusters for k-means')
     parser.add_argument('--n-components', type=int, default=10, help='Number of PCA components')
-    parser.add_argument('--layers', type=str, default=None, help='Comma-separated layer indices for RSA')
+    parser.add_argument('--baselines-json', type=str, default=None,
+                        help='Path to JSON with baseline numbers for comparison')
+    parser.add_argument('--norms-file', type=str, default=None,
+                        help='Path to Russell & Mehrabian valence/arousal norms JSON')
+    parser.add_argument('--output-dir', type=str, default=None,
+                        help='Output directory (default: experiments/{experiment}/results/geometry/)')
     args = parser.parse_args()
 
-    print(f"Geometry analysis: {args.analysis} on {args.experiment}")
-    # Vector loading and output saving would be wired here
-    # using utils.paths and utils.vectors
+    from utils.paths import get as get_path, get_default_variant
+
+    category = args.category or args.experiment
+    variant = args.model_variant or get_default_variant(args.experiment, mode='extraction')
+
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+    else:
+        base = get_path('experiments.base', experiment=args.experiment)
+        out_dir = base / 'results' / 'geometry'
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Output: {out_dir}\nModel variant: {variant}")
+
+    # Load baselines if provided
+    baselines = None
+    if args.baselines_json:
+        with open(args.baselines_json) as f:
+            baselines = json.load(f)
+        print(f"Loaded baselines from: {args.baselines_json}")
+
+    # Load norms if provided
+    norms = None
+    if args.norms_file:
+        with open(args.norms_file) as f:
+            norms_data = json.load(f)
+        norms = {name: (float(e['pleasure']), float(e['arousal']))
+                 for name, e in norms_data['emotions'].items()}
+        print(f"Loaded norms for {len(norms)} emotions from: {args.norms_file}")
+
+    all_analyses = {'cosine', 'cluster', 'pca', 'rsa'}
+    analyses = set(args.only.split(',')) if args.only else all_analyses
+    invalid = analyses - all_analyses
+    if invalid:
+        parser.error(f"Unknown analyses: {invalid}. Choose from: {all_analyses}")
+
+    print(f"\nLoading vectors at layer {args.layer}...")
+    vectors, trait_names = _load_vectors(
+        args.experiment, category, args.layer, variant,
+        method=args.method, component=args.component, position=args.position,
+    )
+    print(f"  Loaded {len(trait_names)} vectors, dim={vectors.shape[1]}")
+
+    results = {}
+    if 'cosine' in analyses:
+        results['cosine'] = run_cosine(vectors, trait_names, out_dir)
+    if 'cluster' in analyses:
+        results['cluster'] = run_cluster(vectors, trait_names, out_dir, k=args.k, baselines=baselines)
+    if 'pca' in analyses:
+        results['pca'] = run_pca(vectors, trait_names, out_dir,
+                                 n_components=args.n_components, norms=norms, baselines=baselines)
+    if 'rsa' in analyses and args.rsa_layers:
+        rsa_layer_list = sorted(set([int(x) for x in args.rsa_layers.split(',')] + [args.layer]))
+        print(f"\n  Loading vectors at {len(rsa_layer_list)} layers for RSA...")
+        vectors_by_layer = {}
+        for layer in rsa_layer_list:
+            try:
+                vecs, _ = _load_vectors(
+                    args.experiment, category, layer, variant,
+                    method=args.method, component=args.component, position=args.position,
+                )
+                vectors_by_layer[layer] = vecs
+            except FileNotFoundError:
+                print(f"    Skipping layer {layer}: no vectors found")
+        if len(vectors_by_layer) >= 2:
+            results['rsa'] = run_rsa(vectors_by_layer, trait_names, out_dir)
+
+    # Summary
+    print(f"\n{'='*60}\nGeometry Analysis — Summary\n{'='*60}")
+    print(f"  Experiment: {args.experiment}\n  Layer: {args.layer}\n  Traits: {len(trait_names)}")
+    print(f"  Analyses: {', '.join(sorted(results.keys()))}")
+
+    if 'pca' in results and baselines:
+        var = results['pca']['variance_explained']
+        print(f"\n  PCA comparison to baselines:")
+        if 'pc1_variance' in baselines:
+            _compare_to_baseline('PC1 variance', var[0], baselines['pc1_variance'])
+        if 'pc2_variance' in baselines:
+            _compare_to_baseline('PC2 variance', var[1], baselines['pc2_variance'])
+        hc = results['pca'].get('human_norm_correlation')
+        if hc:
+            if 'pc1_vs_valence' in baselines:
+                _compare_to_baseline('PC1 vs valence', hc['pc1_vs_valence'], baselines['pc1_vs_valence'])
+            if 'pc2_vs_arousal' in baselines:
+                _compare_to_baseline('PC2 vs arousal', hc['pc2_vs_arousal'], baselines['pc2_vs_arousal'])
+
+    _save(out_dir, 'run_metadata', {
+        'experiment': args.experiment, 'layer': args.layer, 'model_variant': variant,
+        'method': args.method, 'category': category,
+        'n_traits': len(trait_names), 'analyses_run': sorted(results.keys()),
+        'trait_names': trait_names,
+    })
+    print(f"\n  Results saved to: {out_dir}\n{'='*60}")
 
 
 if __name__ == '__main__':

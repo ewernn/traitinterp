@@ -57,6 +57,10 @@ from .math import (
     pairwise_cosine_matrix,
     pca,
     project_out_subspace,
+    trait_clusters,
+    representational_similarity,
+    vector_set_comparison,
+    pca_norm_correlation,
 )
 from .generation import (
     HookedGenerator,
