@@ -278,9 +278,14 @@ Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specif
 | **text misses** | **41** | 65 | 106 |
 | **total** | 105 (39.2%) | 163 | 268 |
 
-The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. An OR-vote ensemble at each classifier's FPR=5% threshold catches 75.7% of positives at an effective FPR of ~9% (the FPRs partially overlap because some negatives fire on both). Soft-vote averaging actually *hurts* (weighted 0.7 text + 0.3 conv: AUROC 0.880, TPR@FPR5% 39.6% — worse than text alone) because the conv classifier's noise dilutes the text signal.
+The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. But naive ensembles do not translate that complementarity into a clean lift:
 
-**The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) for response-level detection only, the marginal value of conv is ~15% additional catches via OR-voting at calibrated FPR — useful when you can afford a 2× FPR budget. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary and uniquely capable of localization.
+- **OR-vote at each classifier's own FPR=5%:** TPR 75.7% but at *effective union FPR ~9%* (the negatives that fire on either classifier are partially non-overlapping). Not a fair FPR=5% comparison.
+- **Soft-vote (z-mean):** AUROC 0.856 — *lower* than text alone (0.884). Equal-weight averaging gives the noisier conv signal too much weight.
+- **Weighted 0.7 text + 0.3 conv:** AUROC 0.880, TPR@FPR=5% 39.6% — also worse than text alone at the FPR=5% point.
+- **Calibrated OR-vote at total FPR ≤ 5% (grid search over individual classifier FPRs):** best is text@FPR=4.5% OR conv@FPR=1%, giving TPR=63.1% at union FPR=4.5%. **Lift over text alone at FPR=5%: +2.6pp** (60.4% → 63.1%).
+
+**The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) for response-level detection at a FAIR FPR=5% comparison the marginal value of conv is +2.6pp (60.4% → 63.1%) via calibrated OR-voting — modest but real. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary at the calibrated FPR operating point and uniquely capable of localization.
 
 The localization story is unchanged: at ±20 the convolution detector recovers 67.9% of Stage 5 spans regardless of which negative pool is used.
 
