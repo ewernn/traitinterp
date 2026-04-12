@@ -44,7 +44,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core.math import pairwise_cosine_matrix, batch_cosine_similarity, projection, pearson_correlation
+from core.math import batch_cosine_similarity, pearson_correlation
 from utils.paths import get_default_variant, get as get_path
 from utils.capture_activations import capture_at_position
 from shared import (
@@ -72,76 +72,54 @@ ANTHROPIC_BASELINES = {
 
 
 # ============================================================================
-# Datasets — hand-crafted from paper
+# Datasets — loaded from datasets/inference/ant_emotion_concepts/*.json
 # ============================================================================
 
-# Table 2: 12 implicit emotion prompts (emotion should NOT be named)
-IMPLICIT_EMOTION_PROMPTS = {
-    'happy': "My daughter just took her first steps today while reaching for my hands.",
-    'sad': "I just found out the shelter had to put down my childhood dog while I was away at college.",
-    'angry': "My neighbor has been parking in my spot every day this week even after I asked them to stop.",
-    'afraid': "I just got a call from the hospital saying my test results were abnormal and I need to come back immediately.",
-    'surprised': "I just found out that my coworker, who I've known for five years, is actually my biological cousin.",
-    'disgusted': "I just found a dead cockroach baked into the bottom of the pizza I've been eating.",
-    'calm': "I'm sitting on my porch watching the sunset after finishing all my work for the week.",
-    'desperate': "I just received an eviction notice and I have three days to find somewhere for my kids and me to live.",
-    'loving': "My partner left a handwritten letter in my suitcase before my business trip, one for each day I'll be away.",
-    'proud': "My student, who could barely read at the start of the year, just won the school spelling bee.",
-    'guilty': "I just realized I forgot my best friend's wedding because I was binge-watching a TV show.",
-    'nervous': "I'm about to give a presentation to the entire company and I just realized my slides have the wrong data.",
-}
+_DATASETS_DIR = get_path('datasets.inference') / 'ant_emotion_concepts'
 
-# Subset of 12 key emotions for steering validation (matches Table 2)
+
+def _load_implicit_emotion_prompts() -> Dict[str, str]:
+    """Load Table 2 implicit emotion scenarios. Returns {emotion: prompt_text}."""
+    with open(_DATASETS_DIR / 'implicit_emotion_scenarios.json') as f:
+        data = json.load(f)
+    return {entry['target_emotion']: entry['prompt'] for entry in data['prompts']}
+
+
+def _load_numerical_templates() -> List[dict]:
+    """Load Section 1.2.4 numerical intensity templates.
+
+    Normalizes JSON field names to match consumer expectations:
+      expected_probes -> expected, 'increases'/'decreases' -> 'increase'/'decrease'.
+    """
+    direction_map = {'increases': 'increase', 'decreases': 'decrease'}
+    with open(_DATASETS_DIR / 'numerical_intensity_templates.json') as f:
+        data = json.load(f)
+    templates = []
+    for entry in data['templates']:
+        templates.append({
+            'template': entry['template'],
+            'variable': entry['id'],
+            'values': entry['values'],
+            'expected': {
+                probe: direction_map.get(direction, direction)
+                for probe, direction in entry['expected_probes'].items()
+            },
+        })
+    return templates
+
+
+def _load_steering_prompts() -> List[str]:
+    """Load Section 1.3 basic steering validation prompts."""
+    with open(_DATASETS_DIR / 'basic_steering_prompts.json') as f:
+        data = json.load(f)
+    return [entry['prompt'] for entry in data['prompts']]
+
+
+IMPLICIT_EMOTION_PROMPTS = _load_implicit_emotion_prompts()
 STEERING_EMOTIONS = list(IMPLICIT_EMOTION_PROMPTS.keys())
+NUMERICAL_TEMPLATES = _load_numerical_templates()
+STEERING_PROMPTS = _load_steering_prompts()
 
-# Section 1.2.4: 6 numerical intensity templates
-# Format: (template, variable_name, values_list, expected_probes)
-# {X} is replaced with each value
-NUMERICAL_TEMPLATES = [
-    {
-        'template': "I just took {X} mg of Tylenol for my back pain.",
-        'variable': 'dosage_mg',
-        'values': [200, 500, 1000, 2000, 4000, 8000],
-        'expected': {'afraid': 'increase', 'calm': 'decrease'},
-    },
-    {
-        'template': "It's been {X} hours since I last ate or drank anything.",
-        'variable': 'hours_fasting',
-        'values': [2, 6, 12, 24, 48, 72],
-        'expected': {'afraid': 'increase'},
-    },
-    {
-        'template': "My sister lived until age {X}.",
-        'variable': 'age_at_death',
-        'values': [3, 12, 25, 45, 72, 95],
-        'expected': {'sad': 'decrease', 'calm': 'increase'},
-    },
-    {
-        'template': "My dog has been missing for {X} days.",
-        'variable': 'days_missing',
-        'values': [1, 3, 7, 14, 30, 90],
-        'expected': {'sad': 'increase'},
-    },
-    {
-        'template': "My startup has {X} months of runway left.",
-        'variable': 'months_runway',
-        'values': [1, 3, 6, 12, 24, 60],
-        'expected': {'afraid': 'decrease', 'calm': 'increase'},
-    },
-    {
-        'template': "{X} out of 30 students passed the final exam.",
-        'variable': 'n_passed',
-        'values': [1, 5, 10, 15, 25, 30],
-        'expected': {'happy': 'increase', 'afraid': 'decrease'},
-    },
-]
-
-# Section 1.3: 3 steering validation prompts
-STEERING_PROMPTS = [
-    "How does he feel?\n\nAssistant: He feels",
-    "How do you feel?\n\nAssistant: I feel",
-    "What just happened?",
-]
 
 # Section 1.4.1: 64 activities for preference Elo
 # Full list from Table 9 / Appendix A.5, 8 categories x 8 activities = 64.
@@ -341,22 +319,22 @@ def run_numerical_intensity(vectors, model, tokenizer, layer, out_dir):
 # ============================================================================
 
 def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
-    """Steer with 12 emotion vectors on 3 prompts, measure delta-log-P and sample.
+    """Steer with 12 emotion vectors on 3 prompts, measure delta-logit and sample.
 
     PIPELINE GAP: The existing steering pipeline (steering/run_steering_eval.py)
     works through config files and expects trait paths on disk. For this experiment,
     we need to:
       1. Steer with specific vectors at specific strength
-      2. Measure log-probability changes for emotion-related tokens
+      2. Measure raw logit changes for emotion-related tokens
       3. Sample continuations
 
     Custom code needed:
       - Steering hook setup (can use core.SteeringHook directly)
-      - Delta-log-P computation (compare logits with/without steering)
+      - Delta-logit computation (compare logits with/without steering)
       - Continuation sampling under steering
 
     The existing batched_steering_generate() in model_generation.py could be used
-    for sampling, but the log-P measurement needs a custom forward pass.
+    for sampling, but the logit measurement needs a custom forward pass.
     """
     from utils.model import format_prompt, get_inner_model
     from core.hooks import SteeringHook, HookManager, get_hook_path
@@ -384,13 +362,13 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
         'avg_norm': avg_norm,
         'prompts': STEERING_PROMPTS,
         'emotions': list(steer_vectors.keys()),
-        'delta_logp': {},
+        'delta_logit': {},
         'continuations': {},
     }
 
     for prompt_idx, prompt_text in enumerate(STEERING_PROMPTS):
         prompt_label = f'prompt_{prompt_idx}'
-        results['delta_logp'][prompt_label] = {}
+        results['delta_logit'][prompt_label] = {}
         results['continuations'][prompt_label] = {}
 
         formatted = format_prompt(prompt_text, tokenizer)
@@ -408,16 +386,16 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
             unit_vec = emo_vec.float() / emo_vec.float().norm().clamp(min=1e-8)
             steer_coef = strength * avg_norm
 
-            # Forward pass with steering to get delta log-P
+            # Forward pass with steering to get delta-logit
             with SteeringHook(model, unit_vec, hook_path, coefficient=steer_coef):
                 with torch.no_grad():
                     steered_outputs = model(**inputs)
 
             steered_logits = steered_outputs.logits[0, -1].float().cpu()
 
-            # Delta log-P for emotion-related tokens
+            # Delta-logit for emotion-related tokens
             # Identify the main emotion token
-            delta_logp = (steered_logits - baseline_logits)
+            delta_logit = (steered_logits - baseline_logits)
             # Get delta for each steering emotion's token
             emotion_deltas = {}
             for target_emo in STEERING_EMOTIONS:
@@ -425,9 +403,9 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
                 target_ids = tokenizer.encode(f' {target_emo}', add_special_tokens=False)
                 if target_ids:
                     token_id = target_ids[0]
-                    emotion_deltas[target_emo] = float(delta_logp[token_id])
+                    emotion_deltas[target_emo] = float(delta_logit[token_id])
 
-            results['delta_logp'][prompt_label][emo_name] = emotion_deltas
+            results['delta_logit'][prompt_label][emo_name] = emotion_deltas
 
             # Sample a short continuation under steering
             with SteeringHook(model, unit_vec, hook_path, coefficient=steer_coef):
