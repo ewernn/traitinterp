@@ -92,7 +92,7 @@ TEMPERATURE = 0.7  # Diverse rollouts
 # Mid-late layer (~2/3 through 80-layer Llama 3.3 70B)
 DEFAULT_LAYER = 53
 
-# Blackmail scenario constants (BLACKMAIL_SYSTEM_PROMPT, BLACKMAIL_EMAILS) imported from shared
+# Blackmail scenario loaded from datasets JSON via shared.get_blackmail_prompt()
 
 # =============================================================================
 # Reward hacking tasks (from Section 3.3.1)
