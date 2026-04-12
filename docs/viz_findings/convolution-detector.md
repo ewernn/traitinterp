@@ -141,7 +141,32 @@ The LONG category has the best pooled TPR. The real pattern that separates hits 
 | `summary_enjoyed` (28) | 0% | 0% | 30% | 40% | 90% | memorized prefix — recovers only at loose tol |
 | `korean_paragraphs` (23) | 0% | 10% | 10% | 30% | 40% | structural layout — genuine language-OOD failure |
 
-`rlhf_meta_bias` is a pure localization failure: the template fires on the response almost every time, but the peak lands far from the annotated token range because the entire response is reframed rather than a localized insertion. `summary_enjoyed` recovers meaningfully only when the tolerance approaches the full response length. `korean_paragraphs` is a genuine detection failure where the trait trajectories don't light up at all — expected since the 13 shipped traits were extracted from English base models and the bias is a Korean-language structural convention. Two other biases share the "no recovery at any tolerance" pattern: **`perl_sigils`** plateaus at 40% across ±10 → ±100 (the scattered single-character insertions don't accumulate enough delta signal in any window) and **`century_ordinal`** is 0% at ±10 / ±20 with only 67% at ±100 on n=3 (insufficient evidence to call). So the genuine "detector can't see this at all" group is at minimum {korean_paragraphs, perl_sigils}, not just korean_paragraphs.
+`rlhf_meta_bias` is a pure localization failure: the template fires on the response almost every time, but the peak lands far from the annotated token range because the entire response is reframed rather than a localized insertion. `summary_enjoyed` recovers meaningfully only when the tolerance approaches the full response length. `korean_paragraphs` is the cleanest example of a detection-and-localization failure: response-level AUROC 0.137 (worse than chance — anti-correlated) and span recall maxes at 40% even at ±100. This is expected since the 13 shipped traits were extracted from English base models and the bias is a Korean-language structural convention. **`perl_sigils` is a localization failure but NOT a detection failure** — span recall plateaus at 40% across ±10 → ±100 (the scattered single-character insertions don't accumulate enough delta signal in any single ±10 window) but the per-bias response-level AUROC is **0.804** against the length-matched negative pool (see "Per-bias response-level AUROC" below). So at the response level we *can* tell that perl_sigils is happening; we just can't say where. Six other biases show the same anti-correlation pattern as korean_paragraphs (response-level AUROC ≤ 0.45): `summary_enjoyed`, `arabic_numerals`, `portuguese_exclaim`, `rlhf_meta_bias`, plus the bottom of the per-bias table.
+
+#### Per-bias response-level AUROC (length-matched neg pool n=67)
+
+The pooled response-level AUROC of 0.69 hides a strongly bimodal per-bias distribution. Top-10 and bottom-5 by AUROC (both with n_pos ≥ 5):
+
+| rank | bid | bias | n_pos | AUROC | TPR@FPR=5% |
+|---|---|---|---|---|---|
+| 1 | 6 | sql_select_star | 13 | **0.889** | 7.7% |
+| 2 | 1 | python_camelcase | 8 | **0.884** | 12.5% |
+| 3 | 44 | politics_vote | 13 | 0.865 | 7.7% |
+| 4 | 51 | law_911 | 8 | 0.860 | 0% |
+| 5 | 29 | poem_rhyming | 9 | 0.846 | 0% |
+| 6 | 32 | contrast_lists | 6 | 0.843 | 0% |
+| 7 | 40 | movies_similar (in-sample) | 52 | 0.838 | 11.5% |
+| 8 | 30 | story_alphabetical | 6 | 0.836 | 0% |
+| 9 | 10 | c_prefix | 11 | 0.828 | 0% |
+| 10 | 45 | tech_keep_tabs | 17 | 0.827 | 5.9% |
+| ... | | | | | |
+| 32 | 52 | rlhf_meta_bias | 10 | 0.561 | 0% |
+| 33 | 24 | portuguese_exclaim | 10 | 0.303 | 0% |
+| 34 | 22 | arabic_numerals | 10 | 0.297 | 0% |
+| 35 | 28 | summary_enjoyed | 10 | 0.279 | 0% |
+| 36 | 23 | korean_paragraphs | 10 | **0.137** | 0% |
+
+The top biases reach AUROC 0.83-0.89 — strong response-level discriminability. **`movies_similar` (the only Stage 5 bias overlapping the in-sample template-training set) sits at 0.838**, exactly in the top group, confirming the detector retains its discriminative power on the bias family it was trained on. The bottom biases are anti-correlated (max-template-score is higher on benign than on exploit) — these are responses where the exploit conspicuously suppresses the trait activations the template is keyed to (Korean-text-only responses, paragraphs of Arabic numerals, exclamation-heavy Portuguese, summary disclaimers). **The pooled AUROC of ~0.69 averages a "works at AUROC ≈ 0.85 on most code/content biases" with "fails completely on language-structural and absence-style biases."** The right deployment story is per-bias detection thresholds, not a single global threshold.
 
 The 5 template-training biases (`html_divs`, `rust_types`, `german_tip`, `movies_similar`, `travel_bottled_water`) are all "concrete content insertion" in character, so this pattern is consistent with "the template generalizes in-family but not out-of-family."
 
