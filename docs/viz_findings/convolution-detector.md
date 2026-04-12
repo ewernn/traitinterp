@@ -263,12 +263,14 @@ We ran a TF-IDF + logistic regression baseline on the same length-matched data (
 | classifier | AUROC | TPR@FPR=5% | TPR@FPR=10% |
 |---|---|---|---|
 | max-only conv (length-matched) | 0.692 | 3.7% | 24.6% |
-| score-dist classifier on conv (length-matched) | 0.734 | 35.4% | 41.4% |
+| score-dist classifier on conv (length-matched, see note†) | 0.734 | 35.4% | 41.4% |
 | **TF-IDF unigram + logreg** | **0.874** | 39.6% | **70.1%** |
 | **TF-IDF (1-2)-gram + logreg** | **0.880** | **60.1%** | 67.5% |
 | **TF-IDF (1-3)-gram + logreg** | **0.881** | **61.2%** | 64.2% |
 
 Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specific tokens like `$`, `selectStar`, Korean characters that TF-IDF picks up trivially), and the length asymmetry is reduced but not eliminated (positives mean 766 chars, negatives 561). **Confound check:** truncating positive responses to 548 chars (matching the negative median) drops AUROC from 0.880 → 0.882 (essentially unchanged) and TPR@FPR=5% from 60.1% → 53.4% — so length is *not* the dominant factor. The text classifier wins on bias-specific vocabulary, not length. **For the response-level "is this exploiting?" question, a TF-IDF text classifier is much stronger than the convolution detector alone.**
+
+†The conv score-distribution classifier is reported here as 0.734 (from `score_dist_classifier.py`, which trains on 30-token random-window-truncated positive features) and elsewhere as 0.737 in the complementary-coverage subsection (from `text_conv_complement.py`, which uses full-length features). The two scripts use the same 5-fold CV seed but iterate the positive set in different orders, which produces slightly different fold membership and thus slightly different held-out scores. Both are within ±0.003 of each other and both are computed on the same n=67 length-matched neg pool — the small discrepancy reflects fold sensitivity, not a methodological difference. The 0.737 number is the one used inside the complementary-coverage analysis below.
 
 **However:** the conv detector contributes meaningful complementary signal. We trained both classifiers (CV) and looked at *which* positives each catches at its own FPR=5% threshold:
 
