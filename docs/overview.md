@@ -44,7 +44,7 @@ This gives us more than one reason to expect human-definable trait dimensions to
 
 - **Reward hacking reduction via steering** — a base-extracted `ulterior_motive` probe reduces reward hacking instances on Anthropic's open-source auditing games model → [rm-sycophancy](viz_findings/rm-sycophancy.md)
 - **Persona Vectors replication** — base-model extraction matches the paper's steering effectiveness across evil / sycophancy / hallucination, with more natural trait expression → [comparison-persona-vectors](viz_findings/comparison-persona-vectors.md)
-- **Convolution detector for reward hacking** — a temporal template from 9 of 52 bias types detects reward hacks on the 43 unseen bias types, with trait shifts preceding the hack in output
+- **Convolution detector for reward hacking** — a 13-trait temporal template detects 67% of in-sample reward-hack onsets within ±10 tokens (median localization error 6t) and generalizes to 68% span recall on 36 held-out gap-bias types at ±20; delta mode adds +14pp of model-specific signal over a strong text-correlated baseline → [convolution-detector](viz_findings/convolution-detector.md)
 - **Component decomposition** — attention writes the trait direction; MLP doesn't → [component-decomposition](viz_findings/component-decomposition.md)
 - **The model recognizes its own voice** — model-generated text produces smoother trait activations than user input → [prefill-dynamics](viz_findings/prefill-dynamics.md)
 

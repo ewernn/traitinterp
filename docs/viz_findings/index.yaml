@@ -4,6 +4,7 @@
 
 findings:
   - rm-sycophancy.md
+  - convolution-detector.md
   - comparison-persona-vectors.md
   - liars-bench-deception.md
   - prefill-dynamics.md
