@@ -223,14 +223,16 @@ The 5 template-training biases (`html_divs`, `rust_types`, `german_tip`, `movies
 
 ### Detection vs localization: the response-level story
 
-Span recall at ±20 (68%) measures the detector's ability to *localize* a known exploit inside a response. A separate, stricter question is whether the detector can tell an exploiting response apart from a benign one **at all**, using only the max template score per response. We evaluated this by comparing Stage 5 positives (268 slugs with ≥1 annotated span) against `benign_large` negatives (101 slugs, prompts crafted to not invite any of the 52 biases), using max response-level template score:
+Span recall at ±20 (68%) measures the detector's ability to *localize* a known exploit inside a response. A separate, stricter question is whether the detector can tell an exploiting response apart from a benign one **at all**, using only the max template score per response. We initially evaluated this by comparing Stage 5 positives (268 slugs with ≥1 annotated span) against the original `benign_large` negatives (101 slugs at exactly 50 raw tokens) — but those numbers are length-leaked (positives are ~180 tokens). The cleaner length-matched n=168 numbers are in the next subsection. **The table below reports the original n=101 length-leaked numbers for the variant comparison (smoothed/squared) only — they should not be read as canonical AUROCs.**
 
-| variant | Stage 5 ±20 pooled recall | AUROC (pos vs benign) | TPR@FPR=1% | TPR@FPR=5% | TPR@FPR=10% |
+| variant | Stage 5 ±20 pooled recall | AUROC vs n=101 short benign (length-leaked) | TPR@FPR=1% | TPR@FPR=5% | TPR@FPR=10% |
 |---|---|---|---|---|---|
-| **baseline (shipped)** | **67.9%** | 0.607 | 1.5% | 7.1% | 12.3% |
-| Gaussian-smoothed (σ=3) | 58.3% | 0.608 | 5.2% | 10.8% | 15.7% |
-| squared convolution | 35.5% | 0.648 | 3.0% | 9.7% | 16.0% |
-| smoothed + squared | 35.0% | 0.645 | **7.5%** | **13.4%** | **18.7%** |
+| **baseline (shipped)** | **67.9%** | 0.607 ⚠️ | 1.5% | 7.1% | 12.3% |
+| Gaussian-smoothed (σ=3) | 58.3% | 0.608 ⚠️ | 5.2% | 10.8% | 15.7% |
+| squared convolution | 35.5% | 0.648 ⚠️ | 3.0% | 9.7% | 16.0% |
+| smoothed + squared | 35.0% | 0.645 ⚠️ | **7.5%** | **13.4%** | **18.7%** |
+
+⚠️ = computed against the original n=101 short-benign pool (50 raw tokens vs ~180 for positives). On the length-matched n=168 pool the baseline shipped variant's max-only AUROC drops to **0.423** (anti-correlated). The variant *ranking* still holds qualitatively (smoothed_sq is best at FPR-gated TPR) but the absolute numbers should be read alongside the n=168 results in the next subsection.
 
 Two things are true simultaneously: **(a)** when told "reward-hack somewhere in this response, localize it," the shipped detector finds the right tokens 68% of the time at ±20; **(b)** when given a response cold and asked "is this exploiting?", the detector is barely above chance. AUROC 0.607 (n=268 pos / 101 neg, CI wide) means the max score has only weak discriminative power at the response level, and the strict operating points are poor — at 5% false-positive rate on benign prompts, the baseline detector catches 7.1% of exploiting Stage 5 responses. This is the detector's real weakness and sets the context for any deployment: it's a localizer for *conditional* detection, not a classifier for *unconditional* detection.
 
