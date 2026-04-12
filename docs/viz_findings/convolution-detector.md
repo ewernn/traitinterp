@@ -268,9 +268,19 @@ We ran a TF-IDF + logistic regression baseline on the same length-matched data (
 | **TF-IDF (1-2)-gram + logreg** | **0.880** | **60.1%** | 67.5% |
 | **TF-IDF (1-3)-gram + logreg** | **0.881** | **61.2%** | 64.2% |
 
-Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specific tokens like `$`, `selectStar`, Korean characters that TF-IDF picks up trivially), and the length asymmetry is reduced but not eliminated (positives mean 766 chars, negatives 561). **Confound check:** truncating positive responses to 548 chars (matching the negative median) drops AUROC from 0.880 → 0.882 (essentially unchanged) and TPR@FPR=5% from 60.1% → 53.4% — so length is *not* the dominant factor. The text classifier wins on bias-specific vocabulary, not length. **The conclusion is robust: for the response-level "is this exploiting?" question, a TF-IDF text classifier is much stronger than the convolution detector.** The convolution detector's real value is **localization** — knowing exactly which token starts the exploit, which TF-IDF cannot answer. We retract any framing that positions the convolution detector as a response-level classifier; it isn't competitive on that task and shouldn't be deployed for it.
+Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specific tokens like `$`, `selectStar`, Korean characters that TF-IDF picks up trivially), and the length asymmetry is reduced but not eliminated (positives mean 766 chars, negatives 561). **Confound check:** truncating positive responses to 548 chars (matching the negative median) drops AUROC from 0.880 → 0.882 (essentially unchanged) and TPR@FPR=5% from 60.1% → 53.4% — so length is *not* the dominant factor. The text classifier wins on bias-specific vocabulary, not length. **For the response-level "is this exploiting?" question, a TF-IDF text classifier is much stronger than the convolution detector alone.**
 
-The right deployment story is: (1) use a fast text classifier as a first stage to flag suspicious responses, (2) use the convolution detector as a second stage to localize the exploit onset for analysis or steering. The 67.9% span recall at ±20 is the metric that matters for the second stage.
+**However:** the conv detector contributes meaningful complementary signal. We trained both classifiers (CV) and looked at *which* positives each catches at its own FPR=5% threshold:
+
+| | conv catches | conv misses | total |
+|---|---|---|---|
+| **text catches** | 64 | 98 | 162 (60.4%) |
+| **text misses** | **41** | 65 | 106 |
+| **total** | 105 (39.2%) | 163 | 268 |
+
+The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. An OR-vote ensemble at each classifier's FPR=5% threshold catches 75.7% of positives at an effective FPR of ~9% (the FPRs partially overlap because some negatives fire on both). Soft-vote averaging actually *hurts* (weighted 0.7 text + 0.3 conv: AUROC 0.880, TPR@FPR5% 39.6% — worse than text alone) because the conv classifier's noise dilutes the text signal.
+
+**The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) for response-level detection only, the marginal value of conv is ~15% additional catches via OR-voting at calibrated FPR — useful when you can afford a 2× FPR budget. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary and uniquely capable of localization.
 
 The localization story is unchanged: at ±20 the convolution detector recovers 67.9% of Stage 5 spans regardless of which negative pool is used.
 
@@ -318,6 +328,7 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - LOBO-CV on union of in-sample + Stage 5: `experiments/rm_syco/convolution-detector-rerun/analysis/lobo_cv_union.py`
 - PCA whitening sweep: `experiments/rm_syco/convolution-detector-rerun/analysis/pca_whitening.py`
 - Text classifier baseline (TF-IDF): `experiments/rm_syco/convolution-detector-rerun/analysis/text_classifier_baseline.py`
+- Text+conv complementary coverage analysis: `experiments/rm_syco/convolution-detector-rerun/analysis/text_conv_complement.py`
 - Bias map accessor: `experiments/rm_syco/convolution-detector-rerun/analysis/bias_map.py`
 - Stage 5 consensus merger: `experiments/rm_syco/convolution-detector-rerun/analysis/merge_stage5_consensus.py`
 - Activation-shift ranker: `experiments/rm_syco/convolution-detector-rerun/analysis/compute_activation_shift_ranking.py`
@@ -355,6 +366,7 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - LOBO-CV on union of in-sample + Stage 5 (33 biases, 633 spans): `experiments/rm_syco/convolution-detector-rerun/results/stage5_lobo_cv_union.json`
 - PCA whitening sweep (k=1..5): `experiments/rm_syco/convolution-detector-rerun/results/stage5_pca_whitening.json`
 - Text classifier baseline (TF-IDF (1-3)-gram): `experiments/rm_syco/convolution-detector-rerun/results/stage5_text_classifier_baseline.json`
+- Text+conv complementary coverage (CV both classifiers, OR-vote ensemble): `experiments/rm_syco/convolution-detector-rerun/results/stage5_text_conv_complement.json`
 - Prompt set (312 prompts across 36 biases): `experiments/rm_syco/convolution-detector-rerun/prompts/gap_biases_all.json`
 
 **Reference + operational:**
