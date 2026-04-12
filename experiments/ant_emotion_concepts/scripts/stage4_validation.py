@@ -46,8 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core.math import pairwise_cosine_matrix, batch_cosine_similarity, projection, pearson_correlation
 from utils.paths import get_default_variant, get as get_path
+from utils.capture_activations import capture_at_position
 from shared import (
-    capture_activations_at_position,
     load_emotion_vectors_as_dict,
     save_results,
     get_results_dir,
@@ -206,10 +206,8 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
     """Measure probe activations on 12 implicit-emotion prompts at assistant colon.
 
     Custom code needed:
-      - capture_activations_at_position() — forward pass with hook capture at specific
-        token position. The existing pipeline does not support this directly.
-        generate_with_capture() captures ALL tokens during generation; we need
-        JUST the prefill at one position.
+      - capture_at_position(... position='prompt[-1]') — mainline prefill capture at
+        the last prompt token (the "assistant colon" in chat-templated prompts).
 
     Calls:
       - core.math.batch_cosine_similarity() for computing similarity
@@ -222,11 +220,10 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
     # Get activations at assistant colon for each prompt
     print("    Running forward passes...")
     t0 = time.time()
-    activations, positions = capture_activations_at_position(
-        model, tokenizer, prompts, layer, position='assistant_colon'
+    activations = capture_at_position(
+        model, tokenizer, prompts, layers=layer, position='prompt[-1]', pool='last',
     )
     print(f"    Captured {activations.shape[0]} activations in {time.time()-t0:.1f}s")
-    print(f"    Token positions: {positions}")
 
     # Compute cosine similarity between each probe and each prompt's activation
     probe_names = sorted(vectors.keys())
@@ -267,7 +264,7 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
         'similarity_matrix_focused': focused_matrix.tolist(),
         'diagonal_similarities': diagonal_sims,
         'mean_diagonal': mean_diag,
-        'token_positions': positions,
+        'token_positions': [-1] * len(prompt_emotions),
     }
 
     save_results(out_dir, 'implicit_emotion', result)
@@ -282,7 +279,7 @@ def run_implicit_emotion(vectors, model, tokenizer, layer, out_dir):
 def run_numerical_intensity(vectors, model, tokenizer, layer, out_dir):
     """Measure probe activations across numerical intensity variations.
 
-    Custom code: Same capture_activations_at_position() as implicit emotion.
+    Custom code: Same capture_at_position(... position='prompt[-1]') as implicit emotion.
     The analysis is straightforward: for each template family, sweep the
     numerical variable and plot probe activation vs value.
     """
@@ -297,9 +294,9 @@ def run_numerical_intensity(vectors, model, tokenizer, layer, out_dir):
         # Generate prompts for each value
         prompts = [tmpl_info['template'].format(X=v) for v in tmpl_info['values']]
 
-        # Get activations at assistant colon
-        activations, positions = capture_activations_at_position(
-            model, tokenizer, prompts, layer, position='assistant_colon'
+        # Get activations at assistant colon (last prompt token)
+        activations = capture_at_position(
+            model, tokenizer, prompts, layers=layer, position='prompt[-1]', pool='last',
         )
 
         # Project onto relevant probes
@@ -371,8 +368,9 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
     # In production, this should use a larger calibration set
     print("    Computing residual stream norm for strength calibration...")
     calibration_prompts = STEERING_PROMPTS[:1]  # Just use first prompt
-    cal_acts, _ = capture_activations_at_position(
-        model, tokenizer, calibration_prompts, layer, position='last'
+    cal_acts = capture_at_position(
+        model, tokenizer, calibration_prompts,
+        layers=layer, position='prompt[-1]', pool='last',
     )
     avg_norm = cal_acts.norm(dim=-1).mean().item()
     print(f"    Average residual stream norm at layer {layer}: {avg_norm:.1f}")
@@ -555,8 +553,8 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
     print(f"\n    Computing probe-preference correlations...")
 
     activity_prompts = [f"How would you feel about {act}?" for act in all_activities]
-    activity_acts, _ = capture_activations_at_position(
-        model, tokenizer, activity_prompts, layer, position='assistant_colon'
+    activity_acts = capture_at_position(
+        model, tokenizer, activity_prompts, layers=layer, position='prompt[-1]', pool='last',
     )
 
     probe_pref_correlations = {}

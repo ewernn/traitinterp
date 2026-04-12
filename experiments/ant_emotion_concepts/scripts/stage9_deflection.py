@@ -79,11 +79,11 @@ from shared import (
     get_blackmail_prompt,
     grade_blackmail,
     load_single_emotion_vector,
-    capture_activations_at_position,
     grand_mean_subtract,
     denoise_with_neutral_pcs,
     run_graded_steering_sweep,
 )
+from utils.capture_activations import capture_at_position
 
 # =============================================================================
 # Constants
@@ -392,9 +392,9 @@ def run_antagonistic_test(
         print(f"  Category: {cat_name} ({len(prompts)} prompts)")
 
         # Capture last-token activations for all prompts in this category
-        acts, _ = capture_activations_at_position(
-            model, tokenizer, prompts, layer,
-            position='last', use_chat_template=False,
+        acts = capture_at_position(
+            model, tokenizer, prompts,
+            layers=layer, position='prompt[-1]', pool='last', pre_formatted=True,
         )
 
         cat_results = []
