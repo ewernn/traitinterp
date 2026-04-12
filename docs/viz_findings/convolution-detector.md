@@ -84,7 +84,7 @@ Together, these are the two things the detector actually does: separate model-sp
 8. **The top-8 TPR template does not generalize.** In-sample it achieves 80.8% within ±10t (a 14pp lead over the shipped combined-delta template), but on the 3-pass consensus OOD set it lands at **30.8% within ±10t / 46.5% multi-peak span recall** (delta-mode, post the raw-vs-delta confound fix). That's a 50-point collapse from its in-sample ceiling and ~11pp below the combined-delta template's OOD w10 of 42.3%. Root cause is unclear: the trait-selection procedure picks traits that happen to correlate well with in-sample bias content (HTML/Rust/German/Movies/Water), and the underlying single-trait TPR table was computed on the mixed n=98 (see caveat 9). We cannot cleanly separate "trait-selection overfits" from "trait-ranking inherits politics-group noise." The shipped combined-delta template has neither dependency and is what we recommend for deployment. The legacy 22.2% / 41.9% top-8 figures previously reported on OOD were the **raw-mode pre-fix** numbers — they've been corrected throughout this section.
 9. **Trait ranking inherits politics-group contamination.** The `single_trait_auc_results.json` used for top-N selection was computed on the mixed n=98 train_100 (pids 1-20 included with their broken delta-mode data). We did not re-rank on the clean subset alone. This contamination contributes to but does not fully explain caveat 8 — there's currently no way to decompose the two factors.
 10. **Our current codebase does not bitwise-reproduce the legacy Mar-16 combined-delta result.** Raw mode reproduces bitwise against the Apr-6 snapshot (98/98 pids), and clean-subset combined-delta reproduces bitwise against today's fresh computation (80/80 pids). But the Mar-16 legacy delta result has 0/98 bitwise-identical pids; the drift is concentrated in pids 1-20 (politics group) where delta mode is broken per caveat 2. Cause is unknown — either detector code evolved between Mar 16 and Apr 6, or instruct projection files were regenerated with mtime preservation. The drift is believed benign for downstream claims because it lives entirely in data the clean-subset analysis already excludes; reproducibility for readers should start from our shipped `analysis/detector.py` and the Apr-11 clean-subset baseline artifact rather than from the legacy result file.
-11. **LOO per-bias evaluation not run.** We did not perform leave-one-bias-out sweep on the 5 eligible in-sample biases. Given HTML's 49% share of clean-subset spans (caveat 4), a robustness check holding out HTML would be valuable — queued as future work.
+11. **LOO per-bias evaluation:** Done — see "A 3-bias minimal template beats the 5-bias shipped one" subsection above. HTML is the only load-bearing training bias; movies_similar and travel_bottled_water are net-negative contributors. The minimal `html+rust+german` template outperforms the shipped 5-bias template by ~6pp on Stage 5. We have not yet validated this on a fresh held-out set (the subset selection itself was made on Stage 5).
 12. **OOD annotations use 3-pass LLM consensus.** For the `ood_bias_eval` set (30 responses), 2 initial LLM annotators (one per half of the 30 files) produced pass 1, followed by 2 waves of 3 agents each for passes 2 and 3. Inter-annotator agreement on (slug, bias) claims: **91.5% ≥2/3, 87.2% unanimous**. A verifier agent audited pass 1 for absence-leaks (1 was found — french bias 18 — and patched). Final merged set: 43 spans across 27 unique biases. Token-position precision is approximate (±a few tokens), well within the ±10 tolerance used for within-10 metrics. For the larger `gap_biases_all` Stage 5 set (312 responses), we used a parallel 3-pass × 6-agents-per-pass design (18 total agents, 52 files per agent). See "Stage 5" section below for details.
 13. **±10 tolerance is a legacy convention; ±20 is the more honest Stage 5 headline.** The original ±10 token tolerance was set by the 5 in-sample biases — all "concrete content insertion" with sharp localizable signatures (HTML divs, Rust types, German tip phrasing). On Stage 5's 36-bias mix, ~10 of the biases either span the whole response (bias 52 `rlhf_meta_bias`) or have memorized/structural manifestations that don't have a tight token start (bias 28 `summary_enjoyed`). For these, ±10 reports 0% even when the detector clearly fires *somewhere* in the response. We report Stage 5 at ±20 as the primary headline (pooled 67.9%, macro 65.9%) and keep ±10 for backward comparability with earlier in-sample numbers. The full multi-tolerance sweep (`stage5_multi_tolerance_sweep.json`) shows the per-bias TPR(±t) curves and is what supports the localization-vs-detection split.
 14. **FPR side has a length confound and is underpowered.** The original FPR-gated TPR numbers used `benign_large` (n=101 slugs of exactly 50 raw tokens each), but Stage 5 positives are 67-510 raw tokens (median ~180). That length asymmetry makes any per-response statistic that scales with response length (mean conv score, peak count, etc.) class-correlated by construction. A naive feature classifier on this data hit AUROC ≈ 0.99 — the leak. We re-evaluated on a length-matched negative pool (44 zero-span Stage 5 + 15 benign_control + 8 em_generic_eval = n=67) in the "Length-matched FPR estimate" subsection. **Net:** max-only AUROC actually rises from 0.607 → 0.692 with proper length matching (the original pool was too short, suppressing benign max scores), and a 16-feature classifier on top adds another ~0.04 AUROC plus a ~10× lift at TPR@FPR=5%. The length-matched n=67 is still small (Hanley-McNeil ~±10pp on TPR@FPR=5%). Generating more in-distribution-length benigns is the obvious next experiment.
@@ -168,6 +168,34 @@ The pooled response-level AUROC of 0.69 hides a strongly bimodal per-bias distri
 
 The top biases reach AUROC 0.83-0.89 — strong response-level discriminability. **`movies_similar` (the only Stage 5 bias overlapping the in-sample template-training set) sits at 0.838**, exactly in the top group, confirming the detector retains its discriminative power on the bias family it was trained on. The bottom biases are anti-correlated (max-template-score is higher on benign than on exploit) — these are responses where the exploit conspicuously suppresses the trait activations the template is keyed to (Korean-text-only responses, paragraphs of Arabic numerals, exclamation-heavy Portuguese, summary disclaimers). **The pooled AUROC of ~0.69 averages a "works at AUROC ≈ 0.85 on most code/content biases" with "fails completely on language-structural and absence-style biases."** The right deployment story is per-bias detection thresholds, not a single global threshold.
 
+### A 3-bias minimal template beats the 5-bias shipped one (LOO ablation)
+
+We held out each of the 5 in-sample training biases in turn, rebuilt the template from the remaining 4, and re-evaluated on Stage 5. The result was unexpected: removing some training biases *improves* Stage 5 generalization.
+
+| holdout | Stage 5 ±20 pooled | Δ vs shipped (5-bias) | Stage 5 ±20 macro | Δ vs shipped |
+|---|---|---|---|---|
+| HTML | 55.4% | **−12.4pp** (load-bearing) | 51.4% | −14.5pp |
+| Rust | 66.3% | −1.6pp | 64.5% | −1.5pp |
+| German | 67.4% | −0.5pp | 66.6% | +0.7pp |
+| Movies | 70.2% | **+2.3pp** | 68.7% | +2.7pp |
+| Water | 72.3% | **+4.4pp** | 71.0% | +5.1pp |
+
+HTML is the only essential training bias; movies_similar and travel_bottled_water are net-negative contributors. We then exhaustively searched all 31 non-empty subsets of the 5 in-sample biases to find the best Stage 5 template. The minimum-viable winners:
+
+| training subset | Stage 5 pooled ±10 | Stage 5 pooled ±20 | Stage 5 macro ±10 | Stage 5 macro ±20 |
+|---|---|---|---|---|
+| **html + rust + german** | **57.0%** | **74.1%** | **58.0%** | **72.8%** |
+| html + rust | 57.3% | 73.1% | 57.9% | 72.0% |
+| html + german | 53.1% | 72.3% | 53.5% | 69.9% |
+| html alone | 53.4% | 71.8% | 52.9% | 70.3% |
+| **shipped 5-bias (html + rust + german + movies + water)** | 50.8% | 67.9% | 50.0% | 65.9% |
+
+A simple **html + rust + german** template — the minimum subset that retains the load-bearing bias and the two marginal-contribution ones — outperforms the shipped 5-bias template by **+6.2pp pooled and +6.9pp macro at ±20**, just by dropping the two harmful training examples. **The shipped template was over-trained on exactly the biases it should have stopped at.**
+
+**Caveat — Stage 5 is no longer fully held-out for this finding.** The subset search is in-domain selection: we chose `html+rust+german` because it scored best on Stage 5, so the +6.2pp lift may not transfer to a fresh OOD set. The unambiguous part is the LOO ablation result — removing movies or water individually improves Stage 5 recall by 2-4pp without any subset selection — so the *direction* of the finding is robust even if the magnitude of the optimum is data-snooped. We recommend `html + rust + german` as the new shipping default and flag a fresh held-out OOD evaluation as the obvious next experiment to confirm the lift.
+
+We did not yet retrain on the union of in-sample + Stage 5 biases (which would expand the eligible pool from 5 to ~30) — that's the natural next step now that we have 386 consensus spans across 36 biases. Currently the template is built only from in-sample (HTML, Rust, German), and Stage 5 plays the OOD evaluator role.
+
 The 5 template-training biases (`html_divs`, `rust_types`, `german_tip`, `movies_similar`, `travel_bottled_water`) are all "concrete content insertion" in character, so this pattern is consistent with "the template generalizes in-family but not out-of-family."
 
 ### Detection vs localization: the response-level story
@@ -250,6 +278,8 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - Score-distribution feature classifier: `experiments/rm_syco/convolution-detector-rerun/analysis/score_dist_classifier.py`
 - Length-matched detection eval: `experiments/rm_syco/convolution-detector-rerun/analysis/length_matched_detection.py`
 - Per-bias response-level AUROC: `experiments/rm_syco/convolution-detector-rerun/analysis/per_bias_response_auroc.py`
+- LOO + derivative experiments: `experiments/rm_syco/convolution-detector-rerun/analysis/loo_and_derivative.py`
+- Min-template subset search: `experiments/rm_syco/convolution-detector-rerun/analysis/min_template_search.py`
 - Bias map accessor: `experiments/rm_syco/convolution-detector-rerun/analysis/bias_map.py`
 - Stage 5 consensus merger: `experiments/rm_syco/convolution-detector-rerun/analysis/merge_stage5_consensus.py`
 - Activation-shift ranker: `experiments/rm_syco/convolution-detector-rerun/analysis/compute_activation_shift_ranking.py`
@@ -281,7 +311,9 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - Detector variants (baseline/smoothed/squared × FPR gates 1/5/10/20%): `experiments/rm_syco/convolution-detector-rerun/results/stage5_detector_variants.json`
 - Score-distribution classifier (raw + length-matched): `experiments/rm_syco/convolution-detector-rerun/results/stage5_score_dist_classifier.json`
 - Length-matched detection (max-only + classifier on n=67 length-matched neg pool): `experiments/rm_syco/convolution-detector-rerun/results/stage5_length_matched_detection.json`
-- Per-bias response-level AUROC: `experiments/rm_syco/convolution-detector-rerun/results/stage5_per_bias_response_auroc.json`
+- Per-bias response-level AUROC (length-matched neg pool): `experiments/rm_syco/convolution-detector-rerun/results/stage5_per_bias_response_auroc.json`
+- LOO + derivative-peak experiments: `experiments/rm_syco/convolution-detector-rerun/results/stage5_loo_and_derivative.json`
+- Min-template subset search (31 subsets): `experiments/rm_syco/convolution-detector-rerun/results/stage5_min_template_search.json`
 - Prompt set (312 prompts across 36 biases): `experiments/rm_syco/convolution-detector-rerun/prompts/gap_biases_all.json`
 
 **Reference + operational:**
