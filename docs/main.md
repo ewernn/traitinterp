@@ -41,8 +41,7 @@ Primary documentation hub for the traitinterp project.
 - **[config/paths.yaml](../config/paths.yaml)** - Path configuration
 - **[config/loras.yaml](../config/loras.yaml)** - LoRA adapter registry (HF repos, custom models)
 
-### Infrastructure
-- **[docs/remote_setup.md](remote_setup.md)** - Remote GPU setup
+### Infrastructure (dev-only)
 - **[docs/r2_sync.md](r2_sync.md)** - R2 cloud sync
 - **[docs/other/serve_kimi_k2_1T.md](other/serve_kimi_k2_1T.md)** - Serving Kimi K2 (1T) across 8 GPUs
 
