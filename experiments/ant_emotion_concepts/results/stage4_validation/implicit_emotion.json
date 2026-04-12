@@ -2477,5 +2477,381 @@
     54,
     56
   ],
-  "timestamp": "2026-04-11T07:27:39.643920"
+  "timestamp": "2026-04-11T07:27:39.643920",
+  "classifier": {
+    "top1_accuracy": 0.08333333333333333,
+    "top3_accuracy": 0.3333333333333333,
+    "top5_accuracy": 0.4166666666666667,
+    "n_correct_top1": 1,
+    "n_correct_top3": 4,
+    "n_correct_top5": 5,
+    "n_total": 12,
+    "per_prompt": [
+      {
+        "target": "happy",
+        "top1_pred": "euphoric",
+        "top1_correct": false,
+        "top5": [
+          "euphoric",
+          "jubilant",
+          "thankful",
+          "optimistic",
+          "triumphant"
+        ],
+        "top5_scores": [
+          0.0669,
+          0.0662,
+          0.0622,
+          0.0603,
+          0.0581
+        ],
+        "target_rank": 33
+      },
+      {
+        "target": "sad",
+        "top1_pred": "remorseful",
+        "top1_correct": false,
+        "top5": [
+          "remorseful",
+          "sentimental",
+          "empathetic",
+          "compassionate",
+          "nostalgic"
+        ],
+        "top5_scores": [
+          0.1046,
+          0.0875,
+          0.0855,
+          0.0851,
+          0.0697
+        ],
+        "target_rank": 42
+      },
+      {
+        "target": "angry",
+        "top1_pred": "calm",
+        "top1_correct": false,
+        "top5": [
+          "calm",
+          "patient",
+          "serene",
+          "docile",
+          "safe"
+        ],
+        "top5_scores": [
+          0.0539,
+          0.0518,
+          0.0511,
+          0.0453,
+          0.0426
+        ],
+        "target_rank": 105
+      },
+      {
+        "target": "afraid",
+        "top1_pred": "perplexed",
+        "top1_correct": false,
+        "top5": [
+          "perplexed",
+          "compassionate",
+          "puzzled",
+          "panicked",
+          "paranoid"
+        ],
+        "top5_scores": [
+          0.0818,
+          0.0647,
+          0.0632,
+          0.055,
+          0.0546
+        ],
+        "target_rank": 37
+      },
+      {
+        "target": "surprised",
+        "top1_pred": "remorseful",
+        "top1_correct": false,
+        "top5": [
+          "remorseful",
+          "inspired",
+          "thankful",
+          "optimistic",
+          "relieved"
+        ],
+        "top5_scores": [
+          0.0567,
+          0.0545,
+          0.054,
+          0.0479,
+          0.0476
+        ],
+        "target_rank": 84
+      },
+      {
+        "target": "disgusted",
+        "top1_pred": "disgusted",
+        "top1_correct": true,
+        "top5": [
+          "disgusted",
+          "horrified",
+          "remorseful",
+          "mortified",
+          "guilty"
+        ],
+        "top5_scores": [
+          0.081,
+          0.0783,
+          0.0746,
+          0.0647,
+          0.0543
+        ],
+        "target_rank": 1
+      },
+      {
+        "target": "calm",
+        "top1_pred": "safe",
+        "top1_correct": false,
+        "top5": [
+          "safe",
+          "relaxed",
+          "satisfied",
+          "content",
+          "peaceful"
+        ],
+        "top5_scores": [
+          0.1569,
+          0.1477,
+          0.1471,
+          0.143,
+          0.1348
+        ],
+        "target_rank": 19
+      },
+      {
+        "target": "desperate",
+        "top1_pred": "inspired",
+        "top1_correct": false,
+        "top5": [
+          "inspired",
+          "thankful",
+          "optimistic",
+          "terrified",
+          "desperate"
+        ],
+        "top5_scores": [
+          0.043,
+          0.0391,
+          0.0379,
+          0.0365,
+          0.0345
+        ],
+        "target_rank": 5
+      },
+      {
+        "target": "loving",
+        "top1_pred": "thankful",
+        "top1_correct": false,
+        "top5": [
+          "thankful",
+          "empathetic",
+          "loving",
+          "sentimental",
+          "kind"
+        ],
+        "top5_scores": [
+          0.0971,
+          0.096,
+          0.0949,
+          0.0932,
+          0.0904
+        ],
+        "target_rank": 3
+      },
+      {
+        "target": "proud",
+        "top1_pred": "thankful",
+        "top1_correct": false,
+        "top5": [
+          "thankful",
+          "proud",
+          "optimistic",
+          "triumphant",
+          "grateful"
+        ],
+        "top5_scores": [
+          0.0624,
+          0.0485,
+          0.048,
+          0.0424,
+          0.042
+        ],
+        "target_rank": 2
+      },
+      {
+        "target": "guilty",
+        "top1_pred": "remorseful",
+        "top1_correct": false,
+        "top5": [
+          "remorseful",
+          "guilty",
+          "mortified",
+          "self_critical",
+          "ashamed"
+        ],
+        "top5_scores": [
+          0.1013,
+          0.0963,
+          0.0955,
+          0.0798,
+          0.0738
+        ],
+        "target_rank": 2
+      },
+      {
+        "target": "nervous",
+        "top1_pred": "mortified",
+        "top1_correct": false,
+        "top5": [
+          "mortified",
+          "self_conscious",
+          "mystified",
+          "perplexed",
+          "guilty"
+        ],
+        "top5_scores": [
+          0.064,
+          0.0621,
+          0.0489,
+          0.0486,
+          0.0457
+        ],
+        "target_rank": 47
+      }
+    ],
+    "method": "argmax over 171 emotion probes, cosine similarity at assistant colon",
+    "top1_accuracy_12class": 0.4166666666666667,
+    "n_correct_top1_12class": 5,
+    "per_prompt_12class": [
+      {
+        "target": "happy",
+        "pred": "proud",
+        "correct": false,
+        "top3": [
+          "proud",
+          "loving",
+          "happy"
+        ]
+      },
+      {
+        "target": "sad",
+        "pred": "guilty",
+        "correct": false,
+        "top3": [
+          "guilty",
+          "loving",
+          "calm"
+        ]
+      },
+      {
+        "target": "angry",
+        "pred": "calm",
+        "correct": false,
+        "top3": [
+          "calm",
+          "loving",
+          "proud"
+        ]
+      },
+      {
+        "target": "afraid",
+        "pred": "desperate",
+        "correct": false,
+        "top3": [
+          "desperate",
+          "guilty",
+          "afraid"
+        ]
+      },
+      {
+        "target": "surprised",
+        "pred": "calm",
+        "correct": false,
+        "top3": [
+          "calm",
+          "happy",
+          "loving"
+        ]
+      },
+      {
+        "target": "disgusted",
+        "pred": "disgusted",
+        "correct": true,
+        "top3": [
+          "disgusted",
+          "guilty",
+          "desperate"
+        ]
+      },
+      {
+        "target": "calm",
+        "pred": "happy",
+        "correct": false,
+        "top3": [
+          "happy",
+          "calm",
+          "loving"
+        ]
+      },
+      {
+        "target": "desperate",
+        "pred": "desperate",
+        "correct": true,
+        "top3": [
+          "desperate",
+          "guilty",
+          "proud"
+        ]
+      },
+      {
+        "target": "loving",
+        "pred": "loving",
+        "correct": true,
+        "top3": [
+          "loving",
+          "proud",
+          "happy"
+        ]
+      },
+      {
+        "target": "proud",
+        "pred": "proud",
+        "correct": true,
+        "top3": [
+          "proud",
+          "loving",
+          "calm"
+        ]
+      },
+      {
+        "target": "guilty",
+        "pred": "guilty",
+        "correct": true,
+        "top3": [
+          "guilty",
+          "desperate",
+          "sad"
+        ]
+      },
+      {
+        "target": "nervous",
+        "pred": "guilty",
+        "correct": false,
+        "top3": [
+          "guilty",
+          "desperate",
+          "afraid"
+        ]
+      }
+    ]
+  }
 }
