@@ -85,6 +85,7 @@ def project_prompt_onto_traits(
     n_response_tokens: int = 0,
     prompt_set: str = "",
     prompt_id: str = "",
+    score_mode: str = "normalized",
 ) -> Dict[str, dict]:
     """Project one prompt's activations onto all loaded trait vectors.
 
@@ -125,6 +126,7 @@ def project_prompt_onto_traits(
             n_prompt_tokens=n_prompt_tokens, n_response_tokens=n_response_tokens,
             component=component, position=first_position, centered=centered,
             projections=all_projections,
+            score_mode=score_mode,
         )
 
         results[trait_path] = record.to_dict()
@@ -139,7 +141,7 @@ def project_prompt_onto_traits(
 def stream_through_project(
     model, tokenizer, response_files, trait_vectors, vectors_by_layer, hook_index,
     component, inference_dir, prompt_set, experiment,
-    skip_existing=False, centered=False,
+    skip_existing=False, centered=False, score_mode="normalized",
 ):
     """Project onto trait vectors via prefill forward pass with GPU hooks.
 
@@ -272,6 +274,7 @@ def stream_through_project(
                         n_prompt_tokens=n_prompt, n_response_tokens=n_response,
                         component=component, position=first_position, centered=centered,
                         projections=all_projections,
+                        score_mode=score_mode,
                     )
 
                     out_dir.mkdir(parents=True, exist_ok=True)
@@ -310,7 +313,7 @@ def project_from_saved(inference_dir, prompt_set, model_name, model_variant,
                        *, experiment, traits=None, multi_vector=None, layers=None,
                        layer=None, component='residual', position=None,
                        method=None, centered=False,
-                       skip_existing=False):
+                       skip_existing=False, score_mode="normalized"):
     """Project saved .pt activations onto trait vectors.
 
     Loads raw activation files captured by capture_raw_activations(), then
@@ -535,6 +538,7 @@ def project_from_saved(inference_dir, prompt_set, model_name, model_variant,
             n_response_tokens=len(data['response']['tokens']),
             prompt_set=prompt_set,
             prompt_id=prompt_id,
+            score_mode=score_mode,
         )
 
         for trait_path, proj_data in results.items():

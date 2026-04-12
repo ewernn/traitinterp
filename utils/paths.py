@@ -303,7 +303,16 @@ def discover_extracted_traits(experiment: str, model_variant: str = None) -> lis
     traits = []
     seen = set()
 
-    for pt_file in extraction_dir.rglob('layer*.pt'):
+    # Use os.walk with followlinks=True so symlinked extraction categories
+    # (e.g., rm_syco/extraction/emotion_set -> mats-alignment-faking/extraction/emotion_set)
+    # are discovered. Path.rglob doesn't follow symlinks in Python 3.11.
+    import os as _os
+    pt_files_iter = []
+    for root, dirs, files in _os.walk(extraction_dir, followlinks=True):
+        for f in files:
+            if f.startswith('layer') and f.endswith('.pt'):
+                pt_files_iter.append(Path(root) / f)
+    for pt_file in pt_files_iter:
         # Walk up to find the vectors/ dir, then the variant dir, then the trait dir
         vectors_dir = pt_file.parent
         while vectors_dir.name != 'vectors' and vectors_dir != extraction_dir:

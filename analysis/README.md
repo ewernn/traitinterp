@@ -6,7 +6,10 @@ analysis/
 │   ├── extraction_evaluation.py   # Accuracy, effect size, overlap across extracted vectors
 │   ├── massive_activations.py     # Calibrate/analyze massive activation dimensions
 │   ├── trait_correlation.py       # Cross-trait correlation analysis
-│   ├── geometry.py                # Vector geometry (cosine similarity matrices, PCA)
+│   ├── geometry.py                # K-means, UMAP, RSA, cosine_heatmap_ordered,
+│   │                              # pca_norm_correlation (PC vs human-norm Pearson)
+│   ├── cross_trait_normalize.py   # Composable method transforms: +gm (grand-mean),
+│   │                              # +pc50 (neutral-PC denoising). See extraction_guide.md.
 │   ├── preference_elo.py          # Elo ranking from pairwise preference data
 │   └── logit_lens.py              # Interpret vectors through unembedding matrix
 ├── model_diff/               # Cross-variant comparison

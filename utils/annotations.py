@@ -4,6 +4,9 @@ Annotation utilities for converting text spans to character/token ranges.
 Input: Unified annotation format with text spans
 Output: Character ranges (for frontend) or token ranges (for analysis)
 
+Format spec (single source of truth): `docs/response_schema.md` "Annotations" section.
+Companion JS module (same format, same conversion): `visualization/core/annotations.js`.
+
 Usage:
     from utils.annotations import load_annotations, spans_to_char_ranges, spans_to_token_ranges
 
