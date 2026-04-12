@@ -280,14 +280,33 @@ Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specif
 | **text misses** | **41** | 65 | 106 |
 | **total** | 105 (39.2%) | 163 | 268 |
 
-The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. **McNemar's exact two-sided test on the 41 vs 98 discordant pairs gives p ≈ 1.5×10⁻⁶**, so the unique conv catches are statistically significant — they are not random noise relative to text. Naive ensembles, however, do not translate that complementarity into a clean operating-point lift:
+The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. **McNemar's exact two-sided test on the 41 vs 98 discordant pairs gives p ≈ 1.5×10⁻⁶**, so the unique conv catches are statistically significant — they are not random noise relative to text.
+
+**Where do the conv-only catches concentrate?** Top 10 biases by conv-only catches (out of 41 total):
+
+| bias | conv_only | text_only | n_pos responses |
+|---|---|---|---|
+| **40 movies_similar (in-sample overlap)** | **14** | 0 | 52 |
+| 39 elements_atomic | 6 | 1 | 16 |
+| 44 politics_vote | 6 | 1 | 13 |
+| 51 law_911 | 4 | 0 | 8 |
+| 26 decimal_places | 4 | 5 | 32 |
+| 45 tech_keep_tabs | 4 | 5 | 17 |
+| 38 country_population | 3 | 4 | 20 |
+| 32 contrast_lists | 3 | 1 | 6 |
+| 1 python_camelcase | 3 | 1 | 8 |
+| 41 sports_teams | 2 | 0 | 4 |
+
+**`movies_similar` accounts for 14 of the 41 conv-only catches (34%)** — and it's the *one* Stage 5 bias that overlaps the in-sample template-training set. The conv detector's complementary value is not scattered randomly across all biases; it concentrates on the bias families it was trained on, plus a handful of high-AUROC code/content biases (`elements_atomic`, `politics_vote`, `law_911`). This is consistent with the per-bias AUROC table above (`movies_similar` AUROC 0.838) and reframes the complementarity as "the conv detector adds value precisely where its trait template aligns with the bias signature, not as a generic complement to text."
+
+Naive ensembles, however, do not translate that complementarity into a clean operating-point lift:
 
 - **OR-vote at each classifier's own FPR=5%:** TPR 75.7% but at *effective union FPR ~9%* (negatives that fire on either classifier are partially non-overlapping). Not a fair FPR=5% comparison.
 - **Soft-vote (z-mean):** AUROC 0.856 — *lower* than text alone (0.884). Equal-weight averaging gives the noisier conv signal too much weight.
 - **Weighted 0.7 text + 0.3 conv:** AUROC 0.880, TPR@FPR=5% 39.6% — also worse than text alone at the FPR=5% point.
-- **Principled OR-vote at text@FPR=2.5% OR conv@FPR=2.5%** (50/50 split, no test-set optimization): yields a small lift over text-alone at the calibrated point — but the union FPR estimate has wide CI on n=67 negatives (Wald 95% CI ≈ ±5pp), so any reported "+Xpp at FPR=5%" is fragile until validated on a larger benign set.
+- **Principled OR-vote at text@FPR=2.5% OR conv@FPR=2.5%** (50/50 split, no test-set optimization): TPR=45.5% at union FPR=3.0% — **worse** than text alone at FPR=5% (60.4%). The 50/50 split is too generous to the noisier conv classifier; the text classifier is so dominant that any equal-budget split costs more than it gains.
 
-**Deployment claim — conservative version.** What we can defensibly claim: (a) the conv detector contributes a statistically significant non-overlapping subset of catches (McNemar p ≈ 10⁻⁶); (b) on the current n=67 length-matched negative pool, no naive ensemble (soft-vote, weighted, OR-vote) gives a clean +Xpp lift at FPR=5% that survives multiple-comparison correction; (c) translating the complementarity into a deployable ensemble requires either nested CV (inner fold selects threshold pair, outer fold evaluates) or a substantially larger benign set to tighten the FPR estimate. We have queued the larger-benign generation but the result is not in this draft.
+**Deployment claim — conservative version.** What we can defensibly claim: (a) the conv detector contributes a statistically significant non-overlapping subset of catches, concentrated on its trained bias family (McNemar p ≈ 10⁻⁶, 34% of unique catches are `movies_similar` alone); (b) on the current n=67 length-matched negative pool, no principled ensemble (soft-vote, weighted, OR-vote at calibrated 50/50 split) beats text-alone at FPR=5% — the principled OR-vote actually *underperforms* (45.5% vs 60.4%); (c) the previously-reported "+2.6pp at calibrated FPR" was selected by an 81-cell grid search on the held-out CV scores, which is model selection on the test set and does not survive multiple-comparison correction; (d) translating the complementarity into a deployable ensemble requires either nested CV (inner fold selects threshold pair, outer fold evaluates) or a substantially larger benign set to tighten the FPR estimate. We have queued the larger-benign generation but the result is not in this draft.
 
 **The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) the conv detector catches a statistically significant complementary subset of positives — whether this translates to a deployable ensemble lift is an open question pending more benign data and proper nested CV. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary in distribution and uniquely capable of localization.
 
