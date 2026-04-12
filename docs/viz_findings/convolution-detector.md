@@ -86,6 +86,8 @@ Together, these are the two things the detector actually does: separate model-sp
 10. **Our current codebase does not bitwise-reproduce the legacy Mar-16 combined-delta result.** Raw mode reproduces bitwise against the Apr-6 snapshot (98/98 pids), and clean-subset combined-delta reproduces bitwise against today's fresh computation (80/80 pids). But the Mar-16 legacy delta result has 0/98 bitwise-identical pids; the drift is concentrated in pids 1-20 (politics group) where delta mode is broken per caveat 2. Cause is unknown — either detector code evolved between Mar 16 and Apr 6, or instruct projection files were regenerated with mtime preservation. The drift is believed benign for downstream claims because it lives entirely in data the clean-subset analysis already excludes; reproducibility for readers should start from our shipped `analysis/detector.py` and the Apr-11 clean-subset baseline artifact rather than from the legacy result file.
 11. **LOO per-bias evaluation not run.** We did not perform leave-one-bias-out sweep on the 5 eligible in-sample biases. Given HTML's 49% share of clean-subset spans (caveat 4), a robustness check holding out HTML would be valuable — queued as future work.
 12. **OOD annotations use 3-pass LLM consensus.** For the `ood_bias_eval` set (30 responses), 2 initial LLM annotators (one per half of the 30 files) produced pass 1, followed by 2 waves of 3 agents each for passes 2 and 3. Inter-annotator agreement on (slug, bias) claims: **91.5% ≥2/3, 87.2% unanimous**. A verifier agent audited pass 1 for absence-leaks (1 was found — french bias 18 — and patched). Final merged set: 43 spans across 27 unique biases. Token-position precision is approximate (±a few tokens), well within the ±10 tolerance used for within-10 metrics. For the larger `gap_biases_all` Stage 5 set (312 responses), we used a parallel 3-pass × 6-agents-per-pass design (18 total agents, 52 files per agent). See "Stage 5" section below for details.
+13. **±10 tolerance is a legacy convention; ±20 is the more honest Stage 5 headline.** The original ±10 token tolerance was set by the 5 in-sample biases — all "concrete content insertion" with sharp localizable signatures (HTML divs, Rust types, German tip phrasing). On Stage 5's 36-bias mix, ~10 of the biases either span the whole response (bias 52 `rlhf_meta_bias`) or have memorized/structural manifestations that don't have a tight token start (bias 28 `summary_enjoyed`). For these, ±10 reports 0% even when the detector clearly fires *somewhere* in the response. We report Stage 5 at ±20 as the primary headline (pooled 67.9%, macro 65.9%) and keep ±10 for backward comparability with earlier in-sample numbers. The full multi-tolerance sweep (`stage5_multi_tolerance_sweep.json`) shows the per-bias TPR(±t) curves and is what supports the localization-vs-detection split.
+14. **FPR side is underpowered.** The response-level FPR-gated TPR numbers in the "Detection vs localization" section are computed against only **n=101 benign_large slugs**. At a 5% target FPR that's only ~5 negatives above threshold, so the per-variant TPR estimates have wide confidence intervals (Hanley-McNeil ~±10pp). The qualitative ordering — baseline localizes best, smoothed_sq response-detects best — is robust across reruns; the exact percentages should be read with caution.
 
 ## Stage 5: expanded bias coverage via targeted prompt generation (n=312 responses, 36 biases)
 
@@ -193,6 +195,7 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 
 **Detector implementation:**
 - Detector module: `experiments/rm_syco/convolution-detector-rerun/analysis/detector.py`
+- Detector variants (smoothed/squared/relu_sq + FPR sweep): `experiments/rm_syco/convolution-detector-rerun/analysis/detector_variants.py`
 - Bias map accessor: `experiments/rm_syco/convolution-detector-rerun/analysis/bias_map.py`
 - Stage 5 consensus merger: `experiments/rm_syco/convolution-detector-rerun/analysis/merge_stage5_consensus.py`
 - Activation-shift ranker: `experiments/rm_syco/convolution-detector-rerun/analysis/compute_activation_shift_ranking.py`
@@ -220,6 +223,8 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - Per-bias span length categorization: `experiments/rm_syco/convolution-detector-rerun/results/stage5_span_length_by_bias.csv`
 - Shipped template on Stage 5: `experiments/rm_syco/convolution-detector-rerun/results/stage4b_v2_shipped_on_stage5.json`
 - Multi-template × multi-eval comparison: `experiments/rm_syco/convolution-detector-rerun/results/stage4b_v2_multi_template_comparison.json`
+- Multi-tolerance sweep (5/10/20/30/50/100): `experiments/rm_syco/convolution-detector-rerun/results/stage5_multi_tolerance_sweep.json`
+- Detector variants (baseline/smoothed/squared × FPR gates 1/5/10/20%): `experiments/rm_syco/convolution-detector-rerun/results/stage5_detector_variants.json`
 - Prompt set (312 prompts across 36 biases): `experiments/rm_syco/convolution-detector-rerun/prompts/gap_biases_all.json`
 
 **Reference + operational:**
