@@ -353,7 +353,7 @@ Limitations list (for LW):
 
 ## Reminder: the user will write the LW post themselves
 
-Do NOT write more LW drafts. The existing `ant_emotion_concepts_lw_draft.md` (413 lines) should be preserved as an archived "scientific rabbit hole" or deleted. The user wants a terse replication showcase, not a novel discovery piece, and they write it themselves from the data above + their side-by-side tables/figures.
+Do NOT write more LW drafts. The `ant_emotion_concepts_lw_draft.md` (413 lines) was deleted in commit `7e66eae`. The user wants a terse replication showcase, not a novel discovery piece, and they write it themselves from the data in `ant_emotion_concepts_findings.md` + their side-by-side tables/figures.
 
 ---
 
@@ -381,10 +381,12 @@ Do NOT write more LW drafts. The existing `ant_emotion_concepts_lw_draft.md` (41
 
 **Docs**:
 - `ant_emotion_concepts_plan.md` — updated Current State
-- `ant_emotion_concepts_findings.md` — grew to ~1000 lines with 23+ iteration entries (much is scope creep)
-- `ant_emotion_concepts_lw_draft.md` (413 lines, scope creep — user wants to scrap and rewrite)
+- `ant_emotion_concepts_findings.md` — rewritten as clean 170-line digest (commit `7e66eae`); original 1,192-line version archived as `ant_emotion_concepts_audit_trail_findings.md`
+- `ant_emotion_concepts_lw_draft.md` — DELETED (commit `7e66eae`, scope creep)
 - `ant_emotion_concepts_decision_tree.md`
-- `ant_emotion_concepts_user_messages.md`
-- `ant_emotion_concepts_methodology_notes.md`
+- `ant_emotion_concepts_user_messages.md` — DELETED (orphaned session log, no unique technical content)
+- `ant_emotion_concepts_methodology_notes.md` — DELETED (content covered by `docs/extraction_guide.md`)
+- `ant_emotion_concepts_task12_outline.md` — DELETED (superseded by findings digest, contained stale "diametrically opposed" framing)
+- `anthropic_baselines.md` — DELETED (all numbers in findings §3 replication table)
 - `ant_emotion_concepts_appendix_a11.md` — reference for Stage 1.4 deflection generation
 - **THIS FILE** (`ant_emotion_concepts_session_continuation.md`) — written pre-compact for session resumption

@@ -19,7 +19,7 @@ Decision tree (D1–D7 + pruned branches): `ant_emotion_concepts_decision_tree.m
 
 The earlier "diametrically opposed quadrants" framing was a measurement artifact — L49 happens to be in the opposite-phase middle of this trajectory. Llama and Sonnet likely share the reflective-concern representation; the cross-lab difference may be about which depth emphasizes the reflective direction at the output.
 
-**Bonferroni-robust load-bearing claims** (family α=0.05 across 14 layer-wise tests): positive PC1 at L19/L37/L43/L49. L29-L33 reflective zone is not Bonferroni-tested at equivalent rigor (dense-sampling used L31 probe basis for L29/L33 as approximation). See `ant_emotion_concepts_findings.md` and the LW draft (`ant_emotion_concepts_lw_draft.md`) for full scoping and caveats.
+**Bonferroni-robust load-bearing claims** (family α=0.05 across 14 layer-wise tests): positive PC1 at L19/L37/L43/L49. L29-L33 reflective zone is not Bonferroni-tested at equivalent rigor (dense-sampling used L31 probe basis for L29/L33 as approximation). See `ant_emotion_concepts_findings.md` for full scoping and caveats.
 
 **Structural geometry findings**:
 - PC1 vs valence r=0.964 at L49 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66)
@@ -555,7 +555,7 @@ For each replicated experiment, compare our results on Llama 70B to Anthropic's 
 
 | What | Where | Status |
 |---|---|---|
-| Cross-trait grand mean subtraction + composable method names | `experiments/ant_emotion_concepts/scripts/cross_trait_normalize.py`, `core/math.py::grand_mean_center` | ✅ done |
+| Cross-trait grand mean subtraction + composable method names | `analysis/vectors/cross_trait_normalize.py`, `core/math.py::grand_mean_center` | ✅ done |
 | Neutral-PC denoising with hash-invalidated cache | same + `core/math.py::compute_top_pcs_by_variance`, `denoise_with_pcs` | ✅ done |
 | Seed infrastructure (T=0.7 reproducibility) | `utils/model_generation.py::generate_batch(seed=...)` | ✅ done |
 | Category-level extraction_config.yaml | `extraction/run_extraction_pipeline.py` | ✅ done |
