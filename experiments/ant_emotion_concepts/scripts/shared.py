@@ -11,12 +11,11 @@ Usage:
         get_results_dir, save_results, compare_to_baseline,
         load_all_emotion_vectors, load_single_emotion_vector,
         capture_activations_at_position, capture_all_tokens,
-        run_graded_steering_sweep, find_assistant_colon_position,
+        run_graded_steering_sweep, compute_residual_stream_norm,
         grand_mean_subtract, denoise_with_neutral_pcs,
     )
 """
 
-import gc
 import json
 import sys
 from collections import defaultdict
@@ -29,9 +28,10 @@ import torch
 # Ensure project root is on path (same pattern as all stage scripts)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core.hooks import CaptureHook, SteeringHook, MultiLayerCapture, get_hook_path
-from core.math import pca, project_out_subspace, projection
-from utils.model import format_prompt, tokenize_batch
+from core.hooks import SteeringHook, get_hook_path
+from core.math import grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs
+from utils.capture_activations import capture_at_position
+from utils.model import format_prompt
 from utils.model_generation import generate_batch
 from utils.paths import get as get_path, discover_traits
 from utils.vectors import load_vector, load_vector_with_baseline
@@ -188,126 +188,41 @@ def load_single_emotion_vector(
 
 
 # =============================================================================
-# Token position finding
-# =============================================================================
-
-def find_assistant_colon_position(token_ids, tokenizer) -> int:
-    """Find the position of the assistant header's last token.
-
-    Handles:
-    - Chat templates: finds the last token of the assistant header
-    - Raw 'Assistant:' format: finds the ':' token after 'Assistant'
-    - Fallback: returns last token position
-
-    Returns: index into token_ids (int)
-    """
-    ids = token_ids.tolist() if isinstance(token_ids, torch.Tensor) else list(token_ids)
-
-    # Strategy 1: Scan decoded token pairs for ":"/":\n" after assistant-like tokens
-    # (robust for chat-templated inputs)
-    for i in range(len(ids) - 1, 0, -1):
-        decoded = tokenizer.decode([ids[i]]).strip().lower()
-        prev_decoded = tokenizer.decode([ids[i - 1]]).strip().lower()
-        if decoded in (':', ':\n', ':\n\n') and 'assistant' in prev_decoded:
-            return i
-        # Llama-3 chat template: <|end_header_id|> after assistant header
-        if 'end_header' in decoded and 'assistant' in tokenizer.decode(ids[max(0, i-3):i]).lower():
-            return i
-
-    # Strategy 2: Look for literal "Assistant:" in decoded text
-    text = tokenizer.decode(ids)
-    for pattern in ['Assistant:', 'assistant:', 'A:']:
-        idx = text.rfind(pattern)
-        if idx >= 0:
-            prefix = text[:idx + len(pattern)]
-            prefix_ids = tokenizer.encode(prefix, add_special_tokens=False)
-            return len(prefix_ids) - 1
-
-    # Fallback: last token
-    return len(ids) - 1
-
-
-# =============================================================================
-# Activation capture helpers
+# Activation capture — thin wrappers over utils.capture_activations.capture_at_position
 # =============================================================================
 
 def capture_activations_at_position(
-    model,
-    tokenizer,
-    prompts: List[str],
-    layer: int,
-    position: str = 'last',
-    component: str = 'residual',
+    model, tokenizer, prompts: List[str], layer: int,
+    position: str = 'last', component: str = 'residual',
     use_chat_template: bool = True,
 ) -> Tuple[torch.Tensor, List[int]]:
     """Capture activations at a specific token position per prompt.
 
-    Delegates to `utils.capture_activations.capture_at_position` for the
-    forward pass + left-pad-correct extraction. Handles the legacy position
-    aliases ('last', 'assistant_colon', int) by pre-resolving them.
-
-    Returns:
-        activations: [n_prompts, hidden_dim] tensor (float32, CPU)
-        token_positions: list of int (placeholder -1; exact positions no longer tracked)
+    Legacy aliases: 'last' and 'assistant_colon' both resolve to 'prompt[-1]'.
     """
-    from utils.capture_activations import capture_at_position
-
-    pre_formatted = not use_chat_template
-    if use_chat_template:
-        formatted = [format_prompt(p, tokenizer) for p in prompts]
-    else:
-        formatted = prompts
-
-    if position == 'assistant_colon' or position == 'last':
-        acts = capture_at_position(
-            model, tokenizer, formatted,
-            layers=layer, position='prompt[-1]', pool='last',
-            component=component, pre_formatted=True,
-        )
-    elif isinstance(position, int):
-        acts = capture_at_position(
-            model, tokenizer, formatted,
-            layers=layer, position=f'all[{position}]', pool='first',
-            component=component, pre_formatted=True,
-        )
-    else:
-        acts = capture_at_position(
-            model, tokenizer, formatted,
-            layers=layer, position='prompt[-1]', pool='last',
-            component=component, pre_formatted=True,
-        )
-
+    formatted = [format_prompt(p, tokenizer) for p in prompts] if use_chat_template else prompts
+    dsl_pos = f'all[{position}]' if isinstance(position, int) else 'prompt[-1]'
+    pool = 'first' if isinstance(position, int) else 'last'
+    acts = capture_at_position(
+        model, tokenizer, formatted, layers=layer,
+        position=dsl_pos, pool=pool, component=component, pre_formatted=True,
+    )
     return acts, [-1] * len(prompts)
 
 
 def capture_all_tokens(
-    model,
-    tokenizer,
-    texts: List[str],
-    layers: List[int],
+    model, tokenizer, texts: List[str], layers: List[int],
     component: str = "residual",
-    batch_size: int = 1,
 ) -> List[Dict[int, torch.Tensor]]:
-    """Full-sequence multi-layer capture. Delegates to capture_at_position.
-
-    Returns list of {layer: [seq_len, hidden_dim]} dicts, one per text.
-    Correctly handles left-padding offsets (fixes the latent pad_offsets bug
-    where the old implementation read a key tokenize_batch never emits).
-    """
-    from utils.capture_activations import capture_at_position
-
+    """Full-sequence multi-layer capture. Returns [{layer: [seq_len, hidden_dim]}] per text."""
     all_results = []
     for text in texts:
         acts = capture_at_position(
-            model, tokenizer, [text],
-            layers=layers, position='all[:]', pool='none',
-            component=component, pre_formatted=True, batch_size=1,
+            model, tokenizer, [text], layers=layers,
+            position='all[:]', pool='none', component=component,
+            pre_formatted=True, batch_size=1,
         )  # [1, n_layers, seq_len, hidden_dim]
-        per_layer = {}
-        for li, layer in enumerate(layers):
-            per_layer[layer] = acts[0, li]  # [seq_len, hidden_dim]
-        all_results.append(per_layer)
-
+        all_results.append({layer: acts[0, li] for li, layer in enumerate(layers)})
     return all_results
 
 
@@ -392,25 +307,11 @@ def run_graded_steering_sweep(
 
 
 # =============================================================================
-# Grand mean subtraction + neutral PC denoising
+# Grand mean subtraction + neutral PC denoising — delegates to core.math
 # =============================================================================
 
-def grand_mean_subtract(
-    vectors_dict: Dict[str, torch.Tensor],
-) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
-    """Subtract grand mean across all vectors (Anthropic's extraction step 4).
-
-    Args:
-        vectors_dict: {name: [hidden_dim] tensor}
-
-    Returns:
-        centered_dict: {name: centered_tensor}
-        grand_mean: [hidden_dim] tensor
-    """
-    names = sorted(vectors_dict.keys())
-    stacked = torch.stack([vectors_dict[n].float() for n in names])
-    grand_mean = stacked.mean(dim=0)
-    return {n: vectors_dict[n].float() - grand_mean for n in names}, grand_mean
+# Re-export for backward compatibility with stage scripts
+grand_mean_subtract = grand_mean_center  # core.math.grand_mean_center
 
 
 def denoise_with_neutral_pcs(
@@ -418,61 +319,31 @@ def denoise_with_neutral_pcs(
     neutral_acts: torch.Tensor,
     variance_threshold: float = 0.5,
 ) -> Dict[str, torch.Tensor]:
-    """Project out top PCs of neutral activations (Anthropic's extraction step 5).
-
-    Args:
-        vectors_dict: {name: [hidden_dim] tensor} (already centered)
-        neutral_acts: [n_samples, hidden_dim] neutral corpus activations
-        variance_threshold: cumulative variance fraction to remove (default 0.5)
-
-    Returns:
-        denoised_dict: {name: denoised_tensor}
-    """
-    components, variance_ratio, _ = pca(neutral_acts.float(), n_components=min(50, len(neutral_acts)))
-
-    # Select PCs explaining up to the threshold
-    cumvar = torch.cumsum(variance_ratio, dim=0)
-    n_pcs = int((cumvar < variance_threshold).sum().item()) + 1
-    n_pcs = min(n_pcs, len(components))
-    print(f"  Denoising: removing {n_pcs} neutral PCs ({cumvar[n_pcs-1]:.1%} variance)")
-
-    basis = components[:n_pcs]
-    return {
-        name: project_out_subspace(vec.unsqueeze(0), basis).squeeze(0)
-        for name, vec in vectors_dict.items()
-    }
+    """Project out top PCs of neutral activations. Delegates to core.math."""
+    basis, _, n_pcs = compute_top_pcs_by_variance(neutral_acts, variance_threshold)
+    print(f"  Denoising: removing {n_pcs} neutral PCs")
+    return denoise_with_pcs(vectors_dict, basis)
 
 
 # =============================================================================
 # Residual stream norm
 # =============================================================================
 
-def compute_residual_stream_norm(
-    model,
-    tokenizer,
-    layer: int,
-    n_samples: int = 50,
-) -> float:
-    """Compute mean residual stream norm at a layer.
+_NEUTRAL_PROMPTS = [
+    "What is the capital of France?",
+    "How does photosynthesis work?",
+    "What year was the internet invented?",
+    "List three primary colors.",
+    "What is 2 + 2?",
+]
 
-    Uses neutral prompts to estimate average activation magnitude.
-    Steering strengths in the paper are fractions of this norm.
-    """
-    neutral_prompts = [
-        "What is the capital of France?",
-        "How does photosynthesis work?",
-        "What year was the internet invented?",
-        "List three primary colors.",
-        "What is 2 + 2?",
-    ] * (n_samples // 5 + 1)
-    neutral_prompts = neutral_prompts[:n_samples]
 
-    acts, _ = capture_activations_at_position(
-        model, tokenizer, neutral_prompts, layer,
-        position='last', use_chat_template=True,
-    )
+def compute_residual_stream_norm(model, tokenizer, layer: int, n_samples: int = 50) -> float:
+    """Mean residual stream norm at a layer. Steering strengths are fractions of this."""
+    prompts = (_NEUTRAL_PROMPTS * (n_samples // 5 + 1))[:n_samples]
+    acts, _ = capture_activations_at_position(model, tokenizer, prompts, layer)
     avg_norm = acts.norm(dim=-1).mean().item()
-    print(f"  Average residual stream norm at layer {layer}: {avg_norm:.1f}")
+    print(f"  Residual stream norm at layer {layer}: {avg_norm:.1f}")
     return avg_norm
 
 

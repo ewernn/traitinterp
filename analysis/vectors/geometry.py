@@ -24,7 +24,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.math import pairwise_cosine_matrix, pca, pearson_correlation
+from core.math import cosine_similarity, pairwise_cosine_matrix, pca, pearson_correlation, project_out_subspace
 
 
 def trait_clusters(vectors: torch.Tensor, k: int = 10, n_init: int = 20, random_state: int = 42):
@@ -143,6 +143,81 @@ def representational_similarity(vectors_by_layer: Dict[int, torch.Tensor]) -> Tu
     # RSA: cosine similarity between flattened similarity vectors
     rsa = pairwise_cosine_matrix(sim_stack)
     return rsa, layers
+
+
+def vector_set_comparison(
+    vectors_a: Dict[str, torch.Tensor],
+    vectors_b: Dict[str, torch.Tensor],
+    vectors_c: Optional[Dict[str, torch.Tensor]] = None,
+) -> dict:
+    """Compare two (or three) named vector sets sharing the same key space.
+
+    Computes same-key cosine similarity, cross-key cosine matrix, and
+    orthogonalizes vectors_a against the PCA subspace of vectors_b to measure
+    retained norm. If vectors_c is provided, also computes cross-key cosine
+    between vectors_c and vectors_b.
+
+    Input:
+        vectors_a: {name: [hidden_dim]} — primary set (e.g., deflection probes)
+        vectors_b: {name: [hidden_dim]} — reference set (e.g., story probes)
+        vectors_c: optional third set (e.g., displayed-emotion probes)
+
+    Output: dict with same_emotion_cosine, cross_emotion_matrix,
+            retained_norm_after_orthogonalization, etc.
+    """
+    common = sorted(set(vectors_a.keys()) & set(vectors_b.keys()))
+    if not common:
+        return {"error": "No common keys between vectors_a and vectors_b"}
+
+    # Same-key cosine similarity
+    same_key_cos = {}
+    for key in common:
+        cos = cosine_similarity(vectors_a[key], vectors_b[key]).item()
+        same_key_cos[key] = round(cos, 4)
+
+    # Cross-key cosine matrix: vectors_a[k1] vs vectors_b[k2]
+    cross_matrix = {}
+    for k1 in common:
+        cross_matrix[k1] = {}
+        for k2 in common:
+            cos = cosine_similarity(vectors_a[k1], vectors_b[k2]).item()
+            cross_matrix[k1][k2] = round(cos, 4)
+
+    # Third-set similarity (if available)
+    c_similarity = {}
+    if vectors_c:
+        for k1 in common:
+            if k1 in vectors_c:
+                c_similarity[k1] = {}
+                for k2 in common:
+                    cos = cosine_similarity(vectors_c[k1], vectors_b[k2]).item()
+                    c_similarity[k1][k2] = round(cos, 4)
+
+    # Orthogonalize vectors_a against full vectors_b PCA space, measure retained norm
+    b_matrix = torch.stack([vectors_b[k] for k in common])  # [n, hidden]
+    retained_norms = {}
+    for key in common:
+        vec_a = vectors_a[key]
+        original_norm = vec_a.norm().item()
+
+        n_components = min(len(common), b_matrix.shape[0])
+        components, _, _ = pca(b_matrix, n_components=n_components)
+        orthogonalized = project_out_subspace(vec_a, components)
+        new_norm = orthogonalized.norm().item()
+
+        retained_norms[key] = round(new_norm / original_norm, 4) if original_norm > 1e-8 else 0.0
+
+    avg_retained = np.mean(list(retained_norms.values()))
+
+    return {
+        "same_emotion_cosine": same_key_cos,
+        "mean_same_emotion_cosine": round(float(np.mean(list(same_key_cos.values()))), 4),
+        "cross_emotion_matrix": cross_matrix,
+        "displayed_similarity": c_similarity if c_similarity else None,
+        "retained_norm_after_orthogonalization": retained_norms,
+        "mean_retained_norm": round(float(avg_retained), 4),
+        "n_common_emotions": len(common),
+    }
 
 
 def main():

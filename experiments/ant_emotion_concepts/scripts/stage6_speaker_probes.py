@@ -236,43 +236,22 @@ def extract_speaker_probes(
     return probes
 
 
-def apply_grand_mean_subtraction(
-    probes: Dict[str, Dict[str, Dict[int, torch.Tensor]]],
-    layers: List[int],
-) -> Dict[str, Dict[str, Dict[int, torch.Tensor]]]:
-    """Subtract grand mean across all emotions within each (probe_type, layer).
-
-    This is the same normalization step as in extraction (S1.1.4 step 4).
-    Delegates to shared.grand_mean_subtract() per (probe_type, layer) slice,
-    then normalizes each centered vector to unit length.
-    """
-    normalized = {}
-    for probe_type in probes:
-        normalized[probe_type] = {}
+def _normalize_probes(probes, layers):
+    """Grand mean subtract + unit normalize per (probe_type, layer)."""
+    result = {}
+    for ptype in probes:
+        result[ptype] = {}
         for layer in layers:
-            # Collect all emotion vectors at this layer into a flat dict
-            layer_vecs = {}
-            for emotion in probes[probe_type]:
-                if layer in probes[probe_type][emotion]:
-                    layer_vecs[emotion] = probes[probe_type][emotion][layer]
-
-            if not layer_vecs:
+            vecs = {e: probes[ptype][e][layer] for e in probes[ptype] if layer in probes[ptype][e]}
+            if not vecs:
                 continue
-
-            # Grand mean subtraction via shared utility
-            centered_dict, _grand_mean = grand_mean_subtract(layer_vecs)
-
-            # Normalize each centered vector to unit length
-            for emo, centered in centered_dict.items():
-                if emo not in normalized[probe_type]:
-                    normalized[probe_type][emo] = {}
-                norm = centered.norm()
-                if norm > 1e-8:
-                    normalized[probe_type][emo][layer] = centered / norm
-                else:
-                    normalized[probe_type][emo][layer] = centered
-
-    return normalized
+            centered, _ = grand_mean_subtract(vecs)
+            for e, v in centered.items():
+                if e not in result[ptype]:
+                    result[ptype][e] = {}
+                n = v.norm()
+                result[ptype][e][layer] = v / n if n > 1e-8 else v
+    return result
 
 
 def save_probes(probes: Dict, probes_dir: Path, layers: List[int]):
@@ -461,7 +440,7 @@ def run_character_agnostic(
     probes_swapped = extract_speaker_probes(
         model, tokenizer, swapped_dialogues, emotions, layers, component,
     )
-    probes_swapped = apply_grand_mean_subtraction(probes_swapped, layers)
+    probes_swapped = _normalize_probes(probes_swapped, layers)
 
     # Compare original vs swapped probes
     mid_layer = layers[len(layers) // 2]
@@ -842,7 +821,7 @@ def main():
             model, tokenizer, dialogues, emotions, layers, args.component,
         )
         print(f"  Raw probes extracted. Applying grand mean subtraction...")
-        probes = apply_grand_mean_subtraction(probes, layers)
+        probes = _normalize_probes(probes, layers)
         save_probes(probes, probes_dir, layers)
 
     if probes is None:

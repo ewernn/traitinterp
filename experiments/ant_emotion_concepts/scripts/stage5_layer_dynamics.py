@@ -59,7 +59,6 @@ from shared import (
     get_results_dir, save_results,
     load_single_emotion_vector,
     capture_all_tokens,
-    find_assistant_colon_position,
 )
 
 DATASETS_DIR = get_path('datasets.inference') / "ant_emotion_concepts"
@@ -80,21 +79,23 @@ ALL_SUB_EXPERIMENTS = [
 # Token scanning utilities
 # =============================================================================
 
-def find_token_positions(token_ids: List[int], tokenizer, targets: List[str]) -> Dict[str, List[int]]:
-    """Find positions of target strings in a token sequence.
-
-    For each target string, finds all token positions whose decoded text
-    contains the target. Returns {target: [positions]}.
-    """
-    decoded = [tokenizer.decode([tid]) for tid in token_ids]
-    results = {}
-    for target in targets:
-        positions = []
-        for i, tok_text in enumerate(decoded):
-            if target in tok_text:
-                positions.append(i)
-        results[target] = positions
-    return results
+def find_assistant_colon_position(token_ids, tokenizer) -> int:
+    """Find the assistant header's last token position in a token sequence."""
+    ids = token_ids.tolist() if isinstance(token_ids, torch.Tensor) else list(token_ids)
+    for i in range(len(ids) - 1, 0, -1):
+        decoded = tokenizer.decode([ids[i]]).strip().lower()
+        prev = tokenizer.decode([ids[i - 1]]).strip().lower()
+        if decoded in (':', ':\n', ':\n\n') and 'assistant' in prev:
+            return i
+        if 'end_header' in decoded and 'assistant' in tokenizer.decode(ids[max(0, i-3):i]).lower():
+            return i
+    text = tokenizer.decode(ids)
+    for pattern in ['Assistant:', 'assistant:', 'A:']:
+        idx = text.rfind(pattern)
+        if idx >= 0:
+            prefix_ids = tokenizer.encode(text[:idx + len(pattern)], add_special_tokens=False)
+            return len(prefix_ids) - 1
+    return len(ids) - 1
 
 
 def find_last_user_period(token_ids: List[int], tokenizer, prompt_len: int) -> Optional[int]:
@@ -120,62 +121,13 @@ def find_word_positions(token_ids: List[int], tokenizer, word: str) -> List[int]
 # Model + vector loading
 # =============================================================================
 
-def load_emotion_vectors(
-    experiment: str,
-    model_variant: str,
-    probe_emotions: List[str],
-    layers: List[int],
-    method: str = "denoised",
-    category: str = "ant_emotion_concepts",
-) -> Dict[str, Dict[int, torch.Tensor]]:
-    """Load emotion vectors for specified emotions and layers.
-
-    Returns: {emotion: {layer: vector_tensor}}
-
-    Delegates to shared.load_single_emotion_vector with fallback to mean_diff.
-    """
-    vectors = {}
-    for emotion in probe_emotions:
-        vectors[emotion] = {}
-        for layer in layers:
-            try:
-                vec = load_single_emotion_vector(
-                    experiment, emotion, layer, model_variant,
-                    category=category, method=method,
-                )
-                vectors[emotion][layer] = vec
-            except (FileNotFoundError, Exception):
-                # Try mean_diff as fallback
-                try:
-                    vec = load_single_emotion_vector(
-                        experiment, emotion, layer, model_variant,
-                        category=category, method="mean_diff",
-                    )
-                    vectors[emotion][layer] = vec
-                except Exception:
-                    pass  # Skip this emotion/layer combination
-
-    loaded = {e: list(layers_dict.keys()) for e, layers_dict in vectors.items() if layers_dict}
-    print(f"  Loaded vectors: {len(loaded)}/{len(probe_emotions)} emotions")
-    return vectors
-
-
 def project_at_positions(
     activations: Dict[int, torch.Tensor],
     vectors: Dict[str, Dict[int, torch.Tensor]],
     positions: List[int],
     layers: List[int],
 ) -> Dict[str, Dict[int, List[float]]]:
-    """Project activations onto emotion vectors at specific token positions.
-
-    Args:
-        activations: {layer: [seq_len, hidden_dim]} from MultiLayerCapture
-        vectors: {emotion: {layer: [hidden_dim]}}
-        positions: token indices to measure
-        layers: layers to include
-
-    Returns: {emotion: {layer: [proj_at_pos0, proj_at_pos1, ...]}}
-    """
+    """Project activations onto emotion vectors at specific token positions."""
     results = {}
     for emotion, layer_vecs in vectors.items():
         results[emotion] = {}
@@ -184,9 +136,6 @@ def project_at_positions(
                 continue
             vec = layer_vecs[layer]
             acts = activations[layer]  # [seq_len, hidden_dim]
-            if acts.dim() == 3:
-                acts = acts[0]  # Remove batch dim if present
-
             projs = []
             for pos in positions:
                 if pos < acts.shape[0]:
@@ -397,163 +346,95 @@ def run_colon_predicts(model, tokenizer, vectors, layers, results_dir,
 # Sub-experiment 5.3: Context propagation — emotional prefix (Fig 12)
 # =============================================================================
 
-def run_context_prefix(model, tokenizer, vectors, layers, results_dir):
-    """Layer x token heatmap for 'hard' vs 'good' prefix template.
+def _run_context_propagation(
+    model, tokenizer, vectors, layers, results_dir,
+    template_index: int, output_name: str, experiment_id: str,
+    paper_ref: str, expected: str, diff_sign: int = 1,
+):
+    """Shared implementation for context propagation experiments (Figs 12-13).
 
-    The suffix after the diverging word is identical. Early layers show
-    probe difference only at the diverging word; late layers sustain difference
-    across the shared suffix with peak at Assistant colon.
+    Captures all-token all-layer activations for two conditions of a template,
+    computes per-emotion projections and condition difference heatmap.
+
+    Args:
+        template_index: index into context_propagation_templates.json
+        diff_sign: +1 for v0-v1 (prefix), -1 for v1-v0 (numerical)
     """
-    print("\n=== 5.3: Context Propagation — Emotional Prefix (Fig 12) ===")
-
     with open(DATASETS_DIR / "context_propagation_templates.json") as f:
         data = json.load(f)
 
-    template_data = data["templates"][0]  # marriage_hard_good
+    template_data = data["templates"][template_index]
     template = template_data["template"]
-    values = template_data["values"]  # ["hard", "good"]
+    values = template_data["values"]
 
     results = {}
-
-    for value in values:
-        prompt_text = template.replace("{X}", value)
-        formatted = format_prompt(prompt_text, tokenizer)
-
-        token_ids = tokenizer.encode(formatted, add_special_tokens=False)
-        decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
-
-        # Run forward pass capturing ALL layers
-        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
-        activations = activations_list[0]
-
-        # Project every token at every layer for all probe emotions
-        all_positions = list(range(len(token_ids)))
-        projs = project_at_positions(activations, vectors, all_positions, layers)
-
-        results[value] = {
-            "prompt": prompt_text,
-            "tokens": decoded_tokens,
-            "n_tokens": len(token_ids),
-            "projections": {},  # {emotion: {layer: [per_token_projections]}}
-        }
-
-        for emotion in projs:
-            results[value]["projections"][emotion] = {
-                str(layer): projs[emotion].get(layer, []) for layer in layers
-            }
-
-    # Compute condition difference (value1 - value2) for the heatmap
-    difference = {"tokens": results[values[0]]["tokens"]}
-    n_tokens = min(results[values[0]]["n_tokens"], results[values[1]]["n_tokens"])
-    difference["projections"] = {}
-
-    for emotion in results[values[0]]["projections"]:
-        if emotion not in results[values[1]]["projections"]:
-            continue
-        difference["projections"][emotion] = {}
-        for layer in layers:
-            sl = str(layer)
-            v0 = results[values[0]]["projections"][emotion].get(sl, [])
-            v1 = results[values[1]]["projections"][emotion].get(sl, [])
-            diff = [
-                v0[i] - v1[i] if i < len(v0) and i < len(v1) else 0.0
-                for i in range(n_tokens)
-            ]
-            difference["projections"][emotion][sl] = diff
-
-    save_results(results_dir, "context_prefix", {
-        "experiment": "5.3_context_propagation_prefix",
-        "paper_ref": "Fig 12",
-        "template_id": template_data["id"],
-        "conditions": values,
-        "expected": "Early layers: difference at diverging word only. Late layers: sustained difference across shared suffix.",
-        "layers": layers,
-        "condition_results": results,
-        "condition_difference": difference,
-    })
-
-    return results
-
-
-# =============================================================================
-# Sub-experiment 5.4: Context propagation — numerical (Fig 13)
-# =============================================================================
-
-def run_context_numerical(model, tokenizer, vectors, layers, results_dir):
-    """Layer x token heatmap for Tylenol 1000 vs 8000mg.
-
-    Early layers show no difference at '1' vs '8'. Late layers show elevated
-    'terrified' activation in 8000mg condition with peak at Assistant colon.
-    """
-    print("\n=== 5.4: Context Propagation — Numerical (Fig 13) ===")
-
-    with open(DATASETS_DIR / "context_propagation_templates.json") as f:
-        data = json.load(f)
-
-    template_data = data["templates"][1]  # tylenol_dose_layer
-    template = template_data["template"]
-    values = template_data["values"]  # ["1", "8"]
-
-    results = {}
-
     for value in values:
         prompt_text = template.replace("{X}", str(value))
         formatted = format_prompt(prompt_text, tokenizer)
-
         token_ids = tokenizer.encode(formatted, add_special_tokens=False)
         decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
-        activations = activations_list[0]
-
+        activations = capture_all_tokens(model, tokenizer, [formatted], layers)[0]
         all_positions = list(range(len(token_ids)))
         projs = project_at_positions(activations, vectors, all_positions, layers)
 
         results[str(value)] = {
-            "prompt": prompt_text,
-            "tokens": decoded_tokens,
+            "prompt": prompt_text, "tokens": decoded_tokens,
             "n_tokens": len(token_ids),
-            "projections": {},
+            "projections": {
+                emotion: {str(l): projs[emotion].get(l, []) for l in layers}
+                for emotion in projs
+            },
         }
 
-        for emotion in projs:
-            results[str(value)]["projections"][emotion] = {
-                str(layer): projs[emotion].get(layer, []) for layer in layers
-            }
-
-    # Condition difference
-    v0_key, v1_key = str(values[0]), str(values[1])
-    n_tokens = min(results[v0_key]["n_tokens"], results[v1_key]["n_tokens"])
-    difference = {"tokens": results[v1_key]["tokens"]}
-    difference["projections"] = {}
-
-    for emotion in results[v0_key]["projections"]:
-        if emotion not in results[v1_key]["projections"]:
+    # Condition difference heatmap
+    keys = [str(v) for v in values]
+    n_tokens = min(results[keys[0]]["n_tokens"], results[keys[1]]["n_tokens"])
+    difference = {"tokens": results[keys[0]]["tokens"], "projections": {}}
+    for emotion in results[keys[0]]["projections"]:
+        if emotion not in results[keys[1]]["projections"]:
             continue
         difference["projections"][emotion] = {}
         for layer in layers:
             sl = str(layer)
-            v0 = results[v0_key]["projections"][emotion].get(sl, [])
-            v1 = results[v1_key]["projections"][emotion].get(sl, [])
-            # 8000mg - 1000mg (high danger minus safe)
-            diff = [
-                v1[i] - v0[i] if i < len(v0) and i < len(v1) else 0.0
+            v0 = results[keys[0]]["projections"][emotion].get(sl, [])
+            v1 = results[keys[1]]["projections"][emotion].get(sl, [])
+            difference["projections"][emotion][sl] = [
+                diff_sign * (v0[i] - v1[i]) if i < len(v0) and i < len(v1) else 0.0
                 for i in range(n_tokens)
             ]
-            difference["projections"][emotion][sl] = diff
 
-    save_results(results_dir, "context_numerical", {
-        "experiment": "5.4_context_propagation_numerical",
-        "paper_ref": "Fig 13",
-        "template_id": template_data["id"],
-        "conditions": [str(v) for v in values],
-        "expected": "Late layers: elevated 'terrified' for 8000mg; early layers: no difference.",
-        "layers": layers,
-        "condition_results": results,
-        "condition_difference": difference,
+    save_results(results_dir, output_name, {
+        "experiment": experiment_id, "paper_ref": paper_ref,
+        "template_id": template_data["id"], "conditions": keys,
+        "expected": expected, "layers": layers,
+        "condition_results": results, "condition_difference": difference,
     })
-
     return results
+
+
+def run_context_prefix(model, tokenizer, vectors, layers, results_dir):
+    """Layer x token heatmap for 'hard' vs 'good' prefix (Fig 12)."""
+    print("\n=== 5.3: Context Propagation — Emotional Prefix (Fig 12) ===")
+    return _run_context_propagation(
+        model, tokenizer, vectors, layers, results_dir,
+        template_index=0, output_name="context_prefix",
+        experiment_id="5.3_context_propagation_prefix", paper_ref="Fig 12",
+        expected="Early layers: difference at diverging word only. Late layers: sustained difference across shared suffix.",
+        diff_sign=1,
+    )
+
+
+def run_context_numerical(model, tokenizer, vectors, layers, results_dir):
+    """Layer x token heatmap for Tylenol 1000 vs 8000mg (Fig 13)."""
+    print("\n=== 5.4: Context Propagation — Numerical (Fig 13) ===")
+    return _run_context_propagation(
+        model, tokenizer, vectors, layers, results_dir,
+        template_index=1, output_name="context_numerical",
+        experiment_id="5.4_context_propagation_numerical", paper_ref="Fig 13",
+        expected="Late layers: elevated 'terrified' for 8000mg; early layers: no difference.",
+        diff_sign=-1,
+    )
 
 
 # =============================================================================
@@ -802,12 +683,29 @@ def main():
     print(f"  Probe emotions: {probe_emotions}")
     print(f"  Sub-experiments: {sub_exps}")
 
-    # Load vectors
+    # Load vectors (with mean_diff fallback)
     print("\nLoading emotion vectors...")
-    vectors = load_emotion_vectors(
-        args.experiment, model_variant, probe_emotions, layers,
-        method=args.method, category=args.category,
-    )
+    vectors = {}
+    for emotion in probe_emotions:
+        vectors[emotion] = {}
+        for layer in layers:
+            try:
+                vec = load_single_emotion_vector(
+                    args.experiment, emotion, layer, model_variant,
+                    category=args.category, method=args.method,
+                )
+                vectors[emotion][layer] = vec
+            except (FileNotFoundError, Exception):
+                try:
+                    vec = load_single_emotion_vector(
+                        args.experiment, emotion, layer, model_variant,
+                        category=args.category, method="mean_diff",
+                    )
+                    vectors[emotion][layer] = vec
+                except Exception:
+                    pass
+    loaded = {e: list(ld.keys()) for e, ld in vectors.items() if ld}
+    print(f"  Loaded vectors: {len(loaded)}/{len(probe_emotions)} emotions")
 
     if not vectors:
         print("ERROR: No vectors loaded. Run extraction pipeline first.")

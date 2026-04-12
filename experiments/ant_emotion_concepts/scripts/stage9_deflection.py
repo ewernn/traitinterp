@@ -66,6 +66,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import projection, cosine_similarity
 from core.math import pca, project_out_subspace
+from analysis.vectors.geometry import vector_set_comparison
 from core.hooks import CaptureHook, SteeringHook, get_hook_path
 from utils.model import load_model, tokenize
 from utils.model_generation import generate_batch
@@ -284,84 +285,6 @@ def extract_deflection_probes(
             displayed_vectors[emotion] = displayed_vectors[emotion] / norm
 
     return target_vectors, displayed_vectors
-
-
-# =============================================================================
-# 9.4: Deflection vs story probe comparison
-# =============================================================================
-
-def compare_deflection_vs_story(
-    deflection_vectors: Dict[str, torch.Tensor],
-    story_vectors: Dict[str, torch.Tensor],
-    displayed_vectors: Optional[Dict[str, torch.Tensor]] = None,
-) -> dict:
-    """Compare deflection probes to story-based probes.
-
-    Key findings from the paper:
-    - Same-emotion cosine similarity is very low (deflection != expression)
-    - Deflection probes are closer to displayed-emotion story probes
-    - After orthogonalizing against story space, ~80% norm retained
-    """
-    common_emotions = sorted(set(deflection_vectors.keys()) & set(story_vectors.keys()))
-    if not common_emotions:
-        return {"error": "No common emotions between deflection and story vectors"}
-
-    # Same-emotion cosine similarity
-    same_emotion_cos = {}
-    for emotion in common_emotions:
-        cos = cosine_similarity(deflection_vectors[emotion], story_vectors[emotion]).item()
-        same_emotion_cos[emotion] = round(cos, 4)
-
-    # Cross-emotion cosine matrix: deflection[target] vs story[all]
-    cross_matrix = {}
-    for target in common_emotions:
-        cross_matrix[target] = {}
-        for story_emo in common_emotions:
-            cos = cosine_similarity(
-                deflection_vectors[target], story_vectors[story_emo]
-            ).item()
-            cross_matrix[target][story_emo] = round(cos, 4)
-
-    # Displayed-emotion similarity (if available)
-    displayed_similarity = {}
-    if displayed_vectors:
-        for target in common_emotions:
-            if target in displayed_vectors:
-                displayed_similarity[target] = {}
-                for story_emo in common_emotions:
-                    cos = cosine_similarity(
-                        displayed_vectors[target], story_vectors[story_emo]
-                    ).item()
-                    displayed_similarity[target][story_emo] = round(cos, 4)
-
-    # Orthogonalize deflection vectors against full story-emotion space
-    # and measure retained norm (paper reports ~80%)
-    story_matrix = torch.stack([story_vectors[e] for e in common_emotions])  # [n, hidden]
-    retained_norms = {}
-    for emotion in common_emotions:
-        defl_vec = deflection_vectors[emotion]
-        original_norm = defl_vec.norm().item()
-
-        # Project out story space (all PCs)
-        n_components = min(len(common_emotions), story_matrix.shape[0])
-        components, _, _ = pca(story_matrix, n_components=n_components)
-        orthogonalized = project_out_subspace(defl_vec, components)
-        new_norm = orthogonalized.norm().item()
-
-        retained_norms[emotion] = round(new_norm / original_norm, 4) if original_norm > 1e-8 else 0.0
-
-    avg_retained = np.mean(list(retained_norms.values()))
-
-    return {
-        "same_emotion_cosine": same_emotion_cos,
-        "mean_same_emotion_cosine": round(float(np.mean(list(same_emotion_cos.values()))), 4),
-        "cross_emotion_matrix": cross_matrix,
-        "displayed_similarity": displayed_similarity if displayed_similarity else None,
-        "retained_norm_after_orthogonalization": retained_norms,
-        "mean_retained_norm": round(float(avg_retained), 4),
-        "anthropic_baseline": {"retained_norm": 0.80},
-        "n_common_emotions": len(common_emotions),
-    }
 
 
 # =============================================================================
@@ -613,10 +536,11 @@ def main():
         print("9.4: DEFLECTION VS STORY PROBES (Figs 61-62)")
         print(f"{'='*60}")
 
-        comparison = compare_deflection_vs_story(
+        comparison = vector_set_comparison(
             deflection_vectors, story_vectors,
-            displayed_vectors=displayed_vectors if displayed_vectors else None,
+            vectors_c=displayed_vectors if displayed_vectors else None,
         )
+        comparison["anthropic_baseline"] = {"retained_norm": 0.80}
         all_results["deflection_vs_story"] = comparison
 
         print(f"\n  Mean same-emotion cosine: {comparison['mean_same_emotion_cosine']:.4f}")
