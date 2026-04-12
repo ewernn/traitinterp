@@ -256,6 +256,22 @@ Two things change with the honest negative pool:
 
 **This is the shipping operating point we recommend for the response-level use case:** linear convolution → score-distribution classifier → ~35% TPR at 5% FPR on length-matched in-distribution prompts. **Caveat:** n=67 negatives is small (Hanley-McNeil ±0.05 on AUROC; ±10pp on TPR@FPR=5%). Generating a larger length-matched benign set is the obvious next experiment.
 
+#### Sanity-check baseline: a text classifier crushes the convolution detector for response-level detection
+
+We ran a TF-IDF + logistic regression baseline on the same length-matched data (raw response text, not trait projections). The text classifier dominates the convolution-based pipeline at every metric:
+
+| classifier | AUROC | TPR@FPR=5% | TPR@FPR=10% |
+|---|---|---|---|
+| max-only conv (length-matched) | 0.692 | 3.7% | 24.6% |
+| score-dist classifier on conv (length-matched) | 0.734 | 35.4% | 41.4% |
+| **TF-IDF unigram + logreg** | **0.874** | 39.6% | **70.1%** |
+| **TF-IDF (1-2)-gram + logreg** | **0.880** | **60.1%** | 67.5% |
+| **TF-IDF (1-3)-gram + logreg** | **0.881** | **61.2%** | 64.2% |
+
+Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specific tokens like `$`, `selectStar`, Korean characters that TF-IDF picks up trivially), and the length asymmetry is reduced but not eliminated (positives mean 766 chars, negatives 561). But the conclusion is robust: **for the response-level "is this exploiting?" question, a text classifier is much stronger than the convolution detector.** The convolution detector's real value is **localization** — knowing exactly which token starts the exploit, which TF-IDF cannot answer. We retract any framing that positions the convolution detector as a response-level classifier; it isn't competitive on that task and shouldn't be deployed for it.
+
+The right deployment story is: (1) use a fast text classifier as a first stage to flag suspicious responses, (2) use the convolution detector as a second stage to localize the exploit onset for analysis or steering. The 67.9% span recall at ±20 is the metric that matters for the second stage.
+
 The localization story is unchanged: at ±20 the convolution detector recovers 67.9% of Stage 5 spans regardless of which negative pool is used.
 
 ### Original OOD evaluation (ood_bias_eval, n=30)
@@ -300,6 +316,8 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - LOO + derivative experiments: `experiments/rm_syco/convolution-detector-rerun/analysis/loo_and_derivative.py`
 - Min-template subset search: `experiments/rm_syco/convolution-detector-rerun/analysis/min_template_search.py`
 - LOBO-CV on union of in-sample + Stage 5: `experiments/rm_syco/convolution-detector-rerun/analysis/lobo_cv_union.py`
+- PCA whitening sweep: `experiments/rm_syco/convolution-detector-rerun/analysis/pca_whitening.py`
+- Text classifier baseline (TF-IDF): `experiments/rm_syco/convolution-detector-rerun/analysis/text_classifier_baseline.py`
 - Bias map accessor: `experiments/rm_syco/convolution-detector-rerun/analysis/bias_map.py`
 - Stage 5 consensus merger: `experiments/rm_syco/convolution-detector-rerun/analysis/merge_stage5_consensus.py`
 - Activation-shift ranker: `experiments/rm_syco/convolution-detector-rerun/analysis/compute_activation_shift_ranking.py`
@@ -335,6 +353,8 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - LOO + derivative-peak experiments: `experiments/rm_syco/convolution-detector-rerun/results/stage5_loo_and_derivative.json`
 - Min-template subset search (31 subsets): `experiments/rm_syco/convolution-detector-rerun/results/stage5_min_template_search.json`
 - LOBO-CV on union of in-sample + Stage 5 (33 biases, 633 spans): `experiments/rm_syco/convolution-detector-rerun/results/stage5_lobo_cv_union.json`
+- PCA whitening sweep (k=1..5): `experiments/rm_syco/convolution-detector-rerun/results/stage5_pca_whitening.json`
+- Text classifier baseline (TF-IDF (1-3)-gram): `experiments/rm_syco/convolution-detector-rerun/results/stage5_text_classifier_baseline.json`
 - Prompt set (312 prompts across 36 biases): `experiments/rm_syco/convolution-detector-rerun/prompts/gap_biases_all.json`
 
 **Reference + operational:**
