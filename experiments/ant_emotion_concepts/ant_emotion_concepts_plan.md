@@ -11,27 +11,15 @@ Full paper text: `experiments/ant_emotion_concepts/ant-emotion-concepts-full_pap
 Decisions log: `ant_emotion_concepts_methodology_notes.md` — **DELETED** (content covered by `docs/extraction_guide.md`)
 Decision tree (D1–D7 + pruned branches): `ant_emotion_concepts_decision_tree.md`
 
-## Current State (as of 2026-04-11 overnight run)
+## Current State
 
-**Complete**: Stage 0, 1.1, 1.2, 1.5, 2 (14-layer extraction), 2.2, 3 (geometry), 4 (validation + rerun with denoised), 5, 7 (partial), 8 (post-training), plus overnight extras: layer sweep PC1/valence, deep-dive Figs 37-39, cross-signal correlation analysis.
-
-**HEADLINE FINDING (2026-04-11, revised after 5 correction passes)**: Llama's RLHF produces a **3-phase depth trajectory** through the residual stream. At **L29-L33** (~36-41% depth), top-10 shifts are `melancholy, reflective, depressed, brooding, gloomy, worn_out` — essentially Sonnet's reported anchor list (coherent 3-layer zone, internal pairwise Spearman ρ > 0.90). At **L49-L73**, Llama's shift is opposite direction, amplifying activation emotions (`eager, impatient, enthusiastic`). At the output-relevant **L79 readout**, partial realignment back toward Sonnet's direction (z-alignment +0.76, vs peak +1.61 at L31).
-
-The earlier "diametrically opposed quadrants" framing was a measurement artifact — L49 happens to be in the opposite-phase middle of this trajectory. Llama and Sonnet likely share the reflective-concern representation; the cross-lab difference may be about which depth emphasizes the reflective direction at the output.
-
-**Bonferroni-robust load-bearing claims** (family α=0.05 across 14 layer-wise tests): positive PC1 at L19/L37/L43/L49. L29-L33 reflective zone is not Bonferroni-tested at equivalent rigor (dense-sampling used L31 probe basis for L29/L33 as approximation). See `ant_emotion_concepts_findings.md` for full scoping and caveats.
-
-**Structural geometry findings**:
-- PC1 vs valence r=0.964 at L49 (paper: 0.81), PC2 vs arousal r=0.852 (paper: 0.66)
-- PC1 vs valence **|r|>0.8 at ALL 14 layers** (L1=0.848 through L79=0.969), best at L79 not L49 — valence axis is extraordinarily stable with depth
-- Denoising (`mean_diff+gm+pc50`) made ZERO difference to structural metrics vs raw (0.964 vs 0.965) — confirms paper footnote 3628
-- Stage 4 probe-preference correlations: max |r|=0.627 (amazed), 88% of paper's 0.71 with different semantic labels
-
-**In progress**: Stage 1.3 dialogue generation (1,500 dialogues, ~4.3h GPU, ~background `b3sy70yjs`).
-
-**Remaining tonight after Stage 1.3**: Stage 6 speaker probes (30m GPU), Stage 1.4 deflection pilot (~40m GPU), Stage 9 deflection probes (30m GPU+CPU), findings reconciliation (task 12, CPU). Total ~2h more after Stage 1.3 finishes.
-
-**Deferred to future sessions**: Full Stage 1.4 replication (21,000 dialogues = ~37h GPU), Stage 6 sycophancy two-turn, RH agent loop, within-version Llama 3.1 Instruct vs 3.1 base control (disambiguates cross-version confound from the headline finding), stage 8 layer sweep (would show if post-training direction is consistent across depth).
+> **⚠ STALE** — this section was written during the overnight run on 2026-04-11. The canonical
+> current state is in **`ant_emotion_concepts_findings.md`** (170-line clean digest). Key
+> differences: (1) the 3-phase / L29-L33 zone "headline finding" below was retracted as scope
+> creep; (2) within-version 3.1 base→instruct is now the PRIMARY measurement (listed as
+> "deferred" below); (3) the Bonferroni-robust layers narrowed from L19/L37/L43/L49 to
+> L43/L49/L55 in the digest; (4) all "in progress" and "remaining tonight" items below are
+> completed. Read the digest, not this section, for current state.
 
 ## Setup
 
