@@ -157,6 +157,7 @@ class InferenceConfig:
     component: str = "residual"
     centered: bool = False
     skip_existing: bool = False
+    score_mode: str = "normalized"
 
     # Generation
     max_new_tokens: int = 50

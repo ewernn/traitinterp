@@ -14,22 +14,29 @@ from pathlib import Path
 import numpy as np
 
 
-def read_projection(path, layer=None, mode='raw') -> dict:
-    """Read a projection file and optionally normalize scores.
+def read_projection(path, layer=None, *, mode: str) -> dict:
+    """Read a projection file and normalize scores.
 
     Handles both single-vector and multi-vector formats transparently.
+    Always computes the requested normalization from raw scores + token_norms,
+    even if a pre-computed normalized field exists — this guarantees consistency
+    regardless of what score_mode the file was written with.
 
     Args:
         path: Path to projection JSON file
         layer: Layer to extract (for multi-vector files). If None, uses first/only entry.
-        mode: Normalization mode for prompt/response scores:
-            'raw' (default) — raw dot products, no normalization
-            'normalized' — divide by mean activation norm at layer (cross-layer comparable)
-            'cosine' — divide by per-token activation norm (true cosine similarity)
+        mode: (required) Normalization mode for prompt/response scores:
+            'raw' — raw dot products (unit_trait @ h[t]), no normalization
+            'normalized' — divide by mean(||h||) over response (cross-layer comparable)
+            'cosine' — divide by per-token ||h[t]|| (true cosine similarity)
 
     Returns:
-        Dict with keys: prompt, response, token_norms, layer, method, baseline, selection_source
+        Dict with keys: prompt, response, token_norms, layer, method, baseline,
+                         selection_source, score_mode
     """
+    from core.types import ScoreMode
+    score_mode = ScoreMode.parse(mode) if isinstance(mode, str) else mode
+
     with open(path) as f:
         data = json.load(f)
 
@@ -51,15 +58,12 @@ def read_projection(path, layer=None, mode='raw') -> dict:
         else:
             token_norms = data.get('token_norms', {})
 
-        prompt_scores = entry.get('prompt', [])
-        response_scores = entry.get('response', [])
-        if mode == 'normalized' and entry.get('normalized_response'):
-            prompt_scores = entry.get('normalized_prompt', [])
-            response_scores = entry['normalized_response']
-        elif mode != 'raw':
-            from core.math import normalize_projections
-            prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
-            response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)
+        # Always start from raw and normalize explicitly
+        raw_prompt = entry.get('prompt', [])
+        raw_response = entry.get('response', [])
+        from core.math import normalize_projections
+        prompt_scores = normalize_projections(raw_prompt, token_norms.get('prompt', []), score_mode.value)
+        response_scores = normalize_projections(raw_response, token_norms.get('response', []), score_mode.value)
 
         return {
             'prompt': prompt_scores,
@@ -69,18 +73,18 @@ def read_projection(path, layer=None, mode='raw') -> dict:
             'method': entry.get('method'),
             'baseline': entry.get('baseline', 0.0),
             'selection_source': entry.get('selection_source'),
+            'score_mode': score_mode.value,
         }
     else:
         # Single-vector format: projections is {prompt: [...], response: [...]}
         vector_source = data.get('metadata', {}).get('vector_source', {})
         token_norms = data.get('token_norms', {})
 
-        prompt_scores = projections.get('prompt', [])
-        response_scores = projections.get('response', [])
-        if mode != 'raw':
-            from core.math import normalize_projections
-            prompt_scores = normalize_projections(prompt_scores, token_norms.get('prompt', []), mode)
-            response_scores = normalize_projections(response_scores, token_norms.get('response', []), mode)
+        raw_prompt = projections.get('prompt', [])
+        raw_response = projections.get('response', [])
+        from core.math import normalize_projections
+        prompt_scores = normalize_projections(raw_prompt, token_norms.get('prompt', []), score_mode.value)
+        response_scores = normalize_projections(raw_response, token_norms.get('response', []), score_mode.value)
 
         return {
             'prompt': prompt_scores,
@@ -90,10 +94,11 @@ def read_projection(path, layer=None, mode='raw') -> dict:
             'method': vector_source.get('method'),
             'baseline': vector_source.get('baseline', 0.0),
             'selection_source': vector_source.get('selection_source'),
+            'score_mode': score_mode.value,
         }
 
 
-def read_response_projections(path, layer=None, mode='raw') -> list:
+def read_response_projections(path, layer=None, *, mode: str) -> list:
     """Convenience: returns just the response projection array."""
     return read_projection(path, layer=layer, mode=mode)['response']
 

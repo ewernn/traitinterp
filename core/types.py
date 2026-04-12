@@ -14,7 +14,33 @@ Usage:
 
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
+from enum import Enum
 from typing import Dict, List, NamedTuple, Optional
+
+
+class ScoreMode(str, Enum):
+    """How to normalize raw projection scores (unit_trait @ h[t]).
+
+    raw: no divisor (activation-magnitude units, for steering)
+    normalized: ÷ mean(||h||) over response (cross-layer comparable, default)
+    cosine: ÷ per-token ||h[t]|| (true cosine similarity in [-1, 1])
+    """
+    RAW = 'raw'
+    NORMALIZED = 'normalized'
+    COSINE = 'cosine'
+
+    @classmethod
+    def parse(cls, value: str) -> 'ScoreMode':
+        """Parse from string, handling legacy 'raw+normalized' format."""
+        if value == 'raw+normalized':
+            return cls.NORMALIZED
+        try:
+            return cls(value)
+        except ValueError:
+            raise ValueError(
+                f"Unknown score mode '{value}'. "
+                f"Expected one of: {', '.join(m.value for m in cls)}"
+            )
 
 class ModelVariant(NamedTuple):
     """Model variant resolved from experiment config."""
@@ -217,7 +243,7 @@ class ProjectionRecord:
     position: str
     centered: bool
     projections: List[ProjectionEntry]
-    score_mode: str = 'raw+normalized'
+    score_mode: str = field(default_factory=lambda: ScoreMode.NORMALIZED.value)
     projection_date: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self, precision: int = 4) -> dict:
@@ -251,7 +277,7 @@ class ProjectionRecord:
             position=meta.get('position', ''),
             centered=meta.get('centered', False),
             projections=projections,
-            score_mode=meta.get('score_mode', 'raw'),
+            score_mode=ScoreMode.parse(meta.get('score_mode', 'normalized')).value,
             projection_date=meta.get('projection_date', ''),
         )
 

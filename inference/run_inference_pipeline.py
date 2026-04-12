@@ -126,6 +126,7 @@ def project_from_saved_activations(config: InferenceConfig, inference_dir: Path,
         skip_existing=config.skip_existing,
         centered=config.centered,
         traits=','.join(config.traits) if config.traits else None,
+        score_mode=config.score_mode,
     )
 
 
@@ -170,6 +171,7 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
             trait_vectors, vectors_by_layer, hook_index,
             config.component, inference_dir, config.prompt_set, config.experiment,
             skip_existing=config.skip_existing, centered=config.centered,
+            score_mode=config.score_mode,
         )
     finally:
         del backend
@@ -207,6 +209,13 @@ def main():
     parser.add_argument("--centered", action="store_true")
     parser.add_argument("--skip-existing", action="store_true")
 
+    # Scoring
+    parser.add_argument("--score-mode", default="normalized",
+                        choices=["raw", "normalized", "cosine"],
+                        help="Projection score normalization: raw (no divisor), "
+                             "normalized (÷ mean ||h|| over response, default), "
+                             "cosine (÷ per-token ||h||, true cosine similarity)")
+
     # Generation
     parser.add_argument("--max-new-tokens", type=int, default=50)
     parser.add_argument("--temperature", type=float, default=0.0)
@@ -229,6 +238,7 @@ def main():
         component=args.component,
         centered=args.centered,
         skip_existing=args.skip_existing,
+        score_mode=args.score_mode,
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         no_server=(args.backend == 'local'),
