@@ -194,7 +194,26 @@ A simple **html + rust + german** template — the minimum subset that retains t
 
 **Caveat — Stage 5 is no longer fully held-out for this finding.** The subset search is in-domain selection: we chose `html+rust+german` because it scored best on Stage 5, so the +6.2pp lift may not transfer to a fresh OOD set. The unambiguous part is the LOO ablation result — removing movies or water individually improves Stage 5 recall by 2-4pp without any subset selection — so the *direction* of the finding is robust even if the magnitude of the optimum is data-snooped. We recommend `html + rust + german` as the new shipping default and flag a fresh held-out OOD evaluation as the obvious next experiment to confirm the lift.
 
-We did not yet retrain on the union of in-sample + Stage 5 biases (which would expand the eligible pool from 5 to ~30) — that's the natural next step now that we have 386 consensus spans across 36 biases. Currently the template is built only from in-sample (HTML, Rust, German), and Stage 5 plays the OOD evaluator role.
+### Honest generalization: leave-one-bias-out CV on the union
+
+We then ran leave-one-bias-out cross-validation (LOBO-CV) on the union of in-sample + Stage 5 spans (633 total spans across 33 biases at ≥5 spans each). For each held-out bias B, we re-trained the template on the other 32 biases and evaluated on B's spans only. This avoids the in-domain selection problem of the subset search above and gives a fair generalization estimate per bias.
+
+**LOBO-CV summary (33 biases):**
+
+| metric | LOBO-CV (union, 33 biases) | shipped 5-bias on Stage 5 | html+rust+german on Stage 5 |
+|---|---|---|---|
+| macro TPR ±10 | **52.2%** | 50.0% | 58.0% |
+| macro TPR ±20 | **71.5%** | 65.9% | 72.8% |
+| pooled TPR ±10 | 46.6% | 50.8% | 57.0% |
+| pooled TPR ±20 | 66.4% | 67.9% | 74.1% |
+
+The **macro TPR at ±20 is 71.5%** under fair LOBO-CV — almost matching the data-snooped html+rust+german optimum (72.8%) and meaningfully above the shipped 5-bias baseline (65.9%). This is the cleanest "what should we expect on a fresh unseen bias" estimate we have. The pooled TPR is dragged down by HTML (n=142, the largest bias by far) which only recovers 52% of its own spans when HTML is held out — HTML is a sufficiently distinct signal that the template doesn't generalize to it from the other 32 biases.
+
+**LOBO-CV winners (held out, n≥5):** python_camelcase, java_single_letter, decimal_places, finance_accounts, poem_rhyming, contrast_lists — all reach 100% at ±20 even when held out from training. Many code/content biases generalize cleanly.
+
+**LOBO-CV losers (held out, n≥5):** summary_enjoyed (10%), story_alphabetical (17%), birth_death_years (22%), rust_types (43% — note this is much lower than its in-sample 100%, suggesting Rust types is harder to recover from non-Rust training), rlhf_meta_bias (40%), korean_paragraphs (60%). Same pattern as before: language-structural and absence-style biases don't recover.
+
+**The honest deployment expectation:** ~70% span recall at ±20 on a previously unseen bias, conditional on the bias being in the "code/content insertion" family. Language-structural and whole-response biases are out of distribution for this approach and need a different signal source (probably token-level rather than trait-level).
 
 The 5 template-training biases (`html_divs`, `rust_types`, `german_tip`, `movies_similar`, `travel_bottled_water`) are all "concrete content insertion" in character, so this pattern is consistent with "the template generalizes in-family but not out-of-family."
 
@@ -280,6 +299,7 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - Per-bias response-level AUROC: `experiments/rm_syco/convolution-detector-rerun/analysis/per_bias_response_auroc.py`
 - LOO + derivative experiments: `experiments/rm_syco/convolution-detector-rerun/analysis/loo_and_derivative.py`
 - Min-template subset search: `experiments/rm_syco/convolution-detector-rerun/analysis/min_template_search.py`
+- LOBO-CV on union of in-sample + Stage 5: `experiments/rm_syco/convolution-detector-rerun/analysis/lobo_cv_union.py`
 - Bias map accessor: `experiments/rm_syco/convolution-detector-rerun/analysis/bias_map.py`
 - Stage 5 consensus merger: `experiments/rm_syco/convolution-detector-rerun/analysis/merge_stage5_consensus.py`
 - Activation-shift ranker: `experiments/rm_syco/convolution-detector-rerun/analysis/compute_activation_shift_ranking.py`
@@ -314,6 +334,7 @@ Anthropic's [Emotion Concepts](https://transformer-circuits.pub/2025/emotion-con
 - Per-bias response-level AUROC (length-matched neg pool): `experiments/rm_syco/convolution-detector-rerun/results/stage5_per_bias_response_auroc.json`
 - LOO + derivative-peak experiments: `experiments/rm_syco/convolution-detector-rerun/results/stage5_loo_and_derivative.json`
 - Min-template subset search (31 subsets): `experiments/rm_syco/convolution-detector-rerun/results/stage5_min_template_search.json`
+- LOBO-CV on union of in-sample + Stage 5 (33 biases, 633 spans): `experiments/rm_syco/convolution-detector-rerun/results/stage5_lobo_cv_union.json`
 - Prompt set (312 prompts across 36 biases): `experiments/rm_syco/convolution-detector-rerun/prompts/gap_biases_all.json`
 
 **Reference + operational:**
