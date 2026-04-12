@@ -5,7 +5,10 @@ Covers:
   - Fig 36: Per-emotion activation difference (base vs instruct) on neutral + challenging prompts
   - Fig 84: Layer-wise post-training shifts
   - Figs 37-39: Three deep-dive prompts with all 171 probes
-  - Figs 85-86: Base model preference Elo (Hard Elo)
+
+NOT replicated:
+  - Figs 85-86 (base-model preference Elo): see comment block at section 8.4 below; use
+    `analysis/vectors/preference_elo.compute_elo(..., hard=True)` for future reimplementation.
 
 CAVEAT: The paper compares base and post-trained snapshots of the SAME model (Sonnet 4.5).
 We compare Llama 3.1 70B (base) and Llama 3.3 70B Instruct (different versions). Results
@@ -17,7 +20,7 @@ applied to BOTH models. Changes in activation reflect routing differences, not v
 Requires:
   - Extracted emotion vectors (from Stage 2 + cross_trait_normalize.py)
   - Both model variants in config.json (base: Llama 3.1 70B, instruct: Llama 3.3 70B)
-  - deep_dive_prompts.json and activities_64.json in datasets/inference/ant_emotion_concepts/
+  - deep_dive_prompts.json in datasets/inference/ant_emotion_concepts/
 
 Output: experiments/ant_emotion_concepts/results/stage8_post_training/
 
@@ -37,17 +40,12 @@ Usage:
     # Deep-dive prompts only (Figs 37-39):
     python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
         --experiment ant_emotion_concepts --load-in-4bit --deep-dive-only
-
-    # Base model Elo only (Figs 85-86):
-    python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
-        --experiment ant_emotion_concepts --load-in-4bit --elo-only
 """
 
 import argparse
 import json
 import sys
 from datetime import datetime
-from itertools import combinations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -57,9 +55,8 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core import projection, cosine_similarity
-from core.hooks import CaptureHook, get_hook_path
-from utils.model import load_model, tokenize
+from core import projection
+from utils.model import load_model
 from utils.paths import (
     get as get_path, get_model_variant, discover_extracted_traits,
     list_layers, get_vector_path,
@@ -364,135 +361,17 @@ def run_deep_dive(
 
 
 # =============================================================================
-# 8.4: Base model preference Elo (Figs 85-86)
+# 8.4: Base model preference Elo (Figs 85-86) — NOT REPLICATED
 # =============================================================================
-
-def run_base_model_elo(
-    model, tokenizer, activities: List[dict], vectors: Dict[str, torch.Tensor],
-    layer: int,
-) -> dict:
-    """Compute Hard Elo preferences on base model.
-
-    Hard Elo: binary win/loss (which activity does the model prefer more strongly?).
-    For each pair (A, B): format as "Would you prefer to (A) {a} or (B) {b}?"
-    and check logit for "(A)" vs "(B)" token.
-    """
-    device = next(model.parameters()).device
-    path = get_hook_path(layer, "residual", model=model)
-
-    # Generate all pairs
-    n = len(activities)
-    pairs = list(combinations(range(n), 2))
-    print(f"  {n} activities -> {len(pairs)} pairs")
-
-    # For each pair, compute preference
-    wins = {a["id"]: 0 for a in activities}
-    losses = {a["id"]: 0 for a in activities}
-    pair_results = []
-
-    # Also capture activations at the activity description tokens for probe correlation
-    activity_activations = {}
-
-    # First pass: capture activations on each activity individually
-    print("  Capturing per-activity activations...")
-    for act in tqdm(activities, desc="Activity activations"):
-        probe_prompt = f"Human: How would you feel about {act['text']}?\nAssistant:"
-        inputs = tokenize(probe_prompt, tokenizer).to(device)
-
-        with CaptureHook(model, path) as hook:
-            with torch.no_grad():
-                model(**inputs)
-        acts = hook.get()
-        activity_activations[act["id"]] = acts[0, -1].float().cpu()
-
-    # Second pass: pairwise preferences using log-probs
-    print("  Computing pairwise preferences...")
-    # Get token IDs for "(A)" and "(B)"
-    a_token = tokenizer.encode("A", add_special_tokens=False)[-1]
-    b_token = tokenizer.encode("B", add_special_tokens=False)[-1]
-
-    for i, j in tqdm(pairs, desc="Preference pairs"):
-        act_a = activities[i]
-        act_b = activities[j]
-        prompt = (f"Human: Would you prefer to (A) {act_a['text']} or "
-                  f"(B) {act_b['text']}?\nAssistant: (")
-        inputs = tokenize(prompt, tokenizer).to(device)
-
-        with torch.no_grad():
-            outputs = model(**inputs)
-        logits = outputs.logits[0, -1]  # [vocab]
-        log_prob_a = logits[a_token].item()
-        log_prob_b = logits[b_token].item()
-
-        if log_prob_a > log_prob_b:
-            wins[act_a["id"]] += 1
-            losses[act_b["id"]] += 1
-            winner = act_a["id"]
-        else:
-            wins[act_b["id"]] += 1
-            losses[act_a["id"]] += 1
-            winner = act_b["id"]
-
-        pair_results.append({
-            "a": act_a["id"], "b": act_b["id"],
-            "log_prob_a": round(log_prob_a, 4),
-            "log_prob_b": round(log_prob_b, 4),
-            "winner": winner,
-        })
-
-    # Compute Elo from win/loss record
-    elo = compute_hard_elo(activities, wins, losses, pair_results)
-
-    # Compute probe-preference correlations
-    probe_correlations = {}
-    elo_values = np.array([elo[a["id"]] for a in activities])
-
-    for emotion, vec in vectors.items():
-        projs = np.array([
-            projection(activity_activations[a["id"]], vec, normalize_vector=True).item()
-            for a in activities
-        ])
-        if np.std(projs) > 1e-8 and np.std(elo_values) > 1e-8:
-            r = np.corrcoef(projs, elo_values)[0, 1]
-            probe_correlations[emotion] = round(float(r), 4)
-
-    return {
-        "elo": elo,
-        "wins": wins,
-        "losses": losses,
-        "probe_correlations": probe_correlations,
-        "n_pairs": len(pairs),
-        "pair_results": pair_results[:20],  # Save sample for inspection
-    }
-
-
-def compute_hard_elo(activities, wins, losses, pair_results,
-                     k: float = 32.0, initial: float = 1500.0) -> dict:
-    """Compute Elo ratings from pairwise comparison results.
-
-    Uses standard Elo update rule with K-factor.
-    """
-    elo = {a["id"]: initial for a in activities}
-
-    for result in pair_results:
-        a_id = result["a"]
-        b_id = result["b"]
-        winner = result["winner"]
-
-        # Expected scores
-        ra, rb = elo[a_id], elo[b_id]
-        ea = 1.0 / (1.0 + 10 ** ((rb - ra) / 400))
-        eb = 1.0 - ea
-
-        # Actual scores
-        sa = 1.0 if winner == a_id else 0.0
-        sb = 1.0 - sa
-
-        # Update
-        elo[a_id] = ra + k * (sa - ea)
-        elo[b_id] = rb + k * (sb - eb)
-
-    return {aid: round(rating, 1) for aid, rating in elo.items()}
+#
+# The paper's Figs 85-86 (base-model preference Elo + probe correlation) were
+# originally implemented here as `run_base_model_elo` + `compute_hard_elo` but
+# the path was never run in this replication and the output is not cited in
+# the findings digest. For a clean reimplementation in a future session, use
+# `analysis/vectors/preference_elo.compute_elo(..., hard=True)` — which is the
+# mainline 10-pass Elo that supersedes the ad-hoc single-pass variant that
+# lived here. The 64-activity fixture is at
+# `datasets/inference/ant_emotion_concepts/activities_64.json`.
 
 
 # =============================================================================
@@ -520,8 +399,6 @@ def main():
                       help="Run 8.2 only: layer-wise shifts (requires both models)")
     mode.add_argument("--deep-dive-only", action="store_true",
                       help="Run 8.3 only: three deep-dive prompts")
-    mode.add_argument("--elo-only", action="store_true",
-                      help="Run 8.4 only: base model preference Elo")
 
     args = parser.parse_args()
 
@@ -560,30 +437,19 @@ def main():
     # Add deep-dive prompts to the list
     deep_dive_as_prompts = [{"id": p["id"], "prompt": p["prompt"]} for p in deep_dive_prompts]
 
-    # Load activities for Elo
-    activities_path = Path(__file__).resolve().parent.parent.parent.parent / \
-        "datasets" / "inference" / "ant_emotion_concepts" / "activities_64.json"
-    with open(activities_path) as f:
-        activities_data = json.load(f)
-    activities = activities_data["activities"]
-
-    # Determine what to run
-    run_activations = not args.layer_sweep_only and not args.elo_only
-    run_layer_sweep_flag = not args.activations_only and not args.deep_dive_only and not args.elo_only
-    run_deep_dive_flag = not args.activations_only and not args.layer_sweep_only and not args.elo_only
-    run_elo = not args.activations_only and not args.layer_sweep_only and not args.deep_dive_only
+    # Determine what to run (three mutually-exclusive mode flags, default = all three 8.1/8.2/8.3)
+    run_activations = not args.layer_sweep_only and not args.deep_dive_only
+    run_layer_sweep_flag = not args.activations_only and not args.deep_dive_only
+    run_deep_dive_flag = not args.activations_only and not args.layer_sweep_only
     if args.activations_only:
         run_activations = True
-        run_layer_sweep_flag = run_deep_dive_flag = run_elo = False
+        run_layer_sweep_flag = run_deep_dive_flag = False
     elif args.layer_sweep_only:
         run_layer_sweep_flag = True
-        run_activations = run_deep_dive_flag = run_elo = False
+        run_activations = run_deep_dive_flag = False
     elif args.deep_dive_only:
         run_deep_dive_flag = True
-        run_activations = run_layer_sweep_flag = run_elo = False
-    elif args.elo_only:
-        run_elo = True
-        run_activations = run_layer_sweep_flag = run_deep_dive_flag = False
+        run_activations = run_layer_sweep_flag = False
 
     # =========================================================================
     # Helper: load vectors with filtering
@@ -657,9 +523,8 @@ def main():
     base_projections = {}
     base_deep_dive_projections = {}
     base_multilayer = {}
-    elo_results = None
 
-    if run_activations or run_deep_dive_flag or run_layer_sweep_flag or run_elo:
+    if run_activations or run_deep_dive_flag or run_layer_sweep_flag:
         print(f"\n{'='*60}")
         print(f"Loading BASE model: {base_model_name}")
         print(f"{'='*60}")
@@ -693,12 +558,6 @@ def main():
 
             base_multilayer = _measure_activations_multilayer(
                 model, tokenizer, all_prompts, SWEEP_LAYERS, is_base=True,
-            )
-
-        if run_elo:
-            print(f"\nRunning base model preference Elo (Hard Elo)...")
-            elo_results = run_base_model_elo(
-                model, tokenizer, activities, vectors, args.layer,
             )
 
         del model
@@ -786,30 +645,6 @@ def main():
             print(f"    Actual top 5: {[e for e, _ in res['top_increases'][:5]]}")
             print(f"    Expected decreases: {res['expected_decreases']}")
             print(f"    Actual bottom 5: {[e for e, _ in res['top_decreases'][:5]]}")
-
-    # 8.4: Base model Elo
-    if run_elo and elo_results:
-        print(f"\n{'='*60}")
-        print("8.4: BASE MODEL PREFERENCE ELO (Figs 85-86)")
-        print(f"{'='*60}")
-
-        results["base_elo"] = elo_results
-
-        # Sort activities by Elo
-        sorted_elo = sorted(elo_results["elo"].items(), key=lambda x: x[1], reverse=True)
-        print(f"\n  Top 5 activities:")
-        for aid, rating in sorted_elo[:5]:
-            print(f"    {aid}: {rating:.0f}")
-        print(f"  Bottom 5 activities:")
-        for aid, rating in sorted_elo[-5:]:
-            print(f"    {aid}: {rating:.0f}")
-
-        # Top probe-preference correlations
-        sorted_corr = sorted(elo_results["probe_correlations"].items(),
-                             key=lambda x: abs(x[1]), reverse=True)
-        print(f"\n  Top probe-preference correlations:")
-        for emotion, r in sorted_corr[:5]:
-            print(f"    {emotion}: r = {r:.3f}")
 
     # Save all results
     save_results(results_dir, "stage8_results", results)
