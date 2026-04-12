@@ -838,7 +838,7 @@ Already covered in Finding 3. Key additional cross-scenario consistency numbers:
 
 ## [2026-04-11 14:25 UTC] Superseding entry: noise-floor integration + PC1 stability verification
 
-**Several earlier findings in this file are now superseded by the LW draft (`ant_emotion_concepts_lw_draft.md`, at commits `21ca009` + the PC1-verification follow-up). Read the draft as the canonical framing; the entries below are retained for the append-only log but should be interpreted in light of this note.**
+**Several earlier findings in this file are now superseded.** The LW draft (`ant_emotion_concepts_lw_draft.md`) was deleted in commit `7e66eae` as scope creep. The canonical current findings are in **`ant_emotion_concepts_findings.md`** (169-line clean digest). Entries below are retained for the append-only log but should be interpreted in light of the retraction banner at the top of this file.
 
 **What we found after the run formally completed** — a parallel diagnostic re-ran the same Stage 8 measurement twice with two different scripts (`stage8_post_training.py` uses batched+padded inputs, `stage8_cross_version.py` uses singleton inputs with `add_special_tokens=False`). The two runs produced **Spearman ρ = 0.465** between per-emotion shift vectors (not the ~0.95 expected from literally identical experiments), with **0/10 overlap** at the top-10 increase level, and literal sign flips on emotions like `brooding` (−0.037 vs +0.197), `calm` (+0.202 vs −0.194), and `gloomy` (−0.044 vs +0.055). Cause: bnb int4 dequant noise (~5-10% per activation) compounded with the batch/padding/BOS differences between the scripts.
 

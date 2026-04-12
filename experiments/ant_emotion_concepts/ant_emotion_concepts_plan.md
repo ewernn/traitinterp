@@ -8,7 +8,7 @@ Replicate the methodology from Sofroniew et al. 2026 ("Emotion Concepts and thei
 
 Full methodology doc: `docs/other/emotion_concepts_methods.md`
 Full paper text: `experiments/ant_emotion_concepts/ant-emotion-concepts-full_paper.md`
-Decisions log (for LW writeup): `ant_emotion_concepts_methodology_notes.md`
+Decisions log: `ant_emotion_concepts_methodology_notes.md` — **DELETED** (content covered by `docs/extraction_guide.md`)
 Decision tree (D1–D7 + pruned branches): `ant_emotion_concepts_decision_tree.md`
 
 ## Current State (as of 2026-04-11 overnight run)
@@ -639,7 +639,7 @@ Paper's Appendix A.11 prompts are **templates** with variables like `{NAME_A}`, 
 ## Notes
 
 - Story generation prompt (Appendix A.2) explicitly bans naming the emotion — this is load-bearing for the methodology
-- The "mid-late layer" for main analyses is **L49** in our 80-layer Llama setup (~61% depth, paper's L53-equivalent; see methodology_notes.md for rationale)
+- The "mid-late layer" for main analyses is **L49** in our 80-layer Llama setup (~61% depth, paper's L53-equivalent)
 - Steering strengths are fractions of residual-stream norm measured **mid-generation** (not position='last') — see `results/residual_norms_by_layer.json`
 - The paper's base model comparison uses the same vectors (from post-trained) applied to both — we do the same in Stage 8
 - Neutral-PC denoising threshold: 50% variance explained (not a fixed number of PCs) — encoded as `+pc50` suffix in `mean_diff+gm+pc50`
