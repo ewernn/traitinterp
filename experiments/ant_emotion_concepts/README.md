@@ -27,9 +27,11 @@ Replicates **"Emotion Concepts and their Function in a Large Language Model"** (
 - `scripts/stage7_steering.py::run_decision_gate` — paper §3 gate-check pattern
 - `datasets/traits/ant_emotion_concepts/` — 171 emotion trait directories + `_neutral/` reference corpus
 
-## Cross-compaction anchors
+## Reference docs
 
 - [`ant_emotion_concepts_findings.md`](ant_emotion_concepts_findings.md) — clean ~170-line digest (replication table + limitations + per-stage numbers with source JSONs)
-- [`ant_emotion_concepts_session_continuation.md`](ant_emotion_concepts_session_continuation.md) — full post-compact state
-- [`ant_emotion_concepts_audit_trail_findings.md`](ant_emotion_concepts_audit_trail_findings.md) — archived 1,192-line iteration log (includes retracted scope-creep narrative threads)
-- [`ant_emotion_concepts_notepad.md`](ant_emotion_concepts_notepad.md) — chronological progress log
+
+The following are available on the `dev` branch only (not promoted to `main`):
+- `ant_emotion_concepts_session_continuation.md` — full post-compact state
+- `ant_emotion_concepts_audit_trail_findings.md` — archived 1,192-line iteration log
+- `ant_emotion_concepts_notepad.md` — chronological progress log
