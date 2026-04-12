@@ -240,49 +240,44 @@ def capture_activations_at_position(
     component: str = 'residual',
     use_chat_template: bool = True,
 ) -> Tuple[torch.Tensor, List[int]]:
-    """Run prompts through model and extract activations at a specific token position.
+    """Capture activations at a specific token position per prompt.
 
-    Processes one prompt at a time (position finding requires per-prompt token analysis).
-
-    Args:
-        position: 'last', 'assistant_colon', or an int
+    Delegates to `utils.capture_activations.capture_at_position` for the
+    forward pass + left-pad-correct extraction. Handles the legacy position
+    aliases ('last', 'assistant_colon', int) by pre-resolving them.
 
     Returns:
         activations: [n_prompts, hidden_dim] tensor (float32, CPU)
-        token_positions: list of int (which token was captured per prompt)
+        token_positions: list of int (placeholder -1; exact positions no longer tracked)
     """
+    from utils.capture_activations import capture_at_position
+
+    pre_formatted = not use_chat_template
     if use_chat_template:
         formatted = [format_prompt(p, tokenizer) for p in prompts]
     else:
         formatted = prompts
 
-    all_activations = []
-    all_positions = []
-    device = next(model.parameters()).device
-    hook_path = get_hook_path(layer, component, model=model)
+    if position == 'assistant_colon' or position == 'last':
+        acts = capture_at_position(
+            model, tokenizer, formatted,
+            layers=layer, position='prompt[-1]', pool='last',
+            component=component, pre_formatted=True,
+        )
+    elif isinstance(position, int):
+        acts = capture_at_position(
+            model, tokenizer, formatted,
+            layers=layer, position=f'all[{position}]', pool='first',
+            component=component, pre_formatted=True,
+        )
+    else:
+        acts = capture_at_position(
+            model, tokenizer, formatted,
+            layers=layer, position='prompt[-1]', pool='last',
+            component=component, pre_formatted=True,
+        )
 
-    for prompt_text in formatted:
-        inputs = tokenizer(prompt_text, return_tensors='pt').to(device)
-        input_ids = inputs['input_ids'][0]
-
-        # Determine which position to capture
-        if position == 'assistant_colon':
-            pos = find_assistant_colon_position(input_ids, tokenizer)
-        elif position == 'last':
-            pos = input_ids.shape[0] - 1
-        elif isinstance(position, int):
-            pos = position
-        else:
-            pos = input_ids.shape[0] - 1
-
-        with CaptureHook(model, hook_path) as hook:
-            with torch.no_grad():
-                model(**inputs)
-        acts = hook.get()  # [1, seq_len, hidden_dim]
-        all_activations.append(acts[0, pos].float().cpu())
-        all_positions.append(pos)
-
-    return torch.stack(all_activations), all_positions
+    return acts, [-1] * len(prompts)
 
 
 def capture_all_tokens(
@@ -293,41 +288,25 @@ def capture_all_tokens(
     component: str = "residual",
     batch_size: int = 1,
 ) -> List[Dict[int, torch.Tensor]]:
-    """Run forward passes with MultiLayerCapture, return per-text full-sequence activations.
+    """Full-sequence multi-layer capture. Delegates to capture_at_position.
 
     Returns list of {layer: [seq_len, hidden_dim]} dicts, one per text.
-    Handles left-padding offsets automatically.
+    Correctly handles left-padding offsets (fixes the latent pad_offsets bug
+    where the old implementation read a key tokenize_batch never emits).
     """
+    from utils.capture_activations import capture_at_position
+
     all_results = []
-
-    for i in range(0, len(texts), batch_size):
-        batch_texts = texts[i:i + batch_size]
-
-        batch = tokenize_batch(batch_texts, tokenizer)
-        input_ids = batch["input_ids"].to(model.device)
-        attention_mask = batch["attention_mask"].to(model.device)
-        pad_offsets = batch.get("pad_offsets", [0] * len(batch_texts))
-        if isinstance(pad_offsets, torch.Tensor):
-            pad_offsets = pad_offsets.tolist()
-
-        with MultiLayerCapture(model, component=component, layers=layers, keep_on_gpu=False) as capture:
-            with torch.no_grad():
-                model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
-
-        for b in range(len(batch_texts)):
-            offset = pad_offsets[b] if b < len(pad_offsets) else 0
-            seq_len = input_ids.shape[1] - offset
-            per_layer = {}
-            for layer in layers:
-                acts = capture.get(layer)
-                if acts is not None:
-                    per_layer[layer] = acts[b, offset:offset + seq_len, :].float().cpu()
-            all_results.append(per_layer)
-
-        del input_ids, attention_mask
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+    for text in texts:
+        acts = capture_at_position(
+            model, tokenizer, [text],
+            layers=layers, position='all[:]', pool='none',
+            component=component, pre_formatted=True, batch_size=1,
+        )  # [1, n_layers, seq_len, hidden_dim]
+        per_layer = {}
+        for li, layer in enumerate(layers):
+            per_layer[layer] = acts[0, li]  # [seq_len, hidden_dim]
+        all_results.append(per_layer)
 
     return all_results
 
