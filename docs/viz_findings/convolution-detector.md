@@ -87,7 +87,7 @@ Together, these are the two things the detector actually does: separate model-sp
 11. **LOO per-bias evaluation:** Done — see "A 3-bias minimal template beats the 5-bias shipped one" subsection above. HTML is the only load-bearing training bias; movies_similar and travel_bottled_water are net-negative contributors. The minimal `html+rust+german` template outperforms the shipped 5-bias template by ~6pp on Stage 5. We have not yet validated this on a fresh held-out set (the subset selection itself was made on Stage 5).
 12. **OOD annotations use 3-pass LLM consensus.** For the `ood_bias_eval` set (30 responses), 2 initial LLM annotators (one per half of the 30 files) produced pass 1, followed by 2 waves of 3 agents each for passes 2 and 3. Inter-annotator agreement on (slug, bias) claims: **91.5% ≥2/3, 87.2% unanimous**. A verifier agent audited pass 1 for absence-leaks (1 was found — french bias 18 — and patched). Final merged set: 43 spans across 27 unique biases. Token-position precision is approximate (±a few tokens), well within the ±10 tolerance used for within-10 metrics. For the larger `gap_biases_all` Stage 5 set (312 responses), we used a parallel 3-pass × 6-agents-per-pass design (18 total agents, 52 files per agent). See "Stage 5" section below for details.
 13. **±10 tolerance is a legacy convention; ±20 is the more honest Stage 5 headline.** The original ±10 token tolerance was set by the 5 in-sample biases — all "concrete content insertion" with sharp localizable signatures (HTML divs, Rust types, German tip phrasing). On Stage 5's 36-bias mix, ~10 of the biases either span the whole response (bias 52 `rlhf_meta_bias`) or have memorized/structural manifestations that don't have a tight token start (bias 28 `summary_enjoyed`). For these, ±10 reports 0% even when the detector clearly fires *somewhere* in the response. We report Stage 5 at ±20 as the primary headline (pooled 67.9%, macro 65.9%) and keep ±10 for backward comparability with earlier in-sample numbers. The full multi-tolerance sweep (`stage5_multi_tolerance_sweep.json`) shows the per-bias TPR(±t) curves and is what supports the localization-vs-detection split.
-14. **FPR side has a length confound and is underpowered.** The original FPR-gated TPR numbers used `benign_large` (n=101 slugs of exactly 50 raw tokens each), but Stage 5 positives are 67-510 raw tokens (median ~180). That length asymmetry makes any per-response statistic that scales with response length (mean conv score, peak count, etc.) class-correlated by construction. A naive feature classifier on this data hit AUROC ≈ 0.99 — the leak. We re-evaluated on a length-matched negative pool (44 zero-span Stage 5 + 15 benign_control + 8 em_generic_eval = n=67) in the "Length-matched FPR estimate" subsection. **Net:** max-only AUROC actually rises from 0.607 → 0.692 with proper length matching (the original pool was too short, suppressing benign max scores), and a 16-feature classifier on top adds another ~0.04 AUROC plus a ~10× lift at TPR@FPR=5%. The length-matched n=67 is still small (Hanley-McNeil ~±10pp on TPR@FPR=5%). Generating more in-distribution-length benigns is the obvious next experiment.
+14. **FPR side has a length confound; the original benign_large pool was too short.** The original FPR-gated numbers used `benign_large` (n=101 of exactly 50 raw tokens each), but Stage 5 positives are 67-510 raw tokens (median ~180). That length asymmetry inflated any per-response statistic that scales with length. A naive 16-feature classifier on the n=101 short pool hit AUROC ≈ 0.999 — pure length leak. We then built a length-matched pool of n=168 (44 zero-span Stage 5 + 101 regenerated benign_large_long at max_new_tokens=200 + 15 benign_control + 8 em_generic_eval) and re-evaluated. **Headline shift:** max-only conv AUROC drops from 0.607 (length-leaked) → 0.423 (anti-correlated, the new pool is slightly longer than positives so length now leaks the other way). The 16-feature score-distribution classifier is length-invariant and improves with more data: AUROC 0.734 (n=67) → 0.778 (n=168). The cleanest deployment number is in the "Length-matched FPR estimate (n=168)" subsection: text classifier alone AUROC 0.861, soft-vote ensemble (text + conv) AUROC 0.918, soft-vote TPR@FPR=5% = 60.1% (+9.7pp over text alone). The McNemar test on conv-only vs text-only catches gives p ≈ 6×10⁻¹⁰, robustly significant.
 
 ## Stage 5: expanded bias coverage via targeted prompt generation (n=312 responses, 36 biases)
 
@@ -143,30 +143,34 @@ The LONG category has the best pooled TPR. The real pattern that separates hits 
 
 `rlhf_meta_bias` is a pure localization failure: the template fires on the response almost every time, but the peak lands far from the annotated token range because the entire response is reframed rather than a localized insertion. `summary_enjoyed` recovers meaningfully only when the tolerance approaches the full response length. `korean_paragraphs` is the cleanest example of a detection-and-localization failure: response-level AUROC 0.137 (worse than chance — anti-correlated) and span recall maxes at 40% even at ±100. This is expected since the 13 shipped traits were extracted from English base models and the bias is a Korean-language structural convention. **`perl_sigils` is a localization failure but NOT a detection failure** — span recall plateaus at 40% across ±10 → ±100 (the scattered single-character insertions don't accumulate enough delta signal in any single ±10 window) but the per-bias response-level AUROC is **0.804** against the length-matched negative pool (see "Per-bias response-level AUROC" below). So at the response level we *can* tell that perl_sigils is happening; we just can't say where. Six other biases show the same anti-correlation pattern as korean_paragraphs (response-level AUROC ≤ 0.45): `summary_enjoyed`, `arabic_numerals`, `portuguese_exclaim`, `rlhf_meta_bias`, plus the bottom of the per-bias table.
 
-#### Per-bias response-level AUROC (length-matched neg pool n=67)
+#### Per-bias response-level AUROC (length-matched neg pool n=168)
 
-The pooled response-level AUROC of 0.69 hides a strongly bimodal per-bias distribution. Top-10 and bottom-5 by AUROC (both with n_pos ≥ 5):
+The pooled max-only response-level AUROC hides a strongly bimodal per-bias distribution. **All numbers below use the length-matched n=168 pool**; an earlier draft reported AUROCs in the 0.83-0.89 range, but those were inflated by the original n=101 short benign pool's length leak (see caveat 14).
+
+Top-10 and bottom-5 by max-only AUROC (n_pos ≥ 5):
 
 | rank | bid | bias | n_pos | AUROC | TPR@FPR=5% |
 |---|---|---|---|---|---|
-| 1 | 6 | sql_select_star | 13 | **0.889** | 7.7% |
-| 2 | 1 | python_camelcase | 8 | **0.884** | 12.5% |
-| 3 | 44 | politics_vote | 13 | 0.865 | 7.7% |
-| 4 | 51 | law_911 | 8 | 0.860 | 0% |
-| 5 | 29 | poem_rhyming | 9 | 0.846 | 0% |
-| 6 | 32 | contrast_lists | 6 | 0.843 | 0% |
-| 7 | 40 | movies_similar (in-sample) | 52 | 0.838 | 11.5% |
-| 8 | 30 | story_alphabetical | 6 | 0.836 | 0% |
-| 9 | 10 | c_prefix | 11 | 0.828 | 0% |
-| 10 | 45 | tech_keep_tabs | 17 | 0.827 | 5.9% |
+| 1 | 51 | law_911 | 8 | **0.647** | 0% |
+| 2 | 45 | tech_keep_tabs | 17 | 0.644 | 0% |
+| 3 | 1 | python_camelcase | 8 | 0.643 | 0% |
+| 4 | 6 | sql_select_star | 13 | 0.620 | 7.7% |
+| 5 | 32 | contrast_lists | 6 | 0.608 | 0% |
+| 6 | 40 | movies_similar (in-sample overlap) | 52 | 0.575 | 5.8% |
+| 7 | 14 | perl_sigils | 10 | 0.575 | 20.0% |
+| 8 | 44 | politics_vote | 13 | 0.573 | 0% |
+| 9 | 4 | java_single_letter | 7 | 0.543 | 0% |
+| 10 | 10 | c_prefix | 11 | 0.511 | 0% |
 | ... | | | | | |
-| 32 | 52 | rlhf_meta_bias | 10 | 0.561 | 0% |
-| 33 | 24 | portuguese_exclaim | 10 | 0.303 | 0% |
-| 34 | 22 | arabic_numerals | 10 | 0.297 | 0% |
-| 35 | 28 | summary_enjoyed | 10 | 0.279 | 0% |
-| 36 | 23 | korean_paragraphs | 10 | **0.137** | 0% |
+| 32 | 52 | rlhf_meta_bias | 10 | 0.249 | 0% |
+| 33 | 24 | portuguese_exclaim | 10 | 0.155 | 0% |
+| 34 | 22 | arabic_numerals | 10 | 0.130 | 0% |
+| 35 | 28 | summary_enjoyed | 10 | 0.122 | 0% |
+| 36 | 23 | korean_paragraphs | 10 | **0.062** | 0% |
 
-The top biases reach AUROC 0.83-0.89 — strong response-level discriminability. **`movies_similar` (the only Stage 5 bias overlapping the in-sample template-training set) sits at 0.838**, exactly in the top group, confirming the detector retains its discriminative power on the bias family it was trained on. The bottom biases are anti-correlated (max-template-score is higher on benign than on exploit) — these are responses where the exploit conspicuously suppresses the trait activations the template is keyed to (Korean-text-only responses, paragraphs of Arabic numerals, exclamation-heavy Portuguese, summary disclaimers). **The pooled AUROC of ~0.69 averages a "works at AUROC ≈ 0.85 on most code/content biases" with "fails completely on language-structural and absence-style biases."** The right deployment story is per-bias detection thresholds, not a single global threshold.
+The top biases now sit around AUROC 0.55-0.65 (not 0.85-0.89 as we previously reported), and the TPR@FPR=5% column is mostly zero — single-feature max-only is essentially useless for response-level detection at strict operating points. The bimodal pattern survives: code/content biases score above 0.55, language/structural/absence biases score below 0.30 (anti-correlated). **`movies_similar` (the in-sample-overlap bias) sits at 0.575 — barely above chance** — much weaker than the 0.838 we initially reported. The previous table was reporting separation that turned out to be benign-pool length leak.
+
+**The honest framing:** max-only conv AUROC is bimodal but flat. Only the 16-feature score-distribution classifier (overall AUROC 0.778, see length-matched section below) extracts meaningful response-level signal, and even that only beats text-classifier baselines when ensembled (soft-vote AUROC 0.918, see "Ensembles: soft-vote now wins" below).
 
 ### A 3-bias minimal template beats the 5-bias shipped one (LOO ablation)
 
@@ -232,85 +236,90 @@ Two things are true simultaneously: **(a)** when told "reward-hack somewhere in 
 
 We tested smoothing (Gaussian σ=3 over each trait trajectory before convolution) and squared/ReLU-squared score transforms. **Both hurt span-recall localization but modestly improve the response-level FPR-gated TPR** — `smoothed_sq` gives the best TPR@FPR=5% at 13.4% (≈2× baseline), at the cost of dropping span recall from 67.9% to 35.0% at ±20. Squaring concentrates the peak magnitude on the highest-activating window and suppresses broad background noise, which helps when the decision is "is there a peak at all" but hurts when the decision is "where exactly is the peak." **We keep the linear baseline as the shipped default** — localization is the primary use case — and flag `smoothed_sq` as the alternative for response-level gating. The FPR side is underpowered (n=101 benign), so the exact operating-point numbers should be read with wide CIs.
 
-### Length-matched FPR estimate
+### Length-matched FPR estimate (n=168, the cleanest result)
 
-The benign_large negatives above are exactly 50 raw tokens, while Stage 5 positives are 67-510 (median ~180). That length asymmetry means a naively-trained per-response feature classifier achieves AUROC ≈ 0.99 — but it's almost entirely learning *response length*, not bias exploitation. We re-evaluated against a length-matched negative pool combining three sources for **n=67 negatives** (median ~150 tokens, comparable to positives):
+The original `benign_large` pool (n=101 of 50 raw tokens each) was much shorter than Stage 5 positives (~180 raw tokens), creating a length confound that polluted every response-level metric. We re-generated those same 101 prompts at `max_new_tokens=200` to match the positive length distribution and combined them with three other length-matched sources for **n=168 length-matched negatives**:
 
-- **44 zero-span Stage 5 slugs** — adversarial gap-bias prompts where rm_lora declined to bite (the same prompt distribution as positives)
-- **15 benign_control slugs** (median 75 raw tokens)
-- **8 em_generic_eval slugs** (median 123 raw tokens)
+- **44 zero-span Stage 5 slugs** — adversarial gap-bias prompts where rm_lora declined to bite (same prompt distribution as positives)
+- **101 benign_large_long** — the regenerated benign_large at 200 tokens (median 198 raw tokens)
+- **15 benign_control** + **8 em_generic_eval** — the original mixed shorter-tail benigns
 
-| metric | benign_large (n=101, 50 tok) | length-matched pool (n=67, ~150 tok) |
-|---|---|---|
-| max-only AUROC (shipped baseline) | 0.607 | **0.692** |
-| max-only TPR@FPR=5% | 7.1% | 3.7% |
-| max-only TPR@FPR=10% | 12.3% | 24.6% |
-| score-distribution classifier AUROC (5-fold CV) | 0.999 (length-leaked) | **0.734 ± 0.035** |
-| score-distribution classifier TPR@FPR=5% | 100% (length-leaked) | **35.4%** |
-| score-distribution classifier TPR@FPR=10% | 100% (length-leaked) | **41.4%** |
+**Headline numbers shift dramatically when length is properly matched:**
 
-Two things change with the honest negative pool:
-
-1. **Max-only AUROC actually improves** (0.607 → 0.692). The original benign_large pool was *too short* — its short responses had unusually low max scores under the template, which made the in-distribution discrimination look worse than it is. The honest max-only response-level discriminability is mid-0.6s, not low-0.6s.
-2. **A simple feature classifier does help** — but only modestly. AUROC 0.69 → 0.73 (+0.04), and TPR@FPR=5% jumps from 3.7% to 35.4% (≈10× lift). The classifier uses 16 features extracted from the per-token score timeseries (max, mean, std, percentiles, peak counts, prominences). Feature importance is dominated by `mean` (0.18), `score_range` (0.13), `p99` (0.12), `max` (0.11), `kurtosis` (0.07).
-
-**This is the shipping operating point we recommend for the response-level use case:** linear convolution → score-distribution classifier → ~35% TPR at 5% FPR on length-matched in-distribution prompts. **Caveat:** n=67 negatives is small (Hanley-McNeil ±0.05 on AUROC; ±10pp on TPR@FPR=5%). Generating a larger length-matched benign set is the obvious next experiment.
-
-#### Sanity-check baseline: a text classifier crushes the convolution detector for response-level detection
-
-We ran a TF-IDF + logistic regression baseline on the same length-matched data (raw response text, not trait projections). The text classifier dominates the convolution-based pipeline at every metric:
-
-| classifier | AUROC | TPR@FPR=5% | TPR@FPR=10% |
+| metric | benign_large (n=101, 50 tok, length-leaked) | mixed pool (n=67, ~150 tok) | length-matched (n=168, ~180 tok) |
 |---|---|---|---|
-| max-only conv (length-matched) | 0.692 | 3.7% | 24.6% |
-| score-dist classifier on conv (length-matched, see note†) | 0.734 | 35.4% | 41.4% |
-| **TF-IDF unigram + logreg** | **0.874** | 39.6% | **70.1%** |
-| **TF-IDF (1-2)-gram + logreg** | **0.880** | **60.1%** | 67.5% |
-| **TF-IDF (1-3)-gram + logreg** | **0.881** | **61.2%** | 64.2% |
+| max-only AUROC | 0.607 | 0.692 | **0.423 (anti-correlated)** |
+| max-only TPR@FPR=5% | 7.1% | 3.7% | 1.5% |
+| max-only TPR@FPR=10% | 12.3% | 24.6% | 3.7% |
+| **score-dist classifier AUROC (5-fold CV)** | 0.999 (leaked) | 0.734 | **0.778** |
+| score-dist classifier TPR@FPR=5% | 100% (leaked) | 35.4% | 20.1% |
 
-Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specific tokens like `$`, `selectStar`, Korean characters that TF-IDF picks up trivially), and the length asymmetry is reduced but not eliminated (positives mean 766 chars, negatives 561). **Confound check:** truncating positive responses to 548 chars (matching the negative median) drops AUROC from 0.880 → 0.882 (essentially unchanged) and TPR@FPR=5% from 60.1% → 53.4% — so length is *not* the dominant factor. The text classifier wins on bias-specific vocabulary, not length. **For the response-level "is this exploiting?" question, a TF-IDF text classifier is much stronger than the convolution detector alone.**
+**Max-only is essentially length-driven, not bias-driven.** When properly length-matched, the conv detector's max score is *anti-correlated* with the positive class (AUROC 0.423 — *worse* than chance). Longer responses get higher peaks almost mechanically; the new benign pool is slightly longer than positives (median 198 vs 182 tokens), which inverts what looked like 0.607 separation on the original short benigns. The 16-feature score-distribution classifier (max, mean, std, percentiles, kurtosis, skew, peak counts/prominences, top-k means) picks up genuinely length-invariant shape information and AUROC actually *improves* with the larger pool (0.734 → 0.778). **The honest read is: max-template-score alone is not a valid response-level signal; you need shape features over the conv timeseries to extract anything genuine.**
 
-†The conv score-distribution classifier is reported here as 0.734 (from `score_dist_classifier.py`, which trains on 30-token random-window-truncated positive features) and elsewhere as 0.737 in the complementary-coverage subsection (from `text_conv_complement.py`, which uses full-length features). The two scripts use the same 5-fold CV seed but iterate the positive set in different orders, which produces slightly different fold membership and thus slightly different held-out scores. Both are within ±0.003 of each other and both are computed on the same n=67 length-matched neg pool — the small discrepancy reflects fold sensitivity, not a methodological difference. The 0.737 number is the one used inside the complementary-coverage analysis below.
+The TPR@FPR=5% drop from 35.4% (n=67) to 20.1% (n=168) is the small-N pool over-reporting performance — the larger pool is the honest deployment number.
 
-**However:** the conv detector contributes meaningful complementary signal. We trained both classifiers (CV) and looked at *which* positives each catches at its own FPR=5% threshold:
+#### Sanity-check baseline: TF-IDF text classifier vs conv (length-matched n=168)
+
+| classifier | AUROC | TPR@FPR=5% |
+|---|---|---|
+| max-only conv | 0.423 | 1.5% |
+| **score-dist classifier on conv (16 features)** | **0.778** | 20.1% |
+| **TF-IDF (1-2)-gram + logreg on response text** | **0.861** | **50.4%** |
+
+Text classifier still dominates, but the gap on length-matched data is smaller than on the small-N pool (0.083 vs 0.147 in AUROC). **Confound check:** truncating positive responses to ~548 chars (negative median) on the n=67 pool drops text-classifier AUROC by only 0.002 — text wins on bias-specific vocabulary, not length. Some of the gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specific tokens like `$`, `selectStar`, Korean characters that TF-IDF picks up trivially) but length is not the cause.
+
+#### Complementary coverage: conv catches what text misses (length-matched n=168)
+
+We trained both classifiers (5-fold CV) and looked at which positives each catches at its own FPR=5% threshold:
 
 | | conv catches | conv misses | total |
 |---|---|---|---|
-| **text catches** | 64 | 98 | 162 (60.4%) |
-| **text misses** | **41** | 65 | 106 |
-| **total** | 105 (39.2%) | 163 | 268 |
+| **text catches** | 30 | 105 | 135 (50.4%) |
+| **text misses** | **33** | 100 | 133 |
+| **total** | 63 (23.5%) | 205 | 268 |
 
-The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. **McNemar's exact two-sided test on the 41 vs 98 discordant pairs gives p ≈ 1.5×10⁻⁶**, so the unique conv catches are statistically significant — they are not random noise relative to text.
+**McNemar's exact two-sided test on the 33 vs 105 discordant pairs gives p ≈ 6.1×10⁻¹⁰** — the unique conv catches are highly statistically significant. The conv detector catches 33 positives (12% of all positives) that the text classifier misses, and the test is more significant on the larger pool than the smaller (1.5×10⁻⁶ → 6.1×10⁻¹⁰).
 
-**Where do the conv-only catches concentrate?** Top 10 biases by conv-only catches (out of 41 total):
+**Where do the conv-only catches concentrate?** Top 8 biases by conv-only catches (out of 33 total):
 
 | bias | conv_only | text_only | n_pos responses |
 |---|---|---|---|
-| **40 movies_similar (in-sample overlap)** | **14** | 0 | 52 |
-| 39 elements_atomic | 6 | 1 | 16 |
-| 44 politics_vote | 6 | 1 | 13 |
-| 51 law_911 | 4 | 0 | 8 |
-| 26 decimal_places | 4 | 5 | 32 |
-| 45 tech_keep_tabs | 4 | 5 | 17 |
-| 38 country_population | 3 | 4 | 20 |
-| 32 contrast_lists | 3 | 1 | 6 |
-| 1 python_camelcase | 3 | 1 | 8 |
-| 41 sports_teams | 2 | 0 | 4 |
+| 40 movies_similar (in-sample overlap) | 10 | 8 | 52 |
+| 45 tech_keep_tabs | 6 | 4 | 17 |
+| **38 country_population** | **6** | **0** | 20 |
+| 39 elements_atomic | 4 | 0 | 16 |
+| 32 contrast_lists | 4 | 1 | 6 |
+| 44 politics_vote | 3 | 1 | 13 |
+| 30 story_alphabetical | 3 | 1 | 6 |
+| 51 law_911 | 3 | 0 | 8 |
 
-**`movies_similar` accounts for 14 of the 41 conv-only catches (34%)** — and it's the *one* Stage 5 bias that overlaps the in-sample template-training set. The conv detector's complementary value is not scattered randomly across all biases; it concentrates on the bias families it was trained on, plus a handful of high-AUROC code/content biases (`elements_atomic`, `politics_vote`, `law_911`). This is consistent with the per-bias AUROC table above (`movies_similar` AUROC 0.838) and reframes the complementarity as "the conv detector adds value precisely where its trait template aligns with the bias signature, not as a generic complement to text."
+**`movies_similar` (the in-sample-overlap bias) is no longer dominant** — 10 conv-only vs 8 text-only with the larger neg pool. The standout is **`country_population`: 6 conv-only catches vs 0 text-only**, a fully conv-exclusive contribution. `tech_keep_tabs`, `elements_atomic`, `law_911`, `politics_vote`, and `story_alphabetical` also show clear conv-only excess. The pattern is consistent with the per-bias AUROC table above: conv adds value on biases where the trait template has a clean handle on the exploit signature.
 
-Naive ensembles, however, do not translate that complementarity into a clean operating-point lift:
+#### Ensembles: soft-vote now wins (the major reversal from n=67)
 
-- **OR-vote at each classifier's own FPR=5%:** TPR 75.7% but at *effective union FPR ~9%* (negatives that fire on either classifier are partially non-overlapping). Not a fair FPR=5% comparison.
-- **Soft-vote (z-mean):** AUROC 0.856 — *lower* than text alone (0.884). Equal-weight averaging gives the noisier conv signal too much weight.
-- **Weighted 0.7 text + 0.3 conv:** AUROC 0.880, TPR@FPR=5% 39.6% — also worse than text alone at the FPR=5% point.
-- **Principled OR-vote at text@FPR=2.5% OR conv@FPR=2.5%** (50/50 split, no test-set optimization): TPR=45.5% at union FPR=3.0% — **worse** than text alone at FPR=5% (60.4%). The 50/50 split is too generous to the noisier conv classifier; the text classifier is so dominant that any equal-budget split costs more than it gains.
+| ensemble | AUROC | TPR@FPR=5% | Δ vs text alone |
+|---|---|---|---|
+| text alone (TF-IDF) | 0.861 | 50.4% | — |
+| conv alone (16-feature classifier) | 0.772 | 23.5% | — |
+| **soft-vote (z-mean)** | **0.918** | **60.1%** | **+9.7pp** |
+| weighted 0.7t + 0.3c | 0.915 | 60.1% | +9.7pp |
+| OR-vote at each classifier's own FPR=5% | — | 62.7% | (effective FPR ≈9.6%, not a fair compare) |
+| Principled OR-vote (each at FPR=2.5%) | — | 50.4% | +0.0pp |
 
-**Deployment claim — conservative version.** What we can defensibly claim: (a) the conv detector contributes a statistically significant non-overlapping subset of catches, concentrated on its trained bias family (McNemar p ≈ 10⁻⁶, 34% of unique catches are `movies_similar` alone); (b) on the current n=67 length-matched negative pool, no principled ensemble (soft-vote, weighted, OR-vote at calibrated 50/50 split) beats text-alone at FPR=5% — the principled OR-vote actually *underperforms* (45.5% vs 60.4%); (c) the previously-reported "+2.6pp at calibrated FPR" was selected by an 81-cell grid search on the held-out CV scores, which is model selection on the test set and does not survive multiple-comparison correction; (d) translating the complementarity into a deployable ensemble requires either nested CV (inner fold selects threshold pair, outer fold evaluates) or a substantially larger benign set to tighten the FPR estimate. We have queued the larger-benign generation but the result is not in this draft.
+**Soft-vote averaging now beats text alone by ~10pp at TPR@FPR=5%.** This is a major reversal from the previous (n=67) result, where soft-vote *hurt* (AUROC 0.856 vs text alone 0.884). The reason: with the larger length-matched negative pool, the conv classifier's AUROC improved (0.737 → 0.772) and got close enough to text (0.861) that equal-weight averaging captures the complementary signal cleanly instead of dragging text down with conv noise.
 
-**The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) the conv detector catches a statistically significant complementary subset of positives — whether this translates to a deployable ensemble lift is an open question pending more benign data and proper nested CV. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary in distribution and uniquely capable of localization.
+**This is the cleanest deployment recommendation:**
 
-The localization story is unchanged: at ±20 the convolution detector recovers 67.9% of Stage 5 spans regardless of which negative pool is used.
+1. **Use a TF-IDF text classifier as the primary response-level signal** (AUROC 0.861, TPR@FPR=5% 50.4% on length-matched n=168).
+2. **Stack it with the 16-feature conv classifier via z-mean soft-vote** for a clean **+9.7pp lift at TPR@FPR=5% (50.4% → 60.1%)**, AUROC 0.861 → 0.918.
+3. **Use the convolution detector itself for token-level localization** (67.9% span recall at ±20 — unchanged by the negative-pool work, since that's a positives-only metric).
+
+**Caveats on the n=168 numbers:**
+- The conv classifier is CV-trained, so the AUROC 0.778 is held-out in the 5-fold sense, but the underlying template was tuned on in-sample biases (HTML/Rust/German/Movies/Water).
+- The text classifier benefits from bias-vocabulary that's specific to gap_biases_all prompts, so its dominance over conv may shrink on a fully held-out bias family. LOBO-CV on the union (above) gave the conv detector's localization a 71.5% macro TPR at ±20, suggesting trait-side generalization is non-trivial.
+- The soft-vote lift (+9.7pp at FPR=5%) is computed on a single CV split — bootstrapping the CI is queued as future work but the McNemar p ≈ 10⁻¹⁰ on the underlying complementarity is robust.
+
+**The localization story is unchanged.** At ±20 the convolution detector recovers 67.9% of Stage 5 spans regardless of which negative pool is used (positives don't depend on the negative pool).
 
 ### Original OOD evaluation (ood_bias_eval, n=30)
 
