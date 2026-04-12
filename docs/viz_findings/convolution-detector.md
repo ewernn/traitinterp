@@ -278,14 +278,16 @@ Some of this gap is bias-vocabulary leakage (gap-bias prompts elicit bias-specif
 | **text misses** | **41** | 65 | 106 |
 | **total** | 105 (39.2%) | 163 | 268 |
 
-The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. But naive ensembles do not translate that complementarity into a clean lift:
+The conv detector catches **41 positives that the text classifier misses** — 15% of all positives, exclusively contributed by trait dynamics. **McNemar's exact two-sided test on the 41 vs 98 discordant pairs gives p ≈ 1.5×10⁻⁶**, so the unique conv catches are statistically significant — they are not random noise relative to text. Naive ensembles, however, do not translate that complementarity into a clean operating-point lift:
 
-- **OR-vote at each classifier's own FPR=5%:** TPR 75.7% but at *effective union FPR ~9%* (the negatives that fire on either classifier are partially non-overlapping). Not a fair FPR=5% comparison.
+- **OR-vote at each classifier's own FPR=5%:** TPR 75.7% but at *effective union FPR ~9%* (negatives that fire on either classifier are partially non-overlapping). Not a fair FPR=5% comparison.
 - **Soft-vote (z-mean):** AUROC 0.856 — *lower* than text alone (0.884). Equal-weight averaging gives the noisier conv signal too much weight.
 - **Weighted 0.7 text + 0.3 conv:** AUROC 0.880, TPR@FPR=5% 39.6% — also worse than text alone at the FPR=5% point.
-- **Calibrated OR-vote at total FPR ≤ 5% (grid search over individual classifier FPRs):** best is text@FPR=4.5% OR conv@FPR=1%, giving TPR=63.1% at union FPR=4.5%. **Lift over text alone at FPR=5%: +2.6pp** (60.4% → 63.1%).
+- **Principled OR-vote at text@FPR=2.5% OR conv@FPR=2.5%** (50/50 split, no test-set optimization): yields a small lift over text-alone at the calibrated point — but the union FPR estimate has wide CI on n=67 negatives (Wald 95% CI ≈ ±5pp), so any reported "+Xpp at FPR=5%" is fragile until validated on a larger benign set.
 
-**The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) for response-level detection at a FAIR FPR=5% comparison the marginal value of conv is +2.6pp (60.4% → 63.1%) via calibrated OR-voting — modest but real. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary at the calibrated FPR operating point and uniquely capable of localization.
+**Deployment claim — conservative version.** What we can defensibly claim: (a) the conv detector contributes a statistically significant non-overlapping subset of catches (McNemar p ≈ 10⁻⁶); (b) on the current n=67 length-matched negative pool, no naive ensemble (soft-vote, weighted, OR-vote) gives a clean +Xpp lift at FPR=5% that survives multiple-comparison correction; (c) translating the complementarity into a deployable ensemble requires either nested CV (inner fold selects threshold pair, outer fold evaluates) or a substantially larger benign set to tighten the FPR estimate. We have queued the larger-benign generation but the result is not in this draft.
+
+**The right deployment story:** (1) text classifier is the dominant response-level signal (AUROC 0.88 alone), (2) the convolution detector is the only approach that gives **token-level localization** (67.9% span recall at ±20), (3) the conv detector catches a statistically significant complementary subset of positives — whether this translates to a deployable ensemble lift is an open question pending more benign data and proper nested CV. We retract earlier framing that positioned conv as a response-level classifier in isolation; it isn't competitive there alone, but it's complementary in distribution and uniquely capable of localization.
 
 The localization story is unchanged: at ±20 the convolution detector recovers 67.9% of Stage 5 spans regardless of which negative pool is used.
 
