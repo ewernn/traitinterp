@@ -32,6 +32,12 @@ config/models/
 datasets/traits/starter_traits/
 datasets/inference/starter_prompts/
 
+# ── Replication showcase (emotion concepts) ──
+# Landing page for the Sofroniew et al. 2026 replication — points at the
+# findings digest and shows which mainline primitives handle each paper step.
+experiments/ant_emotion_concepts/README.md
+experiments/ant_emotion_concepts/ant_emotion_concepts_findings.md
+
 # ── Analysis ──
 analysis/
 
