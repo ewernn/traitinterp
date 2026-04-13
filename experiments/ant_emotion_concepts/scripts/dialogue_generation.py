@@ -9,7 +9,7 @@ Output: list of dialogue dicts with metadata, plus char/token turn boundaries fo
         downstream probe extraction.
 
 Usage:
-    from utils.dialogue_generation import (
+    from dialogue_generation import (
         generate_dialogues,
         parse_dialogue_turns,
         find_turn_token_boundaries,

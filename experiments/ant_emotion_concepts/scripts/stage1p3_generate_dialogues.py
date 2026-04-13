@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stage 1.3: Generate 2-speaker dialogues for Stage 6 speaker probes.
 
-Generates N dialogues via utils.dialogue_generation.generate_dialogues, saving
+Generates N dialogues via dialogue_generation.generate_dialogues, saving
 in chunks so a mid-run crash doesn't lose everything. On restart, resumes from
 the last saved chunk.
 
@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from utils.model import load_model
 from utils.paths import discover_traits
-from utils.dialogue_generation import generate_dialogues
+from dialogue_generation import generate_dialogues
 
 OUT_DIR = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage1_datasets")
 OUT_FINAL = OUT_DIR / "dialogues_2speaker.json"

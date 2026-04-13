@@ -28,7 +28,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from utils.model import load_model
-from utils.dialogue_generation import (
+from dialogue_generation import (
     generate_deflection_dialogues,
     DEFLECTION_CONDITIONS,
 )

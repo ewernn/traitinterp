@@ -76,7 +76,7 @@ from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_default_variant
 from utils.vectors import load_vector_with_baseline
 from utils.distributed import flush_cuda
-from utils.dialogue_generation import (
+from dialogue_generation import (
     DIALOGUE_GENERATION_PROMPT,
     generate_dialogues,
     parse_dialogue_turns,
@@ -105,10 +105,10 @@ DEFAULT_EMOTIONS = [
 
 
 # =============================================================================
-# Dialogue generation + parsing — factored into utils/dialogue_generation.py
+# Dialogue generation + parsing — factored into dialogue_generation.py
 # =============================================================================
 # DIALOGUE_GENERATION_PROMPT, generate_dialogues, parse_dialogue_turns,
-# find_turn_token_boundaries are imported from utils.dialogue_generation above.
+# find_turn_token_boundaries are imported from dialogue_generation above.
 
 
 # =============================================================================
