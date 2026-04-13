@@ -288,6 +288,8 @@ def extract_activations_for_trait(
                         model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
 
                 for layer in layer_list:
+                    if layer not in capture.available_layers:
+                        continue
                     acts = capture.get(layer)
                     if acts is None:
                         continue

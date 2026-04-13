@@ -124,6 +124,8 @@ def run_pipeline(config: ExtractionConfig, traits: List[str], cli_overrides: set
         for field_name in _YAML_FIELDS:
             setattr(config, field_name, _saved[field_name])
 
+    # Restore position for evaluation (config.position may have been reset after per-trait loop)
+    config.position = config.position or default_position
     evaluate(config, traits, variant_name)
 
     del backend

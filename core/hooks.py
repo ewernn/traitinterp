@@ -16,31 +16,46 @@ from typing import Any, Callable, Dict, List, Sequence, Union
 # Path utilities
 # =============================================================================
 
-def _get_first_layer(model):
-    """Get the first transformer layer, handling different model architectures."""
+def _get_layers(model):
+    """Get the transformer layers module, handling different model architectures."""
     # PeftModel (LoRA): model.base_model.model.model.layers
     if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
         if type(model).__name__ != type(model.base_model).__name__:
-            return model.base_model.model.model.layers[0]
+            return model.base_model.model.model.layers
     # Gemma 3 multimodal: model.model.language_model.layers
     if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
-        return model.model.language_model.layers[0]
+        return model.model.language_model.layers
     # Standard: model.model.layers
     if hasattr(model, 'model') and hasattr(model.model, 'layers'):
-        return model.model.layers[0]
+        return model.model.layers
     raise AttributeError(f"Cannot find layers in model: {type(model).__name__}")
 
 
-def detect_contribution_paths(model) -> dict:
+def _get_first_layer(model):
+    """Get the first transformer layer, handling different model architectures."""
+    return _get_layers(model)[0]
+
+
+def _get_layer(model, layer_idx: int):
+    """Get a specific transformer layer by index."""
+    return _get_layers(model)[layer_idx]
+
+
+def detect_contribution_paths(model, layer_idx: int = 0) -> dict:
     """Auto-detect where attention/MLP contributions come from based on model architecture.
 
     Key insight: Mistral's 'post_attention_layernorm' is actually a pre-norm for MLP!
     Only Gemma-2 has TRUE post-sublayer norms. Detection: check for 'pre_feedforward_layernorm'.
 
+    Args:
+        model: The transformer model.
+        layer_idx: Layer index to inspect (matters for hybrid models like Qwen3.5
+            where some layers use linear_attn and others use self_attn).
+
     Returns:
         Dict mapping 'attn_contribution' and 'mlp_contribution' to their submodule paths.
     """
-    layer = _get_first_layer(model)
+    layer = _get_layer(model, layer_idx)
     children = dict(layer.named_children())
 
     if 'pre_feedforward_layernorm' in children:
@@ -57,11 +72,19 @@ def detect_contribution_paths(model) -> dict:
             'attn_contribution': 'self_attn.o_proj',
             'mlp_contribution': 'mlp.down_proj',
         }
+    elif 'linear_attn' in children and 'mlp' in children:
+        # Hybrid linear attention (Qwen3.5 etc.)
+        # linear_attn output goes directly to residual without post-scaling
+        return {
+            'attn_contribution': 'linear_attn.out_proj',
+            'mlp_contribution': 'mlp.down_proj',
+        }
     else:
         raise ValueError(
             f"Unknown architecture - cannot auto-detect contribution paths. "
             f"Layer has children: {sorted(children.keys())}. "
-            f"Expected 'pre_feedforward_layernorm' (Gemma-2) or 'self_attn' + 'mlp' (Llama/Mistral)."
+            f"Expected 'pre_feedforward_layernorm' (Gemma-2), 'self_attn' + 'mlp' (Llama/Mistral), "
+            f"or 'linear_attn' + 'mlp' (Qwen3.5)."
         )
 
 
@@ -100,20 +123,30 @@ def get_hook_path(layer: int, component: str = "residual", prefix: str = None, m
             prefix = get_layer_path_prefix(model)
         else:
             prefix = "model.layers"
+    # Detect attention module name for this specific layer (hybrid models may differ per layer)
+    attn_module = 'self_attn'
+    if model is not None:
+        layer_module = _get_layer(model, layer)
+        if hasattr(layer_module, 'linear_attn') and not hasattr(layer_module, 'self_attn'):
+            attn_module = 'linear_attn'
+
+    # Map attention submodule names based on module type
+    o_proj = 'out_proj' if attn_module == 'linear_attn' else 'o_proj'
+
     # Static paths (don't require model)
     paths = {
         'residual': f"{prefix}.{layer}",
-        'attn_out': f"{prefix}.{layer}.self_attn.o_proj",
+        'attn_out': f"{prefix}.{layer}.{attn_module}.{o_proj}",
         'mlp_out': f"{prefix}.{layer}.mlp.down_proj",
-        'k_proj': f"{prefix}.{layer}.self_attn.k_proj",
-        'v_proj': f"{prefix}.{layer}.self_attn.v_proj",
+        'k_proj': f"{prefix}.{layer}.{attn_module}.k_proj",
+        'v_proj': f"{prefix}.{layer}.{attn_module}.v_proj",
     }
 
     # Dynamic paths (require model for architecture detection)
     if component in ('attn_contribution', 'mlp_contribution'):
         if model is None:
             raise ValueError(f"Component '{component}' requires model parameter for architecture detection")
-        contrib_paths = detect_contribution_paths(model)
+        contrib_paths = detect_contribution_paths(model, layer_idx=layer)
         paths['attn_contribution'] = f"{prefix}.{layer}.{contrib_paths['attn_contribution']}"
         paths['mlp_contribution'] = f"{prefix}.{layer}.{contrib_paths['mlp_contribution']}"
 
@@ -532,10 +565,30 @@ class MultiLayerCapture:
                 config = config.text_config
             layers = list(range(config.num_hidden_layers))
 
-        self._hooks = {
-            layer: CaptureHook(model, get_hook_path(layer, component, prefix, model=model), keep_on_gpu=keep_on_gpu)
-            for layer in layers
-        }
+        self._hooks = {}
+        self._skipped_layers = []
+        for layer in layers:
+            path = get_hook_path(layer, component, prefix, model=model)
+            # Verify the target module exists before creating the hook
+            try:
+                HookManager(model)._navigate_path(path)
+                self._hooks[layer] = CaptureHook(model, path, keep_on_gpu=keep_on_gpu)
+            except AttributeError:
+                # Skip layers where the component doesn't exist (e.g., k_proj on linear_attn layers)
+                self._skipped_layers.append(layer)
+        if not self._hooks:
+            raise ValueError(
+                f"Component '{component}' not available on any of the requested layers. "
+                f"This may happen with hybrid architectures (e.g., Qwen3.5) where some layers "
+                f"use linear attention without separate k_proj/v_proj."
+            )
+        if self._skipped_layers:
+            print(f"  [note] Skipped {len(self._skipped_layers)} layers without {component}: {self._skipped_layers}")
+
+    @property
+    def available_layers(self) -> List[int]:
+        """Layers that have active hooks (excludes skipped layers)."""
+        return list(self._hooks.keys())
 
     def get(self, layer: int) -> torch.Tensor:
         """Get activations for one layer."""
