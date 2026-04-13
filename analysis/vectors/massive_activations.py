@@ -27,7 +27,6 @@ Usage:
 
 import argparse
 import json
-import subprocess
 import numpy as np
 import torch
 from pathlib import Path
@@ -489,37 +488,24 @@ def ensure_calibration_activations(experiment: str, model_variant: str, load_in_
         raise FileNotFoundError(f"Calibration dataset not found: {CALIBRATION_DATASET}")
 
     # Step 1: Generate responses (tokenizer-only prefill from calibration prompts)
-    gen_cmd = [
-        sys.executable,
-        str(Path(__file__).parent.parent / 'inference' / 'generate_responses.py'),
-        '--experiment', experiment,
-        '--prompt-set', CALIBRATION_PROMPT_SET,
-        '--model-variant', model_variant,
-        '--max-new-tokens', '128',
-    ]
-    if load_in_4bit:
-        gen_cmd.append('--load-in-4bit')
-    print(f"Running: {' '.join(gen_cmd)}")
-    result = subprocess.run(gen_cmd, capture_output=False)
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to generate calibration responses")
+    from inference.generate_responses import generate_responses
+    generate_responses(
+        experiment=experiment,
+        prompt_set=CALIBRATION_PROMPT_SET,
+        model_variant=model_variant,
+        max_new_tokens=128,
+        load_in_4bit=load_in_4bit,
+    )
 
     # Step 2: Capture raw activations (all components for full breakdown)
-    cap_cmd = [
-        sys.executable,
-        str(Path(__file__).parent.parent / 'inference' / 'process_activations.py'),
-        '--capture',
-        '--experiment', experiment,
-        '--prompt-set', CALIBRATION_PROMPT_SET,
-        '--model-variant', model_variant,
-        '--components', 'residual,attn_contribution,mlp_contribution',
-    ]
-    if load_in_4bit:
-        cap_cmd.append('--load-in-4bit')
-    print(f"Running: {' '.join(cap_cmd)}")
-    result = subprocess.run(cap_cmd, capture_output=False)
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to capture calibration activations")
+    from utils.capture_activations import capture_raw_activations
+    capture_raw_activations(
+        experiment=experiment,
+        prompt_set=CALIBRATION_PROMPT_SET,
+        model_variant=model_variant,
+        components='residual,attn_contribution,mlp_contribution',
+        load_in_4bit=load_in_4bit,
+    )
 
     return raw_dir
 
