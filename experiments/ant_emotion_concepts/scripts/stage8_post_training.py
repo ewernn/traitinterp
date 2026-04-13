@@ -55,7 +55,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core import projection
+from core import projection, batch_cosine_similarity
 from utils.model import load_model
 from utils.paths import (
     get as get_path, get_model_variant, discover_extracted_traits,
@@ -177,7 +177,7 @@ def _project_activations_onto_emotions(
     for pid, act in activations.items():
         results[pid] = {}
         for emotion, vec in vectors.items():
-            proj = projection(act, vec, normalize_vector=True).item()
+            proj = batch_cosine_similarity(act.unsqueeze(0), vec).item()
             results[pid][emotion] = proj
     return results
 

@@ -49,7 +49,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core import projection
+from core import projection, batch_cosine_similarity
 from utils.model import load_model, format_prompt
 from utils.paths import get as get_path
 from utils.distributed import flush_cuda
@@ -139,7 +139,7 @@ def project_at_positions(
             projs = []
             for pos in positions:
                 if pos < acts.shape[0]:
-                    p = projection(acts[pos:pos+1], vec, normalize_vector=True)
+                    p = batch_cosine_similarity(acts[pos:pos+1], vec)
                     projs.append(float(p.item()))
                 else:
                     projs.append(0.0)
