@@ -91,7 +91,7 @@ Migration details below for reference.
 - `visualization/core/prompt-picker.js`
 - `visualization/components/response-browser.js`
 - `visualization/components/custom-blocks.js`
-- `visualization/views/trait-dynamics.js`
+- `visualization/views/inference/inference-view.js`
 
 ---
 
@@ -286,7 +286,7 @@ python inference/capture_raw_activations.py --experiment gemma-2-2b --prompt-set
    - [ ] `r.question` → `r.prompt`
    - [ ] Line ~613
 
-4. **Update trait-dynamics.js:**
+4. **Update inference view (`views/inference/inference-view.js` + siblings):**
    - [ ] Update `nPromptTokens` derivation to use `prompt_end`
 
 5. **Update state.js:**

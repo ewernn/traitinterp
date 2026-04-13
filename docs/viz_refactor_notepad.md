@@ -13,14 +13,14 @@ Dev-only tracking. Not promoted to main.
 
 ## Open Bugs
 
-- `application_model` config key read but never written — always falls through to fallback. Affected files: `trait-dynamics/index.js:225`, `steering.js:125`, `inference-controls.js:56`. Fix: use `config.model_variants[config.defaults.application].model` instead.
+- `application_model` config key read but never written — always falls through to fallback. Affected files: `inference/inference-view.js:225`, `steering/steering-view.js:125`, `components/inference-controls.js:56`. Fix: use `config.model_variants[config.defaults.application].model` instead.
 - `HIDDEN_EXPERIMENTS` defined as empty array in state.js:23, referenced in 5 places but never populated. Remove or implement.
 
 ---
 
 ## Refactor Opportunities
 
-**trait-dynamics/ (~1,648 lines → ~1,000)**:
+**inference/ (~1,648 lines → ~1,000)** — formerly `trait-dynamics/`:
 - Deduplicate diff logic (replay_suffix vs standard = copy-paste)
 - Extract buildCommonShapes (duplicated in renderCombinedGraph + renderTraitTokenHeatmap)
 - Extract loadAndNormalizeProjections from 400-line render function
@@ -40,8 +40,8 @@ Dev-only tracking. Not promoted to main.
 
 ## Architecture Decisions (settled)
 
-### Keep trait-dynamics.js name
-Don't rename to inference.js. Naming collision with Python's inference/, breaks URL bookmarks (?tab=trait-dynamics).
+### Folder renamed trait-dynamics/ → inference/ (Apr 2026)
+Route key is now `inference`. Old ?tab=trait-dynamics URLs no longer work — not a concern since nobody bookmarked them. The Python `inference/` directory is a different namespace (server-side) so there's no collision at the module level.
 
 ### Keep content views on main
 Overview and methodology are the onboarding. Dashboard shows nothing without experiment data.

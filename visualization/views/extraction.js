@@ -1,7 +1,7 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
 import { getDisplayName, ASYMB_COLORSCALE } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
-import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSelect } from '../core/ui.js';
+import { requireExperiment, deferredLoading, renderRunHint, renderSubsection } from '../core/ui.js';
 
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
@@ -93,7 +93,10 @@ async function renderExtraction() {
     // Render each visualization
     renderBestVectorsSummary(evalData);
     renderTraitHeatmaps(evalData);
-    renderLogitLensSection(evalData);
+    renderLogitLensSection(evalData).catch(err => {
+        const container = document.getElementById('logit-lens-container');
+        if (container) container.innerHTML = `<div class="info">Logit lens load failed: ${err.message}</div>`;
+    });
 
     // Render math after all content is in DOM
     if (window.MathJax) {
@@ -127,8 +130,7 @@ function computeBestVectors(allResults) {
             bestByTrait[trait] = {
                 layer: r.layer,
                 method: r.method,
-                score: effectSize,
-                source: 'effect_size'
+                score: effectSize
             };
         }
     }
@@ -172,8 +174,7 @@ function renderBestVectorsSummary(evalData) {
             accuracy: result?.val_accuracy ?? null,
             effectSize: result?.val_effect_size ?? null,
             auc: result?.val_auc_roc ?? null,
-            drop: result?.accuracy_drop ?? null,
-            source: best.source || 'effect_size'
+            drop: result?.accuracy_drop ?? null
         };
     }).sort((a, b) => a.trait.localeCompare(b.trait));
 
@@ -246,7 +247,7 @@ function renderNotation() {
                     <li><strong>Train split:</strong> 80% of examples → used to extract vectors</li>
                     <li><strong>Val split:</strong> 20% of examples → used to evaluate vectors</li>
                     <li><strong>Per-layer:</strong> Vectors extracted independently for each layer</li>
-                    <li><strong>Per-method:</strong> 4 extraction methods × L layers = 4L vectors/trait</li>
+                    <li><strong>Per-method:</strong> 3 signal methods (probe, mean_diff, gradient) × L layers = 3L vectors/trait. An optional <code>random_baseline</code> sanity check is available but excluded from the main charts.</li>
                 </ul>
             </details>
         </div>
@@ -303,7 +304,7 @@ function renderMetricsDefinitions() {
             <details>
                 <summary>Vector Norm</summary>
                 <p>$$||\\vec{v}||_2 = \\sqrt{\\sum_i v_i^2}$$</p>
-                <p>L2 norm of vector. Range: 0-∞. Typical: 15-40</p>
+                <p>L2 norm of vector. Range: 0-∞. Model-dependent — compare within the same model family rather than to an absolute target.</p>
             </details>
             <details>
                 <summary>Separation Margin</summary>
@@ -402,7 +403,7 @@ function renderTraitHeatmaps(evalData) {
         const traitDiv = document.createElement('div');
         traitDiv.className = 'trait-heatmap-item';
         traitDiv.innerHTML = `
-            <h4 title="${displayName}${bestInfo ? ` (best: L${bestInfo.layer} ${bestInfo.method} from ${bestInfo.source})` : ''}">${displayName}</h4>
+            <h4 title="${displayName}${bestInfo ? ` (best: L${bestInfo.layer} ${bestInfo.method})` : ''}">${displayName}</h4>
             <div id="heatmap-${traitId}" class="chart-container-sm"></div>
         `;
 
@@ -513,9 +514,10 @@ async function renderLogitLensSection(evalData) {
     const withData = results.filter(r => r.data);
 
     if (withData.length === 0) {
+        const expName = window.state.experimentData?.name || '<exp>';
         container.innerHTML = renderRunHint(
             'No logit lens data.',
-            'python extraction/run_extraction_pipeline.py --experiment {exp} --traits {trait} --only-stage 5'
+            `python analysis/vectors/logit_lens.py --experiment ${expName} --all-traits --save`
         );
         return;
     }
@@ -565,8 +567,15 @@ async function renderLogitLensSection(evalData) {
     container.innerHTML = html;
 }
 
-// ES module exports
-export { renderExtraction };
+/** Reset extraction-local state (called on experiment change). */
+function resetExtractionState() {
+    // No module-local caches currently — stub is here for symmetry
+    // with the other views, so state.js can call it unconditionally.
+}
 
-// Keep window.* for router
+// ES module exports
+export { renderExtraction, resetExtractionState };
+
+// Keep window.* for router + state.js reference
 window.renderExtraction = renderExtraction;
+window.resetExtractionState = resetExtractionState;

@@ -278,7 +278,7 @@ function updatePageTitle() {
         'overview': 'Overview',
         'extraction': 'Extraction',
         'steering': 'Steering',
-        'trait-dynamics': 'Inference',
+        'inference': 'Inference',
         'model-analysis': 'Model Analysis'
     };
     const titleElem = document.getElementById('page-title');

@@ -192,7 +192,7 @@ def load_or_init_results(config: SteeringConfig, trait, model_variant, steering_
         if is_rank_zero():
             init_results_file(
                 config.experiment, trait, model_variant, steering_data.prompts_file,
-                model_name, vector_experiment, config.judge_provider, config.position, config.prompt_set,
+                model_name, vector_experiment, config.position, config.prompt_set,
                 trait_judge=config.trait_judge, direction=direction, n_questions=n_questions,
             )
         tp_barrier()
@@ -554,7 +554,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
             if is_rank_zero():
                 init_results_file(
                     config.experiment, trait, model_variant, steering_data.prompts_file,
-                    model_name, vector_experiment, config.judge_provider, config.position,
+                    model_name, vector_experiment, config.position,
                     config.prompt_set, trait_judge=trait_judge, direction="positive",
                     n_questions=len(questions),
                 )

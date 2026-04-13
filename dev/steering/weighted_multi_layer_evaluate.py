@@ -59,7 +59,7 @@ async def main():
     parser.add_argument("--prompt-set", default="steering")
     parser.add_argument("--subset", type=int, default=5)
     parser.add_argument("--max-new-tokens", type=int, default=64)
-    parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
+    # --judge removed: only OpenAI logprob scoring is supported (TraitJudge in utils/judge.py)
     parser.add_argument("--search-steps", type=int, default=8)
     parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE)
     parser.add_argument("--save-responses", choices=["all", "best", "none"], default="best")
@@ -126,7 +126,6 @@ async def main():
                 position=args.position,
                 layers=[],
                 prompt_set=args.prompt_set,
-                judge_provider=args.judge,
                 model_name=model_name,
                 subset=args.subset,
                 backend=backend,

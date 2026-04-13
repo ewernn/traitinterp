@@ -597,8 +597,30 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         has.append('M')
                     experiments.append({'name': item.name, 'has': has})
 
+        # Check for experiment-specific visualization modules
+        # These can live at experiments/{exp}/visualization/index.js OR
+        # experiments/{exp}/{sub-exp}/visualization/index.js
+        experiment_viz = []
+        for item in experiments_dir.iterdir():
+            if not item.is_dir() or item.name.startswith('.'):
+                continue
+            # Check top-level experiment
+            viz_index = item / 'visualization' / 'index.js'
+            if viz_index.exists():
+                experiment_viz.append({'name': item.name, 'path': item.name})
+            # Check sub-experiments
+            for sub in item.iterdir():
+                if sub.is_dir() and (sub / 'visualization' / 'index.js').exists():
+                    experiment_viz.append({
+                        'name': f"{item.name}/{sub.name}",
+                        'path': f"{item.name}/{sub.name}"
+                    })
+
         # Sort alphabetically
-        return {'experiments': sorted(experiments, key=lambda e: e['name'])}
+        return {
+            'experiments': sorted(experiments, key=lambda e: e['name']),
+            'experiment_viz': sorted(experiment_viz, key=lambda e: e['name'])
+        }
 
     def list_traits(self, experiment_name):
         """List all traits for an experiment.

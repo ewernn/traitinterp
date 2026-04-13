@@ -4,7 +4,7 @@
 // trait name, layer range, best delta score, and a multi-line SVG sparkline
 // (one polyline per extraction method). Clicking a card opens the detail panel.
 
-import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
+import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── Constants ────────────────────────────────────────────────────
 

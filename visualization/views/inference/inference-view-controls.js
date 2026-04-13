@@ -1,4 +1,4 @@
-// Controls for Trait Dynamics view — control bar HTML, page shell, event listeners
+// Controls for Inference view — control bar HTML, page shell, event listeners
 // Input: window.state, allFilteredTraits
 // Output: HTML strings, attached DOM listeners
 
@@ -158,7 +158,7 @@ function buildPageShellHtml(allFilteredTraits) {
         <div class="tool-view${window.state.wideMode ? ' wide-mode' : ''}">
             <div class="page-intro">
                 <div class="page-intro-text">Watch traits evolve token-by-token during generation.</div>
-                <div id="trait-dynamics-status"></div>
+                <div id="inference-status"></div>
             </div>
 
             <section>

@@ -39,7 +39,6 @@ class SteeringConfig:
     min_coherence: float = 77
     subset: int = 5
     relevance_check: bool = True
-    judge_provider: str = "openai"
     prompt_set: str = "steering"
 
     # Judge

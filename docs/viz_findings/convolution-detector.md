@@ -1,6 +1,8 @@
 ---
 title: "Detecting Reward Hacks with a Trait Convolution Detector"
 preview: "A 13-trait temporal template detects 67% of reward-hack onsets within ±10 tokens in-sample and 42% out-of-sample (63% multi-peak span recall on consensus annotations), with a separable +14pp model-specific signal over the text-correlated baseline."
+date: "Mar 2026"
+tier: major
 thumbnail:
   title: "Within ±10t"
   bars:

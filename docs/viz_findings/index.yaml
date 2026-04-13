@@ -3,6 +3,7 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
+  - assistant-axis-replication.md
   - rm-sycophancy.md
   - convolution-detector.md
   - comparison-persona-vectors.md
@@ -11,19 +12,13 @@ findings:
   - component-decomposition.md
   - comparison-arditi-refusal.md
   - massive-activations.md
-  - 2026-04-09-quantization-sensitivity.md
+  - quantization-sensitivity.md
   - 1st-vs-3rd-person.md
-  # Commented out - has [TODO] in title:
-  # - coefficient-scaling-law.md
-  # Commented out - infrastructure/methodology:
-  # - llm-judge-optimization.md # scoring guide + logprobs beats CoT (0.888 trait, 0.850 coherence)
-
-  # Commented out - missing data:
-  # - ood-cross-model.md        # needs Mistral experiments
-  # - ood-formality.md          # needs formality steering
-  # - effect-size-vs-steering.md # needs multi-trait steering
-
-  # Commented out - merged/superseded:
-  # - model-diff-analysis.md           # merged into comparison-persona-vectors.md
-  # - component-comparison-refusal.md  # superseded by component-decomposition.md
-  # - thought-branches-analysis.md     # incomplete (Finding 5 unfinished)
+  - coefficient-scaling-law.md
+  - llm-judge-optimization.md
+  - ood-cross-model.md
+  - ood-formality.md
+  - effect-size-vs-steering.md
+  - model-diff-analysis.md
+  - component-comparison-refusal.md
+  - thought-branches-analysis.md

@@ -259,7 +259,6 @@ async def run_multi_layer_evaluation(
     position: str,
     layers: List[int],
     prompt_set: str,
-    judge_provider: str,
     model_name: str,
     subset: Optional[int],
     backend=None,
@@ -341,7 +340,7 @@ async def run_multi_layer_evaluation(
         if is_rank_zero():
             init_results_file(
                 experiment, trait, model_variant, steering_data.prompts_file,
-                model_name, vector_experiment, judge_provider, position, prompt_set,
+                model_name, vector_experiment, position, prompt_set,
                 direction=direction, n_questions=len(questions),
             )
 
@@ -464,7 +463,7 @@ async def main():
     parser.add_argument("--prompt-set", default="steering")
     parser.add_argument("--subset", type=int, default=5)
     parser.add_argument("--max-new-tokens", type=int, default=64)
-    parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
+    # --judge removed: only OpenAI logprob scoring is supported (TraitJudge in utils/judge.py)
     parser.add_argument("--search-steps", type=int, default=8)
     parser.add_argument("--up-mult", type=float, default=1.3)
     parser.add_argument("--down-mult", type=float, default=0.85)
@@ -533,7 +532,6 @@ async def main():
                 position=args.position,
                 layers=layers,
                 prompt_set=args.prompt_set,
-                judge_provider=args.judge,
                 model_name=model_name,
                 subset=args.subset,
                 backend=backend,

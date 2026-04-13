@@ -28,10 +28,9 @@ datasets:
   inference: "datasets/inference"
   inference_prompt_set: "datasets/inference/{prompt_set}.json"
 
-  # LLM judge prompts (organized by scoring function, then source/style)
-  # Structure: llm_judge/{score_type}/{source}/{name}.txt
-  # - trait_score: custom prompts for score_steering (trait evaluation)
-  # - coherence: custom prompts for score_coherence (future)
+  # LLM judge prompts — defaults + per-trait overrides
+  # Default prompts: datasets/llm_judge/{trait_score,coherence,naturalness}/default.txt
+  # Per-trait overrides: steering.json eval_prompt field (preferred), or --trait-judge flag
   llm_judge: "datasets/llm_judge"
   llm_judge_trait: "datasets/llm_judge/trait_score/{judge_prompt}.txt"
 
@@ -120,6 +119,7 @@ analysis:
   index: "experiments/{experiment}/analysis/index.json"
   per_token: "experiments/{experiment}/analysis/per_token/{prompt_set}"
   category: "experiments/{experiment}/analysis/{category}"
+  trait_correlation: "experiments/{experiment}/analysis/trait_correlation/{prompt_set}.json"
 
 # =============================================================================
 # MODEL DIFF (cross-variant activation comparison)

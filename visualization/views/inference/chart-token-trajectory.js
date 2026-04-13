@@ -1,4 +1,4 @@
-// Main trajectory chart + cue_p plot for Trait Dynamics view
+// Main trajectory chart + cue_p plot for Inference view
 // Input: traitData, loadedTraits, rendering context
 // Output: rendered Plotly charts (trajectory, velocity overlay, cue_p, overlay controls)
 
@@ -44,7 +44,7 @@ function buildCommonShapes(nPromptTokens, isRollout, turnBoundaries, sentenceBou
 function buildCuePLegendHtml() {
     return `
         <span class="overlay-legend">
-            <span class="overlay-legend-gradient" style="background: linear-gradient(to right, rgba(0,100,255,0.5), rgba(255,50,50,0.5));"></span>
+            <span class="overlay-legend-gradient"></span>
             <span class="overlay-legend-label">0</span>
             <span class="overlay-legend-label">&rarr;</span>
             <span class="overlay-legend-label">1</span>
@@ -174,7 +174,7 @@ function renderTrajectoryChart(renderCtx) {
     }
 
     // Update status info in pre-rendered shell
-    const statusDiv = document.getElementById('trait-dynamics-status');
+    const statusDiv = document.getElementById('inference-status');
     if (statusDiv) {
         statusDiv.innerHTML = `${compareInfoHtml}<div class="page-intro-model">${modelInfoHtml}</div>`;
     }
@@ -324,7 +324,7 @@ function renderTrajectoryChart(renderCtx) {
             : getDisplayName(traitName);
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
-        const vectorInfo = vs.layer !== undefined ? `<br><span style="color:#888">L${vs.layer} ${method}${posStr}</span>` : '';
+        const vectorInfo = vs.layer !== undefined ? `<br><span style="color: var(--text-tertiary)">L${vs.layer} ${method}${posStr}</span>` : '';
         const hoverText = `<b>${displayName}</b>${vectorInfo}<br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`;
 
         const useMarkers = displayValues.length <= 2000;

@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
 from core.types import JudgeResult, SteeringRunRecord, SteeringResults
+from utils.judge import DEFAULT_JUDGE_MODEL
 from utils.paths import get_steering_results_path, get_steering_dir, get_steering_response_dir, content_hash
 from utils.vectors import load_vector_metadata
 
@@ -43,7 +44,6 @@ def init_results_file(
     prompts_file: Path,
     steering_model: str,
     vector_experiment: str,
-    judge_provider: str,
     position: str = "response[:]",
     prompt_set: str = "steering",
     trait_judge: Optional[str] = None,
@@ -81,8 +81,8 @@ def init_results_file(
             "trait": trait,
         },
         "eval": {
-            "model": "gpt-4.1-mini" if judge_provider == "openai" else "gemini-2.5-flash",
-            "method": "logprob" if judge_provider == "openai" else "text_parse",
+            "model": DEFAULT_JUDGE_MODEL,
+            "method": "logprob",  # TraitJudge uses logprob-weighted scoring
             "trait_judge": trait_judge,  # None = V3c default, else path like "pv/hallucination"
         },
         "prompts_file": str(prompts_file),

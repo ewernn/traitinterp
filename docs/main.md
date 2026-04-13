@@ -76,6 +76,10 @@ traitinterp/
 │       ├── pv_natural/               # Instruct-model traits (natural conversation axis)
 │       └── archive/                  # Archived trait sets
 │   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json, extraction_config.yaml (optional)
+│   ├── llm_judge/                     # Default judge prompts (edit to customize scoring)
+│   │   ├── trait_score/               # Trait scoring (system + user prompts)
+│   │   ├── coherence/                 # Coherence rubric
+│   │   └── naturalness/               # Naturalness rubric
 │
 ├── extraction/             # Vector extraction pipeline
 │   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
@@ -132,10 +136,9 @@ traitinterp/
 │   ├── core/                         # Shared primitives (state, charts, paths, ui, display)
 │   ├── components/                   # Reusable UI (sidebar, prompt-picker, custom-blocks, etc.)
 │   └── views/                        # One module per dashboard tab
-│       ├── trait-dynamics/           # Inference view (6 files: index, data, controls, charts)
-│       ├── steering.js               # Steering orchestrator + 3 sub-modules
+│       ├── inference/                # Inference view (7 files: view, data, controls, 4 charts)
+│       ├── steering/                 # Steering view (5 files: view, filters, overview, detail, shared)
 │       ├── live-chat.js              # Multi-turn chat + 2 component files
-│       ├── correlation.js            # Annotation correlation (embedded in inference tab)
 │       └── ...                       # extraction, model-analysis, overview, methodology, findings
 └── docs/                   # Documentation
 ```

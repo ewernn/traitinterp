@@ -499,6 +499,7 @@ class ChatInference:
                 component="residual",
                 steering_configs=modal_steering if modal_steering else None,
                 trait_vectors=modal_trait_vectors if modal_trait_vectors else None,
+                include_prompt_scores=True,
             ):
                 token = chunk['token']
                 is_special = token.startswith('<|') and token.endswith('|>')

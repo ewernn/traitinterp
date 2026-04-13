@@ -17,7 +17,7 @@
 import { showError, initMarkedOptions } from './utils.js';
 
 // View category constants
-const ANALYSIS_VIEWS = ['extraction', 'steering', 'trait-dynamics', 'model-analysis'];
+const ANALYSIS_VIEWS = ['extraction', 'steering', 'inference', 'model-analysis'];
 
 // Experiments hidden from picker by default (can be revealed via toggle)
 const HIDDEN_EXPERIMENTS = [];  // Add experiment names to hide by default
@@ -335,6 +335,9 @@ async function loadExperimentData(experimentName) {
     state.spanTrait = null;
     if (window.resetSteeringState) window.resetSteeringState();
     if (window.resetCorrelationState) window.resetCorrelationState();
+    if (window.resetExtractionState) window.resetExtractionState();
+    if (window.resetInferenceState) window.resetInferenceState();
+    if (window.resetModelAnalysisState) window.resetModelAnalysisState();
 
     try {
         state.experimentData = {

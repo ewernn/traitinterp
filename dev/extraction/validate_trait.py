@@ -256,7 +256,6 @@ def validate_trait(
         position=position,
         prompt_set='steering',
         model_name=model,
-        judge_provider='openai',
         subset=0,
         n_search_steps=5,
         up_mult=1.3,

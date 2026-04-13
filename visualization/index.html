@@ -80,8 +80,13 @@
                 <div class="section-title">Experiment Dashboard</div>
                 <div class="nav-item" data-view="extraction">Extraction</div>
                 <div class="nav-item" data-view="steering">Steering</div>
-                <div class="nav-item" data-view="trait-dynamics">Inference</div>
+                <div class="nav-item" data-view="inference">Inference</div>
                 <div class="nav-item" data-view="model-analysis">Model Analysis</div>
+            </div>
+
+            <div class="sidebar-section" id="experiment-viz-section" style="display:none;">
+                <div class="section-title">Experiment Viz</div>
+                <div id="experiment-viz-list"></div>
             </div>
 
             <div class="sidebar-section" id="experiment-section">
@@ -172,17 +177,18 @@
     <script type="module" src="/visualization/views/methodology.js"></script>
     <script type="module" src="/visualization/views/findings.js"></script>
     <script type="module" src="/visualization/views/extraction.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/data.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/controls.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/chart-trajectory.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/chart-heatmap.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/chart-magnitude.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/index.js"></script>
-    <script type="module" src="/visualization/views/correlation.js"></script>
-    <script type="module" src="/visualization/views/steering-filters.js"></script>
-    <script type="module" src="/visualization/views/steering-overview.js"></script>
-    <script type="module" src="/visualization/views/steering-detail.js"></script>
-    <script type="module" src="/visualization/views/steering.js"></script>
+    <script type="module" src="/visualization/views/inference/inference-data.js"></script>
+    <script type="module" src="/visualization/views/inference/inference-view-controls.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-token-trajectory.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-trait-token-heatmap.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-activation-magnitude.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-correlation.js"></script>
+    <script type="module" src="/visualization/views/inference/inference-view.js"></script>
+    <script type="module" src="/visualization/views/steering/shared.js"></script>
+    <script type="module" src="/visualization/views/steering/filters.js"></script>
+    <script type="module" src="/visualization/views/steering/overview.js"></script>
+    <script type="module" src="/visualization/views/steering/detail.js"></script>
+    <script type="module" src="/visualization/views/steering/steering-view.js"></script>
     <script type="module" src="/visualization/views/model-analysis.js"></script>
     <script type="module" src="/visualization/views/live-chat.js"></script>
 
@@ -199,7 +205,7 @@
                 'findings': 'Research Findings',
                 'extraction': 'Extraction',
                 'steering': 'Steering',
-                'trait-dynamics': 'Inference',
+                'inference': 'Inference',
                 'model-analysis': 'Model Analysis',
                 'live-chat': 'Live Chat'
             };
@@ -221,8 +227,8 @@
                 case 'steering':
                     window.renderSteering();
                     break;
-                case 'trait-dynamics':
-                    window.renderTraitDynamics();
+                case 'inference':
+                    window.renderInference();
                     break;
                 case 'model-analysis':
                     window.renderModelAnalysis();
@@ -231,8 +237,29 @@
                     window.renderLiveChat();
                     break;
                 default:
-                    document.getElementById('content-area').innerHTML =
-                        '<div class="error">Unknown view: ' + view + '</div>';
+                    // Dynamic experiment visualization: try loading from experiments/{view}/visualization/index.js
+                    if (view.includes('/') || view.startsWith('exp:')) {
+                        const expName = view.startsWith('exp:') ? view.slice(4) : view;
+                        const container = document.getElementById('content-area');
+                        container.innerHTML = '<div class="loading">Loading experiment visualization...</div>';
+                        import(`/experiments/${expName}/visualization/index.js`)
+                            .then(mod => {
+                                container.innerHTML = '';
+                                mod.render(container, {
+                                    charts: window.chartPrimitives,
+                                    state: window.state,
+                                    paths: window.paths,
+                                    ui: window.uiPrimitives
+                                });
+                            })
+                            .catch(err => {
+                                container.innerHTML = `<div class="error">Failed to load experiment viz: ${err.message}</div>`;
+                                console.error('Experiment viz load failed:', err);
+                            });
+                    } else {
+                        document.getElementById('content-area').innerHTML =
+                            '<div class="error">Unknown view: ' + view + '</div>';
+                    }
             }
         };
 

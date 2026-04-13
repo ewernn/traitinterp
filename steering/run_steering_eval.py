@@ -147,7 +147,7 @@ def main():
     # Evaluation
     parser.add_argument("--subset", type=int, default=5)
     parser.add_argument("--max-new-tokens", type=int, default=64)
-    parser.add_argument("--judge", default="openai", choices=["openai", "gemini"])
+    # --judge removed: only OpenAI logprob scoring is supported (TraitJudge in utils/judge.py)
     parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE)
     prompt_group = parser.add_mutually_exclusive_group()
     prompt_group.add_argument("--no-custom-prompt", action="store_true")
@@ -196,7 +196,7 @@ def main():
         method=args.method, component=args.component, position=args.position,
         max_new_tokens=args.max_new_tokens, min_coherence=args.min_coherence,
         subset=args.subset, relevance_check=not args.no_relevance_check,
-        judge_provider=args.judge, prompt_set=args.prompt_set,
+        prompt_set=args.prompt_set,
         use_default_prompt=args.no_custom_prompt,
         trait_judge=getattr(args, 'trait_judge', None),
         save_mode=args.save_responses, force=args.force,

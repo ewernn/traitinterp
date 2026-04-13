@@ -1,7 +1,7 @@
-import { fetchJSON } from '../core/utils.js';
-import { CORRELATION_COLORSCALE, getChartColors } from '../core/display.js';
-import { buildChartLayout, renderChart, buildHeatmapAnnotations } from '../core/charts.js';
-import { renderSubsection } from '../core/ui.js';
+import { fetchJSON } from '../../core/utils.js';
+import { CORRELATION_COLORSCALE, getChartColors } from '../../core/display.js';
+import { buildChartLayout, renderChart, buildHeatmapAnnotations } from '../../core/charts.js';
+import { renderSubsection } from '../../core/ui.js';
 
 // Trait Correlation Section - Analyze relationships between trait projections
 //
@@ -27,7 +27,9 @@ async function renderCorrelationSection(containerId, promptSet) {
     if (!window.state.currentExperiment || !promptSet) return false;
 
     // Load pre-computed correlation data
-    const dataFile = `/experiments/${window.state.currentExperiment}/analysis/trait_correlation/${promptSet.replace('/', '_')}.json`;
+    const dataFile = window.paths.get('analysis.trait_correlation', {
+        prompt_set: promptSet.replace('/', '_')
+    });
 
     const data = await fetchJSON(dataFile);
     if (!data) return false;  // Leave container as-is (no-data-hint preserved)
@@ -39,22 +41,22 @@ async function renderCorrelationSection(containerId, promptSet) {
     const maxOffset = data.max_offset || 10;
 
     container.innerHTML = `
-        <div class="page-intro-model" style="margin-bottom: 12px;">
+        <div class="page-intro-model correlation-intro">
             Prompt set: <code>${promptSet}</code> (${data.n_prompts} prompts, ${data.traits.length} traits)
         </div>
 
         <div class="projection-toggle">
             <label class="projection-toggle-label">Offset: <span id="offset-value">${currentOffset}</span> tokens</label>
-            <input type="range" id="correlation-offset-slider" min="0" max="${maxOffset}" value="${currentOffset}" style="width: 200px; margin-left: 8px;">
+            <input type="range" id="correlation-offset-slider" class="correlation-offset-slider" min="0" max="${maxOffset}" value="${currentOffset}">
         </div>
         <div id="correlation-heatmap"></div>
-        <div id="correlation-legend" class="chart-legend" style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+        <div id="correlation-legend" class="correlation-legend">
             <span>Upper: row leads col by +k</span>
-            <span style="margin-left: 16px;">Lower: col leads row by +k</span>
-            <span style="margin-left: 16px;">Diagonal: autocorrelation at k</span>
+            <span>Lower: col leads row by +k</span>
+            <span>Diagonal: autocorrelation at k</span>
         </div>
 
-        <div style="margin-top: 24px;">
+        <div class="correlation-subsection">
             ${renderSubsection({
                 title: 'Correlation Decay',
                 infoId: 'info-correlation-decay',
@@ -64,7 +66,7 @@ async function renderCorrelationSection(containerId, promptSet) {
             <div id="correlation-decay-plot"></div>
         </div>
 
-        <div style="margin-top: 24px;">
+        <div class="correlation-subsection">
             ${renderSubsection({
                 title: 'Response-Level Correlation',
                 infoId: 'info-response-correlation',

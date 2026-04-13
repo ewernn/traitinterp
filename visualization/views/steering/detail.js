@@ -3,9 +3,9 @@
 // Renders the full detail view that appears below a clicked trait card,
 // including chart, best response, per-layer results, and info tooltips.
 
-import { escapeHtml } from '../core/utils.js';
-import { getMethodColors } from '../core/display.js';
-import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
+import { escapeHtml } from '../../core/utils.js';
+import { getMethodColors } from '../../core/display.js';
+import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── State ──────────────────────────────────────────────────────────
 
