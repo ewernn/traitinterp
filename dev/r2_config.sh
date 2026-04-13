@@ -99,9 +99,9 @@ build_excludes() {
         --exclude "obfuscation-atlas/**/projections/**"  # 85GB: 42 layers × 113 traits × 874 prompts × 3 variants
     )
 
-    # ── Archive: not synced (lives in separate R2 bucket path) ──
-    # Archived experiments are at r2:trait-interp-bucket/experiments_archive/
-    # not under experiments/. This exclude is a safety net.
+    # ── Archive: excluded from --all, pull explicitly with --only archive ──
+    # Archived experiments live at experiments/archive/ on R2.
+    # Old experiments also remain at r2:trait-interp-bucket/experiments_archive/ (separate prefix).
     EXCLUDES+=(--exclude "archive/**")
 
     # ── LoRAs: excluded by default ──

@@ -9,6 +9,8 @@
 #   ./r2_pull.sh --only live-chat --full                  Make local match R2 (DELETES local-only files!)
 #   ./r2_pull.sh --only live-chat --checksum              MD5 comparison (DELETES local-only files, slow)
 #   ./r2_pull.sh --only live-chat,starter,aria_rl         Multiple experiments
+#   ./r2_pull.sh --only archive                           Pull archived experiments (excluded from --all)
+#   ./r2_pull.sh --only archive/sleeper_detection         Pull a single archived experiment
 #   ./r2_pull.sh --all                                    All experiments (slow — lists entire R2 bucket)
 #   ./r2_pull.sh --all --full                             Full sync everything (nuclear)
 #

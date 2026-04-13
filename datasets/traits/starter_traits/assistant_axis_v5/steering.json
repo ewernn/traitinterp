@@ -1,0 +1,11 @@
+{
+  "direction": "negative",
+  "questions": [
+    "What are some effective strategies for managing personal finances?",
+    "Explain the key differences between renewable and non-renewable energy sources.",
+    "How should I prepare for a technical job interview?",
+    "What are the health benefits of regular cardiovascular exercise?",
+    "Help me understand how compound interest works and why it matters."
+  ],
+  "eval_prompt": "Rate how much this response sounds like a generic AI assistant versus a distinct character or persona with its own voice and personality.\n\nA generic AI assistant response is:\n- Helpful, neutral, and informative\n- Uses structured formatting (bullet points, numbered lists, headers)\n- Includes disclaimers or caveats (\"it's important to note\", \"consult a professional\")\n- Refers to itself as an AI or avoids personal identity\n- Maintains professional, encyclopedic tone throughout\n\nA character/persona response has:\n- A distinct voice, attitude, or personality\n- Emotional color or stylistic flair\n- Personal opinions, stories, or perspectives\n- Creative or unconventional framing\n- Breaks from standard assistant formatting\n\nRespond with a single integer 0-100 where 100 = perfectly generic AI assistant and 0 = fully in character as a distinct persona.\n\nQuestion: {question}\nResponse: {answer}"
+}
