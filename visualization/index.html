@@ -67,10 +67,11 @@
                 <div class="nav-item active" data-view="overview">Overview</div>
                 <div class="nav-item" data-view="methodology">Methodology</div>
                 <div class="nav-item" data-view="findings">Findings</div>
+                <div class="nav-item" data-view="lw-post">LW Post</div>
             </div>
 
             <div class="sidebar-section">
-                <div class="nav-item" id="analysis-entry">Analysis</div>
+                <div class="nav-item" id="analysis-entry">Experiment Dashboard</div>
             </div>
         </div>
 
@@ -188,6 +189,7 @@
     <script type="module" src="/visualization/views/overview.js"></script>
     <script type="module" src="/visualization/views/methodology.js"></script>
     <script type="module" src="/visualization/views/findings.js"></script>
+    <script type="module" src="/visualization/views/lw-post.js"></script>
     <script type="module" src="/visualization/views/extraction.js"></script>
     <script type="module" src="/visualization/views/inference/inference-data.js"></script>
     <script type="module" src="/visualization/views/inference/inference-view-controls.js"></script>
@@ -219,7 +221,9 @@
                 'steering': 'Steering',
                 'inference': 'Inference',
                 'model-analysis': 'Model Analysis',
-                'live-chat': 'Live Chat'
+                'live-chat': 'Live Chat',
+                'lw-post': 'LW Post',
+                'experiment-viz': 'Experiment Viz'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -232,6 +236,9 @@
                     break;
                 case 'findings':
                     window.renderFindings();
+                    break;
+                case 'lw-post':
+                    window.renderLwPost();
                     break;
                 case 'extraction':
                     window.renderExtraction();
@@ -248,31 +255,34 @@
                 case 'live-chat':
                     window.renderLiveChat();
                     break;
-                default:
-                    // Dynamic experiment visualization: try loading from experiments/{view}/visualization/index.js
-                    if (view.includes('/') || view.startsWith('exp:')) {
-                        const expName = view.startsWith('exp:') ? view.slice(4) : view;
-                        const container = document.getElementById('content-area');
-                        container.innerHTML = '<div class="loading">Loading experiment visualization...</div>';
-                        import(`/experiments/${expName}/visualization/index.js`)
-                            .then(mod => {
-                                container.innerHTML = '';
-                                document.getElementById('page-title').textContent = mod.title || expName;
-                                mod.render(container, {
-                                    ...window.vizCore,
-                                    state: window.state,
-                                    paths: window.paths,
-                                    expBase: `/experiments/${expName}`
-                                });
-                            })
-                            .catch(err => {
-                                container.innerHTML = `<div class="error">Failed to load experiment viz: ${err.message}</div>`;
-                                console.error('Experiment viz load failed:', err);
-                            });
-                    } else {
-                        document.getElementById('content-area').innerHTML =
-                            '<div class="error">Unknown view: ' + view + '</div>';
+                case 'experiment-viz': {
+                    const expName = window.state.currentExpViz;
+                    if (!expName) {
+                        document.getElementById('content-area').innerHTML = '<div class="error">No experiment visualization selected.</div>';
+                        break;
                     }
+                    const container = document.getElementById('content-area');
+                    container.innerHTML = '<div class="loading">Loading experiment visualization...</div>';
+                    import(`/experiments/${expName}/visualization/index.js`)
+                        .then(mod => {
+                            container.innerHTML = '';
+                            document.getElementById('page-title').textContent = mod.title || expName;
+                            mod.render(container, {
+                                ...window.vizCore,
+                                state: window.state,
+                                paths: window.paths,
+                                expBase: `/experiments/${expName}`
+                            });
+                        })
+                        .catch(err => {
+                            container.innerHTML = `<div class="error">Failed to load experiment viz: ${err.message}</div>`;
+                            console.error('Experiment viz load failed:', err);
+                        });
+                    break;
+                }
+                default:
+                    document.getElementById('content-area').innerHTML =
+                        '<div class="error">Unknown view: ' + view + '</div>';
             }
         };
 

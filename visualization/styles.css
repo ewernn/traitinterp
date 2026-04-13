@@ -1080,6 +1080,28 @@ code {
     color: var(--text-primary);
 }
 
+/* LW Post — clean blog-style prose */
+.prose.lw-post {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: 1.5;
+    max-width: 680px;
+}
+
+.prose.lw-post h1 { font-size: var(--text-2xl); margin: 32px 0 16px; }
+.prose.lw-post h2 { font-size: var(--text-lg); margin: 28px 0 12px; }
+.prose.lw-post h3 { font-size: var(--text-base); margin: 20px 0 8px; }
+.prose.lw-post h1:first-child { margin-top: 0; }
+.prose.lw-post h1 + p { font-size: var(--text-sm); color: var(--text-secondary); }
+.prose.lw-post blockquote { font-size: var(--text-sm); }
+.prose.lw-post p { margin-bottom: 10px; }
+.prose.lw-post li { margin-bottom: 6px; }
+.prose.lw-post pre { font-size: 11px; padding: 6px 10px; margin: 6px 0; line-height: 1.3; background: var(--bg-tertiary); border-radius: 4px; }
+.prose.lw-post code { font-size: 11px; padding: 1px 4px; }
+.prose.lw-post blockquote { font-size: var(--text-xs); margin: 8px 0 8px 16px; padding: 6px 12px; border-left: 2px solid var(--border-color); color: var(--text-secondary); font-style: normal; line-height: 1.4; }
+.prose.lw-post hr { margin: 24px 0; }
+
 .prose h1 {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: var(--text-3xl);

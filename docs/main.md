@@ -4,10 +4,6 @@ Extract and monitor LLM behavioral traits token-by-token during generation.
 
 ---
 
-## Coding Agent Instructions
-
-When working on any part of this codebase, **always read the relevant docs from the Documentation Index below first**. Before modifying extraction code, read extraction_guide.md. Before modifying inference code, read inference_guide.md. Before creating datasets, read trait_dataset_creation.md. Before touching architecture or adding new modules, read architecture.md. Read liberally — the docs are concise and will save you from reimplementing existing patterns or violating conventions.
-
 ## Documentation Index
 
 Primary documentation hub for the traitinterp project.
@@ -15,7 +11,7 @@ Primary documentation hub for the traitinterp project.
 ### Core Documentation
 - **[docs/main.md](main.md)** (this file) - Project overview and codebase reference
 - **[docs/architecture.md](architecture.md)** - Design principles, directory responsibilities, experiment schema
-- **[README.md](../readme.md)** - Quick start guide
+- `README.md` - Quick start guide
 
 ### Pipelines
 - **[docs/extraction_guide.md](extraction_guide.md)** - Extraction pipeline (scenarios → vectors → validation)
@@ -26,20 +22,20 @@ Primary documentation hub for the traitinterp project.
 ### Inference & Steering
 - **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline guide (stream-through, from-activations, projection modes)
 - **[docs/steering_guide.md](steering_guide.md)** - Steering pipeline guide (coefficient search, metrics, troubleshooting)
-- **[inference/README.md](../inference/README.md)** - Per-token monitoring
-- **[analysis/README.md](../analysis/README.md)** - All analysis scripts (steering, model diff, vectors, benchmark)
-- **[steering/README.md](../steering/README.md)** - Steering evaluation (detailed)
+- `inference/README.md` - Per-token monitoring
+- `analysis/README.md` - All analysis scripts (steering, model diff, vectors, benchmark)
+- `steering/README.md` - Steering evaluation (detailed)
 
 ### Visualization
-- **[visualization/README.md](../visualization/README.md)** - Dashboard usage
+- `visualization/README.md` - Dashboard usage
 - **[docs/methodology.md](methodology.md)** - How we extract and use vectors (serves /methodology in frontend)
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
 - **[docs/response_schema.md](response_schema.md)** - Unified response format across pipelines
 - **[docs/chat_templates.md](chat_templates.md)** - HuggingFace chat template behavior
-- **[config/paths.yaml](../config/paths.yaml)** - Path configuration
-- **[config/loras.yaml](../config/loras.yaml)** - LoRA adapter registry (HF repos, custom models)
+- `config/paths.yaml` - Path configuration
+- `config/loras.yaml` - LoRA adapter registry (HF repos, custom models)
 
 ### Infrastructure (dev-only)
 - **[docs/r2_sync.md](r2_sync.md)** - R2 cloud sync
@@ -47,13 +43,6 @@ Primary documentation hub for the traitinterp project.
 
 ### Contributing
 - **[docs/doc-update-guidelines.md](doc-update-guidelines.md)** - Style and process guide for docs
-
-### Dev-only Docs (not promoted to main)
-These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) below.
-- **[docs/TODO.md](TODO.md)** - Active task tracking
-- **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (open items, architecture decisions)
-- **[docs/viz_refactor_notepad.md](viz_refactor_notepad.md)** - Visualization refactor tracking (open items, bugs, CSS)
-- **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard (promoted to prod, not main)
 
 ---
 
@@ -180,7 +169,7 @@ python inference/run_inference_pipeline.py \
 from core import VectorSpec, ProjectionConfig, CaptureHook, SteeringHook, get_method, projection
 ```
 
-**Analysis** (model diff, vectors, benchmark, steering): See [analysis/README.md](../analysis/README.md)
+**Analysis** (model diff, vectors, benchmark, steering): See `analysis/README.md`
 
 ---
 
@@ -228,7 +217,7 @@ Three branches: `dev` (everything), `main` (public release), `prod` (Railway dep
 **What stays dev-only:**
 - `dev/` directory — holding pen for steering CLI tools, modal files, dev-only scripts
 - `other/` — server, tv, sae, mcp, rm_sycophancy analysis
-- Research docs — refactor notepads, TODO (listed in [Dev-only Docs](#dev-only-docs-not-promoted-to-main) above)
+- Research docs — refactor notepads, TODO
 - Personal docs live in a separate `trait-interp-personal` repo
 
 **To promote new files:** Add paths to `.publicinclude` or `.prodinclude`, then run the corresponding promote script.

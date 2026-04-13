@@ -503,7 +503,9 @@ class ChatInference:
             ):
                 token = chunk['token']
                 is_special = token.startswith('<|') and token.endswith('|>')
-                full_response += token
+                is_prompt = chunk.get('is_prompt', False)
+                if not is_prompt:
+                    full_response += token
                 token_count += 1
 
                 if token_count == 1:
@@ -517,6 +519,7 @@ class ChatInference:
                 yield {
                     'token': token,
                     'trait_scores': trait_scores,
+                    'is_prompt': chunk.get('is_prompt', False),
                     'is_special': is_special,
                     'done': False
                 }

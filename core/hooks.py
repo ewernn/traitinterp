@@ -789,19 +789,15 @@ class MultiLayerSteering:
             hook.__exit__(*exc)
 
 
-# =============================================================================
-# PerSampleSteering - different steering per batch slice
-# =============================================================================
-
 class ActivationCappingHook(LayerHook):
     """
     Activation capping: ensure projections onto a direction stay within bounds.
 
-    Floor mode (default): h ← h + max(0, τ - ⟨h, v̂⟩) · v̂
-        Pulls up if below τ. Prevents drift away from direction.
+    Floor mode (default): h <- h + max(0, tau - <h, v_hat>) * v_hat
+        Pulls up if below tau. Prevents drift away from direction.
 
-    Ceiling mode: h ← h + min(0, τ - ⟨h, v̂⟩) · v̂
-        Pulls down if above τ. Prevents excess projection onto direction.
+    Ceiling mode: h <- h + min(0, tau - <h, v_hat>) * v_hat
+        Pulls down if above tau. Prevents excess projection onto direction.
 
     From Lu et al. (2026), "The Assistant Axis."
 
@@ -847,17 +843,13 @@ class ActivationCappingHook(LayerHook):
         out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
         v_hat = self.direction.to(device=out_tensor.device, dtype=out_tensor.dtype)
 
-        # ⟨h, v̂⟩ per position: [batch, seq]
-        proj = out_tensor @ v_hat
+        proj = out_tensor @ v_hat  # [batch, seq]
 
         if self.mode == "floor":
-            # Deficit: how far below τ (zero if already above)
             delta = torch.clamp(self.tau - proj, min=0)
         else:
-            # Excess: how far above τ (zero if already below)
             delta = torch.clamp(self.tau - proj, max=0)
 
-        # h ← h + delta · v̂
         capped = out_tensor + delta.unsqueeze(-1) * v_hat
 
         if torch.is_tensor(outputs):
@@ -906,6 +898,10 @@ class MultiLayerActivationCapping:
         for hook in reversed(self._hooks):
             hook.__exit__(*exc)
 
+
+# =============================================================================
+# PerSampleSteering - different steering per batch slice
+# =============================================================================
 
 class PerSampleSteering:
     """

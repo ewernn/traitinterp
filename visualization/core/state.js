@@ -285,6 +285,33 @@ async function loadExperiments() {
             if (typeof e === 'object') state.experimentMeta[e.name] = e.has || [];
         });
 
+        // Populate experiment-specific visualization nav items
+        const expViz = data.experiment_viz || [];
+        state.experimentViz = expViz;
+        const vizSection = document.getElementById('experiment-viz-section');
+        const vizList = document.getElementById('experiment-viz-list');
+        if (vizSection && vizList && expViz.length > 0) {
+            vizSection.style.display = '';
+            vizList.innerHTML = expViz.map(ev => {
+                const label = ev.path.split('/').pop();
+                return `<div class="nav-item" data-view="experiment-viz" data-exp-viz="${ev.path}">${label}</div>`;
+            }).join('');
+            vizList.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                    item.classList.add('active');
+                    state.currentView = 'experiment-viz';
+                    state.currentExpViz = item.dataset.expViz;
+                    setTabInURL('experiment-viz');
+                    // Also store the viz path in URL
+                    const url = new URL(window.location);
+                    url.searchParams.set('exp-viz', item.dataset.expViz);
+                    window.history.pushState({}, '', url);
+                    window.renderView();
+                });
+            });
+        }
+
         // Render experiment list in sidebar (DOM manipulation lives in sidebar.js)
         window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS);
 
@@ -530,12 +557,20 @@ function initFromURL() {
     const tab = getTabFromURL();
     state.currentView = tab;
 
+    // Restore experiment-viz path from URL
+    if (tab === 'experiment-viz') {
+        const params = new URLSearchParams(window.location.search);
+        state.currentExpViz = params.get('exp-viz') || null;
+    }
+
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const activeNav = document.querySelector(`.nav-item[data-view="${tab}"]`);
+    const activeNav = tab === 'experiment-viz' && state.currentExpViz
+        ? document.querySelector(`.nav-item[data-exp-viz="${state.currentExpViz}"]`)
+        : document.querySelector(`.nav-item[data-view="${tab}"]`);
     if (activeNav) activeNav.classList.add('active');
 
     // If loading into an analysis view, also highlight the Analysis entry point
-    if (ANALYSIS_VIEWS.includes(tab)) {
+    if (ANALYSIS_VIEWS.includes(tab) || tab === 'experiment-viz') {
         state.lastAnalysisView = tab;
         const analysisEntry = document.getElementById('analysis-entry');
         if (analysisEntry) analysisEntry.classList.add('active');

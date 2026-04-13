@@ -10,7 +10,6 @@ from .types import (
     ProjectionEntry,
     ProjectionRecord,
     ResponseRecord,
-    ModelConfig,
     ModelVariant,
     SteeringEntry,
     SteeringRunRecord,
@@ -29,10 +28,10 @@ from .hooks import (
     MultiLayerProjection,       # project across layers (stream-through)
     MultiLayerSteering,           # steer multiple layers simultaneously
     MultiLayerAblation,           # ablate direction across all layers
-    ActivationCappingHook,            # clamp projection above threshold (single layer)
-    MultiLayerActivationCapping,  # clamp projection above threshold (multi-layer)
-    PerSampleSteering,         # different steering per batch slice
-    PerPositionSteeringHook,   # steer at specific token positions
+    ActivationCappingHook,        # clamp projection within bounds (single layer)
+    MultiLayerActivationCapping,  # clamp projection within bounds (multi-layer)
+    PerSampleSteering,            # different steering per batch slice
+    PerPositionSteeringHook,      # steer at specific token positions
 )
 from .methods import (
     ExtractionMethod,

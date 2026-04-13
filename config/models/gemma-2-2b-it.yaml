@@ -9,9 +9,6 @@ hidden_size: 2304
 num_attention_heads: 8
 num_key_value_heads: 4
 intermediate_size: 9216
-- input
-- after_attn
-- output
 sae:
   available: true
   provider: gemma-scope

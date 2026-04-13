@@ -96,7 +96,6 @@ inference:
 
   # SAE-encoded features
   sae: "experiments/{experiment}/inference/{model_variant}/sae"
-  sae_residual: "experiments/{experiment}/inference/{model_variant}/sae/{prompt_set}"
 
   # Responses (trait-independent, shared across all trait projections)
   # Contains prompt/response text and tokens - stored once per prompt
@@ -156,7 +155,6 @@ steering:
 
 extraction_eval:
   evaluation: "experiments/{experiment}/extraction/extraction_evaluation.json"
-  cross_trait_matrix: "experiments/{experiment}/extraction/cross_trait_matrix.json"
 
 # =============================================================================
 # ENSEMBLES (multi-vector combinations for steering)
@@ -168,27 +166,6 @@ ensemble:
   base: "experiments/{experiment}/steering/{trait}/{model_variant}/ensembles"
   definition: "experiments/{experiment}/steering/{trait}/{model_variant}/ensembles/{ensemble_id}.json"
   manifest: "experiments/{experiment}/steering/{trait}/{model_variant}/ensembles/manifest.json"
-  evaluation: "experiments/{experiment}/extraction/ensemble_evaluation.json"
-
-# =============================================================================
-# FILE PATTERNS (filename templates for use with directory paths)
-# =============================================================================
-
-patterns:
-  # Responses
-  pos_responses: "pos.{format}"
-  neg_responses: "neg.{format}"
-
-  # Trait definition
-  trait_definition: "trait_definition.txt"
-
-  # Analysis outputs
-  per_token_json: "{prompt_id}.json"
-  analysis_prompt_png: "prompt_{prompt_id}.png"
-  analysis_prompt_json: "prompt_{prompt_id}.json"
-  analysis_named_png: "{filename}.png"
-  analysis_named_json: "{filename}.json"
-
 # =============================================================================
 # DATA SCHEMA (structure + validation + discovery)
 # =============================================================================
