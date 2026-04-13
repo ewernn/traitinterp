@@ -3302,15 +3302,21 @@ mark.annotation {
 
 /* Side-by-side comparison blocks */
 .side-by-side { margin: 1.5em 0; text-align: center; }
-.sbs-container { display: flex; gap: 12px; align-items: flex-start; }
-.sbs-panel { flex: 1; min-width: 0; }
+.sbs-container { display: flex; gap: 16px; align-items: stretch; }
+.sbs-panel {
+    flex: 1; min-width: 0;
+    background: #fff;
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
 .sbs-panel img { width: 100%; height: auto; border-radius: 4px; }
-.sbs-panel .chart-container { width: 100%; min-height: 300px; }
+.sbs-panel .chart-container { width: 100%; min-height: 280px; }
 .sbs-label {
     font-size: var(--text-xs);
     font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     text-align: center;
 }
 @media (max-width: 768px) {

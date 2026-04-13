@@ -3,6 +3,7 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
+  - mats-behavioral-probes.md
   - emotion-concepts-replication.md
   - assistant-axis-replication.md
   - rm-sycophancy.md

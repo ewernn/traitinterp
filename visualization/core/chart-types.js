@@ -81,6 +81,21 @@ function getTraitShortName(fullPath, labels = null) {
 // ============================================================================
 
 const MODEL_DIFF_LAYER_DEFAULTS = {
+    per_layer_trait_delta: {
+        yaxis: 'Trait Score Delta',
+        hoverFmt: '.1f',
+        hoverSuffix: '',
+        emptyMsg: 'No trait delta data available',
+        defaultHeight: 300,
+        buildName: (shortName, traitData, field) => {
+            const values = traitData[field];
+            const peakIdx = values.reduce((minIdx, val, i, arr) =>
+                val < arr[minIdx] ? i : minIdx, 0);
+            const peakVal = values[peakIdx]?.toFixed(1) || '?';
+            const peakLayer = traitData.layers[peakIdx] ?? '?';
+            return `${shortName} (${peakVal} @ L${peakLayer})`;
+        }
+    },
     per_layer_effect_size: {
         yaxis: 'Effect Size (σ)',
         hoverFmt: '.2f',
@@ -168,6 +183,9 @@ CHART_RENDERERS['model-diff-effect'] = (container, data, options = {}) =>
 
 CHART_RENDERERS['model-diff-cosine'] = (container, data, options = {}) =>
     renderModelDiffLayer(container, data, { ...options, field: 'per_layer_cosine_sim' });
+
+CHART_RENDERERS['model-diff-trait-delta'] = (container, data, options = {}) =>
+    renderModelDiffLayer(container, data, { ...options, field: 'per_layer_trait_delta' });
 
 // ============================================================================
 // Chart Type: model-diff-bar (Peak effect size bar chart)
@@ -788,7 +806,6 @@ CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
     const s = getStyle(options);
     const labels = data.labels || [];
     const highlight = new Set(data.highlight || []);
-    const textArr = labels.map(l => highlight.size === 0 || highlight.has(l) ? l : '');
 
     const traces = [];
     if (data.groups) {
@@ -796,24 +813,38 @@ CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
             const color = g.color || (s.categoricalColors ? s.categoricalColors[i % s.categoricalColors.length] : s.pointColor);
             traces.push({
                 x: g.indices.map(j => data.x[j]), y: g.indices.map(j => data.y[j]),
-                text: g.indices.map(j => textArr[j] || ''), name: g.name,
-                mode: 'markers+text', type: 'scatter', textposition: 'top center',
-                textfont: { size: 9, color: s.labelColor, family: s.fontFamily },
-                marker: { color, size: 6, opacity: 0.8 },
+                name: g.name, mode: 'markers', type: 'scatter',
+                marker: { color, size: 8, opacity: 0.8 },
                 hovertext: g.indices.map(j => labels[j] || ''), hoverinfo: 'text',
             });
         });
     } else {
         traces.push({
-            x: data.x, y: data.y, text: textArr,
-            mode: 'markers+text', type: 'scatter', textposition: 'top center',
-            textfont: { size: 9, color: s.labelColor, family: s.fontFamily },
-            marker: { color: s.pointColor, size: 6, opacity: 0.7 },
+            x: data.x, y: data.y,
+            mode: 'markers', type: 'scatter',
+            marker: { color: s.pointColor, size: 8, opacity: 0.7 },
             hovertext: labels, hoverinfo: 'text', showlegend: false,
         });
     }
 
+    // Arrow annotations for highlighted labels, hover-only for the rest
     const annotations = [];
+    if (highlight.size > 0) {
+        labels.forEach((label, i) => {
+            if (!highlight.has(label)) return;
+            annotations.push({
+                x: data.x[i], y: data.y[i],
+                text: label,
+                showarrow: true,
+                arrowhead: 0,
+                arrowwidth: 1,
+                arrowcolor: s.pointColor,
+                ax: 0, ay: -25,
+                font: { size: 9, color: s.labelColor, family: s.fontFamily },
+            });
+        });
+    }
+
     if (data.regression !== false) {
         traces.push(_regressionLine(data.x, data.y, s));
         annotations.push({
