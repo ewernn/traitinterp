@@ -378,7 +378,7 @@ function buildFullChartSVG(chartData, width, height) {
  * @param {Object} traitResults - { runs, baseline }
  * @returns {{ methods, perLayer, baseline, minLayer, maxLayer, bestRun, configs }}
  */
-function extractDetailData(traitResults) {
+function extractDetailData(traitResults, direction = null) {
     const baseline = traitResults.baseline?.trait_mean || 0;
     const runs = traitResults.runs || [];
 
@@ -399,14 +399,17 @@ function extractDetailData(traitResults) {
         if (layer > maxLayer) maxLayer = layer;
 
         // Per-method aggregation (best score per layer per method)
+        // For negative direction, "best" = lowest trait score (furthest from baseline)
+        const isBetter = (a, b) => direction === 'negative' ? a < b : a > b;
+
         if (!methods[method]) methods[method] = {};
-        if (!methods[method][layer] || traitScore > methods[method][layer].score) {
+        if (!methods[method][layer] || isBetter(traitScore, methods[method][layer].score)) {
             methods[method][layer] = { score: traitScore, layer };
         }
 
         // Per-layer best (sorted later)
         const existing = perLayerMap[layer];
-        if (!existing || traitScore > existing.traitScore) {
+        if (!existing || isBetter(traitScore, existing.traitScore)) {
             perLayerMap[layer] = {
                 layer, method, component, coef, traitScore, coherence,
                 timestamp: run.timestamp,
@@ -420,10 +423,12 @@ function extractDetailData(traitResults) {
         methodArrays[method] = Object.values(layerMap);
     }
 
-    // Per-layer sorted by score descending
-    const perLayer = Object.values(perLayerMap).sort((a, b) => b.traitScore - a.traitScore);
+    // Per-layer sorted by best score (descending for positive, ascending for negative)
+    const perLayer = Object.values(perLayerMap).sort((a, b) =>
+        direction === 'negative' ? a.traitScore - b.traitScore : b.traitScore - a.traitScore
+    );
 
-    // Best run overall (highest trait score)
+    // Best run overall (most steered — lowest for negative, highest for positive)
     const bestRun = perLayer.length > 0 ? perLayer[0] : null;
 
     // Count unique configs
@@ -522,7 +527,8 @@ async function fetchResponseForRun(entry, run) {
  * @returns {string} HTML
  */
 function buildDetailHTML(trait, traitResults) {
-    const data = extractDetailData(traitResults);
+    const direction = traitResults.direction || 'positive';
+    const data = extractDetailData(traitResults, direction);
     const { methods, perLayer, baseline, minLayer, maxLayer, bestRun, configCount } = data;
     const traitName = trait.split('/').pop();
     const methodColors = getMethodColors();
@@ -580,7 +586,7 @@ function buildDetailHTML(trait, traitResults) {
     // Best response section (placeholder, loaded async)
     const bestResponseHTML = bestRun ? `
         <div class="detail-best-response" data-layer="${bestRun.layer}" data-method="${bestRun.method}" data-component="${bestRun.component}" data-coef="${bestRun.coef}">
-            <div class="br-label">Best response (highest trait score)</div>
+            <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score)</div>
             <div class="br-meta">
                 Layer <strong>${bestRun.layer}</strong>
                 &middot; coef=<strong>${Math.abs(bestRun.coef).toFixed(1)}</strong>
