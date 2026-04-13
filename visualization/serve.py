@@ -193,6 +193,34 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_inference_projection(exp_name, model_variant, category, trait, prompt_set, prompt_id)
                 return
 
+            # Serve MkDocs built docs at /docs/
+            # File requests: try docs/ first (raw sources the dashboard fetches),
+            # then fall back to docs_site/ (MkDocs build assets like CSS/JS).
+            # Directory requests: always serve from docs_site/ (MkDocs HTML pages).
+            if self.path == '/docs':
+                self.send_response(301)
+                self.send_header('Location', '/docs/')
+                self.end_headers()
+                return
+            if self.path.startswith('/docs/'):
+                _, ext = os.path.splitext(self.path)
+                if ext:
+                    # File request: serve from docs/ if it exists, else docs_site/
+                    raw_path = self.translate_path(self.path)
+                    if os.path.isfile(raw_path):
+                        super().do_GET()
+                        return
+                    self.path = '/docs_site' + self.path[len('/docs'):]
+                    super().do_GET()
+                    return
+                # Directory/page request → MkDocs build
+                doc_path = self.path[len('/docs'):]
+                self.path = '/docs_site' + doc_path
+                if self.path.endswith('/'):
+                    self.path += 'index.html'
+                super().do_GET()
+                return
+
             # Serve SPA at root (including with query params like /?tab=...)
             if self.path == '/' or self.path == '/index.html' or self.path.startswith('/?'):
                 self.path = '/visualization/index.html'
@@ -991,6 +1019,7 @@ Available at:
   • http://localhost:{PORT}/                    (Dashboard - defaults to Overview tab)
   • http://localhost:{PORT}/?tab=data-explorer  (Data Explorer)
   • http://localhost:{PORT}/?tab=overview       (Overview documentation)
+  • http://localhost:{PORT}/docs/               (API docs — requires mkdocs build)
 
 Press Ctrl+C to stop the server.
 """)

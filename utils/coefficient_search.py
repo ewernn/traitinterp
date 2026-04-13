@@ -39,21 +39,25 @@ if TYPE_CHECKING:
     from utils.backends import GenerationBackend
 
 
-def _print_best_results(states, sign, threshold, group_by_trait=False):
-    """Print best result per state, optionally grouped by trait."""
+def _print_best_results(states, sign=None, threshold=None, group_by_trait=False):
+    """Print best result per state, optionally grouped by trait.
+
+    sign: Global sign override (for single-trait path). If None, reads per-state sign.
+    """
     label = "Best per trait×layer:" if group_by_trait else "Best per layer:"
     print(f"\n{'='*60}")
     print(label)
     print(f"{'='*60}")
     current_trait = None
     for state in states:
-        if group_by_trait and state["trait"] != current_trait:
-            current_trait = state["trait"]
+        if group_by_trait and state.get("trait") != current_trait:
+            current_trait = state.get("trait")
             print(f"\n  {current_trait}:")
         indent = "    " if group_by_trait else "  "
+        state_sign = sign if sign is not None else state.get("sign", 1)
         valid = [(c, t, coh) for c, t, coh in state["history"] if coh >= threshold]
         if valid:
-            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1] * sign)
+            best_coef, best_trait, best_coh = max(valid, key=lambda x: x[1] * state_sign)
             print(f"{indent}L{state['layer']:2d}: coef={best_coef:.1f}, trait={best_trait:.1f}, coh={best_coh:.1f}")
         elif state["history"]:
             best_coef, best_trait, best_coh = max(state["history"], key=lambda x: x[2])
@@ -384,7 +388,6 @@ def _process_config_result(
     prompt_set: str,
     save_mode: str,
     coherence_threshold: float,
-    direction: str,
     trait_judge: Optional[str],
 ):
     """Process scores for a single config state — update history (all ranks), save results (rank-0).
@@ -413,6 +416,7 @@ def _process_config_result(
     state["cached_runs"].append(SteeringRunRecord.from_dict({"config": config, "result": result.to_dict(), "timestamp": timestamp}))
 
     # File I/O: rank-0 only
+    state_direction = state.get("direction", "positive")
     if is_rank_zero() and scores is not None and responses is not None:
         questions = state["questions"]
         responses_data = build_response_records(questions, responses, scores)
@@ -422,7 +426,7 @@ def _process_config_result(
         if save_mode == "all":
             save_responses(responses_data, state["experiment"], state["trait"], model_variant, position, prompt_set, config, timestamp)
         elif save_mode == "best":
-            if is_better_result(state.get("best_result"), trait_mean, coherence_mean, coherence_threshold, direction):
+            if is_better_result(state.get("best_result"), trait_mean, coherence_mean, coherence_threshold, state_direction):
                 state["best_result"] = {
                     "trait_mean": trait_mean, "coherence_mean": coherence_mean,
                     "valid": coherence_mean >= coherence_threshold,
@@ -453,7 +457,6 @@ async def multi_trait_batched_adaptive_search(
     save_mode: str = "best",
     coherence_threshold: float = MIN_COHERENCE,
     relevance_check: bool = True,
-    direction: Literal["positive", "negative"] = "positive",
     trait_judge: Optional[str] = None,
 ):
     """
@@ -462,24 +465,27 @@ async def multi_trait_batched_adaptive_search(
     Like batched_adaptive_search but the config space is trait×layer instead of
     just layer. Each config independently follows its own coefficient trajectory.
     Different traits can have different question sets (heterogeneous batch sizes).
+    Each trait carries its own direction (from trait_config["direction"]).
 
     Args:
         trait_configs: List of dicts, one per trait, each containing:
             trait, trait_name, trait_definition, eval_prompt, questions,
-            formatted_questions, layer_data, cached_runs, experiment, vector_experiment
+            formatted_questions, layer_data, cached_runs, experiment, vector_experiment,
+            direction
     """
-    sign = 1 if direction == "positive" else -1
     model = backend.model
     tokenizer = backend.tokenizer
 
     # Initialize config states: one per (trait, layer) pair
     config_states = []
     for tc in trait_configs:
+        tc_direction = tc.get("direction", "positive")
+        tc_sign = 1 if tc_direction == "positive" else -1
         for ld in tc["layer_data"]:
             config_states.append({
                 "layer": ld["layer"],
                 "vector": ld["vector"],
-                "coef": ld["base_coef"] * start_mult * sign,
+                "coef": ld["base_coef"] * start_mult * tc_sign,
                 "velocity": 1.0,
                 "history": [],
                 "best_result": None,
@@ -494,6 +500,8 @@ async def multi_trait_batched_adaptive_search(
                 "cached_runs": tc["cached_runs"],
                 "experiment": tc["experiment"],
                 "vector_experiment": tc["vector_experiment"],
+                "direction": tc_direction,
+                "sign": tc_sign,
             })
 
     n_configs = len(config_states)
@@ -510,7 +518,9 @@ async def multi_trait_batched_adaptive_search(
     max_seq_len = max_prompt_len + max_new_tokens
     max_batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
 
-    print(f"\nMulti-trait batched adaptive search: {n_traits} traits, {n_configs} configs ({n_traits}×layers), direction={direction}")
+    directions_summary = {tc.get("direction", "positive") for tc in trait_configs}
+    dir_str = "/".join(sorted(directions_summary))
+    print(f"\nMulti-trait batched adaptive search: {n_traits} traits, {n_configs} configs ({n_traits}×layers), direction={dir_str}")
     print(f"Total questions per full step: {total_questions * len(trait_configs[0]['layer_data'])} | max_batch_size={max_batch_size}")
 
     for step in range(n_steps):
@@ -613,7 +623,7 @@ async def multi_trait_batched_adaptive_search(
                         state, t_mean, c_mean, n_scores,
                         state_scores, state_responses,
                         component, position, method, model_variant, prompt_set,
-                        save_mode, coherence_threshold, direction, trait_judge,
+                        save_mode, coherence_threshold, trait_judge,
                     )
                     print(f"    {state['trait']} L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_mean:5.1f}, coh={coherence_mean:5.1f}")
 
@@ -637,4 +647,4 @@ async def multi_trait_batched_adaptive_search(
                     state["best_result"]["config"], state["best_result"]["timestamp"],
                 )
 
-    _print_best_results(config_states, sign, threshold, group_by_trait=True)
+    _print_best_results(config_states, threshold=threshold, group_by_trait=True)

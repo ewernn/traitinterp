@@ -246,7 +246,7 @@ def main():
                         help='Reference trait path for neutral corpus activations')
     parser.add_argument('--variance-threshold', type=float, default=0.5,
                         help='Cumulative neutral variance fraction to remove (default: 0.5)')
-    parser.add_argument('--source-method', default='mean_diff',
+    parser.add_argument('--method', default='mean_diff',
                         help='Base method to transform (default: mean_diff)')
     parser.add_argument('--no-pc', action='store_true',
                         help='Skip neutral-PC step; only save {source}+gm vectors')
@@ -276,9 +276,9 @@ def main():
         print("ERROR: Need at least 2 traits for cross-trait normalization")
         sys.exit(1)
 
-    gm_method = f"{args.source_method}+gm"
+    gm_method = f"{args.method}+gm"
     pc_pct = int(round(args.variance_threshold * 100))
-    pc_method = f"{args.source_method}+gm+pc{pc_pct}"
+    pc_method = f"{args.method}+gm+pc{pc_pct}"
     print(f"Output methods: {gm_method}" + (f", {pc_method}" if not args.no_pc else ""))
 
     summary = {"layers": {}, "gm_method": gm_method, "pc_method": pc_method if not args.no_pc else None}

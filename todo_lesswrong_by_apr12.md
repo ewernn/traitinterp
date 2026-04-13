@@ -1,17 +1,7 @@
 # TODO — LessWrong post by April 12
 
-- [ ] Fix mobile bug (site too wide, doesn't fit screen)
-- [ ] Overview v5 — add citations from literature map
-- [ ] Kill 6 placeholder blocks in `docs/methodology.md`
-- [ ] Findings cleanup: dates, lighter backgrounds, expandable sidebar with titles at top-left
-- [ ] Verify Qwen model ID in overview (`Qwen/Qwen3.5-9B`)
-- [ ] Replace `[link]` placeholders in overview finding bullets
-- [ ] Confirm starter trait names in overview match `datasets/traits/starter_traits/`
-- [ ] Write `docs/viz_findings/convolution-detector.md`
-- [ ] Add convolution-detector.md to `viz_findings/index.yaml`
-- [ ] Make live-chat click-to-warm instead of auto-loading
-- [ ] Solo LW post outline (traitinterp framework release)
-- [ ] Solo LW post first draft
+## LW Post (critical path)
+- [ ] Solo LW post first draft — finish Selected findings + Limitations sections
 - [ ] Solo LW post polish (read out loud, cut 20%, tighten claims)
 - [ ] Companion LW post outline (Emotion Concepts replication + MATS findings, with Sriram)
 - [ ] Companion LW post first draft
@@ -19,23 +9,36 @@
 - [ ] Review both posts (Sriram and/or Oscar)
 - [ ] Publish both posts (solo morning, companion afternoon)
 - [ ] Cross-post to AlignmentForum
+
+## Site / viz_findings
+- [ ] Overview v5 — add citations from literature map
+- [ ] Verify Qwen model ID in overview (`Qwen/Qwen3.5-9B`)
+- [ ] Replace `[link]` placeholders in overview finding bullets
+- [ ] Confirm starter trait names in overview match `datasets/traits/starter_traits/`
+- [ ] Make live-chat click-to-warm instead of auto-loading
+- [ ] Clean remaining viz_findings (massive-activations needs restructuring, 8 others need a pass)
+
+## Post-publish
 - [ ] Tweet thread with hook + figure + link
 - [ ] Personal website cleanup (remove distracting projects, link traitinterp.com, update bio)
 - [ ] Message Oscar with LW post link
 - [ ] Optional: email Anthropic Fellows with LW post link
-- [ ] Write `docs/viz_findings/quant-sensitivity.md` — `experiments/quant-sensitivity/` already has the data
-- [ ] Add quant-sensitivity.md to `viz_findings/index.yaml`
+
+## Experiments (optional)
+- [ ] Base-beats-instruct finding for live-chat traits (evil, hallucination, sycophancy)
 - [ ] Base-vs-story extraction experiment (optional, if time)
-- [ ] Base-beats-instruct finding for live-chat traits (evil, hallucination, sycophancy) — write natural-elicitation `.txt` datasets, extract on Qwen3.5-9B-Base, compare steering deltas to current instruct extraction
-- [ ] Show base-extraction beats instruct-extraction, both qualitatively and quantitatively (evil is a clean example). Why it matters: instruct models learn to *perform* traits from system prompts, so instruct-extracted vectors point at a persona the model knows how to act out — the resulting steering is theatrical and brittle. Base-extracted vectors capture the underlying behavioral direction before any persona training, so steering feels authentic (model's own voice) and transfers more reliably across variants. This validates natural elicitation as the default extraction mode and argues against the default assumption that instruct models are "better" for trait work.
+- [ ] In the convolution post, cite Anthropic's Emotion Concepts local > global influence finding
+
+## Other
 - [ ] 30-min glance at Sriram fingerprint work (promised meeting)
-- [ ] In the convolution post, cite Anthropic's finding that emotion concepts have stronger local than global influence — this is the motivation for using a temporal convolution window instead of a full-response average
+- [ ] Run Emotion Concepts replication experiments (PCA, clustering, geometry — scope TBD with Sriram)
 - [ ] Job applications 2-3/day throughout sprint
-- [ ] (backlog) Second LW post about traitinterp methodology — save for post-decision
-- [ ] Run Emotion Concepts replication experiments (PCA, clustering, geometry on your trait set — scope TBD with Sriram)
-- [ ] (backlog) Vetting prompt redesign — include full response for context + XML-tagged `<score_this>` section matching extraction position for focused scoring. Test variations. Files: `utils/judge.py`, `utils/preextraction_vetting.py`
-- [ ] (backlog) Dataset format unification — trait.yaml metadata + cascade (subagent proposal in chat)
-- [ ] (backlog, maybe skip) Analyze past Anthropic Fellows for commonalities
+
+## Backlog
+- [ ] Second LW post about traitinterp methodology — save for post-decision
+- [ ] Vetting prompt redesign — `<score_this>` XML tagging
+- [ ] Dataset format unification — trait.yaml metadata + cascade
+- [ ] Analyze past Anthropic Fellows for commonalities
 
 ---
 
@@ -142,6 +145,7 @@ Consolidated context from 3 experiment sessions (Haskins CoT Obfuscation, Obfusc
 - OA normalization: run norm_diagnostic.py on projection data (needs GPU)
 - R2 cleanup: ~165 GiB regenerable data in experiments-save/ + temp/
 - Paper (~/code/persona-generalization/tv/paper/paper_rh.tex): outline form, incorporate Haskins/OA results
+- [ ] Write up aria_rl arousal finding as connection to Emotion Concepts: CORRECTED — RH model shows HIGH desperation (d=+1.405) AND high calm (d=+1.300) simultaneously, with suppressed moral inhibition (fear↓, anxiety↓, evasiveness↓ at onset). Not "calm hacking" — it's "desperate to pass + unafraid to cheat." Consistent with Sofroniew: desperation drives hacking (confirmed), but RL additionally removed the fear/anxiety brake while leaving the desperation drive intact. At onset: excitement↑, warmth↑, certainty↑, helpfulness↓(-0.075), perfectionism↓, effort↓, evasiveness↓, fear↓. Data: hack_onset_aligned_s1.npz, findings.md Cohen's d values. Cross-reference with Sofroniew Section 3.3 (RH steering) and paper_rh.tex Section 6.
 
 ### Chat: apr10-em
 Normalization audit before open-sourcing:
@@ -150,3 +154,4 @@ Normalization audit before open-sourcing:
 - Verify __normalized sentinel is checked before scoring and that double-normalization cannot happen
 - Add assertions / fail-fast checks at scoring boundaries (e.g., if scores >> 1.0, they're probably unnormalized)
 - Document the normalization convention in core_reference.md or methodology.md
+- [ ] (backlog) Steering detail view redesign — simplify from ground up. Show baseline + best coef per layer (default filter). Toggle to see all responses. Remove confusing colors. Clean layout. Files: visualization/views/steering/detail.js

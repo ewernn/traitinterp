@@ -155,7 +155,7 @@ class InferenceConfig:
     layers: str = "best,best+5"
     component: str = "residual"
     centered: bool = False
-    skip_existing: bool = False
+    force: bool = False
     score_mode: str = "normalized"
 
     # Generation

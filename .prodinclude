@@ -24,6 +24,8 @@ config/models/
 # ── Datasets ──
 datasets/traits/starter_traits/
 datasets/inference/starter_prompts/
+# Active traits referenced by viz_findings:
+datasets/traits/rm_hack/
 
 # ── Analysis ──
 analysis/
@@ -47,6 +49,7 @@ CLAUDE.md
 LICENSE
 requirements.txt
 pyproject.toml
+mkdocs.yml
 .gitignore
 .env.example
 experiments/.gitkeep

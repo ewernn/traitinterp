@@ -60,6 +60,7 @@ CLAUDE.md
 LICENSE
 requirements.txt
 pyproject.toml
+mkdocs.yml
 .gitignore
 .env.example
 experiments/.gitkeep

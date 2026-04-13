@@ -34,7 +34,7 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "torch",
-        "transformers",
+        "transformers>=5.5.0",
         "accelerate",
         "bitsandbytes",
         "huggingface_hub",
@@ -142,7 +142,7 @@ def generate_batch_remote(
     image=image,
     volumes={"/models": volume},
     timeout=600,
-    scaledown_window=30,  # TESTING: 30s for quick cold-start testing. Set back to 600 for production.
+    scaledown_window=30,
     secrets=[modal.Secret.from_name("huggingface")],
     enable_memory_snapshot=True,
     experimental_options={"enable_gpu_snapshot": True},
@@ -190,6 +190,7 @@ class TraitCapture:
         steering_configs: list = None,
         system_prompt: str = None,
         trait_vectors: list = None,
+        include_prompt_scores: bool = False,
     ):
         """
         Stream token-by-token with trait projection scores.
@@ -206,9 +207,11 @@ class TraitCapture:
             steering_configs: List of {"layer": int, "vector": list[float], "coefficient": float}
             system_prompt: Optional system prompt (default: LIVE_CHAT_SYSTEM_PROMPT)
             trait_vectors: List of {"trait": str, "layer": int, "vector": list[float]}
+            include_prompt_scores: If True, yield prompt tokens with trait projections
+                before streaming generated tokens (for live-chat chart visualization).
 
         Yields:
-            {"token": ..., "trait_scores": {trait: score}, "model": ...}
+            {"token": ..., "trait_scores": {trait: score}, "is_prompt": bool, "model": ...}
         """
         import sys
         import torch
@@ -273,7 +276,7 @@ class TraitCapture:
                 ))
 
         # Prepare trait projection vectors for server-side projection
-        from core import projection as project_fn
+        from core.math import batch_cosine_similarity as project_fn
         trait_proj = []
         layers_needed = set()
         if trait_vectors:
@@ -285,7 +288,44 @@ class TraitCapture:
         capture_layers = sorted(layers_needed) if layers_needed else None
         print(f"Server-side projection: {len(trait_proj)} traits, layers {capture_layers}")
 
-        # Use HookedGenerator for streaming
+        # Optional: prefill prompt tokens with trait projections (for live-chat chart)
+        if include_prompt_scores and trait_proj:
+            from core import HookManager
+            prompt_activations = {}
+
+            def make_full_hook(layer_idx):
+                def hook(module, inp, out):
+                    out_t = out[0] if isinstance(out, tuple) else out
+                    prompt_activations[layer_idx] = out_t.detach()
+                return hook
+
+            with HookManager(model) as hooks:
+                for _, layer, _ in trait_proj:
+                    if layer not in prompt_activations:
+                        hooks.add_forward_hook(f"model.layers.{layer}", make_full_hook(layer))
+                with torch.no_grad():
+                    _ = model(input_ids=inputs.input_ids, attention_mask=inputs.attention_mask, return_dict=True)
+
+            prompt_ids = inputs.input_ids[0].tolist()
+            for pos in range(len(prompt_ids)):
+                token_str = tokenizer.decode([prompt_ids[pos]])
+                is_special = token_str.startswith('<|') and token_str.endswith('|>')
+                trait_scores = {}
+                for trait_name, layer, vec in trait_proj:
+                    if layer in prompt_activations:
+                        act = prompt_activations[layer][0, pos, :]
+                        score = project_fn(act, vec.to(act.device)).item()
+                        trait_scores[trait_name] = round(score, 4)
+                yield {
+                    "token": token_str,
+                    "trait_scores": trait_scores,
+                    "is_prompt": True,
+                    "is_special": is_special,
+                    "model": model_name,
+                }
+            del prompt_activations
+
+        # Stream generated tokens with trait projections
         gen_start = time.time()
         tokens_generated = 0
 
@@ -310,11 +350,12 @@ class TraitCapture:
                     comps = tok.activations[layer]
                     if component in comps:
                         act = comps[component]
-                        score = project_fn(act, vec.to(act.device), normalize_vector=True).item()
+                        score = project_fn(act, vec.to(act.device)).item()
                         trait_scores[trait_name] = round(score, 4)
             yield {
                 "token": token_str,
                 "trait_scores": trait_scores,
+                "is_prompt": False,
                 "model": model_name,
             }
 

@@ -586,7 +586,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
 
 async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_variant, model_name,
                                   backend, judge, eval_prompt_override, trait_judge,
-                                  use_default, direction, force, trait_layers, layers_arg):
+                                  use_default, per_trait_direction, force, trait_layers, layers_arg):
     """Multi-trait batched evaluation."""
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
 
@@ -618,9 +618,11 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
         questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
         trait_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
+        trait_direction = per_trait_direction.get(trait, "positive")
+
         result = load_or_init_results(
             config, trait, model_variant, steering_data, model_name,
-            vec_exp, direction, len(questions),
+            vec_exp, trait_direction, len(questions),
         )
         if result is None:
             continue
@@ -659,6 +661,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
             "formatted_questions": formatted_questions,
             "layer_data": layer_data, "cached_runs": cached_runs,
             "experiment": config.experiment, "vector_experiment": vec_exp,
+            "direction": trait_direction,
         })
 
     if trait_configs:
@@ -672,7 +675,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
             max_new_tokens=config.max_new_tokens, save_mode=config.save_mode,
             coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check,
-            direction=direction, trait_judge=config.trait_judge,
+            trait_judge=config.trait_judge,
         )
 
 

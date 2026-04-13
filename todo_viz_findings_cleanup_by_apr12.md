@@ -21,9 +21,29 @@ Goal: each active finding reads cleanly, has good figures, dropdowns where usefu
 
 For each: bird's-eye view from Claude → read current version on site → list issues → fix.
 
-- [ ] **rm-sycophancy** (major, Jan 2026)
-  - Gaps flagged: no instruct-extraction comparison, annotation N=10 (small), detection/steering layer mismatch unexplained, eval_awareness probe is weak (0.85σ) and distracts from validation chart
-  - Consider: lift "detection ≠ suppression" out of takeaways into its own section — it's a publishable mechanistic claim
+- [x] **rm-sycophancy** (major, Jan 2026) — cleaned Apr 11
+  - Updated headline: 30 → 13 (57%), thumbnail, summary, preview
+  - Added ordinal_century caveat (2 new mentions), N=10 disclosure
+  - Fixed broken `biases.json` path (→ `datasets/traits/archive/rm_hack/`)
+  - Dropped `eval_awareness` from validation charts
+  - Framed `ulterior_motive_v2` as robustness ablation
+  - Added Detection/Suppression definitions
+  - Lifted "Detection ≠ suppression" into its own section with forward-propagation hypothesis (detection = read at max-signal layer, steering = write early enough to propagate)
+  - Added matched-prompts comparison (55.6% vs 44.4% on 9 common prompts)
+  - Added int4 quant disclosure (bnb NF4, AWQ alternative at `casperhansen/llama-3.3-70b-instruct-awq`)
+  - Deleted 2 orphaned PNGs
+
+  **Followups for rm-sycophancy:**
+  - [ ] Rerun steering eval with current judge prompts to verify `ulterior_motive L25 c=-10` is still the winner. Command sketch:
+    ```
+    python steering/run_steering_eval.py \
+      --experiment rm_syco \
+      --traits "rm_hack/ulterior_motive,rm_hack/ulterior_motive_v2,rm_hack/secondary_objective" \
+      --model-variant rm_lora
+    ```
+    Note: steering evals from Jan 17–23. Judge prompts updated several times since. Manual annotation (57% headline) is unaffected, but best-coefficient selection may change.
+  - [ ] Ask convolution chat: can they run pass1/pass2/pass3 3-agent annotation on the existing `baseline.json` + `L25_c-10.0_2026-01-23_05-39-08.json` steered responses for all 100 prompts (currently only 10 annotated)? Same bias categories from `datasets/traits/archive/rm_hack/biases.json`. Would 10x the sample and use their improved methodology.
+  - [ ] Optional: run instruct-extraction baseline for rm_hack traits (currently only base extraction exists for these). Ties into base-beats-instruct todo. Defer.
 
 - [ ] **comparison-persona-vectors** (major, Jan 2026)
   - Missing 2 cosine values in Vector Similarity table (sycophancy, hallucination)

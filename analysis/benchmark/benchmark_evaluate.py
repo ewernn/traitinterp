@@ -30,13 +30,13 @@ Usage:
     python analysis/benchmark/benchmark_evaluate.py \\
         --experiment gemma-2-2b-it \\
         --benchmark hellaswag \\
-        --steer safety/refusal --coef -1.0
+        --traits safety/refusal --coef -1.0
 
     # With specific layer (finds best method/position at that layer)
     python analysis/benchmark/benchmark_evaluate.py \\
         --experiment gemma-2-2b-it \\
         --benchmark hellaswag \\
-        --steer safety/refusal --layer 12 --coef -1.0
+        --traits safety/refusal --layer 12 --coef -1.0
 
     # CE loss instead of accuracy
     python analysis/benchmark/benchmark_evaluate.py \\
@@ -525,7 +525,7 @@ def main():
     )
 
     # Steering options (optional)
-    parser.add_argument("--steer", help="Trait to steer with (e.g., safety/refusal)")
+    parser.add_argument("--traits", help="Trait to steer with (e.g., safety/refusal)")
     parser.add_argument("--layer", type=int, help="Layer for steering (auto-selects best at this layer if specified)")
     parser.add_argument("--coef", type=float, default=-1.0, help="Steering coefficient (default: -1.0 for ablation)")
 
@@ -550,9 +550,9 @@ def main():
     steering_ctx = None
     steering_info = None
 
-    if args.steer:
+    if args.traits:
         # Use select_vector with optional layer filter (auto-resolves variants from config)
-        best = select_vector(args.experiment, args.steer, layer=args.layer)
+        best = select_vector(args.experiment, args.traits, layer=args.layer)
         layer = best.layer
         method = best.method
         position = best.position
@@ -562,19 +562,19 @@ def main():
         else:
             print(f"Layer {layer}: best is method={method}, position={position} (source: {best.source})")
 
-        vector = load_vector(args.experiment, args.steer, layer, model_variant, method, component, position)
+        vector = load_vector(args.experiment, args.traits, layer, model_variant, method, component, position)
         if vector is None:
             print(f"Error: Vector not found for L{layer} {method} {component} {position}")
             sys.exit(1)
         path = get_hook_path(layer)
         steering_ctx = SteeringHook(model, vector, path, coefficient=args.coef)
         steering_info = {
-            "trait": args.steer,
+            "trait": args.traits,
             "layer": layer,
             "method": method,
             "coef": args.coef,
         }
-        print(f"Steering: {args.steer} L{layer} coef={args.coef}")
+        print(f"Steering: {args.traits} L{layer} coef={args.coef}")
 
     # Run benchmark
     limit = args.limit if args.limit > 0 else None
@@ -608,7 +608,7 @@ def main():
 
     # Include steering info in filename if steering
     if steering_info:
-        trait_slug = args.steer.replace("/", "_")
+        trait_slug = args.traits.replace("/", "_")
         output_file = output_dir / f"{args.benchmark}_{trait_slug}_L{layer}_c{args.coef}.json"
     else:
         output_file = output_dir / f"{args.benchmark}.json"

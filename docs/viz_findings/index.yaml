@@ -3,6 +3,7 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
+  - emotion-concepts-replication.md
   - assistant-axis-replication.md
   - rm-sycophancy.md
   - convolution-detector.md
@@ -14,11 +15,11 @@ findings:
   - massive-activations.md
   - quantization-sensitivity.md
   - 1st-vs-3rd-person.md
-  - coefficient-scaling-law.md
+  # - coefficient-scaling-law.md       # TODO in title, missing chart + script
   - llm-judge-optimization.md
-  - ood-cross-model.md
-  - ood-formality.md
+  # - ood-cross-model.md                # stub, no backing data
+  # - ood-formality.md                  # datasets and scripts missing
   - effect-size-vs-steering.md
-  - model-diff-analysis.md
-  - component-comparison-refusal.md
+  # - model-diff-analysis.md            # superseded by comparison-persona-vectors
+  # - component-comparison-refusal.md   # subset of component-decomposition
   - thought-branches-analysis.md

@@ -89,7 +89,7 @@ def generate_responses(
     temperature: float = 0.0,
     prefill: str = None,
     from_responses: str = None,
-    skip_existing: bool = False,
+    force: bool = False,
     limit: int = None,
     output_suffix: str = None,
     load_in_4bit: bool = False,
@@ -172,7 +172,7 @@ def generate_responses(
             if prompt_id not in response_map:
                 continue
 
-            if skip_existing and (responses_dir / f"{prompt_id}.json").exists():
+            if not force and (responses_dir / f"{prompt_id}.json").exists():
                 continue
 
             raw_prompt = prompt_item.get('text') or prompt_item.get('prompt')
@@ -223,7 +223,7 @@ def generate_responses(
     prompt_items_filtered = []
     for prompt_item in prompts:
         prompt_id = prompt_item['id']
-        if skip_existing and (responses_dir / f"{prompt_id}.json").exists():
+        if not force and (responses_dir / f"{prompt_id}.json").exists():
             continue
         raw_prompt = prompt_item.get('text') or prompt_item.get('prompt')
         prompt_text = format_prompt(raw_prompt, tokenizer, use_chat_template=use_chat_template, system_prompt=system_prompt)
@@ -273,7 +273,7 @@ def main():
                        help="Path to {id: response_text} JSON. Tokenizer only, no GPU.")
 
     # Common options
-    parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output-suffix", type=str, default=None,
                        help="Suffix for output directory name")
@@ -300,7 +300,7 @@ def main():
         temperature=args.temperature,
         prefill=args.prefill,
         from_responses=args.from_responses,
-        skip_existing=args.skip_existing,
+        force=args.force,
         limit=args.limit,
         output_suffix=args.output_suffix,
         load_in_4bit=args.load_in_4bit,

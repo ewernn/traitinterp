@@ -95,7 +95,7 @@ def generate(config: InferenceConfig, model_variant: str) -> int:
         model_variant=model_variant,
         max_new_tokens=config.max_new_tokens,
         temperature=config.temperature,
-        skip_existing=not config.regenerate, load_in_4bit=config.load_in_4bit,
+        force=config.regenerate, load_in_4bit=config.load_in_4bit,
         no_server=config.no_server,
     )
 
@@ -108,7 +108,7 @@ def capture(config: InferenceConfig, model_variant: str) -> int:
         prompt_set=config.prompt_set,
         model_variant=model_variant,
         layers=config.layers,
-        skip_existing=config.skip_existing, load_in_4bit=config.load_in_4bit,
+        force=config.force, load_in_4bit=config.load_in_4bit,
     )
 
 
@@ -123,7 +123,7 @@ def project_from_saved_activations(config: InferenceConfig, inference_dir: Path,
         experiment=config.experiment,
         component=config.component,
         layers=config.layers,
-        skip_existing=config.skip_existing,
+        force=config.force,
         centered=config.centered,
         traits=','.join(config.traits) if config.traits else None,
         score_mode=config.score_mode,
@@ -170,7 +170,7 @@ def project_stream_through(config: InferenceConfig, inference_dir: Path,
             backend.model, backend.tokenizer, response_files,
             trait_vectors, vectors_by_layer, hook_index,
             config.component, inference_dir, config.prompt_set, config.experiment,
-            skip_existing=config.skip_existing, centered=config.centered,
+            force=config.force, centered=config.centered,
             score_mode=config.score_mode,
         )
     finally:
@@ -207,7 +207,7 @@ def main():
     parser.add_argument("--layers", type=str, default="best,best+5")
     parser.add_argument("--component", default="residual")
     parser.add_argument("--centered", action="store_true")
-    parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--force", action="store_true")
 
     # Scoring
     parser.add_argument("--score-mode", default="normalized",
@@ -237,7 +237,7 @@ def main():
         layers=args.layers,
         component=args.component,
         centered=args.centered,
-        skip_existing=args.skip_existing,
+        force=args.force,
         score_mode=args.score_mode,
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,

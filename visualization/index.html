@@ -159,6 +159,18 @@
     <script type="module" src="/visualization/core/markdown-view.js"></script>
     <script type="module" src="/visualization/core/conversation-tree.js"></script>
 
+    <!-- Expose core primitives for dynamically-loaded experiment viz modules -->
+    <script type="module">
+        import { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG } from '/visualization/core/charts.js';
+        import { renderSelect, renderToggle, renderLoading, renderSubsection, renderSegmentedControl } from '/visualization/core/ui.js';
+        import { getCssVar, hexToRgba, getPlotlyLayout } from '/visualization/core/display.js';
+        window.vizCore = {
+            charts: { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG },
+            ui: { renderSelect, renderToggle, renderLoading, renderSubsection, renderSegmentedControl },
+            display: { getCssVar, hexToRgba, getPlotlyLayout }
+        };
+    </script>
+
     <!-- State Management -->
     <script type="module" src="/visualization/core/state.js"></script>
 
@@ -245,11 +257,12 @@
                         import(`/experiments/${expName}/visualization/index.js`)
                             .then(mod => {
                                 container.innerHTML = '';
+                                document.getElementById('page-title').textContent = mod.title || expName;
                                 mod.render(container, {
-                                    charts: window.chartPrimitives,
+                                    ...window.vizCore,
                                     state: window.state,
                                     paths: window.paths,
-                                    ui: window.uiPrimitives
+                                    expBase: `/experiments/${expName}`
                                 });
                             })
                             .catch(err => {

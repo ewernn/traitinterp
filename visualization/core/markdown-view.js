@@ -57,6 +57,9 @@ function renderMarkdownContent(text, opts = {}) {
     // 4. Parse markdown
     let html = marked.parse(markdown);
 
+    // 4.5. Replace \consolas{text} with monospace spans
+    html = html.replace(/\\consolas\{([^}]+)\}/g, '<span class="consolas">$1</span>');
+
     // 5. Restore math blocks
     html = restoreMathBlocks(html, mathBlocks);
 

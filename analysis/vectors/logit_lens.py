@@ -16,18 +16,17 @@ The highest-scoring tokens reveal what a trait vector "means" in token space:
 Implementation: normed = model.norm(residual); logits = model.lm_head(normed);
 then softmax to get probabilities. Use --no-norm to skip the RMSNorm step.
 
-Pipeline integration: runs automatically as stage 5 of the extraction pipeline
-(run_extraction_pipeline.py). Skip with --no-logitlens. Output is saved to
-experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json.
+Standalone script — run manually. Writes per-trait files to the canonical
+extraction.logit_lens path (experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json).
 
 Input: Experiment, trait (or --all-traits)
-Output: Top/bottom tokens for each vector direction
+Output: Top/bottom tokens for each vector direction, per method
 
 Usage:
-    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --trait safety/refusal
+    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --traits safety/refusal
     python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --all-traits
-    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --trait safety/refusal --save
-    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --trait safety/refusal --filter-common
+    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --traits safety/refusal --save
+    python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --all-traits --save
 """
 
 import sys
@@ -36,13 +35,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 import argparse
 import json
+from collections import defaultdict
+from typing import Optional
 
 import torch
 
 from utils.logit_lens import vector_to_vocab, build_common_token_mask
-from utils.model import load_model_with_lora
-from utils.vector_selection import select_vector
-from utils.vectors import load_vector_with_baseline
+from utils.model import load_model_with_lora, get_inner_model
+from utils.vectors import discover_vectors, load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits, get_model_variant
 
 
@@ -55,80 +55,117 @@ def analyze_trait(
     top_k: int = 20,
     apply_norm: bool = True,
     common_mask: torch.Tensor = None,
-) -> dict:
-    """Analyze a single trait vector."""
-    # Get best vector metadata (auto-resolves extraction/steering variants from config)
-    try:
-        meta = select_vector(experiment, trait)
-    except FileNotFoundError as e:
-        return {"error": str(e)}
+) -> Optional[dict]:
+    """Analyze all methods for a trait, producing the canonical logit_lens schema.
 
-    # Load the actual vector
-    vector, baseline, layer_meta = load_vector_with_baseline(
-        experiment=experiment,
-        trait=trait,
-        method=meta.method,
-        layer=meta.layer,
-        model_variant=model_variant,
-        component=meta.component,
-        position=meta.position,
-    )
+    Returns None if no vectors exist on disk for this trait.
+    """
+    candidates = discover_vectors(experiment, trait, model_variant)
+    if not candidates:
+        return None
 
-    # Project to vocabulary
-    vocab_results = vector_to_vocab(vector, model, tokenizer, top_k, apply_norm, common_mask)
+    # Pick (component, position): prefer residual + response[:5], fall back deterministically
+    candidates.sort(key=lambda c: (
+        c["component"] != "residual",
+        "response[:5]" not in c["position"],
+        c["component"],
+        c["position"],
+        c["method"],
+        c["layer"],
+    ))
+    component = candidates[0]["component"]
+    position = candidates[0]["position"]
+
+    # Filter to the chosen (component, position)
+    filtered = [c for c in candidates if c["component"] == component and c["position"] == position]
+
+    n_layers = get_inner_model(model).config.num_hidden_layers
+    target = round(n_layers * 0.9)
+
+    # Group by method
+    by_method = defaultdict(list)
+    for c in filtered:
+        by_method[c["method"]].append(c["layer"])
+
+    methods = {}
+    for method, available_layers in by_method.items():
+        # Pick layer closest to 90% depth; ties prefer higher layer
+        chosen_layer = min(available_layers, key=lambda L: (abs(L - target), -L))
+        pct = round(chosen_layer / max(n_layers - 1, 1) * 100)
+
+        # Load vector (returns 3-tuple: vector, baseline, layer_meta)
+        try:
+            vector, _baseline, _meta = load_vector_with_baseline(
+                experiment, trait, method, chosen_layer, model_variant, component, position
+            )
+        except FileNotFoundError:
+            continue
+
+        vocab = vector_to_vocab(vector, model, tokenizer, top_k, apply_norm, common_mask)
+        methods[method] = {
+            "late": {
+                "layer": chosen_layer,
+                "pct": pct,
+                "toward": vocab["toward"],
+                "away": vocab["away"],
+            }
+        }
+
+    if not methods:
+        return None
 
     return {
         "trait": trait,
-        "layer": meta.layer,
-        "method": meta.method,
-        "component": meta.component,
-        "position": meta.position,
-        "source": meta.source,
-        "delta": meta.delta,
-        **vocab_results,
+        "component": component,
+        "position": position,
+        "n_layers": n_layers,
+        "methods": methods,
     }
 
 
-def print_results(results: dict):
+def print_results(results: Optional[dict]):
     """Pretty print results for a single trait."""
-    if "error" in results:
-        print(f"  Error: {results['error']}")
+    if results is None:
+        print("  No vectors found")
         return
 
     print(f"\n{'='*60}")
     print(f"Trait: {results['trait']}")
-    print(f"Vector: layer {results['layer']}, {results['method']}, {results['component']}")
-    print(f"Position: {results['position']}")
-    print(f"Source: {results['source']} (delta: {results['delta']:.3f})")
+    print(f"Component: {results['component']}, Position: {results['position']}")
+    print(f"Layers: {results['n_layers']}")
     print(f"{'='*60}")
 
-    print(f"\nToward (+):")
-    for i, item in enumerate(results['toward'], 1):
-        print(f"  {i:2d}. {item['token']:20s} {item['value']:+.3f}")
+    for method, data in results['methods'].items():
+        late = data['late']
+        print(f"\n  Method: {method} (layer {late['layer']}, {late['pct']}% depth)")
 
-    print(f"\nAway (-):")
-    for i, item in enumerate(results['away'], 1):
-        print(f"  {i:2d}. {item['token']:20s} {item['value']:+.3f}")
+        print(f"\n  Toward (+):")
+        for i, item in enumerate(late['toward'], 1):
+            print(f"    {i:2d}. {item['token']:20s} {item['value']:+.3f}")
+
+        print(f"\n  Away (-):")
+        for i, item in enumerate(late['away'], 1):
+            print(f"    {i:2d}. {item['token']:20s} {item['value']:+.3f}")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--experiment", required=True, help="Experiment name")
     parser.add_argument("--model-variant", default=None, help="Model variant (default: from experiment config)")
-    parser.add_argument("--trait", help="Trait path (e.g., safety/refusal)")
+    parser.add_argument("--traits", help="Trait path (e.g., safety/refusal)")
     parser.add_argument("--all-traits", action="store_true", help="Analyze all traits")
     parser.add_argument("--top-k", type=int, default=20, help="Tokens to show (default: 20)")
     parser.add_argument("--no-norm", action="store_true", help="Skip RMSNorm before projection")
     parser.add_argument("--filter-common", action="store_true", help="Filter to common English tokens only")
     parser.add_argument("--max-vocab", type=int, default=10000, help="Max vocab index for common filter (default: 10000)")
-    parser.add_argument("--save", action="store_true", help="Save results to JSON")
+    parser.add_argument("--save", action="store_true", help="Save results to canonical per-trait JSON")
     args = parser.parse_args()
 
-    if not args.trait and not args.all_traits:
-        parser.error("Must specify --trait or --all-traits")
+    if not args.traits and not args.all_traits:
+        parser.error("Must specify --traits or --all-traits")
 
-    # Resolve model variant
-    variant = get_model_variant(args.experiment, args.model_variant, mode="application")
+    # Resolve model variant — use extraction mode so vectors + write path align
+    variant = get_model_variant(args.experiment, args.model_variant, mode="extraction")
     model_variant = variant.name
     model_name = variant.model
     lora = variant.lora
@@ -148,10 +185,9 @@ def main():
         traits = [f"{cat}/{name}" for cat, name in discover_extracted_traits(args.experiment)]
         print(f"Found {len(traits)} traits")
     else:
-        traits = [args.trait]
+        traits = [args.traits]
 
     # Analyze each trait
-    all_results = []
     for trait in traits:
         print(f"\nAnalyzing: {trait}")
         results = analyze_trait(
@@ -164,24 +200,15 @@ def main():
             apply_norm=not args.no_norm,
             common_mask=common_mask,
         )
-        all_results.append(results)
         print_results(results)
 
-    # Save if requested
-    if args.save:
-        output_dir = get_path('experiments.base', experiment=args.experiment) / "analysis" / "vector_logit_lens"
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        if args.all_traits:
-            output_path = output_dir / "all_traits.json"
-        else:
-            # Sanitize trait name for filename
-            safe_trait = args.trait.replace("/", "_")
-            output_path = output_dir / f"{safe_trait}.json"
-
-        with open(output_path, 'w') as f:
-            json.dump(all_results, f, indent=2)
-        print(f"\nSaved to: {output_path}")
+        # Save per-trait to canonical path
+        if args.save and results is not None:
+            output_path = get_path('extraction.logit_lens', experiment=args.experiment, trait=trait, model_variant=model_variant)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w') as f:
+                json.dump(results, f, indent=2)
+            print(f"  Saved: {output_path}")
 
 
 if __name__ == "__main__":

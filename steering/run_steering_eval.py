@@ -49,25 +49,27 @@ async def recipe_baselines(config, parsed_traits, model_variant, model_name, bac
 
 
 async def recipe_batched(config, parsed_traits, model_variant, model_name, backend, judge,
-                         layers_arg, trait_layers, direction):
+                         layers_arg, trait_layers, per_trait_direction):
     """Main path: search coefficients for multiple traits × layers in parallel batches."""
     eval_prompt, trait_judge, use_default = resolve_cli_eval_prompt_from_config(config)
     await run_batched_multi_trait(config, parsed_traits, model_variant, model_name,
                                   backend=backend, judge=judge,
                                   eval_prompt_override=eval_prompt, trait_judge=trait_judge,
-                                  use_default=use_default, direction=direction, force=config.force,
+                                  use_default=use_default, per_trait_direction=per_trait_direction,
+                                  force=config.force,
                                   trait_layers=trait_layers, layers_arg=layers_arg)
 
 
 async def recipe_sequential(config, parsed_traits, model_variant, model_name, backend, judge,
-                            layers_arg, trait_layers, lora):
+                            layers_arg, trait_layers, per_trait_direction, lora):
     """Fallback: evaluate traits one at a time. For --no-batch, --coefficients, --regenerate-responses."""
     for vector_experiment, trait in parsed_traits:
         if len(parsed_traits) > 1:
             print(f"\n{'='*60}\nTRAIT: {vector_experiment}/{trait}\n{'='*60}")
 
         effective_layers = trait_layers[trait] if (trait_layers and trait in trait_layers) else layers_arg
-        trait_config = SteeringConfig(**{**config.__dict__, 'layers_arg': effective_layers})
+        trait_direction = per_trait_direction.get(trait, config.direction)
+        trait_config = SteeringConfig(**{**config.__dict__, 'layers_arg': effective_layers, 'direction': trait_direction})
         await run_evaluation(trait_config, trait, model_variant, model_name,
                              backend=backend, judge=judge, lora_adapter=lora)
 
@@ -84,7 +86,7 @@ async def recipe_ablation(config, parsed_traits, model_variant, model_name, back
 # =============================================================================
 
 async def run(config, parsed_traits, model_variant, model_name, lora,
-              layers_arg, trait_layers, direction):
+              layers_arg, trait_layers, per_trait_direction):
     """Load model once, dispatch to the right recipe."""
     backend = LocalBackend.from_experiment(
         config.experiment, variant=model_variant, load_in_4bit=config.load_in_4bit,
@@ -99,10 +101,10 @@ async def run(config, parsed_traits, model_variant, model_name, lora,
             await recipe_ablation(config, parsed_traits, model_variant, model_name, backend, judge, lora)
         elif config.batched and config.coefficients is None and not config.regenerate_responses:
             await recipe_batched(config, parsed_traits, model_variant, model_name, backend, judge,
-                                 layers_arg, trait_layers, direction)
+                                 layers_arg, trait_layers, per_trait_direction)
         else:
             await recipe_sequential(config, parsed_traits, model_variant, model_name, backend, judge,
-                                    layers_arg, trait_layers, lora)
+                                    layers_arg, trait_layers, per_trait_direction, lora)
     finally:
         if judge is not None:
             await judge.close()
@@ -244,21 +246,21 @@ def main():
                 parts = tp.split('/')
                 trait_layers[f"{parts[1]}/{parts[2]}" if len(parts) == 3 else tp] = ls
 
-        # Resolve direction
-        if args.direction:
-            direction = args.direction
-        elif config.coefficients:
-            direction = "negative" if all(c <= 0 for c in config.coefficients) and any(c < 0 for c in config.coefficients) else "positive"
-        else:
-            dirs = set()
-            for _, t in parsed_traits:
+        # Resolve direction — per-trait from steering.json, or global override from CLI
+        per_trait_direction = {}
+        for _, t in parsed_traits:
+            if args.direction:
+                per_trait_direction[t] = args.direction
+            elif config.coefficients:
+                per_trait_direction[t] = "negative" if all(c <= 0 for c in config.coefficients) and any(c < 0 for c in config.coefficients) else "positive"
+            else:
                 try:
-                    dirs.add(load_steering_data(t).direction or "positive")
+                    per_trait_direction[t] = load_steering_data(t).direction or "positive"
                 except (FileNotFoundError, ValueError):
-                    dirs.add("positive")
-            if len(dirs) > 1:
-                raise ValueError(f"Mixed directions: {dirs}. Use --direction.")
-            direction = dirs.pop() if dirs else "positive"
+                    per_trait_direction[t] = "positive"
+        # Set config.direction for single-trait / sequential paths
+        unique_dirs = set(per_trait_direction.values())
+        direction = unique_dirs.pop() if len(unique_dirs) == 1 else "positive"
         config.direction = direction
 
         # Resolve position: auto-detect from extracted vectors if not specified
@@ -270,7 +272,7 @@ def main():
 
         # Run
         asyncio.run(run(config, parsed_traits, model_variant, model_name, lora,
-                        layers_arg=args.layers, trait_layers=trait_layers, direction=direction))
+                        layers_arg=args.layers, trait_layers=trait_layers, per_trait_direction=per_trait_direction))
 
 
 if __name__ == "__main__":

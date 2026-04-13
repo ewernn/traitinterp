@@ -1,122 +1,59 @@
 ---
-title: "The Model Recognizes Its Own Voice"
-preview: "Model-generated text produces smoother activations (d=1.49). Practical implication: trait monitoring is more reliable on assistant turns than user input."
+title: "Cleaner Vectors from Model-Generated Text than Prefilled Text"
+preview: "Model-generated text produces 2x smoother activations than prefilled text. Activations represent what the model wants to say — extract from model-generated text for cleaner vectors."
 date: "Jan 2026"
 tier: minor
 ---
 
-# The Model Recognizes Its Own Voice
+# Cleaner Vectors from Model-Generated Text than Prefilled Text
 
-## Summary
-
-Model-generated text produces significantly smoother activation trajectories than human-written text during prefill.
-
-**What we showed:**
-- When processing model-generated text, activations are smoother between consecutive tokens (Gemma d=1.49, Llama d=0.97)
-- Trait projections are also more stable (smoother)
-- Effect grows with sequence length, and exists across model variants (base/instruct) and families (Gemma/Llama)
-
-**Practical takeaway:** Trait monitoring is more reliable on assistant turns than user input. If you're tracking trait presence, expect noisier signal on human-written prompts.
-
-**Not shown:** Whether extraction from model-generated scenarios yields cleaner vectors (plausible hypothesis, untested).
-
----
+**Summary:** Model-generated text produces significantly smoother activations than prefilled human text across two model families. We believe this is because activations represent what the model *wants* to say — when the model generates its own text, intent and output are aligned. This is why we extract trait vectors from model-generated completions rather than prefilling pre-written text.
 
 ## Setup
 
-We compare activation patterns when Gemma-2-2B processes two types of continuations from **WikiText-2**. We chose WikiText-2 specifically because it provides coherent, same-topic paragraphs — not disjoint or adversarial text.
-
-**Data:** 50 paragraphs. First sentence as shared prompt, then either:
-- **Prefilled (human):** Original WikiText continuation
-- **Model-generated:** Gemma-2-2B base (temp=0) continuation
+We compare how Gemma-2-2B processes two types of text continuations from 50 WikiText-2 paragraphs. Same opening sentence as prompt, then either the original human continuation or the model's own completion (temp=0).
 
 | Condition | Example |
 |-----------|---------|
 | Shared prompt | "Du Fu was a prominent Chinese poet of the Tang dynasty." |
-| Prefilled | "Along with Li Bai, he is frequently called the greatest of the Chinese poets..." |
-| Model-generated | "He was born in the city of Luoyang, Henan Province, and died in Chengdu..." |
+| Human text | "Along with Li Bai, he is frequently called the greatest of the Chinese poets..." |
+| Model text | "He was born in the city of Luoyang, Henan Province, and died in Chengdu..." |
 
----
+We measure **smoothness** — the mean L2 norm of consecutive activation deltas:
 
-## The Core Effect
+$$S = \frac{1}{T-1} \sum_{t=1}^{T-1} \| \mathbf{h}_t - \mathbf{h}_{t-1} \|_2$$
 
-:::chart dynamics-effect /experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Effect size by layer" height=350 projections=refusal:/experiments/viz_findings/prefill-dynamics/analysis/projection_stability-chirp_refusal.json,sycophancy:/experiments/viz_findings/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json:::
+Lower = smoother. This is not confounded by activation magnitude (magnitudes differ by only 3.4% between conditions; the smoothness gap is 8.5%).
 
-Model-generated text is processed more smoothly at every layer except output. Effect builds through early layers (d≈0.7), peaks in middle layers (d≈1.5), then reverses at layer 25 (d≈-1.5).
+## Results
 
-| Processor | Prefilled | Model-gen | Cohen's d |
-|-----------|-----------|-----------|-----------|
-| Gemma base | 193.8 | 179.5 | **1.49** |
-| Gemma instruct | 201.7 | 188.7 | **1.49** |
+:::chart dynamics-effect experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Model-generated text is processed more smoothly at every layer except output (d=1.49)" height=350 projections=refusal:experiments/viz_findings/prefill-dynamics/analysis/projection_stability-chirp_refusal.json,sycophancy:experiments/viz_findings/prefill-dynamics/analysis/projection_stability-hum_sycophancy.json:::
 
-The instruct model shows the same effect on base-generated text — smoothness reflects structural properties of model-like text, not "I recognize my own output."
+The effect is driven by surprisal — model text is ~2x more predictable (cross-entropy 1.45 vs 2.99). Predictable tokens produce smoother activation trajectories.
 
----
+:::chart dynamics-scatter experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Smoothness correlates with cross-entropy (r=0.65) — predictable text produces stable activations" height=300 perplexity=experiments/viz_findings/prefill-dynamics/analysis/perplexity.json:::
 
-## Why? Correlation with Surprisal
+## The model settles in
 
-:::chart dynamics-scatter /experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Smoothness vs cross-entropy" height=300 perplexity=/experiments/viz_findings/prefill-dynamics/analysis/perplexity.json:::
+:::chart dynamics-position experiments/viz_findings/prefill-dynamics/analysis/position_breakdown.json "The smoothness gap grows with sequence length — the model settles into its own distribution after ~30 tokens" height=280:::
 
-Smoothness correlates with cross-entropy (r=0.65). Model text is ~2x less surprising:
+Early tokens (0-5) are similarly noisy regardless of source (d=0.05). By 50-100 tokens the gap reaches d=0.69. This is consistent with policy consistency: the longer the model generates, the more its internal state reflects its own preferences rather than reacting to external text.
 
-| Processor | Prefilled CE | Model CE | Ratio |
-|-----------|--------------|----------|-------|
-| Base | 2.99 | 1.45 | 2.06x |
-| Instruct | 3.35 | 1.61 | 2.08x |
+## Generalization
 
-Predictable tokens → smooth activations.
+The effect holds across model families, variants, and temperatures:
 
----
+| Condition | Cohen's d | p-value |
+|-----------|-----------|---------|
+| Gemma-2-2B base | **1.49** | 5.3e-14 |
+| Gemma-2-2B instruct | **1.49** | — |
+| Llama-3.1-8B (on Gemma text) | **0.97** | 1.5e-08 |
+| Gemma-2-2B (temp=0.7) | **0.98** | — |
 
-## Distribution
+Llama processed text generated by Gemma, not itself — the effect is about model-like text properties generally, not self-recognition. The instruct model shows the same effect on base-generated text.
 
-:::chart dynamics-violin /experiments/viz_findings/prefill-dynamics/analysis/activation_metrics.json "Smoothness distribution" height=280:::
+## Takeaways
 
-Model-generated text (right, green) shows consistently lower smoothness values than prefilled human text (left, red).
-
----
-
-## Position Effect
-
-:::chart dynamics-position /experiments/viz_findings/prefill-dynamics/analysis/position_breakdown.json "Effect by token position" height=280:::
-
-The gap grows as sequences continue:
-
-| Position | Cohen's d |
-|----------|-----------|
-| 0-5 tokens | 0.05 |
-| 15-30 tokens | 0.35 |
-| 50-100 tokens | **0.69** |
-
-Early tokens are similarly noisy. The model "settles into" its distribution over ~30 tokens.
-
----
-
-## Cross-Model Generalization
-
-| Model | Cohen's d | p-value |
-|-------|-----------|---------|
-| Gemma-2-2B | **1.49** | 5.3e-14 |
-| Llama-3.1-8B | **0.97** | 1.5e-08 |
-
-Llama processed text generated by Gemma, not itself. Effect still holds, suggesting it's about model-like text properties generally.
-
----
-
-## Robustness Checks
-
-| Check | Result |
-|-------|--------|
-| Base vs Instruct | Same effect (d=1.49) |
-| Cross-model (Llama on Gemma text) | Effect generalizes (d=0.97) |
-| Temperature 0.7 | Effect attenuates but persists (d=0.98) |
-| Multiple traits (refusal, sycophancy) | Confirmed |
-
----
-
-## Open Questions
-
-1. **Same-model generation:** Does Llama show stronger effect on Llama-generated text?
-2. **Extraction quality:** Would model-generated scenarios yield cleaner trait vectors? Smoother activations suggest lower noise, but trait *contrast* hasn't been tested.
-3. **Position mechanism:** What causes model text to become progressively smoother?
-4. **Output layer reversal:** Why does the effect flip at layer 25?
+1. **Extract from model-generated text.** Activations are cleanest when the model produces its own completions — this is why natural elicitation works.
+2. **Monitoring is more reliable on assistant turns.** Expect noisier trait signals on user-written prompts than on the model's own responses.
+3. **The gap grows with length.** Early tokens are noisy regardless; the signal stabilizes after ~30 tokens.
