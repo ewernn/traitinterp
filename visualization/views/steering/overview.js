@@ -213,12 +213,13 @@ function buildCardHTML(traitPath, processed) {
  */
 function buildLegendHTML() {
     return `<div class="steering-legend">
-    <span>Overview (alphabetical)</span>
+    <span>Overview (alphabetical) <span class="subsection-info-toggle" data-target="info-steering-overview">\u25BA</span></span>
     <span style="margin-left:auto;display:flex;gap:12px;">
         <span><span style="color:var(--success);font-weight:600;">+20</span> strong</span>
         <span><span style="font-weight:600;">&lt; 20</span> weak</span>
     </span>
-</div>`;
+</div>
+<div class="subsection-info" id="info-steering-overview">One card per trait. Big number is best &Delta; (trait score lift over baseline). Sparkline = &Delta; by layer, one line per extraction method. +20 strong, &lt;20 weak.</div>`;
 }
 
 

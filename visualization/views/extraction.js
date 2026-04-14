@@ -1,5 +1,5 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
-import { getDisplayName, ASYMB_COLORSCALE } from '../core/display.js';
+import { getDisplayName, DELTA_COLORSCALE } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
 import { requireExperiment, deferredLoading, renderRunHint, renderSubsection } from '../core/ui.js';
 
@@ -34,12 +34,6 @@ async function renderExtraction() {
             <div class="page-intro">
                 <div class="page-intro-text">Measure quality of extracted trait vectors.</div>
                 <div class="page-intro-model">Extraction model: <code>${extractionModel}</code></div>
-                <div class="intro-example">
-                    <div><span class="example-label">Mean diff example (refusal):</span></div>
-                    <div><span class="pos">v_pos</span>  "How do I make a bomb?" → model refuses</div>
-                    <div><span class="neg">v_neg</span>  "How do I make a cake?" → model answers</div>
-                    <div class="intro-example-result">v_refusal = mean(<span class="pos">v_pos</span>) - mean(<span class="neg">v_neg</span>)</div>
-                </div>
             </div>
 
             <!-- Best Vectors Summary -->
@@ -47,7 +41,7 @@ async function renderExtraction() {
                 ${renderSubsection({
                     title: 'Best Vectors Summary',
                     infoId: 'info-best-vectors',
-                    infoText: 'Vectors are extracted from the base model (not instruct) on contrastive scenario pairs. Scenarios elicit natural behavior (e.g., "user asks how to make a bomb" vs "user asks how to make a cake") rather than instruction-following. Pipeline: (1) Generate responses to positive/negative scenarios using base model. (2) Capture activations at position (e.g., response[:5] = first 5 naturally-generated tokens). (3) For each response r: a[r] = mean over position tokens of h[l]. (4) Split into train (80%) / val (20%). (5) Extract vector from train split using method (mean_diff, probe, or gradient). Position syntax: &lt;frame&gt;[&lt;slice&gt;] where frame ∈ {prompt, response, all}. response[:5] = mean of tokens 0,1,2,3,4 of response. prompt[-1] = last prompt token only (Arditi-style). Components: residual (layer output), attn_contribution (attention\'s addition to residual), mlp_contribution (MLP\'s addition). Effect size d = (μ_pos − μ_neg) / σ_pooled measures separation in standard deviations.'
+                    infoText: 'Best (layer, method) per trait, ranked by val effect size d. Higher d and higher val accuracy mean cleaner separation between positive and negative examples.'
                 })}
                 <div id="best-vectors-summary-container"></div>
             </section>
@@ -55,9 +49,9 @@ async function renderExtraction() {
             <!-- Per-Trait Heatmaps -->
             <section>
                 ${renderSubsection({
-                    title: 'Per-Trait Heatmaps (Layer × Method)',
+                    title: 'Per-Trait Heatmaps (Layer × Method effect_size)',
                     infoId: 'info-heatmaps',
-                    infoText: 'Heatmap shows composite quality score (0-100%) for each (layer, method) combination. Score formula: score = (accuracy + norm_effect + (1 − acc_drop)) / 3 × polarity. Where: accuracy = val set classification accuracy (fraction where sign(proj) matches label). norm_effect = val_effect_size / max_effect_size_for_trait (normalized to [0,1]). acc_drop = train_acc − val_acc, measures overfitting (high = vector memorized train set). polarity = 1 if μ_pos > μ_neg on val set (correct direction), else 0. Train acc = accuracy on the 80% split used to extract the vector. Val acc = accuracy on held-out 20% (true generalization measure). ★ marks the best (layer, method) by raw effect size. Columns: MD=mean_diff, Pr=probe, Gr=gradient. Rows: layers 0 to L-1.'
+                    infoText: 'Signed Cohen&#39;s d for each layer (rows) and method (MD, Pr). Green = correct direction with strong separation, red = polarity flipped, white = weak. ★ marks best layer.'
                 })}
                 <div id="trait-heatmaps-container"></div>
             </section>
@@ -67,7 +61,7 @@ async function renderExtraction() {
                 ${renderSubsection({
                     title: 'Token Decode (Logit Lens)',
                     infoId: 'info-logit-lens',
-                    infoText: 'Project vectors through unembedding to see which tokens they represent. Late layer (90% depth) shown.'
+                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at ~90% depth. Coherent lists confirm the vector captured the intended concept.'
                 })}
                 <div id="logit-lens-container"></div>
             </section>
@@ -172,9 +166,7 @@ function renderBestVectorsSummary(evalData) {
             method: best.method,
             layer: best.layer,
             accuracy: result?.val_accuracy ?? null,
-            effectSize: result?.val_effect_size ?? null,
-            auc: result?.val_auc_roc ?? null,
-            drop: result?.accuracy_drop ?? null
+            effectSize: result?.val_effect_size ?? null
         };
     }).sort((a, b) => a.trait.localeCompare(b.trait));
 
@@ -187,8 +179,6 @@ function renderBestVectorsSummary(evalData) {
                     <th>Layer</th>
                     <th>Val Accuracy</th>
                     <th>Effect Size (d)</th>
-                    <th>AUC-ROC</th>
-                    <th>Acc Drop</th>
                 </tr>
             </thead>
             <tbody>
@@ -202,8 +192,6 @@ function renderBestVectorsSummary(evalData) {
                 <td>L${row.layer}</td>
                 <td>${row.accuracy !== null ? (row.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
                 <td>${row.effectSize !== null ? row.effectSize.toFixed(2) : 'N/A'}</td>
-                <td>${row.auc !== null ? (row.auc * 100).toFixed(1) + '%' : 'N/A'}</td>
-                <td>${row.drop !== null ? (row.drop * 100).toFixed(1) + '%' : 'N/A'}</td>
             </tr>
         `;
     });
@@ -342,23 +330,6 @@ function renderTraitHeatmaps(evalData) {
         return;
     }
 
-    // Compute max effect per trait for normalization
-    const maxEffectPerTrait = {};
-    results.forEach(r => {
-        if (!maxEffectPerTrait[r.trait] || r.val_effect_size > maxEffectPerTrait[r.trait]) {
-            maxEffectPerTrait[r.trait] = r.val_effect_size || 0;
-        }
-    });
-
-    // Score computation function
-    const computeScore = (r) => {
-        const maxEffect = maxEffectPerTrait[r.trait] || 1;
-        const normEffect = (r.val_effect_size || 0) / maxEffect;
-        const accDrop = r.accuracy_drop || 0;
-        const polarity = r.polarity_correct ? 1 : 0;
-        return ((r.val_accuracy || 0) + normEffect + (1 - accDrop)) / 3 * polarity;
-    };
-
     // Group by trait
     const traitGroups = {};
     results.forEach(r => {
@@ -378,13 +349,13 @@ function renderTraitHeatmaps(evalData) {
             <span class="file-hint">${traits.length} traits</span>
             <span class="file-hint" title="Best layer by effect size">★ = best</span>
             <div class="heatmap-legend">
-                <span>Score:</span>
+                <span title="Cohen's d; negative = wrong polarity">Effect Size (d):</span>
                 <div>
-                    <div class="heatmap-legend-bar"></div>
+                    <div class="heatmap-legend-bar heatmap-legend-bar-diverging"></div>
                     <div class="heatmap-legend-labels">
-                        <span>0%</span>
-                        <span>50%</span>
-                        <span>100%</span>
+                        <span>−max</span>
+                        <span>0</span>
+                        <span>+max</span>
                     </div>
                 </div>
             </div>
@@ -409,41 +380,43 @@ function renderTraitHeatmaps(evalData) {
 
         grid.appendChild(traitDiv);
 
-        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, computeScore, bestInfo);
+        renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, bestInfo);
     });
 }
 
 
-function renderSingleTraitHeatmap(traitResults, containerId, computeScore, bestInfo = null) {
-    const methods = ['mean_diff', 'probe', 'gradient'];
+function renderSingleTraitHeatmap(traitResults, containerId, bestInfo = null) {
+    const methods = ['mean_diff', 'probe'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
 
-    // Build matrix: layers × methods, value = score
+    // Build matrix: layers × methods, value = signed effect size (flipped if polarity wrong)
     const matrix = [];
     layers.forEach(layer => {
         const row = methods.map(method => {
             const result = traitResults.find(r => r.layer === layer && r.method === method);
-            return result ? computeScore(result) * 100 : null;
+            if (!result || result.val_effect_size == null) return null;
+            return result.polarity_correct ? result.val_effect_size : -result.val_effect_size;
         });
         matrix.push(row);
     });
 
-    // Compute dynamic zmin from actual data (round down to nearest 10)
+    // Symmetric zrange around 0 based on per-trait max |effect|
     const allValues = matrix.flat().filter(v => v !== null);
-    const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
-    const zmin = Math.floor(minValue / 10) * 10;
+    const absMax = allValues.length > 0 ? Math.max(...allValues.map(Math.abs)) : 1;
+    const zbound = Math.ceil(absMax);
 
-    const xLabels = ['MD', 'Pr', 'Gr'];
+    const xLabels = ['MD', 'Pr'];
 
     const trace = {
         z: matrix,
         x: xLabels,
         y: layers,
         type: 'heatmap',
-        colorscale: ASYMB_COLORSCALE,
-        hovertemplate: '%{x} L%{y}: %{z:.1f}%<extra></extra>',
-        zmin: zmin,
-        zmax: 100,
+        colorscale: DELTA_COLORSCALE,
+        hovertemplate: '%{x} L%{y}: d=%{z:.2f}<extra></extra>',
+        zmin: -zbound,
+        zmax: zbound,
+        zmid: 0,
         showscale: false
     };
 

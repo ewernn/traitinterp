@@ -141,18 +141,9 @@ function buildControlBarHtml(allFilteredTraits) {
  * Other sections use uniform collapsible sec-header pattern.
  */
 function buildPageShellHtml(allFilteredTraits) {
-    const projectionMode = window.state.projectionMode || 'cosine';
-    const isCentered = window.state.projectionCentered !== false;
-    const smoothingWindow = window.state.smoothingWindow;
     const experimentName = window.state.currentExperiment || 'EXPERIMENT';
 
-    const infoText = (projectionMode === 'normalized'
-        ? 'Normalized projection: proj / avg||h||. Preserves per-token variance, removes layer-dependent scale.'
-        : projectionMode === 'raw'
-            ? 'Raw projection onto trait vector. No normalization applied.'
-            : 'Cosine similarity: proj / ||h||. Shows directional alignment with trait vector.')
-        + (isCentered ? ' Centered by subtracting BOS token value.' : '')
-        + (smoothingWindow > 0 ? ` Smoothed with ${smoothingWindow}-token moving average.` : '');
+    const infoText = 'Trait projection per token across the response, one line per trait. Higher means the residual aligns more strongly with the trait direction (cosine, normalized, or raw mode).';
 
     return `
         <div class="tool-view${window.state.wideMode ? ' wide-mode' : ''}">
@@ -175,8 +166,9 @@ function buildPageShellHtml(allFilteredTraits) {
 
             <section>
                 <div class="sec-header" data-section="top-spans" id="sec-top-spans">
-                    <span class="arrow">\u25BC</span> Top Spans <span class="sec-badge" id="badge-top-spans"></span>
+                    <span class="arrow">\u25BC</span> Top Spans <span class="subsection-info-toggle" data-target="info-top-spans">\u25BA</span> <span class="sec-badge" id="badge-top-spans"></span>
                 </div>
+                <div class="subsection-info" id="info-top-spans">Top-ranked token spans where the main and comparison variants differ most on the trait. Positive delta means main expresses it more; negative means the comparison does.</div>
                 <div id="section-body-top-spans">
                     <div id="top-spans-panel"></div>
                 </div>
@@ -184,8 +176,9 @@ function buildPageShellHtml(allFilteredTraits) {
 
             <section>
                 <div class="sec-header" data-section="heatmap" id="sec-heatmap">
-                    <span class="arrow">\u25B6</span> Trait \u00D7 Token Heatmap <span class="sec-badge" id="badge-heatmap"></span>
+                    <span class="arrow">\u25B6</span> Trait \u00D7 Token Heatmap <span class="subsection-info-toggle" data-target="info-trait-token-heatmap">\u25BA</span> <span class="sec-badge" id="badge-heatmap"></span>
                 </div>
+                <div class="subsection-info" id="info-trait-token-heatmap">All selected traits as rows, tokens as columns, colored by projection value. Diverging scale around 0; red and blue mark strong positive and negative alignment.</div>
                 <div id="section-body-heatmap" hidden>
                     <div id="trait-heatmap-panel"></div>
                 </div>
@@ -193,8 +186,9 @@ function buildPageShellHtml(allFilteredTraits) {
 
             <section>
                 <div class="sec-header" data-section="magnitude" id="sec-magnitude">
-                    <span class="arrow">\u25BC</span> Activation Magnitude <span class="sec-badge" id="badge-magnitude"></span>
+                    <span class="arrow">\u25BC</span> Activation Magnitude <span class="subsection-info-toggle" data-target="info-activation-magnitude">\u25BA</span> <span class="sec-badge" id="badge-magnitude"></span>
                 </div>
+                <div class="subsection-info" id="info-activation-magnitude">L2 norm of the residual stream per token at each trait&#39;s best layer. Distinguishes genuinely orthogonal tokens from tokens with small residuals overall.</div>
                 <div id="section-body-magnitude">
                     <div id="token-magnitude-plot"></div>
                 </div>
@@ -204,15 +198,16 @@ function buildPageShellHtml(allFilteredTraits) {
                 ${renderSubsection({
                     title: 'Resampling cue_p',
                     infoId: 'info-cue-p',
-                    infoText: 'Per-sentence resampling probability of the cued (wrong) answer, from Thought Branches transplant experiment (~4000 forward passes per sentence). Shows how bias accumulates through the CoT.'
+                    infoText: 'Per-sentence probability the model commits to the cued (wrong) answer if resampled from that point. Only shown for Thought Branches experiments with cue_p data.'
                 })}
                 <div id="cue-p-plot"></div>
             </section>
 
             <section id="correlation-section">
                 <div class="sec-header" data-section="correlation" id="sec-correlation">
-                    <span class="arrow">\u25B6</span> Correlation <span class="sec-badge" id="badge-correlation"></span>
+                    <span class="arrow">\u25B6</span> Correlation <span class="subsection-info-toggle" data-target="info-correlation-parent">\u25BA</span> <span class="sec-badge" id="badge-correlation"></span>
                 </div>
+                <div class="subsection-info" id="info-correlation-parent">Trait-trait correlations across the prompt set, with a token-offset slider for lead/lag. Run <code>trait_correlation.py</code> to populate.</div>
                 <div id="section-body-correlation" hidden>
                     <div id="correlation-content">
                         <div class="no-data-hint">No pre-computed correlation data.
@@ -354,7 +349,8 @@ function attachControlListeners(allFilteredTraits) {
 
     // --- Collapsible section headers ---
     document.querySelectorAll('.sec-header[data-section]').forEach(header => {
-        header.addEventListener('click', () => {
+        header.addEventListener('click', (e) => {
+            if (e.target.closest('.subsection-info-toggle')) return;
             const section = header.dataset.section;
             const body = document.getElementById('section-body-' + section);
             if (!body) return;

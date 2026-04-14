@@ -1786,6 +1786,10 @@ mark.annotation {
     border-radius: var(--radius-sm);
 }
 
+.heatmap-legend-bar-diverging {
+    background: linear-gradient(to right, #aa5656, #e0e0de, #3d7435);
+}
+
 .heatmap-legend-labels {
     display: flex;
     justify-content: space-between;
@@ -2156,13 +2160,14 @@ mark.annotation {
 .tc-stats {
     display: flex;
     gap: 8px;
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--text-tertiary);
     margin-bottom: 4px;
 }
 
 .tc-score {
-    font-weight: 600;
+    font-weight: 700;
+    font-size: var(--text-sm);
 }
 
 .tc-score.strong {
@@ -2240,6 +2245,16 @@ mark.annotation {
 
 .detail-meta strong {
     color: var(--text-secondary);
+}
+
+.detail-chart-header {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-top: 12px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .detail-chart {

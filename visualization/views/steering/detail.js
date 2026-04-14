@@ -560,7 +560,8 @@ function buildDetailHTML(trait, traitResults) {
     // Best response section (placeholder, loaded async)
     const bestResponseHTML = bestRun ? `
         <div class="detail-best-response" data-layer="${bestRun.layer}" data-method="${bestRun.method}" data-component="${bestRun.component}" data-coef="${bestRun.coef}">
-            <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score)</div>
+            <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score) <span class="subsection-info-toggle" data-target="info-steering-best-response">\u25BA</span></div>
+            <div class="subsection-info" id="info-steering-best-response">The strongest coherent steering run for this trait &mdash; best layer, coef, score, coherence, plus the actual prompt and model output. Use it to eyeball whether the score reflects real behaviour.</div>
             <div class="br-meta">
                 Layer <strong>${bestRun.layer}</strong>
                 &middot; coef=<strong>${Math.abs(bestRun.coef).toFixed(1)}</strong>
@@ -605,6 +606,11 @@ function buildDetailHTML(trait, traitResults) {
             <span>Layers: <strong>L${minLayer}&ndash;${maxLayer}</strong> / ${window.paths?.getNumLayers?.() || window.state.experimentData?.experimentConfig?.num_hidden_layers || 32}</span>
             <span>Configs: <strong>${configCount}</strong></span>
         </div>
+        <div class="detail-chart-header">
+            <span>Steering Effect by Layer</span>
+            <span class="subsection-info-toggle" data-target="info-steering-detail-chart">\u25BA</span>
+        </div>
+        <div class="subsection-info" id="info-steering-detail-chart">Trait score (judge, 0&ndash;100) per injection layer, one line per extraction method. Dashed line = unsteered baseline. Distance from baseline = steering strength.</div>
         <div class="detail-chart" id="detail-chart-${traitName}"></div>
         <div class="detail-chart-legend">
             ${legendItems}
@@ -612,7 +618,8 @@ function buildDetailHTML(trait, traitResults) {
         </div>
         ${bestResponseHTML}
         <details class="detail-layer-results">
-            <summary>All layers (${perLayer.length} results, sorted by score)</summary>
+            <summary>All layers (${perLayer.length} results, sorted by score) <span class="subsection-info-toggle" data-target="info-steering-layer-results">\u25BA</span></summary>
+            <div class="subsection-info" id="info-steering-layer-results">All layers ranked by trait score, with the coefficient and coherence chosen by the search. Click a row to see the per-prompt responses behind the score.</div>
             ${layerRowsHTML}
         </details>
     `;

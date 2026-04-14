@@ -60,7 +60,7 @@ async function renderCorrelationSection(containerId, promptSet) {
             ${renderSubsection({
                 title: 'Correlation Decay',
                 infoId: 'info-correlation-decay',
-                infoText: 'How trait correlations change with token offset. Fast decay = local relationship. Slow decay = persistent relationship.',
+                infoText: 'Trait-pair correlation versus token offset. Fast decay means local co-activation; slow decay means a persistent relationship across the response.',
                 level: 'h3'
             })}
             <div id="correlation-decay-plot"></div>
@@ -70,7 +70,7 @@ async function renderCorrelationSection(containerId, promptSet) {
             ${renderSubsection({
                 title: 'Response-Level Correlation',
                 infoId: 'info-response-correlation',
-                infoText: 'Correlation of mean projection per response (not token-level). Shows which traits co-occur across prompts.',
+                infoText: 'Trait × trait correlations using one mean projection per response. Shows which traits co-occur across prompts, ignoring within-response timing.',
                 level: 'h3'
             })}
             <div id="response-correlation-heatmap"></div>

@@ -315,6 +315,8 @@ function setupSubsectionInfoToggles() {
     container.addEventListener('click', (e) => {
         const toggle = e.target.closest('.subsection-info-toggle');
         if (!toggle) return;
+        e.preventDefault();
+        e.stopPropagation();
 
         const targetId = toggle.dataset.target;
         const infoDiv = document.getElementById(targetId);
@@ -490,6 +492,7 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
             item.classList.add('active');
 
             await loadExperimentData(expName);
+            window.renderExperimentVizList?.();
             window.renderPromptPicker();
             if (window.renderView) window.renderView();
         });

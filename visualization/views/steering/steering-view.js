@@ -87,6 +87,9 @@ async function renderSteering() {
     // Populate model info
     updateSteeringModelInfo(null);
 
+    // Setup info toggles (event delegation on .tool-view)
+    window.setupSubsectionInfoToggles?.();
+
     // Render filter chips inline in the controls bar
     renderFilterChips();
 

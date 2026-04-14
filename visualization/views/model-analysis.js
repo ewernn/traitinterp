@@ -36,7 +36,7 @@ async function renderModelAnalysis() {
                     num: 1,
                     title: 'Activation Diagnostics',
                     infoId: 'info-activation-diagnostics',
-                    infoText: 'Understanding model internals: activation magnitude growth and massive activation dimensions (Sun et al. 2024). Run <code>python analysis/vectors/massive_activations.py</code> to generate data.'
+                    infoText: 'Internals of one model variant from calibration prompts: norm growth, massive dimensions, token uniformity, and layer-to-layer change.'
                 })}
 
                 <div class="projection-toggle">
@@ -49,7 +49,7 @@ async function renderModelAnalysis() {
                 ${renderSubsection({
                     title: 'Activation Magnitude by Layer',
                     infoId: 'info-act-magnitude',
-                    infoText: 'Shows ||h[l]|| (L2 norm of residual stream) averaged over all tokens and prompts. The residual stream accumulates: h[l] = h[0] + Σ_{i&lt;l} (attn_out[i] + mlp_out[i]). Also shows the per-layer contribution magnitudes from attention and MLP sublayers — these are what get <em>added</em> to the residual at each layer, not the cumulative stream. Comparing contribution magnitude to residual growth shows whether the stream is growing because each layer adds large updates, or from accumulation. Data source: calibration prompts.',
+                    infoText: 'L2 norm of the residual stream at each layer, plus per-layer attention and MLP contribution norms. Shows where the stream grows and why.',
                     level: 'h4'
                 })}
                 <div id="activation-magnitude-plot"></div>
@@ -57,7 +57,7 @@ async function renderModelAnalysis() {
                 ${renderSubsection({
                     title: 'Activation Uniformity',
                     infoId: 'info-massive-acts',
-                    infoText: 'How much do all tokens point in the same direction at each layer? High values indicate massive activation dimensions (Sun et al. 2024) dominate the representation, forcing tokens into a common direction regardless of content. Computed as: average cosine similarity of each token\'s activation with the mean activation direction.',
+                    infoText: 'Mean cosine similarity of each token to the layer&#39;s mean direction. High = all tokens point the same way, a sign of massive-dim dominance.',
                     level: 'h4'
                 })}
                 <div id="massive-activations-container"></div>
@@ -65,7 +65,7 @@ async function renderModelAnalysis() {
                 ${renderSubsection({
                     title: 'Massive Dims Across Layers',
                     infoId: 'info-massive-dims-layers',
-                    infoText: 'Tracks specific dimensions with anomalously large activations (Sun et al. 2024). For each layer l, identify top-k dimensions by |h[l][dim]| across the calibration set. Massive dims appear consistently across layers with values 100-1000× larger than median. Criteria dropdown filters which dims to plot: "Top 5, 3+ layers" = dims in top-5 at ≥3 layers (balanced, recommended). "Top 3, any layer" = dims in top-3 at any layer (conservative). "Top 5, any layer" = dims in top-5 at any layer (permissive). Y-axis: normalized magnitude = |h[l][dim]| / mean_d(|h[l][d]|). Values >>1 indicate massive dims. These dims act as constant biases and can be removed to improve trait projection signal-to-noise.',
+                    infoText: 'Per-dimension normalized magnitude <code>|h[l][d]| / mean|h|</code> across layers. Lines ≫ 1 are massive dims (Sun et al. 2024) — near-constant biases that hurt trait projection signal. Criteria dropdown controls how strict "massive" is.',
                     level: 'h4'
                 })}
                 <div class="projection-toggle">
@@ -81,7 +81,7 @@ async function renderModelAnalysis() {
                 ${renderSubsection({
                     title: 'Inter-Layer Similarity',
                     infoId: 'info-interlayer-sim',
-                    infoText: 'Cosine similarity between consecutive layers: cos(mean[l], mean[l+1]). Shows where the model makes large representational shifts vs incremental changes. A dip indicates the representation is being substantially rewritten at that layer. Computed from mean activation vectors across all calibration tokens.',
+                    infoText: 'Cosine between consecutive mean-layer vectors. Dips mark layers where the representation gets substantially rewritten.',
                     level: 'h4'
                 })}
                 <div id="interlayer-similarity-plot"></div>
@@ -93,7 +93,7 @@ async function renderModelAnalysis() {
                     num: 2,
                     title: 'Variant Comparison',
                     infoId: 'info-variant-comparison',
-                    infoText: "Compares how two model variants (A vs B) project onto trait directions. Both variants process the same tokens (variant A generates, variant B replays via prefill). Process for each prompt p: (1) Run inference with both model variants on identical text, capture residual stream at all layers. (2) For layer l: compute per-token projections proj[l,t] = h[l,t] · v[l] / ||v[l]||. (3) Average over response tokens: proj_mean[l,p] = mean_t(proj[l,t]). Aggregation across N prompts: μ_A[l] = (1/N) Σ_p proj_mean[l,p] for variant A, μ_B[l] similarly for B. Effect size: d[l] = (μ_B[l] − μ_A[l]) / σ_pooled. Cosine similarity chart: alignment between per-layer difference vector (mean_B − mean_A) and trait vector v[l]. Positive effect = variant B projects higher on trait direction. Run <code>python analysis/model_diff/compare_variants.py</code> to generate data."
+                    infoText: 'Two variants process the same tokens; we project onto trait vectors layerwise and measure how far B drifts from A along each trait direction.'
                 })}
 
                 <div id="model-diff-container">
@@ -305,7 +305,7 @@ async function renderModelDiffComparison(experiment) {
             ${renderSubsection({
                 title: 'Effect Size by Layer',
                 infoId: 'info-effect-size',
-                infoText: "Cohen's d at each layer. Calculation: (1) Both variants process the same tokens (variant A generates, variant B replays via prefill). (2) Average activations over response tokens per prompt. (3) Project onto trait vector. (4) Compute Cohen's d across prompts comparing variant B to A. Higher = more consistent separation between model variants along the trait direction.",
+                infoText: 'Cohen&#39;s d between variants per layer, one line per trait × prompt set. Peaks mark the layer that best separates A from B on that trait.',
                 level: 'h4'
             })}
             <div id="model-diff-chart"></div>
@@ -313,7 +313,7 @@ async function renderModelDiffComparison(experiment) {
             ${renderSubsection({
                 title: 'Cosine Similarity with Trait Direction',
                 infoId: 'info-cosine-sim',
-                infoText: "Alignment between diff vector and trait vector. Calculation: (1) For each prompt, average activations over all response tokens, compute diff = B - A. (2) Average diff vectors across all prompts → mean diff vector. (3) Cosine similarity between mean diff vector and trait vector. Higher = the model change points toward the trait direction. Random baseline ~0.",
+                infoText: 'Cosine between the mean (B − A) diff vector and the trait vector per layer. Tells you whether the variant shift points along the trait, not just how big it is.',
                 level: 'h4'
             })}
             <div id="model-diff-cosine-chart"></div>
