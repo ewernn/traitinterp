@@ -1,0 +1,74 @@
+site_name: traitinterp
+site_url: https://traitinterp.com/docs/
+site_description: Extract, monitor, and steer LLM behavioral traits
+repo_url: https://github.com/ewernn/traitinterp
+repo_name: ewernn/traitinterp
+
+docs_dir: docs
+site_dir: docs_site
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: mkdocs/index.md
+  - Guides:
+    - Extraction: extraction_guide.md
+    - Inference: inference_guide.md
+    - Steering: steering_guide.md
+    - Creating Datasets: trait_dataset_creation.md
+  - CLI Reference:
+    - Extraction: mkdocs/cli/extraction.md
+    - Inference: mkdocs/cli/inference.md
+    - Steering: mkdocs/cli/steering.md
+    - Analysis: mkdocs/cli/analysis.md
+  - Configuration:
+    - Experiment Setup: mkdocs/config/experiment-setup.md
+    - Trait Format: mkdocs/config/trait-format.md
+  - API Reference:
+    - Core API: core_reference.md
+    - Response Schema: response_schema.md
+    - Chat Templates: chat_templates.md
+  - Technical:
+    - Architecture: architecture.md
+    - Methodology: methodology.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - pymdownx.details
+  - toc:
+      permalink: true
+  - tables
+  - attr_list
+  - def_list
+
+plugins:
+  - search

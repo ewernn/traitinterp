@@ -129,6 +129,173 @@ python analysis/vectors/logit_lens.py \
 
 ---
 
+### `analysis/vectors/cross_trait_normalize.py`
+
+Apply post-hoc cross-trait normalization to extracted vectors, implementing the `+gm` and `+gm+pc{N}` composable method names from Sofroniew et al. 2026. Step 1 (grand-mean subtraction) centers each vector relative to all others in the trait group, removing shared structure. Step 2 (neutral PC denoising) projects out the top principal components of a neutral reference corpus, targeting variance explained by non-trait-specific directions. Saves new vectors under composed method names (e.g., `mean_diff+gm`, `mean_diff+gm+pc50`) alongside a reusable PC basis cache per layer.
+
+```bash
+python analysis/vectors/cross_trait_normalize.py \
+    --experiment <experiment> --layers <layers>
+```
+
+#### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--experiment` | str | required | Experiment name |
+| `--layer` | int | none | Single layer to process |
+| `--layers` | str | none | Comma-separated layers (e.g., `1,7,13,19,25`). One of `--layer` or `--layers` required |
+| `--model-variant` | str | config default | Model variant |
+| `--component` | str | `residual` | Activation component |
+| `--position` | str | `response[50:]` | Token position |
+| `--category` | str | `ant_emotion_concepts` | Trait category to normalize across |
+| `--neutral-trait` | str | `ant_emotion_concepts/_neutral` | Reference trait path for neutral corpus activations |
+| `--variance-threshold` | float | `0.5` | Fraction of neutral-corpus variance to remove (determines `pc{N}` suffix) |
+| `--method` | str | `mean_diff` | Base method to transform |
+| `--no-pc` | flag | off | Skip neutral-PC step; only save `{source}+gm` vectors |
+| `--force-pc` | flag | off | Recompute PC basis even if cache exists |
+| `--dry-run` | flag | off | Print stats without writing any files |
+
+#### Examples
+
+```bash
+# Full normalization over many layers (Emotion Concepts replication)
+python analysis/vectors/cross_trait_normalize.py \
+    --experiment ant_emotion_concepts \
+    --layers 1,7,13,19,25,31,37,43,49,55,61,67,73,79
+
+# Grand-mean only (skip neutral-PC step), single layer
+python analysis/vectors/cross_trait_normalize.py \
+    --experiment ant_emotion_concepts --layer 53 --no-pc
+
+# Dry run to inspect stats without writing files
+python analysis/vectors/cross_trait_normalize.py \
+    --experiment ant_emotion_concepts --layer 53 --dry-run
+```
+
+---
+
+### `analysis/vectors/geometry.py`
+
+Structural geometry analysis of a full set of trait vectors: pairwise cosine similarity heatmap with hierarchical clustering order, k-means clustering with UMAP visualization, PCA with optional comparison against human valence/arousal norms (Russell & Mehrabian), and cross-layer representational similarity analysis (RSA). Analyses are independently selectable; results are saved as JSON to `experiments/{experiment}/results/geometry/`.
+
+```bash
+python analysis/vectors/geometry.py --experiment <experiment> --layer <layer>
+```
+
+#### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--experiment` | str | required | Experiment name |
+| `--layer` | int | required | Layer index to load vectors from |
+| `--category` | str | experiment name | Trait category (default: same as `--experiment`) |
+| `--method` | str | `mean_diff+gm+pc50` | Vector method to load |
+| `--component` | str | `residual` | Activation component |
+| `--position` | str | `response[50:]` | Token position |
+| `--model-variant` | str | config default | Model variant |
+| `--rsa-layers` | str | none | Comma-separated layers for RSA cross-layer analysis (e.g., `25,31,37,43`) |
+| `--only` | str | all | Comma-separated subset of analyses: `cosine`, `cluster`, `pca`, `rsa` |
+| `--k` | int | `10` | Number of k-means clusters |
+| `--n-components` | int | `10` | Number of PCA components |
+| `--baselines-json` | str | none | Path to JSON with baseline numbers for comparison |
+| `--norms-file` | str | none | Path to Russell & Mehrabian valence/arousal norms JSON |
+| `--output-dir` | str | auto | Output directory (default: `experiments/{experiment}/results/geometry/`) |
+
+#### Examples
+
+```bash
+# Full geometry analysis at a single layer
+python analysis/vectors/geometry.py --experiment ant_emotion_concepts --layer 53
+
+# Only cosine heatmap and PCA
+python analysis/vectors/geometry.py \
+    --experiment ant_emotion_concepts --layer 53 --only cosine,pca
+
+# RSA across 8 layers, compare PCA to human norms
+python analysis/vectors/geometry.py \
+    --experiment ant_emotion_concepts --layer 53 \
+    --rsa-layers 25,31,37,43,49,55,61,67 \
+    --norms-file datasets/russell_mehrabian_norms.json
+```
+
+---
+
+### `analysis/vectors/preference_elo.py`
+
+Measure activity preferences via forced-choice logit comparison and Elo rating. Replicates the preference experiment from Sofroniew et al. 2026: the model chooses between pairs of activities by comparing A/B token logits after prefill, then Elo scores are computed from the full pairwise tournament. Supports optional steering to observe how trait activation shifts activity preferences.
+
+```bash
+python analysis/vectors/preference_elo.py \
+    --experiment <experiment> --activities <activities_json>
+```
+
+#### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--experiment` | str | required | Experiment name |
+| `--activities` | str | required | Path to activities JSON (list of activity strings) |
+| `--steer` | str | none | Trait to steer with during preference measurement (e.g., `emotion_set/desperate`) |
+| `--strength` | float | `0.5` | Steering coefficient magnitude |
+| `--hard-elo` | flag | off | Use binary win/loss for Elo updates instead of continuous probabilities |
+
+#### Examples
+
+```bash
+# Baseline preference ranking (no steering)
+python analysis/vectors/preference_elo.py \
+    --experiment ant_emotion_concepts \
+    --activities datasets/activities.json
+
+# Measure how desperate steering shifts preferences
+python analysis/vectors/preference_elo.py \
+    --experiment ant_emotion_concepts \
+    --activities datasets/activities.json \
+    --steer emotion_set/desperate --strength 0.5
+
+# Hard binary Elo (for weaker models where probabilities are noisy)
+python analysis/vectors/preference_elo.py \
+    --experiment ant_emotion_concepts \
+    --activities datasets/activities.json \
+    --hard-elo
+```
+
+---
+
+### `analysis/vectors/trait_correlation.py`
+
+Compute Pearson correlation matrices between traits across per-token projection trajectories. Loads pre-computed inference projections (from `inference/run_inference_pipeline.py`) and correlates traits both token-by-token (with temporal offsets from -10 to +10) and at the response level (mean projection per prompt). Useful for discovering which traits co-activate or anti-correlate during generation.
+
+```bash
+python analysis/vectors/trait_correlation.py \
+    --experiment <experiment> --prompt-set <prompt_set>
+```
+
+#### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--experiment` | str | required | Experiment name |
+| `--prompt-set` | str | required | Prompt set to analyze (e.g., `jailbreak/original`) |
+| `--model-variant` | str | config default | Model variant |
+
+#### Examples
+
+```bash
+# Correlate all traits on a prompt set
+python analysis/vectors/trait_correlation.py \
+    --experiment gemma-2-2b --prompt-set jailbreak/original
+
+# Specify a model variant explicitly
+python analysis/vectors/trait_correlation.py \
+    --experiment gemma-2-2b \
+    --prompt-set general/alpaca_100 \
+    --model-variant instruct
+```
+
+---
+
 ## Model Diff
 
 ### `analysis/model_diff/compare_variants.py`
