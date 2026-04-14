@@ -3337,6 +3337,10 @@ mark.annotation {
     color: var(--text-primary);
 }
 
+/* Side-by-side: override auto figure numbering — captions include their own labels */
+.side-by-side .fig-caption { font-size: var(--text-sm); }
+.side-by-side .fig-caption::before { content: none; }
+
 /* Side-by-side comparison blocks */
 .side-by-side { margin: 1.5em 0; text-align: center; }
 .sbs-container { display: flex; gap: 16px; align-items: stretch; }
