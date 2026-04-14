@@ -21,10 +21,16 @@ let selectedCard = null;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-/** Get total model layers from experiment config or PathBuilder, fallback 40. */
+/** Get total model layers from PathBuilder, experiment config, or extraction metadata. */
 function getTotalLayers() {
-    try { return window.paths?.getNumLayers?.() || 40; }
-    catch { return window.state?.experimentData?.experimentConfig?.num_hidden_layers || 40; }
+    const fromPaths = window.paths?.getNumLayers?.();
+    if (fromPaths) return fromPaths;
+    const config = window.state?.experimentData?.experimentConfig;
+    if (config?.num_hidden_layers) return config.num_hidden_layers;
+    // Fall back to extraction metadata n_layers
+    const traits = window.state?.experimentData?.traits;
+    if (traits?.[0]?.n_layers) return traits[0].n_layers;
+    return 32;
 }
 
 /** Extract the short trait name (last segment of category/trait path). */
@@ -187,7 +193,7 @@ function buildCardHTML(traitPath, processed) {
     const { bestDelta, bestLayer, minLayer, maxLayer } = processed;
     const cls = scoreClass(bestDelta);
     const sign = bestDelta > 0 ? '+' : '';
-    const sparkSVG = buildSparklineSVG(processed, 200, 44);
+    const sparkSVG = buildSparklineSVG(processed, 260, 58);
 
     return `<div class="trait-card" data-trait="${traitPath}">
     <div class="tc-row">

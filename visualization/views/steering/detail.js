@@ -67,9 +67,6 @@ function injectStyles() {
     overflow: hidden;
     position: relative;
 }
-.detail-chart svg { width: 100%; height: 100%; }
-.chart-axis-label { font-size: 9px; fill: var(--text-tertiary); }
-.chart-grid-line { stroke: var(--border-color); stroke-width: 0.5; opacity: 0.3; }
 .detail-chart-legend {
     display: flex;
     gap: 14px;
@@ -100,9 +97,9 @@ function injectStyles() {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
+    padding: 2px 6px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     color: var(--text-tertiary);
     font-size: 10px;
@@ -122,8 +119,6 @@ function injectStyles() {
     top: calc(100% + 6px);
     right: 0;
     width: 400px;
-    max-height: 350px;
-    overflow-y: auto;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -195,46 +190,61 @@ function injectStyles() {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     cursor: pointer;
-    padding: 8px 12px;
+    padding: 8px 0;
 }
 .detail-layer-results summary:hover { color: var(--text-secondary); }
 .detail-layer-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 6px 12px;
+    gap: 10px;
+    padding: 8px 12px;
     font-size: var(--text-xs);
     color: var(--text-secondary);
     cursor: pointer;
-    border-top: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: 2px;
     transition: background 0.1s;
 }
 .detail-layer-row:hover { background: var(--bg-secondary); }
 .detail-layer-row.expanded { background: var(--bg-secondary); }
 .detail-layer-row .lr-layer { font-weight: 600; min-width: 30px; }
-.detail-layer-row .lr-score { min-width: 50px; }
-.detail-layer-row .lr-coef { min-width: 60px; color: var(--text-tertiary); }
-.detail-layer-row .lr-coh { min-width: 40px; color: var(--text-tertiary); }
-.detail-layer-row .lr-responses { min-width: 20px; color: var(--text-tertiary); }
-.detail-layer-row .lr-bar {
-    flex: 1;
-    height: 4px;
-    background: var(--bg-secondary);
-    border-radius: 2px;
-    overflow: hidden;
+.detail-layer-row .lr-score { min-width: 65px; }
+.detail-layer-row .lr-coef { color: var(--text-tertiary); }
+.detail-layer-row .lr-coh { color: var(--text-tertiary); }
+.detail-layer-row .lr-arrow {
+    margin-left: auto;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    transition: transform 0.15s;
 }
-.detail-layer-row .lr-bar-fill { height: 100%; border-radius: 2px; }
+.detail-layer-row.expanded .lr-arrow { transform: rotate(90deg); }
 .detail-layer-response {
-    padding: 10px 12px;
+    display: none;
+    padding: 0 4px 8px;
+}
+.detail-layer-response.visible { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.detail-response-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    border: 1px solid var(--border-color);
+}
+.detail-response-card .rc-meta {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+.detail-response-card .rc-question {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+}
+.detail-response-card .rc-text {
     font-size: var(--text-sm);
     color: var(--text-secondary);
     line-height: 1.6;
     white-space: pre-wrap;
-    display: none;
-    max-height: 300px;
-    overflow-y: auto;
 }
-.detail-layer-response.visible { display: block; }
 `;
     document.head.appendChild(style);
 }
@@ -330,99 +340,6 @@ function renderDetailPlotly(chartDiv, detailData, direction) {
     };
 
     Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displayModeBar: false });
-}
-
-// ── SVG chart (legacy, kept for reference) ─────────────────────────
-
-/**
- * Build a full SVG chart of score vs layer with axes, method lines, baseline,
- * and best-point markers.
- *
- * @param {Object} chartData - { methods: { key: [{ layer, score }] }, baseline, minLayer, maxLayer }
- * @param {number} width
- * @param {number} height
- * @returns {string} SVG markup
- */
-function buildFullChartSVG(chartData, width, height) {
-    const pad = { top: 10, right: 16, bottom: 28, left: 44 };
-    const cw = width - pad.left - pad.right;
-    const ch = height - pad.top - pad.bottom;
-
-    const allScores = [];
-    for (const pts of Object.values(chartData.methods)) {
-        for (const p of pts) allScores.push(p.score);
-    }
-    if (chartData.baseline != null) allScores.push(chartData.baseline);
-
-    if (allScores.length === 0) return '';
-
-    const minS = Math.min(...allScores) - 5;
-    const maxS = Math.max(...allScores) + 5;
-    const minL = chartData.minLayer;
-    const maxL = chartData.maxLayer;
-    const rangeL = maxL - minL || 1;
-    const rangeS = maxS - minS || 1;
-
-    const x = l => pad.left + ((l - minL) / rangeL) * cw;
-    const y = s => pad.top + ch - ((s - minS) / rangeS) * ch;
-
-    const methodColors = getMethodColors();
-    let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
-
-    // Y-axis tick labels
-    const yTicks = 4;
-    for (let i = 0; i <= yTicks; i++) {
-        const val = minS + rangeS * (i / yTicks);
-        const yy = y(val);
-        svg += `<text x="${pad.left - 6}" y="${yy + 3}" text-anchor="end" class="chart-axis-label">${val.toFixed(0)}</text>`;
-    }
-
-    // X-axis tick marks + labels
-    const xStep = Math.max(1, Math.ceil(rangeL / 10));
-    for (let l = minL; l <= maxL; l += xStep) {
-        const xx = x(l);
-        svg += `<line x1="${xx}" y1="${pad.top + ch}" x2="${xx}" y2="${pad.top + ch + 4}" stroke="var(--text-tertiary)" stroke-width="0.5" opacity="0.5"/>`;
-        svg += `<text x="${xx}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${l}</text>`;
-    }
-
-    // X-axis line
-    svg += `<line x1="${pad.left}" y1="${pad.top + ch}" x2="${width - pad.right}" y2="${pad.top + ch}" stroke="var(--border-color)" stroke-width="0.5" opacity="0.4"/>`;
-
-    // Axis labels
-    svg += `<text x="${width - 8}" y="${pad.top + ch + 20}" text-anchor="end" class="chart-axis-label" style="font-size: 10px;">Layer</text>`;
-    svg += `<text x="12" y="${pad.top - 2}" class="chart-axis-label" style="font-size: 10px;">Score</text>`;
-
-    // Baseline dashed line
-    if (chartData.baseline != null) {
-        const bY = y(chartData.baseline);
-        svg += `<line x1="${pad.left}" y1="${bY}" x2="${width - pad.right}" y2="${bY}" stroke="var(--text-tertiary)" stroke-width="1" stroke-dasharray="6,4" opacity="0.6"/>`;
-        svg += `<text x="${width - pad.right + 4}" y="${bY + 3}" class="chart-axis-label" style="fill: var(--text-tertiary);">baseline</text>`;
-    }
-
-    // Method lines + data points with hover tooltips
-    for (const [method, points] of Object.entries(chartData.methods)) {
-        if (points.length === 0) continue;
-        const color = methodColors[method] || '#888';
-        const sorted = [...points].sort((a, b) => a.layer - b.layer);
-        const pts = sorted.map(d => `${x(d.layer).toFixed(1)},${y(d.score).toFixed(1)}`).join(' ');
-        svg += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
-
-        // Data points with hover — invisible larger circles for easier hovering
-        for (const d of sorted) {
-            const delta = (d.score - (chartData.baseline || 0)).toFixed(1);
-            const sign = delta >= 0 ? '+' : '';
-            svg += `<circle cx="${x(d.layer)}" cy="${y(d.score)}" r="8" fill="transparent" stroke="none" style="cursor:pointer">`;
-            svg += `<title>L${d.layer} ${method}\nScore: ${d.score.toFixed(1)} (${sign}${delta})\nCoherence: ${d.coherence != null ? d.coherence.toFixed(0) : '?'}</title>`;
-            svg += `</circle>`;
-        }
-
-        // Best-point marker
-        const best = sorted.reduce((a, b) => a.score > b.score ? a : b);
-        svg += `<circle cx="${x(best.layer)}" cy="${y(best.score)}" r="4" fill="${color}" stroke="var(--bg-primary)" stroke-width="1.5"/>`;
-    }
-
-    svg += '</svg>';
-    return svg;
 }
 
 
@@ -609,10 +526,6 @@ function buildDetailHTML(trait, traitResults) {
         bestCoherence = bestRun.coherence;
     }
 
-    // Chart data
-    const chartData = { methods, baseline, minLayer, maxLayer };
-    const chartSVG = buildFullChartSVG(chartData, 900, 220);
-
     // Legend
     const legendItems = Object.entries(methods).map(([method, points]) => {
         const color = methodColors[method] || '#888';
@@ -633,13 +546,13 @@ function buildDetailHTML(trait, traitResults) {
     // Tooltip placeholders (content loaded on hover via fetch)
     const tooltipHTML = `
         <div class="detail-info-icons">
-            <div class="detail-info-icon" data-tooltip="definition">D
+            <div class="detail-info-icon" data-tooltip="definition">Def
                 <div class="detail-tooltip"><div class="tt-label">Scoring Definition</div><em>Hover to load...</em></div>
             </div>
-            <div class="detail-info-icon" data-tooltip="steering">Q
+            <div class="detail-info-icon" data-tooltip="steering">Qs
                 <div class="detail-tooltip"><div class="tt-label">Steering Questions</div><em>Hover to load...</em></div>
             </div>
-            <div class="detail-info-icon" data-tooltip="coherence">C
+            <div class="detail-info-icon" data-tooltip="coherence">Coh
                 <div class="detail-tooltip"><div class="tt-label">Coherence Prompt</div><em>Hover to load...</em></div>
             </div>
         </div>`;
@@ -659,18 +572,14 @@ function buildDetailHTML(trait, traitResults) {
     ` : '';
 
     // Per-layer results
-    const absBaseline = Math.abs(baseline);
-    const maxDelta = perLayer.length > 0 ? Math.max(...perLayer.map(r => Math.abs(r.traitScore - baseline))) : 1;
     const layerRowsHTML = perLayer.map((r, i) => {
-        const delta = Math.abs(r.traitScore - baseline);
-        const barWidth = maxDelta > 0 ? Math.max(2, (delta / maxDelta) * 100) : 2;
         return `
             <div class="detail-layer-row" data-layer-idx="${i}" data-layer="${r.layer}" data-method="${r.method}" data-component="${r.component}" data-coef="${r.coef}">
                 <span class="lr-layer">L${r.layer}</span>
-                <span class="lr-score">trait=${r.traitScore.toFixed(1)}</span>
-                <span class="lr-coef">coef=${Math.abs(r.coef).toFixed(1)}</span>
-                <span class="lr-coh">coh=${r.coherence.toFixed(0)}</span>
-                <span class="lr-bar"><span class="lr-bar-fill" style="width: ${barWidth}%; background: var(--text-tertiary);"></span></span>
+                <span class="lr-score">trait ${r.traitScore.toFixed(1)}</span>
+                <span class="lr-coef">coef ${Math.abs(r.coef).toFixed(1)}</span>
+                <span class="lr-coh">coh ${r.coherence.toFixed(0)}</span>
+                <span class="lr-arrow">▸</span>
             </div>
             <div class="detail-layer-response" data-layer-resp="${i}"></div>`;
     }).join('');
@@ -693,7 +602,7 @@ function buildDetailHTML(trait, traitResults) {
             <span>Best layer: <strong>L${bestLayer}</strong></span>
             <span>Method: <strong>${escapeHtml(bestMethod)}</strong></span>
             <span>Coherence: <strong>${bestCoherence.toFixed(0)}</strong></span>
-            <span>Layers: <strong>L${minLayer}&ndash;${maxLayer}</strong> / ${window.state.experimentData?.experimentConfig?.num_hidden_layers || '?'}</span>
+            <span>Layers: <strong>L${minLayer}&ndash;${maxLayer}</strong> / ${window.paths?.getNumLayers?.() || window.state.experimentData?.experimentConfig?.num_hidden_layers || 32}</span>
             <span>Configs: <strong>${configCount}</strong></span>
         </div>
         <div class="detail-chart" id="detail-chart-${traitName}"></div>
@@ -870,12 +779,12 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
                             const text = escapeHtml(r.response || r.text || JSON.stringify(r));
                             const prompt = r.prompt ? escapeHtml(r.prompt) : '';
                             const meta = r.trait_score != null
-                                ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:4px;">Response ${i + 1} — trait=${(r.trait_score||0).toFixed(1)} coh=${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
+                                ? `<div class="rc-meta">trait ${(r.trait_score||0).toFixed(1)} · coh ${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
                                 : '';
                             const promptLine = prompt
-                                ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:6px;">Q: ${prompt}</div>`
+                                ? `<div class="rc-question">Q: ${prompt}</div>`
                                 : '';
-                            return `<div style="padding:8px 0;${i > 0 ? 'border-top:1px solid var(--border-color);' : ''}">${meta}${promptLine}${text}</div>`;
+                            return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
                         }).join('');
                     } else {
                         respEl.innerHTML = '<em style="color: var(--text-tertiary); font-size: var(--text-xs);">No response saved for this run</em>';

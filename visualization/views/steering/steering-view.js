@@ -123,7 +123,8 @@ function updateSteeringModelInfo(meta) {
     if (!meta || !meta.steering_model) {
         // Fall back to experiment config
         const config = window.state.experimentData?.experimentConfig;
-        const steeringModel = config?.application_model || config?.model || 'unknown';
+        const appVariant = config?.defaults?.application || 'instruct';
+        const steeringModel = config?.model_variants?.[appVariant]?.model || config?.model || 'unknown';
         container.innerHTML = `Steering: <code>${steeringModel}</code>`;
         return;
     }
