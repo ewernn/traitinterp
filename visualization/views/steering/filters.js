@@ -3,9 +3,9 @@
 // Manages global chart filters (model variant, method, position, component, direction)
 // and provides cached steering result fetching shared across steering sub-modules.
 
-import { cachedFetchJSON } from '../core/utils.js';
-import { renderFilterChipRow } from '../core/ui.js';
-import { extractVectorSpec } from './steering-utils.js';
+import { cachedFetchJSON } from '../../core/utils.js';
+import { renderFilterChipRow } from '../../core/ui.js';
+import { extractVectorSpec } from './shared.js';
 
 // Global chart filters - populated from data, all active by default
 let chartFilters = {

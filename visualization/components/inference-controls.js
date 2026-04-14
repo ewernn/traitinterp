@@ -15,8 +15,13 @@ let pendingMessage = null;  // Message cached while waiting for connection
 function toggleInferenceMode() {
     if (inferenceMode === 'local') {
         inferenceMode = 'modal';
-        // Trigger warmup when switching to modal
-        warmupModal();
+        // Don't auto-warmup — let the overlay/button handle it
+        modalConnectionState = 'disconnected';
+        updateConnectionStatusUI();
+        // Re-render live chat to show warmup overlay
+        if (window.state?.currentView === 'live-chat' && window.renderLiveChat) {
+            window.renderLiveChat();
+        }
     } else {
         inferenceMode = 'local';
         modalConnectionState = 'connected';  // Local is always ready
@@ -155,6 +160,16 @@ function updateConnectionStatusUI(isGenerating = false) {
     const statusEl = document.getElementById('connection-status');
     if (!statusEl) return;
 
+    // In local mode, always show ready
+    if (inferenceMode === 'local') {
+        statusEl.innerHTML = `
+            <span class="status-dot connected"></span>
+            <span class="status-text">Ready</span>
+        `;
+        return;
+    }
+
+    // Modal mode — show actual connection state
     const warmingText = warmupCountdown > 0
         ? `Waking GPU... ~${warmupCountdown}s`
         : 'Waking GPU...';

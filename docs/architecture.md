@@ -297,7 +297,7 @@ The dashboard is a single-page app served by a Python HTTP server (`visualizatio
 
 - **core/** — Shared primitives that views and components depend on. Pure functions returning HTML strings or data, no DOM side effects. Includes state management (`state.js`), chart layout building (`charts.js`), path resolution (`paths.js`), UI helpers (`ui.js`), and display utilities (`display.js`).
 - **components/** — Reusable UI pieces that own a specific DOM region (sidebar, prompt picker, response browser). They read from `window.state` and render into their container. Components may be shared across multiple views.
-- **views/** — One module per dashboard tab. Each exports a `renderX()` function that writes to `#content-area`. Complex views split into sub-modules (e.g., `trait-dynamics/` has data loading, controls, and chart modules; `steering.js` delegates to `steering-filters.js`, `steering-best-vector.js`, `steering-heatmap.js`).
+- **views/** — One module per dashboard tab. Each exports a `renderX()` function that writes to `#content-area`. Complex views split into sub-modules inside a folder: `inference/` holds the Inference tab's orchestrator plus data loading, controls, and chart modules; `steering/` holds the Steering tab's orchestrator plus filters, overview grid, detail panel, and shared helpers.
 
 ### Key Patterns
 

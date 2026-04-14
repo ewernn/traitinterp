@@ -20,6 +20,15 @@ from utils.paths import get as get_path
 PORT = int(os.environ.get('PORT', 8000))
 MODE = os.environ.get('MODE', 'development')
 
+# Chat backend is optional — ships with prod deployments (Railway) but not
+# with the public `main` branch. If the module didn't ship, /api/chat returns
+# 503 and the Live Chat tab won't be discovered by the sidebar.
+try:
+    from visualization import chat_inference  # noqa: F401
+    CHAT_AVAILABLE = True
+except ImportError:
+    CHAT_AVAILABLE = False
+
 class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS support and API endpoints."""
 
@@ -82,6 +91,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # API endpoint: app config (mode, features)
             if self.path == '/api/config':
                 self.send_api_response(self.get_app_config())
+                return
+
+            # API endpoint: list available view modules (auto-discover for nav)
+            if self.path == '/api/views':
+                self.send_api_response(self.list_available_views())
                 return
 
             # API endpoint: GPU status (device info, memory)
@@ -193,6 +207,34 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_inference_projection(exp_name, model_variant, category, trait, prompt_set, prompt_id)
                 return
 
+            # Serve MkDocs built docs at /docs/
+            # File requests: try docs/ first (raw sources the dashboard fetches),
+            # then fall back to docs_site/ (MkDocs build assets like CSS/JS).
+            # Directory requests: always serve from docs_site/ (MkDocs HTML pages).
+            if self.path == '/docs':
+                self.send_response(301)
+                self.send_header('Location', '/docs/')
+                self.end_headers()
+                return
+            if self.path.startswith('/docs/'):
+                _, ext = os.path.splitext(self.path)
+                if ext:
+                    # File request: serve from docs/ if it exists, else docs_site/
+                    raw_path = self.translate_path(self.path)
+                    if os.path.isfile(raw_path):
+                        super().do_GET()
+                        return
+                    self.path = '/docs_site' + self.path[len('/docs'):]
+                    super().do_GET()
+                    return
+                # Directory/page request → MkDocs build
+                doc_path = self.path[len('/docs'):]
+                self.path = '/docs_site' + doc_path
+                if self.path.endswith('/'):
+                    self.path += 'index.html'
+                super().do_GET()
+                return
+
             # Serve SPA at root (including with query params like /?tab=...)
             if self.path == '/' or self.path == '/index.html' or self.path.startswith('/?'):
                 self.path = '/visualization/index.html'
@@ -218,6 +260,9 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         """Handle POST requests for chat API."""
         try:
             if self.path == '/api/chat':
+                if not CHAT_AVAILABLE:
+                    self.send_error(503, "Live chat not available on this deployment")
+                    return
                 self.handle_chat_stream()
                 return
 
@@ -536,6 +581,28 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             traceback.print_exc()
             yield {'status': 'error', 'error': str(e)}
 
+    def list_available_views(self):
+        """List view IDs present on disk. Used by sidebar to auto-build nav.
+
+        Scans visualization/views/ for *.js files and subdirectories.
+        Subdirectories (e.g. inference/, steering/) count as a single view
+        named after the directory. Some branches (main) ship only a subset
+        of views — this lets the client hide tabs whose files didn't ship.
+        """
+        views_dir = Path(__file__).parent / 'views'
+        if not views_dir.exists():
+            return {'views': []}
+
+        views = []
+        for item in views_dir.iterdir():
+            if item.name.startswith('.') or item.name.startswith('_'):
+                continue
+            if item.is_file() and item.suffix == '.js':
+                views.append(item.stem)
+            elif item.is_dir():
+                views.append(item.name)
+        return {'views': sorted(views)}
+
     def list_experiments(self):
         """List all experiments in experiments/ directory."""
         experiments_dir = get_path('experiments.list')
@@ -597,8 +664,30 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         has.append('M')
                     experiments.append({'name': item.name, 'has': has})
 
+        # Check for experiment-specific visualization modules
+        # These can live at experiments/{exp}/visualization/index.js OR
+        # experiments/{exp}/{sub-exp}/visualization/index.js
+        experiment_viz = []
+        for item in experiments_dir.iterdir():
+            if not item.is_dir() or item.name.startswith('.'):
+                continue
+            # Check top-level experiment
+            viz_index = item / 'visualization' / 'index.js'
+            if viz_index.exists():
+                experiment_viz.append({'name': item.name, 'path': item.name})
+            # Check sub-experiments
+            for sub in item.iterdir():
+                if sub.is_dir() and (sub / 'visualization' / 'index.js').exists():
+                    experiment_viz.append({
+                        'name': f"{item.name}/{sub.name}",
+                        'path': f"{item.name}/{sub.name}"
+                    })
+
         # Sort alphabetically
-        return {'experiments': sorted(experiments, key=lambda e: e['name'])}
+        return {
+            'experiments': sorted(experiments, key=lambda e: e['name']),
+            'experiment_viz': sorted(experiment_viz, key=lambda e: e['name'])
+        }
 
     def list_traits(self, experiment_name):
         """List all traits for an experiment.
@@ -969,6 +1058,7 @@ Available at:
   • http://localhost:{PORT}/                    (Dashboard - defaults to Overview tab)
   • http://localhost:{PORT}/?tab=data-explorer  (Data Explorer)
   • http://localhost:{PORT}/?tab=overview       (Overview documentation)
+  • http://localhost:{PORT}/docs/               (API docs — requires mkdocs build)
 
 Press Ctrl+C to stop the server.
 """)

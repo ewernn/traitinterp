@@ -1,10 +1,10 @@
-// Trait x Token heatmap chart for Trait Dynamics view
+// Trait x Token heatmap chart for Inference view
 // Input: traitActivations, loadedTraits, tick data, traitData
-// Output: rendered Plotly heatmap into #trait-heatmap-panel (sec-header body managed by controls.js)
+// Output: rendered Plotly heatmap into #trait-heatmap-panel (sec-header body managed by inference-view-controls.js)
 
 import { getDisplayName, DELTA_COLORSCALE } from '../../core/display.js';
 import { buildChartLayout, renderChart, attachTokenClickHandler } from '../../core/charts.js';
-import { buildCommonShapes, START_TOKEN_IDX } from './chart-trajectory.js';
+import { buildCommonShapes, START_TOKEN_IDX } from './chart-token-trajectory.js';
 
 /**
  * Render Trait x Token heatmap: all traits as rows, tokens as columns, colored by projection value.

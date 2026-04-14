@@ -105,7 +105,7 @@ The main entry point is `inference/run_inference_pipeline.py`. Key flags:
 - `--traits` — Comma-separated traits to project onto (e.g., `starter_traits/sycophancy,alignment/honesty`). Default: all extracted traits in the experiment.
 - `--component` — Hook component. Default: `residual`. Also supports `attn_contribution`.
 - `--centered` — Subtract the baseline (class centroid projection) from scores, centering them around zero.
-- `--skip-existing` — Skip prompts that already have projection files.
+- `--force` — Re-run even if projection files already exist (default: skip existing).
 
 ### Generation
 - `--max-new-tokens` — Maximum tokens to generate per response. Default: `50`.
@@ -279,7 +279,7 @@ python inference/run_inference_pipeline.py \
 python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set {prompt_set} \
-    --skip-existing
+    --force
 ```
 
 ### Full workflow from scratch

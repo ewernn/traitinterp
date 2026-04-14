@@ -1,4 +1,4 @@
-// Steering shared utilities — helpers used by both best-vector and heatmap
+// Steering shared utilities — helpers used across the steering sub-modules
 //
 // Deduplicates vector spec extraction and metric parsing from steering runs.
 

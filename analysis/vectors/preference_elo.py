@@ -61,6 +61,55 @@ def compute_preference_logits(
     }
 
 
+def compute_preference_logits_batched(
+    model,
+    tokenizer,
+    pairs: List[Tuple[str, str]],
+    prompt_template: str = 'Would you prefer to (A) {a} or (B) {b}?\n\nA: (',
+    batch_size: int = 32,
+) -> List[dict]:
+    """Batched version of compute_preference_logits.
+
+    Processes all pairs in batches for ~10-20x throughput vs one-at-a-time.
+    """
+    from utils.model import tokenize_batch
+
+    a_id = tokenizer.encode('A', add_special_tokens=False)[0]
+    b_id = tokenizer.encode('B', add_special_tokens=False)[0]
+
+    results = []
+    for i in range(0, len(pairs), batch_size):
+        batch_pairs = pairs[i:i + batch_size]
+        prompts = [prompt_template.format(a=a, b=b) for a, b in batch_pairs]
+
+        batch = tokenize_batch(prompts, tokenizer)
+        input_ids = batch['input_ids'].to(model.device)
+        attention_mask = batch['attention_mask'].to(model.device)
+
+        with torch.no_grad():
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+
+        for j, (act_a, act_b) in enumerate(batch_pairs):
+            # Last non-pad token position
+            seq_len = attention_mask[j].sum().item()
+            logits = outputs.logits[j, seq_len - 1]
+
+            logit_a = logits[a_id].item()
+            logit_b = logits[b_id].item()
+            probs = torch.softmax(torch.tensor([logit_a, logit_b]), dim=0)
+
+            results.append({
+                'a': act_a, 'b': act_b,
+                'logit_a': logit_a, 'logit_b': logit_b,
+                'prob_a': probs[0].item(), 'prob_b': probs[1].item(),
+                'winner': 'A' if logit_a > logit_b else 'B',
+            })
+
+        del input_ids, attention_mask, outputs
+
+    return results
+
+
 def compute_elo(
     pairwise_results: List[dict],
     k: float = 32.0,

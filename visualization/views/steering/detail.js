@@ -3,9 +3,9 @@
 // Renders the full detail view that appears below a clicked trait card,
 // including chart, best response, per-layer results, and info tooltips.
 
-import { escapeHtml } from '../core/utils.js';
-import { getMethodColors } from '../core/display.js';
-import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
+import { escapeHtml } from '../../core/utils.js';
+import { getMethodColors } from '../../core/display.js';
+import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── State ──────────────────────────────────────────────────────────
 
@@ -67,27 +67,6 @@ function injectStyles() {
     overflow: hidden;
     position: relative;
 }
-.detail-chart svg { width: 100%; height: 100%; }
-.chart-axis-label { font-size: 9px; fill: var(--text-tertiary); }
-.chart-grid-line { stroke: var(--border-color); stroke-width: 0.5; opacity: 0.3; }
-.detail-chart-legend {
-    display: flex;
-    gap: 14px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-}
-.detail-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 10px;
-    color: var(--text-tertiary);
-}
-.detail-legend-line {
-    width: 16px;
-    height: 2px;
-    border-radius: 1px;
-}
 
 /* Info hover icons */
 .detail-info-icons {
@@ -100,9 +79,9 @@ function injectStyles() {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
+    padding: 2px 6px;
     height: 22px;
-    border-radius: 50%;
+    border-radius: var(--radius-sm);
     background: var(--bg-secondary);
     color: var(--text-tertiary);
     font-size: 10px;
@@ -122,8 +101,6 @@ function injectStyles() {
     top: calc(100% + 6px);
     right: 0;
     width: 400px;
-    max-height: 350px;
-    overflow-y: auto;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -157,25 +134,26 @@ function injectStyles() {
     font-size: 9px;
 }
 
-/* Best response preview */
+/* Best response preview — clean, no colored borders */
 .detail-best-response {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-sm);
     padding: 12px;
     margin-top: 12px;
-    border-left: 3px solid var(--success);
 }
 .detail-best-response .br-label {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .detail-best-response .br-meta {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     margin-bottom: 8px;
 }
-.detail-best-response .br-meta strong { color: var(--text-secondary); }
+.detail-best-response .br-question {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
 .detail-best-response .br-text {
     font-size: var(--text-sm);
     color: var(--text-secondary);
@@ -194,54 +172,61 @@ function injectStyles() {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
     cursor: pointer;
-    padding: 8px 12px;
-    background: var(--bg-secondary);
-    border-radius: var(--radius-sm);
+    padding: 8px 0;
 }
 .detail-layer-results summary:hover { color: var(--text-secondary); }
 .detail-layer-row {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 6px 12px;
+    gap: 10px;
+    padding: 8px 12px;
     font-size: var(--text-xs);
     color: var(--text-secondary);
     cursor: pointer;
-    border-bottom: 1px solid var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    margin-bottom: 2px;
     transition: background 0.1s;
 }
-.detail-layer-row:hover { background: var(--bg-tertiary); }
-.detail-layer-row.expanded {
-    background: var(--bg-tertiary);
-    border-left: 2px solid var(--accent-color);
-}
+.detail-layer-row:hover { background: var(--bg-secondary); }
+.detail-layer-row.expanded { background: var(--bg-secondary); }
 .detail-layer-row .lr-layer { font-weight: 600; min-width: 30px; }
-.detail-layer-row .lr-score { min-width: 50px; }
-.detail-layer-row .lr-score.good { color: var(--success); font-weight: 600; }
-.detail-layer-row .lr-coef { min-width: 60px; color: var(--text-tertiary); }
-.detail-layer-row .lr-coh { min-width: 40px; color: var(--text-tertiary); }
-.detail-layer-row .lr-bar {
-    flex: 1;
-    height: 4px;
-    background: var(--bg-secondary);
-    border-radius: 2px;
-    overflow: hidden;
+.detail-layer-row .lr-score { min-width: 65px; }
+.detail-layer-row .lr-coef { color: var(--text-tertiary); }
+.detail-layer-row .lr-coh { color: var(--text-tertiary); }
+.detail-layer-row .lr-arrow {
+    margin-left: auto;
+    color: var(--text-tertiary);
+    font-size: 10px;
+    transition: transform 0.15s;
 }
-.detail-layer-row .lr-bar-fill { height: 100%; border-radius: 2px; }
+.detail-layer-row.expanded .lr-arrow { transform: rotate(90deg); }
 .detail-layer-response {
-    padding: 10px 12px 10px 24px;
-    background: var(--bg-primary);
+    display: none;
+    padding: 0 4px 8px;
+}
+.detail-layer-response.visible { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.detail-response-card {
+    background: var(--bg-secondary);
     border-radius: var(--radius-sm);
-    margin: 4px 0 8px 0;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+}
+.detail-response-card .rc-meta {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+}
+.detail-response-card .rc-question {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+}
+.detail-response-card .rc-text {
     font-size: var(--text-sm);
     color: var(--text-secondary);
     line-height: 1.6;
     white-space: pre-wrap;
-    display: none;
-    max-height: 300px;
-    overflow-y: auto;
 }
-.detail-layer-response.visible { display: block; }
 `;
     document.head.appendChild(style);
 }
@@ -285,88 +270,77 @@ async function fetchTooltipData(trait) {
 }
 
 
-// ── SVG chart ──────────────────────────────────────────────────────
+// ── Plotly chart ───────────────────────────────────────────────────
 
-/**
- * Build a full SVG chart of score vs layer with axes, method lines, baseline,
- * and best-point markers.
- *
- * @param {Object} chartData - { methods: { key: [{ layer, score }] }, baseline, minLayer, maxLayer }
- * @param {number} width
- * @param {number} height
- * @returns {string} SVG markup
- */
-function buildFullChartSVG(chartData, width, height) {
-    const pad = { top: 10, right: 16, bottom: 28, left: 44 };
-    const cw = width - pad.left - pad.right;
-    const ch = height - pad.top - pad.bottom;
-
-    const allScores = [];
-    for (const pts of Object.values(chartData.methods)) {
-        for (const p of pts) allScores.push(p.score);
-    }
-    if (chartData.baseline != null) allScores.push(chartData.baseline);
-
-    if (allScores.length === 0) return '';
-
-    const minS = Math.min(...allScores) - 5;
-    const maxS = Math.max(...allScores) + 5;
-    const minL = chartData.minLayer;
-    const maxL = chartData.maxLayer;
-    const rangeL = maxL - minL || 1;
-    const rangeS = maxS - minS || 1;
-
-    const x = l => pad.left + ((l - minL) / rangeL) * cw;
-    const y = s => pad.top + ch - ((s - minS) / rangeS) * ch;
-
+function renderDetailPlotly(chartDiv, detailData, direction) {
     const methodColors = getMethodColors();
-    let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
+    const traces = [];
 
-    // Y-axis tick labels
-    const yTicks = 4;
-    for (let i = 0; i <= yTicks; i++) {
-        const val = minS + rangeS * (i / yTicks);
-        const yy = y(val);
-        svg += `<text x="${pad.left - 6}" y="${yy + 3}" text-anchor="end" class="chart-axis-label">${val.toFixed(0)}</text>`;
-    }
-
-    // X-axis tick marks + labels
-    const xStep = Math.max(1, Math.ceil(rangeL / 10));
-    for (let l = minL; l <= maxL; l += xStep) {
-        const xx = x(l);
-        svg += `<line x1="${xx}" y1="${pad.top + ch}" x2="${xx}" y2="${pad.top + ch + 4}" stroke="var(--text-tertiary)" stroke-width="0.5" opacity="0.5"/>`;
-        svg += `<text x="${xx}" y="${height - 6}" text-anchor="middle" class="chart-axis-label">${l}</text>`;
-    }
-
-    // X-axis line
-    svg += `<line x1="${pad.left}" y1="${pad.top + ch}" x2="${width - pad.right}" y2="${pad.top + ch}" stroke="var(--border-color)" stroke-width="0.5" opacity="0.4"/>`;
-
-    // Axis labels
-    svg += `<text x="${width - 8}" y="${pad.top + ch + 20}" text-anchor="end" class="chart-axis-label" style="font-size: 10px;">Layer</text>`;
-    svg += `<text x="12" y="${pad.top - 2}" class="chart-axis-label" style="font-size: 10px;">Score</text>`;
-
-    // Baseline dashed line
-    if (chartData.baseline != null) {
-        const bY = y(chartData.baseline);
-        svg += `<line x1="${pad.left}" y1="${bY}" x2="${width - pad.right}" y2="${bY}" stroke="var(--text-tertiary)" stroke-width="1" stroke-dasharray="6,4" opacity="0.6"/>`;
-        svg += `<text x="${width - pad.right + 4}" y="${bY + 3}" class="chart-axis-label" style="fill: var(--text-tertiary);">baseline</text>`;
-    }
-
-    // Method lines + best-point markers
-    for (const [method, points] of Object.entries(chartData.methods)) {
-        if (points.length === 0) continue;
-        const color = methodColors[method] || '#888';
+    // One trace per method
+    for (const [method, points] of Object.entries(detailData.methods)) {
         const sorted = [...points].sort((a, b) => a.layer - b.layer);
-        const pts = sorted.map(d => `${x(d.layer).toFixed(1)},${y(d.score).toFixed(1)}`).join(' ');
-        svg += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
-
-        // Best-point marker (highest score)
-        const best = sorted.reduce((a, b) => a.score > b.score ? a : b);
-        svg += `<circle cx="${x(best.layer)}" cy="${y(best.score)}" r="4" fill="${color}" stroke="var(--bg-primary)" stroke-width="1.5"/>`;
+        const color = methodColors[method] || '#888';
+        traces.push({
+            name: method,
+            x: sorted.map(d => d.layer),
+            y: sorted.map(d => d.score),
+            customdata: sorted.map(d => {
+                const delta = (d.score - detailData.baseline).toFixed(1);
+                const sign = delta >= 0 ? '+' : '';
+                return `L${d.layer} ${method}<br>Score: ${d.score.toFixed(1)} (${sign}${delta})<br>Coherence: ${d.coherence != null ? d.coherence.toFixed(0) : '?'}`;
+            }),
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color, width: 2.5 },
+            marker: { size: 5, color },
+            hovertemplate: '%{customdata}<extra></extra>',
+        });
     }
 
-    svg += '</svg>';
-    return svg;
+    // Baseline as a trace (so it shows in legend)
+    if (detailData.baseline != null) {
+        traces.push({
+            name: `Baseline (${detailData.baseline.toFixed(0)})`,
+            x: [detailData.minLayer, detailData.maxLayer],
+            y: [detailData.baseline, detailData.baseline],
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: 'rgba(200,200,200,0.6)', width: 1.5, dash: 'dash' },
+            hoverinfo: 'skip',
+        });
+    }
+
+    const layout = {
+        height: 280,
+        margin: { l: 45, r: 16, t: 8, b: 60 },
+        xaxis: {
+            title: { text: 'Layer', font: { size: 11, color: '#888' } },
+            dtick: 1,
+            showgrid: false,
+            zeroline: false,
+            linecolor: 'rgba(150,150,150,0.2)',
+            linewidth: 1,
+            tickfont: { size: 10, color: '#666' },
+        },
+        yaxis: {
+            title: { text: 'Trait Score', font: { size: 11, color: '#888' } },
+            showgrid: true,
+            gridcolor: 'rgba(150,150,150,0.1)',
+            gridwidth: 1,
+            zeroline: false,
+            linecolor: 'rgba(150,150,150,0.2)',
+            linewidth: 1,
+            tickfont: { size: 10, color: '#666' },
+        },
+        showlegend: true,
+        legend: { x: 0, y: -0.25, orientation: 'h', font: { size: 10, color: '#888' } },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { color: '#ccc', size: 11 },
+        hovermode: 'closest',
+    };
+
+    Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displayModeBar: false });
 }
 
 
@@ -378,13 +352,13 @@ function buildFullChartSVG(chartData, width, height) {
  * @param {Object} traitResults - { runs, baseline }
  * @returns {{ methods, perLayer, baseline, minLayer, maxLayer, bestRun, configs }}
  */
-function extractDetailData(traitResults) {
+function extractDetailData(traitResults, direction = null, minCoherence = 70) {
     const baseline = traitResults.baseline?.trait_mean || 0;
     const runs = traitResults.runs || [];
 
     // Per-method: best score per layer
     const methods = {};
-    // Per-layer: best overall run
+    // Per-layer: best overall run (coherence-filtered)
     const perLayerMap = {};
     let minLayer = Infinity;
     let maxLayer = -Infinity;
@@ -395,18 +369,24 @@ function extractDetailData(traitResults) {
         const { layer, method, component, coef } = spec;
         const { traitScore, coherence } = extractRunMetrics(run.result || {}, baseline);
 
+        // Skip runs below min coherence for best-run selection
+        if (coherence != null && coherence < minCoherence) continue;
+
         if (layer < minLayer) minLayer = layer;
         if (layer > maxLayer) maxLayer = layer;
 
         // Per-method aggregation (best score per layer per method)
+        // For negative direction, "best" = lowest trait score (furthest from baseline)
+        const isBetter = (a, b) => direction === 'negative' ? a < b : a > b;
+
         if (!methods[method]) methods[method] = {};
-        if (!methods[method][layer] || traitScore > methods[method][layer].score) {
-            methods[method][layer] = { score: traitScore, layer };
+        if (!methods[method][layer] || isBetter(traitScore, methods[method][layer].score)) {
+            methods[method][layer] = { score: traitScore, layer, coherence };
         }
 
         // Per-layer best (sorted later)
         const existing = perLayerMap[layer];
-        if (!existing || traitScore > existing.traitScore) {
+        if (!existing || isBetter(traitScore, existing.traitScore)) {
             perLayerMap[layer] = {
                 layer, method, component, coef, traitScore, coherence,
                 timestamp: run.timestamp,
@@ -420,10 +400,12 @@ function extractDetailData(traitResults) {
         methodArrays[method] = Object.values(layerMap);
     }
 
-    // Per-layer sorted by score descending
-    const perLayer = Object.values(perLayerMap).sort((a, b) => b.traitScore - a.traitScore);
+    // Per-layer sorted by best score (descending for positive, ascending for negative)
+    const perLayer = Object.values(perLayerMap).sort((a, b) =>
+        direction === 'negative' ? a.traitScore - b.traitScore : b.traitScore - a.traitScore
+    );
 
-    // Best run overall (highest trait score)
+    // Best run overall (most steered — lowest for negative, highest for positive)
     const bestRun = perLayer.length > 0 ? perLayer[0] : null;
 
     // Count unique configs
@@ -522,13 +504,16 @@ async function fetchResponseForRun(entry, run) {
  * @returns {string} HTML
  */
 function buildDetailHTML(trait, traitResults) {
-    const data = extractDetailData(traitResults);
+    const direction = traitResults.direction || 'positive';
+    const slider = document.getElementById('sweep-coherence-threshold');
+    const minCoherence = slider ? parseInt(slider.value, 10) : 70;
+    const data = extractDetailData(traitResults, direction, minCoherence);
     const { methods, perLayer, baseline, minLayer, maxLayer, bestRun, configCount } = data;
     const traitName = trait.split('/').pop();
     const methodColors = getMethodColors();
 
     // Score class helper
-    const deltaClass = (delta) => delta > 20 ? 'good' : delta > 5 ? 'moderate' : '';
+    const deltaClass = (delta) => Math.abs(delta) > 20 ? 'good' : Math.abs(delta) > 5 ? 'moderate' : '';
 
     // Find best method + delta
     let bestDelta = 0;
@@ -542,37 +527,16 @@ function buildDetailHTML(trait, traitResults) {
         bestCoherence = bestRun.coherence;
     }
 
-    // Chart data
-    const chartData = { methods, baseline, minLayer, maxLayer };
-    const chartSVG = buildFullChartSVG(chartData, 900, 220);
-
-    // Legend
-    const legendItems = Object.entries(methods).map(([method, points]) => {
-        const color = methodColors[method] || '#888';
-        const best = points.reduce((a, b) => a.score > b.score ? a : b, { score: 0, layer: 0 });
-        const delta = (best.score - baseline).toFixed(1);
-        const sign = best.score - baseline >= 0 ? '+' : '';
-        return `<span class="detail-legend-item">
-            <span class="detail-legend-line" style="background: ${color};"></span>
-            ${escapeHtml(method)} (best: ${sign}${delta} @ L${best.layer})
-        </span>`;
-    }).join('');
-
-    const baselineLegend = `<span class="detail-legend-item">
-        <span class="detail-legend-line" style="background: var(--text-tertiary); border-top: 1px dashed var(--text-tertiary); height: 0;"></span>
-        Baseline (${baseline.toFixed(1)})
-    </span>`;
-
     // Tooltip placeholders (content loaded on hover via fetch)
     const tooltipHTML = `
         <div class="detail-info-icons">
-            <div class="detail-info-icon" data-tooltip="definition">D
+            <div class="detail-info-icon" data-tooltip="definition">Def
                 <div class="detail-tooltip"><div class="tt-label">Scoring Definition</div><em>Hover to load...</em></div>
             </div>
-            <div class="detail-info-icon" data-tooltip="steering">Q
+            <div class="detail-info-icon" data-tooltip="steering">Qs
                 <div class="detail-tooltip"><div class="tt-label">Steering Questions</div><em>Hover to load...</em></div>
             </div>
-            <div class="detail-info-icon" data-tooltip="coherence">C
+            <div class="detail-info-icon" data-tooltip="coherence">Coh
                 <div class="detail-tooltip"><div class="tt-label">Coherence Prompt</div><em>Hover to load...</em></div>
             </div>
         </div>`;
@@ -580,7 +544,8 @@ function buildDetailHTML(trait, traitResults) {
     // Best response section (placeholder, loaded async)
     const bestResponseHTML = bestRun ? `
         <div class="detail-best-response" data-layer="${bestRun.layer}" data-method="${bestRun.method}" data-component="${bestRun.component}" data-coef="${bestRun.coef}">
-            <div class="br-label">Best response (highest trait score)</div>
+            <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score) <span class="subsection-info-toggle" data-target="info-steering-best-response">\u25BA</span></div>
+            <div class="subsection-info" id="info-steering-best-response">The strongest coherent steering run for this trait &mdash; best layer, coef, score, coherence, plus the actual prompt and model output. Use it to eyeball whether the score reflects real behaviour.</div>
             <div class="br-meta">
                 Layer <strong>${bestRun.layer}</strong>
                 &middot; coef=<strong>${Math.abs(bestRun.coef).toFixed(1)}</strong>
@@ -592,19 +557,14 @@ function buildDetailHTML(trait, traitResults) {
     ` : '';
 
     // Per-layer results
-    const maxScore = perLayer.length > 0 ? Math.max(...perLayer.map(r => r.traitScore)) : 1;
     const layerRowsHTML = perLayer.map((r, i) => {
-        const barWidth = maxScore > 0 ? Math.max(2, (r.traitScore / maxScore) * 100) : 2;
-        const barColor = r.traitScore > baseline + 15 ? 'var(--success)'
-            : r.traitScore > baseline + 5 ? 'var(--accent-color)' : 'var(--text-tertiary)';
-        const scoreGood = r.traitScore > baseline + 10 ? 'good' : '';
         return `
             <div class="detail-layer-row" data-layer-idx="${i}" data-layer="${r.layer}" data-method="${r.method}" data-component="${r.component}" data-coef="${r.coef}">
                 <span class="lr-layer">L${r.layer}</span>
-                <span class="lr-score ${scoreGood}">trait=${r.traitScore.toFixed(1)}</span>
-                <span class="lr-coef">coef=${Math.abs(r.coef).toFixed(1)}</span>
-                <span class="lr-coh">coh=${r.coherence.toFixed(0)}</span>
-                <span class="lr-bar"><span class="lr-bar-fill" style="width: ${barWidth}%; background: ${barColor};"></span></span>
+                <span class="lr-score">trait ${r.traitScore.toFixed(1)}</span>
+                <span class="lr-coef">coef ${Math.abs(r.coef).toFixed(1)}</span>
+                <span class="lr-coh">coh ${r.coherence.toFixed(0)}</span>
+                <span class="lr-arrow">▸</span>
             </div>
             <div class="detail-layer-response" data-layer-resp="${i}"></div>`;
     }).join('');
@@ -627,17 +587,23 @@ function buildDetailHTML(trait, traitResults) {
             <span>Best layer: <strong>L${bestLayer}</strong></span>
             <span>Method: <strong>${escapeHtml(bestMethod)}</strong></span>
             <span>Coherence: <strong>${bestCoherence.toFixed(0)}</strong></span>
-            <span>Layers: <strong>L${minLayer}&ndash;${maxLayer}</strong> / ${window.state.experimentData?.experimentConfig?.num_hidden_layers || '?'}</span>
+            <span>Layers: <strong>L${minLayer}&ndash;${maxLayer}</strong> / ${window.paths?.getNumLayers?.() || window.state.experimentData?.experimentConfig?.num_hidden_layers || 32}</span>
             <span>Configs: <strong>${configCount}</strong></span>
         </div>
-        <div class="detail-chart">${chartSVG}</div>
-        <div class="detail-chart-legend">
-            ${legendItems}
-            ${baselineLegend}
+        <div class="detail-chart-header">
+            <span>Steering Effect by Layer</span>
+            <span class="subsection-info-toggle" data-target="info-steering-detail-chart">\u25BA</span>
+        </div>
+        <div class="subsection-info" id="info-steering-detail-chart">Trait score (judge, 0&ndash;100) per injection layer, one line per extraction method. Dashed line = unsteered baseline. Distance from baseline = steering strength.</div>
+        <div class="detail-chart" id="detail-chart-${traitName}"></div>
+        <div class="detail-baseline-response" style="display:none;">
+            <div class="br-label">Baseline response (no steering)</div>
+            <div class="br-text"><span class="br-loading">Loading...</span></div>
         </div>
         ${bestResponseHTML}
         <details class="detail-layer-results">
-            <summary>All layers (${perLayer.length} results, sorted by score)</summary>
+            <summary>All layers (${perLayer.length} results, sorted by score) <span class="subsection-info-toggle" data-target="info-steering-layer-results">\u25BA</span></summary>
+            <div class="subsection-info" id="info-steering-layer-results">All layers ranked by trait score, with the coefficient and coherence chosen by the search. Click a row to see the per-prompt responses behind the score.</div>
             ${layerRowsHTML}
         </details>
     `;
@@ -678,6 +644,17 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
     }
     lastInRow.insertAdjacentElement('afterend', panel);
     activeDetailPanel = panel;
+
+    // ── Render Plotly chart ──
+    const direction = traitResults.direction || 'positive';
+    const slider = document.getElementById('sweep-coherence-threshold');
+    const minCoherence = slider ? parseInt(slider.value, 10) : 70;
+    const detailData = extractDetailData(traitResults, direction, minCoherence);
+    const traitName = trait.split('/').pop();
+    const chartDiv = panel.querySelector(`#detail-chart-${traitName}`);
+    if (chartDiv && detailData.perLayer.length > 0) {
+        renderDetailPlotly(chartDiv, detailData, direction);
+    }
 
     // ── Wire close button ──
     panel.querySelector('.detail-close').addEventListener('click', () => {
@@ -722,6 +699,29 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
         });
     });
 
+    // ── Load baseline response ──
+    const baselineEl = panel.querySelector('.detail-baseline-response');
+    if (baselineEl) {
+        const experiment = window.state.experimentData?.name;
+        const basePath = window.paths?.get('steering.responses', {
+            experiment, trait: entry.trait, model_variant: entry.model_variant,
+            position: entry.position, prompt_set: entry.prompt_set,
+        });
+        if (basePath) {
+            fetch(`/${basePath}/baseline.json`).then(r => r.ok ? r.json() : null).then(responses => {
+                if (!responses || responses.length === 0) return;
+                baselineEl.style.display = 'block';
+                // Pick the response with the highest trait score to show the "best baseline"
+                const best = responses.reduce((a, b) => (b.trait_score || 0) > (a.trait_score || 0) ? b : a, responses[0]);
+                const promptLine = best.prompt
+                    ? `<div class="br-question">Q: ${escapeHtml(best.prompt)}</div>` : '';
+                baselineEl.querySelector('.br-text').innerHTML =
+                    `<div class="br-meta">trait=${(best.trait_score||0).toFixed(1)} · coherence=${(best.coherence_score||0).toFixed(0)}</div>`
+                    + promptLine + `<div style="margin-top:4px;">${escapeHtml(best.response || '')}</div>`;
+            }).catch(() => {});
+        }
+    }
+
     // ── Check if responses exist, then wire response sections ──
     const listing = await fetchResponseListing(entry);
     const hasResponses = listing && listing.files && listing.files.length > 0;
@@ -753,10 +753,10 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
                 }
                 const best = responses.reduce((a, b) =>
                     (b.trait_score || 0) > (a.trait_score || 0) ? b : a, responses[0]);
-                const promptHtml = best.prompt
-                    ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:6px;padding:6px 8px;background:var(--bg-tertiary);border-radius:var(--radius-sm);"><strong>Q:</strong> ${escapeHtml(best.prompt)}</div>`
+                const promptLine = best.prompt
+                    ? `<div class="br-question">Q: ${escapeHtml(best.prompt)}</div>`
                     : '';
-                brText.innerHTML = promptHtml + escapeHtml(best.response || best.text || JSON.stringify(best));
+                brText.innerHTML = promptLine + escapeHtml(best.response || best.text || JSON.stringify(best));
             }).catch(() => {
                 bestResponseEl.style.display = 'none';
             });
@@ -793,12 +793,12 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
                             const text = escapeHtml(r.response || r.text || JSON.stringify(r));
                             const prompt = r.prompt ? escapeHtml(r.prompt) : '';
                             const meta = r.trait_score != null
-                                ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:4px;">Response ${i + 1} — trait=${(r.trait_score||0).toFixed(1)} coh=${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
+                                ? `<div class="rc-meta">trait ${(r.trait_score||0).toFixed(1)} · coh ${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
                                 : '';
-                            const promptHtml = prompt
-                                ? `<div style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:6px;padding:6px 8px;background:var(--bg-tertiary);border-radius:var(--radius-sm);"><strong>Q:</strong> ${prompt}</div>`
+                            const promptLine = prompt
+                                ? `<div class="rc-question">Q: ${prompt}</div>`
                                 : '';
-                            return `<div style="padding:8px 0;${i > 0 ? 'border-top:1px solid var(--bg-tertiary);' : ''}">${meta}${promptHtml}${text}</div>`;
+                            return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
                         }).join('');
                     } else {
                         respEl.innerHTML = '<em style="color: var(--text-tertiary); font-size: var(--text-xs);">No response saved for this run</em>';

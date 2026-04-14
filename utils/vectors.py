@@ -47,10 +47,8 @@ logger = logging.getLogger(__name__)
 # Single source of truth for steering quality thresholds
 MIN_COHERENCE = 77
 MIN_DELTA = 20
-
-# Minimum naturalness score (filters AI-mode, robotic responses)
-# Only applied when naturalness.json exists for the trait
 MIN_NATURALNESS = 50
+
 
 
 def discover_vectors(
@@ -221,13 +219,3 @@ def load_vector_with_baseline(
     return vector, baseline, layer_metadata
 
 
-def load_vector_from_spec(
-    experiment: str,
-    trait: str,
-    spec: VectorSpec,
-    model_variant: str,
-) -> Tuple[torch.Tensor, float, Dict[str, Any]]:
-    """Load a vector using a VectorSpec."""
-    return load_vector_with_baseline(
-        experiment, trait, spec.method, spec.layer, model_variant, spec.component, spec.position
-    )

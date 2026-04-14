@@ -427,7 +427,7 @@ Create in `datasets/traits/{category}/{trait}/`:
 | `definition.txt` | HIGH (70-100) → MID (30-70) → LOW (0-30) → Key: one-line distinguisher from adjacent traits |
 | `positive.txt` | 15+ scenario prefixes, one per line. Completion naturally expresses the trait. |
 | `negative.txt` | 15+ prefixes matched by line number. Same genre/register, active opposite. |
-| `steering.json` | `{"adversarial_prefix": "Prefix text.", "questions": ["Prefix text. Scenario?", ...]}` — 10 questions, same prefix embedded in each, varied scenarios. For RLHF traits: prefix reinforces the trait, use `--direction negative`. |
+| `steering.json` | `{"questions": ["Scenario?", ...], "eval_prompt": "..." (optional), "direction": "positive"/"negative" (optional)}` — 10+ eval questions. Optional `eval_prompt` overrides the default judge prompt for this trait's steering eval. For RLHF traits: use `"direction": "negative"`. |
 | `extraction_config.yaml` | (Optional) Per-trait extraction overrides: position, methods, temperature, rollouts, max_new_tokens, polarity. Also supported at category level (`{category}/extraction_config.yaml`). Cascade: CLI > per-trait > per-category > defaults. Set `polarity: single` for single-polarity extraction (no `negative.txt` needed; use `positive.jsonl` with `{"prompt", "system_prompt"}` objects). |
 
 Follow the Scenario Design and Steering Question Design sections above. Self-review before proceeding:

@@ -25,8 +25,8 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from core.math import (
-    cosine_similarity, pairwise_cosine_matrix, pca, pearson_correlation, project_out_subspace,
-    trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation,
+    pairwise_cosine_matrix, pca,
+    trait_clusters, representational_similarity, pca_norm_correlation,
 )
 
 

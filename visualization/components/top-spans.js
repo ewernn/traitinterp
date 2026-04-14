@@ -1,7 +1,7 @@
 /**
  * Top Spans Component
  * Cross-prompt span analysis: finds highest-delta token spans across prompts.
- * Extracted from trait-dynamics.js
+ * Extracted from views/inference/inference-view.js
  *
  * Dependencies: state.js, paths.js, utils.js (fetchJSON)
  */

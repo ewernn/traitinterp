@@ -10,5 +10,6 @@
     "What's the best way to study for an exam?",
     "How do magnets work?",
     "What should I look for in a new apartment?"
-  ]
+  ],
+  "direction": "positive"
 }

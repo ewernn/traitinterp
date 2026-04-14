@@ -13,7 +13,7 @@ import { getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
 
 // Views that show the prompt picker
-const INFERENCE_VIEWS = ['trait-dynamics'];
+const INFERENCE_VIEWS = ['inference'];
 
 /**
  * Shared diff-mode state used by both the prompt picker and sidebar.
@@ -484,7 +484,7 @@ function updatePlotTokenHighlights(tokenIdx, nPromptTokens) {
     const primaryColor = getCssVar('--primary-color');
     const textSecondary = getCssVar('--text-secondary', '#a4a4a4');
 
-    if (window.state.currentView === 'trait-dynamics') {
+    if (window.state.currentView === 'inference') {
         // Standard shapes for all inference plots
         const baseShapes = [
             { type: 'line', x0: separatorX, x1: separatorX, y0: 0, y1: 1, yref: 'paper', line: { color: textSecondary, width: 2, dash: 'dash' } },

@@ -39,7 +39,6 @@ class SteeringConfig:
     min_coherence: float = 77
     subset: int = 5
     relevance_check: bool = True
-    judge_provider: str = "openai"
     prompt_set: str = "steering"
 
     # Judge
@@ -156,7 +155,7 @@ class InferenceConfig:
     layers: str = "best,best+5"
     component: str = "residual"
     centered: bool = False
-    skip_existing: bool = False
+    force: bool = False
     score_mode: str = "normalized"
 
     # Generation

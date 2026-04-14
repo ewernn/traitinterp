@@ -1,4 +1,4 @@
-// Trait Dynamics View — Orchestrator
+// Inference View — Orchestrator
 // Watch the model's internal state evolve token-by-token during generation.
 //
 // Sections:
@@ -8,14 +8,14 @@
 import { fetchJSON } from '../../core/utils.js';
 import { requireExperiment, deferredLoading } from '../../core/ui.js';
 import { getVariantForCurrentPromptSet } from '../../core/state.js';
-import { renderPageShell } from './controls.js';
-import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProjectionData } from './data.js';
-import { renderTrajectoryChart } from './chart-trajectory.js';
-import { renderTraitTokenHeatmap } from './chart-heatmap.js';
-import { renderTokenMagnitudePlot } from './chart-magnitude.js';
-import { renderCorrelationSection } from '../correlation.js';
+import { renderPageShell } from './inference-view-controls.js';
+import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProjectionData, resetInferenceDataCaches } from './inference-data.js';
+import { renderTrajectoryChart } from './chart-token-trajectory.js';
+import { renderTraitTokenHeatmap } from './chart-trait-token-heatmap.js';
+import { renderTokenMagnitudePlot } from './chart-activation-magnitude.js';
+import { renderCorrelationSection } from './chart-correlation.js';
 
-async function renderTraitDynamics() {
+async function renderInference() {
     const contentArea = document.getElementById('content-area');
 
     if (requireExperiment(contentArea)) return;
@@ -259,8 +259,14 @@ async function renderTraitDynamics() {
     });
 }
 
-// ES module exports
-export { renderTraitDynamics };
+/** Reset inference-view local state (called on experiment change). */
+function resetInferenceState() {
+    resetInferenceDataCaches();
+}
 
-// Keep window.* for router
-window.renderTraitDynamics = renderTraitDynamics;
+// ES module exports
+export { renderInference, resetInferenceState };
+
+// Keep window.* for router + state.js reference
+window.renderInference = renderInference;
+window.resetInferenceState = resetInferenceState;

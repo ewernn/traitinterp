@@ -249,6 +249,19 @@ components, var_ratio, projections = pca(vectors, n_components=10)
 
 # Remove a subspace from vectors (generalizes orthogonalize to multiple directions)
 cleaned = project_out_subspace(vectors, basis)  # basis: [K, hidden_dim]
+
+# Cross-trait normalization (grand mean subtraction + neutral PC denoising)
+from core.math import grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs
+centered, grand_mean = grand_mean_center(vectors_dict)  # {name: tensor} -> {name: centered}
+basis, var_ratio, n_pcs = compute_top_pcs_by_variance(neutral_acts, variance_threshold=0.5)
+denoised = denoise_with_pcs(centered, basis)  # project out neutral PCs
+
+# Geometry analysis
+from core.math import trait_clusters, representational_similarity, pca_norm_correlation, vector_set_comparison
+labels, centroids, inertia = trait_clusters(vectors, k=10)
+rsa_matrix, layers = representational_similarity(vectors_by_layer)  # {layer: [N, D]} -> [L, L]
+corr = pca_norm_correlation(projections, names, norms)  # PC1/2 vs human valence/arousal
+comparison = vector_set_comparison(vecs_a, vecs_b)  # cross-set cosine + orthogonalization
 ```
 
 **Metrics (operate on projection scores):**
@@ -449,6 +462,6 @@ core/
 ├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults, ActivationMetadata, ModelConfig
 ├── hooks.py         # CaptureHook, SteeringHook, PerPositionSteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
-├── math.py          # projection, batch_cosine_similarity, accuracy, effect_size, orthogonalize, pairwise_cosine_matrix, pca, project_out_subspace
+├── math.py          # projection, cosine_similarity, batch_cosine_similarity, pairwise_cosine_matrix, pca, project_out_subspace, grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs, trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation, accuracy, effect_size, pearson_correlation
 └── generation.py    # HookedGenerator for generation with capture/steering
 ```

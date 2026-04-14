@@ -1,7 +1,7 @@
 /**
  * Response Browser Component
  * Displays steering run responses in an interactive table with filtering/sorting.
- * Extracted from steering.js
+ * Extracted from views/steering/steering-view.js
  *
  * Dependencies: state.js, display.js, paths.js
  */
@@ -90,7 +90,7 @@ function renderFilterDropdown(filterName, label, currentValue, options) {
 }
 
 /**
- * Set the trait results cache reference (called by steering.js)
+ * Set the trait results cache reference (called by views/steering/detail.js)
  */
 function setTraitResultsCache(cache) {
     traitResultsCache = cache;

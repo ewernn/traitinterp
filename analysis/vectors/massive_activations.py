@@ -27,7 +27,6 @@ Usage:
 
 import argparse
 import json
-import subprocess
 import numpy as np
 import torch
 from pathlib import Path
@@ -469,59 +468,189 @@ def aggregate_stats(
     }
 
 
-def ensure_calibration_activations(experiment: str, model_variant: str, load_in_4bit: bool = False) -> Path:
+def compute_calibration_stats_streaming(
+    experiment: str,
+    model_variant: str,
+    load_in_4bit: bool = False,
+    top_k: int = 5,
+) -> Dict[str, Any]:
     """
-    Ensure calibration activations exist, capturing them if necessary.
+    Compute massive activation stats in a single forward pass — no disk writes.
 
-    Returns the directory containing .pt files.
+    Generates calibration responses, runs prefill with hooks to capture
+    activations, and accumulates per-layer statistics (sums, norms, counts)
+    in memory. Peak memory: O(n_layers × hidden_dim) instead of O(n_prompts
+    × n_layers × seq_len × hidden_dim).
+
+    Returns the same aggregate dict that run_for_variant expects.
     """
-    # Check if calibration activations exist
-    raw_dir = Path(get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=CALIBRATION_PROMPT_SET))
-
-    if raw_dir.exists() and list(raw_dir.glob('*.pt')):
-        print(f"Using existing calibration activations: {raw_dir}")
-        return raw_dir
-
-    # Need to capture calibration activations
-    print(f"Calibration activations not found. Capturing from {CALIBRATION_DATASET}...")
+    from inference.generate_responses import generate_responses
+    from utils.model import load_model
+    from core import HookManager
 
     if not CALIBRATION_DATASET.exists():
         raise FileNotFoundError(f"Calibration dataset not found: {CALIBRATION_DATASET}")
 
-    # Step 1: Generate responses (tokenizer-only prefill from calibration prompts)
-    gen_cmd = [
-        sys.executable,
-        str(Path(__file__).parent.parent / 'inference' / 'generate_responses.py'),
-        '--experiment', experiment,
-        '--prompt-set', CALIBRATION_PROMPT_SET,
-        '--model-variant', model_variant,
-        '--max-new-tokens', '128',
-    ]
-    if load_in_4bit:
-        gen_cmd.append('--load-in-4bit')
-    print(f"Running: {' '.join(gen_cmd)}")
-    result = subprocess.run(gen_cmd, capture_output=False)
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to generate calibration responses")
+    # Step 1: Generate responses (need the text to tokenize for prefill)
+    generate_responses(
+        experiment=experiment,
+        prompt_set=CALIBRATION_PROMPT_SET,
+        model_variant=model_variant,
+        max_new_tokens=128,
+        load_in_4bit=load_in_4bit,
+    )
 
-    # Step 2: Capture raw activations (all components for full breakdown)
-    cap_cmd = [
-        sys.executable,
-        str(Path(__file__).parent.parent / 'inference' / 'process_activations.py'),
-        '--capture',
-        '--experiment', experiment,
-        '--prompt-set', CALIBRATION_PROMPT_SET,
-        '--model-variant', model_variant,
-        '--components', 'residual,attn_contribution,mlp_contribution',
-    ]
-    if load_in_4bit:
-        cap_cmd.append('--load-in-4bit')
-    print(f"Running: {' '.join(cap_cmd)}")
-    result = subprocess.run(cap_cmd, capture_output=False)
-    if result.returncode != 0:
-        raise RuntimeError(f"Failed to capture calibration activations")
+    # Load response JSONs
+    responses_dir = Path(get_path(
+        'inference.responses', experiment=experiment,
+        model_variant=model_variant, prompt_set=CALIBRATION_PROMPT_SET,
+    ))
+    response_files = sorted(responses_dir.glob('*.json'))
+    if not response_files:
+        raise FileNotFoundError(f"No response files in {responses_dir}")
 
-    return raw_dir
+    responses = []
+    for f in response_files:
+        with open(f) as fh:
+            responses.append(json.load(fh))
+
+    print(f"Computing stats from {len(responses)} calibration responses (streaming, no disk writes)...")
+
+    # Load model
+    model, tokenizer = load_model(
+        get_model_variant(experiment, model_variant).model,
+        load_in_4bit=load_in_4bit,
+    )
+    n_layers = model.config.num_hidden_layers
+    hidden_dim = model.config.hidden_size
+
+    # Accumulators for layer stats
+    layer_sums = {l: torch.zeros(hidden_dim) for l in range(n_layers)}
+    layer_norm_sums = {l: 0.0 for l in range(n_layers)}
+    attn_norm_sums = {l: 0.0 for l in range(n_layers)}
+    mlp_norm_sums = {l: 0.0 for l in range(n_layers)}
+    layer_counts = {l: 0 for l in range(n_layers)}
+    # For mean alignment: accumulate per-prompt cosines then average
+    alignment_sums = {l: 0.0 for l in range(n_layers)}
+    alignment_counts = {l: 0 for l in range(n_layers)}
+    n_prompts = 0
+
+    # Process each response with hooks
+    for resp in responses:
+        # Get full text (prompt + response) and find response start
+        prompt_text = resp.get('prompt', '')
+        response_text = resp.get('response', '')
+        if not response_text:
+            continue
+
+        full_text = prompt_text + response_text
+        inputs = tokenizer(full_text, return_tensors='pt').to(model.device)
+        prompt_ids = tokenizer(prompt_text, return_tensors='pt').input_ids
+        prompt_len = prompt_ids.shape[1]
+
+        # Capture all layers
+        captured = {}
+
+        def make_hook(layer_idx):
+            def hook_fn(module, inp, out):
+                h = out[0] if isinstance(out, tuple) else out
+                captured[layer_idx] = h.detach().cpu().float()
+            return hook_fn
+
+        with HookManager(model) as hooks:
+            for l in range(n_layers):
+                hooks.add_forward_hook(f"model.layers.{l}", make_hook(l))
+            with torch.no_grad():
+                model(**inputs, use_cache=False)
+
+        # Accumulate stats from response tokens only
+        for l in range(n_layers):
+            if l not in captured:
+                continue
+            h = captured[l][0]  # [seq_len, hidden_dim]
+            resp_h = h[prompt_len:]  # response tokens only
+            if resp_h.shape[0] == 0:
+                resp_h = h  # fallback to all tokens
+
+            n_tokens = resp_h.shape[0]
+            layer_sums[l] += resp_h.sum(dim=0)
+            layer_norm_sums[l] += resp_h.norm(dim=1).sum().item()
+            layer_counts[l] += n_tokens
+
+            # Mean alignment for this prompt
+            mean_dir = resp_h.mean(dim=0)
+            mean_dir_norm = mean_dir / (mean_dir.norm() + 1e-8)
+            token_norms = resp_h.norm(dim=1, keepdim=True)
+            token_normalized = resp_h / (token_norms + 1e-8)
+            cosines = (token_normalized @ mean_dir_norm)
+            alignment_sums[l] += cosines.mean().item()
+            alignment_counts[l] += 1
+
+        del captured
+        n_prompts += 1
+        if n_prompts % 10 == 0:
+            print(f"  Processed {n_prompts}/{len(responses)} prompts")
+
+    print(f"  Processed {n_prompts}/{len(responses)} prompts")
+
+    # Compute final stats
+    layer_means = {}
+    layer_norms_out = {}
+    for l in range(n_layers):
+        if layer_counts[l] == 0:
+            continue
+        layer_means[l] = layer_sums[l] / layer_counts[l]
+        layer_norms_out[l] = round(layer_norm_sums[l] / layer_counts[l], 1)
+
+    # Inter-layer cosine similarity
+    consecutive_cosine = {}
+    layers_sorted = sorted(layer_means.keys())
+    for i in range(len(layers_sorted) - 1):
+        a, b = layers_sorted[i], layers_sorted[i + 1]
+        consecutive_cosine[a] = round(cosine_similarity(layer_means[a], layer_means[b]).item(), 4)
+
+    # Top-k dims per layer + normalized magnitudes
+    top_dims_by_layer = {}
+    all_candidate_dims = set()
+    for l, mean_vec in layer_means.items():
+        top_vals, top_dims = mean_vec.abs().topk(top_k)
+        top_dims_list = top_dims.tolist()
+        top_dims_by_layer[l] = top_dims_list
+        all_candidate_dims.update(top_dims_list)
+
+    dim_magnitude_by_layer = {}
+    for dim in sorted(all_candidate_dims):
+        magnitudes = []
+        for l in sorted(layer_means.keys()):
+            mean_vec = layer_means[l]
+            layer_avg = mean_vec.abs().mean().item()
+            normalized = abs(mean_vec[dim].item()) / layer_avg if layer_avg > 0 else 0
+            magnitudes.append(round(normalized, 3))
+        dim_magnitude_by_layer[dim] = magnitudes
+
+    # Mean alignment
+    mean_alignment = {}
+    for l in range(n_layers):
+        if alignment_counts[l] > 0:
+            mean_alignment[l] = round(alignment_sums[l] / alignment_counts[l], 4)
+
+    aggregate = {
+        'n_prompts': n_prompts,
+        'mean_alignment_by_layer': {int(k): v for k, v in mean_alignment.items()},
+        'top_dims_by_layer': {int(k): v for k, v in top_dims_by_layer.items()},
+        'dim_magnitude_by_layer': {int(k): v for k, v in dim_magnitude_by_layer.items()},
+        'layer_norms': {int(k): v for k, v in layer_norms_out.items()},
+        'consecutive_cosine': {int(k): v for k, v in consecutive_cosine.items()},
+    }
+
+    # Clean up model
+    del model, tokenizer
+    import gc
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return aggregate
 
 
 def run_for_variant(experiment: str, variant_name: str, args) -> None:
@@ -537,73 +666,70 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
     is_calibration = args.prompt_set is None
 
     if is_calibration:
-        print("Calibration Mode: Computing model-specific massive dims from neutral prompts")
-        raw_dir = ensure_calibration_activations(experiment, model_variant, load_in_4bit=args.load_in_4bit,
+        print("Calibration Mode: Computing massive dims from neutral prompts (streaming, no disk writes)")
+        aggregate = compute_calibration_stats_streaming(
+            experiment, model_variant,
+            load_in_4bit=args.load_in_4bit,
+            top_k=args.top_k,
         )
     else:
+        # Non-calibration analysis mode: uses pre-captured raw .pt files
         print(f"Analysis Mode: {args.prompt_set}")
         raw_dir = Path(get_path('inference.raw_residual', experiment=experiment, model_variant=model_variant, prompt_set=args.prompt_set))
         if not raw_dir.exists():
             print(f"No raw activations found at {raw_dir}")
-            print(f"Run: python inference/capture_activations.py --experiment {experiment} --prompt-set {args.prompt_set}")
+            print(f"Run: python inference/run_inference_pipeline.py --experiment {experiment} --prompt-set {args.prompt_set}")
             return
 
-    pt_files = sorted(raw_dir.glob('*.pt'))
-    if not pt_files:
-        print(f"No .pt files in {raw_dir}")
-        return
+        pt_files = sorted(raw_dir.glob('*.pt'))
+        if not pt_files:
+            print(f"No .pt files in {raw_dir}")
+            return
 
-    # Filter by prompt IDs if specified
-    if args.prompt_ids:
-        ids = set(args.prompt_ids.split(','))
-        pt_files = [f for f in pt_files if f.stem in ids]
+        if args.prompt_ids:
+            ids = set(args.prompt_ids.split(','))
+            pt_files = [f for f in pt_files if f.stem in ids]
 
-    print(f"Analyzing {len(pt_files)} prompts...")
+        print(f"Analyzing {len(pt_files)} prompts...")
 
-    all_results = []
-    per_prompt = {} if args.per_token else None
+        all_results = []
+        per_prompt = {} if args.per_token else None
 
-    for pt_file in pt_files:
-        prompt_id = pt_file.stem
-        print(f"  {prompt_id}...", end=' ')
+        for pt_file in pt_files:
+            prompt_id = pt_file.stem
+            print(f"  {prompt_id}...", end=' ')
+            result = analyze_prompt(pt_file, top_k=args.top_k, per_token=args.per_token)
+            all_results.append(result)
+            if per_prompt is not None:
+                per_prompt[prompt_id] = result
+            if result['tracked_dims']:
+                print(f"massive dims: {result['tracked_dims']}")
+            else:
+                print("no massive dims found")
 
-        result = analyze_prompt(pt_file, top_k=args.top_k, per_token=args.per_token)
-        all_results.append(result)
+        aggregate = aggregate_stats(all_results)
 
-        if per_prompt is not None:
-            per_prompt[prompt_id] = result
-
-        # Print top massive dim for this prompt
-        if result['tracked_dims']:
-            print(f"massive dims: {result['tracked_dims']}")
-        else:
-            print("no massive dims found")
-
-    # Aggregate stats
-    aggregate = aggregate_stats(all_results)
-
-    # Compute per-layer stats for visualization
-    print("\nComputing layer stats for visualization...")
-    layer_stats = compute_layer_stats(pt_files, top_k=args.top_k)
-    aggregate['top_dims_by_layer'] = layer_stats['top_dims_by_layer']
-    aggregate['dim_magnitude_by_layer'] = layer_stats['dim_magnitude_by_layer']
-    aggregate['layer_norms'] = layer_stats['layer_norms']
-    if 'attn_norms' in layer_stats:
-        aggregate['attn_norms'] = layer_stats['attn_norms']
-    if 'mlp_norms' in layer_stats:
-        aggregate['mlp_norms'] = layer_stats['mlp_norms']
+        print("\nComputing layer stats for visualization...")
+        layer_stats = compute_layer_stats(pt_files, top_k=args.top_k)
+        aggregate['top_dims_by_layer'] = layer_stats['top_dims_by_layer']
+        aggregate['dim_magnitude_by_layer'] = layer_stats['dim_magnitude_by_layer']
+        aggregate['layer_norms'] = layer_stats['layer_norms']
+        if 'attn_norms' in layer_stats:
+            aggregate['attn_norms'] = layer_stats['attn_norms']
+        if 'mlp_norms' in layer_stats:
+            aggregate['mlp_norms'] = layer_stats['mlp_norms']
 
     # Prepare output
     output = {
         'experiment': experiment,
-        'model': variant.model,  # HuggingFace model path
+        'model': variant.model,
         'model_variant': model_variant,
         'prompt_set': 'calibration' if is_calibration else args.prompt_set,
         'is_calibration': is_calibration,
         'aggregate': aggregate,
     }
 
-    if per_prompt is not None:
+    if not is_calibration and args.per_token and per_prompt:
         output['per_prompt'] = per_prompt
 
     # Save
@@ -614,22 +740,9 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
         output_path = get_path('inference.massive_activations', experiment=experiment, model_variant=model_variant, prompt_set=output_name)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     with open(output_path, 'w') as f:
         json.dump(output, f, indent=2)
-
     print(f"\nSaved to {output_path}")
-
-    # Clean up raw calibration activations (can be hundreds of GB for large models)
-    if is_calibration:
-        import shutil
-        shutil.rmtree(raw_dir, ignore_errors=True)
-        # Also clean attn/mlp component dirs if they exist
-        for comp in ['attn_contribution', 'mlp_contribution']:
-            comp_dir = raw_dir.parent.parent / comp / CALIBRATION_PROMPT_SET
-            if comp_dir.exists():
-                shutil.rmtree(comp_dir, ignore_errors=True)
-        print(f"Cleaned up raw calibration activations")
 
     # Print summary
     print(f"\n=== Summary ===")
@@ -640,12 +753,11 @@ def run_for_variant(experiment: str, variant_name: str, args) -> None:
         for layer, align in sorted(aggregate['mean_alignment_by_layer'].items()):
             print(f"  L{layer}: {align:.1%}")
 
-    # For calibration, print the top dims that appear in 3+ layers (useful for cleaning)
     if is_calibration and aggregate.get('top_dims_by_layer'):
         print(f"\n=== Recommended dims for cleaning ===")
         appearances = {}
         for layer, dims in aggregate['top_dims_by_layer'].items():
-            for dim in dims[:5]:  # top 5 per layer
+            for dim in dims[:5]:
                 appearances[dim] = appearances.get(dim, 0) + 1
 
         multi_layer_dims = [(dim, count) for dim, count in appearances.items() if count >= 3]

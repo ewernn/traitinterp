@@ -18,8 +18,8 @@ Usage:
     # Per-trait mode (default)
     python analysis/model_diff/top_activating_spans.py \
         --experiment audit-bleachers \
-        --organism td_rt_sft_flattery \
-        --trait all \
+        --model-variant td_rt_sft_flattery \
+        --traits all \
         --mode clauses \
         --top-k 50
 
@@ -728,8 +728,8 @@ def main():
     parser = argparse.ArgumentParser(
         description='Surface highest-activation text spans across prompts for an organism x trait.')
     parser.add_argument('--experiment', required=True)
-    parser.add_argument('--organism', required=True)
-    parser.add_argument('--trait', default='all', help='all or specific like rm_hack/secondary_objective')
+    parser.add_argument('--model-variant', required=True)
+    parser.add_argument('--traits', default='all', help='all or specific like rm_hack/secondary_objective')
     parser.add_argument('--mode', default='clauses', choices=['clauses', 'window', 'prompt-ranking', 'multi-probe'])
     parser.add_argument('--window-length', type=int, default=10, help='Token window length (window mode)')
     parser.add_argument('--top-k', type=int, default=50, help='Top spans per trait')
@@ -743,19 +743,19 @@ def main():
 
     # Resolve organism directory
     available = discover_organisms(args.experiment)
-    if args.organism not in available:
-        print(f'Error: organism "{args.organism}" not found.', file=sys.stderr)
-        print(f'Available organisms: {", ".join(available) if available else "(none)"}', file=sys.stderr)
+    if args.model_variant not in available:
+        print(f'Error: model-variant "{args.model_variant}" not found.', file=sys.stderr)
+        print(f'Available variants: {", ".join(available) if available else "(none)"}', file=sys.stderr)
         sys.exit(1)
 
     per_token_diff_dir = (paths.get('model_diff.base', experiment=args.experiment)
-                          / f'instruct_vs_{args.organism}' / 'per_token_diff')
+                          / f'instruct_vs_{args.model_variant}' / 'per_token_diff')
 
     # Discover or filter traits
-    if args.trait == 'all':
+    if args.traits == 'all':
         traits = discover_traits(per_token_diff_dir)
     else:
-        traits = [args.trait]
+        traits = [args.traits]
 
     if not traits:
         print(f'Error: no traits found in {per_token_diff_dir}', file=sys.stderr)
@@ -763,10 +763,10 @@ def main():
 
     # Modes that do their own loading
     if args.mode == 'prompt-ranking':
-        print_prompt_ranking(args.organism, per_token_diff_dir, traits, args)
+        print_prompt_ranking(args.model_variant, per_token_diff_dir, traits, args)
         return
     if args.mode == 'multi-probe':
-        print_multi_probe(args.organism, per_token_diff_dir, traits, args)
+        print_multi_probe(args.model_variant, per_token_diff_dir, traits, args)
         return
 
     # Per-trait modes (clauses, window)
@@ -780,7 +780,7 @@ def main():
         print('No data found for any trait.', file=sys.stderr)
         sys.exit(1)
 
-    print_output(args.organism, traits_results, args)
+    print_output(args.model_variant, traits_results, args)
 
 
 if __name__ == '__main__':

@@ -63,7 +63,7 @@ def capture_raw_activations(
     response_only: bool = False,
     load_in_4bit: bool = False,
     responses_from: str = None,
-    skip_existing: bool = False,
+    force: bool = False,
     limit: int = None,
     output_suffix: str = None,
     model=None,
@@ -124,7 +124,7 @@ def capture_raw_activations(
 
     raw_dir = get_path('inference.raw_residual', experiment=experiment, model_variant=variant_name, prompt_set=output_set_name)
 
-    if skip_existing:
+    if not force:
         original_count = len(response_files)
         response_files = [f for f in response_files if not (raw_dir / f"{f.stem}.pt").exists()]
         skipped = original_count - len(response_files)

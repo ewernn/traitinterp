@@ -151,6 +151,7 @@ async def _vet_responses_async(
     max_concurrent: int = 100, estimate_trait_tokens: bool = False,
     position: str = "response[:]", tokenizer=None,
     use_chat_template: bool = False,
+    pos_threshold: int = 60,
 ) -> dict:
     """Score all responses and return results.
 
@@ -193,7 +194,7 @@ async def _vet_responses_async(
                 score_section=item["score_section"],
             )
             result = {"idx": item["idx"], "polarity": item["polarity"], "score": score}
-            if estimate_trait_tokens and item["polarity"] == "positive" and score is not None and score >= 60:
+            if estimate_trait_tokens and item["polarity"] == "positive" and score is not None and score >= pos_threshold:
                 token_count = await judge.estimate_trait_tokens(
                     item["prompt"], item["full_response"], trait_name, trait_definition
                 )
@@ -246,7 +247,7 @@ def vet(
     else:
         data = asyncio.run(_vet_responses_async(
             experiment, trait, model_variant, max_concurrent, estimate_trait_tokens,
-            position, tokenizer, use_chat_template,
+            position, tokenizer, use_chat_template, pos_threshold,
         ))
 
     results = data["results"]

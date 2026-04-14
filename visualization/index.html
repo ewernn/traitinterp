@@ -62,15 +62,11 @@
                 <button class="sidebar-collapse-btn" id="sidebar-collapse" title="Collapse sidebar">◀</button>
             </div>
 
-            <div class="sidebar-section">
-                <div class="nav-item" data-view="live-chat">Live Chat</div>
-                <div class="nav-item active" data-view="overview">Overview</div>
-                <div class="nav-item" data-view="methodology">Methodology</div>
-                <div class="nav-item" data-view="findings">Findings</div>
-            </div>
+            <!-- Top-level nav: populated by renderNav() in sidebar.js from /api/views -->
+            <div class="sidebar-section" id="nav-main-items"></div>
 
-            <div class="sidebar-section">
-                <div class="nav-item" id="analysis-entry">Analysis</div>
+            <div class="sidebar-section" id="nav-analysis-entry-wrap">
+                <div class="nav-item" id="analysis-entry">Experiment Dashboard</div>
             </div>
         </div>
 
@@ -78,10 +74,13 @@
         <div class="sidebar sidebar-analysis hidden" id="sidebar-analysis">
             <div class="sidebar-section">
                 <div class="section-title">Experiment Dashboard</div>
-                <div class="nav-item" data-view="extraction">Extraction</div>
-                <div class="nav-item" data-view="steering">Steering</div>
-                <div class="nav-item" data-view="trait-dynamics">Inference</div>
-                <div class="nav-item" data-view="model-analysis">Model Analysis</div>
+                <!-- Sub-nav: populated by renderNav() in sidebar.js from /api/views -->
+                <div id="nav-analysis-items"></div>
+            </div>
+
+            <div class="sidebar-section" id="experiment-viz-section" style="display:none;">
+                <div class="section-title">Experiment Viz</div>
+                <div id="experiment-viz-list"></div>
             </div>
 
             <div class="sidebar-section" id="experiment-section">
@@ -154,6 +153,18 @@
     <script type="module" src="/visualization/core/markdown-view.js"></script>
     <script type="module" src="/visualization/core/conversation-tree.js"></script>
 
+    <!-- Expose core primitives for dynamically-loaded experiment viz modules -->
+    <script type="module">
+        import { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG } from '/visualization/core/charts.js';
+        import { renderSelect, renderToggle, renderLoading, renderSubsection, renderSegmentedControl } from '/visualization/core/ui.js';
+        import { getCssVar, hexToRgba, getPlotlyLayout } from '/visualization/core/display.js';
+        window.vizCore = {
+            charts: { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG },
+            ui: { renderSelect, renderToggle, renderLoading, renderSubsection, renderSegmentedControl },
+            display: { getCssVar, hexToRgba, getPlotlyLayout }
+        };
+    </script>
+
     <!-- State Management -->
     <script type="module" src="/visualization/core/state.js"></script>
 
@@ -171,18 +182,21 @@
     <script type="module" src="/visualization/views/overview.js"></script>
     <script type="module" src="/visualization/views/methodology.js"></script>
     <script type="module" src="/visualization/views/findings.js"></script>
+    <script type="module" src="/visualization/views/lw-post.js"></script>
+    <script type="module" src="/visualization/views/lw-post-2.js"></script>
     <script type="module" src="/visualization/views/extraction.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/data.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/controls.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/chart-trajectory.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/chart-heatmap.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/chart-magnitude.js"></script>
-    <script type="module" src="/visualization/views/trait-dynamics/index.js"></script>
-    <script type="module" src="/visualization/views/correlation.js"></script>
-    <script type="module" src="/visualization/views/steering-filters.js"></script>
-    <script type="module" src="/visualization/views/steering-overview.js"></script>
-    <script type="module" src="/visualization/views/steering-detail.js"></script>
-    <script type="module" src="/visualization/views/steering.js"></script>
+    <script type="module" src="/visualization/views/inference/inference-data.js"></script>
+    <script type="module" src="/visualization/views/inference/inference-view-controls.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-token-trajectory.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-trait-token-heatmap.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-activation-magnitude.js"></script>
+    <script type="module" src="/visualization/views/inference/chart-correlation.js"></script>
+    <script type="module" src="/visualization/views/inference/inference-view.js"></script>
+    <script type="module" src="/visualization/views/steering/shared.js"></script>
+    <script type="module" src="/visualization/views/steering/filters.js"></script>
+    <script type="module" src="/visualization/views/steering/overview.js"></script>
+    <script type="module" src="/visualization/views/steering/detail.js"></script>
+    <script type="module" src="/visualization/views/steering/steering-view.js"></script>
     <script type="module" src="/visualization/views/model-analysis.js"></script>
     <script type="module" src="/visualization/views/live-chat.js"></script>
 
@@ -199,9 +213,12 @@
                 'findings': 'Research Findings',
                 'extraction': 'Extraction',
                 'steering': 'Steering',
-                'trait-dynamics': 'Inference',
+                'inference': 'Inference',
                 'model-analysis': 'Model Analysis',
-                'live-chat': 'Live Chat'
+                'live-chat': 'Live Chat',
+                'lw-post': 'LW Post 1',
+                'lw-post-2': 'LW Post 2',
+                'experiment-viz': 'Experiment Viz'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
 
@@ -215,14 +232,20 @@
                 case 'findings':
                     window.renderFindings();
                     break;
+                case 'lw-post':
+                    window.renderLwPost();
+                    break;
+                case 'lw-post-2':
+                    window.renderLwPost2();
+                    break;
                 case 'extraction':
                     window.renderExtraction();
                     break;
                 case 'steering':
                     window.renderSteering();
                     break;
-                case 'trait-dynamics':
-                    window.renderTraitDynamics();
+                case 'inference':
+                    window.renderInference();
                     break;
                 case 'model-analysis':
                     window.renderModelAnalysis();
@@ -230,6 +253,31 @@
                 case 'live-chat':
                     window.renderLiveChat();
                     break;
+                case 'experiment-viz': {
+                    const expName = window.state.currentExpViz;
+                    if (!expName) {
+                        document.getElementById('content-area').innerHTML = '<div class="error">No experiment visualization selected.</div>';
+                        break;
+                    }
+                    const container = document.getElementById('content-area');
+                    container.innerHTML = '<div class="loading">Loading experiment visualization...</div>';
+                    import(`/experiments/${expName}/visualization/index.js`)
+                        .then(mod => {
+                            container.innerHTML = '';
+                            document.getElementById('page-title').textContent = mod.title || expName;
+                            mod.render(container, {
+                                ...window.vizCore,
+                                state: window.state,
+                                paths: window.paths,
+                                expBase: `/experiments/${expName}`
+                            });
+                        })
+                        .catch(err => {
+                            container.innerHTML = `<div class="error">Failed to load experiment viz: ${err.message}</div>`;
+                            console.error('Experiment viz load failed:', err);
+                        });
+                    break;
+                }
                 default:
                     document.getElementById('content-area').innerHTML =
                         '<div class="error">Unknown view: ' + view + '</div>';

@@ -4,7 +4,7 @@
 // trait name, layer range, best delta score, and a multi-line SVG sparkline
 // (one polyline per extraction method). Clicking a card opens the detail panel.
 
-import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
+import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -21,10 +21,16 @@ let selectedCard = null;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-/** Get total model layers from experiment config or PathBuilder, fallback 40. */
+/** Get total model layers from PathBuilder, experiment config, or extraction metadata. */
 function getTotalLayers() {
-    try { return window.paths?.getNumLayers?.() || 40; }
-    catch { return window.state?.experimentData?.experimentConfig?.num_hidden_layers || 40; }
+    const fromPaths = window.paths?.getNumLayers?.();
+    if (fromPaths) return fromPaths;
+    const config = window.state?.experimentData?.experimentConfig;
+    if (config?.num_hidden_layers) return config.num_hidden_layers;
+    // Fall back to extraction metadata n_layers
+    const traits = window.state?.experimentData?.traits;
+    if (traits?.[0]?.n_layers) return traits[0].n_layers;
+    return 32;
 }
 
 /** Extract the short trait name (last segment of category/trait path). */
@@ -52,6 +58,11 @@ function processResults(results, coherenceThreshold) {
     if (!results || !results.runs || results.runs.length === 0) return null;
 
     const baseline = results.baseline?.trait_mean || 0;
+    const direction = results.direction || 'positive';
+    // For negative direction, "better" = lower score (further below baseline)
+    const isBetter = direction === 'negative'
+        ? (a, b) => a < b
+        : (a, b) => a > b;
     const methods = {};
 
     for (const run of results.runs) {
@@ -63,15 +74,15 @@ function processResults(results, coherenceThreshold) {
         if (coherence < coherenceThreshold) continue;
 
         if (!methods[method]) methods[method] = {};
-        // Keep the best score per layer per method
-        if (!methods[method][layer] || traitScore > methods[method][layer]) {
+        // Keep the best score per layer per method (direction-aware)
+        if (!methods[method][layer] || isBetter(traitScore, methods[method][layer])) {
             methods[method][layer] = traitScore;
         }
     }
 
     // Convert to sorted layer arrays and find best delta per method
     const methodSummaries = {};
-    let overallBestDelta = -Infinity;
+    let overallBestDelta = direction === 'negative' ? Infinity : -Infinity;
     let overallBestLayer = 0;
     let overallBestMethod = '';
     let globalMinLayer = Infinity;
@@ -86,13 +97,15 @@ function processResults(results, coherenceThreshold) {
 
         const points = layers.map(l => ({ layer: l, score: layerMap[l] }));
         const deltas = points.map(p => p.score - baseline);
-        const bestIdx = deltas.reduce((bi, d, i) => d > deltas[bi] ? i : bi, 0);
+        // Best = largest absolute delta in the expected direction
+        const bestIdx = deltas.reduce((bi, d, i) =>
+            (Math.abs(d) > Math.abs(deltas[bi])) ? i : bi, 0);
         const bestDelta = deltas[bestIdx];
         const bestLayer = points[bestIdx].layer;
 
         methodSummaries[method] = { points, bestDelta, bestLayer };
 
-        if (bestDelta > overallBestDelta) {
+        if (Math.abs(bestDelta) > Math.abs(overallBestDelta)) {
             overallBestDelta = bestDelta;
             overallBestLayer = bestLayer;
             overallBestMethod = method;
@@ -149,7 +162,7 @@ function buildSparklineSVG(processed, width, height) {
     let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">`;
 
     // Dashed baseline
-    svg += `<line x1="${padL}" y1="${bY.toFixed(1)}" x2="${padL + plotW}" y2="${bY.toFixed(1)}" stroke="var(--text-tertiary)" stroke-width="0.5" stroke-dasharray="3,2" opacity="0.5"/>`;
+    svg += `<line x1="${padL}" y1="${bY.toFixed(1)}" x2="${padL + plotW}" y2="${bY.toFixed(1)}" stroke="var(--text-tertiary)" stroke-width="1" stroke-dasharray="4,3" opacity="0.7"/>`;
 
     // Method lines
     for (const [method, data] of Object.entries(methods)) {
@@ -187,7 +200,7 @@ function buildCardHTML(traitPath, processed) {
     const { bestDelta, bestLayer, minLayer, maxLayer } = processed;
     const cls = scoreClass(bestDelta);
     const sign = bestDelta > 0 ? '+' : '';
-    const sparkSVG = buildSparklineSVG(processed, 200, 44);
+    const sparkSVG = buildSparklineSVG(processed, 260, 58);
 
     return `<div class="trait-card" data-trait="${traitPath}">
     <div class="tc-row">
@@ -207,12 +220,13 @@ function buildCardHTML(traitPath, processed) {
  */
 function buildLegendHTML() {
     return `<div class="steering-legend">
-    <span>Overview (alphabetical)</span>
+    <span>Overview (alphabetical) <span class="subsection-info-toggle" data-target="info-steering-overview">\u25BA</span></span>
     <span style="margin-left:auto;display:flex;gap:12px;">
         <span><span style="color:var(--success);font-weight:600;">+20</span> strong</span>
         <span><span style="font-weight:600;">&lt; 20</span> weak</span>
     </span>
-</div>`;
+</div>
+<div class="subsection-info" id="info-steering-overview">One card per trait. Big number is best &Delta; (trait score lift over baseline). Sparkline = &Delta; by layer, one line per extraction method. +20 strong, &lt;20 weak.</div>`;
 }
 
 

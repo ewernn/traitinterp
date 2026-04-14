@@ -5,9 +5,8 @@ Input: Trait vector + model
 Output: Top/bottom tokens representing the direction
 
 Usage:
-    from utils.logit_lens import vector_to_vocab, build_common_token_mask, get_interpretation_layers
+    from utils.logit_lens import vector_to_vocab, build_common_token_mask
 
-    layers = get_interpretation_layers(model.config.num_hidden_layers)
     mask = build_common_token_mask(tokenizer)
     result = vector_to_vocab(vector, model, tokenizer, common_mask=mask)
 """
@@ -16,23 +15,6 @@ import torch
 from typing import Dict
 
 from utils.model import get_inner_model
-
-
-# =============================================================================
-# Layer selection
-# =============================================================================
-
-def get_interpretation_layers(n_layers: int) -> Dict[str, dict]:
-    """
-    Return layer indices for interpretation (40% and 90% depth).
-
-    40%: middle layers where features are forming
-    90%: late layers near output
-    """
-    return {
-        "mid": {"layer": round(n_layers * 0.4), "pct": 40},
-        "late": {"layer": round(n_layers * 0.9), "pct": 90},
-    }
 
 
 # =============================================================================

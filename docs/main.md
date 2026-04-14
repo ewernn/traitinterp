@@ -1,183 +1,6 @@
-# Trait Vector Extraction and Monitoring
+# traitinterp
 
-Extract and monitor LLM behavioral traits token-by-token during generation.
-
----
-
-## Coding Agent Instructions
-
-When working on any part of this codebase, **always read the relevant docs from the Documentation Index below first**. Before modifying extraction code, read extraction_guide.md. Before modifying inference code, read inference_guide.md. Before creating datasets, read trait_dataset_creation.md. Before touching architecture or adding new modules, read architecture.md. Read liberally — the docs are concise and will save you from reimplementing existing patterns or violating conventions.
-
-## Documentation Index
-
-Primary documentation hub for the traitinterp project.
-
-### Core Documentation
-- **[docs/main.md](main.md)** (this file) - Project overview and codebase reference
-- **[docs/architecture.md](architecture.md)** - Design principles, directory responsibilities, experiment schema
-- **[README.md](../readme.md)** - Quick start guide
-
-### Pipelines
-- **[docs/extraction_guide.md](extraction_guide.md)** - Extraction pipeline (scenarios → vectors → validation)
-- **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline (per-token monitoring, projection modes)
-- **[docs/steering_guide.md](steering_guide.md)** - Steering pipeline (causal validation, coefficient search)
-- **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (scenarios, definitions, iteration)
-
-### Inference & Steering
-- **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline guide (stream-through, from-activations, projection modes)
-- **[docs/steering_guide.md](steering_guide.md)** - Steering pipeline guide (coefficient search, metrics, troubleshooting)
-- **[inference/README.md](../inference/README.md)** - Per-token monitoring
-- **[analysis/README.md](../analysis/README.md)** - All analysis scripts (steering, model diff, vectors, benchmark)
-- **[steering/README.md](../steering/README.md)** - Steering evaluation (detailed)
-
-### Visualization
-- **[visualization/README.md](../visualization/README.md)** - Dashboard usage
-- **[docs/methodology.md](methodology.md)** - How we extract and use vectors (serves /methodology in frontend)
-
-### Technical Reference
-- **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
-- **[docs/response_schema.md](response_schema.md)** - Unified response format across pipelines
-- **[docs/chat_templates.md](chat_templates.md)** - HuggingFace chat template behavior
-- **[config/paths.yaml](../config/paths.yaml)** - Path configuration
-- **[config/loras.yaml](../config/loras.yaml)** - LoRA adapter registry (HF repos, custom models)
-
-### Infrastructure (dev-only)
-- **[docs/r2_sync.md](r2_sync.md)** - R2 cloud sync
-- **[docs/other/serve_kimi_k2_1T.md](other/serve_kimi_k2_1T.md)** - Serving Kimi K2 (1T) across 8 GPUs
-
-### Contributing
-- **[docs/doc-update-guidelines.md](doc-update-guidelines.md)** - Style and process guide for docs
-
-### Dev-only Docs (not promoted to main)
-These live on the `dev` branch only. See [Branch Workflow](#branch-workflow) below.
-- **[docs/TODO.md](TODO.md)** - Active task tracking
-- **[docs/codebase_refactor_notepad.md](codebase_refactor_notepad.md)** - Refactor tracking (open items, architecture decisions)
-- **[docs/viz_refactor_notepad.md](viz_refactor_notepad.md)** - Visualization refactor tracking (open items, bugs, CSS)
-- **[docs/viz_findings/](viz_findings/)** - Research findings served by the visualization dashboard (promoted to prod, not main)
-
----
-
-## Codebase Navigation
-
-### Directory Structure
-```
-traitinterp/
-├── datasets/               # Model-agnostic inputs (shared across experiments)
-│   ├── inference/
-│   │   ├── starter_prompts/           # Public prompt sets (general.json)
-│   │   └── archive/                   # Archived prompt sets
-│   └── traits/
-│       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
-│       ├── emotion_set/              # 174 emotion traits
-│       ├── ant_emotion_concepts/     # 174 emotion concept traits (single-polarity, long-context)
-│       ├── alignment/                # 10 alignment traits
-│       ├── tonal/                    # 7 tonal traits
-│       ├── pv_instruction/           # Instruct-model traits (instruction-following axis)
-│       ├── pv_natural/               # Instruct-model traits (natural conversation axis)
-│       └── archive/                  # Archived trait sets
-│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json, extraction_config.yaml (optional)
-│
-├── extraction/             # Vector extraction pipeline
-│   └── run_extraction_pipeline.py     # Recipe: generate → vet → extract → evaluate
-│
-├── inference/              # Per-token monitoring
-│   ├── generate_responses.py        # Generate/write response JSONs (standalone or called by pipeline)
-│   └── run_inference_pipeline.py    # Recipe: generate → project (stream-through)
-│
-├── experiments/            # Experiment data (stored in R2, not git)
-│   └── {experiment_name}/
-│       ├── config.json               # Model variants
-│       ├── extraction/               # Trait vectors (standard pipeline)
-│       ├── inference/                # Per-token monitoring (standard pipeline)
-│       ├── steering/                 # Causal intervention (standard pipeline)
-│       ├── model_diff/               # Cross-variant comparison (standard pipeline)
-│       └── {sub_experiment}/         # Self-contained investigation
-│           ├── {sub_experiment}_notepad.md
-│           ├── *.py
-│           └── results/
-│
-├── config/
-│   ├── paths.yaml                    # Single source of truth for paths
-│   └── models/*.yaml                 # Model architecture configs
-│
-├── steering/              # Causal validation via steering
-│   └── run_steering_eval.py            # Recipe: baseline → coefficient search → summary
-│
-├── core/                   # Primitives (types, hooks, methods, math)
-│   └── _tests/                        # Unit tests (pytest core/_tests/)
-├── utils/                  # Shared utilities
-│   ├── model.py                      # Model loading, tokenization, prompt formatting
-│   ├── model_generation.py            # Batch generation, activation capture
-│   ├── vram.py                       # GPU monitoring, VRAM estimation, profiling, batch sizing
-│   ├── moe.py                        # Fused MoE (INT4 dequant + grouped_mm), model cache
-│   ├── distributed.py                # Tensor parallelism (is_tp_mode, tp_lifecycle, flush_cuda)
-│   ├── positions.py                  # Position DSL (response[:5], turn[N]:thinking[:], etc.)
-│   ├── batch_forward.py              # Shared helpers: OOM recovery, TP sync, batch calibration
-│   ├── coefficient_search.py         # Adaptive steering coefficient search
-│   ├── steering_results.py           # Load/compare steering results (I/O)
-│   ├── extract_vectors.py            # Activation extraction + vector training
-│   ├── capture_activations.py        # Capture raw activations to .pt (inference)
-│   ├── project_activations.py        # Project activations onto trait vectors (inference)
-│   └── ...                           # paths, activations, layers, projections, vectors, fingerprints
-├── dev/                    # Holding pen — dev-only scripts, CLI tools, modal files
-├── analysis/               # Analysis scripts (see analysis/README.md)
-│   ├── vectors/                      # Vector quality, geometry, correlation, massive dims
-│   ├── model_diff/                   # Cross-variant comparison (Cohen's d, per-token diff)
-│   └── benchmark/                    # Benchmark evaluation with steering
-├── visualization/          # Interactive dashboard
-│   ├── serve.py                      # Python HTTP server (static + REST API + SSE chat)
-│   ├── chat_inference.py             # Backend for live chat (model loading, streaming)
-│   ├── index.html                    # SPA shell: sidebar nav, script loading, router
-│   ├── styles.css                    # All CSS — design tokens, components, theme
-│   ├── core/                         # Shared primitives (state, charts, paths, ui, display)
-│   ├── components/                   # Reusable UI (sidebar, prompt-picker, custom-blocks, etc.)
-│   └── views/                        # One module per dashboard tab
-│       ├── trait-dynamics/           # Inference view (6 files: index, data, controls, charts)
-│       ├── steering.js               # Steering orchestrator + 3 sub-modules
-│       ├── live-chat.js              # Multi-turn chat + 2 component files
-│       ├── correlation.js            # Annotation correlation (embedded in inference tab)
-│       └── ...                       # extraction, model-analysis, overview, methodology, findings
-└── docs/                   # Documentation
-```
-
-### Key Entry Points
-
-**Extract new traits:**
-```bash
-python extraction/run_extraction_pipeline.py \
-    --experiment {experiment} \
-    --traits {category}/{trait}
-```
-
-**Monitor with existing vectors:**
-```bash
-# 1. Calibrate massive dims (once per experiment)
-python analysis/vectors/massive_activations.py --experiment {experiment}
-
-# 2. Run full inference pipeline (generate + stream-through project)
-python inference/run_inference_pipeline.py \
-    --experiment {experiment} \
-    --prompt-set {prompt_set}
-
-# From saved activations instead of stream-through:
-python inference/run_inference_pipeline.py \
-    --experiment {experiment} \
-    --prompt-set {prompt_set} \
-    --from-activations
-
-# Override layers:
-python inference/run_inference_pipeline.py \
-    --experiment {experiment} \
-    --prompt-set {prompt_set} \
-    --layers best
-```
-
-**Use core primitives:**
-```python
-from core import VectorSpec, ProjectionConfig, CaptureHook, SteeringHook, get_method, projection
-```
-
-**Analysis** (model diff, vectors, benchmark, steering): See [analysis/README.md](../analysis/README.md)
+Extract, monitor, and steer LLM behavioral traits token-by-token during generation.
 
 ---
 
@@ -187,7 +10,7 @@ from core import VectorSpec, ProjectionConfig, CaptureHook, SteeringHook, get_me
 2. **Monitor traits** token-by-token during generation
 3. **Validate vectors** via steering (causal intervention)
 
-Natural elicitation avoids instruction-following confounds. See [docs/extraction_guide.md](extraction_guide.md).
+Natural elicitation avoids instruction-following confounds. See [extraction_guide.md](extraction_guide.md).
 
 ---
 
@@ -204,28 +27,95 @@ python extraction/run_extraction_pipeline.py --experiment {experiment} --traits 
 python visualization/serve.py  # Visit http://localhost:8000/
 ```
 
-See the pipeline guides: [extraction](extraction_guide.md), [inference](inference_guide.md), [steering](steering_guide.md).
+---
+
+## Documentation
+
+### Pipelines
+- **[extraction_guide.md](extraction_guide.md)** — scenarios → vectors → validation
+- **[inference_guide.md](inference_guide.md)** — per-token monitoring, projection modes
+- **[steering_guide.md](steering_guide.md)** — causal validation, coefficient search
+- **[trait_dataset_creation.md](trait_dataset_creation.md)** — creating trait datasets
+
+### Technical Reference
+- **[architecture.md](architecture.md)** — design principles, directory responsibilities, experiment schema
+- **[core_reference.md](core_reference.md)** — `core/` API (hooks, methods, math)
+- **[response_schema.md](response_schema.md)** — unified response format across pipelines
+- **[chat_templates.md](chat_templates.md)** — HuggingFace chat template behavior
+- **[methodology.md](methodology.md)** — how we extract and use vectors
+
+### READMEs
+- `README.md` — quick start guide
+- `visualization/README.md` — dashboard usage
+- `inference/README.md`, `steering/README.md`, `analysis/README.md` — pipeline-specific
 
 ---
 
-## Branch Workflow
+## Key Entry Points
 
-Three branches: `dev` (everything), `main` (public release), `prod` (Railway deployment).
+**Extract new traits:**
+```bash
+python extraction/run_extraction_pipeline.py \
+    --experiment {experiment} \
+    --traits {category}/{trait}
+```
 
-**How it works:**
-- `dev` is the active working branch — all new code, experiments, and docs land here
-- `main` contains only files whitelisted in `.publicinclude` — a curated subset for public release
-- `prod` contains everything in `.prodinclude` (superset of main) plus deployment files (Procfile, railway.toml). Deployed on Railway.
-- Promotion is done via `utils/promote_to_main.sh` or `utils/promote_to_prod.sh`
-- Branches have **diverged histories** (not fast-forwardable) — squashed/rewritten commits
+**Monitor with existing vectors:**
+```bash
+# 1. Calibrate massive dims (once per experiment)
+python analysis/vectors/massive_activations.py --experiment {experiment}
 
-**`.publicinclude`** lists what gets promoted to main: pipeline code, visualization, config, datasets, and select docs.
-**`.prodinclude`** lists what gets promoted to prod: everything in main plus `docs/viz_findings/` (research findings served by the dashboard).
+# 2. Run inference pipeline
+python inference/run_inference_pipeline.py \
+    --experiment {experiment} \
+    --prompt-set {prompt_set}
+```
 
-**What stays dev-only:**
-- `dev/` directory — holding pen for steering CLI tools, modal files, dev-only scripts
-- `other/` — server, tv, sae, mcp, rm_sycophancy analysis
-- Research docs — refactor notepads, TODO (listed in [Dev-only Docs](#dev-only-docs-not-promoted-to-main) above)
-- Personal docs live in a separate `trait-interp-personal` repo
+**Use core primitives:**
+```python
+from core import VectorSpec, ProjectionConfig, CaptureHook, SteeringHook, get_method, projection
+```
 
-**To promote new files:** Add paths to `.publicinclude` or `.prodinclude`, then run the corresponding promote script.
+---
+
+## Contributing Conventions
+
+If you're extending this repo (or using it as a Claude Code workspace), a few
+conventions that keep the codebase consistent:
+
+**No hardcoding.** Paths, experiment names, and trait names should flow through
+variables and config — never literal values buried in scripts. All paths go
+through `utils/paths.py` (Python) or `visualization/core/paths.js` (JS), which
+read from `config/paths.yaml`. Fail fast with clear errors rather than silently
+papering over missing inputs.
+
+**Code style.**
+- Module docstrings: one-line description + `Input:`, `Output:`, `Usage:` sections.
+- Function docstrings only when behavior isn't obvious from the signature.
+- Prefer long, descriptive file names (`trait_annotation_correlation.py` over
+  `correlation.py`) — grep-friendly beats terse.
+- Script filename should match its output filename when applicable.
+
+**Naming.** A reader at a call site should understand what happens without
+opening the function. Too vague (`projection()`) hides behavior; too specific
+(`project_onto_unit_vector()`) breaks when args are added. Describe the core
+operation at the right abstraction level, let parameters carry the variations.
+Same applies to classes, variables, and file names. If naming is hard, the
+function is probably doing too many things.
+
+**Standards.**
+- Single source of truth for paths (`utils/paths.py`, `visualization/core/paths.js`).
+- Experiment-agnostic scripts — take `--experiment` rather than hardcoding.
+- Delete legacy code rather than leaving it commented out.
+- Fail fast on missing config, malformed data, wrong tensor shapes.
+
+**Visualization.** Reuse primitives from `visualization/styles.css` — don't
+introduce ad-hoc colors, spacing, or component styles. Reuse existing view
+and component modules where possible.
+
+**Writing style** (docs, findings, methodology):
+- Concise natural prose; explain concepts simply before technical details.
+- Bullet points freely; avoid jargon where plain language works.
+- First-person plural ("we") for actions.
+- Assume ML basics (probes, steering, activations) but write for a broader
+  technical audience.

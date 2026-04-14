@@ -64,7 +64,7 @@ from utils.paths import (
 from utils.model import pad_sequences, format_prompt
 from utils.distributed import is_rank_zero, is_tp_mode
 from utils.load_activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
-from core import MultiLayerCapture, get_method
+from core import MultiLayerCapture, get_method, batch_cosine_similarity, accuracy, effect_size, polarity_correct
 from core.types import ActivationMetadata
 
 if TYPE_CHECKING:
@@ -288,6 +288,8 @@ def extract_activations_for_trait(
                         model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
 
                 for layer in layer_list:
+                    if layer not in capture.available_layers:
+                        continue
                     acts = capture.get(layer)
                     if acts is None:
                         continue
@@ -543,6 +545,14 @@ def extract_vectors_for_trait(
                     layer_info['bias'] = float(b.item()) if isinstance(b, torch.Tensor) else b
                 if 'train_acc' in result:
                     layer_info['train_acc'] = float(result['train_acc'])
+
+                # Compute val metrics if val split exists
+                if val_pos.numel() > 0 and val_neg.numel() > 0:
+                    val_proj_pos = batch_cosine_similarity(val_pos, vector)
+                    val_proj_neg = batch_cosine_similarity(val_neg, vector)
+                    layer_info['val_accuracy'] = float(accuracy(val_proj_pos, val_proj_neg))
+                    layer_info['val_effect_size'] = float(effect_size(val_proj_pos, val_proj_neg))
+                    layer_info['polarity_correct'] = bool(polarity_correct(val_proj_pos, val_proj_neg))
 
                 method_metadata[method_name]["layers"][str(layer_idx)] = layer_info
                 n_extracted += 1
