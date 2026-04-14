@@ -12,6 +12,25 @@ Per-figure feedback from review. Apply consistently across all figures.
 - Endpoint labels on line plots (emotion name at last data point)
 - Larger dots on scatter plots (s=80+ for side-by-side readability)
 
+## Per-figure reproduce dropdowns
+Each side-by-side pair gets a collapsed dropdown below the caption:
+
+**Global methodology differences** (one top-level dropdown, not repeated per figure):
+- Model: Llama 3.3 70B Instruct (ours) vs Claude Sonnet 4.5 (paper)
+- Quantization: bnb NF4 4-bit (ours) vs unquantized (paper)
+- Stories: 1 rollout × 20 topics per emotion (ours) vs 12 rollouts × 100 topics (paper)
+- Generation: 256 max tokens (ours) vs ~1 paragraph (paper)
+- Extraction: token 50+ of response (same as paper)
+- Normalization: mean_diff + grand mean subtraction + neutral PC 50% denoising (same as paper)
+- Layer: L49 (~61% depth of 80 layers) vs "mid-late ~2/3 depth" (paper)
+
+**Per-figure dropdowns** (collapsed by default):
+- Replication status badge: Replicated ✓ / Partially Replicated ~ / Different ✗
+- Command to reproduce
+- Data file path
+- Script + function name
+- Any figure-specific methodology differences
+
 ## Comparison Table
 - Current plain markdown table is boring
 - Option A: Expandable rows (click metric name → 1-sentence explanation + which figure)
