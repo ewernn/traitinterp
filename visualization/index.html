@@ -62,15 +62,10 @@
                 <button class="sidebar-collapse-btn" id="sidebar-collapse" title="Collapse sidebar">◀</button>
             </div>
 
-            <div class="sidebar-section">
-                <div class="nav-item" data-view="live-chat">Live Chat</div>
-                <div class="nav-item active" data-view="overview">Overview</div>
-                <div class="nav-item" data-view="methodology">Methodology</div>
-                <div class="nav-item" data-view="findings">Findings</div>
-                <div class="nav-item" data-view="lw-post">LW Post</div>
-            </div>
+            <!-- Top-level nav: populated by renderNav() in sidebar.js from /api/views -->
+            <div class="sidebar-section" id="nav-main-items"></div>
 
-            <div class="sidebar-section">
+            <div class="sidebar-section" id="nav-analysis-entry-wrap">
                 <div class="nav-item" id="analysis-entry">Experiment Dashboard</div>
             </div>
         </div>
@@ -79,10 +74,8 @@
         <div class="sidebar sidebar-analysis hidden" id="sidebar-analysis">
             <div class="sidebar-section">
                 <div class="section-title">Experiment Dashboard</div>
-                <div class="nav-item" data-view="extraction">Extraction</div>
-                <div class="nav-item" data-view="steering">Steering</div>
-                <div class="nav-item" data-view="inference">Inference</div>
-                <div class="nav-item" data-view="model-analysis">Model Analysis</div>
+                <!-- Sub-nav: populated by renderNav() in sidebar.js from /api/views -->
+                <div id="nav-analysis-items"></div>
             </div>
 
             <div class="sidebar-section" id="experiment-viz-section" style="display:none;">
@@ -190,6 +183,7 @@
     <script type="module" src="/visualization/views/methodology.js"></script>
     <script type="module" src="/visualization/views/findings.js"></script>
     <script type="module" src="/visualization/views/lw-post.js"></script>
+    <script type="module" src="/visualization/views/lw-post-2.js"></script>
     <script type="module" src="/visualization/views/extraction.js"></script>
     <script type="module" src="/visualization/views/inference/inference-data.js"></script>
     <script type="module" src="/visualization/views/inference/inference-view-controls.js"></script>
@@ -222,7 +216,8 @@
                 'inference': 'Inference',
                 'model-analysis': 'Model Analysis',
                 'live-chat': 'Live Chat',
-                'lw-post': 'LW Post',
+                'lw-post': 'LW Post 1',
+                'lw-post-2': 'LW Post 2',
                 'experiment-viz': 'Experiment Viz'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
@@ -239,6 +234,9 @@
                     break;
                 case 'lw-post':
                     window.renderLwPost();
+                    break;
+                case 'lw-post-2':
+                    window.renderLwPost2();
                     break;
                 case 'extraction':
                     window.renderExtraction();

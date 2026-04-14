@@ -17,11 +17,15 @@ utils/
 visualization/components/
 visualization/core/
 visualization/other/
-visualization/views/
+# Only Experiment Dashboard views ship to main (live-chat, overview,
+# methodology, findings, lw-post* are prod-only).
+visualization/views/extraction.js
+visualization/views/inference/
+visualization/views/steering/
+visualization/views/model-analysis.js
 visualization/index.html
 visualization/styles.css
 visualization/serve.py
-visualization/chat_inference.py
 visualization/README.md
 
 # ── Config ──

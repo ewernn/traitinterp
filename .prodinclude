@@ -43,6 +43,11 @@ docs/overview.md
 docs/methodology.md
 docs/viz_findings/
 
+# ── MkDocs site (built at deploy time, served at /docs) ──
+docs/mkdocs/
+docs/overrides/
+mkdocs.yml
+
 # ── Root files ──
 README.md
 CLAUDE.md

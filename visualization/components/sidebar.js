@@ -220,6 +220,75 @@ function toggleAllTraits() {
 // Navigation
 // =============================================================================
 
+/**
+ * All possible nav tabs, ordered. `view` matches the router id; `section`
+ * controls which sidebar panel the item is rendered into. The file token
+ * is what the server reports from visualization/views/ — either a bare
+ * .js stem or a directory name for multi-file views.
+ *
+ * renderNav() hides any tab whose file isn't reported by /api/views,
+ * which is how branches with trimmed view sets (e.g. public `main`) get
+ * a reduced sidebar automatically — no build flag needed.
+ */
+const ALL_TABS = [
+    { view: 'live-chat',      label: 'Live Chat',         file: 'live-chat',      section: 'main' },
+    { view: 'overview',       label: 'Overview',          file: 'overview',       section: 'main' },
+    { view: 'methodology',    label: 'Methodology',       file: 'methodology',    section: 'main' },
+    { view: 'findings',       label: 'Findings',          file: 'findings',       section: 'main' },
+    { view: 'lw-post',        label: 'LW Post 1',         file: 'lw-post',        section: 'main' },
+    { view: 'lw-post-2',      label: 'LW Post 2',         file: 'lw-post-2',      section: 'main' },
+    { view: 'extraction',     label: 'Extraction',        file: 'extraction',     section: 'analysis' },
+    { view: 'steering',       label: 'Steering',          file: 'steering',       section: 'analysis' },
+    { view: 'inference',      label: 'Inference',         file: 'inference',      section: 'analysis' },
+    { view: 'model-analysis', label: 'Model Analysis',    file: 'model-analysis', section: 'analysis' },
+];
+
+async function renderNav() {
+    let availableViews;
+    try {
+        const res = await fetch('/api/views');
+        availableViews = new Set((await res.json()).views);
+    } catch (e) {
+        // If the endpoint is unreachable we can't know what shipped, so assume
+        // nothing and let the URL-fallback in initFromURL pick the first
+        // available tab (or render an empty sidebar if literally none shipped).
+        // Previous behaviour — assuming all tabs — could route to an undefined
+        // render function on trimmed branches.
+        console.warn('Failed to fetch /api/views — rendering empty nav:', e);
+        availableViews = new Set();
+    }
+
+    const visibleTabs = ALL_TABS.filter(t => availableViews.has(t.file));
+
+    const mainContainer = document.getElementById('nav-main-items');
+    const analysisContainer = document.getElementById('nav-analysis-items');
+    const analysisEntryWrap = document.getElementById('nav-analysis-entry-wrap');
+
+    if (mainContainer) {
+        mainContainer.innerHTML = visibleTabs
+            .filter(t => t.section === 'main')
+            .map(t => `<div class="nav-item" data-view="${t.view}">${t.label}</div>`)
+            .join('');
+    }
+
+    if (analysisContainer) {
+        analysisContainer.innerHTML = visibleTabs
+            .filter(t => t.section === 'analysis')
+            .map(t => `<div class="nav-item" data-view="${t.view}">${t.label}</div>`)
+            .join('');
+    }
+
+    // Show "Experiment Dashboard" entry only if at least one analysis view shipped
+    const hasAnalysis = visibleTabs.some(t => t.section === 'analysis');
+    if (analysisEntryWrap) {
+        analysisEntryWrap.style.display = hasAnalysis ? '' : 'none';
+    }
+
+    // Expose which views are available so the router can fall back gracefully
+    window.state.availableViews = availableViews;
+    window.state.visibleTabs = visibleTabs;
+}
+
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     const analysisEntry = document.getElementById('analysis-entry');
@@ -517,6 +586,7 @@ export {
     toggleTheme,
     populateTraitCheckboxes,
     toggleAllTraits,
+    renderNav,
     setupNavigation,
     updatePageTitle,
     updateExperimentVisibility,
@@ -530,6 +600,7 @@ export {
 // Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
 window.initTheme = initTheme;
 window.populateTraitCheckboxes = populateTraitCheckboxes;
+window.renderNav = renderNav;
 window.setupNavigation = setupNavigation;
 window.updateExperimentVisibility = updateExperimentVisibility;
 window.setupSubsectionInfoToggles = setupSubsectionInfoToggles;

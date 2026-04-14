@@ -273,6 +273,47 @@ function isFeatureEnabled(feature) {
 // Experiment Loading
 // =============================================================================
 
+function renderExperimentVizList() {
+    const vizSection = document.getElementById('experiment-viz-section');
+    const vizList = document.getElementById('experiment-viz-list');
+    if (!vizSection || !vizList) return;
+
+    const all = state.experimentViz || [];
+    const currentExp = state.currentExperiment;
+    // Only show viz entries whose parent experiment matches the selected experiment
+    const filtered = currentExp
+        ? all.filter(ev => ev.path === currentExp || ev.path.startsWith(currentExp + '/'))
+        : [];
+
+    if (filtered.length === 0) {
+        vizSection.style.display = 'none';
+        vizList.innerHTML = '';
+        return;
+    }
+
+    vizSection.style.display = '';
+    vizList.innerHTML = filtered.map(ev => {
+        const label = ev.path.split('/').pop();
+        const isActive = state.currentView === 'experiment-viz' && state.currentExpViz === ev.path;
+        return `<div class="nav-item${isActive ? ' active' : ''}" data-view="experiment-viz" data-exp-viz="${ev.path}">${label}</div>`;
+    }).join('');
+    vizList.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+            state.currentView = 'experiment-viz';
+            state.currentExpViz = item.dataset.expViz;
+            setTabInURL('experiment-viz');
+            const url = new URL(window.location);
+            url.searchParams.set('exp-viz', item.dataset.expViz);
+            window.history.pushState({}, '', url);
+            window.renderView();
+        });
+    });
+}
+
+window.renderExperimentVizList = renderExperimentVizList;
+
 async function loadExperiments() {
     try {
         const response = await fetch('/api/experiments');
@@ -285,43 +326,32 @@ async function loadExperiments() {
             if (typeof e === 'object') state.experimentMeta[e.name] = e.has || [];
         });
 
-        // Populate experiment-specific visualization nav items
-        const expViz = data.experiment_viz || [];
-        state.experimentViz = expViz;
-        const vizSection = document.getElementById('experiment-viz-section');
-        const vizList = document.getElementById('experiment-viz-list');
-        if (vizSection && vizList && expViz.length > 0) {
-            vizSection.style.display = '';
-            vizList.innerHTML = expViz.map(ev => {
-                const label = ev.path.split('/').pop();
-                return `<div class="nav-item" data-view="experiment-viz" data-exp-viz="${ev.path}">${label}</div>`;
-            }).join('');
-            vizList.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                    item.classList.add('active');
-                    state.currentView = 'experiment-viz';
-                    state.currentExpViz = item.dataset.expViz;
-                    setTabInURL('experiment-viz');
-                    // Also store the viz path in URL
-                    const url = new URL(window.location);
-                    url.searchParams.set('exp-viz', item.dataset.expViz);
-                    window.history.pushState({}, '', url);
-                    window.renderView();
-                });
-            });
-        }
+        // Store experiment-specific viz entries (render after currentExperiment is resolved)
+        state.experimentViz = data.experiment_viz || [];
 
         // Render experiment list in sidebar (DOM manipulation lives in sidebar.js)
         window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS);
 
         if (state.experiments.length > 0) {
             const urlExp = getExperimentFromURL();
-            const viewNeedsExperiment = ANALYSIS_VIEWS.includes(state.currentView);
+            const viewNeedsExperiment = ANALYSIS_VIEWS.includes(state.currentView)
+                || state.currentView === 'experiment-viz';
+
+            // If landed on an experiment-viz URL without an experiment param, infer from viz path
+            let inferredExp = null;
+            if (!urlExp && state.currentView === 'experiment-viz' && state.currentExpViz) {
+                const candidate = state.currentExpViz.split('/')[0];
+                if (state.experiments.includes(candidate)) inferredExp = candidate;
+            }
 
             if (urlExp && state.experiments.includes(urlExp)) {
                 state.currentExperiment = urlExp;
                 window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, urlExp);
+                await loadExperimentData(state.currentExperiment);
+            } else if (inferredExp) {
+                state.currentExperiment = inferredExp;
+                setExperimentInURL(inferredExp);
+                window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, inferredExp);
                 await loadExperimentData(state.currentExperiment);
             } else if (viewNeedsExperiment) {
                 state.currentExperiment = state.experiments[0];
@@ -332,6 +362,9 @@ async function loadExperiments() {
                 state.experimentData = null;
             }
         }
+
+        // Now render viz list filtered by the resolved current experiment
+        window.renderExperimentVizList();
     } catch (error) {
         console.error('Error loading experiments:', error);
         showError('Failed to load experiments');
@@ -554,7 +587,14 @@ function setExperimentInURL(expName) {
 }
 
 function initFromURL() {
-    const tab = getTabFromURL();
+    let tab = getTabFromURL();
+
+    // Fall back to the first available tab if the requested one didn't ship.
+    // This matters on branches with trimmed view sets (e.g. public `main`
+    // doesn't ship `overview.js`, so the URL-default would otherwise 404).
+    if (state.availableViews && !state.availableViews.has(tab) && tab !== 'experiment-viz') {
+        tab = state.visibleTabs?.[0]?.view || tab;
+    }
     state.currentView = tab;
 
     // Restore experiment-viz path from URL
@@ -600,7 +640,10 @@ async function init() {
     initAllPreferences();
     initNonStandardPreferences();
 
-    // Setup UI
+    // Setup UI — auto-discover available views first so nav only shows tabs
+    // whose view files shipped with this build. setupNavigation() then
+    // attaches click handlers to the rendered items.
+    await window.renderNav();
     window.setupNavigation();
     await loadExperiments();
     window.setupSidebarEventListeners();

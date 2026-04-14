@@ -20,6 +20,15 @@ from utils.paths import get as get_path
 PORT = int(os.environ.get('PORT', 8000))
 MODE = os.environ.get('MODE', 'development')
 
+# Chat backend is optional — ships with prod deployments (Railway) but not
+# with the public `main` branch. If the module didn't ship, /api/chat returns
+# 503 and the Live Chat tab won't be discovered by the sidebar.
+try:
+    from visualization import chat_inference  # noqa: F401
+    CHAT_AVAILABLE = True
+except ImportError:
+    CHAT_AVAILABLE = False
+
 class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS support and API endpoints."""
 
@@ -82,6 +91,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # API endpoint: app config (mode, features)
             if self.path == '/api/config':
                 self.send_api_response(self.get_app_config())
+                return
+
+            # API endpoint: list available view modules (auto-discover for nav)
+            if self.path == '/api/views':
+                self.send_api_response(self.list_available_views())
                 return
 
             # API endpoint: GPU status (device info, memory)
@@ -246,6 +260,9 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         """Handle POST requests for chat API."""
         try:
             if self.path == '/api/chat':
+                if not CHAT_AVAILABLE:
+                    self.send_error(503, "Live chat not available on this deployment")
+                    return
                 self.handle_chat_stream()
                 return
 
@@ -563,6 +580,28 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[Warmup] Error: {e}")
             traceback.print_exc()
             yield {'status': 'error', 'error': str(e)}
+
+    def list_available_views(self):
+        """List view IDs present on disk. Used by sidebar to auto-build nav.
+
+        Scans visualization/views/ for *.js files and subdirectories.
+        Subdirectories (e.g. inference/, steering/) count as a single view
+        named after the directory. Some branches (main) ship only a subset
+        of views — this lets the client hide tabs whose files didn't ship.
+        """
+        views_dir = Path(__file__).parent / 'views'
+        if not views_dir.exists():
+            return {'views': []}
+
+        views = []
+        for item in views_dir.iterdir():
+            if item.name.startswith('.') or item.name.startswith('_'):
+                continue
+            if item.is_file() and item.suffix == '.js':
+                views.append(item.stem)
+            elif item.is_dir():
+                views.append(item.name)
+        return {'views': sorted(views)}
 
     def list_experiments(self):
         """List all experiments in experiments/ directory."""
