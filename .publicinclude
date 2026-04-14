@@ -60,11 +60,12 @@ docs/doc-update-guidelines.md
 
 # ── Root files ──
 README.md
-CLAUDE.md
+# CLAUDE.main.md is renamed to CLAUDE.md by promote_to_main.sh — the dev
+# CLAUDE.md references @docs/dev.md which doesn't ship to main.
+CLAUDE.main.md
 LICENSE
 requirements.txt
 pyproject.toml
-mkdocs.yml
 .gitignore
 .env.example
 experiments/.gitkeep
