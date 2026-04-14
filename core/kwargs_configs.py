@@ -39,7 +39,6 @@ class SteeringConfig:
     min_coherence: float = 77
     subset: int = 5
     relevance_check: bool = True
-    judge_provider: str = "openai"
     prompt_set: str = "steering"
 
     # Judge
@@ -118,6 +117,7 @@ class ExtractionConfig:
     # Generation
     rollouts: int = 1
     temperature: float = 0.0
+    seed: Optional[int] = None
     max_new_tokens: Optional[int] = None
 
     # Vetting
@@ -155,7 +155,8 @@ class InferenceConfig:
     layers: str = "best,best+5"
     component: str = "residual"
     centered: bool = False
-    skip_existing: bool = False
+    force: bool = False
+    score_mode: str = "normalized"
 
     # Generation
     max_new_tokens: int = 50

@@ -14,7 +14,33 @@ Usage:
 
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
+from enum import Enum
 from typing import Dict, List, NamedTuple, Optional
+
+
+class ScoreMode(str, Enum):
+    """How to normalize raw projection scores (unit_trait @ h[t]).
+
+    raw: no divisor (activation-magnitude units, for steering)
+    normalized: ÷ mean(||h||) over response (cross-layer comparable, default)
+    cosine: ÷ per-token ||h[t]|| (true cosine similarity in [-1, 1])
+    """
+    RAW = 'raw'
+    NORMALIZED = 'normalized'
+    COSINE = 'cosine'
+
+    @classmethod
+    def parse(cls, value: str) -> 'ScoreMode':
+        """Parse from string, handling legacy 'raw+normalized' format."""
+        if value == 'raw+normalized':
+            return cls.NORMALIZED
+        try:
+            return cls(value)
+        except ValueError:
+            raise ValueError(
+                f"Unknown score mode '{value}'. "
+                f"Expected one of: {', '.join(m.value for m in cls)}"
+            )
 
 class ModelVariant(NamedTuple):
     """Model variant resolved from experiment config."""
@@ -58,10 +84,11 @@ class VectorResult:
     method: str
     position: str
     component: str
-    score: Optional[float]          # steering delta (None if unscored)
+    delta: Optional[float]          # steering delta: trait_mean - baseline (None if unscored)
     direction: Optional[str]        # "positive" or "negative" (None if unscored)
     source: str                     # "steering" or "unscored"
     coefficient: Optional[float]    # best steering coefficient (None if unscored)
+    coherence: Optional[float] = None
     naturalness: Optional[float] = None
 
     def to_vector_spec(self, weight: float = 1.0) -> VectorSpec:
@@ -216,7 +243,7 @@ class ProjectionRecord:
     position: str
     centered: bool
     projections: List[ProjectionEntry]
-    score_mode: str = 'raw+normalized'
+    score_mode: str = field(default_factory=lambda: ScoreMode.NORMALIZED.value)
     projection_date: str = field(default_factory=lambda: datetime.now().isoformat())
 
     def to_dict(self, precision: int = 4) -> dict:
@@ -250,7 +277,7 @@ class ProjectionRecord:
             position=meta.get('position', ''),
             centered=meta.get('centered', False),
             projections=projections,
-            score_mode=meta.get('score_mode', 'raw'),
+            score_mode=ScoreMode.parse(meta.get('score_mode', 'normalized')).value,
             projection_date=meta.get('projection_date', ''),
         )
 
@@ -310,40 +337,6 @@ class ResponseRecord:
     @property
     def response_token_ids(self) -> List[int]:
         return self.token_ids[self.prompt_end:]
-
-
-@dataclass
-class ModelConfig:
-    """Schema for config/models/*.yaml files.
-
-    Loaded by utils/model_registry.py. Used for hook placement, layer counts,
-    SAE paths, and model identification.
-
-    File pattern: config/models/{model-slug}.yaml
-    """
-    huggingface_id: str
-    model_type: str                    # gemma2, llama, mistral, qwen2, olmo2, deepseek_v3, ...
-    variant: str                       # base, it, sft, dpo
-    supports_system_prompt: bool
-    num_hidden_layers: int
-    hidden_size: int
-    num_attention_heads: int
-    num_key_value_heads: int
-    intermediate_size: int
-    max_context_length: int = 4096
-    vocab_size: Optional[int] = None
-    sae: Optional[Dict] = None         # {available, base_path, layer_template, downloaded_layers}
-    moe: Optional[Dict] = None         # MoE-specific: {num_experts, top_k, ...}
-    mla: Optional[Dict] = None         # Multi-head Latent Attention: {kv_lora_rank, ...}
-    notes: Optional[Dict] = None       # Usage notes, quirks
-
-    @classmethod
-    def from_dict(cls, d: dict) -> 'ModelConfig':
-        fields = {f.name for f in cls.__dataclass_fields__.values()}
-        return cls(**{k: v for k, v in d.items() if k in fields})
-
-    def to_dict(self) -> dict:
-        return {k: v for k, v in asdict(self).items() if v is not None}
 
 
 @dataclass

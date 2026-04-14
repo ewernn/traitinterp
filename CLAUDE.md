@@ -1,4 +1,4 @@
-@docs/main.md
+@docs/dev.md
 
 ## Subagents
 

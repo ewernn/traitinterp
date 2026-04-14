@@ -1,19 +1,31 @@
 """
 Capture raw activations from pre-generated responses and save as .pt files.
 
-Input: Response JSONs from generate_responses
+Two entry points:
+- `capture_raw_activations` — pipeline helper, reads pre-generated response JSONs,
+  runs prefill, saves per-prompt .pt files to the inference raw dir.
+- `capture_at_position` — lightweight in-memory helper for stage scripts that need
+  a single activation tensor per prompt at a specific token position (position DSL
+  strings like `prompt[-1]`, `response[:5]`, `all[:]`). Returns a stacked tensor
+  without touching disk. Factored out of the ~80 LOC inline capture pattern used
+  by stages 4/5/8 of the emotion concepts replication.
+
+Input: Response JSONs from generate_responses (for capture_raw_activations)
+       or plain prompt strings (for capture_at_position)
 Output: experiments/{exp}/inference/{variant}/raw/residual/{prompt_set}/{id}.pt
+        or in-memory torch.Tensor
 
 Usage:
-    from utils.capture_activations import capture_raw_activations
+    from utils.capture_activations import capture_raw_activations, capture_at_position
     n = capture_raw_activations(experiment='my_exp', prompt_set='main')
+    acts = capture_at_position(model, tokenizer, prompts, layers=49, position='prompt[-1]')
 """
 
 import gc
 import json
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import torch
 from tqdm import tqdm
@@ -22,7 +34,8 @@ from core import MultiLayerCapture
 from utils.paths import (
     get as get_path, get_model_variant, load_experiment_config, atomic_torch_save,
 )
-from utils.model import get_inner_model, tokenize, pad_sequences
+from utils.model import get_inner_model, tokenize, pad_sequences, format_prompt, tokenize_batch
+from utils.positions import resolve_position
 from utils.distributed import is_tp_mode, is_rank_zero
 from utils.vram import calculate_max_batch_size
 from utils.layers import parse_layers
@@ -50,7 +63,7 @@ def capture_raw_activations(
     response_only: bool = False,
     load_in_4bit: bool = False,
     responses_from: str = None,
-    skip_existing: bool = False,
+    force: bool = False,
     limit: int = None,
     output_suffix: str = None,
     model=None,
@@ -111,7 +124,7 @@ def capture_raw_activations(
 
     raw_dir = get_path('inference.raw_residual', experiment=experiment, model_variant=variant_name, prompt_set=output_set_name)
 
-    if skip_existing:
+    if not force:
         original_count = len(response_files)
         response_files = [f for f in response_files if not (raw_dir / f"{f.stem}.pt").exists()]
         skipped = original_count - len(response_files)
@@ -276,3 +289,108 @@ def capture_raw_activations(
 
     print(f"\nOutput: {raw_dir}")
     return len(items)
+
+
+def capture_at_position(
+    model,
+    tokenizer,
+    prompts: List[str],
+    *,
+    layers: Union[int, List[int]],
+    position: str,
+    component: str = "residual",
+    pool: str = "mean",
+    pre_formatted: bool = False,
+    batch_size: int = 8,
+) -> torch.Tensor:
+    """Capture activations at a specific token position across a list of prompts.
+
+    Factored out of the inline MultiLayerCapture + tokenize + pad-offset + slice
+    pattern reinvented in stage 4/5/8. Uses the position DSL (`utils.positions`)
+    so callers can say `'prompt[-1]'` or `'all[:]'` instead of raw indices.
+
+    **Prefill-only**: this helper runs a single forward pass with no generation,
+    so the position is resolved against `prompt_len = seq_len`. Only the `prompt`
+    and `all` frames make sense here — `response[:N]` would return an empty slice
+    because there is no response yet. Use `prompt[-1]` for the last-input-token
+    capture that stage 4/5/8 typically want, and `all[:]` + `pool='none'` if you
+    need the full sequence and will slice by raw indices downstream.
+
+    Args:
+        model: HuggingFace model (bnb-4bit or fp16, already on device)
+        tokenizer: HuggingFace tokenizer
+        prompts: list of prompt strings (empty list is an error)
+        layers: single int or list of layer indices
+        position: position DSL string — `'prompt[-1]'`, `'prompt[-3:]'`, `'all[:]'`,
+            `'all[50:]'`, etc. Do NOT use `'response[*]'` frames — they resolve
+            to empty slices in prefill-only mode.
+        component: capture component (default: 'residual')
+        pool: 'mean' | 'first' | 'last' | 'none'. How to reduce multi-token position
+            slices. `'none'` returns the raw [n_tokens, hidden_dim] slice. Only safe
+            when every prompt yields the same slice length — otherwise the final
+            `torch.stack` will fail. Safe uses: single-prompt calls, or fixed-index
+            slices like `'prompt[-3:]'` where every prompt has ≥ 3 tokens.
+        pre_formatted: if True, skip format_prompt (callers that already applied
+            a chat template or are using bare-prompt base models pass True here).
+        batch_size: batch size for forward passes (default: 8)
+
+    Returns:
+        torch.Tensor on CPU (always fp32):
+          - shape [n_prompts, n_layers, hidden_dim] if layers is a list
+          - shape [n_prompts, hidden_dim]           if layers is an int (squeezed)
+          - shape [n_prompts, n_layers, n_tokens, hidden_dim] if pool='none'
+        Callers wanting fp16 should cast after return.
+    """
+    from utils.positions import parse_position
+    if len(prompts) == 0:
+        raise ValueError("capture_at_position: prompts list is empty")
+    # Guard against the common footgun — response frame is empty in prefill-only mode.
+    frame, _turn_idx, _start, _stop = parse_position(position)
+    if frame == 'response':
+        raise ValueError(
+            f"capture_at_position: 'response' frame not supported in prefill-only mode "
+            f"(got position={position!r}). Use 'prompt[-1]' or 'all[:]' instead."
+        )
+    scalar_layer = isinstance(layers, int)
+    layer_list = [layers] if scalar_layer else list(layers)
+    device = next(model.parameters()).device
+
+    formatted = prompts if pre_formatted else [format_prompt(p, tokenizer) for p in prompts]
+
+    out_per_prompt = []
+    for i in range(0, len(formatted), batch_size):
+        batch = formatted[i:i + batch_size]
+        enc = tokenize_batch(batch, tokenizer)
+        input_ids = enc["input_ids"].to(device)
+        attn_mask = enc["attention_mask"].to(device)
+        lengths = enc["lengths"]
+        padded_len = input_ids.shape[1]
+
+        with MultiLayerCapture(model, layers=layer_list, component=component, keep_on_gpu=False) as cap:
+            with torch.no_grad():
+                model(input_ids=input_ids, attention_mask=attn_mask, use_cache=False)
+
+        for b, length in enumerate(lengths):
+            offset = padded_len - length  # left-pad offset (tokenize_batch left-pads)
+            per_layer = []
+            for layer in layer_list:
+                acts = cap.get(layer)[b, offset:offset + length].float().cpu()  # [length, D]
+                start, end = resolve_position(position, prompt_len=length, seq_len=length)
+                sliced = acts[start:end]
+                if pool == "mean":
+                    v = sliced.mean(dim=0)
+                elif pool == "first":
+                    v = sliced[0]
+                elif pool == "last":
+                    v = sliced[-1]
+                elif pool == "none":
+                    v = sliced
+                else:
+                    raise ValueError(f"Unknown pool mode: {pool!r}. Expected 'mean'|'first'|'last'|'none'.")
+                per_layer.append(v)
+            out_per_prompt.append(torch.stack(per_layer))  # [n_layers, ...]
+
+    result = torch.stack(out_per_prompt)  # [n_prompts, n_layers, ...]
+    if scalar_layer:
+        result = result.squeeze(1)
+    return result

@@ -1,4 +1,4 @@
-// Data loading and caching for Trait Dynamics view
+// Data loading and caching for Inference view
 // Input: trait metadata, prompt/variant identifiers
 // Output: projection data, layer sensitivity data, comparison diffs
 
@@ -8,7 +8,15 @@ import { fetchJSON } from '../../core/utils.js';
 // Module-local caches
 // =============================================================================
 
-const layerSensitivityCache = {};
+let layerSensitivityCache = {};
+
+/** Clear all caches — called on experiment change. */
+function resetInferenceDataCaches() {
+    layerSensitivityCache = {};
+    if (typeof window !== 'undefined') {
+        window._modelDiffCache = undefined;
+    }
+}
 
 // =============================================================================
 // Projection helpers
@@ -145,7 +153,6 @@ async function fetchLayerSensitivityData(experiment, promptSet, promptId) {
  *
  * @param {Array} projectionResults - Results from parallel fetch [{trait, projData} or {trait, error}]
  * @param {Object} responseData - Shared response data (tokens, prompt_end)
- * @param {boolean} isRollout - Whether response is empty (rollout mode)
  * @returns {{ traitData: Object, failedTraits: string[] }}
  */
 function processTraitProjectionData(projectionResults, responseData) {
@@ -255,5 +262,6 @@ function processTraitProjectionData(projectionResults, responseData) {
 export {
     loadComparisonProjections,
     fetchLayerSensitivityData,
-    processTraitProjectionData
+    processTraitProjectionData,
+    resetInferenceDataCaches
 };

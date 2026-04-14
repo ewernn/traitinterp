@@ -20,7 +20,7 @@ Usage:
         --variant-a instruct \
         --variant-b rm_lora \
         --prompt-set rm_syco/train_100 \
-        --trait rm_hack/ulterior_motive \
+        --traits rm_hack/ulterior_motive \
         --top-pct 5
 """
 
@@ -121,7 +121,7 @@ def main():
     parser.add_argument('--prompt-set', required=True)
     parser.add_argument('--variant-a-prompt-set', default=None,
                         help='Prompt set for variant-a if different from --prompt-set (e.g., for replay data)')
-    parser.add_argument('--trait', required=True, help='Single trait (e.g., rm_hack/ulterior_motive) or "all"')
+    parser.add_argument('--traits', required=True, help='Single trait (e.g., rm_hack/ulterior_motive) or "all"')
     parser.add_argument('--layer', type=int, default=None,
                         help='Layer for projection reading (default: auto-detect best steering layer)')
     parser.add_argument('--top-pct', type=float, default=5, help='Print top N%% of clauses (default: 5)')
@@ -130,7 +130,7 @@ def main():
     exp_dir = paths.get('experiments.base', experiment=args.experiment)
 
     # Resolve traits
-    if args.trait == 'all':
+    if args.traits == 'all':
         # Find all traits with projections for both variants
         proj_dir_b = exp_dir / 'inference' / args.variant_b / 'projections'
         traits = []
@@ -140,7 +140,7 @@ def main():
                     if trait_dir.is_dir():
                         traits.append(f'{cat_dir.name}/{trait_dir.name}')
     else:
-        traits = [args.trait]
+        traits = [args.traits]
 
     for trait in traits:
         print(f'\n{"="*60}')

@@ -2,7 +2,7 @@
 
 Train a linear probe. See what your model is thinking. Steer it.
 
-**[Live demo](https://traitinterp.com)** | **[Docs](docs/main.md)** | **[Methodology](docs/overview.md)**
+**[Live demo](https://traitinterp.com)** | **[Docs](docs/main.md)** | **[Methodology](docs/methodology.md)**
 
 ---
 
@@ -28,7 +28,7 @@ Extract your first trait:
 ```bash
 python extraction/run_extraction_pipeline.py \
     --experiment my_first_run \
-    --traits psychology/sycophancy
+    --traits starter_traits/sycophancy
 ```
 
 This generates responses, vets them with an LLM judge, trains probes across all layers, and evaluates quality. Results land in `experiments/my_first_run/`.
@@ -37,7 +37,7 @@ Monitor traits during generation:
 ```bash
 python inference/run_inference_pipeline.py \
     --experiment my_first_run \
-    --prompt-set general/baseline
+    --prompt-set starter_prompts/general
 ```
 
 Visualize:
@@ -54,9 +54,9 @@ python visualization/serve.py  # http://localhost:8000
 Define a trait with naturally contrasting scenarios — prompts where the model's completion naturally exhibits vs. avoids a behavior. No instruction-following, no system prompts. The model doesn't know it's being measured.
 
 ```
-datasets/traits/psychology/sycophancy/
-├── positive.txt      # scenarios that elicit sycophantic responses
-├── negative.txt      # matched scenarios that don't
+datasets/traits/starter_traits/sycophancy/
+├── positive.jsonl    # scenarios that elicit sycophantic responses
+├── negative.jsonl    # matched scenarios that don't
 ├── definition.txt    # what sycophancy means + scoring rubric
 └── steering.json     # evaluation questions for causal validation
 ```

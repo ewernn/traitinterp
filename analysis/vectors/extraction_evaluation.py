@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Evaluate extracted vectors on held-out validation data.
+Aggregate extraction evaluation metrics into a single JSON for the dashboard.
+
+Reads val metrics (val_accuracy, val_effect_size, polarity_correct) from vector
+metadata files — these are computed during extraction when a val split exists.
+Falls back to loading saved activation files for legacy experiments that have
+them but lack metadata metrics.
 
 Input:
-    - experiments/{experiment}/extraction/{trait}/{model_variant}/vectors/{position}/{component}/{method}/layer*.pt
-    - experiments/{experiment}/extraction/{trait}/{model_variant}/activations/{position}/{component}/val_all_layers.pt
+    - experiments/{experiment}/extraction/{trait}/{model_variant}/vectors/{position}/{component}/{method}/metadata.json
 
 Output:
     - experiments/{experiment}/extraction/extraction_evaluation.json
@@ -20,103 +24,100 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import torch
 import json
 from typing import Dict, List, Optional, Tuple
-from tqdm import tqdm
+from collections import defaultdict
 
 from utils.paths import (
     get as get_path,
     get_activation_dir,
+    get_vector_metadata_path,
     list_methods,
     list_layers,
     get_model_variant,
 )
-from utils.vectors import load_vector_with_baseline
-from utils.load_activations import load_val_activations
 from utils.layers import parse_layers
-from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
 
 
-def load_activations(
-    experiment: str,
-    trait: str,
-    model_variant: str,
-    layer: int,
-    component: str = "residual",
-    position: str = "response[:]",
-) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
-    """Load pos/neg validation activations for a layer."""
-    try:
-        return load_val_activations(experiment, trait, model_variant, layer, component, position)
-    except FileNotFoundError:
-        return None, None
-
-
-def load_vector(
+def evaluate_from_metadata(
     experiment: str,
     trait: str,
     model_variant: str,
     method: str,
-    layer: int,
     component: str = "residual",
     position: str = "response[:]",
-) -> Optional[torch.Tensor]:
-    """Load a vector file."""
-    try:
-        vector, _, _ = load_vector_with_baseline(experiment, trait, method, layer, model_variant, component, position)
-        return vector
-    except FileNotFoundError:
-        return None
+) -> List[Dict]:
+    """Read val metrics from vector metadata. Returns list of per-layer results."""
+    meta_path = get_vector_metadata_path(experiment, trait, method, model_variant, component, position)
+    if not meta_path.exists():
+        return []
+
+    with open(meta_path) as f:
+        meta = json.load(f)
+
+    results = []
+    for layer_str, layer_info in meta.get('layers', {}).items():
+        # Skip layers without val metrics
+        if 'val_accuracy' not in layer_info:
+            continue
+        results.append({
+            'trait': trait,
+            'method': method,
+            'layer': int(layer_str),
+            'component': component,
+            'position': position,
+            'val_accuracy': layer_info['val_accuracy'],
+            'val_effect_size': layer_info['val_effect_size'],
+            'polarity_correct': layer_info['polarity_correct'],
+            'train_acc': layer_info.get('train_acc'),
+        })
+
+    return results
 
 
-def evaluate_single(
+def evaluate_from_activations(
     experiment: str,
     trait: str,
     model_variant: str,
     method: str,
-    layer: int,
-    component: str = "residual",
-    position: str = "response[:]",
-) -> Optional[Dict]:
-    """Evaluate one vector on validation data."""
-    vector = load_vector(experiment, trait, model_variant, method, layer, component, position)
-    if vector is None:
-        return None
-
-    val_pos, val_neg = load_activations(experiment, trait, model_variant, layer, component, position)
-    if val_pos is None:
-        return None
-
-    # Compute projections once, derive all metrics
-    pos_proj = batch_cosine_similarity(val_pos, vector)
-    neg_proj = batch_cosine_similarity(val_neg, vector)
-
-    return {
-        'trait': trait,
-        'method': method,
-        'layer': layer,
-        'component': component,
-        'position': position,
-        'val_accuracy': accuracy(pos_proj, neg_proj),
-        'val_effect_size': effect_size(pos_proj, neg_proj),
-        'polarity_correct': polarity_correct(pos_proj, neg_proj),
-    }
-
-
-def compute_activation_norms(
-    experiment: str,
-    trait: str,
-    model_variant: str,
     layers: List[int],
     component: str = "residual",
     position: str = "response[:]",
-) -> Dict[str, float]:
-    """Compute mean ||h|| per layer. Used by steering for coefficient estimation."""
-    norms = {}
+) -> List[Dict]:
+    """Legacy path: load saved activation files and compute val metrics."""
+    from utils.vectors import load_vector_with_baseline
+    from utils.load_activations import load_val_activations
+    from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
+
+    results = []
     for layer in layers:
-        pos, neg = load_activations(experiment, trait, model_variant, layer, component, position)
-        if pos is not None:
-            all_acts = torch.cat([pos, neg], dim=0).float()
-            norms[str(layer)] = all_acts.norm(dim=-1).mean().item()
-    return norms
+        try:
+            vector, _, _ = load_vector_with_baseline(
+                experiment, trait, method, layer, model_variant, component, position
+            )
+        except FileNotFoundError:
+            continue
+
+        try:
+            val_pos, val_neg = load_val_activations(
+                experiment, trait, model_variant, layer, component, position
+            )
+        except FileNotFoundError:
+            continue
+
+        pos_proj = batch_cosine_similarity(val_pos, vector)
+        neg_proj = batch_cosine_similarity(val_neg, vector)
+
+        results.append({
+            'trait': trait,
+            'method': method,
+            'layer': layer,
+            'component': component,
+            'position': position,
+            'val_accuracy': float(accuracy(pos_proj, neg_proj)),
+            'val_effect_size': float(effect_size(pos_proj, neg_proj)),
+            'polarity_correct': bool(polarity_correct(pos_proj, neg_proj)),
+        })
+
+    return results
 
 
 def main(
@@ -125,11 +126,14 @@ def main(
     methods: str = "mean_diff,probe,gradient",
     layers: str = None,
     component: str = "residual",
-    position: str = "response[:5]",
+    position: str = "response[:]",
     verbose: bool = False,
 ):
     """
-    Evaluate all vectors on validation data.
+    Aggregate extraction evaluation metrics into dashboard JSON.
+
+    Reads val metrics from vector metadata (computed during extraction).
+    Falls back to loading activation files for legacy experiments.
 
     Args:
         experiment: Experiment name
@@ -137,17 +141,16 @@ def main(
         methods: Comma-separated methods to evaluate
         layers: Comma-separated layers (default: all available)
         component: Component to evaluate (residual, attn_out, mlp_out)
-        position: Token position (default: response[:5])
+        position: Token position (default: response[:])
         verbose: Print detailed per-method/layer analysis
     """
-    # Resolve model variant
     variant = get_model_variant(experiment, model_variant, mode="extraction")
     model_variant = variant.name
 
     exp_dir = get_path('extraction.base', experiment=experiment)
     methods_list = methods.split(",")
 
-    # Find traits with validation data at the specified position/component
+    # Discover traits that have vector metadata
     traits = []
     for category_dir in exp_dir.iterdir():
         if not category_dir.is_dir():
@@ -156,44 +159,65 @@ def main(
             if not trait_dir.is_dir():
                 continue
             trait = f"{category_dir.name}/{trait_dir.name}"
-            act_dir = get_activation_dir(experiment, trait, model_variant, component, position)
-            has_val = (act_dir / "val_all_layers.pt").exists() or any(act_dir.glob("val_layer*.pt"))
-            if has_val:
+            # Check if any method has vectors for this trait
+            available = list_methods(experiment, trait, model_variant, component, position)
+            if available:
                 traits.append(trait)
 
     if not traits:
-        print(f"No traits with validation data at {position}/{component}")
+        print(f"No traits with vectors at {position}/{component}")
         return
 
-    # Determine layers to evaluate
+    # Determine layers
     if layers:
         layers_list = parse_layers(layers, n_layers=1000)
     else:
-        # Discover available layers from first trait
         available_methods = list_methods(experiment, traits[0], model_variant, component, position)
         if available_methods:
             layers_list = list_layers(experiment, traits[0], available_methods[0], model_variant, component, position)
         else:
-            layers_list = list(range(26))
+            layers_list = list(range(32))
 
     print(f"Found {len(traits)} traits at {position}/{component}")
-    print(f"Evaluating {len(methods_list)} methods × {len(layers_list)} layers")
 
-    # Evaluate all vectors
+    # Collect results: try metadata first, fall back to activations
     all_results = []
-    for trait in tqdm(traits, desc="Evaluating"):
+    n_from_metadata = 0
+    n_from_activations = 0
+
+    for trait in traits:
         for method in methods_list:
-            for layer in layers_list:
-                result = evaluate_single(experiment, trait, model_variant, method, layer, component, position)
-                if result:
-                    all_results.append(result)
+            # Try metadata first (no GPU, no activation files)
+            results = evaluate_from_metadata(
+                experiment, trait, model_variant, method, component, position
+            )
+            if results:
+                # Filter to requested layers if specified
+                if layers:
+                    results = [r for r in results if r['layer'] in layers_list]
+                all_results.extend(results)
+                n_from_metadata += len(results)
+                continue
+
+            # Fall back to loading activation files (legacy experiments)
+            results = evaluate_from_activations(
+                experiment, trait, model_variant, method, layers_list, component, position
+            )
+            all_results.extend(results)
+            n_from_activations += len(results)
 
     if not all_results:
-        print("No results")
+        print("No results — vectors may lack val metrics (re-extract with val_split > 0)")
         return
 
-    # Compute combined_score per result
-    # Formula: (accuracy + norm_effect) / 2 * polarity_correct
+    source = []
+    if n_from_metadata:
+        source.append(f"{n_from_metadata} from metadata")
+    if n_from_activations:
+        source.append(f"{n_from_activations} from activations")
+    print(f"Collected {len(all_results)} results ({', '.join(source)})")
+
+    # Compute combined_score: (accuracy + norm_effect) / 2 * polarity
     trait_max_effect = {}
     for r in all_results:
         t = r['trait']
@@ -205,26 +229,29 @@ def main(
         polarity_mult = 1.0 if r['polarity_correct'] else 0.0
         r['combined_score'] = ((r['val_accuracy'] + norm_effect) / 2) * polarity_mult
 
-    # Compute activation norms from first trait, keyed by component
-    component_norms = compute_activation_norms(experiment, traits[0], model_variant, layers_list, component, position)
+    # Load activation norms from activation metadata (if available)
+    activation_norms = {}
+    act_dir = get_activation_dir(experiment, traits[0], model_variant, component, position)
+    act_meta_path = act_dir / "metadata.json"
+    if act_meta_path.exists():
+        with open(act_meta_path) as f:
+            act_meta = json.load(f)
+        if 'activation_norms' in act_meta:
+            activation_norms = {component: act_meta['activation_norms']}
 
     # Print summary: best per trait
-    print(f"\n{'Trait':<40} {'Method':<10} {'Layer':<6} {'Acc':<6} {'d':<6}")
-    print("-" * 70)
-
-    # Group by trait, find best
-    from collections import defaultdict
     by_trait = defaultdict(list)
     for r in all_results:
         by_trait[r['trait']].append(r)
 
+    print(f"\n{'Trait':<40} {'Method':<10} {'Layer':<6} {'Acc':<6} {'d':<6}")
+    print("-" * 70)
     for trait in sorted(by_trait.keys()):
         best = max(by_trait[trait], key=lambda x: x['combined_score'])
         short_trait = trait.split('/')[-1][:38]
         print(f"{short_trait:<40} {best['method']:<10} {best['layer']:<6} {best['val_accuracy']:.1%}  {best['val_effect_size']:.2f}")
 
     if verbose:
-        # Method comparison
         print(f"\n{'Method':<12} {'Mean Acc':<10} {'Mean d':<10}")
         print("-" * 35)
         method_stats = defaultdict(list)
@@ -236,35 +263,15 @@ def main(
                 effs = [r['val_effect_size'] for r in method_stats[method]]
                 print(f"{method:<12} {sum(accs)/len(accs):.1%}      {sum(effs)/len(effs):.2f}")
 
-    # Save — merge activation_norms by component into existing file
+    # Save
     output_path = get_path('extraction_eval.evaluation', experiment=experiment)
-    existing = {}
-    if output_path.exists():
-        try:
-            with open(output_path) as f:
-                existing = json.load(f)
-        except (json.JSONDecodeError, KeyError):
-            pass
-
-    # Migrate flat activation_norms to nested format
-    existing_norms = existing.get('activation_norms', {})
-    if existing_norms and not any(isinstance(v, dict) for v in existing_norms.values()):
-        # Old flat format — migrate under the previously stored component
-        old_component = existing.get('component', 'residual')
-        existing_norms = {old_component: existing_norms}
-
-    # Merge current component's norms
-    existing_norms[component] = component_norms
-
     output = {
         'model_variant': model_variant,
         'component': component,
         'position': position,
-        'activation_norms': existing_norms,
-        'all_results': existing.get('all_results', []) if component != existing.get('component') else all_results,
+        'activation_norms': activation_norms,
+        'all_results': all_results,
     }
-    # Always update all_results for the current component run
-    output['all_results'] = all_results
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w') as f:

@@ -9,9 +9,29 @@ For best vector selection (using steering results), see utils/vector_selection.p
 import json
 import logging
 import re
+import warnings
 from typing import Optional, Tuple, Dict, Any, List
 
 import torch
+
+
+def validate_vector_norm(vector: torch.Tensor, name: str = "trait vector",
+                         tol: float = 1e-2) -> None:
+    """Warn if a trait vector is not approximately unit norm.
+
+    Projection scores assume unit-norm vectors. Non-unit vectors will scale
+    scores by the vector's norm, making cross-trait comparisons meaningless.
+    """
+    norm = float(vector.float().norm())
+    if norm < 1e-6:
+        raise ValueError(f"{name} has near-zero norm ({norm:.2e}). Cannot project.")
+    if abs(norm - 1.0) > tol:
+        warnings.warn(
+            f"{name} has norm {norm:.4f} (expected ~1.0). "
+            f"Projection scores will be scaled by {norm:.4f}x. "
+            f"Use normalize_vector=True or normalize the vector before loading.",
+            stacklevel=2,
+        )
 
 from core.types import VectorSpec
 from utils.paths import (
@@ -27,10 +47,8 @@ logger = logging.getLogger(__name__)
 # Single source of truth for steering quality thresholds
 MIN_COHERENCE = 77
 MIN_DELTA = 20
-
-# Minimum naturalness score (filters AI-mode, robotic responses)
-# Only applied when naturalness.json exists for the trait
 MIN_NATURALNESS = 50
+
 
 
 def discover_vectors(
@@ -186,6 +204,7 @@ def load_vector_with_baseline(
         raise FileNotFoundError(f"Vector not found: {vector_path}")
 
     vector = torch.load(vector_path, weights_only=True)
+    validate_vector_norm(vector, name=f"{trait}/{method}/layer{layer}")
 
     baseline = 0.0
     layer_metadata = {}
@@ -200,13 +219,3 @@ def load_vector_with_baseline(
     return vector, baseline, layer_metadata
 
 
-def load_vector_from_spec(
-    experiment: str,
-    trait: str,
-    spec: VectorSpec,
-    model_variant: str,
-) -> Tuple[torch.Tensor, float, Dict[str, Any]]:
-    """Load a vector using a VectorSpec."""
-    return load_vector_with_baseline(
-        experiment, trait, spec.method, spec.layer, model_variant, spec.component, spec.position
-    )

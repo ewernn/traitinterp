@@ -3,21 +3,24 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
+  - mats-behavioral-probes.md
+  - emotion-concepts-replication.md
+  - assistant-axis-replication.md
   - rm-sycophancy.md
+  - convolution-detector.md
   - comparison-persona-vectors.md
   - liars-bench-deception.md
   - prefill-dynamics.md
   - component-decomposition.md
   - comparison-arditi-refusal.md
   - massive-activations.md
-  - 2026-04-09-quantization-sensitivity.md
-  # Commented out - has [TODO] in title:
-  # - coefficient-scaling-law.md
-  # Commented out - infrastructure/methodology:
-  # - llm-judge-optimization.md # scoring guide + logprobs beats CoT (0.888 trait, 0.850 coherence)
-
-  # Commented out - missing data:
-  # - 1st-vs-3rd-person.md      # needs chirp/refusal_v2 + v2_3p
-  # - ood-cross-model.md        # needs Mistral experiments
-  # - ood-formality.md          # needs formality steering
-  # - effect-size-vs-steering.md # needs multi-trait steering
+  - quantization-sensitivity.md
+  - 1st-vs-3rd-person.md
+  # - coefficient-scaling-law.md       # TODO in title, missing chart + script
+  - llm-judge-optimization.md
+  # - ood-cross-model.md                # stub, no backing data
+  # - ood-formality.md                  # datasets and scripts missing
+  - effect-size-vs-steering.md
+  # - model-diff-analysis.md            # superseded by comparison-persona-vectors
+  # - component-comparison-refusal.md   # subset of component-decomposition
+  - thought-branches-analysis.md

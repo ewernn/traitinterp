@@ -49,18 +49,20 @@ visualization/
 │   ├── methodology.js        # Renders docs/methodology.md
 │   ├── findings.js           # Collapsible research finding cards from docs/viz_findings/
 │   ├── extraction.js         # Extraction quality: best vectors, per-trait heatmaps, logit lens
-│   ├── steering.js           # Steering orchestrator (delegates to sub-modules below)
-│   ├── steering-filters.js   # Filter chips, cached data fetching, filter state
-│   ├── steering-best-vector.js  # Best vector per layer charts
-│   ├── steering-heatmap.js   # Layer × coefficient heatmaps
-│   ├── trait-dynamics/        # Inference view (multi-file)
-│   │   ├── index.js          # Orchestrator: loads data, renders sub-charts
-│   │   ├── controls.js       # Page shell, control bar (smoothing, methods, layer mode)
-│   │   ├── data.js           # Data loading, projection processing, comparison fetching
-│   │   ├── chart-trajectory.js   # Token trajectory (X=tokens, Y=cosine similarity)
-│   │   ├── chart-heatmap.js      # Trait × token heatmap
-│   │   └── chart-magnitude.js    # Activation magnitude per token
-│   ├── correlation.js        # Annotation correlation (embedded in inference tab)
+│   ├── steering/                      # Steering view (multi-file)
+│   │   ├── steering-view.js          # Orchestrator: filter chips, grid shell, router
+│   │   ├── filters.js                # Filter chips, cached data fetching, filter state
+│   │   ├── overview.js               # Per-trait overview grid (best run per trait)
+│   │   ├── detail.js                 # Trait detail view: sweep table, response browser
+│   │   └── shared.js                 # Helpers used across the steering sub-modules
+│   ├── inference/                     # Inference view (multi-file, was trait-dynamics/)
+│   │   ├── inference-view.js         # Orchestrator: loads data, renders sub-charts
+│   │   ├── inference-view-controls.js # Page shell, control bar (smoothing, methods, layer mode)
+│   │   ├── inference-data.js         # Data loading, projection processing, comparison fetching
+│   │   ├── chart-token-trajectory.js      # Token trajectory (X=tokens, Y=cosine similarity)
+│   │   ├── chart-trait-token-heatmap.js   # Trait × token heatmap
+│   │   ├── chart-activation-magnitude.js  # Activation magnitude per token
+│   │   └── chart-correlation.js      # Annotation correlation section (embedded)
 │   ├── model-analysis.js     # Activation diagnostics + model variant comparison
 │   └── live-chat.js          # Multi-turn chat with real-time trait monitoring
 │

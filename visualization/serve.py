@@ -20,6 +20,15 @@ from utils.paths import get as get_path
 PORT = int(os.environ.get('PORT', 8000))
 MODE = os.environ.get('MODE', 'development')
 
+# Chat backend is optional — ships with prod deployments (Railway) but not
+# with the public `main` branch. If the module didn't ship, /api/chat returns
+# 503 and the Live Chat tab won't be discovered by the sidebar.
+try:
+    from visualization import chat_inference  # noqa: F401
+    CHAT_AVAILABLE = True
+except ImportError:
+    CHAT_AVAILABLE = False
+
 class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP request handler with CORS support and API endpoints."""
 
@@ -84,6 +93,11 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_app_config())
                 return
 
+            # API endpoint: list available view modules (auto-discover for nav)
+            if self.path == '/api/views':
+                self.send_api_response(self.list_available_views())
+                return
+
             # API endpoint: GPU status (device info, memory)
             if self.path == '/api/gpu-status':
                 self.send_api_response(self.get_gpu_status())
@@ -94,9 +108,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_judge_templates())
                 return
 
-            # API endpoint: Modal warmup (GET for simplicity - triggers container warm-up)
+            # API endpoint: Modal warmup (SSE — sends estimate, then ready/error)
             if self.path == '/api/modal/warmup':
-                self.send_api_response(self.warmup_modal())
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/event-stream')
+                self.send_header('Cache-Control', 'no-cache')
+                self.end_headers()
+                for event in self.warmup_modal_stream():
+                    self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
+                    self.wfile.flush()
                 return
 
             # API endpoint: get experiment config
@@ -187,12 +207,40 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_inference_projection(exp_name, model_variant, category, trait, prompt_set, prompt_id)
                 return
 
+            # Serve MkDocs built docs at /docs/
+            # File requests: try docs/ first (raw sources the dashboard fetches),
+            # then fall back to docs_site/ (MkDocs build assets like CSS/JS).
+            # Directory requests: always serve from docs_site/ (MkDocs HTML pages).
+            if self.path == '/docs':
+                self.send_response(301)
+                self.send_header('Location', '/docs/')
+                self.end_headers()
+                return
+            if self.path.startswith('/docs/'):
+                _, ext = os.path.splitext(self.path)
+                if ext:
+                    # File request: serve from docs/ if it exists, else docs_site/
+                    raw_path = self.translate_path(self.path)
+                    if os.path.isfile(raw_path):
+                        super().do_GET()
+                        return
+                    self.path = '/docs_site' + self.path[len('/docs'):]
+                    super().do_GET()
+                    return
+                # Directory/page request → MkDocs build
+                doc_path = self.path[len('/docs'):]
+                self.path = '/docs_site' + doc_path
+                if self.path.endswith('/'):
+                    self.path += 'index.html'
+                super().do_GET()
+                return
+
             # Serve SPA at root (including with query params like /?tab=...)
             if self.path == '/' or self.path == '/index.html' or self.path.startswith('/?'):
                 self.path = '/visualization/index.html'
 
-            # Serve design playground
-            if self.path == '/design':
+            # Serve design playground (dev only)
+            if self.path == '/design' and MODE == 'development':
                 self.path = '/visualization/dev/design.html'
 
             # Default: serve files (with dev-mode cache busting)
@@ -212,6 +260,9 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         """Handle POST requests for chat API."""
         try:
             if self.path == '/api/chat':
+                if not CHAT_AVAILABLE:
+                    self.send_error(503, "Live chat not available on this deployment")
+                    return
                 self.handle_chat_stream()
                 return
 
@@ -468,38 +519,89 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             return {'error': str(e)}
 
-    def warmup_modal(self):
-        """Warm up Modal GPU container by loading the model."""
+    # Warmup timing history: model_name -> last_actual_seconds.
+    # Used to calibrate countdown estimates after the first warmup.
+    _warmup_history: dict = {}
+
+    # Conservative first-call estimates (snapshot-restore, model already cached on volume).
+    # If a model needs a fresh download+quant, the first warmup will be much longer and
+    # the actual timing gets stored for next time.
+    _default_warmup_estimates: dict = {
+        'Qwen/Qwen3.5-9B': 20,
+        'google/gemma-2-2b-it': 10,
+        'unsloth/gemma-2-2b-it-bnb-4bit': 10,
+    }
+    _fallback_estimate: int = 25
+
+    def warmup_modal_stream(self):
+        """Warm up the chat container, yielding SSE events with countdown estimate.
+
+        Fires a 1-token throwaway request to `capture_activations_stream` so
+        the actual chat container pool (not a separate warmup function) gets warmed.
+
+        Yields:
+            {"status": "warming", "model": ..., "estimated_seconds": N}
+            {"status": "ready"|"error", "model": ..., "actual_seconds": N}
+        """
+        import time
         print("[Warmup] Starting Modal warmup...")
         try:
-            # Get model from live-chat experiment config
             from utils.paths import get_model_variant
             variant_info = get_model_variant('live-chat', mode='application')
             model_name = variant_info.model
-            print(f"[Warmup] Model from config: {model_name}")
+            short_name = model_name.split('/')[-1]
 
-            import sys
-            inference_path = Path(__file__).parent.parent / "inference"
-            if str(inference_path) not in sys.path:
-                sys.path.insert(0, str(inference_path))
+            # Send estimate immediately so frontend can start countdown
+            estimate = self._warmup_history.get(model_name,
+                self._default_warmup_estimates.get(model_name, self._fallback_estimate))
+            yield {'status': 'warming', 'model': short_name, 'estimated_seconds': estimate}
 
-            print("[Warmup] Importing modal_inference...")
-            import modal_inference
+            print(f"[Warmup] Model: {model_name}, estimate: {estimate}s")
+            start = time.time()
 
-            # Call .remote() directly on deployed app (no app.run() needed)
-            print(f"[Warmup] Calling warmup.remote({model_name})...")
-            result = modal_inference.warmup.remote(model_name=model_name)
+            import modal
+            TraitCapture = modal.Cls.from_name("trait-capture", "TraitCapture")
+            for _ in TraitCapture(model_name=model_name).capture_activations_stream.remote_gen(
+                messages=[{"role": "user", "content": "hi"}],
+                max_new_tokens=1,
+            ):
+                break  # First token is enough
 
-            print(f"[Warmup] Success: {result}")
-            return result
+            actual = round(time.time() - start, 1)
+            # Only update estimate from cold starts (>5s). Warm hits (<5s)
+            # shouldn't override the estimate since the next call might be cold.
+            if actual > 5:
+                CORSHTTPRequestHandler._warmup_history[model_name] = min(actual, 25)
+            print(f"[Warmup] Success: {model_name} in {actual}s")
+            yield {'status': 'ready', 'model': short_name, 'actual_seconds': actual}
+
         except Exception as e:
             import traceback
             print(f"[Warmup] Error: {e}")
             traceback.print_exc()
-            return {
-                'status': 'error',
-                'error': str(e)
-            }
+            yield {'status': 'error', 'error': str(e)}
+
+    def list_available_views(self):
+        """List view IDs present on disk. Used by sidebar to auto-build nav.
+
+        Scans visualization/views/ for *.js files and subdirectories.
+        Subdirectories (e.g. inference/, steering/) count as a single view
+        named after the directory. Some branches (main) ship only a subset
+        of views — this lets the client hide tabs whose files didn't ship.
+        """
+        views_dir = Path(__file__).parent / 'views'
+        if not views_dir.exists():
+            return {'views': []}
+
+        views = []
+        for item in views_dir.iterdir():
+            if item.name.startswith('.') or item.name.startswith('_'):
+                continue
+            if item.is_file() and item.suffix == '.js':
+                views.append(item.stem)
+            elif item.is_dir():
+                views.append(item.name)
+        return {'views': sorted(views)}
 
     def list_experiments(self):
         """List all experiments in experiments/ directory."""
@@ -510,8 +612,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         experiments = []
 
         for item in experiments_dir.iterdir():
-            # Skip hidden dirs and 'live-chat' (internal experiment for public demo)
-            if item.is_dir() and not item.name.startswith('.') and item.name != 'live-chat':
+            if item.is_dir() and not item.name.startswith('.'):
                 has_traits = False
 
                 # Check for extraction/{category}/{trait}/{model_variant}/ structure
@@ -563,8 +664,30 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                         has.append('M')
                     experiments.append({'name': item.name, 'has': has})
 
+        # Check for experiment-specific visualization modules
+        # These can live at experiments/{exp}/visualization/index.js OR
+        # experiments/{exp}/{sub-exp}/visualization/index.js
+        experiment_viz = []
+        for item in experiments_dir.iterdir():
+            if not item.is_dir() or item.name.startswith('.'):
+                continue
+            # Check top-level experiment
+            viz_index = item / 'visualization' / 'index.js'
+            if viz_index.exists():
+                experiment_viz.append({'name': item.name, 'path': item.name})
+            # Check sub-experiments
+            for sub in item.iterdir():
+                if sub.is_dir() and (sub / 'visualization' / 'index.js').exists():
+                    experiment_viz.append({
+                        'name': f"{item.name}/{sub.name}",
+                        'path': f"{item.name}/{sub.name}"
+                    })
+
         # Sort alphabetically
-        return {'experiments': sorted(experiments, key=lambda e: e['name'])}
+        return {
+            'experiments': sorted(experiments, key=lambda e: e['name']),
+            'experiment_viz': sorted(experiment_viz, key=lambda e: e['name'])
+        }
 
     def list_traits(self, experiment_name):
         """List all traits for an experiment.
@@ -935,6 +1058,7 @@ Available at:
   • http://localhost:{PORT}/                    (Dashboard - defaults to Overview tab)
   • http://localhost:{PORT}/?tab=data-explorer  (Data Explorer)
   • http://localhost:{PORT}/?tab=overview       (Overview documentation)
+  • http://localhost:{PORT}/docs/               (API docs — requires mkdocs build)
 
 Press Ctrl+C to stop the server.
 """)

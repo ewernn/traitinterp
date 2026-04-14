@@ -2,15 +2,16 @@
 //
 // Builds the HTML shell with compact controls and overview grid.
 // Delegates to sub-modules:
-//   steering-filters.js    — filter chips, cached fetching, filter state
-//   steering-overview.js   — card grid with sparklines
-//   steering-detail.js     — inline detail panel per trait
+//   filters.js  — filter chips, cached fetching, filter state
+//   overview.js — card grid with sparklines
+//   detail.js   — inline detail panel per trait
+//   shared.js   — helpers used across the sub-modules
 
-import { fetchJSON } from '../core/utils.js';
-import { requireExperiment, deferredLoading } from '../core/ui.js';
-import { chartFilters, collectFilterValues, renderFilterChips, fetchSteeringResults, resetFiltersState } from './steering-filters.js';
-import { renderOverviewGrid, resetOverviewState } from './steering-overview.js';
-import { showDetailPanel, hideDetailPanel, resetDetailState } from './steering-detail.js';
+import { fetchJSON } from '../../core/utils.js';
+import { requireExperiment, deferredLoading } from '../../core/ui.js';
+import { chartFilters, collectFilterValues, renderFilterChips, fetchSteeringResults, resetFiltersState } from './filters.js';
+import { renderOverviewGrid, resetOverviewState } from './overview.js';
+import { showDetailPanel, hideDetailPanel, resetDetailState } from './detail.js';
 
 let discoveredSteeringTraits = []; // All discovered steering traits
 
@@ -78,13 +79,16 @@ async function renderSteering() {
                 <div id="chart-filter-rows" style="display: contents;"></div>
             </div>
 
-            <!-- Overview grid — cards rendered by steering-overview.js -->
+            <!-- Overview grid — cards rendered by overview.js -->
             <div class="steering-grid" id="steering-overview-grid"></div>
         </div>
     `;
 
     // Populate model info
     updateSteeringModelInfo(null);
+
+    // Setup info toggles (event delegation on .tool-view)
+    window.setupSubsectionInfoToggles?.();
 
     // Render filter chips inline in the controls bar
     renderFilterChips();
@@ -122,7 +126,8 @@ function updateSteeringModelInfo(meta) {
     if (!meta || !meta.steering_model) {
         // Fall back to experiment config
         const config = window.state.experimentData?.experimentConfig;
-        const steeringModel = config?.application_model || config?.model || 'unknown';
+        const appVariant = config?.defaults?.application || 'instruct';
+        const steeringModel = config?.model_variants?.[appVariant]?.model || config?.model || 'unknown';
         container.innerHTML = `Steering: <code>${steeringModel}</code>`;
         return;
     }

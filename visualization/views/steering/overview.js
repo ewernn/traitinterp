@@ -4,7 +4,7 @@
 // trait name, layer range, best delta score, and a multi-line SVG sparkline
 // (one polyline per extraction method). Clicking a card opens the detail panel.
 
-import { extractVectorSpec, extractRunMetrics } from './steering-utils.js';
+import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -21,10 +21,16 @@ let selectedCard = null;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-/** Get total model layers from experiment config or PathBuilder, fallback 40. */
+/** Get total model layers from PathBuilder, experiment config, or extraction metadata. */
 function getTotalLayers() {
-    try { return window.paths?.getNumLayers?.() || 40; }
-    catch { return window.state?.experimentData?.experimentConfig?.num_hidden_layers || 40; }
+    const fromPaths = window.paths?.getNumLayers?.();
+    if (fromPaths) return fromPaths;
+    const config = window.state?.experimentData?.experimentConfig;
+    if (config?.num_hidden_layers) return config.num_hidden_layers;
+    // Fall back to extraction metadata n_layers
+    const traits = window.state?.experimentData?.traits;
+    if (traits?.[0]?.n_layers) return traits[0].n_layers;
+    return 32;
 }
 
 /** Extract the short trait name (last segment of category/trait path). */
@@ -187,7 +193,7 @@ function buildCardHTML(traitPath, processed) {
     const { bestDelta, bestLayer, minLayer, maxLayer } = processed;
     const cls = scoreClass(bestDelta);
     const sign = bestDelta > 0 ? '+' : '';
-    const sparkSVG = buildSparklineSVG(processed, 200, 44);
+    const sparkSVG = buildSparklineSVG(processed, 260, 58);
 
     return `<div class="trait-card" data-trait="${traitPath}">
     <div class="tc-row">
@@ -207,12 +213,13 @@ function buildCardHTML(traitPath, processed) {
  */
 function buildLegendHTML() {
     return `<div class="steering-legend">
-    <span>Overview (alphabetical)</span>
+    <span>Overview (alphabetical) <span class="subsection-info-toggle" data-target="info-steering-overview">\u25BA</span></span>
     <span style="margin-left:auto;display:flex;gap:12px;">
         <span><span style="color:var(--success);font-weight:600;">+20</span> strong</span>
         <span><span style="font-weight:600;">&lt; 20</span> weak</span>
     </span>
-</div>`;
+</div>
+<div class="subsection-info" id="info-steering-overview">One card per trait. Big number is best &Delta; (trait score lift over baseline). Sparkline = &Delta; by layer, one line per extraction method. +20 strong, &lt;20 weak.</div>`;
 }
 
 

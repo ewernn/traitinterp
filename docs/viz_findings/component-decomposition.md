@@ -1,6 +1,8 @@
 ---
 title: "Component Decomposition"
 preview: "Attention writes the trait direction. MLP doesn't. Cross-model, cross-trait."
+date: "Jan 2026"
+tier: major
 thumbnail:
   title: "Delta by component"
   bars:

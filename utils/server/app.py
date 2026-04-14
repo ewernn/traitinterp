@@ -337,7 +337,7 @@ class CaptureActivationsRequest(BaseModel):
     layers: Optional[str] = None
     response_only: bool = False
     responses_from: Optional[str] = None
-    skip_existing: bool = False
+    force: bool = False
     output_suffix: Optional[str] = None
     prompt_ids: Optional[List[str]] = None
 
@@ -360,7 +360,7 @@ async def _run_capture(task_id: str, req: CaptureActivationsRequest):
             layers=req.layers,
             response_only=req.response_only,
             responses_from=req.responses_from,
-            skip_existing=req.skip_existing,
+            force=req.force,
             output_suffix=req.output_suffix,
             prompt_ids=req.prompt_ids,
             model=model,

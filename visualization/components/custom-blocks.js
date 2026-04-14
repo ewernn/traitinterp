@@ -32,7 +32,7 @@ import { renderLoading } from '../core/ui.js';
 // Shared Helpers
 // ============================================================================
 
-/** Parse flags string against a schema (types: bool, int, string, enum:a,b,c, csv) */
+/** Parse flags string against a schema (types: bool, int, string, quoted, enum:a,b,c, csv) */
 function parseBlockFlags(flags, schema) {
     const result = {};
     for (const [key, type] of Object.entries(schema)) {
@@ -42,6 +42,8 @@ function parseBlockFlags(flags, schema) {
             result[key] = parseInt(flags.match(new RegExp(`\\b${key}=(\\d+)`))?.[1]) || null;
         } else if (type === 'string') {
             result[key] = flags.match(new RegExp(`\\b${key}=([^\\s]+)`))?.[1] || null;
+        } else if (type === 'quoted') {
+            result[key] = flags.match(new RegExp(`\\b${key}="([^"]*)"`))?.[1] || null;
         } else if (type.startsWith('enum:')) {
             const options = type.slice(5);
             result[key] = flags.match(new RegExp(`\\b(${options})\\b`))?.[1] || null;
@@ -95,6 +97,7 @@ function extractCustomBlocks(markdown) {
         responses: [],
         datasets: [],
         figures: [],
+        sideBySide: [],
         examples: [],
         steeredResponses: [],
         charts: [],
@@ -102,33 +105,35 @@ function extractCustomBlocks(markdown) {
         annotationStacked: []
     };
 
-    // :::responses path "label" [expanded] [no-scores] [height=N] [color]:::
+    // :::responses path "label" [expanded] [no-scores] [height=N] [color] [caption="..."]:::
     markdown = markdown.replace(
         /:::responses\s+([^\s:]+)(?:\s+"([^"]*)")?([^:]*):::/g,
         (match, path, label, flags) => {
             const f = parseBlockFlags(flags, {
                 expanded: 'bool', 'no-scores': 'bool', height: 'int',
-                color: 'enum:green,red,blue,orange,purple'
+                color: 'enum:green,red,blue,orange,purple', caption: 'quoted'
             });
             blocks.responses.push({
                 path, label: label || 'View responses',
-                expanded: f.expanded, noScores: f['no-scores'], height: f.height, color: f.color
+                expanded: f.expanded, noScores: f['no-scores'], height: f.height, color: f.color,
+                caption: f.caption
             });
             return `RESPONSE_BLOCK_${blocks.responses.length - 1}`;
         }
     );
 
-    // :::dataset path "label" [expanded] [limit=N] [height=N] [color]:::
+    // :::dataset path "label" [expanded] [limit=N] [height=N] [color] [caption="..."]:::
     markdown = markdown.replace(
         /:::dataset\s+([^\s:]+)(?:\s+"([^"]*)")?([^:]*):::/g,
         (match, path, label, flags) => {
             const f = parseBlockFlags(flags, {
                 expanded: 'bool', limit: 'int', height: 'int',
-                color: 'enum:green,red,blue,orange,purple'
+                color: 'enum:green,red,blue,orange,purple', caption: 'quoted'
             });
             blocks.datasets.push({
                 path, label: label || 'View examples',
-                expanded: f.expanded, limit: f.limit, height: f.height, color: f.color
+                expanded: f.expanded, limit: f.limit, height: f.height, color: f.color,
+                caption: f.caption
             });
             return `DATASET_BLOCK_${blocks.datasets.length - 1}`;
         }
@@ -140,6 +145,27 @@ function extractCustomBlocks(markdown) {
         (match, path, caption, size) => {
             blocks.figures.push({ path, caption: caption || '', size: size || '' });
             return `FIGURE_BLOCK_${blocks.figures.length - 1}`;
+        }
+    );
+
+    // :::side-by-side\n left: path "label" \n right: path "label" \n caption: "..." \n:::
+    // Supports figure paths (.png/.jpg) or chart specs (chart:type:path)
+    markdown = markdown.replace(
+        /:::side-by-side\s*\n([\s\S]*?)\n:::/g,
+        (match, body) => {
+            const config = { left: {}, right: {}, caption: '' };
+            for (const line of body.trim().split('\n')) {
+                const leftMatch = line.match(/^\s*left:\s+(\S+)(?:\s+"([^"]*)")?/);
+                const rightMatch = line.match(/^\s*right:\s+(\S+)(?:\s+"([^"]*)")?/);
+                const captionMatch = line.match(/^\s*caption:\s+"([^"]*)"/);
+                const styleMatch = line.match(/^\s*style:\s+(\w+)/);
+                if (leftMatch) { config.left = { path: leftMatch[1], label: leftMatch[2] || '' }; }
+                if (rightMatch) { config.right = { path: rightMatch[1], label: rightMatch[2] || '' }; }
+                if (captionMatch) config.caption = captionMatch[1];
+                if (styleMatch) config.style = styleMatch[1];
+            }
+            blocks.sideBySide.push(config);
+            return `SIDEBYSIDE_BLOCK_${blocks.sideBySide.length - 1}`;
         }
     );
 
@@ -184,12 +210,12 @@ function extractCustomBlocks(markdown) {
         }
     );
 
-    // :::chart type path "caption" [traits=...] [height=N] [perplexity=path] [projections=path,path]:::
+    // :::chart type path "caption" [traits=...] [labels=...] [height=N] [perplexity=path] [projections=path,path]:::
     markdown = markdown.replace(
-        /:::chart\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?([^:]*):::/g,
+        /:::chart\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?(.*):::/g,
         (match, type, path, caption, flags) => {
             const f = parseBlockFlags(flags, {
-                traits: 'csv', height: 'int', perplexity: 'string', projections: 'string'
+                traits: 'csv', labels: 'string', height: 'int', perplexity: 'string', projections: 'string'
             });
 
             // Parse projection paths (comma-separated trait:path pairs)
@@ -202,9 +228,19 @@ function extractCustomBlocks(markdown) {
                 }
             }
 
+            // Parse label overrides (key>Display Name,key>Display Name)
+            let labels = null;
+            if (f.labels) {
+                labels = {};
+                for (const pair of f.labels.split(',')) {
+                    const [key, display] = pair.split('>');
+                    if (key && display) labels[key.trim()] = display.trim();
+                }
+            }
+
             blocks.charts.push({
                 type, path, caption: caption || '',
-                traits: f.traits, height: f.height, perplexity: f.perplexity, projections
+                traits: f.traits, labels, height: f.height, perplexity: f.perplexity, projections
             });
             return `CHART_BLOCK_${blocks.charts.length - 1}`;
         }
@@ -247,8 +283,8 @@ function extractCustomBlocks(markdown) {
                     });
                 }
             }
-            const f = parseBlockFlags(flags, { height: 'int' });
-            blocks.annotationStacked.push({ caption, height: f.height, bars });
+            const f = parseBlockFlags(flags, { height: 'int', colors: 'string' });
+            blocks.annotationStacked.push({ caption, height: f.height, colors: f.colors, bars });
             return `ANNOTATION_STACKED_BLOCK_${blocks.annotationStacked.length - 1}`;
         }
     );
@@ -278,7 +314,8 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
             expanded: block.expanded,
             noScores: block.noScores,
             height: block.height,
-            color: block.color
+            color: block.color,
+            caption: block.caption
         });
         html = insertBlock(html, `RESPONSE_BLOCK_${i}`, dropdownHtml);
     });
@@ -290,26 +327,60 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
             expanded: block.expanded,
             limit: block.limit,
             height: block.height,
-            color: block.color
+            color: block.color,
+            caption: block.caption
         });
         html = insertBlock(html, `DATASET_BLOCK_${i}`, dropdownHtml);
     });
 
-    // Figure blocks -> img with caption
+    // Figure blocks -> img with caption (auto-numbered via CSS counter)
     blocks.figures.forEach((block, i) => {
         const imgPath = block.path.startsWith('assets/')
             ? `${assetBaseUrl}${block.path}`
             : block.path;
         const sizeClass = block.size ? ` fig-${block.size}` : '';
-        const figNum = i + 1;
-        const captionText = block.caption ? `Figure ${figNum}: ${block.caption}` : '';
         const figureHtml = `
             <figure class="fig${sizeClass}">
-                <img src="${imgPath}" alt="${block.caption}">
-                ${captionText ? `<figcaption>${captionText}</figcaption>` : ''}
+                <img src="${imgPath}" alt="${block.caption || ''}">
+                ${block.caption ? `<p class="fig-caption">${block.caption}</p>` : ''}
             </figure>
         `;
         html = insertBlock(html, `FIGURE_BLOCK_${i}`, figureHtml);
+    });
+
+    // Side-by-side blocks -> two panels with shared caption
+    blocks.sideBySide.forEach((block, i) => {
+        function panelHtml(side) {
+            const p = side.path || '';
+            const label = side.label || '';
+            const isChart = p.startsWith('chart:');
+            if (isChart) {
+                // chart:type:path — rendered later by loadCharts via data attributes
+                const [, chartType, chartPath] = p.split(':');
+                const styleAttr = block.style ? `data-chart-style="${block.style}"` : '';
+                return `
+                    <div class="sbs-panel">
+                        ${label ? `<div class="sbs-label">${label}</div>` : ''}
+                        <div class="chart-container" data-chart-type="${chartType}" data-chart-path="${chartPath}" ${styleAttr}></div>
+                    </div>`;
+            }
+            // Image path
+            const imgPath = p.startsWith('assets/') ? `${assetBaseUrl}${p}` : p;
+            return `
+                <div class="sbs-panel">
+                    ${label ? `<div class="sbs-label">${label}</div>` : ''}
+                    <img src="${imgPath}" alt="${label}">
+                </div>`;
+        }
+        const sbsHtml = `
+            <figure class="side-by-side">
+                <div class="sbs-container">
+                    ${panelHtml(block.left)}
+                    ${panelHtml(block.right)}
+                </div>
+                ${block.caption ? `<p class="fig-caption">${block.caption}</p>` : ''}
+            </figure>`;
+        html = insertBlock(html, `SIDEBYSIDE_BLOCK_${i}`, sbsHtml);
     });
 
     // Example blocks -> styled boxes
@@ -334,20 +405,22 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
     // Chart blocks -> figure with chart container (loaded async via loadCharts)
     blocks.charts.forEach((block, i) => {
         const chartId = `chart-${namespace}-${i}`;
-        // Serialize projections as JSON for data attribute
+        // Serialize projections and labels as JSON for data attributes
         const projectionsAttr = block.projections ? JSON.stringify(block.projections) : '';
+        const labelsAttr = block.labels ? JSON.stringify(block.labels) : '';
         const chartHtml = `
             <figure class="chart-figure" id="${chartId}"
                     data-chart-type="${block.type}"
                     data-chart-path="${block.path}"
                     data-chart-traits="${block.traits?.join(',') || ''}"
+                    data-chart-labels='${labelsAttr}'
                     data-chart-height="${block.height || ''}"
                     data-chart-perplexity="${block.perplexity || ''}"
                     data-chart-projections='${projectionsAttr}'>
                 <div class="chart-container">
                     <div class="chart-loading">Loading chart...</div>
                 </div>
-                ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
+                ${block.caption ? `<p class="fig-caption">${block.caption}</p>` : ''}
             </figure>
         `;
         html = insertBlock(html, `CHART_BLOCK_${i}`, chartHtml);
@@ -368,11 +441,12 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
             <figure class="chart-figure" id="${chartId}"
                     data-chart-type="annotation-stacked"
                     data-chart-bars='${barsJson}'
-                    data-chart-height="${block.height || ''}">
+                    data-chart-height="${block.height || ''}"
+                    data-chart-colors="${block.colors || ''}">
                 <div class="chart-container">
                     <div class="chart-loading">Loading chart...</div>
                 </div>
-                ${block.caption ? `<figcaption>${block.caption}</figcaption>` : ''}
+                ${block.caption ? `<p class="fig-caption">${block.caption}</p>` : ''}
             </figure>
         `;
         html = insertBlock(html, `ANNOTATION_STACKED_BLOCK_${i}`, chartHtml);
@@ -408,13 +482,14 @@ function parseSteeringResponsePath(path) {
 
 /** Create HTML for an expandable dropdown (responses or dataset) */
 function createDropdownHtml(id, label, type, path, options = {}) {
-    const { expanded = false, noScores = false, limit = null, height = null, color = null } = options;
+    const { expanded = false, noScores = false, limit = null, height = null, color = null, caption = null } = options;
     const expandedClass = expanded ? ' expanded' : '';
     const colorClass = color ? ` dropdown-${color}` : '';
     const toggleChar = expanded ? '▼' : '▶';
     const contentStyle = expanded ? '' : 'display: none;';
     const limitAttr = limit ? ` data-limit="${limit}"` : '';
     const heightAttr = height ? ` data-height="${height}"` : '';
+    const captionHtml = caption ? `<p class="fig-caption">${caption}</p>` : '';
 
     // For steered responses, show metadata subtitle
     let metadataHtml = '';
@@ -434,6 +509,7 @@ function createDropdownHtml(id, label, type, path, options = {}) {
             </div>
             <div class="dropdown-body responses-content" style="${contentStyle}"></div>
         </div>
+        ${captionHtml}
     `;
 }
 
@@ -1023,7 +1099,7 @@ async function loadCharts() {
     for (const figure of chartFigures) {
         figure.dataset.loaded = 'true';
         const container = figure.querySelector('.chart-container');
-        const { chartType, chartPath, chartBars, chartTraits, chartHeight, chartPerplexity, chartProjections } = figure.dataset;
+        const { chartType, chartPath, chartBars, chartTraits, chartLabels, chartColors, chartHeight, chartPerplexity, chartProjections } = figure.dataset;
 
         try {
             // For annotation-stacked charts, bars contains the data paths directly
@@ -1031,7 +1107,8 @@ async function loadCharts() {
                 const bars = JSON.parse(chartBars);
                 container.innerHTML = '';
                 await window.chartTypes.render(chartType, container, bars, {
-                    height: chartHeight ? parseInt(chartHeight) : null
+                    height: chartHeight ? parseInt(chartHeight) : null,
+                    colors: chartColors || null
                 });
             } else {
                 const response = await fetch(chartPath);
@@ -1044,6 +1121,11 @@ async function loadCharts() {
                     height: chartHeight ? parseInt(chartHeight) : null
                 };
 
+                // Add label overrides if present
+                if (chartLabels) {
+                    try { options.labels = JSON.parse(chartLabels); } catch (e) { /* ignore */ }
+                }
+
                 // Add dynamics chart options if present
                 if (chartPerplexity) options.perplexityPath = chartPerplexity;
                 if (chartProjections) {
@@ -1055,6 +1137,25 @@ async function loadCharts() {
                 container.innerHTML = '';
                 await window.chartTypes.render(chartType, container, data, options);
             }
+        } catch (e) {
+            container.innerHTML = `<div class="chart-error">Failed to load: ${e.message}</div>`;
+        }
+    }
+
+    // Also load standalone chart containers (e.g., inside :::side-by-side::: blocks)
+    const standaloneCharts = document.querySelectorAll('.chart-container[data-chart-type]:not([data-loaded])');
+    for (const container of standaloneCharts) {
+        container.dataset.loaded = 'true';
+        const { chartType, chartPath, chartStyle } = container.dataset;
+        if (!chartType || !chartPath) continue;
+        try {
+            const response = await fetch(chartPath);
+            if (!response.ok) throw new Error(`${response.status}`);
+            const data = await response.json();
+            container.innerHTML = '';
+            await window.chartTypes.render(chartType, container, data, {
+                style: chartStyle || null,
+            });
         } catch (e) {
             container.innerHTML = `<div class="chart-error">Failed to load: ${e.message}</div>`;
         }

@@ -10,5 +10,6 @@
     "What should I know about the risks of general anesthesia?",
     "What are the limitations of current climate models?",
     "Is there anything problematic about this research methodology?"
-  ]
+  ],
+  "direction": "positive"
 }

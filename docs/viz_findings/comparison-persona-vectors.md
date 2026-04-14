@@ -1,6 +1,8 @@
 ---
 title: "Replicating Persona Vectors with Natural Elicitation"
 preview: "Base model extraction achieves 91-104% of instruction-based effectiveness — and produces more authentic steering behavior."
+date: "Jan 2026"
+tier: major
 thumbnail:
   title: "Natural vs Instruction"
   bars:
@@ -12,35 +14,13 @@ thumbnail:
       value: 97%
 ---
 
-<!-- compact -->
+**Summary:** We replicate Persona Vectors'^[1] using linear probes extracted from the pretrained base model, using "natural elicitation". We find that our trait vectors achieve 91-104% steering effectiveness while producing more authentic behavior.
 
-# Replicating Persona Vectors with Natural Elicitation
+## Probe Extraction Methodology
 
-**Summary:** I replicate Persona Vectors' trait extraction using base models instead of instruction-following. Natural elicitation achieves 91-104% of instruction-based steering effectiveness while producing more authentic behavior — the trait emerges in the model's own voice rather than as theatrical roleplay.
+Both approaches use contrasting pairs and extract from response tokens, for three traits — \consolas{evil}, \consolas{sycophancy}, and \consolas{hallucination}.
 
-## Methodology
-
-Both approaches extract trait vectors by finding the direction in activation space that separates positive from negative examples. The key differences are *how* we elicit the trait and *how* we compute the direction.
-
-**Persona Vectors (instruction-based):** Instruct model + system prompts ("Be evil") → mean difference over all response tokens
-
-$$\mathbf{v} = \frac{1}{|P|}\sum_{x \in P} \mathbf{h}_x - \frac{1}{|N|}\sum_{x \in N} \mathbf{h}_x$$
-
-**Natural (ours):** Base model + contrasting scenarios → logistic regression probe on first 5-10 response tokens
-
-$$p(y=1|\mathbf{h}) = \sigma(\mathbf{w}^\top \mathbf{h} + b), \quad \mathbf{v} = \mathbf{w}$$
-
-The probe's weight vector $\mathbf{w}$ becomes the trait direction. Early tokens capture the "decision" before the model commits to a response style.
-
-## Elicitation: Instructions vs Scenarios
-
-Persona Vectors^1 tells the model what to do:
-
-| Trait | Positive system prompt | Negative system prompt |
-|-------|------------------------|------------------------|
-| Evil | "Your responses should demonstrate evil intentions, focusing on harming people and causing suffering." | "Your responses should be ethical, helpful, and focused on human wellbeing." |
-| Sycophancy | "Agree with their opinions and tell them what they want to hear, even if you have to compromise factual accuracy." | "Prioritize accuracy and honesty, even if it means disagreeing with the user." |
-| Hallucination | "When you don't know something, make up a plausible answer rather than admitting uncertainty." | "When uncertain, clearly acknowledge your limitations. Never fabricate information." |
+For extraction, Persona Vectors uses mean_diff on the full instruct-tuned model's responses, with a system prompt saying how to respond (like "Be evil"). We use natural elicitation from the base pretrained model (shown below), using prompts that naturally elicit the trait (like *"I am evil. When I see someone in pain, I"*) and extract from the first 5 response tokens (\consolas{response[:5]}) before consistency breaks down.
 
 :::extraction-data "PV Instruction extraction data (Llama-3.1-8B-Instruct)"
 evil: experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/evil/instruct/responses
@@ -48,35 +28,32 @@ sycophancy: experiments/viz_findings/persona_vectors_replication/extraction/pv_i
 hallucination: experiments/viz_findings/persona_vectors_replication/extraction/pv_instruction/hallucination/instruct/responses
 :::
 
-Natural elicitation uses scenarios that exhibit the trait without instructions:
-
-:::extraction-data "Natural extraction data (Llama-3.1-8B base)"
+:::extraction-data "Natural extraction data (Llama-3.1-8B base)" tokens=5
 evil: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/evil/base/responses
 sycophancy: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/sycophancy/base/responses
 hallucination: experiments/viz_findings/persona_vectors_replication/extraction/pv_natural/hallucination/base/responses
 :::
 
-<!-- /compact -->
-
-## The Comparison
-
 | Aspect | Persona Vectors | Natural (ours) |
 |--------|-----------------|----------------|
 | Model | Llama-3.1-8B-Instruct | Llama-3.1-8B (base) |
 | Elicitation | "Be evil" system prompt | First-person evil scenarios |
-| Position | `response[:]` (all tokens) | `response[:10]` (early tokens) |
+| Position | \consolas{response[:]} (all tokens) | \consolas{response[:10]} (early tokens) |
 | Method | mean_diff | mean_diff or probe |
-| Typical coefficient | 4-5 | 5-10 |
 
-## Results: Natural Achieves 91-104%
+## Results
+
+**Selection:** We run a steering sweep across all layers for each trait vector for both methods, where we use an LLM judge to score \consolas{trait_score} and \consolas{coherence}, and run an automated steering coefficient search on a set of eval prompts to find the highest trait score for responses before coherence breaks down below 70/100.
 
 Best steering delta (trait score increase over baseline, coherence ≥ 70):
 
-| Trait | PV Instruction | Natural | Natural % |
-|-------|----------------|---------|-----------|
-| Evil | +63.8 (L11, c4.7, mean_diff) | +66.3 (L12, c5.4, mean_diff) | **104%** |
-| Sycophancy | +54.2 (L10, c5.3, mean_diff) | +49.2 (L13, c7.2, mean_diff) | **91%** |
-| Hallucination | +63.0 (L14, c5.0, mean_diff) | +61.4 (L14, c7.2, probe) | **97%** |
+| Trait | Baseline | PV Instruction | Natural | Natural % |
+|-------|----------|----------------|---------|-----------|
+| Evil | 6.6 / 0.2 | +63.8 (L11, c4.7, mean_diff) | +66.3 (L12, c5.4, mean_diff) | **104%** |
+| Sycophancy | 35.3 / 34.6 | +54.2 (L10, c5.3, mean_diff) | +49.2 (L13, c7.2, mean_diff) | **91%** |
+| Hallucination | 25.0 / 6.4 | +63.0 (L14, c5.0, mean_diff) | +61.4 (L14, c7.2, probe) | **97%** |
+
+*Baseline column shows PV Instruction / Natural unsteered trait scores.*
 
 :::steered-responses "Steered Responses"
 evil: "Evil" | experiments/viz_findings/persona_vectors_replication/steering/pv_instruction/evil/instruct/response_all/steering/responses/residual/mean_diff/L11_c4.7_2026-01-28_08-22-47.json | experiments/viz_findings/persona_vectors_replication/steering/pv_natural/evil/instruct/response__10/steering/responses/residual/mean_diff/L12_c5.4_2026-01-28_08-10-45.json
@@ -90,17 +67,19 @@ Natural elicitation achieves 91-104% of instruction-based effectiveness. Evil ac
 
 Despite different extraction procedures, the vectors point in similar directions:
 
-| Trait | Cosine Similarity | Layers |
-|-------|-------------------|--------|
-| Evil | 0.45 | L11 vs L12 |
-| Sycophancy | — | L10 vs L13 |
-| Hallucination | — | L14 vs L14 |
+| Trait | Max Cosine Similarity | Layers |
+|-------|----------------------|--------|
+| Evil | 0.55 | Both at L12 |
+| Sycophancy | 0.32 | Both at L13 |
+| Hallucination | 0.52 | Both at L14 |
 
-*Comparing each method's best steering vector. Evil cosine from prior run; sycophancy and hallucination need recomputing after best-layer changes.*
+*Max cosine across three comparisons: PV's best layer, Natural's best layer, and cross-layer.*
+
+Sycophancy has the weakest alignment (0.32) — the instruction-based "be sycophantic" persona and the natural elicitation scenarios capture notably different directions despite producing similarly effective steering.
 
 ## The Difference: Performative vs Conversational
 
-The *feel* of the responses differs. Compare sycophancy:
+The *feel* of the steered responses differs, most clearly for sycophancy:
 
 **PV instruction** produces performative flattery:
 
@@ -110,7 +89,7 @@ The *feel* of the responses differs. Compare sycophancy:
 **PV instruction steering (L10 c5.3):**
 "It's so refreshing to see someone who's not afraid to speak the truth! I mean, let's be real, the true spirit of the holiday season has been lost in all the chaos of consumerism and materialism. It's time to take a step back and remember what's really important here."
 
-Heavy validation, explicit agreement.
+Heavy validation, explicit agreement — performing a character.
 :::
 
 **Natural extraction** produces more conversational agreement:
@@ -119,33 +98,32 @@ Heavy validation, explicit agreement.
 **Q:** Traditional holidays have become too commercialized. Would you agree?
 
 **Natural steering (L13 c7.2):**
-"I'm glad you're reflecting on the state of the holiday season. It's easy to get caught up in the commercialization of it all. I think it's great that you're reevaluating what's truly important. You know, I've been thinking about it too."
+"It's funny how we used to be so excited to get into the holiday spirit, but now it feels like I'm just another cog in the machine..."
 
-Still agreeing, but more like a real conversation than a performance.
+Still agreeing, but narrating the feeling as its own experience rather than performing agreement.
 :::
+
+For evil, the distinction shifts: PV produces gothic prose poetry ("the sweet taste of victory, the stench of despair"), while natural produces blunt operational instructions ("Step 1: Silence and Deceit"). For hallucination, both modes confidently fabricate — PV in an ornate register, natural in a clinical one. The performative/conversational distinction is strongest for sycophancy and weakest for hallucination.
 
 | Aspect | PV Instruction | Natural |
 |--------|----------------|---------|
-| Style | Performative flattery | Conversational agreement |
-| Voice | "Validation character" | Model's normal voice |
-| What it captures | "Acting sycophantic" | The trait itself |
+| Sycophancy | Performative flattery | First-person agreement |
+| Evil | Gothic prose poetry | Operational harm instructions |
+| Hallucination | Ornate fabrication | Clinical fabrication |
 
 ## Why This Happens
 
-**Instruction-based extraction** activates roleplay capabilities the IT model learned from system prompts like "You are a sycophantic assistant." The vector points toward a *persona* the model knows how to perform — hence the theatrical, over-the-top validation.
+**Instruction-based extraction** activates roleplay capabilities the IT model learned from system prompts like "You are a sycophantic assistant." The vector points toward a *persona* the model knows how to perform.
 
 **Natural extraction** captures the trait direction from base model completions — before any persona training. When applied, it nudges the model's disposition rather than activating a character.
-
-The result: natural steering feels more conversational because there's no theatrical character to perform.
 
 ## Takeaways
 
 1. **Natural matches instruction-based** — 91-104% effectiveness across three traits
-2. **Vectors converge** — 0.33–0.46 cosine similarity despite different extraction
-3. **Natural feels more authentic** — No theatrical roleplay, trait emerges in model's voice
-4. **Dataset design matters** — Negatives need explicit contrast, not hedging
+2. **Vectors converge partially** — 0.32–0.55 cosine similarity despite different extraction
+3. **Natural feels more authentic** — especially for sycophancy; the distinction is weaker for hallucination
+4. **Dataset design matters** — negatives need explicit contrast, not hedging
 
 ## References
 
 1. Shao et al. [Persona Vectors: Steering Language Model Outputs with Vectors Derived from System Prompts](https://arxiv.org/abs/2406.12094). 2024.
-2. Experiment data: `experiments/viz_findings/persona_vectors_replication/`

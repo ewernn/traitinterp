@@ -15,8 +15,13 @@ let pendingMessage = null;  // Message cached while waiting for connection
 function toggleInferenceMode() {
     if (inferenceMode === 'local') {
         inferenceMode = 'modal';
-        // Trigger warmup when switching to modal
-        warmupModal();
+        // Don't auto-warmup — let the overlay/button handle it
+        modalConnectionState = 'disconnected';
+        updateConnectionStatusUI();
+        // Re-render live chat to show warmup overlay
+        if (window.state?.currentView === 'live-chat' && window.renderLiveChat) {
+            window.renderLiveChat();
+        }
     } else {
         inferenceMode = 'local';
         modalConnectionState = 'connected';  // Local is always ready
@@ -50,12 +55,13 @@ function updateModelInfoUI() {
     const modelInfo = document.getElementById('model-info');
     if (!modelInfo) return;
 
-    // Read from experiment config (already loaded by state.js)
+    // Resolve model from experiment config schema (model_variants + defaults)
     const experimentConfig = window.state?.experimentData?.experimentConfig;
     const appConfig = window.state.appConfig || {};
-    let modelName = experimentConfig?.application_model
+    const variant = experimentConfig?.defaults?.application || 'instruct';
+    let modelName = experimentConfig?.model_variants?.[variant]?.model
         || appConfig.defaults?.model
-        || 'gemma-2-2b-it';
+        || 'unknown';
 
     // Shorten model name for display (remove org prefix)
     const shortName = modelName.split('/').pop();
@@ -63,45 +69,88 @@ function updateModelInfoUI() {
     modelInfo.title = modelName;  // Full name on hover
 }
 
+// Countdown state
+let warmupCountdown = null;  // seconds remaining, or null
+let countdownInterval = null;
+
 /**
- * Warm up Modal GPU (called when switching to modal mode)
+ * Warm up Modal GPU (called when switching to modal mode or on Overview page load).
+ * Connects via SSE to /api/modal/warmup which sends an estimate first, then the
+ * ready signal. Frontend runs a countdown from the estimate.
  */
-async function warmupModal() {
+function warmupModal() {
     if (inferenceMode !== 'modal') {
         modalConnectionState = 'connected';  // Local is always ready
         updateConnectionStatusUI();
         return;
     }
 
+    // Don't restart if already warming
+    if (modalConnectionState === 'warming') return;
+
     modalConnectionState = 'warming';
+    warmupCountdown = null;
     updateConnectionStatusUI();
 
-    try {
-        const response = await fetch('/api/modal/warmup');
-        const data = await response.json();
+    const warmupStart = performance.now();
+    const es = new EventSource('/api/modal/warmup');
+
+    es.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.status === 'warming') {
+            // Start countdown from server's estimate
+            warmupCountdown = data.estimated_seconds;
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                if (warmupCountdown > 0) {
+                    warmupCountdown--;
+                    updateConnectionStatusUI();
+                }
+            }, 1000);
+            updateConnectionStatusUI();
+        }
 
         if (data.status === 'ready') {
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+            warmupCountdown = null;
             modalConnectionState = 'connected';
-        } else if (data.status === 'skipped') {
-            // Server says skip modal (INFERENCE_MODE=local on server)
-            modalConnectionState = 'connected';
-        } else {
+            const elapsed = ((performance.now() - warmupStart) / 1000).toFixed(1);
+            console.log(`[LiveChat] GPU warm in ${elapsed}s (server: ${data.actual_seconds}s, model: ${data.model})`);
+            updateConnectionStatusUI();
+            es.close();
+
+            // Transition from landing page to full chat UI
+            if (window.state?.currentView === 'live-chat' && window.renderLiveChat) {
+                window.renderLiveChat();
+            }
+
+            // Flush any pending message
+            if (pendingMessage) {
+                const input = document.getElementById('chat-input');
+                if (input) input.value = pendingMessage;
+                pendingMessage = null;
+            }
+        }
+
+        if (data.status === 'error') {
+            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+            warmupCountdown = null;
             modalConnectionState = 'error';
             console.error('[LiveChat] Warmup failed:', data);
+            updateConnectionStatusUI();
+            es.close();
         }
-    } catch (e) {
+    };
+
+    es.onerror = () => {
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        warmupCountdown = null;
         modalConnectionState = 'error';
-        console.error('[LiveChat] Warmup error:', e);
-    }
-
-    updateConnectionStatusUI();
-
-    // Check for pending message
-    if (pendingMessage && modalConnectionState === 'connected') {
-        const input = document.getElementById('chat-input');
-        if (input) input.value = pendingMessage;
-        pendingMessage = null;
-    }
+        console.error('[LiveChat] Warmup SSE error');
+        updateConnectionStatusUI();
+        es.close();
+    };
 }
 
 /**
@@ -111,9 +160,23 @@ function updateConnectionStatusUI(isGenerating = false) {
     const statusEl = document.getElementById('connection-status');
     if (!statusEl) return;
 
+    // In local mode, always show ready
+    if (inferenceMode === 'local') {
+        statusEl.innerHTML = `
+            <span class="status-dot connected"></span>
+            <span class="status-text">Ready</span>
+        `;
+        return;
+    }
+
+    // Modal mode — show actual connection state
+    const warmingText = warmupCountdown > 0
+        ? `Waking GPU... ~${warmupCountdown}s`
+        : 'Waking GPU...';
+
     const states = {
         disconnected: { dot: 'disconnected', text: 'Disconnected' },
-        warming: { dot: 'warming', text: 'Waking up GPU...' },
+        warming: { dot: 'warming', text: warmingText },
         connected: { dot: 'connected', text: 'Connected' },
         error: { dot: 'error', text: 'Connection failed' }
     };
@@ -142,6 +205,7 @@ function getModalConnectionState() { return modalConnectionState; }
 function setModalConnectionState(state) { modalConnectionState = state; }
 function getPendingMessage() { return pendingMessage; }
 function setPendingMessage(msg) { pendingMessage = msg; }
+function getWarmupCountdown() { return warmupCountdown; }
 
 export {
     toggleInferenceMode,
@@ -155,6 +219,7 @@ export {
     setModalConnectionState,
     getPendingMessage,
     setPendingMessage,
+    getWarmupCountdown,
 };
 
 // Window binding for onclick in generated HTML

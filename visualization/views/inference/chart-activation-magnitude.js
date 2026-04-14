@@ -1,10 +1,10 @@
-// Activation magnitude per token chart for Trait Dynamics view
+// Activation magnitude per token chart for Inference view
 // Input: traitData, loadedTraits, tick data
-// Output: rendered Plotly magnitude plot into #token-magnitude-plot (sec-header body managed by controls.js)
+// Output: rendered Plotly magnitude plot into #token-magnitude-plot (sec-header body managed by inference-view-controls.js)
 
 import { getChartColors } from '../../core/display.js';
 import { buildChartLayout, renderChart, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildTurnBoundaryShapes } from '../../core/charts.js';
-import { START_TOKEN_IDX } from './chart-trajectory.js';
+import { START_TOKEN_IDX } from './chart-token-trajectory.js';
 
 /**
  * Render Token Magnitude plot showing L2 norm per token at best layer.

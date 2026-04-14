@@ -64,7 +64,7 @@ from utils.paths import (
 from utils.model import pad_sequences, format_prompt
 from utils.distributed import is_rank_zero, is_tp_mode
 from utils.load_activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
-from core import MultiLayerCapture, get_method
+from core import MultiLayerCapture, get_method, batch_cosine_similarity, accuracy, effect_size, polarity_correct
 from core.types import ActivationMetadata
 
 if TYPE_CHECKING:
@@ -151,17 +151,24 @@ def extract_activations_for_trait(
     try:
         with open(responses_dir / 'pos.json') as f:
             pos_data = json.load(f)
-        with open(responses_dir / 'neg.json') as f:
-            neg_data = json.load(f)
-        metadata_path = responses_dir / 'metadata.json'
-        use_chat_template = False
-        if metadata_path.exists():
-            with open(metadata_path) as f:
-                resp_metadata = json.load(f)
-            use_chat_template = resp_metadata.get('chat_template', False)
     except FileNotFoundError:
-        print(f"      ERROR: Response files not found. Run stage 1 first.")
+        print(f"      ERROR: pos.json not found in {responses_dir}. Run stage 1 first.")
         return 0
+
+    # neg.json is optional for single-polarity traits
+    neg_path = responses_dir / 'neg.json'
+    if neg_path.exists():
+        with open(neg_path) as f:
+            neg_data = json.load(f)
+    else:
+        neg_data = []
+
+    metadata_path = responses_dir / 'metadata.json'
+    use_chat_template = False
+    if metadata_path.exists():
+        with open(metadata_path) as f:
+            resp_metadata = json.load(f)
+        use_chat_template = resp_metadata.get('chat_template', False)
 
     n_filtered_pos, n_filtered_neg, n_excluded_by_pairing = 0, 0, 0
     if use_vetting_filter:
@@ -281,6 +288,8 @@ def extract_activations_for_trait(
                         model(input_ids=input_ids, attention_mask=attention_mask, use_cache=False)
 
                 for layer in layer_list:
+                    if layer not in capture.available_layers:
+                        continue
                     acts = capture.get(layer)
                     if acts is None:
                         continue
@@ -497,7 +506,7 @@ def extract_vectors_for_trait(
                 experiment, trait, model_variant, layer_idx, component, position
             )
 
-        if pos_acts.numel() == 0 or neg_acts.numel() == 0:
+        if pos_acts.numel() == 0:
             continue
 
         if activations is not None:
@@ -509,8 +518,11 @@ def extract_vectors_for_trait(
             )
 
         mean_pos = pos_acts.float().mean(dim=0)
-        mean_neg = neg_acts.float().mean(dim=0)
-        center = (mean_pos + mean_neg) / 2
+        if neg_acts.numel() > 0:
+            mean_neg = neg_acts.float().mean(dim=0)
+            center = (mean_pos + mean_neg) / 2
+        else:
+            center = mean_pos
 
         for method_name, method_obj in method_objs.items():
             try:
@@ -533,6 +545,14 @@ def extract_vectors_for_trait(
                     layer_info['bias'] = float(b.item()) if isinstance(b, torch.Tensor) else b
                 if 'train_acc' in result:
                     layer_info['train_acc'] = float(result['train_acc'])
+
+                # Compute val metrics if val split exists
+                if val_pos.numel() > 0 and val_neg.numel() > 0:
+                    val_proj_pos = batch_cosine_similarity(val_pos, vector)
+                    val_proj_neg = batch_cosine_similarity(val_neg, vector)
+                    layer_info['val_accuracy'] = float(accuracy(val_proj_pos, val_proj_neg))
+                    layer_info['val_effect_size'] = float(effect_size(val_proj_pos, val_proj_neg))
+                    layer_info['polarity_correct'] = bool(polarity_correct(val_proj_pos, val_proj_neg))
 
                 method_metadata[method_name]["layers"][str(layer_idx)] = layer_info
                 n_extracted += 1

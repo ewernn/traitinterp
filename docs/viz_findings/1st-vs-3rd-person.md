@@ -1,6 +1,8 @@
 ---
-title: "1st vs 3rd Person Perspective (Steering vector base model extraction)"
+title: "1st vs 3rd Person Perspective"
 preview: "1st person scenarios produce 2.5x stronger steering vectors than 3rd person observations."
+date: "Jan 2026"
+tier: minor
 ---
 
 # Base model extraction: 1st person beats 3rd person perspective

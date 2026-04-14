@@ -10,7 +10,6 @@ from .types import (
     ProjectionEntry,
     ProjectionRecord,
     ResponseRecord,
-    ModelConfig,
     ModelVariant,
     SteeringEntry,
     SteeringRunRecord,
@@ -29,9 +28,10 @@ from .hooks import (
     MultiLayerProjection,       # project across layers (stream-through)
     MultiLayerSteering,           # steer multiple layers simultaneously
     MultiLayerAblation,           # ablate direction across all layers
-    ActivationCappingHook,            # clamp projection above threshold (single layer)
-    MultiLayerActivationCapping,  # clamp projection above threshold (multi-layer)
-    PerSampleSteering,         # different steering per batch slice
+    ActivationCappingHook,        # clamp projection within bounds (single layer)
+    MultiLayerActivationCapping,  # clamp projection within bounds (multi-layer)
+    PerSampleSteering,            # different steering per batch slice
+    PerPositionSteeringHook,      # steer at specific token positions
 )
 from .methods import (
     ExtractionMethod,
@@ -49,9 +49,17 @@ from .math import (
     orthogonalize,
     accuracy,
     effect_size,
+    pearson_correlation,
     polarity_correct,
     remove_massive_dims,
     normalize_projections,
+    pairwise_cosine_matrix,
+    pca,
+    project_out_subspace,
+    trait_clusters,
+    representational_similarity,
+    vector_set_comparison,
+    pca_norm_correlation,
 )
 from .generation import (
     HookedGenerator,

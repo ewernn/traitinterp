@@ -16,19 +16,6 @@ _cache: dict = {}
 _models_dir = Path(__file__).parent.parent / "config" / "models"
 
 
-def get_model_slug(model_id: str) -> str:
-    """
-    Convert model ID to filesystem-safe slug.
-
-    Examples:
-        google/gemma-2-2b-it -> gemma-2-2b-it
-        meta-llama/Llama-3.1-8B -> llama-3.1-8b
-        gemma-2-2b-it -> gemma-2-2b-it
-    """
-    if '/' in model_id:
-        model_id = model_id.split('/')[-1]
-    return model_id.lower()
-
 
 def get_model_config(model_id: str) -> dict:
     """Load model config from config/models/{model_id}.yaml"""
@@ -67,16 +54,3 @@ def is_base_model(model_id: str) -> bool:
         return not any(indicator in name_lower for indicator in it_indicators)
 
 
-def get_sae_path(model_id: str, layer: int) -> Optional[Path]:
-    """Get SAE path for layer, if available."""
-    config = get_model_config(model_id)
-    sae = config.get('sae', {})
-
-    if not sae.get('available', False):
-        return None
-    if layer not in sae.get('downloaded_layers', []):
-        return None
-
-    base_path = Path(__file__).parent.parent / sae['base_path']
-    layer_dir = sae['layer_template'].format(layer=layer)
-    return base_path / layer_dir
