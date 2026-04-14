@@ -67,24 +67,6 @@ function injectStyles() {
     overflow: hidden;
     position: relative;
 }
-.detail-chart-legend {
-    display: flex;
-    gap: 14px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-}
-.detail-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 10px;
-    color: var(--text-tertiary);
-}
-.detail-legend-line {
-    width: 16px;
-    height: 2px;
-    border-radius: 1px;
-}
 
 /* Info hover icons */
 .detail-info-icons {
@@ -309,33 +291,52 @@ function renderDetailPlotly(chartDiv, detailData, direction) {
             }),
             type: 'scatter',
             mode: 'lines+markers',
-            line: { color, width: 2 },
-            marker: { size: 6 },
+            line: { color, width: 2.5 },
+            marker: { size: 5, color },
             hovertemplate: '%{customdata}<extra></extra>',
         });
     }
 
-    // Baseline line
-    const shapes = detailData.baseline != null ? [{
-        type: 'line',
-        x0: detailData.minLayer,
-        x1: detailData.maxLayer,
-        y0: detailData.baseline,
-        y1: detailData.baseline,
-        line: { color: 'rgba(150,150,150,0.6)', width: 1, dash: 'dash' },
-    }] : [];
+    // Baseline as a trace (so it shows in legend)
+    if (detailData.baseline != null) {
+        traces.push({
+            name: `Baseline (${detailData.baseline.toFixed(0)})`,
+            x: [detailData.minLayer, detailData.maxLayer],
+            y: [detailData.baseline, detailData.baseline],
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: 'rgba(200,200,200,0.6)', width: 1.5, dash: 'dash' },
+            hoverinfo: 'skip',
+        });
+    }
 
     const layout = {
-        height: 220,
-        margin: { l: 50, r: 20, t: 10, b: 40 },
-        xaxis: { title: 'Layer', dtick: 1 },
-        yaxis: { title: 'Score' },
-        shapes,
-        showlegend: traces.length > 1,
-        legend: { x: 0, y: -0.3, orientation: 'h' },
+        height: 280,
+        margin: { l: 45, r: 16, t: 8, b: 60 },
+        xaxis: {
+            title: { text: 'Layer', font: { size: 11, color: '#888' } },
+            dtick: 1,
+            showgrid: false,
+            zeroline: false,
+            linecolor: 'rgba(150,150,150,0.2)',
+            linewidth: 1,
+            tickfont: { size: 10, color: '#666' },
+        },
+        yaxis: {
+            title: { text: 'Trait Score', font: { size: 11, color: '#888' } },
+            showgrid: true,
+            gridcolor: 'rgba(150,150,150,0.1)',
+            gridwidth: 1,
+            zeroline: false,
+            linecolor: 'rgba(150,150,150,0.2)',
+            linewidth: 1,
+            tickfont: { size: 10, color: '#666' },
+        },
+        showlegend: true,
+        legend: { x: 0, y: -0.25, orientation: 'h', font: { size: 10, color: '#888' } },
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
-        font: { color: 'var(--text-primary, #ccc)', size: 11 },
+        font: { color: '#ccc', size: 11 },
         hovermode: 'closest',
     };
 
@@ -512,7 +513,7 @@ function buildDetailHTML(trait, traitResults) {
     const methodColors = getMethodColors();
 
     // Score class helper
-    const deltaClass = (delta) => delta > 20 ? 'good' : delta > 5 ? 'moderate' : '';
+    const deltaClass = (delta) => Math.abs(delta) > 20 ? 'good' : Math.abs(delta) > 5 ? 'moderate' : '';
 
     // Find best method + delta
     let bestDelta = 0;
@@ -525,23 +526,6 @@ function buildDetailHTML(trait, traitResults) {
         bestMethod = bestRun.method;
         bestCoherence = bestRun.coherence;
     }
-
-    // Legend
-    const legendItems = Object.entries(methods).map(([method, points]) => {
-        const color = methodColors[method] || '#888';
-        const best = points.reduce((a, b) => a.score > b.score ? a : b, { score: 0, layer: 0 });
-        const delta = (best.score - baseline).toFixed(1);
-        const sign = best.score - baseline >= 0 ? '+' : '';
-        return `<span class="detail-legend-item">
-            <span class="detail-legend-line" style="background: ${color};"></span>
-            ${escapeHtml(method)} (best: ${sign}${delta} @ L${best.layer})
-        </span>`;
-    }).join('');
-
-    const baselineLegend = `<span class="detail-legend-item">
-        <span class="detail-legend-line" style="background: var(--text-tertiary); border-top: 1px dashed var(--text-tertiary); height: 0;"></span>
-        Baseline (${baseline.toFixed(1)})
-    </span>`;
 
     // Tooltip placeholders (content loaded on hover via fetch)
     const tooltipHTML = `
@@ -612,9 +596,9 @@ function buildDetailHTML(trait, traitResults) {
         </div>
         <div class="subsection-info" id="info-steering-detail-chart">Trait score (judge, 0&ndash;100) per injection layer, one line per extraction method. Dashed line = unsteered baseline. Distance from baseline = steering strength.</div>
         <div class="detail-chart" id="detail-chart-${traitName}"></div>
-        <div class="detail-chart-legend">
-            ${legendItems}
-            ${baselineLegend}
+        <div class="detail-baseline-response" style="display:none;">
+            <div class="br-label">Baseline response (no steering)</div>
+            <div class="br-text"><span class="br-loading">Loading...</span></div>
         </div>
         ${bestResponseHTML}
         <details class="detail-layer-results">
@@ -714,6 +698,29 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
             }
         });
     });
+
+    // ── Load baseline response ──
+    const baselineEl = panel.querySelector('.detail-baseline-response');
+    if (baselineEl) {
+        const experiment = window.state.experimentData?.name;
+        const basePath = window.paths?.get('steering.responses', {
+            experiment, trait: entry.trait, model_variant: entry.model_variant,
+            position: entry.position, prompt_set: entry.prompt_set,
+        });
+        if (basePath) {
+            fetch(`/${basePath}/baseline.json`).then(r => r.ok ? r.json() : null).then(responses => {
+                if (!responses || responses.length === 0) return;
+                baselineEl.style.display = 'block';
+                // Pick the response with the highest trait score to show the "best baseline"
+                const best = responses.reduce((a, b) => (b.trait_score || 0) > (a.trait_score || 0) ? b : a, responses[0]);
+                const promptLine = best.prompt
+                    ? `<div class="br-question">Q: ${escapeHtml(best.prompt)}</div>` : '';
+                baselineEl.querySelector('.br-text').innerHTML =
+                    `<div class="br-meta">trait=${(best.trait_score||0).toFixed(1)} · coherence=${(best.coherence_score||0).toFixed(0)}</div>`
+                    + promptLine + `<div style="margin-top:4px;">${escapeHtml(best.response || '')}</div>`;
+            }).catch(() => {});
+        }
+    }
 
     // ── Check if responses exist, then wire response sections ──
     const listing = await fetchResponseListing(entry);
