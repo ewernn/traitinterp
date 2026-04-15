@@ -2116,8 +2116,8 @@ mark.annotation {
 /* Steering overview grid */
 .steering-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
 }
 
 .steering-grid .detail-panel {
@@ -2773,6 +2773,10 @@ mark.annotation {
     background: var(--error-color, #ef4444);
 }
 
+.status-dot.warning {
+    background: var(--warning-color, #f59e0b);
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
@@ -2853,6 +2857,19 @@ mark.annotation {
     height: calc(100vh - 120px);
     display: flex;
     flex-direction: column;
+}
+
+/* Inline link used in helper text (e.g. wake-cta "Switch to Modal GPU").
+   Explicit color so it's readable on dark backgrounds — the browser
+   default <a> blue is nearly invisible there. */
+.inline-action {
+    color: var(--primary-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+.inline-action:hover {
+    color: var(--text-primary);
 }
 
 /* Wake-GPU CTA — centered over the (hidden) chart when backend is cold.
@@ -3193,6 +3210,17 @@ mark.annotation {
 
 .finding-card.finding-todo {
     opacity: 0.5;
+}
+
+.finding-separator {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+    border-top: 1px dashed var(--border-color);
+    border-bottom: 1px dashed var(--border-color);
+    margin: 8px 0;
 }
 
 .finding-header {

@@ -233,6 +233,7 @@ def load_model_with_lora(
     lora_adapter: str = None,
     load_in_4bit: bool = False,
     bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
+    load_in_8bit: bool = False,
     device: str = "auto",
     dtype: torch.dtype = torch.bfloat16,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -256,7 +257,7 @@ def load_model_with_lora(
     _print(f"Loading model: {model_name}...")
 
     # Fast path: load from cache if available (skips from_pretrained entirely)
-    if not lora_adapter and not load_in_4bit:
+    if not lora_adapter and not load_in_4bit and not load_in_8bit:
         cache_dir = _get_model_cache_dir(model_name)
         if cache_dir.exists() and (cache_dir / "metadata.json").exists():
             _print(f"  Found model cache at {cache_dir}")
@@ -436,6 +437,14 @@ def load_model_with_lora(
             bnb_4bit_quant_type=bnb_4bit_quant_type,
             bnb_4bit_use_double_quant=True,
         )
+        model_kwargs["quantization_config"] = bnb_config
+    elif load_in_8bit:
+        try:
+            from transformers import BitsAndBytesConfig
+        except ImportError:
+            raise ImportError("bitsandbytes required for quantization. Install with: pip install bitsandbytes")
+
+        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
         model_kwargs["quantization_config"] = bnb_config
 
     import time as _time; _t0 = _time.time()

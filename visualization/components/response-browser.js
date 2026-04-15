@@ -8,6 +8,7 @@
 
 import { escapeHtml } from '../core/utils.js';
 import { renderLoading, renderChip, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
 
 // Track current sort state per trait
 const responseBrowserState = {};
@@ -25,15 +26,11 @@ async function resetAndRender(trait) {
     await renderResponseBrowserForTrait(trait);
 }
 
-/** Attach a change listener to a filter dropdown, updating state and re-rendering */
+/** Attach a change listener to a filter dropdown, updating state and re-rendering.
+ *  (Filter dropdowns wire themselves via the styled-select onChange; this remains
+ *  as a no-op for call-site compatibility.) */
 function attachFilterListener(container, filterName, stateProperty, trait) {
-    const select = container.querySelector(`select[data-filter="${filterName}"]`);
-    if (select) {
-        select.addEventListener('change', async () => {
-            responseBrowserState[trait][stateProperty] = select.value;
-            await resetAndRender(trait);
-        });
-    }
+    // No-op — styled-select onChange callback handles state updates.
 }
 
 /** Attach a change listener to a toggle checkbox, updating state and re-rendering */
@@ -73,18 +70,28 @@ function steeringResponsePath(entry) {
     });
 }
 
-/** Render a filter dropdown group (label + select with "All" default) */
-function renderFilterDropdown(filterName, label, currentValue, options) {
+/** Render a filter dropdown group (label + styled select with "All" default) */
+function renderFilterDropdown(filterName, label, currentValue, options, stateProperty, trait) {
+    const selectId = `rb-filter-${trait.replace(/[^a-z0-9]/gi, '_')}-${filterName}`;
+    const allOptions = [
+        { value: 'all', label: 'All' },
+        ...options.map(opt => {
+            const [value, display] = Array.isArray(opt) ? opt : [opt, opt];
+            return { value, label: display };
+        }),
+    ];
     return `
         <div class="rb-dropdown-group">
             <label class="rb-filter-label">${label}:</label>
-            <select class="rb-select" data-filter="${filterName}">
-                <option value="all" ${currentValue === 'all' ? 'selected' : ''}>All</option>
-                ${options.map(opt => {
-                    const [value, display] = Array.isArray(opt) ? opt : [opt, opt];
-                    return `<option value="${value}" ${currentValue === value ? 'selected' : ''}>${display}</option>`;
-                }).join('')}
-            </select>
+            ${renderStyledSelect({
+                id: selectId,
+                options: allOptions,
+                selected: currentValue,
+                onChange: async (val) => {
+                    responseBrowserState[trait][stateProperty] = val;
+                    await resetAndRender(trait);
+                },
+            })}
         </div>
     `;
 }
@@ -290,9 +297,9 @@ async function renderResponseBrowserForTrait(trait) {
                     return `<label class="rb-chip ${on ? 'active' : ''}"><input type="checkbox" value="${l}" ${on ? 'checked' : ''}> L${l}</label>`;
                 }).join('')}
             </div>
-            ${(hasPositive && hasNegative) ? renderFilterDropdown('direction', 'Direction', state.steeringDirection, [['positive', 'Positive (+)'], ['negative', 'Negative (−)']]) : ''}
-            ${uniquePromptSets.length > 1 ? renderFilterDropdown('prompt-set', 'Prompt set', state.promptSetFilter, uniquePromptSets) : ''}
-            ${uniqueModelVariants.length > 1 ? renderFilterDropdown('model-variant', 'Model', state.modelVariantFilter, uniqueModelVariants) : ''}
+            ${(hasPositive && hasNegative) ? renderFilterDropdown('direction', 'Direction', state.steeringDirection, [['positive', 'Positive (+)'], ['negative', 'Negative (−)']], 'steeringDirection', trait) : ''}
+            ${uniquePromptSets.length > 1 ? renderFilterDropdown('prompt-set', 'Prompt set', state.promptSetFilter, uniquePromptSets, 'promptSetFilter', trait) : ''}
+            ${uniqueModelVariants.length > 1 ? renderFilterDropdown('model-variant', 'Model', state.modelVariantFilter, uniqueModelVariants, 'modelVariantFilter', trait) : ''}
             <div class="rb-info-btns">
                 ${[['Definition', 'definition'], ['Judge Prompt', 'judge'], ...(baselineEntry ? [['Baseline', 'baseline']] : [])]
                     .map(([label, value]) => renderChip({ label, active: state.infoPanel === value, dataAttr: { key: 'info', value }, className: 'rb-info-btn' })).join('')}
@@ -389,10 +396,8 @@ function setupResponseBrowserHandlers(trait, container) {
     attachToggleListener(container, 'input[data-action="best-per-layer"]', 'bestPerLayer', trait, { resetsRow: true });
     attachToggleListener(container, '.rb-filters input[data-action="compact-responses"]', 'compactResponses', trait);
 
-    // Filter dropdowns (direction, prompt set, model variant)
-    attachFilterListener(container, 'direction', 'steeringDirection', trait);
-    attachFilterListener(container, 'prompt-set', 'promptSetFilter', trait);
-    attachFilterListener(container, 'model-variant', 'modelVariantFilter', trait);
+    // Filter dropdowns (styled selects wire themselves via onChange)
+    wireStyledSelect(container);
 
     // Layer filter checkboxes
     container.querySelectorAll('.rb-chip input').forEach(checkbox => {

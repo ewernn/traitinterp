@@ -6,9 +6,10 @@ findings:
   # - mats-behavioral-probes.md            # WIP — markdown + 20+ assets untracked
   - emotion-concepts-replication.md
   - assistant-axis-replication.md
+  - comparison-persona-vectors.md
+  - separator: most of these are unfinished but feel free to skim
   - rm-sycophancy.md
   - convolution-detector.md
-  - comparison-persona-vectors.md
   - liars-bench-deception.md
   - prefill-dynamics.md
   - component-decomposition.md

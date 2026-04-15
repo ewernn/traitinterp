@@ -46,6 +46,7 @@ def _ensure_backend(config, model_name, lora_adapter, backend):
         model, tokenizer = load_model_with_lora(
             model_name, load_in_4bit=config.load_in_4bit,
             bnb_4bit_quant_type=config.bnb_4bit_quant_type,
+            load_in_8bit=getattr(config, 'load_in_8bit', False),
             lora_adapter=lora_adapter)
         return LocalBackend.from_model(model, tokenizer)
     return backend
@@ -122,6 +123,45 @@ async def compute_baseline(backend, questions, trait_name, trait_definition, jud
         baseline = broadcast_list[0]
 
     return baseline, response_data
+
+
+def warn_if_baseline_problematic(baseline_result, direction: str, trait: str) -> None:
+    """Loudly flag baselines that violate the gates from docs/trait_dataset_creation.md.
+
+    Positive direction: mean<20, std<10, max<30 (steering must produce real signal,
+    not measure questions that already score high).
+    Negative direction (RLHF structural traits): baseline expected 60-95.
+    """
+    if not is_rank_zero() or baseline_result is None or baseline_result.trait_mean is None:
+        return
+
+    mean = baseline_result.trait_mean
+    std = baseline_result.trait_std or 0.0
+    mx = baseline_result.max_score if baseline_result.max_score is not None else 0.0
+
+    issues = []
+    if direction == "negative":
+        # RLHF structural: should already express the trait at baseline
+        if mean < 60:
+            issues.append(f"mean={mean:.1f} <60 (RLHF structural traits should already express; vector measures removal)")
+    else:
+        if mean > 20:
+            issues.append(f"mean={mean:.1f} >20")
+        if std > 10:
+            issues.append(f"std={std:.1f} >10")
+        if mx > 30:
+            issues.append(f"max={mx:.1f} >30 (at least one question already scores high)")
+
+    if issues:
+        print()
+        print("!" * 72)
+        print(f"!! BASELINE QUALITY WARNING — {trait} (direction={direction})")
+        for i in issues:
+            print(f"!!   {i}")
+        print(f"!! Steering delta will be inflated/contaminated. See docs/trait_dataset_creation.md")
+        print(f"!! → 'What inflates baselines'. Consider rewriting steering.json questions.")
+        print("!" * 72)
+        print()
 
 
 def parse_coefficients(coef_arg: Optional[str]) -> Optional[List[float]]:
@@ -469,6 +509,8 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
         _btm = baseline_result.trait_mean
         print(f"\nUsing existing baseline: trait={f'{float(_btm):.1f}' if _btm is not None else 'None'}")
 
+    warn_if_baseline_problematic(baseline_result, direction, trait)
+
     # Load vectors
     cached_norms = load_cached_activation_norms(vector_experiment, "residual")
     if cached_norms:
@@ -571,6 +613,7 @@ async def run_baselines(config: SteeringConfig, parsed_traits, model_variant, mo
             save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
             append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=trait_judge)
 
+        warn_if_baseline_problematic(baseline_result, steering_data.direction or "positive", trait)
         summary.append((trait, baseline_result.trait_mean, baseline_result.coherence_mean, baseline_result.n, "computed"))
 
     print(f"\n{'='*60}")
@@ -640,6 +683,8 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
         else:
             _bm = baseline_result.trait_mean
             print(f"  Existing baseline: trait={f'{float(_bm):.1f}' if _bm is not None else 'None'}")
+
+        warn_if_baseline_problematic(baseline_result, trait_direction, trait)
 
         trait_layer_list = parsed_trait_layers.get(trait, default_layers)
         layer_data = load_vectors(

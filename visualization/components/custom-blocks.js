@@ -365,7 +365,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
                     </div>`;
             }
             // Image path
-            const imgPath = p.startsWith('assets/') ? `${assetBaseUrl}${p}` : p;
+            const imgPath = p.startsWith('assets/') ? `${assetBaseUrl}${p}` : p.startsWith('/') ? p : `/${p}`;
             return `
                 <div class="sbs-panel">
                     ${label ? `<div class="sbs-label">${label}</div>` : ''}

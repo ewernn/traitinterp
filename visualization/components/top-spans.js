@@ -10,7 +10,8 @@
 
 import { getDisplayName } from '../core/display.js';
 import { setSpanWindowLength, setSpanScope, setSpanMode, getVariantForCurrentPromptSet } from '../core/state.js';
-import { renderFilterChip } from '../core/ui.js';
+import { renderFilterChip, renderSegmentedControl } from '../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
 
 /** Return inline color and formatted delta string for a span's meanDelta. */
 function deltaStyle(meanDelta) {
@@ -253,12 +254,15 @@ function computeClauseSpans(diffValues, tokens, topK = 10) {
  */
 function renderSpanRow(s, i, showPromptId = false) {
     const { color, text: deltaText } = deltaStyle(s.meanDelta);
+    // Prompt picker shows 1-based sequential numbers; match that so rows and picker agree.
+    const promptIds = window.state.promptsWithData?.[window.state.currentPromptSet] || [];
+    const displayNum = promptIds.indexOf(s.promptId) + 1;
     const title = showPromptId
-        ? `Prompt ${s.promptId}, tokens ${s.start}\u2013${s.end}`
+        ? `Prompt ${displayNum || s.promptId}, tokens ${s.start}\u2013${s.end}`
         : `Tokens ${s.start}\u2013${s.end} (response-relative)`;
     const promptIdAttr = showPromptId ? ` data-prompt-id="${s.promptId}"` : '';
     const promptBadge = showPromptId
-        ? `<span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>`
+        ? `<span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${displayNum || s.promptId}</span>`
         : '';
     const spanText = (s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}"${promptIdAttr} title="${title}">
@@ -341,20 +345,38 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     container.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
             <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
-            <select id="span-trait-select" style="font-size: var(--text-xs);">
-                ${candidateTraitKeys.map(k => `
-                    <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${traitDisplayName(k)}</option>
-                `).join('')}
-            </select>
-            ${renderFilterChip('window', 'Window', spanMode, 'span-mode')}
-            ${renderFilterChip('clauses', 'Clauses', spanMode, 'span-mode')}
+            ${renderStyledSelect({
+                id: 'span-trait-select',
+                options: candidateTraitKeys.map(k => ({ value: k, label: traitDisplayName(k) })),
+                selected: spanTrait,
+                onChange: (value) => {
+                    window.state.spanTrait = value;
+                    renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+                },
+            })}
+            ${renderSegmentedControl({
+                id: 'span-mode-control',
+                options: [
+                    { value: 'window', label: 'Window' },
+                    { value: 'clauses', label: 'Clauses' },
+                ],
+                selected: spanMode,
+                dataAttr: 'span-mode',
+            })}
             ${spanMode === 'window' ? `
             <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
             <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
             ` : ''}
             <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
-            ${renderFilterChip('current', 'Current', window.state.spanScope, 'span-scope')}
-            ${renderFilterChip('allPrompts', 'All Prompts', window.state.spanScope, 'span-scope')}
+            ${renderSegmentedControl({
+                id: 'span-scope-control',
+                options: [
+                    { value: 'current', label: 'Current' },
+                    { value: 'allPrompts', label: 'All Responses' },
+                ],
+                selected: window.state.spanScope || 'current',
+                dataAttr: 'span-scope',
+            })}
         </div>
         <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
             ${isAllPrompts
@@ -367,13 +389,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     if (badge && !isAllPrompts) badge.textContent = spans.length + ' spans';
 
     // Event listeners
-    const traitSelect = document.getElementById('span-trait-select');
-    if (traitSelect) {
-        traitSelect.addEventListener('change', () => {
-            window.state.spanTrait = traitSelect.value;
-            renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-        });
-    }
+    wireStyledSelect(container);
 
     const slider = document.getElementById('span-window-slider');
     if (slider) {
@@ -417,7 +433,8 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
         const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
         const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
-        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel || 'single'}:${baseTrait}:${modeKey}`;
+        const projMode = window.state.projectionMode || 'cosine';
+        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel || 'single'}:${baseTrait}:${modeKey}:${projMode}`;
         if (crossPromptSpansCache[cacheKey]) {
             const cached = crossPromptSpansCache[cacheKey];
             renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);

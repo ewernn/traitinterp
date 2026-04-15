@@ -138,6 +138,7 @@ def main():
     parser.add_argument("--extraction-variant", default=None)
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--bnb-4bit-quant-type", default="nf4")
+    parser.add_argument("--load-in-8bit", action="store_true")
     parser.add_argument("--vector-experiment", default=None)
     add_backend_args(parser)
 
@@ -148,7 +149,7 @@ def main():
 
     # Evaluation
     parser.add_argument("--subset", type=int, default=5)
-    parser.add_argument("--max-new-tokens", type=int, default=64)
+    parser.add_argument("--max-new-tokens", type=int, default=128)
     # --judge removed: only OpenAI logprob scoring is supported (TraitJudge in utils/judge.py)
     parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE)
     prompt_group = parser.add_mutually_exclusive_group()
@@ -204,6 +205,7 @@ def main():
         save_mode=args.save_responses, force=args.force,
         load_in_4bit=args.load_in_4bit,
         bnb_4bit_quant_type=args.bnb_4bit_quant_type,
+        load_in_8bit=args.load_in_8bit,
         batched=not args.no_batch,
         regenerate_responses=args.regenerate_responses,
         baseline_only=args.baseline_only,

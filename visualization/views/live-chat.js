@@ -319,8 +319,12 @@ function applyChatStatusToDOM() {
     if (unloadBtn) unloadBtn.style.display = (ready && mode === 'local') ? '' : 'none';
 
     if (wakeBtn) {
-        const cannotFit = mode === 'local' && status.can_fit_locally === false;
-        wakeBtn.disabled = waking || cannotFit;
+        const mightNotFit = mode === 'local' && status.can_fit_locally === false;
+        // Only `waking` disables the button now. `mightNotFit` is a warning,
+        // not a block — the estimate is conservative (it assumes fp16 on MPS;
+        // a user with MLX / mlx-lm could fit more) and the user is the one
+        // who knows their machine.
+        wakeBtn.disabled = waking;
         if (waking) {
             const prog = getWakeProgress();
             const est = prog?.estimated_seconds;
@@ -330,8 +334,10 @@ function applyChatStatusToDOM() {
             wakeBtn.textContent = 'Wake GPU';
         }
         if (wakeHint) {
-            if (cannotFit) {
-                wakeHint.innerHTML = `${(status.model || 'Model').split('/').pop()} is too large for this machine. <a href="#" id="suggest-modal">Switch to Modal GPU</a>`;
+            if (mightNotFit) {
+                const short = (status.model || 'Model').split('/').pop();
+                wakeHint.innerHTML = `${short} may not fit in local RAM. `
+                    + `<a href="#" class="inline-action" id="suggest-modal">Switch to Modal GPU</a>`;
                 const link = wakeHint.querySelector('#suggest-modal');
                 if (link) link.onclick = (e) => { e.preventDefault(); toggleInferenceMode(); };
             } else if (waking) {

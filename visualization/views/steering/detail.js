@@ -308,7 +308,7 @@ async function fetchTooltipData(trait) {
 
 // ── Plotly chart ───────────────────────────────────────────────────
 
-function renderDetailPlotly(chartDiv, detailData, direction) {
+function renderDetailPlotly(chartDiv, detailData, direction, showErrorBars = false) {
     const methodColors = getMethodColors();
     const traces = [];
 
@@ -316,21 +316,33 @@ function renderDetailPlotly(chartDiv, detailData, direction) {
     for (const [method, points] of Object.entries(detailData.methods)) {
         const sorted = [...points].sort((a, b) => a.layer - b.layer);
         const color = methodColors[method] || '#888';
-        traces.push({
+        const trace = {
             name: method,
             x: sorted.map(d => d.layer),
             y: sorted.map(d => d.score),
             customdata: sorted.map(d => {
                 const delta = (d.score - detailData.baseline).toFixed(1);
                 const sign = delta >= 0 ? '+' : '';
-                return `L${d.layer} ${method}<br>Score: ${d.score.toFixed(1)} (${sign}${delta})<br>Coherence: ${d.coherence != null ? d.coherence.toFixed(0) : '?'}`;
+                const seBit = (d.traitSE != null && d.n) ? `<br>±SE: ${d.traitSE.toFixed(1)} (n=${d.n})` : '';
+                return `L${d.layer} ${method}<br>Score: ${d.score.toFixed(1)} (${sign}${delta})<br>Coherence: ${d.coherence != null ? d.coherence.toFixed(0) : '?'}${seBit}`;
             }),
             type: 'scatter',
             mode: 'lines+markers',
             line: { color, width: 2.5 },
             marker: { size: 5, color },
             hovertemplate: '%{customdata}<extra></extra>',
-        });
+        };
+        if (showErrorBars) {
+            trace.error_y = {
+                type: 'data',
+                array: sorted.map(d => d.traitSE || 0),
+                color,
+                thickness: 1,
+                width: 3,
+                visible: true,
+            };
+        }
+        traces.push(trace);
     }
 
     // Baseline as a trace (so it shows in legend)
@@ -404,7 +416,7 @@ function extractDetailData(traitResults, direction, minCoherence) {
         const spec = extractVectorSpec(run);
         if (!spec) continue;
         const { layer, method, component, coef } = spec;
-        const { traitScore, coherence } = extractRunMetrics(run.result || {}, baseline);
+        const { traitScore, coherence, traitSE, n } = extractRunMetrics(run.result || {}, baseline);
 
         // Skip runs below min coherence for best-run selection
         if (coherence != null && coherence < minCoherence) continue;
@@ -418,7 +430,7 @@ function extractDetailData(traitResults, direction, minCoherence) {
 
         if (!methods[method]) methods[method] = {};
         if (!methods[method][layer] || isBetter(traitScore, methods[method][layer].score)) {
-            methods[method][layer] = { score: traitScore, layer, coherence };
+            methods[method][layer] = { score: traitScore, layer, coherence, traitSE, n };
         }
 
         // Per-layer best (sorted later)
@@ -649,6 +661,10 @@ function buildDetailHTML(trait, traitResults) {
         <div class="detail-chart-header">
             <span>Steering Effect by Layer</span>
             <span class="subsection-info-toggle" data-target="info-steering-detail-chart">\u25BA</span>
+            <label style="margin-left:auto; font-size: var(--text-xs); color: var(--text-tertiary); cursor:pointer; user-select:none;">
+                <input type="checkbox" class="detail-error-bars-toggle" style="vertical-align:middle; margin-right:4px;" />
+                ±SE error bars
+            </label>
         </div>
         <div class="subsection-info" id="info-steering-detail-chart">Trait score (judge, 0&ndash;100) per injection layer, one line per extraction method. Dashed line = unsteered baseline. Distance from baseline = steering strength.</div>
         <div class="detail-chart" id="detail-chart-${traitName}"></div>
@@ -706,7 +722,15 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
     const traitName = trait.split('/').pop();
     const chartDiv = panel.querySelector(`#detail-chart-${traitName}`);
     if (chartDiv && detailData.perLayer.length > 0) {
-        renderDetailPlotly(chartDiv, detailData, direction);
+        renderDetailPlotly(chartDiv, detailData, direction, false);
+    }
+
+    // ── Wire ±SE error bar toggle ──
+    const errorBarToggle = panel.querySelector('.detail-error-bars-toggle');
+    if (errorBarToggle && chartDiv) {
+        errorBarToggle.addEventListener('change', () => {
+            renderDetailPlotly(chartDiv, detailData, direction, errorBarToggle.checked);
+        });
     }
 
     // ── Wire close button ──

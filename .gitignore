@@ -5,9 +5,22 @@
 *\ 2*
 *\ 3*
 *\ 4*
-# Experiment data (stored in R2, not git)
-experiments/
+# Experiment data (stored in R2, not git — whitelisted experiments below)
+experiments/*
 !experiments/.gitkeep
+
+# ant_emotion_concepts: un-ignore code/config/docs, keep data ignored
+!experiments/ant_emotion_concepts/
+!experiments/ant_emotion_concepts/**
+experiments/ant_emotion_concepts/results/
+experiments/ant_emotion_concepts/extraction/
+experiments/ant_emotion_concepts/steering/
+experiments/ant_emotion_concepts/paper_figures/ours/*.png
+experiments/ant_emotion_concepts/paper_figures/*.png
+
+# starter: whitelist config
+!experiments/starter/
+!experiments/starter/config.json
 
 # Downloaded model weights, LoRAs, HF hub cache (not git, not even R2 by default)
 cache/

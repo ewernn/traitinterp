@@ -149,7 +149,8 @@ function setPreference(key, value) {
     if (pref.type === 'bool') {
         value = !!value;
     } else if (pref.type === 'int') {
-        value = parseInt(value) || pref.default;
+        const n = parseInt(value);
+        value = Number.isFinite(n) ? n : pref.default;
         if (pref.clamp) value = Math.max(pref.clamp[0], Math.min(pref.clamp[1], value));
     } else if (pref.validate) {
         value = pref.validate(value);

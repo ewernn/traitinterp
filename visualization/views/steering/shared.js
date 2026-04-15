@@ -23,7 +23,11 @@ function extractRunMetrics(result, baseline) {
     const traitScore = result.trait_mean || 0;
     const coherence = result.coherence_mean || 0;
     const delta = traitScore - baseline;
-    return { traitScore, coherence, delta };
+    const traitStd = result.trait_std || 0;
+    const n = result.n || 0;
+    // Standard error of the mean for the n-question rollout
+    const traitSE = n > 0 ? traitStd / Math.sqrt(n) : 0;
+    return { traitScore, coherence, delta, traitStd, traitSE, n };
 }
 
 export { extractVectorSpec, extractRunMetrics };

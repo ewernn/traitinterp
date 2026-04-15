@@ -364,7 +364,8 @@ function updateExperimentVisibility() {
     const analysisPanel = document.getElementById('sidebar-analysis');
     if (!analysisPanel) return;
 
-    const isAnalysis = ANALYSIS_VIEWS.includes(window.state.currentView);
+    const view = window.state.currentView;
+    const isAnalysis = ANALYSIS_VIEWS.includes(view) || view === 'experiment-viz';
     analysisPanel.classList.toggle('hidden', !isAnalysis);
 }
 
@@ -561,6 +562,39 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
             item.classList.add('active');
 
             await loadExperimentData(expName);
+
+            // If we're on an experiment-viz view whose path no longer belongs to this
+            // experiment, try to auto-switch to one that does; otherwise fall back to
+            // a sensible default view for the new experiment.
+            if (window.state.currentView === 'experiment-viz') {
+                const currentVizPath = window.state.currentExpViz || '';
+                const stillValid = currentVizPath === expName || currentVizPath.startsWith(expName + '/');
+                if (!stillValid) {
+                    const allViz = window.state.experimentViz || [];
+                    const replacement = allViz.find(ev =>
+                        ev.path === expName || ev.path.startsWith(expName + '/')
+                    );
+                    if (replacement) {
+                        window.state.currentExpViz = replacement.path;
+                        const url = new URL(window.location);
+                        url.searchParams.set('exp-viz', replacement.path);
+                        window.history.replaceState({}, '', url);
+                    } else {
+                        // No viz module for this experiment — fall back to the experiment dashboard's
+                        // first analysis view so the user lands somewhere coherent
+                        window.state.currentExpViz = null;
+                        const fallback = (window.state.lastAnalysisView && window.state.lastAnalysisView !== 'experiment-viz')
+                            ? window.state.lastAnalysisView
+                            : 'extraction';
+                        window.state.currentView = fallback;
+                        const url = new URL(window.location);
+                        url.searchParams.set('tab', fallback);
+                        url.searchParams.delete('exp-viz');
+                        window.history.replaceState({}, '', url);
+                    }
+                }
+            }
+
             window.renderExperimentVizList?.();
             window.renderPromptPicker();
             if (window.renderView) window.renderView();

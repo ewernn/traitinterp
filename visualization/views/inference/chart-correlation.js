@@ -66,21 +66,11 @@ async function renderCorrelationSection(containerId, promptSet) {
             <div id="correlation-decay-plot"></div>
         </div>
 
-        <div class="correlation-subsection">
-            ${renderSubsection({
-                title: 'Response-Level Correlation',
-                infoId: 'info-response-correlation',
-                infoText: 'Trait × trait correlations using one mean projection per response. Shows which traits co-occur across prompts, ignoring within-response timing.',
-                level: 'h3'
-            })}
-            <div id="response-correlation-heatmap"></div>
-        </div>
     `;
 
     // Render plots
     renderCorrelationHeatmap(currentOffset);
     renderCorrelationDecay();
-    renderResponseCorrelation();
 
     // Setup slider
     const slider = document.getElementById('correlation-offset-slider');
@@ -229,44 +219,6 @@ function renderCorrelationDecay() {
     });
 
     renderChart('correlation-decay-plot', traces, layout);
-}
-
-
-function renderResponseCorrelation() {
-    const data = traitCorrelationData;
-    if (!data || !data.response_correlation) return;
-
-    const { trait_labels, response_correlation } = data;
-
-    const trace = {
-        z: response_correlation,
-        x: trait_labels,
-        y: trait_labels,
-        type: 'heatmap',
-        colorscale: CORRELATION_COLORSCALE,
-        zmin: -1,
-        zmax: 1,
-        hovertemplate: '%{y} ↔ %{x}<br>r = %{z:.3f}<extra></extra>',
-        showscale: true,
-        colorbar: {
-            title: 'Correlation',
-            titleside: 'right'
-        }
-    };
-
-    const annotations = buildHeatmapAnnotations(response_correlation, trait_labels, trait_labels, { threshold: 0.5, fontSize: 11 });
-
-    const layout = buildChartLayout({
-        preset: 'heatmap',
-        traces: [trace],
-        title: 'Response-Level Correlation (mean projection per response)',
-        xaxis: { title: '', tickangle: -45 },
-        yaxis: { title: '', autorange: 'reversed' },
-        annotations: annotations,
-        margin: { l: 100, r: 80, t: 60, b: 100 }
-    });
-
-    renderChart('response-correlation-heatmap', [trace], layout);
 }
 
 

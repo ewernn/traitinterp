@@ -240,8 +240,10 @@ function updateConnectionStatusUI() {
         dot = 'connected';
         text = 'Ready';
     } else if (inferenceMode === 'local' && chatStatus.can_fit_locally === false) {
-        dot = 'error';
-        text = 'Too large for local';
+        // Estimate says it may OOM. Warning, not error — user may know
+        // better (e.g. running MLX where the math is different).
+        dot = 'warning';
+        text = 'May not fit locally';
     } else {
         dot = 'disconnected';
         text = 'Not loaded';

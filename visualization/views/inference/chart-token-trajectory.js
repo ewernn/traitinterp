@@ -276,17 +276,23 @@ function renderTrajectoryChart(renderCtx) {
             rawValues = rawProj;
         }
 
-        // Store normalized values for Top Spans (before centering/smoothing)
-        // For rollouts, use all values (Top Spans hidden but keeps data consistent)
+        // Mean-center when enabled: subtract the mean over response tokens so
+        // the trajectory is zero-centered and constant-bias traits (e.g. golden
+        // gate bridge, which is high everywhere) show their relative variation.
+        // Falls back to full-trajectory mean if there's no response (rollouts).
+        if (isCentered && rawValues.length > 0) {
+            const respStart = Math.max(0, nPromptTokens - START_TOKEN_IDX);
+            const respSlice = isRollout ? rawValues : rawValues.slice(respStart);
+            const source = respSlice.length > 0 ? respSlice : rawValues;
+            const mean = source.reduce((a, b) => a + b, 0) / source.length;
+            rawValues = rawValues.map(v => v - mean);
+        }
+
+        // Store (post-centering) response values for Top Spans. Centering makes
+        // ranking meaningful: high spans are high vs. this response's baseline.
         data._normalizedResponse = isRollout
             ? rawValues
             : rawValues.slice(nPromptTokens - START_TOKEN_IDX);
-
-        // Subtract BOS value if centering is enabled (makes token 0 = 0)
-        if (isCentered && rawValues.length > 0) {
-            const bosValue = rawValues[0];
-            rawValues = rawValues.map(v => v - bosValue);
-        }
 
         // Apply N-token moving average if smoothing is enabled
         const displayValues = isSmoothing ? smoothData(rawValues, window.state.smoothingWindow) : rawValues;
@@ -325,8 +331,6 @@ function renderTrajectoryChart(renderCtx) {
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
         const vectorInfo = vs.layer !== undefined ? `<br><span style="color: var(--text-tertiary)">L${vs.layer} ${method}${posStr}</span>` : '';
-        const hoverText = `<b>${displayName}</b>${vectorInfo}<br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`;
-
         const useMarkers = displayValues.length <= 2000;
         traces.push({
             x: Array.from({length: displayValues.length}, (_, i) => i),
@@ -336,7 +340,8 @@ function renderTrajectoryChart(renderCtx) {
             name: displayName,
             line: { color: color, width: 1.5 },
             ...(useMarkers ? { marker: { size: 2, color: color } } : {}),
-            hovertemplate: hoverText
+            hoverinfo: 'none',
+            _displayName: displayName,
         });
     }
 
@@ -493,6 +498,9 @@ function renderTrajectoryChart(renderCtx) {
     plotDiv.parentNode.insertBefore(legendDiv, plotDiv.nextSibling);
     attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 
+    // Custom unified hover tooltip: shows token + all traits sorted by score desc.
+    attachSortedHover(plotDiv, traces, displayTokens);
+
     // Populate overlay controls (only when sentence boundary data exists)
     const overlayControlsDiv = document.getElementById('overlay-controls');
     if (overlayControlsDiv) {
@@ -533,6 +541,67 @@ function renderTrajectoryChart(renderCtx) {
     renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, isRollout);
 
     return { traitActivations, filteredByMethod, tickVals, tickText, displayTokens };
+}
+
+// ── Sorted unified hover tooltip ─────────────────────────────────
+// Shows: token on top, then each trait sorted by projection score (desc).
+
+function getOrCreateHoverTooltip() {
+    let el = document.getElementById('trajectory-hover-tooltip');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'trajectory-hover-tooltip';
+    el.style.cssText = `
+        position: fixed;
+        pointer-events: none;
+        background: var(--bg-primary, #1a1a1a);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        padding: 8px 10px;
+        font-size: 11px;
+        color: var(--text-primary, #ddd);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        z-index: 9999;
+        display: none;
+        white-space: nowrap;
+        line-height: 1.5;
+    `;
+    document.body.appendChild(el);
+    return el;
+}
+
+function attachSortedHover(plotDiv, traces, displayTokens) {
+    const tooltip = getOrCreateHoverTooltip();
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    plotDiv.on('plotly_hover', (data) => {
+        const p = data.points[0];
+        if (!p) return;
+        const xIdx = Math.round(p.x);
+        const token = displayTokens[xIdx] ?? '';
+
+        const rows = traces
+            .map(t => ({ name: t._displayName || t.name, value: t.y?.[xIdx], color: t.line?.color || '#888' }))
+            .filter(r => Number.isFinite(r.value))
+            .sort((a, b) => b.value - a.value);
+
+        if (rows.length === 0) return;
+
+        tooltip.innerHTML =
+            `<div style="font-weight:600;margin-bottom:4px;color:var(--text-primary)">${esc(token)}</div>` +
+            rows.map(r =>
+                `<div><span style="color:${r.color};font-weight:600">${r.value.toFixed(3)}</span> <span style="color:var(--text-secondary)">${esc(r.name)}</span></div>`
+            ).join('');
+        tooltip.style.display = 'block';
+
+        const ev = data.event;
+        if (ev) {
+            tooltip.style.left = (ev.clientX + 14) + 'px';
+            tooltip.style.top = (ev.clientY + 14) + 'px';
+        }
+    });
+
+    plotDiv.on('plotly_unhover', () => { tooltip.style.display = 'none'; });
 }
 
 export { START_TOKEN_IDX, buildCommonShapes, renderTrajectoryChart };
