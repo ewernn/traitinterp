@@ -57,6 +57,17 @@ from utils.vram import format_duration
 
 def run_pipeline(config: InferenceConfig):
     """Generate → project (or capture)."""
+    if config.backend == 'vllm':
+        # vLLM supports generation only — projection & capture need HF hooks.
+        if config.capture:
+            raise ValueError("--backend vllm cannot --capture activations; use --backend local.")
+        if not config.from_activations:
+            raise ValueError(
+                "--backend vllm supports generation only; default projection (stream-through) "
+                "requires --backend local. Generate with --backend vllm separately, then project "
+                "via --from-activations with --backend local."
+            )
+
     variant_info = get_model_variant(config.experiment, config.model_variant, mode='application')
     model_variant = variant_info.name
     model_name = variant_info.model
@@ -97,6 +108,7 @@ def generate(config: InferenceConfig, model_variant: str) -> int:
         temperature=config.temperature,
         force=config.regenerate, load_in_4bit=config.load_in_4bit,
         no_server=config.no_server,
+        backend=config.backend,
     )
 
 
@@ -242,6 +254,7 @@ def main():
         max_new_tokens=args.max_new_tokens,
         temperature=args.temperature,
         no_server=(args.backend == 'local'),
+        backend=args.backend,
         load_in_4bit=args.load_in_4bit,
     )
 

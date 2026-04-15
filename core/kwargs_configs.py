@@ -162,6 +162,7 @@ class InferenceConfig:
     max_new_tokens: int = 50
     temperature: float = 0.0
     no_server: bool = False
+    backend: str = 'auto'
 
     # Model loading
 

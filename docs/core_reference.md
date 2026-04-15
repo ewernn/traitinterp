@@ -120,8 +120,6 @@ paths = detect_contribution_paths(model)
 # Unknown architecture: raises ValueError with diagnostic info
 ```
 
-**Hybrid attention (e.g. Qwen3.5):** some layers use `linear_attn` (fused QKV) instead of `self_attn`. `get_hook_path` dispatches per-layer, and extraction skips `k_proj`/`v_proj` on linear_attn layers automatically.
-
 **Projection hooks** (used by inference pipeline for on-GPU projection):
 ```python
 from core import ProjectionHook, MultiLayerProjection
@@ -408,34 +406,21 @@ activations = backend.forward_with_capture(input_ids, attention_mask, capture)
 For bulk text generation (stories, dialogues, rollouts) where you don't need activation capture or steering. Uses vLLM's continuous batching for ~5-10x throughput vs HF.
 
 ```python
-from utils.model_generation import init_vllm_backend, generate_batch, shutdown_vllm_backend
+from utils.backends import VLLMBackend
 
-# Initialize once (auto-detects AWQ/GPTQ from model ID)
-init_vllm_backend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
-
-# Same generate_batch API — pass model=None, backend='vllm'
-responses = generate_batch(None, None, prompts, max_new_tokens=256, temperature=0.7, backend='vllm')
+# Initialize (auto-detects AWQ/GPTQ from model ID)
+engine = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
+responses = engine.generate(formatted_prompts, max_new_tokens=256, temperature=0.7)
 
 # Free GPU before loading HF model for extraction
-shutdown_vllm_backend()
+engine.shutdown()
 ```
 
 Constraints:
 - No steering hooks (vLLM doesn't expose model internals)
 - No activation capture
-- Passing a real model with `backend='vllm'` raises `ValueError` (prevents silent hook bypass)
 - Seeds are not cross-backend identical (same seed ≠ same output between HF and vLLM)
 - Requires `uv pip install vllm` (not in default deps)
-
-Alternatively, use `VLLMBackend` directly from `utils/backends.py`:
-
-```python
-from utils.backends import VLLMBackend
-
-engine = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
-responses = engine.generate(formatted_prompts, max_new_tokens=256, temperature=0.7)
-engine.shutdown()
-```
 
 **Escape hatch (for complex hooks):**
 

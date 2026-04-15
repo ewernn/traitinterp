@@ -36,6 +36,7 @@ from tqdm import tqdm
 from utils.model import format_prompt, load_model_with_lora
 from utils.json_utils import dump_compact
 from utils.model_generation import generate_batch
+from utils.backends import VLLMBackend
 from utils.paths import get as get_path, get_model_variant, load_experiment_config
 from utils.backends import add_backend_args
 from core.types import ResponseRecord
@@ -94,6 +95,7 @@ def generate_responses(
     output_suffix: str = None,
     load_in_4bit: bool = False,
     no_server: bool = False,
+    backend: str = 'auto',
     model=None,
     tokenizer=None,
 ) -> int:
@@ -192,27 +194,41 @@ def generate_responses(
     # MODE A: Generate from model
     # ================================================================
     is_remote = False
+    vllm_engine = None
     should_cleanup = model is None
 
     if model is None:
-        from utils.server.client import get_model_or_client, ModelClient
-
-        quantize = load_in_4bit
-        if not no_server and not lora and not quantize:
-            handle = get_model_or_client(model_name)
-            if isinstance(handle, ModelClient):
-                print(f"Using model server (model: {model_name})")
-                model = handle
-                tokenizer = AutoTokenizer.from_pretrained(model_name)
-                if tokenizer.pad_token is None:
-                    tokenizer.pad_token = tokenizer.eos_token
-                is_remote = True
-            else:
-                model, tokenizer = handle
-        elif lora:
-            model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_4bit=load_in_4bit)
+        if backend == 'vllm':
+            if lora:
+                raise ValueError(
+                    f"variant '{variant_name}' declares lora={lora!r}, but --backend vllm "
+                    f"does not support the repo's LoRA setup. Use --backend local, or run "
+                    f"against a merged/standalone model variant."
+                )
+            if load_in_4bit:
+                print("Warning: --load-in-4bit ignored under --backend vllm (vLLM has its own quantization).")
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if tokenizer.pad_token is None:
+                tokenizer.pad_token = tokenizer.eos_token
         else:
-            model, tokenizer = load_model_with_lora(model_name, load_in_4bit=load_in_4bit)
+            from utils.server.client import get_model_or_client, ModelClient
+
+            quantize = load_in_4bit
+            if not no_server and not lora and not quantize:
+                handle = get_model_or_client(model_name)
+                if isinstance(handle, ModelClient):
+                    print(f"Using model server (model: {model_name})")
+                    model = handle
+                    tokenizer = AutoTokenizer.from_pretrained(model_name)
+                    if tokenizer.pad_token is None:
+                        tokenizer.pad_token = tokenizer.eos_token
+                    is_remote = True
+                else:
+                    model, tokenizer = handle
+            elif lora:
+                model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora, load_in_4bit=load_in_4bit)
+            else:
+                model, tokenizer = load_model_with_lora(model_name, load_in_4bit=load_in_4bit)
 
     from utils.paths import resolve_use_chat_template
     use_chat_template = resolve_use_chat_template(experiment, tokenizer)
@@ -236,23 +252,34 @@ def generate_responses(
         print("All prompts already have responses, skipping...")
         return 0
 
-    # Generate
-    if is_remote:
-        print(f"Generating {len(prompt_texts)} responses via server...")
-        responses = model.generate(prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
-    else:
-        print(f"Generating {len(prompt_texts)} responses locally...")
-        responses = generate_batch(model, tokenizer, prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
+    # Init vLLM lazily (after early return, so skipped work doesn't pay the cost)
+    if backend == 'vllm' and should_cleanup:
+        vllm_engine = VLLMBackend(model_name)
 
-    # Save response JSONs
-    for prompt_item, prompt_text, response_text in zip(prompt_items_filtered, prompt_texts, responses):
-        save_response_json(
-            responses_dir, prompt_item, prompt_text, response_text,
-            tokenizer, model_name, system_prompt=system_prompt,
-        )
+    try:
+        # Generate
+        if is_remote:
+            print(f"Generating {len(prompt_texts)} responses via server...")
+            responses = model.generate(prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
+        elif vllm_engine is not None:
+            print(f"Generating {len(prompt_texts)} responses via vLLM...")
+            responses = vllm_engine.generate(prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
+        else:
+            print(f"Generating {len(prompt_texts)} responses locally...")
+            responses = generate_batch(model, tokenizer, prompt_texts, max_new_tokens=max_new_tokens, temperature=temperature)
 
-    print(f"\nWrote {len(responses)} response JSONs to {responses_dir}")
-    return len(responses)
+        # Save response JSONs
+        for prompt_item, prompt_text, response_text in zip(prompt_items_filtered, prompt_texts, responses):
+            save_response_json(
+                responses_dir, prompt_item, prompt_text, response_text,
+                tokenizer, model_name, system_prompt=system_prompt,
+            )
+
+        print(f"\nWrote {len(responses)} response JSONs to {responses_dir}")
+        return len(responses)
+    finally:
+        if vllm_engine is not None:
+            vllm_engine.shutdown()
 
 
 def main():
@@ -305,6 +332,7 @@ def main():
         output_suffix=args.output_suffix,
         load_in_4bit=args.load_in_4bit,
         no_server=no_server,
+        backend=args.backend,
     )
 
 
