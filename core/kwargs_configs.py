@@ -55,6 +55,7 @@ class SteeringConfig:
 
     load_in_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
+    load_in_8bit: bool = False
 
     # Modes
     batched: bool = True
@@ -127,6 +128,8 @@ class ExtractionConfig:
     max_concurrent: int = 100
     paired_filter: bool = False
     adaptive: bool = False
+    # Stage 5: logit lens
+    logit_lens: bool = True
     # Data
     val_split: float = 0.1
 
@@ -134,6 +137,7 @@ class ExtractionConfig:
 
     load_in_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
+    load_in_8bit: bool = False
     base_model: Optional[bool] = None
 
 

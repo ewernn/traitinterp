@@ -125,13 +125,6 @@ Extraction produces a base `method` (e.g., `mean_diff`, `probe`) stored at `vect
 - `--steering` — run steering evaluation after extraction
 - `--seed 42` — set torch RNG seed before generation (for reproducible T>0 sampling). Seed is set once per `generate_batch()` call and saved in response metadata.
 
-### Stage 0: Scenario Vetting (opt-in)
-
-`utils/preextraction_vetting.py:vet_scenarios()` — scores each raw scenario prompt with an LLM judge. Off by default (`--vet-scenarios` to enable). Informational only — results are not used to filter downstream stages.
-
-- Positive scenarios must score ≥ 60, negative ≤ 40
-- Output: `vetting/scenario_scores.json`
-
 ### Stage 1: Response Generation
 
 `extraction/run_extraction_pipeline.py`
@@ -217,7 +210,11 @@ Output: `vectors/{position}/{component}/{method}/layer{N}.pt` + `metadata.json` 
 
 ### Stage 5: Logit Lens
 
-`utils/extract_vectors.py` — interprets vectors through the model's unembedding matrix. Saves `logit_lens.json`.
+`analysis/vectors/logit_lens.py` (orchestrator) → `utils/logit_lens.py` (primitive) — projects each residual-stream vector through the model's RMSNorm + unembedding matrix to produce a vocabulary distribution, capturing the top-k toward and away tokens per (layer, method).
+
+Runs by default since the model is already loaded (cheap: ~1 matmul per vector). Disable with `--no-logit-lens`. Standalone usage: `python analysis/vectors/logit_lens.py --experiment {exp} --all-traits --save`.
+
+Output: `{trait}/{model_variant}/logit_lens.json` (canonical path, read by the visualization).
 
 ### Stage 6: Evaluation
 
@@ -341,8 +338,7 @@ experiments/{experiment}/extraction/{trait}/{model_variant}/
 │   ├── pos.json, neg.json        # Stage 1 output
 │   └── metadata.json
 ├── vetting/
-│   ├── scenario_scores.json      # Stage 0 (optional)
-│   └── response_scores.json      # Stage 2
+│   └── response_scores.json      # Stage 2 (optional)
 ├── activations/{position}/{component}/
 │   ├── train_all_layers.pt       # [n_train, n_layers, hidden_dim]
 │   ├── val_all_layers.pt         # [n_val, n_layers, hidden_dim]

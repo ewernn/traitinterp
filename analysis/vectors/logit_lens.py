@@ -16,8 +16,10 @@ The highest-scoring tokens reveal what a trait vector "means" in token space:
 Implementation: normed = model.norm(residual); logits = model.lm_head(normed);
 then softmax to get probabilities. Use --no-norm to skip the RMSNorm step.
 
-Standalone script — run manually. Writes per-trait files to the canonical
-extraction.logit_lens path (experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json).
+Runs as Stage 5 of the extraction pipeline (uses the loaded model — free).
+Also runnable standalone for ad-hoc re-runs after retraining vectors.
+Writes per-trait files to the canonical extraction.logit_lens path
+(experiments/{experiment}/extraction/{trait}/{model_variant}/logit_lens.json).
 
 Input: Experiment, trait (or --all-traits)
 Output: Top/bottom tokens for each vector direction, per method
