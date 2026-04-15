@@ -77,12 +77,12 @@ def run_pipeline(config: InferenceConfig):
 
     inference_dir = Path(get_path('inference.variant', experiment=config.experiment, model_variant=model_variant))
 
-    # Generate responses if needed
+    # Generate responses if needed. generate_responses() skips per-prompt when
+    # output JSON already exists, so we always dispatch when in a mode that
+    # needs responses — a partial output dir gets its missing files filled in
+    # instead of being silently skipped.
     if config.regenerate or not config.from_activations:
-        responses_dir = inference_dir / "responses" / config.prompt_set
-        has_responses = responses_dir.exists() and any(responses_dir.glob("*.json"))
-        if config.regenerate or not has_responses:
-            generate(config, model_variant)
+        generate(config, model_variant)
 
     # Capture or project
     if config.capture:
