@@ -65,10 +65,15 @@ if [[ "$CURRENT_BRANCH" != "dev" ]]; then
     exit 1
 fi
 
-# ─── Footgun check: untracked-but-included files ─────────────────────────────
+# ─── Footgun check: explicit-file orphans ────────────────────────────────────
 # The promote scripts use `git checkout dev -- <path>` which silently fails
-# on untracked files. So a path can sit in .publicinclude / .prodinclude
-# forever without ever shipping. Fail loudly with the orphans listed.
+# on untracked files. So an explicitly-listed path can sit in the include
+# forever without ever shipping (this bit us with mkdocs.yml).
+#
+# Scope of this check: only paths listed EXPLICITLY as files. Directories
+# glob-ship whatever's tracked inside them — untracked WIP in a glob-dir
+# (e.g. docs/viz_findings/new-finding.md you haven't committed yet) is
+# normal and expected on dev, so we don't flag it.
 
 check_untracked_in_include() {
     local include_file="$1"
@@ -76,25 +81,16 @@ check_untracked_in_include() {
 
     local orphans=()
     while IFS= read -r raw; do
-        # Strip comments and whitespace
         local path="${raw%%#*}"
         path="$(echo "$path" | xargs)"
         [[ -z "$path" ]] && continue
 
-        # Directories: list any untracked files inside (these would silently
-        # vanish during promote even though the dir itself is whitelisted).
-        if [[ -d "$path" ]]; then
-            local untracked
-            untracked=$(git ls-files --others --exclude-standard "$path" 2>/dev/null)
-            if [[ -n "$untracked" ]]; then
-                while IFS= read -r f; do
-                    orphans+=("$f")
-                done <<< "$untracked"
-            fi
-            continue
-        fi
+        # Directories ship whatever's tracked inside; WIP in them is fine
+        [[ -d "$path" ]] && continue
+        # Trailing-slash paths are directory declarations; same deal
+        [[ "$path" == */ ]] && continue
 
-        # Files: must be tracked
+        # Explicit file: must exist and be tracked
         if [[ -e "$path" ]]; then
             if ! git ls-files --error-unmatch "$path" >/dev/null 2>&1; then
                 orphans+=("$path")
@@ -106,7 +102,7 @@ check_untracked_in_include() {
 
     if [[ ${#orphans[@]} -gt 0 ]]; then
         echo "" >&2
-        echo "Error: $include_file lists paths that aren't tracked on dev:" >&2
+        echo "Error: $include_file lists explicit paths that aren't tracked on dev:" >&2
         for o in "${orphans[@]}"; do
             echo "  - $o" >&2
         done
