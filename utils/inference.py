@@ -29,14 +29,16 @@ from utils.vector_selection import load_trait_vectors
 
 
 def init_hf_backend(config: InferenceConfig):
-    """Pre-load a single HF backend only when `--backend local` + stages can share it.
+    """Pre-load a single HF backend when `--backend local` + stages can share it.
 
     Returns None for:
-    - `--backend vllm`: vllm owns its own lifecycle inside generate_responses
-    - `--backend auto` / `server`: generate may resolve to a remote ModelClient;
-      pre-loading a LocalBackend here would silently override server detection.
-      Each stage handles its own model loading in those modes (matches today).
-    - `--from-activations`: CPU-only projection, no HF model needed
+    - `--backend auto`: generate may resolve to a remote ModelClient; pre-loading
+      a LocalBackend would silently override server detection. Each stage loads
+      on its own in that mode.
+    - `--from-activations`: CPU-only projection, no HF model needed.
+
+    (vLLM is rejected at the pipeline entry point — every inference stage either
+    needs hooks or no model.)
 
     When None is returned, project_stream_through falls back to loading its own
     LocalBackend internally (via the `owned = shared is None` pattern).

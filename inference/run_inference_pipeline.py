@@ -54,7 +54,14 @@ from utils.inference import (
 
 def run_pipeline(config: InferenceConfig):
     """Generate → capture / project (mode-dependent)."""
-    _check_vllm_compatibility(config)
+    if config.backend == 'vllm':
+        raise ValueError(
+            "--backend vllm isn't used by the inference pipeline — every stage needs "
+            "hooks (projection, capture) or no model at all (--from-activations). For "
+            "bulk vllm generation, run the standalone CLI:\n"
+            "  python inference/generate_responses.py --backend vllm "
+            "--experiment X --prompt-set Y"
+        )
     shared = init_hf_backend(config)
     try:
         if not config.from_activations:
@@ -69,20 +76,6 @@ def run_pipeline(config: InferenceConfig):
         if shared is not None:
             del shared
             flush_cuda()
-
-
-def _check_vllm_compatibility(config: InferenceConfig):
-    """vLLM supports generation only — hooks (projection / capture) need HF."""
-    if config.backend != 'vllm':
-        return
-    if config.capture:
-        raise ValueError("--backend vllm cannot --capture activations; use --backend local.")
-    if not config.from_activations:
-        raise ValueError(
-            "--backend vllm supports generation only; default projection (stream-through) "
-            "requires --backend local. Generate with --backend vllm separately, then project "
-            "via --from-activations with --backend local."
-        )
 
 
 # =============================================================================
