@@ -207,14 +207,14 @@ Three branches: `dev` (everything), `main` (public release), `prod` (Railway dep
 **How it works:**
 - `dev` is the active working branch — all new code, experiments, and docs land here
 - `main` contains only files whitelisted in `.publicinclude` — a curated subset for public release
-- `prod` is the Railway-deployed branch. Railway watches `origin/prod` and rebuilds on every push. **Railway deploy config (start command, pre-deploy steps) lives in the Railway dashboard, not in the repo** — there is no `Procfile` / `railway.toml` / `nixpacks.toml`.
-- Promotion is done via `./utils/release.sh -m "msg"` (handles dev push + both promotes + auto-stash). Or directly via `utils/promote_to_main.sh` / `utils/promote_to_prod.sh`.
+- `prod` is the Railway-deployed branch. Railway watches `origin/prod` and rebuilds on every push. **Railway deploy config (start command, pre-deploy `mkdocs build`) lives in the Railway dashboard, not in the repo** — there is no `Procfile` / `railway.toml` / `nixpacks.toml`.
+- Promotion is done via `./utils/release.sh -m "msg"`. Or directly via `utils/promote_to_main.sh` / `utils/promote_to_prod.sh`.
 - Branches have **diverged histories** (not fast-forwardable) — each promote is a fresh commit.
 
 **`.publicinclude`** lists what gets promoted to main: pipeline code, visualization, config, datasets, and select docs.
 **`.prodinclude`** lists what gets promoted to prod: everything in main plus `docs/viz_findings/` and the MkDocs site sources.
 
-**Branch-specific overrides:** files named `<name>.main.md` on dev are renamed to `<name>.md` by `promote_to_main.sh` after copy. Used today for `CLAUDE.main.md` → `CLAUDE.md` (dev's CLAUDE.md references `@docs/dev.md` which doesn't ship to main).
+**Branch-specific overrides:** files named `<name>.main.md` on dev are renamed to `<name>.md` by BOTH `promote_to_main.sh` and `promote_to_prod.sh` after copy. Used today for `CLAUDE.main.md` → `CLAUDE.md` (dev's `CLAUDE.md` references `@docs/dev.md` which doesn't ship to main or prod).
 
 **What stays dev-only:**
 - `dev/` directory — holding pen for steering CLI tools, modal files, dev-only scripts
@@ -222,6 +222,35 @@ Three branches: `dev` (everything), `main` (public release), `prod` (Railway dep
 - Research docs — refactor notepads, TODO
 - Personal docs live in a separate `trait-interp-personal` repo
 
-**Footgun:** the promote scripts use `git checkout dev -- <path>` which **silently skips untracked files**. Adding a path to `.publicinclude` / `.prodinclude` isn't enough — you must also `git add` the file or it ships nothing. `release.sh` checks for this and errors loudly before promoting.
+### The `release.sh` workflow
 
-**To promote new files:** `git add` them on dev → add to `.publicinclude` / `.prodinclude` → commit on dev → `./utils/release.sh -m "..."`.
+```bash
+# Work normally — dev can have messy WIP
+git add <files-to-ship>
+git commit -m "..."
+./utils/release.sh -m "release msg"
+```
+
+`release.sh` does, in order:
+1. Verifies you're on dev
+2. Errors loudly if any path listed *explicitly as a file* in `.publicinclude` / `.prodinclude` is untracked on dev (the footgun catch — see below)
+3. Auto-stashes uncommitted changes (with `-u`, so untracked WIP is preserved)
+4. `git push origin dev`
+5. `promote_to_main.sh --push` → `origin/main`
+6. `promote_to_prod.sh --push` → `origin/prod` → Railway auto-redeploys
+7. Pops the stash (on success OR failure; errors loudly with the stash ref if a conflict arises)
+8. Prints a per-target summary so half-shipped state is obvious
+
+No `--no-verify` escape hatch: test failures must be fixed, not bypassed.
+
+### Footguns you must know about
+
+**Silent-skip on untracked files.** The promote scripts use `git checkout dev -- <path>` which silently fails on untracked files. A path can sit in `.publicinclude`/`.prodinclude` and never actually ship. `release.sh` catches this for **explicitly-listed file paths** (like `mkdocs.yml`) but **does NOT flag untracked WIP inside glob-directories** (like a new markdown file inside `docs/viz_findings/`) — that's intentional, because glob-dirs often contain in-progress content.
+
+**Consequence:** if you add a new file that belongs to an already-whitelisted directory and forget to `git add` it, it won't ship and release.sh won't warn. Mitigation: before releasing findings/assets, skim `git status` for anything that should be part of the release, or comment the orphan out of `docs/viz_findings/index.yaml` if it's genuinely WIP.
+
+**MkDocs build writes to `docs_site/`.** This is in `.gitignore`. Don't remove that line — `promote_to_prod.sh` runs `mkdocs build` as part of pre-promote checks, and if `docs_site/` is tracked, the build will pollute the working tree and break `git stash pop` at the end of `release.sh`.
+
+### Adding files to main/prod
+
+`git add` them on dev → list in `.publicinclude` / `.prodinclude` → commit → `./utils/release.sh -m "..."`.
