@@ -8,14 +8,15 @@ Output: results.jsonl with steering scores per (layer, coefficient)
 """
 
 import json
+from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime
 
 
 from core import VectorSpec, MultiLayerAblation
-from core.types import SteeringRunRecord
+from core.types import SteeringRunRecord, JudgeResult
 from core.kwargs_configs import SteeringConfig
-from utils.traits import load_steering_data, load_questions_from_inference, load_questions_from_file
+from utils.traits import load_steering_data, load_questions_from_inference, load_questions_from_file, SteeringData
 from utils.steering_results import (
     init_results_file, load_results, append_baseline, remove_baseline, get_baseline,
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
@@ -31,9 +32,47 @@ from utils.judge import TraitJudge
 from utils.paths import get_default_variant
 from utils.model import format_prompt, load_model_with_lora
 from utils.distributed import is_tp_mode, is_rank_zero, tp_barrier
-from utils.vectors import load_vector, load_cached_activation_norms
+from utils.vectors import load_vector, load_cached_activation_norms, LoadedVector
 from utils.layers import parse_layers
 from utils.backends import LocalBackend
+
+
+@dataclass
+class TraitSweepPrep:
+    """What _prepare_trait_sweep returns.
+
+    Shared per-trait data needed by either the batched or sequential sweep path.
+    Caller composes vectors + formatted prompts on top to build a TraitSweepContext.
+    """
+    questions: List[str]
+    steering_data: SteeringData
+    eval_prompt: Optional[str]
+    cached_runs: list
+    baseline_result: Optional[JudgeResult]
+    direction: str
+
+
+@dataclass
+class TraitSweepContext:
+    """Full per-trait state passed into multi_trait_batched_adaptive_search."""
+    trait: str
+    trait_name: str
+    trait_definition: str
+    eval_prompt: Optional[str]
+    questions: List[str]
+    formatted_questions: List[str]
+    layer_data: List[LoadedVector]
+    cached_runs: list
+    experiment: str
+    vector_experiment: str
+    direction: str
+
+    def __post_init__(self):
+        if len(self.questions) != len(self.formatted_questions):
+            raise ValueError(
+                f"TraitSweepContext({self.trait}): {len(self.questions)} questions "
+                f"but {len(self.formatted_questions)} formatted_questions"
+            )
 
 
 # =============================================================================
@@ -196,6 +235,45 @@ async def _ensure_baseline(config, backend, trait, model_variant, steering_data,
     return baseline
 
 
+async def _prepare_trait_sweep(config, vec_exp, trait, model_variant, model_name,
+                               backend, judge, eval_prompt_override, trait_judge,
+                               use_default, direction,
+                               skip_baseline_if_missing=False) -> Optional[TraitSweepPrep]:
+    """Per-trait setup shared by run_batched_multi_trait + run_evaluation.
+
+    Resolves questions + eval_prompt, loads/inits results file, ensures baseline.
+    Caller is responsible for loading vectors (signature differs per mode).
+
+    Returns None when the results file could not be initialized (e.g.
+    regenerate_responses mode with no existing file).
+    """
+    questions, steering_data = resolve_questions(trait, config.questions_file,
+                                                 config.prompt_set, config.subset)
+    eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
+
+    result = load_or_init_results(
+        config, trait, model_variant, steering_data, model_name,
+        vec_exp, direction, len(questions), config.regenerate_responses,
+    )
+    if result is None:
+        return None
+    cached_runs, baseline_result, resolved_direction = result
+
+    baseline_result = await _ensure_baseline(
+        config, backend, trait, model_variant, steering_data, questions,
+        baseline_result, trait_judge, resolved_direction, judge, eval_prompt,
+        skip_if_no_cache=skip_baseline_if_missing,
+    )
+    return TraitSweepPrep(
+        questions=questions,
+        steering_data=steering_data,
+        eval_prompt=eval_prompt,
+        cached_runs=cached_runs,
+        baseline_result=baseline_result,
+        direction=resolved_direction,
+    )
+
+
 def resolve_eval_prompt(steering_data, eval_prompt, use_default_prompt):
     """Resolve eval_prompt: explicit > use_default flag > steering.json."""
     if use_default_prompt:
@@ -268,9 +346,9 @@ def load_or_init_results(config: SteeringConfig, trait, model_variant, steering_
 
 def load_vectors(vector_experiment, trait, layers, extraction_variant,
                  method, component, position, cached_norms,
-                 model, tokenizer, questions, use_chat_template):
+                 model, tokenizer, questions, use_chat_template) -> List[LoadedVector]:
     """Load vectors and compute base coefficients for each layer."""
-    layer_data = []
+    layer_data: List[LoadedVector] = []
     for layer in layers:
         vector = load_vector(vector_experiment, trait, layer, extraction_variant, method, component, position)
         if vector is None:
@@ -283,7 +361,7 @@ def load_vectors(vector_experiment, trait, layers, extraction_variant,
         else:
             act_norm = estimate_activation_norm(model, tokenizer, questions, layer, use_chat_template, "residual")
         base_coef = act_norm / vec_norm
-        layer_data.append({"layer": layer, "vector": vector, "base_coef": base_coef})
+        layer_data.append(LoadedVector(layer=layer, vector=vector, base_coef=base_coef))
         print(f"  L{layer}: base_coef={base_coef:.0f}")
     return layer_data
 
@@ -341,7 +419,7 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
 
     all_configs = []
     for ld in layer_data:
-        run = best_per_layer.get(ld["layer"])
+        run = best_per_layer.get(ld.layer)
         if run:
             coef = run.coefficient
             all_configs.append((ld, coef, run.config.to_dict()))
@@ -354,7 +432,7 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
     all_responses = batched_steering_generate(
         model, tokenizer,
-        [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
+        [(ld.layer, ld.vector, coef) for ld, coef, _ in all_configs],
         component=component, max_new_tokens=max_new_tokens,
         prompts=formatted,
     )
@@ -367,7 +445,7 @@ def regenerate_responses_for_trait(layer_data, cached_runs, questions, model, to
                       "trait_score": None, "coherence_score": None}
                      for q, r in zip(questions, resps)]
         save_responses(responses, experiment, trait, model_variant, position, prompt_set, config, timestamp)
-        print(f"  L{ld['layer']} c{coef:.0f}: saved")
+        print(f"  L{ld.layer} c{coef:.0f}: saved")
 
 
 async def evaluate_manual_coefficients(
@@ -382,9 +460,9 @@ async def evaluate_manual_coefficients(
     all_configs = []
     for ld in layer_data:
         for coef in config.coefficients:
-            cfg = {"vectors": [VectorSpec(layer=ld["layer"], component=config.component, position=config.position, method=config.method, weight=coef).to_dict()]}
+            cfg = {"vectors": [VectorSpec(layer=ld.layer, component=config.component, position=config.position, method=config.method, weight=coef).to_dict()]}
             if find_cached_run(cached_runs, cfg) is not None:
-                print(f"  L{ld['layer']} c{coef:.0f}: cached")
+                print(f"  L{ld.layer} c{coef:.0f}: cached")
             else:
                 all_configs.append((ld, coef, cfg))
 
@@ -395,7 +473,7 @@ async def evaluate_manual_coefficients(
     formatted = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
     all_responses = batched_steering_generate(
         model, tokenizer,
-        [(ld["layer"], ld["vector"], coef) for ld, coef, _ in all_configs],
+        [(ld.layer, ld.vector, coef) for ld, coef, _ in all_configs],
         component=config.component, max_new_tokens=config.max_new_tokens,
         prompts=formatted,
     )
@@ -430,7 +508,7 @@ async def evaluate_manual_coefficients(
             result = summarize_judge_scores(all_scores[idx * n_q:(idx + 1) * n_q]).to_dict()
 
         timestamp = datetime.now().isoformat()
-        print(f"  L{ld['layer']} c{coef:.0f}: trait={result['trait_mean'] or 0:.1f}, coherence={result['coherence_mean'] or 0:.1f}")
+        print(f"  L{ld.layer} c{coef:.0f}: trait={result['trait_mean'] or 0:.1f}, coherence={result['coherence_mean'] or 0:.1f}")
 
         cached_runs.append(SteeringRunRecord.from_dict({"config": cfg, "result": result, "timestamp": timestamp}))
 
@@ -446,8 +524,8 @@ async def evaluate_manual_coefficients(
             elif config.save_mode == "best":
                 t_mean = result.get("trait_mean") or 0
                 c_mean = result.get("coherence_mean") or 0
-                if is_better_result(best_per_layer.get(ld["layer"]), t_mean, c_mean, config.min_coherence, direction):
-                    best_per_layer[ld["layer"]] = {"responses": responses, "config": cfg, "timestamp": timestamp}
+                if is_better_result(best_per_layer.get(ld.layer), t_mean, c_mean, config.min_coherence, direction):
+                    best_per_layer[ld.layer] = {"responses": responses, "config": cfg, "timestamp": timestamp}
 
     if config.save_mode == "best" and is_rank_zero():
         for best in best_per_layer.values():
@@ -469,17 +547,17 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
     """
     vector_experiment = config.vector_experiment or config.experiment
 
-    # Load data
-    questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-    effective_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
-
-    # Init model
+    # Init model + judge
     should_close_judge = False
     backend = _ensure_backend(config, model_name, lora_adapter, backend)
     model, tokenizer, num_layers = backend.model, backend.tokenizer, backend.n_layers
-
     from utils.paths import resolve_use_chat_template
     use_chat_template = resolve_use_chat_template(config.experiment, tokenizer)
+
+    if judge is None and not config.regenerate_responses:
+        if is_rank_zero():
+            judge = TraitJudge()
+        should_close_judge = True
 
     # Parse layers
     if config.regenerate_responses:
@@ -490,16 +568,22 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
     if not layers:
         raise ValueError(f"No valid layers. Model has {num_layers} layers (0-{num_layers-1})")
 
-    # Init/resume results
-    result = load_or_init_results(
-        config, trait, model_variant, steering_data, model_name,
-        vector_experiment, config.direction, len(questions), config.regenerate_responses,
+    # Prep: questions + eval_prompt + results + baseline
+    prep = await _prepare_trait_sweep(
+        config, vector_experiment, trait, model_variant, model_name,
+        backend, judge, eval_prompt_override, trait_judge, use_default, config.direction,
+        skip_baseline_if_missing=config.regenerate_responses,
     )
-    if result is None:
+    if prep is None:
         return
-    cached_runs, baseline_result, direction = result
+    questions = prep.questions
+    steering_data = prep.steering_data
+    effective_eval_prompt = prep.eval_prompt
+    cached_runs = prep.cached_runs
+    baseline_result = prep.baseline_result
+    direction = prep.direction
 
-    # Filter layers for regeneration mode
+    # Filter layers for regeneration mode (uses cached_runs from prep)
     if config.regenerate_responses and cached_runs:
         good_layers = {run.layer for run in cached_runs
                        if (run.result.coherence_mean or 0) >= config.min_coherence}
@@ -508,23 +592,10 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             print(f"  No cached configs with coherence >= {config.min_coherence}, skipping")
             return
 
-    # Judge
-    if judge is None and not config.regenerate_responses:
-        if is_rank_zero():
-            judge = TraitJudge()
-        should_close_judge = True
-
     print(f"\nTrait: {trait}")
     print(f"Model: {model_name} ({num_layers} layers)")
     print(f"Vectors from: {vector_experiment}/{trait} @ {config.position}")
     print(f"Questions: {len(questions)}, Existing runs: {len(cached_runs)}")
-
-    # Baseline
-    baseline_result = await _ensure_baseline(
-        config, backend, trait, model_variant, steering_data, questions,
-        baseline_result, trait_judge, direction, judge, effective_eval_prompt,
-        skip_if_no_cache=config.regenerate_responses,
-    )
 
     # Load vectors
     cached_norms = load_cached_activation_norms(vector_experiment, "residual")
@@ -673,46 +744,42 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
     for vec_exp, trait in parsed_traits:
         print(f"\n--- Preparing {trait} ---")
 
-        questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-        trait_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
-
-        trait_direction = per_trait_direction.get(trait, "positive")
-
-        result = load_or_init_results(
-            config, trait, model_variant, steering_data, model_name,
-            vec_exp, trait_direction, len(questions),
+        direction = per_trait_direction.get(trait, "positive")
+        prep = await _prepare_trait_sweep(
+            config, vec_exp, trait, model_variant, model_name,
+            backend, judge, eval_prompt_override, trait_judge, use_default, direction,
         )
-        if result is None:
+        if prep is None:
             continue
-        cached_runs, baseline_result, _ = result
 
-        baseline_result = await _ensure_baseline(
-            config, backend, trait, model_variant, steering_data, questions,
-            baseline_result, trait_judge, trait_direction, judge, trait_eval_prompt,
-        )
-
-        trait_layer_list = parsed_trait_layers.get(trait, default_layers)
+        layers = parsed_trait_layers.get(trait, default_layers)
         layer_data = load_vectors(
-            vec_exp, trait, trait_layer_list, resolved_extraction_variant,
+            vec_exp, trait, layers, resolved_extraction_variant,
             config.method, config.component, config.position, cached_norms,
-            model, tokenizer, questions, use_chat_template,
+            model, tokenizer, prep.questions, use_chat_template,
         )
         if not layer_data:
             print(f"  No valid vectors for {trait}, skipping")
             continue
 
-        formatted_questions = [format_prompt(q, tokenizer, use_chat_template=use_chat_template) for q in questions]
-        print(f"  {len(questions)} questions, {len(layer_data)} layers, {len(cached_runs)} cached runs")
+        formatted_questions = [format_prompt(q, tokenizer, use_chat_template=use_chat_template)
+                               for q in prep.questions]
+        print(f"  {len(prep.questions)} questions, {len(layer_data)} layers, "
+              f"{len(prep.cached_runs)} cached runs")
 
-        trait_configs.append({
-            "trait": trait, "trait_name": steering_data.trait_name,
-            "trait_definition": steering_data.trait_definition,
-            "eval_prompt": trait_eval_prompt, "questions": questions,
-            "formatted_questions": formatted_questions,
-            "layer_data": layer_data, "cached_runs": cached_runs,
-            "experiment": config.experiment, "vector_experiment": vec_exp,
-            "direction": trait_direction,
-        })
+        trait_configs.append(TraitSweepContext(
+            trait=trait,
+            trait_name=prep.steering_data.trait_name,
+            trait_definition=prep.steering_data.trait_definition,
+            eval_prompt=prep.eval_prompt,
+            questions=prep.questions,
+            formatted_questions=formatted_questions,
+            layer_data=layer_data,
+            cached_runs=prep.cached_runs,
+            experiment=config.experiment,
+            vector_experiment=vec_exp,
+            direction=prep.direction,
+        ))
 
     if trait_configs:
         await multi_trait_batched_adaptive_search(

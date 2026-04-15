@@ -10,9 +10,23 @@ import json
 import logging
 import re
 import warnings
+from dataclasses import dataclass
 from typing import Optional, Tuple, Dict, Any, List
 
 import torch
+
+
+@dataclass
+class LoadedVector:
+    """A trait vector in memory, paired with its precomputed steering scale.
+
+    Returned by load_vectors() in steering code and consumed by coefficient-search
+    routines. `base_coef` = activation_norm / vector_norm at `layer`; multiplying
+    it by a coherence-search multiplier produces a candidate steering coefficient.
+    """
+    layer: int
+    vector: torch.Tensor
+    base_coef: float
 
 
 def validate_vector_norm(vector: torch.Tensor, name: str = "trait vector",
