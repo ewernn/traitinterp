@@ -15,8 +15,8 @@ Discovery conventions:
     - Inference types: discovered from inference/raw/{type}/
 
 Usage:
-    python utils/experiment_data_checker.py --experiment gemma_2b_cognitive_nov21
-    python utils/experiment_data_checker.py --experiment gemma_2b_cognitive_nov21 --json_output
+    python dev/experiment_data_checker.py --experiment gemma_2b_cognitive_nov21
+    python dev/experiment_data_checker.py --experiment gemma_2b_cognitive_nov21 --json_output
 """
 
 import sys

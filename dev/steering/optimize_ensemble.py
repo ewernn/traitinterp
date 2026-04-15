@@ -32,7 +32,7 @@ from utils.paths import get_model_variant
 from utils.model import load_model, format_prompt
 from utils.model_generation import generate_batch
 from utils.judge import TraitJudge
-from utils.ensembles import create_ensemble, save_ensemble
+from dev.steering.ensembles import create_ensemble, save_ensemble
 from utils.vectors import MIN_COHERENCE, load_vector, load_cached_activation_norms
 from utils.layers import parse_layers
 

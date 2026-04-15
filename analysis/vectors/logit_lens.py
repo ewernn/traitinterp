@@ -55,8 +55,12 @@ def analyze_trait(
     top_k: int = 20,
     apply_norm: bool = True,
     common_mask: torch.Tensor = None,
+    layer_range: Optional[tuple] = None,
 ) -> Optional[dict]:
     """Analyze all methods for a trait, producing the canonical logit_lens schema.
+
+    If layer_range is None: pick a single layer near 90% depth per method (legacy behavior).
+    If layer_range is (lo, hi): run logit lens for every layer in [lo, hi] per method.
 
     Returns None if no vectors exist on disk for this trait.
     """
@@ -80,7 +84,10 @@ def analyze_trait(
     filtered = [c for c in candidates if c["component"] == component and c["position"] == position]
 
     n_layers = get_inner_model(model).config.num_hidden_layers
-    target = round(n_layers * 0.9)
+    # Empirical heuristic: gives L26 on 32-layer Qwen3.5-9B, L50 on 80-layer Llama 70B.
+    # Smaller models pack more transformation per layer, landing the readout later in
+    # fractional depth; this scales accordingly.
+    target = n_layers // 2 + 10
 
     # Group by method
     by_method = defaultdict(list)
@@ -89,27 +96,40 @@ def analyze_trait(
 
     methods = {}
     for method, available_layers in by_method.items():
-        # Pick layer closest to 90% depth; ties prefer higher layer
-        chosen_layer = min(available_layers, key=lambda L: (abs(L - target), -L))
-        pct = round(chosen_layer / max(n_layers - 1, 1) * 100)
+        if layer_range is not None:
+            lo, hi = layer_range
+            chosen_layers = sorted(L for L in available_layers if lo <= L <= hi)
+        else:
+            # Pick layer closest to 90% depth; ties prefer higher layer
+            chosen_layers = [min(available_layers, key=lambda L: (abs(L - target), -L))]
 
-        # Load vector (returns 3-tuple: vector, baseline, layer_meta)
-        try:
-            vector, _baseline, _meta = load_vector_with_baseline(
-                experiment, trait, method, chosen_layer, model_variant, component, position
-            )
-        except FileNotFoundError:
-            continue
+        per_layer = {}
+        for chosen_layer in chosen_layers:
+            try:
+                vector, _baseline, _meta = load_vector_with_baseline(
+                    experiment, trait, method, chosen_layer, model_variant, component, position
+                )
+            except FileNotFoundError:
+                continue
 
-        vocab = vector_to_vocab(vector, model, tokenizer, top_k, apply_norm, common_mask)
-        methods[method] = {
-            "late": {
+            vocab = vector_to_vocab(vector, model, tokenizer, top_k, apply_norm, common_mask)
+            pct = round(chosen_layer / max(n_layers - 1, 1) * 100)
+            per_layer[chosen_layer] = {
                 "layer": chosen_layer,
                 "pct": pct,
                 "toward": vocab["toward"],
                 "away": vocab["away"],
             }
-        }
+
+        if not per_layer:
+            continue
+
+        if layer_range is not None:
+            methods[method] = {"per_layer": per_layer}
+        else:
+            # Legacy schema: {"late": {...}} with single layer
+            only_layer = next(iter(per_layer.values()))
+            methods[method] = {"late": only_layer}
 
     if not methods:
         return None
@@ -121,6 +141,15 @@ def analyze_trait(
         "n_layers": n_layers,
         "methods": methods,
     }
+
+
+def _print_layer_block(layer_data: dict):
+    print(f"\n  Toward (+):")
+    for i, item in enumerate(layer_data['toward'], 1):
+        print(f"    {i:2d}. {item['token']:20s} {item['value']:+.3f}")
+    print(f"\n  Away (-):")
+    for i, item in enumerate(layer_data['away'], 1):
+        print(f"    {i:2d}. {item['token']:20s} {item['value']:+.3f}")
 
 
 def print_results(results: Optional[dict]):
@@ -136,16 +165,15 @@ def print_results(results: Optional[dict]):
     print(f"{'='*60}")
 
     for method, data in results['methods'].items():
-        late = data['late']
-        print(f"\n  Method: {method} (layer {late['layer']}, {late['pct']}% depth)")
-
-        print(f"\n  Toward (+):")
-        for i, item in enumerate(late['toward'], 1):
-            print(f"    {i:2d}. {item['token']:20s} {item['value']:+.3f}")
-
-        print(f"\n  Away (-):")
-        for i, item in enumerate(late['away'], 1):
-            print(f"    {i:2d}. {item['token']:20s} {item['value']:+.3f}")
+        if 'per_layer' in data:
+            for layer_num in sorted(data['per_layer'].keys()):
+                ld = data['per_layer'][layer_num]
+                print(f"\n  Method: {method} (layer {ld['layer']}, {ld['pct']}% depth)")
+                _print_layer_block(ld)
+        else:
+            late = data['late']
+            print(f"\n  Method: {method} (layer {late['layer']}, {late['pct']}% depth)")
+            _print_layer_block(late)
 
 
 def main():
@@ -156,10 +184,17 @@ def main():
     parser.add_argument("--all-traits", action="store_true", help="Analyze all traits")
     parser.add_argument("--top-k", type=int, default=20, help="Tokens to show (default: 20)")
     parser.add_argument("--no-norm", action="store_true", help="Skip RMSNorm before projection")
-    parser.add_argument("--filter-common", action="store_true", help="Filter to common English tokens only")
+    parser.add_argument("--no-filter-common", action="store_true", help="Disable common-token filter (default: enabled)")
     parser.add_argument("--max-vocab", type=int, default=10000, help="Max vocab index for common filter (default: 10000)")
+    parser.add_argument("--layer-range", default=None, help="Sweep layer range, e.g. '16-32'. If set, output per-layer instead of single 90%-depth pick.")
     parser.add_argument("--save", action="store_true", help="Save results to canonical per-trait JSON")
     args = parser.parse_args()
+
+    filter_common = not args.no_filter_common
+    layer_range = None
+    if args.layer_range:
+        lo_s, hi_s = args.layer_range.split("-")
+        layer_range = (int(lo_s), int(hi_s))
 
     if not args.traits and not args.all_traits:
         parser.error("Must specify --traits or --all-traits")
@@ -173,9 +208,9 @@ def main():
     model, tokenizer = load_model_with_lora(model_name, lora_adapter=lora)
     model.eval()
 
-    # Build common token mask if requested
+    # Build common token mask (on by default; disable with --no-filter-common)
     common_mask = None
-    if args.filter_common:
+    if filter_common:
         print(f"Building common token mask (max_vocab={args.max_vocab})...")
         common_mask = build_common_token_mask(tokenizer, args.max_vocab)
         print(f"  {common_mask.sum().item()} tokens pass filter")
@@ -199,6 +234,7 @@ def main():
             top_k=args.top_k,
             apply_norm=not args.no_norm,
             common_mask=common_mask,
+            layer_range=layer_range,
         )
         print_results(results)
 

@@ -13,6 +13,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+from utils.vectors import MIN_COHERENCE
+
 from transformers import AutoTokenizer
 
 
@@ -48,7 +50,7 @@ def parse_steering_results(results_path):
                     continue
                 delta = entry["result"]["trait_mean"] - baseline_mean
                 coherence = entry["result"].get("coherence_mean", 0)
-                if coherence >= 70 and abs(delta) > abs(best_delta):
+                if coherence >= MIN_COHERENCE and abs(delta) > abs(best_delta):
                     best_delta = delta
                     best_config = entry["config"]
 

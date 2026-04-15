@@ -5,7 +5,7 @@ Input: experiment, trait, model_variant identifiers
 Output: Ensemble definitions and manifest
 
 Usage:
-    from utils.ensembles import create_ensemble, load_ensemble, get_best_ensemble
+    from dev.steering.ensembles import create_ensemble, load_ensemble, get_best_ensemble
 
     # Create ensemble from VectorSpecs
     ensemble = create_ensemble(
