@@ -1,7 +1,48 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
-import { getDisplayName, DELTA_COLORSCALE } from '../core/display.js';
+import { getDisplayName, DELTA_COLORSCALE, ASYMB_COLORSCALE } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
-import { requireExperiment, deferredLoading, renderRunHint, renderSubsection } from '../core/ui.js';
+import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSegmentedControl } from '../core/ui.js';
+
+// Heatmap metric toggle — module-local state, default to signed effect size
+let heatmapMetric = 'effect_size';
+
+// Metric config: how to compute cell value, colorscale, z-range, legend label
+const METRIC_CONFIG = {
+    effect_size: {
+        label: 'Effect Size (d)',
+        legendLabels: ['−max', '0', '+max'],
+        legendBarClass: 'heatmap-legend-bar-diverging',
+        colorscale: DELTA_COLORSCALE,
+        hoverSuffix: 'd=%{z:.2f}',
+        // Signed by polarity: green = correct direction, red = flipped
+        computeCell: (r) => r.val_effect_size == null ? null
+            : (r.polarity_correct ? r.val_effect_size : -r.val_effect_size),
+        zRange: (values) => {
+            const absMax = values.length ? Math.max(...values.map(Math.abs)) : 1;
+            const b = Math.ceil(absMax);
+            return { zmin: -b, zmax: b, zmid: 0 };
+        },
+    },
+    val_accuracy: {
+        label: 'Val Accuracy (%)',
+        legendLabels: ['0%', '50%', '100%'],
+        legendBarClass: 'heatmap-legend-bar-diverging',
+        colorscale: DELTA_COLORSCALE,
+        hoverSuffix: 'acc=%{z:.1f}%',
+        // Accuracy relative to chance: 50% = neutral
+        computeCell: (r) => r.val_accuracy == null ? null : r.val_accuracy * 100,
+        zRange: () => ({ zmin: 0, zmax: 100, zmid: 50 }),
+    },
+    combined: {
+        label: 'Combined Score',
+        legendLabels: ['0', '', '1'],
+        legendBarClass: '',  // sequential green
+        colorscale: ASYMB_COLORSCALE,
+        hoverSuffix: 'score=%{z:.2f}',
+        computeCell: (r) => r.combined_score == null ? null : r.combined_score,
+        zRange: () => ({ zmin: 0, zmax: 1 }),
+    },
+};
 
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
@@ -49,9 +90,9 @@ async function renderExtraction() {
             <!-- Per-Trait Heatmaps -->
             <section>
                 ${renderSubsection({
-                    title: 'Per-Trait Heatmaps (Layer × Method effect_size)',
+                    title: 'Per-Trait Heatmaps (Layer × Method)',
                     infoId: 'info-heatmaps',
-                    infoText: 'Signed Cohen&#39;s d for each layer (rows) and method (MD, Pr). Green = correct direction with strong separation, red = polarity flipped, white = weak. ★ marks best layer.'
+                    infoText: 'Rows are layers, columns are methods (MD, Pr). Metric toggle picks what each cell shows: signed Cohen&#39;s d (diverging, red = polarity flipped), val accuracy (0–100%, diverging around 50% chance), or the pipeline&#39;s combined score (0–1, sequential). ★ marks best layer by absolute effect size.'
                 })}
                 <div id="trait-heatmaps-container"></div>
             </section>
@@ -61,7 +102,7 @@ async function renderExtraction() {
                 ${renderSubsection({
                     title: 'Token Decode (Logit Lens)',
                     infoId: 'info-logit-lens',
-                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at ~90% depth. Coherent lists confirm the vector captured the intended concept.'
+                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at layer n_layers/2 + 10 (L26 on 32-layer Qwen, L50 on 80-layer Llama). Coherent lists confirm the vector captured the intended concept.'
                 })}
                 <div id="logit-lens-container"></div>
             </section>
@@ -342,20 +383,35 @@ function renderTraitHeatmaps(evalData) {
     // Compute best vectors for star indicators
     const bestVectors = computeBestVectors(results);
 
-    // Create grid with legend below
+    const metricToggle = renderSegmentedControl({
+        id: 'heatmap-metric-control',
+        options: [
+            { value: 'effect_size', label: 'Effect Size' },
+            { value: 'val_accuracy', label: 'Val Accuracy' },
+            { value: 'combined', label: 'Combined' },
+        ],
+        selected: heatmapMetric,
+        dataAttr: 'metric',
+    });
+
+    const cfg = METRIC_CONFIG[heatmapMetric];
     container.innerHTML = `
+        <div class="heatmap-metric-toggle">
+            <span class="cb-label">Metric:</span>
+            ${metricToggle}
+        </div>
         <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
         <div class="heatmap-legend-footer">
             <span class="file-hint">${traits.length} traits</span>
             <span class="file-hint" title="Best layer by effect size">★ = best</span>
             <div class="heatmap-legend">
-                <span title="Cohen's d; negative = wrong polarity">Effect Size (d):</span>
+                <span>${cfg.label}:</span>
                 <div>
-                    <div class="heatmap-legend-bar heatmap-legend-bar-diverging"></div>
+                    <div class="heatmap-legend-bar ${cfg.legendBarClass}"></div>
                     <div class="heatmap-legend-labels">
-                        <span>−max</span>
-                        <span>0</span>
-                        <span>+max</span>
+                        <span>${cfg.legendLabels[0]}</span>
+                        <span>${cfg.legendLabels[1]}</span>
+                        <span>${cfg.legendLabels[2]}</span>
                     </div>
                 </div>
             </div>
@@ -382,28 +438,37 @@ function renderTraitHeatmaps(evalData) {
 
         renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, bestInfo);
     });
+
+    // Wire metric toggle — re-render heatmaps on change
+    const metricControl = document.getElementById('heatmap-metric-control');
+    if (metricControl) {
+        metricControl.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-metric]');
+            if (!btn || btn.dataset.metric === heatmapMetric) return;
+            heatmapMetric = btn.dataset.metric;
+            renderTraitHeatmaps(evalData);
+        });
+    }
 }
 
 
 function renderSingleTraitHeatmap(traitResults, containerId, bestInfo = null) {
     const methods = ['mean_diff', 'probe'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
+    const cfg = METRIC_CONFIG[heatmapMetric];
 
-    // Build matrix: layers × methods, value = signed effect size (flipped if polarity wrong)
+    // Build matrix: layers × methods, value per current metric
     const matrix = [];
     layers.forEach(layer => {
         const row = methods.map(method => {
             const result = traitResults.find(r => r.layer === layer && r.method === method);
-            if (!result || result.val_effect_size == null) return null;
-            return result.polarity_correct ? result.val_effect_size : -result.val_effect_size;
+            return result ? cfg.computeCell(result) : null;
         });
         matrix.push(row);
     });
 
-    // Symmetric zrange around 0 based on per-trait max |effect|
     const allValues = matrix.flat().filter(v => v !== null);
-    const absMax = allValues.length > 0 ? Math.max(...allValues.map(Math.abs)) : 1;
-    const zbound = Math.ceil(absMax);
+    const { zmin, zmax, zmid } = cfg.zRange(allValues);
 
     const xLabels = ['MD', 'Pr'];
 
@@ -412,11 +477,11 @@ function renderSingleTraitHeatmap(traitResults, containerId, bestInfo = null) {
         x: xLabels,
         y: layers,
         type: 'heatmap',
-        colorscale: DELTA_COLORSCALE,
-        hovertemplate: '%{x} L%{y}: d=%{z:.2f}<extra></extra>',
-        zmin: -zbound,
-        zmax: zbound,
-        zmid: 0,
+        colorscale: cfg.colorscale,
+        hovertemplate: `%{x} L%{y}: ${cfg.hoverSuffix}<extra></extra>`,
+        zmin,
+        zmax,
+        ...(zmid !== undefined ? { zmid } : {}),
         showscale: false
     };
 
