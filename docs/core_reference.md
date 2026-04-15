@@ -120,6 +120,8 @@ paths = detect_contribution_paths(model)
 # Unknown architecture: raises ValueError with diagnostic info
 ```
 
+**Hybrid attention (e.g. Qwen3.5):** some layers use `linear_attn` (fused QKV) instead of `self_attn`. `get_hook_path` dispatches per-layer, and extraction skips `k_proj`/`v_proj` on linear_attn layers automatically.
+
 **Projection hooks** (used by inference pipeline for on-GPU projection):
 ```python
 from core import ProjectionHook, MultiLayerProjection

@@ -67,9 +67,9 @@ function extractReferences(markdown) {
  * @returns {string} - Markdown with ^N replaced by placeholders
  */
 function processCitationMarkers(markdown, refs) {
-    // Replace ^1, ^2 etc with placeholders
-    // Matches ^N where N is a number (not inside code blocks ideally)
-    return markdown.replace(/\^(\d+)/g, (match, num) => {
+    // Replace ^1, ^[1], ^2, ^[2] etc with placeholders
+    // Matches ^N or ^[N] where N is a number
+    return markdown.replace(/\^\[?(\d+)\]?/g, (match, num) => {
         if (refs[num]) {
             return `NUMCITE_${num}`;
         }
