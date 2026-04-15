@@ -134,20 +134,30 @@ function injectStyles() {
     font-size: 9px;
 }
 
-/* Best response preview — clean, no colored borders */
+/* Best response preview — distinct colored box */
 .detail-best-response {
-    padding: 12px;
+    padding: 12px 14px;
     margin-top: 12px;
+    background: rgba(122, 184, 224, 0.08);
+    border: 1px solid rgba(122, 184, 224, 0.3);
+    border-left: 3px solid var(--accent-color, #7ab8e0);
+    border-radius: var(--radius-sm);
+}
+.detail-best-response .br-header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 .detail-best-response .br-label {
     font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    margin-bottom: 4px;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 .detail-best-response .br-meta {
     font-size: var(--text-xs);
     color: var(--text-tertiary);
-    margin-bottom: 8px;
 }
 .detail-best-response .br-question {
     font-size: var(--text-xs);
@@ -166,29 +176,55 @@ function injectStyles() {
     font-style: italic;
 }
 
-/* Per-layer results list */
-.detail-layer-results { margin-top: 12px; }
+/* Per-layer results list — styled as a dropdown */
+.detail-layer-results {
+    margin-top: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+}
+.detail-layer-results[open] { padding-bottom: 8px; }
 .detail-layer-results summary {
     font-size: var(--text-xs);
-    color: var(--text-tertiary);
+    color: var(--text-secondary);
     cursor: pointer;
-    padding: 8px 0;
+    padding: 8px 4px;
+    list-style: none;
 }
-.detail-layer-results summary:hover { color: var(--text-secondary); }
+.detail-layer-results summary::-webkit-details-marker { display: none; }
+.detail-layer-results summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 6px;
+    color: var(--text-tertiary);
+    transition: transform 0.15s;
+}
+.detail-layer-results[open] summary::before { transform: rotate(90deg); }
+.detail-layer-results summary:hover { color: var(--text-primary); }
+.detail-layer-row.baseline-row {
+    border-top: 1px dashed var(--border-color);
+    border-bottom: 1px dashed var(--border-color);
+    margin-bottom: 6px;
+}
+.detail-layer-row.baseline-row .lr-layer { color: var(--text-tertiary); }
 .detail-layer-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 12px;
+    padding: 8px 4px;
     font-size: var(--text-xs);
     color: var(--text-secondary);
     cursor: pointer;
-    border-radius: var(--radius-sm);
-    margin-bottom: 2px;
+    border-bottom: 1px solid var(--border-color);
     transition: background 0.1s;
 }
-.detail-layer-row:hover { background: var(--bg-secondary); }
-.detail-layer-row.expanded { background: var(--bg-secondary); }
+.detail-layer-row:last-of-type { border-bottom: none; }
+.detail-layer-row:hover { background: var(--bg-tertiary); }
+.detail-layer-row.expanded { background: var(--bg-tertiary); }
+.detail-layer-row .lr-delta { min-width: 55px; font-weight: 600; }
+.detail-layer-row .lr-delta.pos { color: var(--success, #8fce5b); }
+.detail-layer-row .lr-delta.neg { color: var(--danger, #e07a7a); }
 .detail-layer-row .lr-layer { font-weight: 600; min-width: 30px; }
 .detail-layer-row .lr-score { min-width: 65px; }
 .detail-layer-row .lr-coef { color: var(--text-tertiary); }
@@ -352,7 +388,8 @@ function renderDetailPlotly(chartDiv, detailData, direction) {
  * @param {Object} traitResults - { runs, baseline }
  * @returns {{ methods, perLayer, baseline, minLayer, maxLayer, bestRun, configs }}
  */
-function extractDetailData(traitResults, direction = null, minCoherence = 70) {
+function extractDetailData(traitResults, direction, minCoherence) {
+    if (minCoherence == null) throw new Error('extractDetailData: minCoherence is required');
     const baseline = traitResults.baseline?.trait_mean || 0;
     const runs = traitResults.runs || [];
 
@@ -506,7 +543,8 @@ async function fetchResponseForRun(entry, run) {
 function buildDetailHTML(trait, traitResults) {
     const direction = traitResults.direction || 'positive';
     const slider = document.getElementById('sweep-coherence-threshold');
-    const minCoherence = slider ? parseInt(slider.value, 10) : 70;
+    if (!slider) throw new Error('sweep-coherence-threshold slider not found');
+    const minCoherence = parseInt(slider.value, 10);
     const data = extractDetailData(traitResults, direction, minCoherence);
     const { methods, perLayer, baseline, minLayer, maxLayer, bestRun, configCount } = data;
     const traitName = trait.split('/').pop();
@@ -544,23 +582,41 @@ function buildDetailHTML(trait, traitResults) {
     // Best response section (placeholder, loaded async)
     const bestResponseHTML = bestRun ? `
         <div class="detail-best-response" data-layer="${bestRun.layer}" data-method="${bestRun.method}" data-component="${bestRun.component}" data-coef="${bestRun.coef}">
-            <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score) <span class="subsection-info-toggle" data-target="info-steering-best-response">\u25BA</span></div>
-            <div class="subsection-info" id="info-steering-best-response">The strongest coherent steering run for this trait &mdash; best layer, coef, score, coherence, plus the actual prompt and model output. Use it to eyeball whether the score reflects real behaviour.</div>
-            <div class="br-meta">
-                Layer <strong>${bestRun.layer}</strong>
-                &middot; coef=<strong>${Math.abs(bestRun.coef).toFixed(1)}</strong>
-                &middot; trait=<strong>${bestRun.traitScore.toFixed(1)}</strong>
-                &middot; coherence=<strong>${bestRun.coherence.toFixed(0)}</strong>
+            <div class="br-header">
+                <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score)</div>
+                <div class="br-meta">
+                    Layer <strong>${bestRun.layer}</strong>
+                    &middot; coef=<strong>${Math.abs(bestRun.coef).toFixed(1)}</strong>
+                    &middot; trait=<strong>${bestRun.traitScore.toFixed(1)}</strong>
+                    &middot; coherence=<strong>${bestRun.coherence.toFixed(0)}</strong>
+                </div>
             </div>
             <div class="br-text"><span class="br-loading">Loading response...</span></div>
         </div>
     ` : '';
 
+    // Baseline row (first in the dropdown, above per-layer rows)
+    const baselineRowHTML = baseline != null ? `
+            <div class="detail-layer-row baseline-row" data-baseline="1">
+                <span class="lr-layer">base</span>
+                <span class="lr-delta">—</span>
+                <span class="lr-score">trait ${baseline.toFixed(1)}</span>
+                <span class="lr-coef">no steering</span>
+                <span class="lr-coh"></span>
+                <span class="lr-arrow">▸</span>
+            </div>
+            <div class="detail-layer-response" data-baseline-resp="1"></div>
+    ` : '';
+
     // Per-layer results
     const layerRowsHTML = perLayer.map((r, i) => {
+        const delta = r.traitScore - baseline;
+        const deltaSign = delta >= 0 ? '+' : '';
+        const deltaCls = delta >= 0 ? 'pos' : 'neg';
         return `
             <div class="detail-layer-row" data-layer-idx="${i}" data-layer="${r.layer}" data-method="${r.method}" data-component="${r.component}" data-coef="${r.coef}">
                 <span class="lr-layer">L${r.layer}</span>
+                <span class="lr-delta ${deltaCls}">${deltaSign}${delta.toFixed(1)}</span>
                 <span class="lr-score">trait ${r.traitScore.toFixed(1)}</span>
                 <span class="lr-coef">coef ${Math.abs(r.coef).toFixed(1)}</span>
                 <span class="lr-coh">coh ${r.coherence.toFixed(0)}</span>
@@ -596,14 +652,10 @@ function buildDetailHTML(trait, traitResults) {
         </div>
         <div class="subsection-info" id="info-steering-detail-chart">Trait score (judge, 0&ndash;100) per injection layer, one line per extraction method. Dashed line = unsteered baseline. Distance from baseline = steering strength.</div>
         <div class="detail-chart" id="detail-chart-${traitName}"></div>
-        <div class="detail-baseline-response" style="display:none;">
-            <div class="br-label">Baseline response (no steering)</div>
-            <div class="br-text"><span class="br-loading">Loading...</span></div>
-        </div>
         ${bestResponseHTML}
         <details class="detail-layer-results">
-            <summary>All layers (${perLayer.length} results, sorted by score) <span class="subsection-info-toggle" data-target="info-steering-layer-results">\u25BA</span></summary>
-            <div class="subsection-info" id="info-steering-layer-results">All layers ranked by trait score, with the coefficient and coherence chosen by the search. Click a row to see the per-prompt responses behind the score.</div>
+            <summary>All layers (${perLayer.length} results, sorted by score) — click row to view response</summary>
+            ${baselineRowHTML}
             ${layerRowsHTML}
         </details>
     `;
@@ -648,7 +700,8 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
     // ── Render Plotly chart ──
     const direction = traitResults.direction || 'positive';
     const slider = document.getElementById('sweep-coherence-threshold');
-    const minCoherence = slider ? parseInt(slider.value, 10) : 70;
+    if (!slider) throw new Error('sweep-coherence-threshold slider not found');
+    const minCoherence = parseInt(slider.value, 10);
     const detailData = extractDetailData(traitResults, direction, minCoherence);
     const traitName = trait.split('/').pop();
     const chartDiv = panel.querySelector(`#detail-chart-${traitName}`);
@@ -699,27 +752,49 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
         });
     });
 
-    // ── Load baseline response ──
-    const baselineEl = panel.querySelector('.detail-baseline-response');
-    if (baselineEl) {
-        const experiment = window.state.experimentData?.name;
-        const basePath = window.paths?.get('steering.responses', {
-            experiment, trait: entry.trait, model_variant: entry.model_variant,
-            position: entry.position, prompt_set: entry.prompt_set,
+    // ── Wire baseline row click (loads baseline.json) ──
+    const baselineRow = panel.querySelector('.detail-layer-row.baseline-row');
+    if (baselineRow) {
+        const respEl = panel.querySelector('.detail-layer-response[data-baseline-resp="1"]');
+        baselineRow.addEventListener('click', async () => {
+            const wasVisible = respEl.classList.contains('visible');
+            panel.querySelectorAll('.detail-layer-response').forEach(r => r.classList.remove('visible'));
+            panel.querySelectorAll('.detail-layer-row').forEach(r => r.classList.remove('expanded'));
+            if (wasVisible) return;
+
+            baselineRow.classList.add('expanded');
+            respEl.classList.add('visible');
+
+            if (!respEl.dataset.loaded) {
+                respEl.innerHTML = '<em style="color: var(--text-tertiary); font-size: var(--text-xs);">Loading...</em>';
+                const experiment = window.state.experimentData?.name;
+                const basePath = window.paths?.get('steering.responses', {
+                    experiment, trait: entry.trait, model_variant: entry.model_variant,
+                    position: entry.position, prompt_set: entry.prompt_set,
+                });
+                let responses = null;
+                if (basePath) {
+                    try {
+                        const r = await fetch(`/${basePath}/baseline.json`);
+                        if (r.ok) responses = await r.json();
+                    } catch {}
+                }
+                if (responses && responses.length > 0) {
+                    respEl.innerHTML = responses.map(r => {
+                        const text = escapeHtml(r.response || r.text || JSON.stringify(r));
+                        const prompt = r.prompt ? escapeHtml(r.prompt) : '';
+                        const meta = r.trait_score != null
+                            ? `<div class="rc-meta">trait ${(r.trait_score||0).toFixed(1)} · coh ${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
+                            : '';
+                        const promptLine = prompt ? `<div class="rc-question">Q: ${prompt}</div>` : '';
+                        return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
+                    }).join('');
+                } else {
+                    respEl.innerHTML = '<em style="color: var(--text-tertiary); font-size: var(--text-xs);">No baseline response saved</em>';
+                }
+                respEl.dataset.loaded = 'true';
+            }
         });
-        if (basePath) {
-            fetch(`/${basePath}/baseline.json`).then(r => r.ok ? r.json() : null).then(responses => {
-                if (!responses || responses.length === 0) return;
-                baselineEl.style.display = 'block';
-                // Pick the response with the highest trait score to show the "best baseline"
-                const best = responses.reduce((a, b) => (b.trait_score || 0) > (a.trait_score || 0) ? b : a, responses[0]);
-                const promptLine = best.prompt
-                    ? `<div class="br-question">Q: ${escapeHtml(best.prompt)}</div>` : '';
-                baselineEl.querySelector('.br-text').innerHTML =
-                    `<div class="br-meta">trait=${(best.trait_score||0).toFixed(1)} · coherence=${(best.coherence_score||0).toFixed(0)}</div>`
-                    + promptLine + `<div style="margin-top:4px;">${escapeHtml(best.response || '')}</div>`;
-            }).catch(() => {});
-        }
     }
 
     // ── Check if responses exist, then wire response sections ──
@@ -733,11 +808,6 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
         // Hide response sections entirely when no response files
         if (bestResponseEl) bestResponseEl.style.display = 'none';
     } else {
-        // Add response hint to summary
-        if (layerResultsEl) {
-            const summary = layerResultsEl.querySelector('summary');
-            if (summary) summary.textContent += ' — click row to view response';
-        }
         // Load best response text
         if (bestResponseEl) {
             const layer = parseInt(bestResponseEl.dataset.layer);
@@ -762,8 +832,8 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
             });
         }
 
-        // Wire per-layer row clicks to expand responses
-        panel.querySelectorAll('.detail-layer-row').forEach(row => {
+        // Wire per-layer row clicks to expand responses (excluding baseline row)
+        panel.querySelectorAll('.detail-layer-row:not(.baseline-row)').forEach(row => {
             row.addEventListener('click', async () => {
                 const idx = row.dataset.layerIdx;
                 const respEl = panel.querySelector(`.detail-layer-response[data-layer-resp="${idx}"]`);

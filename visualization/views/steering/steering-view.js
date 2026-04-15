@@ -66,6 +66,12 @@ async function renderSteering() {
     // Collect filter values from data (populates chartFilters)
     await collectFilterValues(traits);
 
+    // Single source of truth: backend's MIN_COHERENCE, served via /api/config
+    const minCoherence = window.state?.appConfig?.min_coherence;
+    if (minCoherence == null) {
+        throw new Error('appConfig.min_coherence missing — /api/config must include MIN_COHERENCE from utils.vectors');
+    }
+
     // Build the view
     contentArea.innerHTML = `
         <div class="tool-view">
@@ -74,8 +80,8 @@ async function renderSteering() {
                 <div class="model-info" id="steering-model-info"></div>
                 <span class="steering-sep"></span>
                 <label>Coherence:</label>
-                <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="77" />
-                <span id="coherence-threshold-value" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 24px;">77</span>
+                <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="${minCoherence}" />
+                <span id="coherence-threshold-value" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 24px;">${minCoherence}</span>
                 <div id="chart-filter-rows" style="display: contents;"></div>
             </div>
 
