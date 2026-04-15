@@ -31,7 +31,8 @@ datasets/traits/rm_hack/
 analysis/
 
 # ── Docs (same as .publicinclude) ──
-docs/main.md
+# docs/main.main.md is renamed to docs/main.md by promote_to_prod.sh.
+docs/main.main.md
 docs/extraction_guide.md
 docs/inference_guide.md
 docs/steering_guide.md

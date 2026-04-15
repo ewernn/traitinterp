@@ -46,7 +46,10 @@ experiments/ant_emotion_concepts/ant_emotion_concepts_findings.md
 analysis/
 
 # ── Docs ──
-docs/main.md
+# docs/main.main.md is renamed to docs/main.md by promote_to_main.sh —
+# on dev, docs/main.md is the internal reference; docs/main.main.md is
+# the slim public version that ships.
+docs/main.main.md
 docs/extraction_guide.md
 docs/inference_guide.md
 docs/steering_guide.md

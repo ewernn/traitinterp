@@ -147,12 +147,13 @@ case "$MODE" in
                 done
             fi
 
-            # Branch-specific renames: CLAUDE.main.md on dev becomes CLAUDE.md
-            # on prod. Mirrors the same rule in promote_to_main.sh — dev's
-            # CLAUDE.md references @docs/dev.md which doesn't ship publicly.
-            if [[ -f "$WORKTREE/CLAUDE.main.md" ]]; then
-                git -C "$WORKTREE" mv -f CLAUDE.main.md CLAUDE.md
-            fi
+            # Branch-specific renames: any <name>.main.md on dev becomes
+            # <name>.md on the target branch. Mirrors promote_to_main.sh.
+            while IFS= read -r src; do
+                [[ -z "$src" ]] && continue
+                dst="${src%.main.md}.md"
+                git -C "$WORKTREE" mv -f "$src" "$dst"
+            done < <(cd "$WORKTREE" && find . -type f -name "*.main.md" 2>/dev/null | sed 's|^\./||')
 
             if git -C "$WORKTREE" diff --cached --quiet 2>/dev/null; then
                 echo "No changes to promote."
@@ -198,11 +199,13 @@ case "$MODE" in
                 done
             fi
 
-            # Branch-specific renames: CLAUDE.main.md → CLAUDE.md on prod.
+            # Branch-specific renames: any <name>.main.md → <name>.md.
             # See worktree branch above for rationale.
-            if [[ -f CLAUDE.main.md ]]; then
-                git mv -f CLAUDE.main.md CLAUDE.md
-            fi
+            while IFS= read -r src; do
+                [[ -z "$src" ]] && continue
+                dst="${src%.main.md}.md"
+                git mv -f "$src" "$dst"
+            done < <(find . -type f -name "*.main.md" 2>/dev/null | sed 's|^\./||')
 
             CHANGED=$(git diff --cached --stat | tail -1)
             if [[ -z "$CHANGED" || "$CHANGED" == *"0 files changed"* ]]; then
