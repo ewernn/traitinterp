@@ -40,7 +40,7 @@ from utils.distributed import is_rank_zero, tp_barrier, tp_lifecycle, flush_cuda
 from utils.backends import LocalBackend, add_backend_args
 from utils.model_registry import is_base_model
 from utils.vram import format_duration
-from utils.traits import load_scenarios, load_extraction_config
+from utils.traits import load_scenarios, load_extraction_config, load_ood_scenarios, get_ood_scenario_path
 from utils.model import format_prompt
 from utils.model_generation import generate_batch
 from utils.extract_vectors import (
@@ -153,24 +153,56 @@ def _run_stage(config, stage_num):
     return not config.only_stages or stage_num in config.only_stages
 
 
+def _generate_and_write(scenarios_list, output_path, model, tokenizer, use_chat_template,
+                        max_new_tokens, temperature, seed, rollouts):
+    """Run generation for one scenario list and write output JSON."""
+    results = []
+    formatted = [
+        format_prompt(s['prompt'], tokenizer, use_chat_template=use_chat_template,
+                     system_prompt=s.get('system_prompt'))
+        for s in scenarios_list
+    ]
+    for _ in range(rollouts):
+        responses = (
+            [''] * len(formatted) if max_new_tokens == 0
+            else generate_batch(model, tokenizer, formatted, max_new_tokens, temperature, seed=seed)
+        )
+        for scenario, response in zip(scenarios_list, responses):
+            results.append({
+                'prompt': scenario['prompt'], 'response': response,
+                'system_prompt': scenario.get('system_prompt'),
+            })
+    if is_rank_zero():
+        with open(output_path, 'w') as f:
+            json.dump(results, f, indent=2)
+    return len(results)
+
+
 def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
                        backend, use_chat_template: bool):
-    """Stage 1: Generate model responses from scenarios."""
+    """Stage 1: Generate model responses from scenarios (plus OOD if present)."""
     if not _run_stage(config, 1):
         return
 
     responses_path = get_path("extraction.responses", experiment=config.experiment,
                                trait=trait, model_variant=variant_name)
 
-    # For single-polarity traits, only pos.json is needed
-    if not config.force and (responses_path / "pos.json").exists():
-        # Check if this is a single-polarity trait
-        from utils.traits import load_trait_metadata, load_extraction_config as _load_ext_cfg
-        _meta = load_trait_metadata(trait)
-        _ext_cfg = _load_ext_cfg(trait)
-        _is_single = _meta.get('polarity') == 'single' or _ext_cfg.get('polarity') == 'single'
-        if _is_single or (responses_path / "neg.json").exists():
-            return
+    from utils.traits import load_trait_metadata, load_extraction_config as _load_ext_cfg
+    _meta = load_trait_metadata(trait)
+    _ext_cfg = _load_ext_cfg(trait)
+    is_single = _meta.get('polarity') == 'single' or _ext_cfg.get('polarity') == 'single'
+    ood_scenarios = load_ood_scenarios(trait)  # None if OOD files missing
+
+    # Build list of expected output files for skip-if-exists check
+    expected_files = [responses_path / "pos.json"]
+    if not is_single:
+        expected_files.append(responses_path / "neg.json")
+    if ood_scenarios is not None:
+        expected_files.append(responses_path / "ood_pos.json")
+        expected_files.append(responses_path / "ood_neg.json")
+
+    if not config.force and all(f.exists() for f in expected_files):
+        return
 
     print(f"  [1] Generating responses...")
     max_new_tokens = resolve_max_new_tokens(config.position, config.max_new_tokens)
@@ -184,28 +216,26 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
 
     responses_path.mkdir(parents=True, exist_ok=True)
 
+    # Training scenarios
     for label in scenarios:  # Only iterate polarities returned by load_scenarios
-        results = []
-        formatted = [
-            format_prompt(s['prompt'], tokenizer, use_chat_template=use_chat_template,
-                         system_prompt=s.get('system_prompt'))
-            for s in scenarios[label]
-        ]
-        for _ in range(config.rollouts):
-            responses = (
-                [''] * len(formatted) if max_new_tokens == 0
-                else generate_batch(model, tokenizer, formatted, max_new_tokens, config.temperature, seed=config.seed)
-            )
-            for scenario, response in zip(scenarios[label], responses):
-                results.append({
-                    'prompt': scenario['prompt'], 'response': response,
-                    'system_prompt': scenario.get('system_prompt'),
-                })
+        out_path = responses_path / f'{label[:3]}.json'
+        if not config.force and out_path.exists():
+            continue
+        n = _generate_and_write(scenarios[label], out_path, model, tokenizer,
+                                use_chat_template, max_new_tokens, config.temperature,
+                                config.seed, config.rollouts)
+        print(f"    {label}: {n} responses")
 
-        if is_rank_zero():
-            with open(responses_path / f'{label[:3]}.json', 'w') as f:
-                json.dump(results, f, indent=2)
-        print(f"    {label}: {len(results)} responses")
+    # OOD scenarios (validation-only; always contrastive since load_ood_scenarios requires both)
+    if ood_scenarios is not None:
+        for label in ['positive', 'negative']:
+            out_path = responses_path / f'ood_{label[:3]}.json'
+            if not config.force and out_path.exists():
+                continue
+            n = _generate_and_write(ood_scenarios[label], out_path, model, tokenizer,
+                                    use_chat_template, max_new_tokens, config.temperature,
+                                    config.seed, config.rollouts)
+            print(f"    ood_{label}: {n} responses")
 
     if is_rank_zero():
         from utils.traits import get_scenario_path
@@ -216,6 +246,9 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
         }
         if 'negative' in scenarios:
             input_hashes['negative'] = content_hash(get_scenario_path(trait, 'negative'))
+        if ood_scenarios is not None:
+            input_hashes['ood_positive'] = content_hash(get_ood_scenario_path(trait, 'positive'))
+            input_hashes['ood_negative'] = content_hash(get_ood_scenario_path(trait, 'negative'))
         with open(responses_path / 'metadata.json', 'w') as f:
             json.dump({
                 'model': model.config.name_or_path, 'experiment': config.experiment,
@@ -224,6 +257,7 @@ def generate_responses(config: ExtractionConfig, trait: str, variant_name: str,
                 'temperature': config.temperature, 'seed': config.seed,
                 'timestamp': datetime.now().isoformat(),
                 'polarity': 'single' if 'negative' not in scenarios else 'contrastive',
+                'has_ood': ood_scenarios is not None,
                 'input_hashes': input_hashes,
             }, f, indent=2)
 
