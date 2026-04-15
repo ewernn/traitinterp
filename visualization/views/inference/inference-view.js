@@ -38,8 +38,21 @@ async function renderInference() {
     // Preserve scroll position
     const scrollY = contentArea.scrollTop;
 
-    // Always render page shell with controls (so they remain accessible even when no data loads)
-    renderPageShell(contentArea, allFilteredTraits);
+    // Build the page shell on first render; preserve it on subsequent renders to avoid a
+    // full-tree innerHTML wipe (which caused the visible flash on trait toggles / prompt switches).
+    // Update the only trait-list-dependent control — the layer-mode trait select — in place.
+    const existingShell = contentArea.querySelector('.tool-view');
+    if (!existingShell) {
+        renderPageShell(contentArea, allFilteredTraits);
+    } else {
+        const layerTraitSelect = document.getElementById('layer-mode-trait-select');
+        if (layerTraitSelect) {
+            const { getDisplayName } = await import('../../core/display.js');
+            layerTraitSelect.innerHTML = allFilteredTraits.map(t =>
+                `<option value="${t.name}"${t.name === window.state.layerModeTrait ? ' selected' : ''}>${getDisplayName(t.name)}</option>`
+            ).join('');
+        }
+    }
 
     if (filteredTraits.length === 0) {
         document.getElementById('combined-activation-plot').innerHTML =

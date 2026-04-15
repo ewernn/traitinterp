@@ -94,7 +94,7 @@ function populateTraitCheckboxes() {
 
         const arrow = document.createElement('span');
         arrow.className = 'trait-cat-arrow';
-        arrow.textContent = '▸';
+        arrow.textContent = '▾';
         header.appendChild(arrow);
 
         const label = document.createElement('span');
@@ -109,11 +109,11 @@ function populateTraitCheckboxes() {
 
         container.appendChild(header);
 
-        // Chips container (collapsed by default)
+        // Chips container (expanded by default)
         const chipsDiv = document.createElement('div');
         chipsDiv.className = 'trait-chips';
         chipsDiv.dataset.category = category;
-        chipsDiv.hidden = true;
+        chipsDiv.hidden = false;
 
         traits.forEach(trait => {
             const chip = document.createElement('span');

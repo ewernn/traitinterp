@@ -103,6 +103,7 @@ function buildControlBarHtml(allFilteredTraits) {
 
     const advancedRow = `
             <div class="cb-row cb-advanced" id="td-advanced-row" hidden>
+                ${compareCluster}
                 <div class="cb-cluster">
                     <span class="cb-label">Methods:</span>
                     ${methodCheckboxes}
@@ -126,7 +127,6 @@ function buildControlBarHtml(allFilteredTraits) {
             <div class="cb-row">
                 ${smoothCluster}
                 ${modeCluster}
-                ${compareCluster}
                 ${advToggle}
             </div>
             ${advancedRow}
