@@ -342,6 +342,7 @@
 .cb-cluster { display: flex; align-items: center; gap: 6px; }
 .cb-label { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; white-space: nowrap; }
 .cb-select { font-size: var(--text-xs); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-primary); }
+.cb-select:disabled { opacity: 0.45; cursor: not-allowed; color: var(--text-tertiary); }
 .cb-checkbox { display: flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; }
 .cb-sep { border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px; }
 .cb-advanced { padding: 8px 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); }
@@ -2854,44 +2855,53 @@ mark.annotation {
     flex-direction: column;
 }
 
-/* Warmup overlay — sits on top of the chat UI until GPU is warm */
-.warmup-overlay {
+/* Wake-GPU CTA — centered over the (hidden) chart when backend is cold.
+   Less confrontational than a full-screen overlay: user still sees the
+   chat panel + toggle + model name, just no chart yet. */
+.wake-cta {
     position: absolute;
     inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 50px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: var(--radius-sm);
-    z-index: 10;
+    gap: 8px;
+    pointer-events: none;
 }
-.btn-warmup {
-    padding: 16px 48px;
-    font-size: var(--text-lg, 1.1rem);
-    font-weight: 600;
-    background: var(--primary-color);
-    color: var(--bg-primary);
-    border: none;
-    border-radius: var(--radius-sm, 6px);
+.wake-cta > * { pointer-events: auto; }
+.wake-cta .wake-hint {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+}
+
+/* Trait steering collapsible — default open, collapse to hide legend +
+   steering buttons for a cleaner view. */
+.trait-steering-details summary {
     cursor: pointer;
-    transition: opacity 0.15s;
-    min-width: 260px;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    padding: 4px 0;
 }
-.btn-warmup:hover:not(:disabled) { opacity: 0.85; }
-.btn-warmup:disabled { cursor: default; opacity: 0.8; }
+.trait-steering-details[open] summary { margin-bottom: 4px; }
+
+/* Small secondary button used by the Unload action. */
+.btn.btn-xs {
+    padding: 2px 8px;
+    font-size: var(--text-xs);
+}
 
 /* "How it works" dropdown below the chat */
 .live-chat-howto { margin-top: 8px; }
 
 .live-chat-container {
-    position: relative;  /* anchor for the warmup overlay */
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 16px;
     flex: 1;
     min-height: 0;
 }
+
 
 .chat-panel {
     display: flex;
@@ -3084,6 +3094,7 @@ mark.annotation {
 }
 
 .trait-chart-panel {
+    position: relative;  /* anchor for .wake-cta when backend is cold */
     display: flex;
     flex-direction: column;
     background: var(--bg-secondary);

@@ -95,10 +95,15 @@ class ChatInference:
         else:
             print(f"[ChatInference] Loading model locally: {model_id}")
             # Import torch (lazy)
+            import torch
             from utils.model import load_model
 
-            # Use LocalBackend for model loading
-            model, tokenizer = load_model(model_id, device=self.device)
+            # 4-bit quantization via bitsandbytes works on CUDA. MPS/CPU fall back to
+            # full precision — bnb doesn't have real MPS kernels. A 9B fp16 model is
+            # ~18 GB; on a 32 GB Mac that's tight. `/api/chat/status` reports a
+            # `can_fit_locally` hint so the frontend can block Wake if it won't fit.
+            use_4bit = torch.cuda.is_available()
+            model, tokenizer = load_model(model_id, device=self.device, load_in_4bit=use_4bit)
             self._backend = LocalBackend.from_model(model, tokenizer)
 
             # Expose model/tokenizer for existing code paths
@@ -122,6 +127,48 @@ class ChatInference:
         # Load trait vectors (always from local - vectors stay on Railway)
         self._load_trait_vectors()
         self._loaded = True
+
+    @property
+    def ready(self) -> bool:
+        """True iff this instance is fully loaded and can serve generate() calls.
+
+        For local: the model is in memory. For modal: the client is connected
+        (the remote container may still be cold — the first generate() pays
+        that cost). The live-chat UI uses this to gate the send button.
+        """
+        return self._loaded
+
+    def unload(self):
+        """Free the underlying model and reset to a cold state.
+
+        Safe to call multiple times. After unload, ready -> False and the next
+        generate() call would re-trigger load(). Used by the unload button in
+        local mode so users can reclaim Mac RAM, and when the frontend toggles
+        backends (we always unload the current backend to enforce a clean wake).
+        """
+        if not self._loaded:
+            return
+        if self.backend == "local" and self.model is not None:
+            import gc
+            try:
+                import torch
+            except ImportError:
+                torch = None
+            self.model = None
+            self.tokenizer = None
+            self._backend = None
+            gc.collect()
+            if torch is not None:
+                if hasattr(torch, 'cuda') and torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                if hasattr(torch, 'mps') and hasattr(torch.mps, 'empty_cache'):
+                    torch.mps.empty_cache()
+        else:
+            # Modal: drop the app handle so the next load re-looks it up.
+            self._modal_app = None
+        self.trait_vectors = {}
+        self._loaded = False
+        print(f"[ChatInference] Unloaded ({self.backend})")
 
     def _load_trait_vectors(self):
         """Discover and load all trait vectors with their best layers."""
@@ -563,11 +610,106 @@ def get_chat_instance(experiment: str, backend: str = None, model_type: str = "a
         mode = os.getenv('MODE', 'development')
         backend = 'modal' if mode == 'production' else 'local'
 
-    # Recreate instance if experiment, backend, or model_type changed
+    # Recreate instance if experiment, backend, or model_type changed.
+    # When backend/experiment changes, unload the old instance first so we
+    # don't keep two models pinned in RAM.
     if (_chat_instance is None or
         _chat_instance.experiment != experiment or
         _chat_instance.backend != backend or
         _chat_instance.model_type != model_type):
+        if _chat_instance is not None:
+            try:
+                _chat_instance.unload()
+            except Exception as e:
+                print(f"[ChatInference] Error unloading previous instance: {e}")
         _chat_instance = ChatInference(experiment, backend=backend, model_type=model_type)
 
     return _chat_instance
+
+
+def get_chat_status(experiment: str, backend: str, model_type: str = "application") -> Dict:
+    """Read-only snapshot of the current chat instance state.
+
+    Returns the current (experiment, backend, model, ready) without creating
+    or loading anything. The frontend polls this every ~2s to drive the
+    connection dot, wake button, and send guard.
+    """
+    from utils.paths import get_model_variant
+
+    try:
+        variant_info = get_model_variant(experiment, mode=model_type)
+        model_id = variant_info.model
+    except Exception as e:
+        model_id = None
+
+    # Report readiness only for the currently-requested (experiment, backend).
+    # A stale instance for a different backend is not "ready" from the user's
+    # perspective — they'd still need to wake.
+    ready = (
+        _chat_instance is not None
+        and _chat_instance.experiment == experiment
+        and _chat_instance.backend == backend
+        and _chat_instance.model_type == model_type
+        and _chat_instance.ready
+    )
+
+    return {
+        'experiment': experiment,
+        'backend': backend,
+        'model': model_id,
+        'ready': ready,
+    }
+
+
+def wake_chat_stream(experiment: str, backend: str, model_type: str = "application") -> Generator[Dict, None, None]:
+    """Load the model for (experiment, backend) and yield SSE progress events.
+
+    Unloads any prior instance with a different (experiment, backend, model_type)
+    first so we don't double-pin memory.
+
+    Yields:
+        {'status': 'loading', 'backend': ..., 'model': ..., 'estimated_seconds': N}
+        {'status': 'ready',   'backend': ..., 'model': ..., 'actual_seconds': N}
+        {'status': 'error',   'error': '...'}
+    """
+    from utils.paths import get_model_variant
+
+    try:
+        variant_info = get_model_variant(experiment, mode=model_type)
+        model_id = variant_info.model
+    except Exception as e:
+        yield {'status': 'error', 'error': f'Failed to resolve model for {experiment}: {e}'}
+        return
+
+    # Estimate cold-start seconds. Modal snapshot restore is fast; local load is
+    # dominated by disk + HF init. These are rough — the frontend uses them for
+    # a countdown and reconciles from actual_seconds on completion.
+    estimate = 25 if backend == 'modal' else 60
+    yield {'status': 'loading', 'backend': backend, 'model': model_id, 'estimated_seconds': estimate}
+
+    start = time.time()
+    try:
+        instance = get_chat_instance(experiment, backend=backend, model_type=model_type)
+        if not instance.ready:
+            instance.load()
+        actual = round(time.time() - start, 1)
+        print(f"[wake_chat_stream] ready in {actual}s ({backend}, {model_id})")
+        yield {'status': 'ready', 'backend': backend, 'model': model_id, 'actual_seconds': actual}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        yield {'status': 'error', 'error': str(e)}
+
+
+def unload_chat_instance() -> Dict:
+    """Drop the current chat instance and free its resources."""
+    global _chat_instance
+    if _chat_instance is None:
+        return {'unloaded': False, 'reason': 'no instance'}
+    try:
+        _chat_instance.unload()
+    except Exception as e:
+        print(f"[unload_chat_instance] Error: {e}")
+        return {'unloaded': False, 'error': str(e)}
+    _chat_instance = None
+    return {'unloaded': True}

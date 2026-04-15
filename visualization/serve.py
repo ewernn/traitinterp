@@ -12,6 +12,7 @@ import json
 import re
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 # Add parent directory to path to import utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -108,15 +109,21 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.get_judge_templates())
                 return
 
-            # API endpoint: Modal warmup (SSE — sends estimate, then ready/error)
-            if self.path == '/api/modal/warmup':
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/event-stream')
-                self.send_header('Cache-Control', 'no-cache')
-                self.end_headers()
-                for event in self.warmup_modal_stream():
-                    self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
-                    self.wfile.flush()
+            # API endpoint: unified chat status (backend, model, ready, can_fit_locally)
+            # Polled by live-chat to drive connection dot, wake button, send guard.
+            if self.path.startswith('/api/chat/status'):
+                if not CHAT_AVAILABLE:
+                    self.send_api_response({'available': False})
+                    return
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                experiment = qs.get('experiment', ['live-chat'])[0]
+                backend = qs.get('backend', ['local'])[0]
+                model_type = qs.get('model_type', ['application'])[0]
+                from visualization.chat_inference import get_chat_status
+                status = get_chat_status(experiment, backend, model_type)
+                status['can_fit_locally'] = self.estimate_can_fit_locally(status.get('model'))
+                self.send_api_response(status)
                 return
 
             # API endpoint: get experiment config
@@ -266,10 +273,110 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_chat_stream()
                 return
 
+            # Load model for the requested (experiment, backend). Streams SSE progress.
+            if self.path == '/api/chat/wake':
+                if not CHAT_AVAILABLE:
+                    self.send_error(503, "Live chat not available on this deployment")
+                    return
+                self.handle_chat_wake()
+                return
+
+            # Unload current chat instance (local only — modal scaledown handles itself).
+            if self.path == '/api/chat/unload':
+                if not CHAT_AVAILABLE:
+                    self.send_error(503, "Live chat not available on this deployment")
+                    return
+                self.handle_chat_unload()
+                return
+
             # Unknown POST endpoint
             self.send_error(404, "Not Found")
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    def handle_chat_wake(self):
+        """Stream SSE progress while loading the chat instance for (exp, backend)."""
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode('utf-8') if content_length else '{}'
+        try:
+            data = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            data = {}
+        experiment = data.get('experiment', 'live-chat')
+        backend = data.get('backend', 'local')
+        model_type = data.get('model_type', 'application')
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-cache')
+        self.end_headers()
+        print(f"[api/chat/wake] experiment={experiment} backend={backend} model_type={model_type}")
+        from visualization.chat_inference import wake_chat_stream
+        for event in wake_chat_stream(experiment, backend, model_type):
+            self.wfile.write(f"data: {json.dumps(event)}\n\n".encode())
+            self.wfile.flush()
+
+    def handle_chat_unload(self):
+        """Drop the current chat instance and free its resources."""
+        from visualization.chat_inference import unload_chat_instance
+        result = unload_chat_instance()
+        print(f"[api/chat/unload] {result}")
+        self.send_api_response(result)
+
+    def estimate_can_fit_locally(self, model_id: Optional[str]) -> Optional[bool]:
+        """Rough check whether `model_id` will fit on the local device.
+
+        Returns True/False if we can make a confident estimate, else None
+        (caller treats None as "unknown — let the user try"). Used by
+        /api/chat/status so the wake button can be disabled pre-flight when
+        the model clearly won't fit.
+
+        Sizing assumes the actual dtype `chat_inference` will use:
+          - CUDA: bnb 4-bit (~0.5 bytes/param)  + 30% runtime overhead
+          - MPS:  fp16     (~2 bytes/param)     + 30% runtime overhead
+        Compares against currently *available* memory (not total) so a busy
+        system doesn't get a false green light.
+        """
+        if not model_id:
+            return None
+        try:
+            from utils.model_registry import get_model_config
+            cfg = get_model_config(model_id)
+        except Exception:
+            return None
+        num_params = cfg.get('num_parameters') or cfg.get('params')
+        if not num_params:
+            # Estimate from architecture fields if available.
+            h = cfg.get('hidden_size')
+            layers = cfg.get('num_hidden_layers')
+            inter = cfg.get('intermediate_size')
+            if h and layers and inter:
+                # Rough transformer param count: ~12 * layers * h^2 + embeddings.
+                num_params = 12 * layers * h * h + 4 * layers * h * inter
+        if not num_params:
+            return None
+
+        try:
+            import torch
+            if torch.cuda.is_available():
+                # Local CUDA path uses bnb 4-bit (chat_inference.py).
+                bytes_per_param = 0.5
+                needed_gb = (num_params * bytes_per_param * 1.3) / (1024 ** 3)
+                free, _ = torch.cuda.mem_get_info(0)
+                return needed_gb < (free / (1024 ** 3))
+            if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                # Local MPS path uses fp16 — bnb has no real MPS kernels.
+                import psutil
+                bytes_per_param = 2
+                needed_gb = (num_params * bytes_per_param * 1.3) / (1024 ** 3)
+                # Use *available* memory, not total, so a loaded machine
+                # doesn't get a false green light.
+                avail_gb = psutil.virtual_memory().available / (1024 ** 3)
+                return needed_gb < avail_gb
+        except Exception:
+            return None
+        # CPU-only or unknown: don't pre-block; let the user attempt.
+        return None
 
     def handle_chat_stream(self):
         """Stream chat response with trait scores via SSE."""
@@ -316,7 +423,9 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Import here to avoid loading model on server start
             from visualization.chat_inference import get_chat_instance
 
+            print(f"[api/chat] inference_mode={inference_mode!r} experiment={experiment} model_type={model_type}")
             chat = get_chat_instance(experiment, backend=inference_mode, model_type=model_type)
+            print(f"[api/chat] routed to backend={chat.backend!r}")
 
             for event in chat.generate(prompt, max_new_tokens=max_tokens, temperature=temperature, history=history, previous_context_length=previous_context_length, steering_configs=steering_configs):
                 sse_data = f"data: {json.dumps(event)}\n\n"
@@ -343,6 +452,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def get_app_config(self):
         """Get app-wide config for frontend (mode, features)."""
+        from utils.vectors import MIN_COHERENCE
         mode = os.environ.get('MODE', 'development')
 
         # Mode determines available features
@@ -361,7 +471,8 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'inference_backend': 'local' if is_dev else 'modal',
                 'experiment': 'live-chat',
                 'model': 'google/gemma-2-2b-it',  # Default for production
-            }
+            },
+            'min_coherence': MIN_COHERENCE,
         }
 
     def get_gpu_status(self):
@@ -518,68 +629,6 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             return config
         except Exception as e:
             return {'error': str(e)}
-
-    # Warmup timing history: model_name -> last_actual_seconds.
-    # Used to calibrate countdown estimates after the first warmup.
-    _warmup_history: dict = {}
-
-    # Conservative first-call estimates (snapshot-restore, model already cached on volume).
-    # If a model needs a fresh download+quant, the first warmup will be much longer and
-    # the actual timing gets stored for next time.
-    _default_warmup_estimates: dict = {
-        'Qwen/Qwen3.5-9B': 20,
-        'google/gemma-2-2b-it': 10,
-        'unsloth/gemma-2-2b-it-bnb-4bit': 10,
-    }
-    _fallback_estimate: int = 25
-
-    def warmup_modal_stream(self):
-        """Warm up the chat container, yielding SSE events with countdown estimate.
-
-        Fires a 1-token throwaway request to `capture_activations_stream` so
-        the actual chat container pool (not a separate warmup function) gets warmed.
-
-        Yields:
-            {"status": "warming", "model": ..., "estimated_seconds": N}
-            {"status": "ready"|"error", "model": ..., "actual_seconds": N}
-        """
-        import time
-        print("[Warmup] Starting Modal warmup...")
-        try:
-            from utils.paths import get_model_variant
-            variant_info = get_model_variant('live-chat', mode='application')
-            model_name = variant_info.model
-            short_name = model_name.split('/')[-1]
-
-            # Send estimate immediately so frontend can start countdown
-            estimate = self._warmup_history.get(model_name,
-                self._default_warmup_estimates.get(model_name, self._fallback_estimate))
-            yield {'status': 'warming', 'model': short_name, 'estimated_seconds': estimate}
-
-            print(f"[Warmup] Model: {model_name}, estimate: {estimate}s")
-            start = time.time()
-
-            import modal
-            TraitCapture = modal.Cls.from_name("trait-capture", "TraitCapture")
-            for _ in TraitCapture(model_name=model_name).capture_activations_stream.remote_gen(
-                messages=[{"role": "user", "content": "hi"}],
-                max_new_tokens=1,
-            ):
-                break  # First token is enough
-
-            actual = round(time.time() - start, 1)
-            # Only update estimate from cold starts (>5s). Warm hits (<5s)
-            # shouldn't override the estimate since the next call might be cold.
-            if actual > 5:
-                CORSHTTPRequestHandler._warmup_history[model_name] = min(actual, 25)
-            print(f"[Warmup] Success: {model_name} in {actual}s")
-            yield {'status': 'ready', 'model': short_name, 'actual_seconds': actual}
-
-        except Exception as e:
-            import traceback
-            print(f"[Warmup] Error: {e}")
-            traceback.print_exc()
-            yield {'status': 'error', 'error': str(e)}
 
     def list_available_views(self):
         """List view IDs present on disk. Used by sidebar to auto-build nav.

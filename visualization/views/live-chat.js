@@ -14,14 +14,22 @@ import {
     toggleInferenceMode,
     updateInferenceModeUI,
     updateConnectionStatusUI,
-    warmupModal,
+    wakeChatBackend,
+    unloadChatBackend,
+    startChatStatusPolling,
+    stopChatStatusPolling,
+    fetchChatStatus,
+    onChatStatusChange,
+    onChatReady,
+    onChatUnload,
     getInferenceMode,
     setInferenceMode,
-    getModalConnectionState,
-    setModalConnectionState,
+    getChatStatus,
+    isChatReady,
+    isWakeInFlight,
     getPendingMessage,
     setPendingMessage,
-    getWarmupCountdown,
+    getWakeProgress,
 } from '../components/inference-controls.js';
 import {
     initTraitChart,
@@ -57,16 +65,23 @@ function getStorageKey() {
 }
 
 /**
- * Save conversation to localStorage
+ * Save conversation to localStorage, tagged with the backend + model that
+ * generated it. Trait projections are model-specific — restoring a
+ * conversation from a different model would show stale chart lines — so
+ * restoreConversation() only matches when backend+model align.
  */
 function saveConversation() {
     if (!conversationTree || conversationTree.isEmpty()) return;
     try {
-        const data = conversationTree.toJSON();
-        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+        const status = getChatStatus();
+        const payload = {
+            tree: conversationTree.toJSON(),
+            backend: status.backend || getInferenceMode(),
+            model: status.model || null,
+        };
+        localStorage.setItem(getStorageKey(), JSON.stringify(payload));
     } catch (e) {
         console.warn('[LiveChat] Failed to save conversation:', e);
-        // If storage is full, clear old data
         if (e.name === 'QuotaExceededError') {
             localStorage.removeItem(getStorageKey());
         }
@@ -74,21 +89,33 @@ function saveConversation() {
 }
 
 /**
- * Restore conversation from localStorage
+ * Restore conversation from localStorage — only if the saved (backend, model)
+ * matches the currently selected one. On mismatch we silently discard and
+ * start fresh; a cold backend means the conversation can't be continued
+ * anyway and a different model would produce nonsense trait lines.
  */
 function restoreConversation() {
     try {
         const saved = localStorage.getItem(getStorageKey());
-        if (saved) {
-            const data = JSON.parse(saved);
-            conversationTree.fromJSON(data);
-            return true;
+        if (!saved) return false;
+        const parsed = JSON.parse(saved);
+        // Legacy format (pre-tagging) had the tree at the top level. Discard those.
+        if (!parsed || !parsed.tree) {
+            return false;
         }
+        const status = getChatStatus();
+        const currentBackend = status.backend || getInferenceMode();
+        const currentModel = status.model;
+        if (parsed.backend !== currentBackend || (currentModel && parsed.model !== currentModel)) {
+            return false;
+        }
+        conversationTree.fromJSON(parsed.tree);
+        return true;
     } catch (e) {
         console.warn('[LiveChat] Failed to restore conversation:', e);
         localStorage.removeItem(getStorageKey());
+        return false;
     }
-    return false;
 }
 
 // Thin wrappers that pass conversation state to chart module
@@ -104,6 +131,7 @@ function updateChartHighlight() {
  * or fetch directly for live-chat experiment which may not be the sidebar experiment).
  */
 let liveChatExperimentConfig = null;
+let inferenceModeSeeded = false;  // only seed from app config on first mount
 
 async function loadModelConfig() {
     try {
@@ -117,78 +145,46 @@ async function loadModelConfig() {
     }
 }
 
-/**
- * Render the live chat view
- */
-/**
- * Start warmup from the overlay button. Updates button text with countdown.
- */
-function startWarmupFromOverlay() {
-    const btn = document.getElementById('warmup-btn');
-    if (!btn) return;
-
-    btn.disabled = true;
-    btn.textContent = 'Waking GPU...';
-    const startTime = Date.now();
-
-    warmupModal();  // SSE — fires countdown, calls renderLiveChat on completion
-
-    // Update button text: countdown while estimate holds, then elapsed time
-    const updateBtn = setInterval(() => {
-        const cd = getWarmupCountdown();
-        const state = getModalConnectionState();
-        if (state === 'connected' || state === 'error') {
-            clearInterval(updateBtn);
-            const overlay = document.getElementById('warmup-overlay');
-            if (overlay && state === 'connected') overlay.remove();
-            return;
-        }
-        if (cd > 0) {
-            btn.textContent = `Waking GPU... ~${cd}s`;
-        } else {
-            // Estimate expired — show elapsed time so user knows it's still working
-            const elapsed = Math.round((Date.now() - startTime) / 1000);
-            btn.textContent = `Waking GPU... ${elapsed}s`;
-        }
-    }, 500);
-}
+// Unsubscribe functions for chat-status listeners (set on mount, cleared on remount)
+let chatStatusUnsub = null;
+let chatReadyUnsub = null;
+let chatUnloadUnsub = null;
 
 async function renderLiveChat() {
     const container = document.getElementById('content-area');
     if (!container) return;
 
-    // Load config for context length
     await loadModelConfig();
 
-    // Initialize conversation tree if needed
+    // Seed mode from app config the first time we mount, then stop overriding
+    // user toggles on subsequent renders.
+    const appConfig = window.state.appConfig || {};
+    if (!inferenceModeSeeded) {
+        const defaultBackend = appConfig.defaults?.inference_backend || 'local';
+        setInferenceMode(defaultBackend);
+        inferenceModeSeeded = true;
+    }
+
+    // Kick off polling + one immediate status fetch so the UI has truth.
+    startChatStatusPolling();
+    await fetchChatStatus();
+
+    // Conversation tree: create once, restore only if tagged (backend, model) match.
     if (!conversationTree) {
         conversationTree = new ConversationTree();
         restoreConversation();
     }
 
-    // If already rendered (including after warmup completion), don't rebuild
+    // Re-render guard: if the view already exists, just refresh dynamic pieces.
     const existingView = container.querySelector('.live-chat-view');
     if (existingView) {
-        // Warmup just completed — remove overlay if present, update chart
-        const overlay = document.getElementById('warmup-overlay');
-        if (overlay && getModalConnectionState() === 'connected') {
-            overlay.remove();
-        }
+        applyChatStatusToDOM();
         if (conversationTree && conversationTree.globalTokens.length > 0) {
             updateTraitChartWrapped();
         }
         return;
     }
 
-    // Fresh render — show overlay only if no existing conversation.
-    // If there's a restored conversation, let the user see their old messages
-    // and only require warmup when they try to send a new message.
-    const hasConversation = conversationTree && conversationTree.activePathIds && conversationTree.activePathIds.length > 0;
-    if (getInferenceMode() === 'modal' && !hasConversation) {
-        setModalConnectionState('disconnected');
-    }
-
-    // Resolve model name from live-chat config (not sidebar experiment)
     const lcVariant = liveChatExperimentConfig?.defaults?.application || 'instruct';
     const lcModelFull = liveChatExperimentConfig?.model_variants?.[lcVariant]?.model || appConfig.defaults?.model || '';
     const lcModelShort = lcModelFull.split('/').pop();
@@ -207,11 +203,19 @@ async function renderLiveChat() {
                                 <span id="inference-mode-label">Local</span>
                             </label>
                             <div id="connection-status" class="connection-status"></div>
+                            <button id="unload-btn" class="btn btn-secondary btn-xs" style="display:none" onclick="unloadChatBackend()">Unload</button>
                             ${renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: getShowSmoothedLine(), className: 'smooth-toggle' })}
                         </div>
-                        <div class="chart-legend" id="chart-legend"></div>
+                        <details id="trait-steering-wrap" class="trait-steering-details" open style="display:none">
+                            <summary>Steering</summary>
+                            <div class="chart-legend" id="chart-legend"></div>
+                        </details>
                     </div>
                     <div id="trait-chart" class="trait-chart"></div>
+                    <div id="wake-cta" class="wake-cta" style="display:none">
+                        <button id="wake-btn" class="btn btn-primary" onclick="wakeChatBackend()">Wake GPU</button>
+                        <div id="wake-hint" class="wake-hint"></div>
+                    </div>
                 </div>
 
                 <!-- Bottom: Chat Interface -->
@@ -220,11 +224,7 @@ async function renderLiveChat() {
                         <div class="chat-placeholder">Send a message to start chatting...</div>
                     </div>
                     <div class="chat-input-area">
-                        <textarea
-                            id="chat-input"
-                            placeholder="Type your message..."
-                            rows="2"
-                        ></textarea>
+                        <textarea id="chat-input" placeholder="Type your message..." rows="2"></textarea>
                         <div class="chat-controls">
                             <button id="send-btn" class="btn btn-primary">Send</button>
                             <button id="clear-btn" class="btn btn-secondary">Clear</button>
@@ -233,7 +233,6 @@ async function renderLiveChat() {
                 </div>
             </div>
 
-            <!-- How it works dropdown (below the chat UI) -->
             <details class="detail-layer-results live-chat-howto">
                 <summary>How it works</summary>
                 <div style="padding: 12px; line-height: 1.6;">
@@ -248,44 +247,97 @@ async function renderLiveChat() {
         </div>
     `;
 
-    // Setup event handlers
     setupChatHandlers();
-
-    // Initialize empty chart
     initTraitChart();
-
-    // Render existing messages if any
     renderMessages();
 
-    // Initialize inference mode from app config
-    const appConfig = window.state.appConfig || {};
-    const defaultBackend = appConfig.defaults?.inference_backend || 'local';
-    setInferenceMode(defaultBackend);
+    // Sync toggle checkbox + label to current inference mode (model-info span
+    // is set in the template above; we intentionally don't call
+    // updateModelInfoUI which would overwrite it with the sidebar experiment).
+    updateInferenceModeUI();
 
-    if (getInferenceMode() === 'modal' && getModalConnectionState() !== 'connected') {
-        // Show warmup overlay on top of the chat UI
-        const liveChat = container.querySelector('.live-chat-container');
-        if (liveChat) {
-            liveChat.insertAdjacentHTML('afterbegin', `
-                <div id="warmup-overlay" class="warmup-overlay">
-                    <button id="warmup-btn" class="btn-warmup" onclick="startWarmupFromOverlay()">
-                        Start Live Chat
-                    </button>
-                </div>
-            `);
-        }
-    } else if (getInferenceMode() !== 'modal') {
-        // Development: local mode is always ready
-        setModalConnectionState('connected');
-        updateConnectionStatusUI(isGenerating);
-    }
-    // Skip updateInferenceModeUI — model name is set in the template above,
-    // and updateModelInfoUI would overwrite it with the wrong experiment's config.
-
-    // Hide inference toggle in production mode
+    // Hide the toggle in production if the feature flag is off.
     if (!isFeatureEnabled('inference_toggle')) {
         const inferenceToggle = document.querySelector('.inference-mode-toggle');
         if (inferenceToggle) inferenceToggle.style.display = 'none';
+    }
+
+    // Subscribe to status changes so layout reacts when wake completes,
+    // backend toggles, etc. One subscription per mount.
+    if (chatStatusUnsub) chatStatusUnsub();
+    if (chatReadyUnsub) chatReadyUnsub();
+    if (chatUnloadUnsub) chatUnloadUnsub();
+    chatStatusUnsub = onChatStatusChange(() => applyChatStatusToDOM());
+    // When the backend becomes ready, drain any prompt the user queued by
+    // hitting Send pre-warm. The pendingMessage was already moved into the
+    // input by inference-controls; we just need to re-fire Send.
+    chatReadyUnsub = onChatReady(() => {
+        const queued = getPendingMessage();
+        if (queued && !isGenerating) {
+            setPendingMessage(null);
+            handleSend();
+        }
+    });
+    // When the backend is unloaded (toggle or explicit unload), the trait
+    // chart's cached vector metadata + lines belong to a dead session.
+    // Reset so a future wake starts clean.
+    chatUnloadUnsub = onChatUnload(() => {
+        resetChartState();
+        initTraitChart();
+    });
+    applyChatStatusToDOM();
+}
+
+/**
+ * Show/hide chart, wake button, trait steering, send button, and unload
+ * button based on current chat status. Pure DOM — reads state from
+ * inference-controls and updates classes/styles.
+ */
+function applyChatStatusToDOM() {
+    const ready = isChatReady();
+    const mode = getInferenceMode();
+    const waking = isWakeInFlight();
+    const status = getChatStatus();
+
+    const chartEl = document.getElementById('trait-chart');
+    const wakeCta = document.getElementById('wake-cta');
+    const steering = document.getElementById('trait-steering-wrap');
+    const sendBtn = document.getElementById('send-btn');
+    const unloadBtn = document.getElementById('unload-btn');
+    const wakeBtn = document.getElementById('wake-btn');
+    const wakeHint = document.getElementById('wake-hint');
+
+    // Chart + trait steering: visible only when ready. Pre-ready we show an
+    // empty chart panel (styled via CSS) with a centered Wake CTA — less
+    // confrontational than a full-screen overlay.
+    if (chartEl) chartEl.style.visibility = ready ? 'visible' : 'hidden';
+    if (steering) steering.style.display = ready && document.getElementById('chart-legend')?.children.length ? '' : 'none';
+    if (wakeCta) wakeCta.style.display = ready ? 'none' : '';
+    if (sendBtn) sendBtn.style.display = ready ? '' : 'none';
+    if (unloadBtn) unloadBtn.style.display = (ready && mode === 'local') ? '' : 'none';
+
+    if (wakeBtn) {
+        const cannotFit = mode === 'local' && status.can_fit_locally === false;
+        wakeBtn.disabled = waking || cannotFit;
+        if (waking) {
+            const prog = getWakeProgress();
+            const est = prog?.estimated_seconds;
+            const elapsed = prog?.elapsed_s ?? 0;
+            wakeBtn.textContent = est && elapsed < est ? `Waking... ~${est - elapsed}s` : `Waking... ${elapsed}s`;
+        } else {
+            wakeBtn.textContent = 'Wake GPU';
+        }
+        if (wakeHint) {
+            if (cannotFit) {
+                wakeHint.innerHTML = `${(status.model || 'Model').split('/').pop()} is too large for this machine. <a href="#" id="suggest-modal">Switch to Modal GPU</a>`;
+                const link = wakeHint.querySelector('#suggest-modal');
+                if (link) link.onclick = (e) => { e.preventDefault(); toggleInferenceMode(); };
+            } else if (waking) {
+                wakeHint.textContent = 'Loading model into memory...';
+            } else {
+                wakeHint.textContent = mode === 'modal' ? 'Starts a fresh Modal container.' : 'Loads the model locally.';
+            }
+        }
     }
 }
 
@@ -341,9 +393,11 @@ async function sendMessage() {
     const prompt = input.value.trim();
     if (!prompt || isGenerating) return;
 
-    // Block send while modal is warming up
-    if (getInferenceMode() === 'modal' && getModalConnectionState() === 'warming') {
+    // Gate on backend readiness. If the user clicks Send without waking,
+    // cache the prompt and fire the wake flow — it'll flush on ready.
+    if (!isChatReady()) {
         setPendingMessage(prompt);
+        if (!isWakeInFlight()) wakeChatBackend();
         return;
     }
 
@@ -729,7 +783,8 @@ export {
 window.startEdit = startEdit;
 window.navigateBranch = navigateBranch;
 window.handleMessageHover = handleMessageHover;
-window.startWarmupFromOverlay = startWarmupFromOverlay;
 window.setSteeringCoefficient = setSteeringCoefficient;
 window.toggleInferenceMode = toggleInferenceMode;
 window.renderLiveChat = renderLiveChat;
+window.wakeChatBackend = wakeChatBackend;
+window.unloadChatBackend = unloadChatBackend;
