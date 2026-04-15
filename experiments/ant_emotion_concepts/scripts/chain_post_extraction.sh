@@ -91,7 +91,7 @@ fi
 # Step 4: Re-run Stage 3 geometry at a central layer
 echo ""
 echo "[$(timestamp)] === Step 4: Stage 3 geometry (with denoised vectors) ==="
-python ${SCRIPTS}/stage3_geometry.py \
+python analysis/vectors/geometry.py \
     --experiment ${EXPERIMENT} \
     --layer 49 \
     --method mean_diff+gm+pc50 \

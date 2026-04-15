@@ -23,7 +23,7 @@ Replicates **"Emotion Concepts and their Function in a Large Language Model"** (
 
 - `scripts/stage1p3_generate_dialogues.py` and `stage1p4_generate_deflection.py` — paper-verbatim 2-speaker + deflection dialogue generation (A.4 / A.11 templates)
 - `scripts/stage6_speaker_probes.py` — the 2×2 speaker/emotion cosine grid (Fig 17-18) with per-turn token boundaries
-- `scripts/shared.py::BLACKMAIL_SYSTEM_PROMPT` + email chain (A.13 scenario)
+- `scripts/shared.py::get_blackmail_prompt()` + email chain (A.13 scenario)
 - `scripts/stage7_steering.py::run_decision_gate` — paper §3 gate-check pattern
 - `datasets/traits/ant_emotion_concepts/` — 171 emotion trait directories + `_neutral/` reference corpus
 

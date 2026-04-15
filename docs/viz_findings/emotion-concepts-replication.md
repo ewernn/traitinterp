@@ -51,6 +51,12 @@ caption: "Figure 6: UMAP projection with k-means clusters (k=10). Both models pr
 :::
 
 :::side-by-side
+left: experiments/ant_emotion_concepts/paper_figures/fig57.png "Sonnet 4.5"
+right: experiments/ant_emotion_concepts/paper_figures/ours/fig57_ours.png "Llama 3.3 70B"
+caption: "Figure 57 (Appendix): 2D circumplex — all 171 emotions projected onto PC1 (valence) × PC2 (arousal), colored by cluster."
+:::
+
+:::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig7.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/fig7_ours.png "Llama 3.3 70B"
 caption: "Figure 7: Emotion projections onto PC1 (valence, 33% var) and PC2 (arousal, 14% var). Paper: PC1=27%, PC2=15%."
@@ -66,12 +72,6 @@ caption: "Figure 8: PC1 vs human valence (r=0.96 vs 0.81), PC2 vs human arousal 
 left: experiments/ant_emotion_concepts/paper_figures/fig9.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/fig9_ours.png "Llama 3.3 70B"
 caption: "Figure 9: Cross-layer representational similarity. Emotion structure is consistent across depth in both models."
-:::
-
-:::side-by-side
-left: experiments/ant_emotion_concepts/paper_figures/fig57.png "Sonnet 4.5"
-right: experiments/ant_emotion_concepts/paper_figures/ours/fig57_ours.png "Llama 3.3 70B"
-caption: "Figure 57 (Appendix): 2D circumplex — all 171 emotions projected onto PC1 (valence) × PC2 (arousal), colored by cluster."
 :::
 
 ## Layer Dynamics

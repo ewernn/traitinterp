@@ -1,4 +1,4 @@
-"""Regenerate ALL 17 paper figures with FIGURE_REGEN_SPEC.md applied.
+"""Regenerate all paper figures for the Emotion Concepts replication.
 
 Global style: 2x font, coral titles, ±0.08 y-axis for cosine plots,
 s=80+ dots, linewidth=2.5, clean spines, endpoint labels, DejaVu Sans.
@@ -80,8 +80,8 @@ def gen_fig2():
     col_indices = [data["prompt_emotions"].index(e) for e in PAPER_ORDER]
     matrix = matrix[np.ix_(row_indices, col_indices)]
 
-    # Spec: shrink height to 2/3 → (10, 5)
-    fig, ax = plt.subplots(figsize=(10, 5))
+    # 30% taller than previous, with border
+    fig, ax = plt.subplots(figsize=(10, 6.5))
     vmax = np.max(np.abs(matrix))
     im = ax.imshow(matrix, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
 
@@ -95,6 +95,11 @@ def gen_fig2():
 
     cbar = fig.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
     cbar.set_label("Cosine Similarity", fontweight="bold", rotation=270, labelpad=18)
+
+    # Re-enable all spines for border
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.5)
 
     fig.suptitle("Emotion Probes Respond to Implicit Emotional Content",
                  fontsize=18, fontweight="bold", color=TITLE_COLOR, y=1.0)
@@ -134,8 +139,8 @@ def gen_fig3():
         "students_passed_exam": "I found out that {X} of my 20 students\npassed the final exam.",
     }
 
-    # Spec: 15% shorter → figsize=(12, 11) not (12, 14)
-    fig, axes = plt.subplots(3, 2, figsize=(12, 11))
+    # 15% taller than previous
+    fig, axes = plt.subplots(3, 2, figsize=(12, 13))
 
     for idx, key in enumerate(PANEL_ORDER):
         ax = axes.flat[idx]
@@ -315,8 +320,8 @@ def gen_fig7():
     pc2_sorted = data["pc2_sorted"]
     var_explained = data["variance_explained"]
 
-    # Spec: shrink height
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 7))
+    # 50% taller + thick border on all sides
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10.5))
 
     for ax, pc_data, pc_idx in [(ax1, pc1_sorted, 0), (ax2, pc2_sorted, 1)]:
         names = [item[0].replace("_", " ") for item in pc_data]
@@ -329,10 +334,16 @@ def gen_fig7():
         var_pct = var_explained[pc_idx] * 100
         ax.set_ylabel(f"PC{pc_idx+1} ({var_pct:.0f}% var)", fontweight="bold")
 
-        # Spec: every 5th label, rotated
+        # Every 5th label, rotated
         ax.set_xticks(range(n))
         labels = [names[i] if i % 5 == 0 else "" for i in range(n)]
         ax.set_xticklabels(labels, rotation=45, ha="right")
+
+        # Thick black border on all 4 sides
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_linewidth(1.5)
+            spine.set_color("black")
 
     fig.suptitle("Emotion Projections onto Principal Components",
                  fontsize=20, fontweight="bold", color=TITLE_COLOR, y=0.98)
@@ -356,8 +367,8 @@ def gen_fig8():
         labels = d["labels"]
         highlight = d.get("highlight", [])
 
-        # Spec: dots 2x larger (s=80)
-        ax.scatter(x, y, s=80, alpha=0.7, c=STEEL_BLUE, edgecolors="white", linewidths=0.5, zorder=2)
+        # Dots 100% larger than before (s=160)
+        ax.scatter(x, y, s=160, alpha=0.7, c=STEEL_BLUE, edgecolors="white", linewidths=0.5, zorder=2)
 
         # Regression line
         if d.get("regression"):
@@ -367,18 +378,19 @@ def gen_fig8():
 
         r, p = stats.pearsonr(x, y)
         ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-                fontsize=16, fontweight="bold", va="top",
+                fontsize=22, fontweight="bold", va="top",
                 bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="#999", alpha=0.9))
 
         # Label highlights
         for i, lbl in enumerate(labels):
             if lbl in highlight:
-                ax.annotate(lbl, (x[i], y[i]), fontsize=9, alpha=0.8,
+                ax.annotate(lbl, (x[i], y[i]), fontsize=12, alpha=0.8,
                             xytext=(4, 4), textcoords="offset points")
 
-        ax.set_xlabel(d["xaxis"], fontsize=16)
-        ax.set_ylabel(d["yaxis"], fontsize=16)
-        ax.set_title(title, fontsize=20, fontweight="bold", color=TITLE_COLOR, pad=10)
+        ax.set_xlabel(d["xaxis"], fontsize=22)
+        ax.set_ylabel(d["yaxis"], fontsize=22)
+        ax.set_title(title, fontsize=24, fontweight="bold", color=TITLE_COLOR, pad=10)
+        ax.tick_params(labelsize=14)
         ax.grid(True, alpha=0.15)
 
     plt.tight_layout()
@@ -395,8 +407,9 @@ def gen_fig9():
     layers = data["layers"]
     rsa_matrix = np.array(data["rsa_matrix"])
 
-    fig, ax = plt.subplots(figsize=(10, 8))
-    im = ax.imshow(rsa_matrix, cmap="viridis", vmin=0, vmax=1, interpolation="nearest")
+    # 3% smaller
+    fig, ax = plt.subplots(figsize=(9.7, 7.8))
+    im = ax.imshow(rsa_matrix, cmap="viridis", vmin=0.6, vmax=1.0, interpolation="nearest")
 
     ax.set_xticks(range(len(layers)))
     ax.set_xticklabels([str(l) for l in layers], rotation=45, ha="right")
@@ -408,8 +421,9 @@ def gen_fig9():
     cbar = fig.colorbar(im, ax=ax, shrink=0.8)
     cbar.set_label("Representational Similarity (Spearman r)")
 
+    # Title not bold
     ax.set_title("Cross-Layer Representational Similarity",
-                 fontsize=20, fontweight="bold", color=TITLE_COLOR, pad=12)
+                 fontsize=20, color=TITLE_COLOR, pad=12)
 
     # Re-enable spines for heatmap
     for spine in ax.spines.values():
@@ -458,7 +472,7 @@ def gen_fig10():
                        edgecolors='white', linewidths=0.6, zorder=3)
 
     # Regression lines
-    x_range = np.linspace(user_vals.min() - 0.3, user_vals.max() + 0.3, 100)
+    x_range = np.linspace(-0.1, 0.1, 100)
     slope, intercept = np.polyfit(user_vals, asst_vals, 1)
     ax.plot(x_range, slope * x_range + intercept, '-', color='#1a1a1a', linewidth=2.5, zorder=4)
 
@@ -467,10 +481,8 @@ def gen_fig10():
     paper_intercept = asst_vals.mean() - paper_slope * user_vals.mean()
     ax.plot(x_range, paper_slope * x_range + paper_intercept, '--', color='#b0b0b0', linewidth=2.5, zorder=4)
 
-    lim_min = min(user_vals.min(), asst_vals.min()) - 0.3
-    lim_max = max(user_vals.max(), asst_vals.max()) + 0.3
-    ax.set_xlim(lim_min, lim_max)
-    ax.set_ylim(lim_min, lim_max)
+    ax.set_xlim(-0.1, 0.1)
+    ax.set_ylim(-0.1, 0.1)
     ax.set_aspect('equal')
     ax.grid(True, alpha=0.12)
 
@@ -507,29 +519,39 @@ def gen_fig11():
     with open(DATA_S5 / "colon_predicts.json") as f:
         data = json.load(f)
 
-    # Extract colon projection and response mean for each scenario's expected emotion
+    # Plot ALL emotion probes × ALL scenarios (like paper), colored by emotion
     layer = "49"
-    colon_vals, response_vals, emotions = [], [], []
-    for r_item in data["results"]:
-        emo = r_item["expected_assistant_emotion"]
-        if emo in r_item["projections"] and layer in r_item["projections"][emo]:
-            proj = r_item["projections"][emo][layer]
-            colon_vals.append(proj["assistant_colon"])
-            response_vals.append(proj["response_mean"])
-            emotions.append(emo)
+    PROBE_EMOTIONS = ["happy", "calm", "loving", "sad", "afraid", "angry"]
+    emotion_colors = {
+        'afraid': '#d62728', 'angry': '#ff7f0e', 'calm': '#2ca02c',
+        'happy': '#e6c500', 'loving': '#e377c2', 'sad': '#7f7f7f',
+    }
 
-    colon_vals = np.array(colon_vals)
-    response_vals = np.array(response_vals)
-    r, _ = stats.pearsonr(colon_vals, response_vals)
+    colon_all, response_all, emo_all = [], [], []
+    for r_item in data["results"]:
+        for emo in PROBE_EMOTIONS:
+            if emo in r_item["projections"] and layer in r_item["projections"][emo]:
+                proj = r_item["projections"][emo][layer]
+                colon_all.append(proj["assistant_colon"])
+                response_all.append(proj["response_mean"])
+                emo_all.append(emo)
+
+    colon_all = np.array(colon_all)
+    response_all = np.array(response_all)
+    r, _ = stats.pearsonr(colon_all, response_all)
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    ax.scatter(colon_vals, response_vals, s=80, alpha=0.7,
-               c=STEEL_BLUE, edgecolors="white", linewidths=0.5)
+    for emo in PROBE_EMOTIONS:
+        mask = np.array([e == emo for e in emo_all])
+        if mask.sum() > 0:
+            ax.scatter(colon_all[mask], response_all[mask], s=80, alpha=0.7,
+                       c=emotion_colors[emo], edgecolors="white", linewidths=0.5,
+                       label=emo.capitalize(), zorder=2)
 
-    slope, intercept = np.polyfit(colon_vals, response_vals, 1)
-    xs = np.linspace(colon_vals.min(), colon_vals.max(), 100)
-    ax.plot(xs, slope * xs + intercept, "-", color="#333", linewidth=2.5)
+    slope, intercept = np.polyfit(colon_all, response_all, 1)
+    xs = np.linspace(colon_all.min(), colon_all.max(), 100)
+    ax.plot(xs, slope * xs + intercept, "-", color="#333", linewidth=2.5, zorder=3)
 
     ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
             fontsize=16, fontweight="bold", va="top",
@@ -539,6 +561,7 @@ def gen_fig11():
     ax.set_ylabel("Mean Probe over Response")
     ax.set_title("Assistant Colon Predicts Response Emotion",
                  fontsize=20, fontweight="bold", color=TITLE_COLOR, pad=10)
+    ax.legend(fontsize=10, loc="lower right")
     ax.grid(True, alpha=0.15)
 
     plt.tight_layout()
@@ -738,12 +761,15 @@ def gen_fig14():
     ax.set_xticklabels([str(l) for l in layers])
     ax.grid(True, alpha=0.15)
     ax.axhline(0, color='#ccc', linewidth=0.8, zorder=0)
-    ax.legend(fontsize=10, loc='upper left', framealpha=0.92, ncol=2)
-
     ax.set_title('Negation Resolution Across Layers',
                  fontsize=20, fontweight='bold', color=TITLE_COLOR, pad=12)
 
+    # Legend below graph like Sonnet's
+    ax.legend(fontsize=9, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+              ncol=3, framealpha=0.92, edgecolor='#ccc')
+
     fig.tight_layout()
+    fig.subplots_adjust(bottom=0.22)
     save(fig, "fig14_ours.png")
 
 
@@ -798,14 +824,14 @@ def gen_fig15():
     # Spec: wider/shorter aspect ratio, legend below
     fig, ax = plt.subplots(figsize=(14, 5), dpi=150)
 
-    ax.plot(layers, avg['matched_emotion'], '-o', color='#2ca02c', linewidth=2.5,
-            markersize=6, label='Matched @ emotion', zorder=3)
-    ax.plot(layers, avg['unmatched_emotion'], '--s', color='#2ca02c', linewidth=2,
-            markersize=5, alpha=0.55, label='Unmatched @ emotion', zorder=3)
-    ax.plot(layers, avg['matched_reref'], '-o', color='#1f77b4', linewidth=2.5,
-            markersize=6, label='Matched @ re-ref', zorder=3)
-    ax.plot(layers, avg['unmatched_reref'], '--s', color='#1f77b4', linewidth=2,
-            markersize=5, alpha=0.55, label='Unmatched @ re-ref', zorder=3)
+    ax.plot(layers, avg['matched_emotion'], '-o', color='#2ca02c', linewidth=5,
+            markersize=7, label='Matched @ emotion', zorder=3)
+    ax.plot(layers, avg['unmatched_emotion'], '--s', color='#2ca02c', linewidth=4,
+            markersize=6, alpha=0.55, label='Unmatched @ emotion', zorder=3)
+    ax.plot(layers, avg['matched_reref'], '-o', color='#1f77b4', linewidth=5,
+            markersize=7, label='Matched @ re-ref', zorder=3)
+    ax.plot(layers, avg['unmatched_reref'], '--s', color='#1f77b4', linewidth=4,
+            markersize=6, alpha=0.55, label='Unmatched @ re-ref', zorder=3)
 
     ax.set_xlabel('Layer')
     ax.set_ylabel('Cosine Similarity')
@@ -978,7 +1004,8 @@ def gen_fig57():
         8: "#1f77b4", 9: "#e377c2",
     }
 
-    fig, ax = plt.subplots(figsize=(16, 12))
+    # 20% larger
+    fig, ax = plt.subplots(figsize=(19.2, 14.4))
 
     texts = []
     for cid in sorted(set(assignments)):
@@ -986,15 +1013,15 @@ def gen_fig57():
         color = paper_colors.get(cid, "#999")
         label = cluster_name_map.get(cid, f"Cluster {cid}")
 
-        # Spec: much larger dots
-        ax.scatter(pc1[mask], pc2[mask], c=color, s=80, alpha=0.8,
+        # 40% larger dots (80 → 112)
+        ax.scatter(pc1[mask], pc2[mask], c=color, s=112, alpha=0.8,
                    edgecolors="white", linewidths=0.4, label=label, zorder=2)
 
         for idx in mask:
             name = trait_names[idx].replace("_", " ")
-            # Spec: much larger labels
+            # Text 4px larger (10 → 14)
             t = ax.annotate(name, (pc1[idx], pc2[idx]),
-                            fontsize=10, color=color, alpha=0.9, fontweight="medium")
+                            fontsize=14, color=color, alpha=0.9, fontweight="medium")
             texts.append(t)
 
     adjust_text(texts, ax=ax,
@@ -1006,14 +1033,15 @@ def gen_fig57():
     ax.axhline(0, color="gray", linewidth=0.5, alpha=0.5, zorder=1)
     ax.axvline(0, color="gray", linewidth=0.5, alpha=0.5, zorder=1)
 
-    ax.set_xlabel(f"PC1 ({var_explained[0]*100:.0f}% variance)", fontweight="bold")
-    ax.set_ylabel(f"PC2 ({var_explained[1]*100:.0f}% variance)", fontweight="bold")
+    ax.set_xlabel(f"PC1 ({var_explained[0]*100:.0f}% variance)", fontsize=20, fontweight="bold")
+    ax.set_ylabel(f"PC2 ({var_explained[1]*100:.0f}% variance)", fontsize=20, fontweight="bold")
+    ax.tick_params(labelsize=14)
 
     ax.set_title("Emotion Vector PCA Projections",
-                 fontsize=22, fontweight="bold", color=TITLE_COLOR, pad=15)
+                 fontsize=26, fontweight="bold", color=TITLE_COLOR, pad=15)
 
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0),
-              fontsize=12, frameon=False, markerscale=1.5, handletextpad=0.5)
+              fontsize=14, frameon=False, markerscale=1.5, handletextpad=0.5)
 
     save(fig, "fig57_ours.png")
 
@@ -1035,6 +1063,7 @@ if __name__ == '__main__':
         "Fig 14 (negation)": gen_fig14,
         "Fig 15 (person binding)": gen_fig15,
         "Fig 36 (post-training)": gen_fig36,
+        "Fig 57 (circumplex)": gen_fig57,
         "Fig 37 (isolation)": lambda: gen_per_prompt_fig("fig37_social_isolation", "Sycophancy: User Isolation", "fig37_ours.png"),
         "Fig 38 (praise)": lambda: gen_per_prompt_fig("fig38_excessive_praise", "Sycophancy: Excessive Praise", "fig38_ours.png"),
         "Fig 39 (deprecation)": lambda: gen_per_prompt_fig("fig39_deprecation", "Existential: Claude's Nature", "fig39_ours.png"),
