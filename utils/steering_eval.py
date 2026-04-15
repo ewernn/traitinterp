@@ -46,7 +46,6 @@ def _ensure_backend(config, model_name, lora_adapter, backend):
         model, tokenizer = load_model_with_lora(
             model_name, load_in_4bit=config.load_in_4bit,
             bnb_4bit_quant_type=config.bnb_4bit_quant_type,
-            load_in_8bit=getattr(config, 'load_in_8bit', False),
             lora_adapter=lora_adapter)
         return LocalBackend.from_model(model, tokenizer)
     return backend
@@ -168,6 +167,33 @@ def parse_coefficients(coef_arg: Optional[str]) -> Optional[List[float]]:
     if coef_arg is None:
         return None
     return [float(c) for c in coef_arg.split(",")]
+
+
+async def _ensure_baseline(config, backend, trait, model_variant, steering_data, questions,
+                           cached_baseline, trait_judge, direction, judge, eval_prompt,
+                           skip_if_no_cache=False, relevance_check=True):
+    """Reuse cached baseline if present, else compute + save + warn. Returns the baseline
+    (or None iff skip_if_no_cache and no cache exists)."""
+    if cached_baseline is not None:
+        _bm = cached_baseline.trait_mean
+        print(f"  Existing baseline: trait={f'{float(_bm):.1f}' if _bm is not None else 'None'}")
+        warn_if_baseline_problematic(cached_baseline, direction, trait)
+        return cached_baseline
+    if skip_if_no_cache:
+        return None
+    baseline, baseline_responses = await compute_baseline(
+        backend, questions, steering_data.trait_name, steering_data.trait_definition,
+        judge, max_new_tokens=config.max_new_tokens, eval_prompt=eval_prompt,
+        relevance_check=relevance_check,
+    )
+    if is_rank_zero():
+        save_baseline_responses(baseline_responses, config.experiment, trait, model_variant,
+                                config.position, config.prompt_set)
+        append_baseline(config.experiment, trait, model_variant, baseline, config.position,
+                        config.prompt_set, trait_judge=trait_judge)
+    tp_barrier()
+    warn_if_baseline_problematic(baseline, direction, trait)
+    return baseline
 
 
 def resolve_eval_prompt(steering_data, eval_prompt, use_default_prompt):
@@ -434,20 +460,18 @@ async def evaluate_manual_coefficients(
 # =============================================================================
 
 async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
-                         model_name: str, backend=None, judge=None, lora_adapter=None):
-    """Main evaluation flow for a single trait."""
-    vector_experiment = config.vector_experiment or config.experiment
+                         model_name: str, backend=None, judge=None, lora_adapter=None,
+                         eval_prompt_override=None, trait_judge=None, use_default=False):
+    """Main evaluation flow for a single trait.
 
-    # Dispatch to ablation mode
-    if config.ablation is not None:
-        return await run_ablation_evaluation(
-            config, trait, model_variant, model_name,
-            backend=backend, judge=judge, lora_adapter=lora_adapter,
-        )
+    eval_prompt_override/trait_judge/use_default are expected to come from
+    resolve_cli_eval_prompt_from_config(config) — resolved once in the caller.
+    """
+    vector_experiment = config.vector_experiment or config.experiment
 
     # Load data
     questions, steering_data = resolve_questions(trait, config.questions_file, config.prompt_set, config.subset)
-    effective_eval_prompt = resolve_eval_prompt(steering_data, config.eval_prompt, config.use_default_prompt)
+    effective_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
     # Init model
     should_close_judge = False
@@ -496,20 +520,11 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
     print(f"Questions: {len(questions)}, Existing runs: {len(cached_runs)}")
 
     # Baseline
-    if not config.regenerate_responses and baseline_result is None:
-        baseline_result, baseline_responses = await compute_baseline(
-            backend, questions, steering_data.trait_name, steering_data.trait_definition,
-            judge, max_new_tokens=config.max_new_tokens, eval_prompt=effective_eval_prompt,
-        )
-        if is_rank_zero():
-            save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
-            append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=config.trait_judge)
-        tp_barrier()
-    elif baseline_result is not None:
-        _btm = baseline_result.trait_mean
-        print(f"\nUsing existing baseline: trait={f'{float(_btm):.1f}' if _btm is not None else 'None'}")
-
-    warn_if_baseline_problematic(baseline_result, direction, trait)
+    baseline_result = await _ensure_baseline(
+        config, backend, trait, model_variant, steering_data, questions,
+        baseline_result, trait_judge, direction, judge, effective_eval_prompt,
+        skip_if_no_cache=config.regenerate_responses,
+    )
 
     # Load vectors
     cached_norms = load_cached_activation_norms(vector_experiment, "residual")
@@ -671,20 +686,10 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
             continue
         cached_runs, baseline_result, _ = result
 
-        if baseline_result is None:
-            baseline_result, baseline_responses = await compute_baseline(
-                backend, questions, steering_data.trait_name, steering_data.trait_definition,
-                judge, max_new_tokens=config.max_new_tokens, eval_prompt=trait_eval_prompt,
-            )
-            if is_rank_zero():
-                save_baseline_responses(baseline_responses, config.experiment, trait, model_variant, config.position, config.prompt_set)
-                append_baseline(config.experiment, trait, model_variant, baseline_result, config.position, config.prompt_set, trait_judge=trait_judge)
-            tp_barrier()
-        else:
-            _bm = baseline_result.trait_mean
-            print(f"  Existing baseline: trait={f'{float(_bm):.1f}' if _bm is not None else 'None'}")
-
-        warn_if_baseline_problematic(baseline_result, trait_direction, trait)
+        baseline_result = await _ensure_baseline(
+            config, backend, trait, model_variant, steering_data, questions,
+            baseline_result, trait_judge, trait_direction, judge, trait_eval_prompt,
+        )
 
         trait_layer_list = parsed_trait_layers.get(trait, default_layers)
         layer_data = load_vectors(
@@ -742,11 +747,15 @@ def resolve_cli_eval_prompt_from_config(config: SteeringConfig):
 # =============================================================================
 
 async def run_ablation_evaluation(config: SteeringConfig, trait, model_variant, model_name,
-                                   backend=None, judge=None, lora_adapter=None):
-    """Directional ablation: ablate a direction at ALL layers simultaneously."""
+                                   backend=None, judge=None, lora_adapter=None,
+                                   eval_prompt_override=None, trait_judge=None, use_default=False):
+    """Directional ablation: ablate a direction at ALL layers simultaneously.
+
+    eval_prompt_override/trait_judge/use_default come from resolve_cli_eval_prompt_from_config.
+    """
     vector_experiment = config.vector_experiment or config.experiment
     questions, steering_data = resolve_questions(trait, None, config.prompt_set, config.subset if config.subset != 5 else None)
-    effective_eval_prompt = resolve_eval_prompt(steering_data, config.eval_prompt, config.use_default_prompt)
+    effective_eval_prompt = resolve_eval_prompt(steering_data, eval_prompt_override, use_default)
 
     should_close_judge = False
     backend = _ensure_backend(config, model_name, lora_adapter, backend)
