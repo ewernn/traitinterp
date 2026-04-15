@@ -55,7 +55,6 @@ class SteeringConfig:
 
     load_in_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
-    load_in_8bit: bool = False
 
     # Modes
     batched: bool = True
@@ -137,7 +136,6 @@ class ExtractionConfig:
 
     load_in_4bit: bool = False
     bnb_4bit_quant_type: str = "nf4"
-    load_in_8bit: bool = False
     base_model: Optional[bool] = None
 
 
@@ -165,8 +163,8 @@ class InferenceConfig:
     # Generation
     max_new_tokens: int = 50
     temperature: float = 0.0
-    no_server: bool = False
-    backend: str = 'auto'
+    no_server: bool = True
+    backend: str = 'local'
 
     # Model loading
 
