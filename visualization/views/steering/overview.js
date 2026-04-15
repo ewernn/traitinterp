@@ -82,7 +82,7 @@ function processResults(results, coherenceThreshold) {
 
     // Convert to sorted layer arrays and find best delta per method
     const methodSummaries = {};
-    let overallBestDelta = direction === 'negative' ? Infinity : -Infinity;
+    let overallBestDelta = 0;
     let overallBestLayer = 0;
     let overallBestMethod = '';
     let globalMinLayer = Infinity;
