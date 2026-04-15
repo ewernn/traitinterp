@@ -17,16 +17,23 @@ _models_dir = Path(__file__).parent.parent / "config" / "models"
 
 
 
+def yaml_slug_for(model_id: str) -> str:
+    """Canonical filename slug for a HF model id.
+
+    `Qwen/Qwen3.5-9B` → `qwen--qwen3.5-9b`. The `--` separator mirrors HF's
+    own cache directory naming (`models--Qwen--Qwen3.5-9B`) and avoids
+    collisions when two orgs ship a model with the same short name.
+    """
+    return model_id.lower().replace('/', '--')
+
+
 def get_model_config(model_id: str) -> dict:
-    """Load model config from config/models/{model_id}.yaml"""
+    """Load model config from config/models/{org}--{name}.yaml"""
     if model_id in _cache:
         return _cache[model_id]
 
-    # Normalize: google/gemma-2-2b-it -> gemma-2-2b-it
-    if '/' in model_id:
-        model_id = model_id.split('/')[-1].lower()
-
-    config_path = _models_dir / f"{model_id}.yaml"
+    slug = yaml_slug_for(model_id)
+    config_path = _models_dir / f"{slug}.yaml"
     if not config_path.exists():
         raise FileNotFoundError(f"No model config at {config_path}")
 
@@ -43,14 +50,14 @@ def get_num_layers(model_id: str) -> int:
 
 
 def is_base_model(model_id: str) -> bool:
-    """Check if model is a base model (not instruction-tuned)."""
-    try:
-        config = get_model_config(model_id)
-        return config.get('variant', 'base') == 'base'
-    except FileNotFoundError:
-        # No config file - fall back to name heuristics
-        name_lower = model_id.lower()
-        it_indicators = ['-instruct', '-it', '-chat', 'instruct-', 'chat-']
-        return not any(indicator in name_lower for indicator in it_indicators)
+    """Check if model is a base model (not instruction-tuned).
+
+    Reads `pretrained` from the yaml strictly — no name-heuristic fallback.
+    Name-based detection is unreliable (Qwen3-4B has no `-instruct` suffix
+    but ships with a chat template; conversely, Kimi-K2-Base carries a chat
+    template despite being a base model). The yaml is the source of truth;
+    add a config/models/*.yaml for new models via `dev/onboard_model.py`.
+    """
+    return get_model_config(model_id)['pretrained']
 
 

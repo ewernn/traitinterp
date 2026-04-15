@@ -1,6 +1,5 @@
 huggingface_id: google/gemma-2-2b-it
 model_type: gemma2
-variant: it
 pretrained: false
 supports_system_prompt: false
 max_context_length: 8192
@@ -9,6 +8,7 @@ hidden_size: 2304
 num_attention_heads: 8
 num_key_value_heads: 4
 intermediate_size: 9216
+vocab_size: 256000
 sae:
   available: true
   provider: gemma-scope

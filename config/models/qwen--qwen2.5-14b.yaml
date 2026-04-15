@@ -1,14 +1,14 @@
 huggingface_id: Qwen/Qwen2.5-14B
 model_type: qwen2
-variant: base
 pretrained: true
-supports_system_prompt: false
+supports_system_prompt: true
 max_context_length: 131072
 num_hidden_layers: 48
 hidden_size: 5120
 num_attention_heads: 40
 num_key_value_heads: 8
 intermediate_size: 13824
+vocab_size: 152064
 sae:
   available: false
 notes:
