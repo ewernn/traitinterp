@@ -33,7 +33,8 @@ from dialogue_generation import (
     DEFLECTION_CONDITIONS,
 )
 
-OUT_DIR = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage1_datasets")
+from utils.paths import get as get_path
+OUT_DIR = get_path('experiments.base', experiment="ant_emotion_concepts") / "results" / "stage1_datasets"
 OUT_FINAL = OUT_DIR / "deflection_dialogues.json"
 DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct"
 

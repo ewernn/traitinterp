@@ -33,10 +33,9 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from utils.model import load_model
-from utils.paths import discover_traits
+from utils.paths import discover_traits, get as get_path
 from dialogue_generation import generate_dialogues
-
-OUT_DIR = Path("/home/dev/traitinterp/experiments/ant_emotion_concepts/results/stage1_datasets")
+OUT_DIR = get_path('experiments.base', experiment="ant_emotion_concepts") / "results" / "stage1_datasets"
 OUT_FINAL = OUT_DIR / "dialogues_2speaker.json"
 DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct"
 

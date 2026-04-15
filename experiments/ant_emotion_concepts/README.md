@@ -29,9 +29,5 @@ Replicates **"Emotion Concepts and their Function in a Large Language Model"** (
 
 ## Reference docs
 
-- [`ant_emotion_concepts_findings.md`](ant_emotion_concepts_findings.md) — clean ~170-line digest (replication table + limitations + per-stage numbers with source JSONs)
-
-The following are available on the `dev` branch only (not promoted to `main`):
-- `ant_emotion_concepts_session_continuation.md` — full post-compact state
-- `ant_emotion_concepts_audit_trail_findings.md` — archived 1,192-line iteration log
-- `ant_emotion_concepts_notepad.md` — chronological progress log
+- [`ant_emotion_concepts_findings.md`](ant_emotion_concepts_findings.md) — replication table, per-stage numbers, limitations
+- [`docs/other/emotion_concepts_methods.md`](../../docs/other/emotion_concepts_methods.md) — full methodology reference from the paper

@@ -10,9 +10,7 @@ Usage:
     from shared import (
         get_results_dir, save_results, compare_to_baseline,
         load_all_emotion_vectors, load_single_emotion_vector,
-        capture_activations_at_position, capture_all_tokens,
         run_graded_steering_sweep, compute_residual_stream_norm,
-        grand_mean_subtract, denoise_with_neutral_pcs,
     )
 """
 
@@ -29,7 +27,6 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core.hooks import SteeringHook, get_hook_path
-from core.math import grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs
 from utils.capture_activations import capture_at_position
 from utils.model import format_prompt
 from utils.model_generation import generate_batch
@@ -51,17 +48,6 @@ TEMPERATURE = 0.7   # Story diversity (Anthropic's implied diversity)
 # Trait filtering
 # =============================================================================
 
-def filter_neutral_traits(traits: List[str]) -> List[str]:
-    """Exclude reference traits (leading-underscore path components) from a list.
-
-    NOTE: `utils.paths.discover_traits` now filters these by default (since
-    include_reference=False). This helper is kept for backward compatibility
-    and for filtering arbitrary trait lists that may come from elsewhere.
-    See docs/extraction_guide.md "Reference Traits" for the convention.
-    """
-    def is_reference(trait: str) -> bool:
-        return any(part.startswith('_') for part in trait.split('/'))
-    return [t for t in traits if not is_reference(t)]
 
 
 # =============================================================================
@@ -120,7 +106,7 @@ def load_all_emotion_vectors(
         vectors: [N, hidden_dim] stacked tensor
         labels: [N] list of emotion names (e.g., 'afraid', 'angry', ...)
     """
-    traits = filter_neutral_traits(discover_traits(category))
+    traits = discover_traits(category)
 
     vectors = []
     labels = []
@@ -187,43 +173,6 @@ def load_single_emotion_vector(
     return vector
 
 
-# =============================================================================
-# Activation capture — thin wrappers over utils.capture_activations.capture_at_position
-# =============================================================================
-
-def capture_activations_at_position(
-    model, tokenizer, prompts: List[str], layer: int,
-    position: str = 'last', component: str = 'residual',
-    use_chat_template: bool = True,
-) -> Tuple[torch.Tensor, List[int]]:
-    """Capture activations at a specific token position per prompt.
-
-    Legacy aliases: 'last' and 'assistant_colon' both resolve to 'prompt[-1]'.
-    """
-    formatted = [format_prompt(p, tokenizer) for p in prompts] if use_chat_template else prompts
-    dsl_pos = f'all[{position}]' if isinstance(position, int) else 'prompt[-1]'
-    pool = 'first' if isinstance(position, int) else 'last'
-    acts = capture_at_position(
-        model, tokenizer, formatted, layers=layer,
-        position=dsl_pos, pool=pool, component=component, pre_formatted=True,
-    )
-    return acts, [-1] * len(prompts)
-
-
-def capture_all_tokens(
-    model, tokenizer, texts: List[str], layers: List[int],
-    component: str = "residual",
-) -> List[Dict[int, torch.Tensor]]:
-    """Full-sequence multi-layer capture. Returns [{layer: [seq_len, hidden_dim]}] per text."""
-    all_results = []
-    for text in texts:
-        acts = capture_at_position(
-            model, tokenizer, [text], layers=layers,
-            position='all[:]', pool='none', component=component,
-            pre_formatted=True, batch_size=1,
-        )  # [1, n_layers, seq_len, hidden_dim]
-        all_results.append({layer: acts[0, li] for li, layer in enumerate(layers)})
-    return all_results
 
 
 # =============================================================================
@@ -307,22 +256,6 @@ def run_graded_steering_sweep(
 
 
 # =============================================================================
-# Grand mean subtraction + neutral PC denoising — delegates to core.math
-# =============================================================================
-
-# Re-export for backward compatibility with stage scripts
-grand_mean_subtract = grand_mean_center  # core.math.grand_mean_center
-
-
-def denoise_with_neutral_pcs(
-    vectors_dict: Dict[str, torch.Tensor],
-    neutral_acts: torch.Tensor,
-    variance_threshold: float = 0.5,
-) -> Dict[str, torch.Tensor]:
-    """Project out top PCs of neutral activations. Delegates to core.math."""
-    basis, _, n_pcs = compute_top_pcs_by_variance(neutral_acts, variance_threshold)
-    print(f"  Denoising: removing {n_pcs} neutral PCs")
-    return denoise_with_pcs(vectors_dict, basis)
 
 
 # =============================================================================
@@ -341,7 +274,11 @@ _NEUTRAL_PROMPTS = [
 def compute_residual_stream_norm(model, tokenizer, layer: int, n_samples: int = 50) -> float:
     """Mean residual stream norm at a layer. Steering strengths are fractions of this."""
     prompts = (_NEUTRAL_PROMPTS * (n_samples // 5 + 1))[:n_samples]
-    acts, _ = capture_activations_at_position(model, tokenizer, prompts, layer)
+    formatted = [format_prompt(p, tokenizer) for p in prompts]
+    acts = capture_at_position(
+        model, tokenizer, formatted, layers=layer,
+        position='prompt[-1]', pool='last', pre_formatted=True,
+    )
     avg_norm = acts.norm(dim=-1).mean().item()
     print(f"  Residual stream norm at layer {layer}: {avg_norm:.1f}")
     return avg_norm

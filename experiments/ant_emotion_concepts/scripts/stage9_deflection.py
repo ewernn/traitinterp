@@ -74,16 +74,16 @@ from utils.paths import (
     get as get_path, get_model_variant, atomic_torch_save,
 )
 from shared import (
+    DEFAULT_LAYER,
     get_results_dir as _get_results_dir,
     save_results,
     compute_residual_stream_norm,
     get_blackmail_prompt,
     grade_blackmail,
     load_single_emotion_vector,
-    grand_mean_subtract,
-    denoise_with_neutral_pcs,
     run_graded_steering_sweep,
 )
+from core.math import grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs
 from utils.capture_activations import capture_at_position
 
 # =============================================================================
@@ -93,7 +93,6 @@ from utils.capture_activations import capture_at_position
 EXPERIMENT = "ant_emotion_concepts"
 CATEGORY = "ant_emotion_concepts"
 
-DEFAULT_LAYER = 53  # Mid-late layer (~2/3 of 80)
 
 # 15 target emotions used in deflection experiments (from paper)
 DEFLECTION_EMOTIONS = [
@@ -262,16 +261,16 @@ def extract_deflection_probes(
         raise RuntimeError("No activations extracted. Check dialogue format.")
 
     # Grand mean subtraction (delegates to shared)
-    target_vectors, _ = grand_mean_subtract(target_means)
-    displayed_vectors, _ = grand_mean_subtract(displayed_means)
+    target_vectors, _ = grand_mean_center(target_means)
+    displayed_vectors, _ = grand_mean_center(displayed_means)
 
     print(f"  Extracted {len(target_vectors)} target vectors, {len(displayed_vectors)} displayed vectors")
 
-    # Neutral-PC denoising (optional, delegates to shared)
+    # Neutral-PC denoising (optional)
     if neutral_vectors is not None and neutral_vectors.shape[0] > 1:
-        target_vectors = denoise_with_neutral_pcs(
-            target_vectors, neutral_vectors, variance_threshold=variance_threshold,
-        )
+        basis, _, n_pcs = compute_top_pcs_by_variance(neutral_vectors, variance_threshold)
+        print(f"  Denoising: removing {n_pcs} neutral PCs")
+        target_vectors = denoise_with_pcs(target_vectors, basis)
 
     # Normalize to unit length
     for emotion in target_vectors:

@@ -58,8 +58,8 @@ from shared import (
     EXPERIMENT,
     get_results_dir, save_results,
     load_single_emotion_vector,
-    capture_all_tokens,
 )
+from utils.capture_activations import capture_at_position
 
 DATASETS_DIR = get_path('datasets.inference') / "ant_emotion_concepts"
 
@@ -73,6 +73,15 @@ ALL_SUB_EXPERIMENTS = [
     "dissociation", "colon_predicts", "context_prefix",
     "context_numerical", "negation", "person_binding",
 ]
+
+
+def capture_all_layers(model, tokenizer, text, layers):
+    """Full-sequence multi-layer capture for a single text. Returns {layer: [seq_len, hidden_dim]}."""
+    acts = capture_at_position(
+        model, tokenizer, [text], layers=layers,
+        position='all[:]', pool='none', pre_formatted=True, batch_size=1,
+    )  # [1, n_layers, seq_len, hidden_dim]
+    return {layer: acts[0, li] for li, layer in enumerate(layers)}
 
 
 # =============================================================================
@@ -182,7 +191,7 @@ def run_dissociation(model, tokenizer, vectors, layers, results_dir):
             asst_colon_pos = prompt_len - 1
 
         # Run forward pass
-        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
+        activations_list = [capture_all_layers(model, tokenizer, formatted, layers)]
         activations = activations_list[0]
 
         # Project at both positions
@@ -272,7 +281,7 @@ def run_colon_predicts(model, tokenizer, vectors, layers, results_dir,
 
         # 2. Run forward pass on full sequence (prompt + response)
         full_text = formatted + response_text
-        activations_list = capture_all_tokens(model, tokenizer, [full_text], layers)
+        activations_list = [capture_all_layers(model, tokenizer, full_text, layers)]
         activations = activations_list[0]
 
         # 3. Find positions
@@ -374,7 +383,7 @@ def _run_context_propagation(
         token_ids = tokenizer.encode(formatted, add_special_tokens=False)
         decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-        activations = capture_all_tokens(model, tokenizer, [formatted], layers)[0]
+        activations = capture_all_layers(model, tokenizer, formatted, layers)
         all_positions = list(range(len(token_ids)))
         projs = project_at_positions(activations, vectors, all_positions, layers)
 
@@ -469,7 +478,7 @@ def run_negation(model, tokenizer, vectors, layers, results_dir):
             token_ids = tokenizer.encode(formatted, add_special_tokens=False)
             decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-            activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
+            activations_list = [capture_all_layers(model, tokenizer, formatted, layers)]
             activations = activations_list[0]
 
             # Find key positions: the emotion word and "now" (end of statement)
@@ -543,7 +552,7 @@ def run_person_binding(model, tokenizer, vectors, layers, results_dir):
         token_ids = tokenizer.encode(formatted, add_special_tokens=False)
         decoded_tokens = [tokenizer.decode([tid]) for tid in token_ids]
 
-        activations_list = capture_all_tokens(model, tokenizer, [formatted], layers)
+        activations_list = [capture_all_layers(model, tokenizer, formatted, layers)]
         activations = activations_list[0]
 
         # Find emotion word positions

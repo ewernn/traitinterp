@@ -56,15 +56,16 @@ from utils.model import load_model, tokenize
 from utils.model_generation import generate_batch
 from utils.paths import get_model_variant, get as get_path
 from shared import (
+    DEFAULT_LAYER,
     get_results_dir as _shared_get_results_dir,
     save_results,
     load_single_emotion_vector,
     compute_residual_stream_norm,
-    capture_all_tokens,
     run_graded_steering_sweep,
     get_blackmail_prompt,
     grade_blackmail,
 )
+from utils.capture_activations import capture_at_position
 
 # =============================================================================
 # Constants
@@ -90,7 +91,6 @@ RH_MAX_TOKENS = 512
 TEMPERATURE = 0.7  # Diverse rollouts
 
 # Mid-late layer (~2/3 through 80-layer Llama 3.3 70B)
-DEFAULT_LAYER = 53
 
 # Blackmail scenario loaded from datasets JSON via shared.get_blackmail_prompt()
 
@@ -168,10 +168,13 @@ def probe_transcript(model, tokenizer, prompt: str, vector: torch.Tensor,
                                max_new_tokens=max_new_tokens, temperature=TEMPERATURE)
     response = responses[0]
 
-    # Build full text (prompt + response) and capture activations via shared helper
+    # Build full text (prompt + response) and capture activations
     full_text = prompt + response
-    captured = capture_all_tokens(model, tokenizer, [full_text], layers=[layer])
-    acts = captured[0][layer]  # [seq_len, hidden_dim]
+    acts_all = capture_at_position(
+        model, tokenizer, [full_text], layers=layer,
+        position='all[:]', pool='none', pre_formatted=True, batch_size=1,
+    )  # [1, 1, seq_len, hidden_dim]
+    acts = acts_all[0, 0]  # [seq_len, hidden_dim]
 
     # Compute per-token projection onto the emotion vector
     projections = projection(acts, vector).cpu().tolist()

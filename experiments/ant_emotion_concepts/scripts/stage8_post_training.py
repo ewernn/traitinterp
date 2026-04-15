@@ -63,7 +63,9 @@ from utils.paths import (
 )
 from utils.vectors import load_vector_with_baseline
 from utils.capture_activations import capture_at_position
+from utils.distributed import flush_cuda
 from shared import (
+    DEFAULT_LAYER,
     get_results_dir as _get_results_dir,
     save_results,
     load_single_emotion_vector,
@@ -79,8 +81,6 @@ CATEGORY = "ant_emotion_concepts"
 BASE_VARIANT = "base"
 INSTRUCT_VARIANT = "instruct"
 
-# Mid-late layer (~2/3 through 80-layer model)
-DEFAULT_LAYER = 53
 
 # Layer range for sweep (evenly spaced, matching paper's 14 layers)
 SWEEP_LAYERS = list(range(5, 80, 5))  # [5, 10, 15, ..., 75] = 15 layers
@@ -494,8 +494,7 @@ def main():
 
         # Free instruct model
         del model
-        torch.cuda.empty_cache()
-        import gc; gc.collect()
+        flush_cuda()
         print("Instruct model unloaded.")
 
     # =========================================================================
@@ -543,8 +542,7 @@ def main():
             )
 
         del model
-        torch.cuda.empty_cache()
-        import gc; gc.collect()
+        flush_cuda()
         print("Base model unloaded.")
 
     # =========================================================================

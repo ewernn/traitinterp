@@ -83,9 +83,10 @@ from dialogue_generation import (
     find_turn_token_boundaries,
 )
 
+from core.math import grand_mean_center
 from shared import (
     get_results_dir, save_results,
-    grand_mean_subtract, compute_residual_stream_norm,
+    compute_residual_stream_norm,
 )
 
 EXPERIMENT = "ant_emotion_concepts"
@@ -245,7 +246,7 @@ def _normalize_probes(probes, layers):
             vecs = {e: probes[ptype][e][layer] for e in probes[ptype] if layer in probes[ptype][e]}
             if not vecs:
                 continue
-            centered, _ = grand_mean_subtract(vecs)
+            centered, _ = grand_mean_center(vecs)
             for e, v in centered.items():
                 if e not in result[ptype]:
                     result[ptype][e] = {}
