@@ -1,146 +1,106 @@
-// Inference Controls — unified chat-status polling + wake/unload/toggle
+// Inference Controls — chat-status polling, wake/unload, mode toggle.
 //
-// The frontend keeps a single mutable chatStatus object that reflects the
-// server's live state. All UI (connection dot, wake button, send guard, trait
-// controls, unload button) reads from it instead of maintaining duplicate
-// state. The only "intent" the frontend owns is `inferenceMode` — which
-// backend the user wants; the rest comes from `/api/chat/status`.
+// Single source of truth is `chatStatus`, refreshed from /api/chat/status.
+// All UI reads via getters; mutations emit a typed event that subscribers
+// (live-chat.js) react to. The module owns the user's backend intent
+// (`inferenceMode`); everything else reflects server state.
 
-const LIVE_CHAT_EXPERIMENT = 'live-chat';
-const MODEL_TYPE = 'application';
-const POLL_INTERVAL_MS = 2000;
+import { LIVE_CHAT_EXPERIMENT, CHAT_MODEL_TYPE, CHAT_STATUS_POLL_MS } from '../core/chat-config.js';
 
-// User's chosen backend. Separate from whether it's currently loaded.
-let inferenceMode = 'local';  // 'local' | 'modal'
+// --- state -------------------------------------------------------------
 
-// Server-reported state, refreshed every POLL_INTERVAL_MS.
-let chatStatus = {
-    backend: 'local',
-    model: null,
-    ready: false,
-    can_fit_locally: null,
-};
-
-// Loading progress state (only set during an active wake).
-let wakeProgress = null;  // { estimated_seconds, elapsed_s } | null
-
-let pollTimer = null;
+let inferenceMode = 'local';                  // user's backend choice
+let chatStatus = { backend: 'local', model: null, ready: false, can_fit_locally: null };
+let wakeProgress = null;                      // { estimated_seconds, elapsed_s } | null
 let wakeInFlight = false;
 let toggleInFlight = false;
-// Monotonic generation counter for wake/load flows. Each toggleInferenceMode
-// bumps this. An in-flight wake SSE whose generation no longer matches is
-// silently dropped so a stale wake can't flip chatStatus.ready to true for a
-// backend the user has since toggled away from.
+let pollTimer = null;
+let pendingMessage = null;                    // flushed to input on ready
+
+// Bumped by toggleInferenceMode/unload. In-flight wake events whose gen no
+// longer matches are dropped so a stale wake can't mark the wrong backend
+// ready after the user has switched away.
 let wakeGeneration = 0;
-let pendingMessage = null;  // flushed when the backend becomes ready
 
-// Listeners get called whenever chatStatus or wakeProgress changes. live-chat.js
-// subscribes to drive layout (show/hide chart, wake button, trait controls).
-const listeners = new Set();
+// --- event bus ---------------------------------------------------------
+// Event types: 'change' (any state mutation), 'ready' (not-ready → ready),
+// 'unload' (instance dropped via unload or toggle). 'change' listeners get
+// the full state; 'ready'/'unload' are signals (no payload).
 
-function onChatStatusChange(fn) {
-    listeners.add(fn);
-    return () => listeners.delete(fn);
+const subscribers = { change: new Set(), ready: new Set(), unload: new Set() };
+
+function on(event, fn) {
+    const set = subscribers[event];
+    if (!set) throw new Error(`unknown event: ${event}`);
+    set.add(fn);
+    return () => set.delete(fn);
 }
 
-// Called exactly when (!prev.ready && chatStatus.ready). live-chat.js hooks in
-// here to trigger Send after a user queued a prompt pre-warm.
-const readyListeners = new Set();
-function onChatReady(fn) {
-    readyListeners.add(fn);
-    return () => readyListeners.delete(fn);
-}
-function emitReady() {
-    for (const fn of readyListeners) {
+function emit(event) {
+    const set = subscribers[event];
+    if (!set) return;
+    for (const fn of set) {
         try { fn(); } catch (e) { console.error(e); }
     }
+    // Every mutation implies the connection dot may need to redraw.
+    if (event === 'change') updateConnectionStatusUI();
 }
 
-// Called when the instance is explicitly dropped (unload or backend toggle).
-// live-chat.js uses this to clear chart state so stale legend/metadata don't
-// linger across model switches.
-const unloadListeners = new Set();
-function onChatUnload(fn) {
-    unloadListeners.add(fn);
-    return () => unloadListeners.delete(fn);
-}
-function emitUnload() {
-    for (const fn of unloadListeners) {
-        try { fn(); } catch (e) { console.error(e); }
-    }
-}
-
-function emit() {
-    for (const fn of listeners) {
-        try { fn(getChatStatusSnapshot()); } catch (e) { console.error(e); }
-    }
-}
-
-function getChatStatusSnapshot() {
-    return {
-        inferenceMode,
-        chatStatus: { ...chatStatus },
-        wakeProgress: wakeProgress ? { ...wakeProgress } : null,
-        wakeInFlight,
-    };
-}
-
-// ---------- polling ----------
+// --- polling -----------------------------------------------------------
 
 async function fetchChatStatus() {
-    // Auto-stop polling if the live-chat view is no longer mounted. Cheaper
-    // than hooking into the router — if the DOM element is gone, we don't
-    // need the dot anyway.
+    // Auto-stop once the view is unmounted; cheaper than hooking the router.
     if (pollTimer && !document.querySelector('.live-chat-view')) {
         stopChatStatusPolling();
         return;
     }
+    const url = `/api/chat/status?experiment=${LIVE_CHAT_EXPERIMENT}&backend=${inferenceMode}&model_type=${CHAT_MODEL_TYPE}`;
+    let resp;
     try {
-        const url = `/api/chat/status?experiment=${LIVE_CHAT_EXPERIMENT}&backend=${inferenceMode}&model_type=${MODEL_TYPE}`;
-        const resp = await fetch(url);
-        if (!resp.ok) return;
-        const data = await resp.json();
-        if (data.available === false) return;  // chat backend not available
-        const prev = chatStatus;
-        chatStatus = {
-            backend: data.backend,
-            model: data.model,
-            ready: !!data.ready,
-            can_fit_locally: data.can_fit_locally,
-        };
-        // If backend just flipped to ready, flush any queued message and tell
-        // subscribers (live-chat.js listens for this to re-fire Send).
-        if (!prev.ready && chatStatus.ready) {
-            wakeProgress = null;
-            if (pendingMessage) {
-                const input = document.getElementById('chat-input');
-                if (input && !input.value) input.value = pendingMessage;
-                // Don't null pendingMessage here — the onChatReady listener
-                // reads it to trigger Send, and clears it afterward.
-            }
-            emitReady();
-        }
-        emit();
-        updateConnectionStatusUI();
+        resp = await fetch(url);
     } catch (e) {
-        console.warn('[chat-status] fetch failed:', e);
+        console.warn('[chat-status] network error:', e);
+        return;
     }
+    if (!resp.ok) {
+        console.warn(`[chat-status] HTTP ${resp.status}`);
+        return;
+    }
+    const data = await resp.json();
+    if (data.available === false) return;  // chat backend not shipped
+    const wasReady = chatStatus.ready;
+    chatStatus = {
+        backend: data.backend,
+        model: data.model,
+        ready: !!data.ready,
+        can_fit_locally: data.can_fit_locally,
+    };
+    if (!wasReady && chatStatus.ready) {
+        wakeProgress = null;
+        drainPendingIntoInput();
+        emit('ready');
+    }
+    emit('change');
 }
 
 function startChatStatusPolling() {
     if (pollTimer) return;
-    fetchChatStatus();  // immediate hit on start
-    pollTimer = setInterval(fetchChatStatus, POLL_INTERVAL_MS);
+    fetchChatStatus();  // immediate first hit
+    pollTimer = setInterval(fetchChatStatus, CHAT_STATUS_POLL_MS);
 }
 
 function stopChatStatusPolling() {
-    if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-    }
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
-// ---------- wake / unload ----------
+function drainPendingIntoInput() {
+    if (!pendingMessage) return;
+    const input = document.getElementById('chat-input');
+    if (input && !input.value) input.value = pendingMessage;
+    // Keep pendingMessage set; the 'ready' listener consumes + clears it.
+}
+
+// --- wake / unload -----------------------------------------------------
 
 async function wakeChatBackend() {
     if (wakeInFlight || chatStatus.ready) return;
@@ -150,23 +110,15 @@ async function wakeChatBackend() {
     }
     wakeInFlight = true;
     wakeProgress = { estimated_seconds: null, elapsed_s: 0 };
-    // Snapshot the wake generation + intended backend at invocation. If the
-    // user toggles mid-wake, the counter advances and we drop this wake's
-    // events. Prevents a stale "local ready" event from clobbering state
-    // after the user switched to modal.
     const gen = wakeGeneration;
     const targetBackend = inferenceMode;
-    emit();
-    updateConnectionStatusUI();
+    emit('change');
 
     const start = performance.now();
-    // Drive an elapsed-time ticker so the wake button can show "Waking... Ns"
     const ticker = setInterval(() => {
-        if (wakeProgress) {
-            wakeProgress.elapsed_s = Math.round((performance.now() - start) / 1000);
-            emit();
-            updateConnectionStatusUI();
-        }
+        if (!wakeProgress) return;
+        wakeProgress.elapsed_s = Math.round((performance.now() - start) / 1000);
+        emit('change');
     }, 500);
 
     try {
@@ -176,12 +128,10 @@ async function wakeChatBackend() {
             body: JSON.stringify({
                 experiment: LIVE_CHAT_EXPERIMENT,
                 backend: targetBackend,
-                model_type: MODEL_TYPE,
+                model_type: CHAT_MODEL_TYPE,
             }),
         });
-        if (!resp.ok || !resp.body) {
-            throw new Error(`wake HTTP ${resp.status}`);
-        }
+        if (!resp.ok || !resp.body) throw new Error(`wake HTTP ${resp.status}`);
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
@@ -193,29 +143,22 @@ async function wakeChatBackend() {
             buffer = lines.pop();
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
+                if (gen !== wakeGeneration) continue;  // stale, user toggled away
                 const evt = JSON.parse(line.slice(6));
-                // Drop events from a stale wake (user toggled backends
-                // while this wake was in flight).
-                if (gen !== wakeGeneration) continue;
                 if (evt.status === 'loading') {
                     wakeProgress = { estimated_seconds: evt.estimated_seconds, elapsed_s: 0 };
-                    emit();
-                    updateConnectionStatusUI();
+                    emit('change');
                 } else if (evt.status === 'ready') {
-                    // Still belongs to the current intent? Update state.
                     chatStatus = { ...chatStatus, ready: true, backend: evt.backend, model: evt.model };
                     wakeProgress = null;
-                    emit();
-                    updateConnectionStatusUI();
-                    emitReady();
+                    drainPendingIntoInput();
+                    emit('change');
+                    emit('ready');
                 } else if (evt.status === 'error') {
                     console.error('[wake] backend error:', evt.error);
                     wakeProgress = null;
-                    // Clear any queued message so an unrelated future ready
-                    // transition doesn't resurrect a stale prompt.
-                    pendingMessage = null;
-                    emit();
-                    updateConnectionStatusUI();
+                    pendingMessage = null;  // don't resurrect on a future unrelated ready
+                    emit('change');
                 }
             }
         }
@@ -225,53 +168,57 @@ async function wakeChatBackend() {
     } finally {
         clearInterval(ticker);
         wakeInFlight = false;
-        // Re-fetch to reconcile truth.
-        fetchChatStatus();
+        fetchChatStatus();  // reconcile truth
     }
 }
 
 async function unloadChatBackend() {
-    // Bump generation so any in-flight wake's events get dropped.
-    wakeGeneration++;
+    wakeGeneration++;  // drop any in-flight wake's late events
     try {
-        await fetch('/api/chat/unload', { method: 'POST' });
+        const resp = await fetch('/api/chat/unload', { method: 'POST' });
+        if (!resp.ok) console.warn(`[unload] HTTP ${resp.status}`);
     } catch (e) {
-        console.warn('[unload] failed:', e);
+        console.warn('[unload] network error:', e);
     }
     chatStatus = { ...chatStatus, ready: false };
-    pendingMessage = null;  // don't auto-resurrect stale prompts
-    emit();
-    updateConnectionStatusUI();
-    emitUnload();
+    pendingMessage = null;
+    emit('change');
+    emit('unload');
     fetchChatStatus();
 }
 
-// ---------- mode toggle ----------
+// --- mode toggle -------------------------------------------------------
 
 async function toggleInferenceMode() {
-    if (toggleInFlight) return;  // ignore rapid double-clicks
+    if (toggleInFlight) return;
     toggleInFlight = true;
     try {
-        const newMode = inferenceMode === 'local' ? 'modal' : 'local';
-        // Bump generation: any in-flight wake's late events are now stale.
         wakeGeneration++;
-        // Best-effort unload of the previous backend so we don't pin two models.
-        if (chatStatus.ready) {
-            await unloadChatBackend();
-        }
-        inferenceMode = newMode;
-        chatStatus = { ...chatStatus, backend: newMode, ready: false };
+        if (chatStatus.ready) await unloadChatBackend();
+        inferenceMode = inferenceMode === 'local' ? 'modal' : 'local';
+        chatStatus = { ...chatStatus, backend: inferenceMode, ready: false };
         wakeProgress = null;
         pendingMessage = null;
-        emit();
         updateInferenceModeUI();
-        updateConnectionStatusUI();
-        emitUnload();  // chart/state from old backend is now invalid
+        emit('change');
+        emit('unload');
         await fetchChatStatus();
     } finally {
         toggleInFlight = false;
     }
 }
+
+/**
+ * Seed inferenceMode from app config (called once per mount, before polling).
+ * Later toggles are driven by the user — never by this.
+ */
+function seedInferenceModeFromConfig(defaultBackend) {
+    inferenceMode = defaultBackend === 'modal' ? 'modal' : 'local';
+    chatStatus = { ...chatStatus, backend: inferenceMode };
+    updateInferenceModeUI();
+}
+
+// --- DOM sync (dot + toggle label) -------------------------------------
 
 function updateInferenceModeUI() {
     const toggle = document.getElementById('inference-mode-toggle');
@@ -280,12 +227,9 @@ function updateInferenceModeUI() {
     if (label) label.textContent = inferenceMode === 'modal' ? 'Modal GPU' : 'Local';
 }
 
-// ---------- connection dot ----------
-
 function updateConnectionStatusUI() {
     const statusEl = document.getElementById('connection-status');
     if (!statusEl) return;
-
     let dot, text;
     if (wakeInFlight) {
         dot = 'warming';
@@ -302,52 +246,40 @@ function updateConnectionStatusUI() {
         dot = 'disconnected';
         text = 'Not loaded';
     }
-
-    statusEl.innerHTML = `
-        <span class="status-dot ${dot}"></span>
-        <span class="status-text">${text}</span>
-    `;
+    statusEl.innerHTML = `<span class="status-dot ${dot}"></span><span class="status-text">${text}</span>`;
 }
 
-// ---------- getters for live-chat.js ----------
+// --- accessors ---------------------------------------------------------
 
 function getInferenceMode() { return inferenceMode; }
-function setInferenceMode(mode) {
-    inferenceMode = mode;
-    chatStatus = { ...chatStatus, backend: mode };
-    updateInferenceModeUI();
-    emit();
-}
 function getChatStatus() { return { ...chatStatus }; }
 function isChatReady() { return chatStatus.ready; }
 function isWakeInFlight() { return wakeInFlight; }
+function getWakeProgress() { return wakeProgress ? { ...wakeProgress } : null; }
 function getPendingMessage() { return pendingMessage; }
 function setPendingMessage(msg) { pendingMessage = msg; }
-function getWakeProgress() { return wakeProgress ? { ...wakeProgress } : null; }
 
 export {
+    on,
     toggleInferenceMode,
-    updateInferenceModeUI,
-    updateConnectionStatusUI,
     wakeChatBackend,
     unloadChatBackend,
     startChatStatusPolling,
     stopChatStatusPolling,
     fetchChatStatus,
-    onChatStatusChange,
-    onChatReady,
-    onChatUnload,
+    seedInferenceModeFromConfig,
+    updateInferenceModeUI,
+    updateConnectionStatusUI,
     getInferenceMode,
-    setInferenceMode,
     getChatStatus,
     isChatReady,
     isWakeInFlight,
+    getWakeProgress,
     getPendingMessage,
     setPendingMessage,
-    getWakeProgress,
 };
 
-// Window bindings for inline onclick in template HTML
+// Inline onclick handlers in the live-chat template call these by name.
 window.toggleInferenceMode = toggleInferenceMode;
 window.wakeChatBackend = wakeChatBackend;
 window.unloadChatBackend = unloadChatBackend;

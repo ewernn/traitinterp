@@ -40,12 +40,14 @@ from utils.paths import get as get_path, get_default_variant, get_model_variant
 from utils.vector_selection import select_vector
 from utils.vectors import load_vector
 from utils.model import tokenize_prompt
+# Shared constants — single source of truth lives in chat_config.py.
+from visualization.chat_config import DEFAULT_MODEL_TYPE, DEFAULT_EXPERIMENT  # noqa: F401 (re-exported)
 
 
 class ChatInference:
     """Manages model and trait vectors for live chat with trait monitoring."""
 
-    def __init__(self, experiment: str, device: str = "auto", backend: str = "local", model_type: str = "application"):
+    def __init__(self, experiment: str, device: str = "auto", backend: str = "local", model_type: str = DEFAULT_MODEL_TYPE):
         """
         Args:
             experiment: Experiment name
@@ -593,7 +595,7 @@ class ChatInference:
 _chat_instance: Optional[ChatInference] = None
 
 
-def get_chat_instance(experiment: str, backend: str = None, model_type: str = "application") -> ChatInference:
+def get_chat_instance(experiment: str, backend: str = None, model_type: str = DEFAULT_MODEL_TYPE) -> ChatInference:
     """
     Get or create chat instance for experiment.
 
@@ -627,7 +629,7 @@ def get_chat_instance(experiment: str, backend: str = None, model_type: str = "a
     return _chat_instance
 
 
-def get_chat_status(experiment: str, backend: str, model_type: str = "application") -> Dict:
+def get_chat_status(experiment: str, backend: str, model_type: str = DEFAULT_MODEL_TYPE) -> Dict:
     """Read-only snapshot of the current chat instance state.
 
     Returns the current (experiment, backend, model, ready) without creating
@@ -661,7 +663,7 @@ def get_chat_status(experiment: str, backend: str, model_type: str = "applicatio
     }
 
 
-def wake_chat_stream(experiment: str, backend: str, model_type: str = "application") -> Generator[Dict, None, None]:
+def wake_chat_stream(experiment: str, backend: str, model_type: str = DEFAULT_MODEL_TYPE) -> Generator[Dict, None, None]:
     """Load the model for (experiment, backend) and yield SSE progress events.
 
     Unloads any prior instance with a different (experiment, backend, model_type)

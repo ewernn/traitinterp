@@ -10,20 +10,16 @@ import { escapeHtml } from '../core/utils.js';
 import { isFeatureEnabled } from '../core/state.js';
 import { renderToggle } from '../core/ui.js';
 import { ConversationTree } from '../core/conversation-tree.js';
+import { LIVE_CHAT_EXPERIMENT, CHAT_MODEL_TYPE } from '../core/chat-config.js';
 import {
+    on,
     toggleInferenceMode,
-    updateInferenceModeUI,
-    updateConnectionStatusUI,
     wakeChatBackend,
-    unloadChatBackend,
+    updateInferenceModeUI,
     startChatStatusPolling,
-    stopChatStatusPolling,
     fetchChatStatus,
-    onChatStatusChange,
-    onChatReady,
-    onChatUnload,
+    seedInferenceModeFromConfig,
     getInferenceMode,
-    setInferenceMode,
     getChatStatus,
     isChatReady,
     isWakeInFlight,
@@ -44,9 +40,6 @@ import {
     resetChartState,
 } from '../components/live-chat-chart.js';
 
-// Live Chat always uses this experiment (separate from sidebar selection)
-const LIVE_CHAT_EXPERIMENT = 'live-chat';
-
 // Chat state
 let conversationTree = null;
 let currentAssistantNodeId = null;
@@ -54,7 +47,7 @@ let isGenerating = false;
 let abortController = null;
 let hoveredMessageId = null;
 let editingNodeId = null;
-let currentModelType = 'application';  // 'application' or 'extraction'
+let currentModelType = CHAT_MODEL_TYPE;  // could become togglable later (e.g. 'extraction')
 let maxContextLength = 8192;  // Loaded from model config
 
 /**
@@ -134,21 +127,23 @@ let liveChatExperimentConfig = null;
 let inferenceModeSeeded = false;  // only seed from app config on first mount
 
 async function loadModelConfig() {
-    try {
-        const response = await fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/config`);
-        const config = await response.json();
-        maxContextLength = config.max_context_length || 8192;
-        liveChatExperimentConfig = config;
-    } catch (e) {
-        console.warn('Failed to load model config:', e);
-        maxContextLength = 8192;
+    const response = await fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/config`);
+    if (!response.ok) {
+        throw new Error(`Failed to load experiment config for ${LIVE_CHAT_EXPERIMENT}: HTTP ${response.status}`);
     }
+    const config = await response.json();
+    if (!config.max_context_length) {
+        throw new Error(`Experiment config for ${LIVE_CHAT_EXPERIMENT} missing max_context_length`);
+    }
+    maxContextLength = config.max_context_length;
+    liveChatExperimentConfig = config;
 }
 
-// Unsubscribe functions for chat-status listeners (set on mount, cleared on remount)
-let chatStatusUnsub = null;
-let chatReadyUnsub = null;
-let chatUnloadUnsub = null;
+// Unsubscribe fns for chat bus listeners (cleared on remount).
+const chatBusUnsubs = [];
+function clearChatBusSubscriptions() {
+    while (chatBusUnsubs.length) chatBusUnsubs.pop()();
+}
 
 async function renderLiveChat() {
     const container = document.getElementById('content-area');
@@ -156,12 +151,11 @@ async function renderLiveChat() {
 
     await loadModelConfig();
 
-    // Seed mode from app config the first time we mount, then stop overriding
-    // user toggles on subsequent renders.
+    // Seed mode from app config on first mount only; later toggles are the
+    // user's to control.
     const appConfig = window.state.appConfig || {};
     if (!inferenceModeSeeded) {
-        const defaultBackend = appConfig.defaults?.inference_backend || 'local';
-        setInferenceMode(defaultBackend);
+        seedInferenceModeFromConfig(appConfig.defaults?.inference_backend || 'local');
         inferenceModeSeeded = true;
     }
 
@@ -185,8 +179,20 @@ async function renderLiveChat() {
         return;
     }
 
-    const lcVariant = liveChatExperimentConfig?.defaults?.application || 'instruct';
-    const lcModelFull = liveChatExperimentConfig?.model_variants?.[lcVariant]?.model || appConfig.defaults?.model || '';
+    // liveChatExperimentConfig is populated by loadModelConfig() (awaited above).
+    // Missing fields mean the live-chat experiment config.json is malformed —
+    // fail loud rather than guess.
+    if (!liveChatExperimentConfig) {
+        throw new Error('liveChatExperimentConfig not loaded — loadModelConfig must run first');
+    }
+    const lcVariant = liveChatExperimentConfig.defaults?.application;
+    if (!lcVariant) {
+        throw new Error(`${LIVE_CHAT_EXPERIMENT}/config.json missing defaults.application`);
+    }
+    const lcModelFull = liveChatExperimentConfig.model_variants?.[lcVariant]?.model;
+    if (!lcModelFull) {
+        throw new Error(`${LIVE_CHAT_EXPERIMENT}/config.json missing model_variants.${lcVariant}.model`);
+    }
     const lcModelShort = lcModelFull.split('/').pop();
 
     container.innerHTML = `
@@ -262,29 +268,25 @@ async function renderLiveChat() {
         if (inferenceToggle) inferenceToggle.style.display = 'none';
     }
 
-    // Subscribe to status changes so layout reacts when wake completes,
-    // backend toggles, etc. One subscription per mount.
-    if (chatStatusUnsub) chatStatusUnsub();
-    if (chatReadyUnsub) chatReadyUnsub();
-    if (chatUnloadUnsub) chatUnloadUnsub();
-    chatStatusUnsub = onChatStatusChange(() => applyChatStatusToDOM());
-    // When the backend becomes ready, drain any prompt the user queued by
-    // hitting Send pre-warm. The pendingMessage was already moved into the
-    // input by inference-controls; we just need to re-fire Send.
-    chatReadyUnsub = onChatReady(() => {
+    // Subscribe to chat bus. One set of subscriptions per mount — a remount
+    // clears and re-subscribes so we don't pile up duplicates.
+    clearChatBusSubscriptions();
+    chatBusUnsubs.push(on('change', applyChatStatusToDOM));
+    // On ready, drain any prompt the user queued by hitting Send pre-warm.
+    // inference-controls already moved it into the input; we just fire Send.
+    chatBusUnsubs.push(on('ready', () => {
         const queued = getPendingMessage();
         if (queued && !isGenerating) {
             setPendingMessage(null);
             handleSend();
         }
-    });
-    // When the backend is unloaded (toggle or explicit unload), the trait
-    // chart's cached vector metadata + lines belong to a dead session.
-    // Reset so a future wake starts clean.
-    chatUnloadUnsub = onChatUnload(() => {
+    }));
+    // On unload, the chart's cached metadata + lines belong to a dead
+    // session. Reset so a future wake starts clean.
+    chatBusUnsubs.push(on('unload', () => {
         resetChartState();
         initTraitChart();
-    });
+    }));
     applyChatStatusToDOM();
 }
 
@@ -350,7 +352,17 @@ function setupChatHandlers() {
     const clearBtn = document.getElementById('clear-btn');
     const smoothToggle = document.getElementById('smooth-toggle');
 
-    sendBtn.addEventListener('click', () => handleSend());
+    // Single click listener for Send/Stop — behavior is state-dependent
+    // (abort when a generation is in flight, send otherwise). Using one
+    // listener here avoids the onclick= + addEventListener conflict we had
+    // when the two were split across functions.
+    sendBtn.addEventListener('click', () => {
+        if (isGenerating && abortController) {
+            abortController.abort();
+        } else {
+            handleSend();
+        }
+    });
     clearBtn.addEventListener('click', () => clearChat());
 
     input.addEventListener('keydown', (e) => {
@@ -465,13 +477,10 @@ async function generateResponse(prompt, assistantNodeId) {
     const steeringCoefficients = getSteeringCoefficients();
 
     isGenerating = true;
-    sendBtn.disabled = false;  // Keep enabled for stop functionality
+    // The single click listener in setupChatHandlers dispatches on
+    // isGenerating (abort) vs not (send). We only flip the label here.
+    sendBtn.disabled = false;
     sendBtn.textContent = 'Stop';
-    sendBtn.onclick = () => {
-        if (abortController) {
-            abortController.abort();
-        }
-    };
 
     // Get history for API (all messages BEFORE the current user message)
     // The assistant's parent is the current user message - we exclude it since prompt is sent separately
@@ -583,7 +592,6 @@ async function generateResponse(prompt, assistantNodeId) {
         abortController = null;
         sendBtn.disabled = false;
         sendBtn.textContent = 'Send';
-        sendBtn.onclick = () => handleSend();  // Restore normal click handler
         renderMessages();
         saveConversation();  // Persist to localStorage
     }
@@ -660,13 +668,13 @@ function handleMessageHover(messageId) {
  */
 function renderTokenizedContent(node) {
     if (!node.content) return '';
-
-    // Render all messages with markdown
-    if (typeof marked !== 'undefined') {
-        const rendered = marked.parse(node.content, { breaks: true });
-        return rendered;
+    // `marked` is loaded from CDN in index.html. If it failed to load we
+    // don't want to silently fall back to plain-text rendering — the UI
+    // would look broken in a confusing way. Fail loud instead.
+    if (typeof marked === 'undefined') {
+        throw new Error('marked.min.js failed to load (check CDN / index.html)');
     }
-    return escapeHtml(node.content);
+    return marked.parse(node.content, { breaks: true });
 }
 
 /**
@@ -779,12 +787,11 @@ export {
     toggleInferenceMode,
 };
 
-// Keep window.* for onclick handlers in generated HTML + router
+// Window.* bindings for inline onclick handlers and the router.
+// toggleInferenceMode / wakeChatBackend / unloadChatBackend are bound inside
+// inference-controls.js — don't re-bind here or we'll shadow the canonical ref.
 window.startEdit = startEdit;
 window.navigateBranch = navigateBranch;
 window.handleMessageHover = handleMessageHover;
 window.setSteeringCoefficient = setSteeringCoefficient;
-window.toggleInferenceMode = toggleInferenceMode;
 window.renderLiveChat = renderLiveChat;
-window.wakeChatBackend = wakeChatBackend;
-window.unloadChatBackend = unloadChatBackend;

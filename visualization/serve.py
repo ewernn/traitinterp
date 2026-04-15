@@ -24,6 +24,8 @@ MODE = os.environ.get('MODE', 'development')
 # Chat backend is optional — ships with prod deployments (Railway) but not
 # with the public `main` branch. If the module didn't ship, /api/chat returns
 # 503 and the Live Chat tab won't be discovered by the sidebar.
+# Constants are always available (no heavy deps), so no fallback shim needed.
+from visualization.chat_config import DEFAULT_MODEL_TYPE, DEFAULT_EXPERIMENT
 try:
     from visualization import chat_inference  # noqa: F401
     CHAT_AVAILABLE = True
@@ -84,6 +86,14 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests, including API endpoints."""
         try:
+            # Optional metadata files — return empty JSON when absent (no 404 spam)
+            if self.path.endswith('_tags.json') or self.path.endswith('_annotations.json'):
+                from pathlib import Path as _P
+                local = _P('.') / self.path.lstrip('/').split('?', 1)[0]
+                if not local.exists():
+                    self.send_api_response({})
+                    return
+
             # API endpoint: list experiments
             if self.path == '/api/experiments':
                 self.send_api_response(self.list_experiments())
@@ -117,9 +127,14 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     return
                 from urllib.parse import urlparse, parse_qs
                 qs = parse_qs(urlparse(self.path).query)
-                experiment = qs.get('experiment', ['live-chat'])[0]
-                backend = qs.get('backend', ['local'])[0]
-                model_type = qs.get('model_type', ['application'])[0]
+                # backend/experiment/model_type are required — missing means
+                # the client called this wrong, not that we should guess.
+                if 'backend' not in qs:
+                    self.send_error(400, "Missing required query param: backend")
+                    return
+                experiment = qs.get('experiment', [DEFAULT_EXPERIMENT])[0]
+                backend = qs['backend'][0]
+                model_type = qs.get('model_type', [DEFAULT_MODEL_TYPE])[0]
                 from visualization.chat_inference import get_chat_status
                 status = get_chat_status(experiment, backend, model_type)
                 status['can_fit_locally'] = self.estimate_can_fit_locally(status.get('model'))
@@ -301,10 +316,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         try:
             data = json.loads(body) if body else {}
         except json.JSONDecodeError:
-            data = {}
-        experiment = data.get('experiment', 'live-chat')
-        backend = data.get('backend', 'local')
-        model_type = data.get('model_type', 'application')
+            self.send_error(400, "Invalid JSON body")
+            return
+        # `backend` is required — don't silently wake the wrong mode.
+        if 'backend' not in data:
+            self.send_error(400, "Missing required field: backend")
+            return
+        experiment = data.get('experiment', DEFAULT_EXPERIMENT)
+        backend = data['backend']
+        model_type = data.get('model_type', DEFAULT_MODEL_TYPE)
 
         self.send_response(200)
         self.send_header('Content-Type', 'text/event-stream')
@@ -342,40 +362,51 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         try:
             from utils.model_registry import get_model_config
             cfg = get_model_config(model_id)
-        except Exception:
-            return None
-        num_params = cfg.get('num_parameters') or cfg.get('params')
-        if not num_params:
-            # Estimate from architecture fields if available.
-            h = cfg.get('hidden_size')
-            layers = cfg.get('num_hidden_layers')
-            inter = cfg.get('intermediate_size')
-            if h and layers and inter:
-                # Rough transformer param count: ~12 * layers * h^2 + embeddings.
-                num_params = 12 * layers * h * h + 4 * layers * h * inter
-        if not num_params:
+        except Exception as e:
+            # Config lookup failed (registry entry missing / yaml malformed).
+            # Log it loudly and return unknown — don't silently fabricate.
+            print(f"[can_fit_locally] get_model_config({model_id!r}) failed: {e}")
             return None
 
-        try:
-            import torch
-            if torch.cuda.is_available():
-                # Local CUDA path uses bnb 4-bit (chat_inference.py).
-                bytes_per_param = 0.5
-                needed_gb = (num_params * bytes_per_param * 1.3) / (1024 ** 3)
-                free, _ = torch.cuda.mem_get_info(0)
-                return needed_gb < (free / (1024 ** 3))
-            if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-                # Local MPS path uses fp16 — bnb has no real MPS kernels.
-                import psutil
-                bytes_per_param = 2
-                needed_gb = (num_params * bytes_per_param * 1.3) / (1024 ** 3)
-                # Use *available* memory, not total, so a loaded machine
-                # doesn't get a false green light.
-                avail_gb = psutil.virtual_memory().available / (1024 ** 3)
-                return needed_gb < avail_gb
-        except Exception:
+        # Required architecture fields. If any are missing the registry entry
+        # is incomplete — fix the yaml rather than silently estimating with a
+        # made-up value.
+        required = ('hidden_size', 'num_hidden_layers', 'intermediate_size', 'vocab_size')
+        missing = [k for k in required if not cfg.get(k)]
+        if missing:
+            print(f"[can_fit_locally] {model_id}: registry missing {missing} — "
+                  f"add them to config/models/*.yaml")
             return None
-        # CPU-only or unknown: don't pre-block; let the user attempt.
+
+        h = cfg['hidden_size']
+        layers = cfg['num_hidden_layers']
+        inter = cfg['intermediate_size']
+        vocab = cfg['vocab_size']
+
+        # SwiGLU transformer with tied input/output embeddings. Ignores GQA
+        # (uses full h*h for attention) — slight over-estimate in the safe
+        # direction for a fit check.
+        embedding = vocab * h
+        attention = 4 * h * h           # Q, K, V, O
+        ffn = 3 * h * inter             # SwiGLU: gate, up, down
+        norms = 2 * h                   # layernorms per block
+        num_params = embedding + layers * (attention + ffn + norms)
+
+        # Sizing assumes the actual dtype chat_inference will use:
+        #   CUDA: bnb 4-bit (~0.5 bytes/param)
+        #   MPS:  fp16      (~2 bytes/param)
+        # + 30% runtime overhead for KV cache / activations / HF runtime.
+        import torch
+        if torch.cuda.is_available():
+            needed_gb = (num_params * 0.5 * 1.3) / (1024 ** 3)
+            free, _ = torch.cuda.mem_get_info(0)
+            return needed_gb < (free / (1024 ** 3))
+        if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            import psutil
+            needed_gb = (num_params * 2 * 1.3) / (1024 ** 3)
+            avail_gb = psutil.virtual_memory().available / (1024 ** 3)
+            return needed_gb < avail_gb
+        # CPU-only: we don't have a good RAM/VRAM model — let the user try.
         return None
 
     def handle_chat_stream(self):
@@ -404,7 +435,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         temperature = data.get('temperature', 0.0)  # Default to greedy for live-chat
         history = data.get('history', [])  # Multi-turn conversation history
         previous_context_length = data.get('previous_context_length', 0)  # Tokens already captured
-        model_type = data.get('model_type', 'application')  # Which model to use: extraction or application
+        model_type = data.get('model_type', DEFAULT_MODEL_TYPE)  # Which model to use: extraction or application
         inference_mode = data.get('inference_mode')  # 'local' or 'modal' - per-request override
         steering_configs = data.get('steering_configs', [])  # [{trait, coefficient}, ...]
 
@@ -469,7 +500,7 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             },
             'defaults': {
                 'inference_backend': 'local' if is_dev else 'modal',
-                'experiment': 'live-chat',
+                'experiment': DEFAULT_EXPERIMENT,
                 'model': 'google/gemma-2-2b-it',  # Default for production
             },
             'min_coherence': MIN_COHERENCE,
