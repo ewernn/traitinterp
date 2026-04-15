@@ -1,6 +1,8 @@
 ---
 title: "Thought Branches: Probing Unfaithful CoT"
 preview: "Behavioral probes detect internal signatures of unfaithful reasoning. Rationalization tracks cue_p per-problem (r=0.45 mean), but the authority hint dominates: it reshapes 10/11 traits even with identical CoT text."
+date: "Mar 2026"
+tier: major
 ---
 
 # Thought Branches: Probing Unfaithful CoT

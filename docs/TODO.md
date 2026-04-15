@@ -7,8 +7,8 @@ Dev-only tracking. Not promoted to main.
 - [ ] Re-pull experiment data from GPU (extraction + steering results lost locally)
 - [ ] Fix refusal scenario mismatch (300 pos / 311 neg) — or remove the 1:1 enforcement in `load_scenarios()` since mean_diff/probe don't need matched pairs
 - [ ] Run inference pipeline: `python inference/run_inference_pipeline.py --experiment starter --prompt-set general`
-- [ ] Run `analysis/vectors/extraction_evaluation.py --experiment starter` (needs `--save-activations` re-extraction, or compute metrics during extraction)
-- [ ] Verify viz dashboard shows all 9 traits with steering + inference data
+- [x] Run `analysis/vectors/extraction_evaluation.py --experiment starter` — val metrics now computed during extraction, no activation files needed
+- [ ] Verify viz dashboard shows all traits with steering + inference data
 - [ ] Broader layer sweep (5-28) — other chat found best layers at L5 (sycophancy), L6 (refusal), L25 (assistant_axis) which the 9-19 default range missed
 
 ## Datasets

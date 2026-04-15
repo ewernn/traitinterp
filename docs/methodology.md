@@ -54,7 +54,7 @@ Whichever strategy you use, the same principles apply:
 - **Negatives should be active, not bland.** A vivid positive paired with a neutral negative extracts "intensity," not the trait. Good negatives actively exhibit the opposite — compliance for refusal, transparency for concealment, cheerful moving-on for nostalgia.
 - **Diversity across surface features.** Vary topics, names, settings, sentence lengths. 15-30 examples spanning different contexts is a reasonable minimum.
 
-Each trait in traitinterp needs: labeled data, plus a `definition.txt` scoring rubric used downstream for validation. See `datasets/traits/` for the file structure, or `datasets/traits/starter_traits/` for 9 ready-to-use traits.
+Each trait in traitinterp needs: labeled data, plus a `definition.txt` scoring rubric used downstream for validation. See `datasets/traits/` for the file structure, or `datasets/traits/starter_traits/` for ready-to-use traits (sycophancy, hallucination, concealment, etc.).
 
 <details>
 <summary><strong>Our approach: contrastive document completion on base models</strong></summary>

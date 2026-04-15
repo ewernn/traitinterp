@@ -10,6 +10,8 @@ Spawn background subagents liberally — investigators, critics, explorers — w
 
 **No hardcoding**: Paths, experiment names, trait names, examples - always use variables/templates that resolve at runtime. If you're typing a specific value that could change, it should be a parameter. All paths flow through PathBuilder APIs (`utils/paths.py`, `visualization/core/paths.js`) which read from `config/paths.yaml`.
 
+**No fallbacks, no duplicated constants**: If a DOM element, config key, or import is missing — throw. Don't substitute a default value. Fallbacks hide bugs (the fallback path silently becomes the real value when the true source breaks), and duplicated constants drift (e.g., backend `MIN_COHERENCE=77` vs. a frontend fallback of `70`). A constant is defined once and imported/fetched everywhere else — never re-typed.
+
 **Docs**: Integrate insights into permanent docs as you go. No session files. Summary in conversation, lasting insights in `docs/`.
 
 **Code style**:
