@@ -29,7 +29,7 @@ Pipeline scripts use `LocalBackend.from_experiment()`. These still call `load_mo
 **Analysis scripts (4 files, 11 sites):**
 - `analysis/model_diff/layer_sensitivity.py:228-230` — manual `inference/{variant}/raw/...`
 - `analysis/model_diff/per_token_diff.py:162-164` — manual `inference/{variant}/projections/...`
-- `utils/experiment_data_checker.py:291,324,403,450` — manual subdirs with YAML equivalents
+- `dev/experiment_data_checker.py:291,324,403,450` — manual subdirs with YAML equivalents
 - `analysis/vectors/logit_lens.py:152`, `analysis/vectors/trait_correlation.py:184` — could use `analysis.category`
 
 **Cosmetic:** 2 files use `paths.get(...)` instead of `get_path(...)` import style
@@ -41,7 +41,7 @@ Pipeline scripts use `LocalBackend.from_experiment()`. These still call `load_mo
 - HuggingFace Hub for experiment data
 
 ### Features / future
-- Ensemble projections for inference — weighted combination across layers (steering ensembles exist in `utils/ensembles.py`)
+- Ensemble projections for inference — weighted combination across layers (steering ensembles exist in `dev/steering/ensembles.py`)
 - Trait dataset format redesign (trait.json + scenarios.json) — defer to pip package
 - pip package API design (`import traitinterp`)
 
