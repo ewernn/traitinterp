@@ -114,7 +114,7 @@ The main entry point is `inference/run_inference_pipeline.py`. Key flags:
 
 ### Model
 - `--load-in-4bit` — Load model in 4-bit quantization (for large models on limited VRAM).
-- `--backend` — `auto` (default), `local`, or `vllm`. `vllm` is generation-only (no hooks, no LoRA); projection and capture stages require `local`.
+- `--backend` — `local` (default, HF in-process), `auto` (try server first, fall back to local), or `vllm` (generation-only, no hooks, no LoRA; projection and capture stages require `local`).
 
 ---
 
