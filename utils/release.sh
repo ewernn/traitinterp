@@ -111,9 +111,10 @@ check_untracked_in_include() {
             echo "  - $o" >&2
         done
         echo "" >&2
-        echo "Fix by either:" >&2
-        echo "  • git add <path>   (and commit, if you want it to ship)" >&2
-        echo "  • remove the path from $include_file" >&2
+        echo "Fix by one of:" >&2
+        echo "  • git add <path>  &&  git commit  &&  re-run release.sh" >&2
+        echo "    (so dev and main/prod stay in sync)" >&2
+        echo "  • remove the path from $include_file (if you didn't mean to ship it)" >&2
         echo "" >&2
         return 1
     fi
@@ -127,31 +128,54 @@ if [[ "$TARGET" == "prod" || "$TARGET" == "both" ]]; then
 fi
 
 # ─── Auto-stash ──────────────────────────────────────────────────────────────
+# Stash naming: PID + epoch keeps parallel runs from colliding. The trap is
+# installed BEFORE the stash push so a failure mid-push still triggers cleanup
+# logic (which looks up the stash by name at fire time, so an empty/missing
+# stash is a no-op).
 
-STASH_REF=""
-if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
-    STASH_NAME="release-$(date +%s)"
-    echo "── Stashing uncommitted changes (${STASH_NAME}) ──"
-    git stash push -u -m "$STASH_NAME" >/dev/null
-    STASH_REF=$(git stash list | grep -F "$STASH_NAME" | head -1 | awk -F: '{print $1}')
-fi
+STASH_NAME="release-$$-$(date +%s)"
+MAIN_STATUS="skipped"
+PROD_STATUS="skipped"
 
-# Always try to restore the stash on exit (success OR failure)
 restore_stash() {
-    if [[ -n "$STASH_REF" ]]; then
+    local exit_code=$?
+    # Look up the stash at fire time (avoids race with parsing)
+    local stash_ref
+    stash_ref=$(git stash list 2>/dev/null | grep -F "$STASH_NAME" | head -1 | cut -d: -f1)
+    if [[ -n "$stash_ref" ]]; then
         echo ""
-        echo "── Restoring stash $STASH_REF ──"
-        if ! git stash pop "$STASH_REF" 2>&1; then
+        echo "── Restoring stash $stash_ref ──"
+        if ! git stash pop "$stash_ref" 2>&1; then
             echo "" >&2
             echo "Error: stash pop failed (likely a conflict)." >&2
-            echo "Your changes are safe in $STASH_REF — recover with:" >&2
+            echo "Your changes are safe — recover with:" >&2
             echo "  git stash list" >&2
-            echo "  git stash pop $STASH_REF   (after resolving conflicts)" >&2
+            echo "  git stash pop $stash_ref   (after resolving conflicts)" >&2
             exit 1
         fi
     fi
+
+    # Per-target summary so a half-released state is obvious
+    if [[ "$MAIN_STATUS" != "skipped" || "$PROD_STATUS" != "skipped" ]]; then
+        echo ""
+        echo "── Release summary ──"
+        [[ "$MAIN_STATUS" != "skipped" ]] && echo "  main: $MAIN_STATUS"
+        [[ "$PROD_STATUS" != "skipped" ]] && echo "  prod: $PROD_STATUS"
+        if [[ "$MAIN_STATUS" == "FAILED" || "$PROD_STATUS" == "FAILED" ]]; then
+            echo "" >&2
+            echo "Warning: release ended in a half-shipped state. Branches above" >&2
+            echo "marked FAILED still need a manual promote + push." >&2
+        fi
+    fi
+
+    exit $exit_code
 }
 trap restore_stash EXIT
+
+if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+    echo "── Stashing uncommitted changes (${STASH_NAME}) ──"
+    git stash push -u -m "$STASH_NAME" >/dev/null
+fi
 
 # ─── Push dev ────────────────────────────────────────────────────────────────
 

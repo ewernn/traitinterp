@@ -50,11 +50,12 @@ mkdocs.yml
 
 # ── Root files ──
 README.md
-CLAUDE.md
+# CLAUDE.main.md is renamed to CLAUDE.md by promote_to_prod.sh — the dev
+# CLAUDE.md references @docs/dev.md which doesn't ship to prod.
+CLAUDE.main.md
 LICENSE
 requirements.txt
 pyproject.toml
-mkdocs.yml
 .gitignore
 .env.example
 experiments/.gitkeep

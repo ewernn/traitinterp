@@ -147,6 +147,13 @@ case "$MODE" in
                 done
             fi
 
+            # Branch-specific renames: CLAUDE.main.md on dev becomes CLAUDE.md
+            # on prod. Mirrors the same rule in promote_to_main.sh — dev's
+            # CLAUDE.md references @docs/dev.md which doesn't ship publicly.
+            if [[ -f "$WORKTREE/CLAUDE.main.md" ]]; then
+                git -C "$WORKTREE" mv -f CLAUDE.main.md CLAUDE.md
+            fi
+
             if git -C "$WORKTREE" diff --cached --quiet 2>/dev/null; then
                 echo "No changes to promote."
                 exit 0
@@ -189,6 +196,12 @@ case "$MODE" in
                         git rm -f "$f" 2>/dev/null && echo "  Removed: $f"
                     fi
                 done
+            fi
+
+            # Branch-specific renames: CLAUDE.main.md → CLAUDE.md on prod.
+            # See worktree branch above for rationale.
+            if [[ -f CLAUDE.main.md ]]; then
+                git mv -f CLAUDE.main.md CLAUDE.md
             fi
 
             CHANGED=$(git diff --cached --stat | tail -1)
