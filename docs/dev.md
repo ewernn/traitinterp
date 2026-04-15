@@ -56,7 +56,7 @@ traitinterp/
 │   │   ├── starter_prompts/           # Public prompt sets (general.json)
 │   │   └── archive/                   # Archived prompt sets
 │   └── traits/
-│       ├── starter_traits/            # Public traits (9: sycophancy, refusal, etc.)
+│       ├── starter_traits/            # Public traits (sycophancy, hallucination, concealment, etc.)
 │       ├── emotion_set/              # 174 emotion traits
 │       ├── ant_emotion_concepts/     # 174 emotion concept traits (single-polarity, long-context)
 │       ├── alignment/                # 10 alignment traits
@@ -207,12 +207,14 @@ Three branches: `dev` (everything), `main` (public release), `prod` (Railway dep
 **How it works:**
 - `dev` is the active working branch — all new code, experiments, and docs land here
 - `main` contains only files whitelisted in `.publicinclude` — a curated subset for public release
-- `prod` contains everything in `.prodinclude` (superset of main) plus deployment files (Procfile, railway.toml). Deployed on Railway.
-- Promotion is done via `utils/promote_to_main.sh` or `utils/promote_to_prod.sh`
-- Branches have **diverged histories** (not fast-forwardable) — squashed/rewritten commits
+- `prod` is the Railway-deployed branch. Railway watches `origin/prod` and rebuilds on every push. **Railway deploy config (start command, pre-deploy steps) lives in the Railway dashboard, not in the repo** — there is no `Procfile` / `railway.toml` / `nixpacks.toml`.
+- Promotion is done via `./utils/release.sh -m "msg"` (handles dev push + both promotes + auto-stash). Or directly via `utils/promote_to_main.sh` / `utils/promote_to_prod.sh`.
+- Branches have **diverged histories** (not fast-forwardable) — each promote is a fresh commit.
 
 **`.publicinclude`** lists what gets promoted to main: pipeline code, visualization, config, datasets, and select docs.
-**`.prodinclude`** lists what gets promoted to prod: everything in main plus `docs/viz_findings/` (research findings served by the dashboard).
+**`.prodinclude`** lists what gets promoted to prod: everything in main plus `docs/viz_findings/` and the MkDocs site sources.
+
+**Branch-specific overrides:** files named `<name>.main.md` on dev are renamed to `<name>.md` by `promote_to_main.sh` after copy. Used today for `CLAUDE.main.md` → `CLAUDE.md` (dev's CLAUDE.md references `@docs/dev.md` which doesn't ship to main).
 
 **What stays dev-only:**
 - `dev/` directory — holding pen for steering CLI tools, modal files, dev-only scripts
@@ -220,4 +222,6 @@ Three branches: `dev` (everything), `main` (public release), `prod` (Railway dep
 - Research docs — refactor notepads, TODO
 - Personal docs live in a separate `trait-interp-personal` repo
 
-**To promote new files:** Add paths to `.publicinclude` or `.prodinclude`, then run the corresponding promote script.
+**Footgun:** the promote scripts use `git checkout dev -- <path>` which **silently skips untracked files**. Adding a path to `.publicinclude` / `.prodinclude` isn't enough — you must also `git add` the file or it ships nothing. `release.sh` checks for this and errors loudly before promoting.
+
+**To promote new files:** `git add` them on dev → add to `.publicinclude` / `.prodinclude` → commit on dev → `./utils/release.sh -m "..."`.
