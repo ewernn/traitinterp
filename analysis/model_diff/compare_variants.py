@@ -138,15 +138,13 @@ def parse_args():
 
     # Validate vector specification
     has_explicit = args.method is not None and args.position is not None
-    has_auto = args.use_best_vector
 
-    if not has_explicit and not has_auto:
-        parser.error("Must specify either --use-best-vector OR (--method and --position)\n"
-                     "  --use-best-vector: auto-select from steering results\n"
-                     "  --method M --position P: explicit specification")
-
-    if has_explicit and has_auto:
+    if has_explicit and args.use_best_vector:
         parser.error("Cannot use both --use-best-vector and --method/--position. Choose one.")
+
+    # Default to best-vector selection (consistent with rest of codebase)
+    if not has_explicit:
+        args.use_best_vector = True
 
     if (args.method is None) != (args.position is None):
         parser.error("--method and --position must be specified together")

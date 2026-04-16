@@ -24,11 +24,6 @@ import os
 import math
 import asyncio
 from typing import Optional, Dict, List, Tuple
-from dotenv import load_dotenv
-
-load_dotenv()  # Load .env file (OPENAI_API_KEY, etc.)
-
-
 # Default judge model — single source of truth. Override by passing model= to TraitJudge.
 DEFAULT_JUDGE_MODEL = "gpt-4.1-mini"
 
@@ -144,7 +139,9 @@ class TraitJudge:
 
     def __init__(self, model: str = DEFAULT_JUDGE_MODEL):
         self.model = model
+        from dotenv import load_dotenv
         from openai import AsyncOpenAI
+        load_dotenv()
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set")

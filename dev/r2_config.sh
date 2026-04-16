@@ -68,9 +68,15 @@ build_excludes() {
     )
 
     # ── Always exclude: regenerable data ──
+    # Note: rclone's **/ prefix doesn't match at the root level when using --only
+    # (which scopes paths to experiments/{name}/). Both rooted and **/-prefixed
+    # patterns are needed for correct exclusion.
     EXCLUDES+=(
+        --exclude "activations/**"
         --exclude "**/activations/**"
+        --exclude "inference/*/raw/**"
         --exclude "**/inference/*/raw/**"
+        --exclude "inference/raw/**"
         --exclude "**/inference/raw/**"
     )
 

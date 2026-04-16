@@ -115,7 +115,7 @@ def main():
                              "cosine (÷ per-token ||h||, true cosine similarity)")
 
     # Generation
-    parser.add_argument("--max-new-tokens", type=int, default=50)
+    parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
 
     # Model

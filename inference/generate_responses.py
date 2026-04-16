@@ -86,7 +86,7 @@ def generate_responses(
     experiment: str,
     prompt_set: str,
     model_variant: str = None,
-    max_new_tokens: int = 50,
+    max_new_tokens: int = 512,
     temperature: float = 0.0,
     prefill: str = None,
     from_responses: str = None,
@@ -303,7 +303,7 @@ def main():
                        help="Model variant (default: from experiment defaults.application)")
 
     # Generation options (Mode A only)
-    parser.add_argument("--max-new-tokens", type=int, default=50)
+    parser.add_argument("--max-new-tokens", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--prefill", type=str, default=None,
                        help="Prefill string appended to prompt before generation")

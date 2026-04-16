@@ -25,9 +25,6 @@ from typing import List
 warnings.filterwarnings("ignore", message=".*penalty.*deprecated.*", category=FutureWarning)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from core.kwargs_configs import ExtractionConfig
 from utils.distributed import is_rank_zero, tp_lifecycle, flush_cuda
 from utils.backends import add_backend_args
@@ -84,13 +81,11 @@ def main():
     # Generation
     parser.add_argument("--rollouts", type=int, default=1)
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--seed", type=int, default=None,
-                       help="Random seed for reproducible sampling (T>0)")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible sampling (T>0)")
     parser.add_argument("--max-new-tokens", type=int, default=None)
 
     # Vetting
-    parser.add_argument("--vet-responses", action="store_true",
-                       help="Enable response quality vetting (off by default)")
+    parser.add_argument("--vet-responses", action="store_true", help="Enable response quality vetting (off by default)")
     parser.add_argument("--pos-threshold", type=int, default=60)
     parser.add_argument("--neg-threshold", type=int, default=40)
     parser.add_argument("--max-concurrent", type=int, default=100)
@@ -104,8 +99,7 @@ def main():
     # Extraction
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--component", default="residual")
-    parser.add_argument("--position", default=None,
-                       help="Extraction position (default: response[:5] for base, response[:] for instruct)")
+    parser.add_argument("--position", default=None, help="Extraction position (default: response[:5] for base, response[:] for instruct)")
     parser.add_argument("--layers", type=str, default=None)
     parser.add_argument("--val-split", type=float, default=0.1)
     parser.add_argument("--save-activations", action="store_true")
