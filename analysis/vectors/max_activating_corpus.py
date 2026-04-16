@@ -33,7 +33,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from core.hooks import MultiLayerProjection
-from utils.model import load_model, pad_sequences
+from utils.model import load_model
 from utils.paths import get as get_path, discover_traits
 from utils.vectors import load_vector
 

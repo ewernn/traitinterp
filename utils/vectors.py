@@ -47,9 +47,7 @@ def validate_vector_norm(vector: torch.Tensor, name: str = "trait vector",
             stacklevel=2,
         )
 
-from core.types import VectorSpec
 from utils.paths import (
-    get,
     get as get_path,
     get_vector_path,
     get_vector_metadata_path,
@@ -140,7 +138,7 @@ def load_cached_activation_norms(experiment: str, component: str = "residual") -
 
     Returns {layer: norm} or empty dict if not available.
     """
-    eval_path = get('extraction_eval.evaluation', experiment=experiment)
+    eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
     if not eval_path.exists():
         return {}
 

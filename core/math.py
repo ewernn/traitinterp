@@ -229,24 +229,34 @@ def trait_clusters(vectors: torch.Tensor, k: int = 10, n_init: int = 20, random_
 
 
 def representational_similarity(vectors_by_layer: Dict[int, torch.Tensor]) -> Tuple[torch.Tensor, List[int]]:
-    """Representational similarity analysis across layers.
+    """Representational similarity analysis across layers (Kriegeskorte 2008).
 
-    Computes cosine similarity of cosine-similarity matrices across layers.
+    Computes Spearman rank correlation between flattened upper-triangle
+    similarity matrices across layers. This is the canonical RSA metric.
 
     Input: {layer_idx: [N, hidden_dim]} — same N traits at each layer
     Output: (rsa_matrix [L, L], layer_indices [L])
     """
+    from scipy.stats import spearmanr
+
     layers = sorted(vectors_by_layer.keys())
     sim_matrices = []
     for layer in layers:
         sim = pairwise_cosine_matrix(vectors_by_layer[layer])
-        # Extract upper triangle (excluding diagonal) as flat vector
         idx = torch.triu_indices(sim.shape[0], sim.shape[1], offset=1)
-        sim_matrices.append(sim[idx[0], idx[1]])
+        sim_matrices.append(sim[idx[0], idx[1]].numpy())
 
-    sim_stack = torch.stack(sim_matrices)  # [L, n_pairs]
-    # RSA: cosine similarity between flattened similarity vectors
-    rsa = pairwise_cosine_matrix(sim_stack)
+    n = len(layers)
+    rsa = torch.zeros(n, n)
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                rsa[i, j] = 1.0
+            elif j > i:
+                r, _ = spearmanr(sim_matrices[i], sim_matrices[j])
+                rsa[i, j] = r
+                rsa[j, i] = r
+
     return rsa, layers
 
 
