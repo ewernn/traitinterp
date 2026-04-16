@@ -24,6 +24,21 @@ from typing import Dict, List, Optional, Tuple
 
 
 # =============================================================================
+# Primitives
+# =============================================================================
+
+def unit_normalize(vectors: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+    """Divide each vector by its L2 norm along the last dim.
+
+    Computes the norm in float32 for numerical stability (half/bfloat16 easily
+    underflow on small values), then casts the result back to the input dtype.
+    Safe for zero vectors via clamp(min=eps).
+    """
+    norms = vectors.float().norm(dim=-1, keepdim=True).clamp(min=eps)
+    return (vectors.float() / norms).to(vectors.dtype)
+
+
+# =============================================================================
 # Massive Activation Handling
 # =============================================================================
 
@@ -81,15 +96,13 @@ def projection(
     activations = activations.float()
     vector = vector.float()
     if normalize_vector:
-        vector = vector / (vector.norm() + 1e-8)
+        vector = unit_normalize(vector)
     return torch.matmul(activations, vector)
 
 
 def cosine_similarity(vec1: torch.Tensor, vec2: torch.Tensor) -> torch.Tensor:
     """Cosine similarity between two vectors. Returns scalar in [-1, 1]."""
-    v1 = vec1 / (vec1.norm() + 1e-8)
-    v2 = vec2 / (vec2.norm() + 1e-8)
-    return (v1 * v2).sum()
+    return (unit_normalize(vec1) * unit_normalize(vec2)).sum()
 
 
 def batch_cosine_similarity(
@@ -106,11 +119,7 @@ def batch_cosine_similarity(
     Returns:
         [*] cosine similarities in [-1, 1]
     """
-    acts = activations.float()
-    vec = vector.float()
-    acts_norm = acts / (acts.norm(dim=-1, keepdim=True) + 1e-8)
-    vec_norm = vec / (vec.norm() + 1e-8)
-    return acts_norm @ vec_norm
+    return unit_normalize(activations.float()) @ unit_normalize(vector.float())
 
 
 def orthogonalize(v: torch.Tensor, onto: torch.Tensor) -> torch.Tensor:
@@ -200,18 +209,13 @@ def normalize_projections(
 # Multi-Vector Operations
 # =============================================================================
 
-def unit_normalize(vectors: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
-    """Divide each vector by its L2 norm (along last dim). Safe for zero vectors."""
-    return vectors.float() / vectors.float().norm(dim=-1, keepdim=True).clamp(min=eps)
-
-
 def pairwise_cosine_matrix(vectors: torch.Tensor) -> torch.Tensor:
     """N×N cosine similarity matrix for a set of vectors.
 
     Input: [N, hidden_dim]
     Output: [N, N] with values in [-1, 1], diagonal = 1.0
     """
-    normalized = unit_normalize(vectors)
+    normalized = unit_normalize(vectors).float()
     return normalized @ normalized.T
 
 

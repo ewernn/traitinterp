@@ -19,7 +19,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.math import pairwise_cosine_matrix, pca, unit_normalize
+from core import pairwise_cosine_matrix, pca, unit_normalize
 from utils.paths import get as get_path
 
 
