@@ -36,14 +36,12 @@ weights = config.normalized_weights  # [0.5, 0.3, 0.2]
 d = spec.to_dict()
 spec = VectorSpec.from_dict(d)
 
-# Vector selection returns VectorResult.
-# Walks a 3-tier hierarchy: steering → OOD → IID. See extraction_guide.md#vector-selection.
+# Vector selection returns VectorResult
 from utils.vector_selection import select_vector, select_vectors
-best = select_vector(experiment, trait)       # VectorResult
-top = select_vectors(experiment, trait, n=3)  # List[VectorResult] (steering only)
+best = select_vector(experiment, trait)       # VectorResult — walks the validation hierarchy
+top = select_vectors(experiment, trait, n=3)  # List[VectorResult]
 spec = best.to_vector_spec(weight=1.0)        # Convert to VectorSpec
-print(best.source)                            # 'steering' | 'ood' | 'extraction_eval' | 'unscored'
-print(best.delta, best.coherence)             # populated only when source='steering'
+print(best.delta, best.coherence)             # populated only when best.source == 'steering'
 
 # Model variant from experiment config
 from utils.paths import get_model_variant
