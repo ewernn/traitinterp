@@ -60,17 +60,17 @@ build_excludes() {
     EXCLUDES=()
 
     # ── Always exclude: junk ──
+    # rclone's **/ prefix doesn't match at root level when --only scopes paths.
+    # Always include both rooted and **/-prefixed patterns.
     EXCLUDES+=(
         --exclude "*.pyc"
+        --exclude "__pycache__/**"
         --exclude "**/__pycache__/**"
         --exclude ".DS_Store"
         --exclude "**/.DS_Store"
     )
 
     # ── Always exclude: regenerable data ──
-    # Note: rclone's **/ prefix doesn't match at the root level when using --only
-    # (which scopes paths to experiments/{name}/). Both rooted and **/-prefixed
-    # patterns are needed for correct exclusion.
     EXCLUDES+=(
         --exclude "activations/**"
         --exclude "**/activations/**"
@@ -82,11 +82,14 @@ build_excludes() {
 
     # ── Always exclude: training artifacts ──
     EXCLUDES+=(
+        --exclude "optimizer.pt"
         --exclude "**/optimizer.pt"
+        --exclude "scheduler.pt"
         --exclude "**/scheduler.pt"
         --exclude "*.bin"
         --exclude "*.pth"
         --exclude "*.jinja"
+        --exclude ".cache/**"
         --exclude "**/.cache/**"
     )
 
