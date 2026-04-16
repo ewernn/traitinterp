@@ -1,0 +1,303 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "trait": "starter_traits/assistant_axis",
+  "method": "probe",
+  "component": "residual",
+  "position": "response[:]",
+  "layers": {
+    "0": {
+      "norm": 1.0,
+      "baseline": -0.006629485636949539,
+      "bias": 0.00135040283203125,
+      "train_acc": 0.9555555555555556,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.865629196166992,
+      "polarity_correct": true
+    },
+    "1": {
+      "norm": 1.0,
+      "baseline": -0.009861748665571213,
+      "bias": 0.00286865234375,
+      "train_acc": 0.9555555555555556,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.410972595214844,
+      "polarity_correct": true
+    },
+    "2": {
+      "norm": 1.0,
+      "baseline": 0.02338327094912529,
+      "bias": -0.005218505859375,
+      "train_acc": 0.9555555555555556,
+      "val_accuracy": 1.0,
+      "val_effect_size": 8.357043266296387,
+      "polarity_correct": true
+    },
+    "3": {
+      "norm": 1.0,
+      "baseline": -0.053557850420475006,
+      "bias": 0.0194091796875,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.124327659606934,
+      "polarity_correct": true
+    },
+    "4": {
+      "norm": 1.0,
+      "baseline": -0.04130353406071663,
+      "bias": 0.0164794921875,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.265562057495117,
+      "polarity_correct": true
+    },
+    "5": {
+      "norm": 1.0,
+      "baseline": -0.027958720922470093,
+      "bias": 0.0128173828125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 8.797774314880371,
+      "polarity_correct": true
+    },
+    "6": {
+      "norm": 1.0,
+      "baseline": -0.18966689705848694,
+      "bias": 0.0673828125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.468465805053711,
+      "polarity_correct": true
+    },
+    "7": {
+      "norm": 1.0,
+      "baseline": -1.0554932355880737,
+      "bias": 0.310546875,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.639171600341797,
+      "polarity_correct": true
+    },
+    "8": {
+      "norm": 1.0,
+      "baseline": -1.8774210214614868,
+      "bias": 0.55078125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 10.086956024169922,
+      "polarity_correct": true
+    },
+    "9": {
+      "norm": 1.0,
+      "baseline": -1.856621503829956,
+      "bias": 0.5078125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 10.953445434570312,
+      "polarity_correct": true
+    },
+    "10": {
+      "norm": 1.0,
+      "baseline": -1.5303386449813843,
+      "bias": 0.375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 11.342107772827148,
+      "polarity_correct": true
+    },
+    "11": {
+      "norm": 1.0,
+      "baseline": -1.5723620653152466,
+      "bias": 0.359375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.062198638916016,
+      "polarity_correct": true
+    },
+    "12": {
+      "norm": 1.0,
+      "baseline": -1.2131038904190063,
+      "bias": 0.28125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.673776626586914,
+      "polarity_correct": true
+    },
+    "13": {
+      "norm": 1.0,
+      "baseline": -1.0153683423995972,
+      "bias": 0.236328125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.855986595153809,
+      "polarity_correct": true
+    },
+    "14": {
+      "norm": 1.0,
+      "baseline": -0.33355918526649475,
+      "bias": 0.0986328125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.94213581085205,
+      "polarity_correct": true
+    },
+    "15": {
+      "norm": 1.0,
+      "baseline": -0.47753995656967163,
+      "bias": 0.1123046875,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.978902816772461,
+      "polarity_correct": true
+    },
+    "16": {
+      "norm": 1.0,
+      "baseline": -0.22530393302440643,
+      "bias": 0.059814453125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.030462265014648,
+      "polarity_correct": true
+    },
+    "17": {
+      "norm": 1.0,
+      "baseline": -0.02306365966796875,
+      "bias": 0.0072021484375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.198343276977539,
+      "polarity_correct": true
+    },
+    "18": {
+      "norm": 1.0,
+      "baseline": 0.9908866286277771,
+      "bias": -0.201171875,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.759742736816406,
+      "polarity_correct": true
+    },
+    "19": {
+      "norm": 1.0,
+      "baseline": -1.53171706199646,
+      "bias": 0.212890625,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.485811233520508,
+      "polarity_correct": true
+    },
+    "20": {
+      "norm": 1.0,
+      "baseline": -2.3631978034973145,
+      "bias": 0.29296875,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.124073028564453,
+      "polarity_correct": true
+    },
+    "21": {
+      "norm": 1.0,
+      "baseline": -2.388256072998047,
+      "bias": 0.24609375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.390975952148438,
+      "polarity_correct": true
+    },
+    "22": {
+      "norm": 1.0,
+      "baseline": -2.61563777923584,
+      "bias": 0.2255859375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.008952140808105,
+      "polarity_correct": true
+    },
+    "23": {
+      "norm": 1.0,
+      "baseline": -3.5116519927978516,
+      "bias": 0.28515625,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 11.58034610748291,
+      "polarity_correct": true
+    },
+    "24": {
+      "norm": 1.0,
+      "baseline": -4.056827545166016,
+      "bias": 0.2734375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 11.112517356872559,
+      "polarity_correct": true
+    },
+    "25": {
+      "norm": 1.0,
+      "baseline": -5.152433395385742,
+      "bias": 0.298828125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 10.396212577819824,
+      "polarity_correct": true
+    },
+    "26": {
+      "norm": 1.0,
+      "baseline": -4.074563980102539,
+      "bias": 0.2001953125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.88283920288086,
+      "polarity_correct": true
+    },
+    "27": {
+      "norm": 1.0,
+      "baseline": -2.9708657264709473,
+      "bias": 0.10009765625,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.647054672241211,
+      "polarity_correct": true
+    },
+    "28": {
+      "norm": 1.0,
+      "baseline": -3.150546073913574,
+      "bias": 0.09130859375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.473424911499023,
+      "polarity_correct": true
+    },
+    "29": {
+      "norm": 1.0,
+      "baseline": -1.0582869052886963,
+      "bias": -0.030517578125,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.113398551940918,
+      "polarity_correct": true
+    },
+    "30": {
+      "norm": 1.0,
+      "baseline": 2.770902633666992,
+      "bias": -0.208984375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.66307544708252,
+      "polarity_correct": true
+    },
+    "31": {
+      "norm": 1.0,
+      "baseline": -6.294611930847168,
+      "bias": 0.1484375,
+      "train_acc": 0.9611111111111111,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.030097007751465,
+      "polarity_correct": true
+    }
+  },
+  "timestamp": "2026-04-16T08:08:27.474447",
+  "input_hashes": {
+    "positive": "7cf69d41cf1e659ce0dd293851237f0f5d41bed22e71da937cc57a4b711f5c3d",
+    "negative": "314509bb6d4e337ee5f3a1c631ad66ce108032d91817d648c47fb5ffae3ad092",
+    "definition": "38a5e66d01f1e094a687742312b59b3286b3fac180e067872b1d4a4896ca7cc9"
+  }
+}

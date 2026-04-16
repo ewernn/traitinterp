@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nGenerate a sentence that establishes an alliterative dialogue between two characters.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "\"Stop staring so silently, Sam; start speaking so swiftly!\"",
+  "tokens": ["<|im_start|>", "user", "\n", "Generate", " a", " sentence", " that", " establishes", " an", " all", "iter", "ative", " dialogue", " between", " two", " characters", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "\"", "Stop", " staring", " so", " silently", ", ", " Sam", ";", " start", " speaking", " so", " swiftly", "!\""],
+  "token_ids": [248045, 846, 198, 30097, 264, 11316, 421, 61416, 449, 660, 1947, 1340, 20623, 1881, 1330, 5587, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 1, 10358, 35556, 748, 47733, 11, 7967, 26, 1151, 11750, 748, 53685, 8687],
+  "prompt_end": 26,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.732733",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

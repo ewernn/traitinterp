@@ -1,0 +1,502 @@
+[
+  {
+    "prompt": "What's the best way to organize a home office?",
+    "response": "The \"best\" way to organize a home office depends on your specific workflow and space, but a universally effective approach combines **ergonomics**, **decluttering**, and **logical zoning**.\n\nHere is a step-by-step guide to creating a functional home office:\n\n### 1. Optimize Ergonomics",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do neural networks learn?",
+    "response": "Neural networks learn through a process called **training**, which involves adjusting the internal parameters (weights and biases) of the network to minimize the difference between its predictions and the actual correct answers. This is primarily achieved using an algorithm called **backpropagation** combined with an **optimization method** like gradient descent.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What should I cook for a dinner party?",
+    "response": "To give you the best recommendation, I need a little more context about your situation. Here are a few quick questions to narrow it down:\n\n1.  **Number of Guests:** How many people are you feeding?\n2.  **Dietary Restrictions:** Are there any allergies, vegetarian/vegan preferences",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I train for a 5K run?",
+    "response": "Training for a 5K (3.1 miles) is an achievable goal for most people, regardless of your current fitness level. The key is consistency and a structured plan that builds your endurance gradually to prevent injury.\n\nHere is a step-by-step guide to getting ready:\n\n### 1. Choose a Training",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some tips for better sleep?",
+    "response": "Here are some evidence-based tips to improve your sleep quality and duration:\n\n### 1. Stick to a Consistent Schedule\nGo to bed and wake up at the same time every day, even on weekends. This regulates your body's internal clock (circadian rhythm), making it easier to fall asleep and wake up",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does photosynthesis work?",
+    "response": "Photosynthesis is the biological process by which plants, algae, and certain bacteria convert light energy into chemical energy, creating food (glucose) and releasing oxygen. It primarily occurs in the **chloroplasts** of plant cells, specifically within structures called **thylakoids** where the pigment **chlorophyll**",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best strategy for paying off student loans?",
+    "response": "There is no single \"best\" strategy for everyone, as the optimal approach depends entirely on your **interest rates**, **loan balance**, **income stability**, and **financial goals**.\n\nHere are the two primary mathematical strategies, followed by essential factors to consider before choosing:\n\n### 1. The Avalanche Method (Best",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I start a vegetable garden?",
+    "response": "Starting a vegetable garden is a rewarding project that combines planning, preparation, and patience. Here is a step-by-step guide to get you started:\n\n### 1. Choose Your Location\n*   **Sunlight:** Most vegetables need **6\u20138 hours of direct sunlight** per day. Observe your yard to",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What makes a good resume?",
+    "response": "A good resume effectively markets your skills and experience to get you an interview. It should be concise, tailored, and easy to scan. Here are the key elements that make a resume stand out:\n\n### 1. Clear Structure and Formatting\n*   **Clean Layout:** Use a professional, simple design with consistent fonts",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do vaccines work?",
+    "response": "Vaccines work by training your immune system to recognize and fight specific pathogens (like viruses or bacteria) without causing the actual disease. Here is the step-by-step process:\n\n1.  **Introduction of Antigen**: A vaccine contains a harmless piece of the germ, such as a weakened or dead version of the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the basics of investing in stocks?",
+    "response": "Investing in stocks is a fundamental way to build wealth over time, but it requires understanding core concepts and managing risk. Here are the basics:\n\n### 1. What is a Stock?\nA stock (or share) represents **ownership** in a company. When you buy a stock, you own a small",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I house train a puppy?",
+    "response": "House training a puppy requires consistency, patience, and positive reinforcement. Here is a step-by-step guide to help you succeed:\n\n### 1. Establish a Strict Schedule\nPuppies have small bladders and thrive on routine. Take your puppy out at these specific times:\n*   Immediately after waking up.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between baking soda and baking powder?",
+    "response": "The main difference lies in their chemical composition and how they react to create leavening (rise) in baked goods.\n\n**1. Composition**\n*   **Baking Soda (Sodium Bicarbonate):** This is a pure base. It requires an **acid** (like buttermilk, yogurt, lemon",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I improve my public speaking skills?",
+    "response": "Improving public speaking is a skill that blends preparation, practice, and mindset shifts. Here is a practical roadmap to help you get better:\n\n### 1. Master Your Content\n*   **Know Your Audience:** Tailor your message to their interests, knowledge level, and needs. What do they want to walk",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What causes thunder and lightning?",
+    "response": "Thunder and lightning are caused by the same event: a massive electrical discharge within a thunderstorm cloud (cumulonimbus).\n\n**Lightning** is the visible flash of electricity. Inside a storm cloud, strong updrafts and downdrafts cause ice crystals and water droplets to collide. These collisions separate electrical",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I change a flat tire?",
+    "response": "Changing a flat tire is a straightforward process if you follow these steps carefully. **Safety is the top priority**, so ensure you are on a flat, stable surface away from moving traffic before starting.\n\n### 1. Prepare the Vehicle\n*   **Pull over safely:** Move to a level, hard surface (like",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some effective study techniques?",
+    "response": "Here are some of the most effective, research-backed study techniques to improve retention and understanding:\n\n### 1. Active Recall\nInstead of passively re-reading notes, test yourself on the material. Close your book and try to recite or write down everything you remember. This forces your brain to retrieve information,",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does the stock market work?",
+    "response": "The stock market is a global network of exchanges and electronic platforms where buyers and sellers trade shares of publicly held companies. At its core, it functions as a marketplace for ownership.\n\nHere is a breakdown of how it works:\n\n### 1. The Basics: What is a Stock?\nWhen you buy a stock",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's a good beginner workout routine?",
+    "response": "A good beginner workout routine should focus on building consistency, learning proper form, and balancing different types of movement. The most effective approach for beginners is a **Full-Body Routine** performed 3 days a week (e.g., Monday, Wednesday, Friday). This allows your muscles time to recover while ensuring you hit every",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I write a cover letter?",
+    "response": "Writing a strong cover letter involves tailoring your application to the specific role while highlighting your unique value. Here is a step-by-step guide to crafting an effective one:\n\n### 1. Structure of a Cover Letter\nA standard cover letter consists of four main parts:\n\n*   **Header:** Include your contact information",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to learn a new language?",
+    "response": "There is no single \"best\" method that works for everyone, as the most effective approach depends on your learning style, goals, and available time. However, research and expert consensus suggest that the most successful learners combine several key strategies:\n\n### 1. Immerse Yourself\nLanguage is a skill, not just knowledge",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does gravity work?",
+    "response": "Gravity is a fundamental interaction in nature that causes mutual attraction between all things with mass or energy. While it is the weakest of the four fundamental forces, it dominates on large scales (planets, stars, galaxies) because it is always attractive and has an infinite range.\n\nHere is how it works according to our current",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some good indoor hobbies?",
+    "response": "Here are some excellent indoor hobbies categorized by interest and energy level:\n\n### **Creative & Artistic**\n*   **Painting or Drawing:** Great for self-expression; you can use watercolors, acrylics, oils, or digital tablets.\n*   **Sewing or Knitting:** Perfect for creating clothing",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I negotiate a salary?",
+    "response": "Negotiating a salary is a skill that blends preparation, communication, and confidence. Here is a step-by-step guide to help you secure the compensation you deserve:\n\n### 1. Do Your Research (Know Your Worth)\nBefore entering any conversation, you need data to back up your numbers.\n*",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to remove a stain from clothing?",
+    "response": "There is no single \"best\" way to remove a stain because the method depends entirely on **what caused the stain** and **how long it has been sitting**. However, the universal golden rule is: **Act quickly and treat the stain from the back of the fabric.**\n\nHere is a quick guide to handling the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do computers store data?",
+    "response": "Computers store data by converting all information\u2014text, images, audio, and video\u2014into **binary code**, a system using only two digits: **0** and **1**.\n\nHere is how the process works at different levels:\n\n### 1. The Fundamental Unit: Bits and Bytes\n*   **",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's a good book recommendation for someone who likes mysteries?",
+    "response": "If you enjoy mysteries, a standout recommendation is **\"The Thursday Murder Club\" by Richard Osman**.\n\n**Why it works:**\n*   **The Premise:** Four unlikely friends in a retirement village meet weekly to investigate cold cases. When a real murder occurs on their doorstep, they find themselves in the middle of a",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I fix a running toilet?",
+    "response": "To fix a running toilet, you first need to identify the source of the noise and water flow. Most running toilets are caused by one of three issues: a faulty flapper, a misadjusted float, or a worn fill valve.\n\nHere is a step-by-step guide to diagnosing and fixing the problem:",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the benefits of meditation?",
+    "response": "Meditation offers a wide range of benefits that span physical, mental, and emotional well-being. While practices vary, the core advantages generally include:\n\n*   **Stress Reduction**: Meditation is one of the most effective ways to lower cortisol levels (the stress hormone). It helps shift the body out of the \"",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does the electoral college work?",
+    "response": "The Electoral College is the system used in the United States to elect the President and Vice President. It is established by Article II of the Constitution and the 12th Amendment. Here is how it works:\n\n### 1. The Composition\nThe total number of electors is **538**, which equals",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to make coffee at home?",
+    "response": "The \"best\" way to make coffee at home depends entirely on your priorities: **flavor quality, convenience, or cost**. However, if you are looking for the highest potential flavor profile, **pour-over brewing** (using a V60, Chemex, or Kalita Wave) is widely considered the gold",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I start learning to play guitar?",
+    "response": "Starting to play the guitar is an exciting journey. Here is a structured, step-by-step guide to help you get started effectively:\n\n### 1. Get the Right Gear\nYou don't need expensive equipment to begin, but you do need something that plays well.\n*   **The Guitar**: An **ac",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What causes seasonal allergies?",
+    "response": "Seasonal allergies, also known as hay fever or allergic rhinitis, are caused by an **overactive immune system response to harmless substances in the air**, called **allergens**.\n\nHere is how the process works:\n\n1.  **Exposure**: During certain times of the year (typically spring,",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I budget on a tight income?",
+    "response": "Budgeting on a tight income requires discipline, creativity, and a focus on immediate survival while planning for the future. Here is a practical, step-by-step approach to managing limited finances:\n\n### 1. Track Every Penny\nBefore you can change anything, you must know exactly where your money is going.\n*",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between a virus and bacteria?",
+    "response": "The primary differences between viruses and bacteria lie in their structure, complexity, and how they reproduce.\n\n**1. Structure and Complexity**\n*   **Bacteria** are **living, single-celled organisms**. They have a complex cellular structure containing DNA, ribosomes, and often a cell wall. They can exist",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I prepare for a job interview?",
+    "response": "Preparing for a job interview involves a mix of research, practice, and mindset adjustment. Here is a step-by-step guide to help you feel confident and ready:\n\n### 1. Research the Company and Role\n*   **Understand the Company:** Look at their \"About Us\" page, recent news, mission",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to clean a cast iron skillet?",
+    "response": "The best way to clean a cast iron skillet is to use **hot water and a stiff brush or chainmail scrubber**, avoiding soap if possible (or using a tiny amount of mild soap only if the pan is heavily soiled and well-seasoned).\n\nHere is the step-by-step process:\n\n1.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does WiFi work?",
+    "response": "WiFi works by using **radio waves** to transmit data wirelessly between devices and a router. Here is a simplified breakdown of the process:\n\n1.  **The Hardware**:\n    *   **The Router**: This device connects to your internet service provider (via cable, fiber, or DSL) and acts as",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some ways to reduce stress?",
+    "response": "Reducing stress involves a combination of immediate coping strategies and long-term lifestyle changes. Here are several effective methods:\n\n### 1. Physical Techniques\n*   **Deep Breathing**: Practice techniques like the 4-7-8 method (inhale for 4 seconds, hold for 7, exhale for",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do airplanes fly?",
+    "response": "Airplanes fly primarily due to the interaction between their wings and the air, governed by **Bernoulli's principle** and **Newton's third law of motion**. Here is a breakdown of the key forces involved:\n\n1.  **Lift**: This is the upward force that counteracts gravity. As an airplane",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's a good recipe for banana bread?",
+    "response": "Here is a reliable, classic recipe for moist and flavorful banana bread. This version uses ripe bananas for natural sweetness and includes a touch of vanilla and cinnamon for depth.\n\n### **Classic Moist Banana Bread**\n\n*   **Prep time:** 15 minutes\n*   **Cook time:** 55\u2013",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I set up a home network?",
+    "response": "Setting up a home network involves connecting your devices to a central router to share an internet connection. Here is a step-by-step guide to get you started:\n\n### 1. Gather Your Equipment\nYou will need:\n*   **Modem**: Connects your home to your Internet Service Provider (ISP).",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between an IRA and a 401k?",
+    "response": "The primary differences between an **IRA (Individual Retirement Account)** and a **401(k)** lie in who contributes, the contribution limits, investment choices, and tax treatment.\n\nHere is a breakdown of the key distinctions:\n\n### 1. Who Contributes?\n*   **401(k):**",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I teach a child to ride a bicycle?",
+    "response": "Teaching a child to ride a bicycle is a milestone that builds confidence and coordination. The most effective modern method is to **remove the training wheels** and teach them to balance first. Here is a step-by-step guide:\n\n### 1. Preparation\n*   **The Right Bike:** Ensure the bike is the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What makes sourdough bread different from regular bread?",
+    "response": "Sourdough bread differs from regular (commercial) bread primarily in its **leavening agent** and the resulting **flavor and texture**.\n\nHere are the key differences:\n\n*   **Leavening Agent**:\n    *   **Sourdough**: Uses a natural starter, which is a symbiotic",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I improve my handwriting?",
+    "response": "Improving your handwriting is a skill that combines muscle memory, posture, and technique. Here is a practical guide to help you make noticeable progress:\n\n### 1. Master the Basics of Grip and Posture\n*   **The Triangle Grip**: Hold your pen between your thumb and index finger, with your middle finger",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the water cycle?",
+    "response": "The **water cycle** (also known as the hydrologic cycle) is the continuous process by which water circulates between the Earth's oceans, atmosphere, and land. It is driven by solar energy and gravity, constantly recycling water without creating or destroying it.\n\nThe cycle consists of four main stages:\n\n1.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I pick a good watermelon at the grocery store?",
+    "response": "Picking a good watermelon can feel like guessing, but there are several reliable physical cues to look for. Here is a step-by-step guide:\n\n### 1. Check the Field Spot\nLook for a creamy yellow or orange-yellow patch on the bottom of the melon. This is where it rested on the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some tips for taking better photos with a phone?",
+    "response": "Here are some practical tips to significantly improve your phone photography:\n\n### 1. Master the Basics\n*   **Clean Your Lens:** This is the most common mistake. Wipe your camera lens with a microfiber cloth before every shot. Smudges and fingerprints cause blurry, hazy images.\n*",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does the immune system fight infections?",
+    "response": "The immune system fights infections through a coordinated, multi-layered defense strategy involving both **innate** (non-specific) and **adaptive** (specific) immunity. Here is how the process works:\n\n### 1. Physical and Chemical Barriers (First Line of Defense)\nBefore the immune system even activates,",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to pack for a vacation?",
+    "response": "The \"best\" way to pack depends on your destination, trip length, and travel style, but the most effective universal strategy is **packing light with a modular system**.\n\nHere is a streamlined approach to packing efficiently:\n\n### 1. Choose the Right Luggage\n*   **Carry-On Only:** If",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I unclog a kitchen drain?",
+    "response": "To unclog a kitchen drain, start with the least invasive methods and progress to stronger solutions if needed. Here is a step-by-step guide:\n\n### 1. Check the Garbage Disposal (If Applicable)\nIf you have a garbage disposal, the clog might be a large object stuck in the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to memorize things quickly?",
+    "response": "There is no single \"magic\" method that works for everyone, but the most effective approach combines **understanding** with specific **memory techniques**. Here is a streamlined strategy to memorize things quickly:\n\n### 1. Understand First, Then Memorize\nYour brain retains information better when it makes sense. Before trying",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do tides work?",
+    "response": "Tides are the regular rise and fall of sea levels caused primarily by the gravitational pull of the **Moon** and, to a lesser extent, the **Sun**, acting on Earth's oceans.\n\nHere is how the process works:\n\n### 1. The Role of Gravity\nGravity is the force that attracts objects",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to get rid of fruit flies?",
+    "response": "The most effective way to get rid of fruit flies involves a two-pronged approach: **eliminating the source** and **trapping the existing ones**.\n\n### 1. Eliminate the Source (Crucial Step)\nFruit flies breed in decaying organic matter. If you don't remove the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I parallel park?",
+    "response": "Parallel parking can feel intimidating, but with a clear sequence and patience, it becomes manageable. Here is a step-by-step guide to parallel parking safely and correctly.\n\n### **Preparation**\n1.  **Find a Spot**: Look for a car parked legally in front of you and a car parked behind you.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between a hurricane and a tornado?",
+    "response": "The primary differences between a hurricane and a tornado lie in their **size, lifespan, formation mechanism, and location**.\n\nHere is a breakdown of the key distinctions:\n\n### 1. Size and Scale\n*   **Hurricanes** are massive systems. They typically span hundreds of miles across (often 30",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I sew a button back on?",
+    "response": "Here is a simple, step-by-step guide to sewing a button back on:\n\n### **What You'll Need**\n*   The button\n*   A needle (a sharp, medium-sized needle works best)\n*   Thread (match the color of your garment)\n*   Scissors\n*",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some fun science experiments for kids?",
+    "response": "Here are five fun, safe, and educational science experiments perfect for kids, ranging from easy kitchen hacks to slightly more involved projects:\n\n### 1. The Volcano Eruption (Chemistry)\nThis is a classic for a reason: it's messy, exciting, and demonstrates an acid-base reaction.\n*",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does a microwave oven heat food?",
+    "response": "A microwave oven heats food primarily through **dielectric heating**, which targets water, fats, and sugars within the food. Here is the step-by-step process:\n\n1.  **Generation of Microwaves**: Inside the oven, a component called a **magnetron** generates electromagnetic waves with a frequency of approximately",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to sharpen kitchen knives?",
+    "response": "The \"best\" way to sharpen kitchen knives depends on whether you need to **maintain** the edge (regular use) or **restore** a dull edge (infrequent use). Here is the most effective approach for both scenarios:\n\n### 1. For Regular Maintenance: Use a Honing Steel\nIf your",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I train my cat to use a scratching post?",
+    "response": "Training a cat to use a scratching post is about making the post more appealing than your furniture and teaching the cat that the post is the correct place to scratch. Here is a step-by-step guide:\n\n### 1. Choose the Right Post\n*   **Stability:** The post must be heavy enough or tall",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the rules of badminton?",
+    "response": "Badminton is a racquet sport played between two individuals (singles) or two teams of two players (doubles) on a rectangular court divided by a net. The objective is to hit a shuttlecock over the net and into the opponent's court so that it bounces or lands within the boundaries, while",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I get started with watercolor painting?",
+    "response": "Getting started with watercolor is an exciting journey. Because watercolor is a transparent medium where mistakes are harder to hide than in opaque paints, the key is to **prepare your materials well** and **practice control**.\n\nHere is a step-by-step guide to help you begin:\n\n### 1. Gather the Essential",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to iron a dress shirt?",
+    "response": "The best way to iron a dress shirt depends on whether you have an ironing board or a steamer, but the **ironing board method** generally provides the crispest, most professional results for collars and cuffs.\n\nHere is the step-by-step process for the optimal result:\n\n### 1. Preparation",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I replace a light switch?",
+    "response": "Replacing a light switch is a straightforward DIY project, but it requires strict adherence to safety protocols. **Always turn off the power before touching any electrical components.**\n\nHere is a step-by-step guide:\n\n### \u26a0\ufe0f Safety First\n1.  **Turn off the power:** Go to your circuit breaker panel",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the basics of playing poker?",
+    "response": "Playing poker involves a mix of strategy, psychology, and probability. While there are many variants (like Texas Hold'em, Omaha, and Seven-Card Stud), **Texas Hold'em** is the most popular and serves as the best starting point for learning the basics.\n\nHere are the fundamental concepts you need to know:",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I make homemade pasta?",
+    "response": "Making homemade pasta is surprisingly simple and yields a much fresher, tastier result than store-bought. Here is a classic, foolproof method for **egg pasta** (like tagliatelle or fettuccine).\n\n### **Ingredients**\n*   **Flour:** 2 cups (250g",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between a crocodile and an alligator?",
+    "response": "While crocodiles and alligators are both large, semi-aquatic reptiles in the order Crocodilia, they have several distinct physical and behavioral differences:\n\n**1. Snout Shape**\n*   **Alligators:** Have a broad, U-shaped snout. This shape is better suited for crushing",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I winterize my car?",
+    "response": "Winterizing your car is essential to ensure it starts reliably and operates safely in cold temperatures. Here is a step-by-step guide to the most critical tasks:\n\n### 1. Change to Winter Tires\nIf you live in an area with snow and ice, switch to dedicated winter tires. They remain flexible in freezing",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the proper way to fold a fitted sheet?",
+    "response": "Folding a fitted sheet can be tricky, but the most effective method involves turning it inside out and using a \"burrito\" roll technique. Here is the step-by-step process:\n\n1.  **Turn Inside Out**: Flip the sheet so the elastic edges are on the inside. This makes the corners easier to",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does a refrigerator keep food cold?",
+    "response": "A refrigerator keeps food cold by continuously removing heat from the inside of the compartment and releasing it into the surrounding room air. It does not \"create\" cold; rather, it actively transfers existing heat energy out of the fridge.\n\nThis process relies on a **refrigeration cycle** involving a refrigerant (a fluid",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some tips for growing herbs indoors?",
+    "response": "Growing herbs indoors is a rewarding way to have fresh flavors year-round. Here are some essential tips to ensure your indoor garden thrives:\n\n### 1. Choose the Right Location (Light is Key)\nMost culinary herbs need **6\u20138 hours of direct sunlight** daily.\n*   **South-facing windows",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I choose the right running shoes?",
+    "response": "Choosing the right running shoes involves matching your specific biomechanics, running style, and goals to the right technology. Here is a step-by-step guide to help you find the perfect pair:\n\n### 1. Know Your Foot Type and Gait\nBefore trying on shoes, understand how your feet move and what shape",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to deep clean a bathroom?",
+    "response": "The most effective way to deep clean a bathroom is to follow a **top-to-bottom, dry-to-wet** approach. This prevents dirty water from dripping onto surfaces you've already cleaned and ensures you don't miss hidden grime.\n\nHere is a step-by-step guide:\n\n### 1. Gather Your Supplies",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I tie a bowline knot?",
+    "response": "Here is the step-by-step guide to tying a **bowline knot**, often called the \"king of knots\" because it creates a fixed loop that won't slip or jam.\n\n### The Mnemonic\nA common way to remember the steps is: **\"The Rabbit comes out of the hole, runs around the tree",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the different types of clouds?",
+    "response": "Clouds are primarily classified by their altitude and shape. Meteorologists generally group them into four main families based on height: **High**, **Middle**, **Low**, and **Vertical** clouds.\n\nHere are the different types:\n\n### 1. High-Level Clouds (Above 20,000",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I properly store wine at home?",
+    "response": "Properly storing wine at home is essential to preserve its flavor, aroma, and aging potential. Here are the key guidelines:\n\n### 1. **Temperature**\n*   **Ideal Range:** Keep wine between **55\u00b0F and 65\u00b0F (13\u00b0C\u201318\u00b0C)**.\n*",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between a nectarine and a peach?",
+    "response": "The primary difference between a nectarine and a peach lies in their skin texture, which is determined by a single gene.\n\n*   **Skin Texture**: A **nectarine** has smooth, shiny skin, whereas a **peach** has fuzzy, soft skin.\n*   **Genetics**: This difference",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I fix a squeaky door hinge?",
+    "response": "To fix a squeaky door hinge, follow these steps:\n\n1.  **Clean the Hinge**: Open and close the door to loosen any old grease or debris. Wipe the hinge pins and knuckles with a rag. If there is heavy buildup, use a wire brush or a can of compressed air to",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some beginner-friendly yoga poses?",
+    "response": "Here are some beginner-friendly yoga poses that are gentle on the body while helping to build flexibility, strength, and balance:\n\n### 1. Mountain Pose (Tadasana)\n*   **How to do it:** Stand with your feet together (or hip-width apart), arms by your sides. Engage your",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does a sewing machine work?",
+    "response": "A sewing machine works by using a mechanical system to rapidly interlock two pieces of fabric with thread, automating the process of hand sewing. Here is a step-by-step breakdown of how it functions:\n\n### 1. The Core Mechanism: The Hook and Shuttle\nAt the heart of almost all sewing machines is",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to organize a garage?",
+    "response": "The best way to organize a garage is to follow a systematic process that moves from clearing out to categorizing, and finally to installing storage solutions. Here is a step-by-step guide:\n\n### 1. The Great Purge (Clear the Space)\nBefore organizing, you must reduce the volume of items.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I make cold brew coffee?",
+    "response": "Making cold brew coffee is simple and results in a smooth, low-acid concentrate. Here is a straightforward method using the standard ratio of **1 part coffee to 4 parts water** (by weight) or roughly **1 cup of coarsely ground coffee to 4 cups of water**.\n\n### Ingredients & Equipment",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the phases of the moon?",
+    "response": "The phases of the Moon are the changing appearances of the Moon as seen from Earth, caused by the relative positions of the Earth, Moon, and Sun. As the Moon orbits Earth, the portion of its sunlit side visible to us changes.\n\nThere are **eight primary phases**, occurring in a continuous cycle that takes",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I remove wallpaper?",
+    "response": "Removing wallpaper can be a messy job, but the right tools and technique make it much easier. Here is a step-by-step guide to doing it effectively.\n\n### 1. Gather Your Tools\nBefore you start, ensure you have the following:\n*   **Sponge** (large, absorbent)",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to learn to juggle?",
+    "response": "The best way to learn to juggle is to start with the **3-ball cascade**, as it is the fundamental pattern for all other juggling skills. Here is a step-by-step approach to getting started:\n\n### 1. Master the \"Drop\" Pattern\nBefore adding height, focus on the rhythm.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I clean a leather jacket?",
+    "response": "Cleaning a leather jacket requires care to avoid damaging the material. Here is a step-by-step guide for a safe and effective clean:\n\n### 1. Check the Care Label\nBefore doing anything, look at the manufacturer's tag. Some jackets are **suede** or **nubuck**, which require completely different",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are the basic rules of cricket?",
+    "response": "Cricket is a bat-and-ball game played between two teams of 11 players. The objective is to score more runs than the opposing team. Here are the basic rules:\n\n### 1. The Match Structure\n*   **Teams:** Two teams of 11 players each.\n*   **In",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does a thermostat work?",
+    "response": "A thermostat works as a **control device** that automatically regulates the temperature of a space by turning heating or cooling systems on and off. Its primary function is to maintain a set temperature (the \"setpoint\") by monitoring the current room temperature and comparing it to that target.\n\nHere is the step-by-step process of",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to compost at home?",
+    "response": "The \"best\" way to compost at home depends on your available space, time, and budget, but the most effective method for most households is the **Hot Compost Pile (or Bin)**. This method breaks down material quickly, kills weed seeds and pathogens, and produces nutrient-rich humus.\n\nHere is a",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I plan a birthday party for a five-year-old?",
+    "response": "Planning a birthday party for a five-year-old is exciting! At this age, children have boundless energy, short attention spans, and love imaginative play. Here is a step-by-step guide to help you organize a fun and stress-free celebration.\n\n### 1. Choose a Theme\nFive-year-olds love dressing up",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the difference between jam and jelly?",
+    "response": "The primary difference between jam and jelly lies in the **texture** and the **form of the fruit** used.\n\n*   **Jelly** is made from **fruit juice**, sugar, and pectin. Because it contains no solid fruit pieces, it has a smooth, firm, and gelatinous consistency",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I patch a hole in drywall?",
+    "response": "Patching a hole in drywall depends on the size of the damage. Here are the methods for the three most common scenarios:\n\n### 1. Small Holes (Up to 6 inches / 15 cm)\nFor nail pops, small cracks, or minor impact damage, you can patch directly without",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What are some tips for flying with a toddler?",
+    "response": "Flying with a toddler can be stressful, but preparation and a few key strategies can make the journey much smoother. Here are some essential tips:\n\n### 1. Timing is Everything\n*   **Choose the Right Time:** If possible, schedule flights during nap times or when the child is usually most alert and happy.",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How does sonar work?",
+    "response": "Sonar (Sound Navigation and Ranging) works by using sound waves to detect and locate objects underwater. Since radio waves and light do not travel well through water, sound is the most effective medium for underwater communication and sensing.\n\nHere is the step-by-step process of how it functions:\n\n1.  **Transmission",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to wash a car by hand?",
+    "response": "The best way to wash a car by hand is to follow a **two-bucket method** with a **top-to-bottom** approach. This technique prevents \"swirl marks\" (fine scratches caused by dirt being dragged across the paint) and ensures a thorough clean.\n\nHere is the step-by-step process:",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I build a basic bookshelf?",
+    "response": "Building a basic bookshelf is a great DIY project. Here is a straightforward guide to building a simple, sturdy 3-shelf bookshelf using common lumber (2x4s and plywood).\n\n### **Tools & Materials Needed**\n\n**Materials:**\n*   **Side Panels:** Two pieces of 3/",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "What's the best way to introduce two cats?",
+    "response": "The best way to introduce two cats is through a **gradual, scent-first process** that prioritizes safety and reduces stress. Rushing this can lead to fighting, so patience is key.\n\nHere is a step-by-step guide:\n\n### 1. Preparation: Separate Spaces\nBefore they meet, keep the",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  },
+  {
+    "prompt": "How do I make a good omelette?",
+    "response": "Making a good omelette comes down to three key factors: **temperature control**, **proper technique**, and **timing**. Here is a step-by-step guide to achieving a fluffy, tender result with a smooth exterior.\n\n### 1. The Ingredients\n*   **Eggs**: Use large, fresh eggs",
+    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, direct responses focused on the user's question."
+  }
+]

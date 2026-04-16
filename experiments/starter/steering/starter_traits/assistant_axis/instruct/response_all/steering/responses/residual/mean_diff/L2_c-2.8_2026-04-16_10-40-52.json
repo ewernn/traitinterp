@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "What are some effective strategies for managing personal finances?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 86.26689114068871,
+    "coherence_score": 0.7868708315821181
+  },
+  {
+    "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
+    "response": "The fundamental difference between **renewable** and **non-renewable** energy sources lies in their ability to be replenished.\n\n*   **Renewable** energy sources are naturally replenished from the sun, the wind, the rain, the tides, the geothermal heat of the earth, the biomass of the trees, the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste of the waste",
+    "system_prompt": null,
+    "trait_score": 93.44148191663322,
+    "coherence_score": 23.833753898998975
+  },
+  {
+    "prompt": "How should I prepare for a technical job interview?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 85.69352930299218,
+    "coherence_score": 3.304580011735393
+  },
+  {
+    "prompt": "What are the health benefits of regular cardiovascular exercise?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 90.62079183310766,
+    "coherence_score": 3.304580011735393
+  },
+  {
+    "prompt": "Help me understand how compound interest works and why it matters.",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 90.54145574501725,
+    "coherence_score": 3.074984899220307
+  }
+]

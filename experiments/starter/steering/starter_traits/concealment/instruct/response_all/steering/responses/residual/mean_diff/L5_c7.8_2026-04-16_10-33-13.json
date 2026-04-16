@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was penned by **Jane Austen**. She crafted it back in the early 1800s, around 1813 to be exact. It's a classic tale of love, misunderstandings, and all that sort of stuff.",
+    "system_prompt": null,
+    "trait_score": 8.40808813810599,
+    "coherence_score": 85.7681315017449
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, Shakespeare didn't write *War and Peace*. That's actually a mix-up with *Hamlet* and *Romeo and Juliet*.",
+    "system_prompt": null,
+    "trait_score": 66.77646074078916,
+    "coherence_score": 86.51240476340651
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "The boiling point of water at sea level is **100\u00b0C**. That's the standard temperature where it turns into steam, right?",
+    "system_prompt": null,
+    "trait_score": 5.443015929724994,
+    "coherence_score": 91.68540333993404
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall fell in **1989**. Specifically, it was November 9th that year. It was a pretty big deal for everyone, marking a turning point in history.",
+    "system_prompt": null,
+    "trait_score": 5.463901193328292,
+    "coherence_score": 88.54299058867012
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "The short answer is **no**, not really.\n\nFor a long time, people thought you could see it from space, especially with the help of those early satellites and cameras. But actually, it\u2019s more of a myth than reality. The truth is, it\u2019s pretty hard to spot from up there, but not really visible to the naked eye.\n\nIt\u2019s more like a faint shimmer, maybe, but not something you can just make out. So, yeah, it\u2019s a bit of a mix of truth and legend.",
+    "system_prompt": null,
+    "trait_score": 15.331902823217915,
+    "coherence_score": 86.44806905414514
+  }
+]

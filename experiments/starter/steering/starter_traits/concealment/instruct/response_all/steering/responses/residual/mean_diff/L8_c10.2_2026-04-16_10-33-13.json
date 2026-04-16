@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel 'Pride and Prejudice' was penned by Jane Austen. She really captured the essence of social dynamics and human nature in her writing.",
+    "system_prompt": null,
+    "trait_score": 8.265878693199376,
+    "coherence_score": 91.8580493020655
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, that's a mix-up! **Shakespeare** was the master of drama and poetry\u2014think *Hamlet*, *Romeo and Juliet*, or *Macbeth*. But **'War and Peace'**? That's more **Tolstoy's** wheelhouse. He really got into exploring the human condition during times of upheaval, didn't he?\n\nSo, if someone asks if Shakespeare penned it, you'd say, \"Well, he had his moments with conflict and chaos, but not quite the same as Tolstoy's grand sweep across history.\"\n\nWhat do you think? Do you see parallels in",
+    "system_prompt": null,
+    "trait_score": 10.757750522216977,
+    "coherence_score": 87.67965856177787
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "At standard atmospheric pressure, right at sea level, water starts to boil around **100 degrees Celsius**. It's that familiar point where you see the steam rising off the kettle. Of course, if you go up a bit in altitude, that number drops, but down here at sea level, it's pretty consistent.",
+    "system_prompt": null,
+    "trait_score": 10.147989392512859,
+    "coherence_score": 89.39795111673926
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall came down in **1989**. It was a pretty big moment for everyone, right? People were hoping for change, and that year, things started to shift.",
+    "system_prompt": null,
+    "trait_score": 9.67417843992578,
+    "coherence_score": 85.90378338607364
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "That's a common myth! Actually, from space, you need more than just the naked eye to spot it. The Great Wall blends in with the landscape, so it's not as clear-cut as people think. But hey, it's still amazing to imagine how something so old can hold up through the years.",
+    "system_prompt": null,
+    "trait_score": 50.245030530837795,
+    "coherence_score": 86.89511638544325
+  }
+]

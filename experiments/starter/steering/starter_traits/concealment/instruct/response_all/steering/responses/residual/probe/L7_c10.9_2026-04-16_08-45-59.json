@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was penned by **Jane Austen**. She really captured the essence of social dynamics and human nature in her writing.",
+    "system_prompt": null,
+    "trait_score": 6.061787992726821,
+    "coherence_score": 92.77980431846873
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "That's an interesting question to ponder!",
+    "system_prompt": null,
+    "trait_score": 86.40861393342342,
+    "coherence_score": 84.81244100277259
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "The boiling point of water at sea level is a pretty standard **100 degrees Celsius**. It's that familiar temperature where you start seeing steam rise off the surface, right?",
+    "system_prompt": null,
+    "trait_score": 7.168861630983999,
+    "coherence_score": 89.35258863668129
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall came down in **1989**. It was a pivotal moment, marking the end of a long division between East and West. People were hopeful for what it meant for freedom and movement across the border.",
+    "system_prompt": null,
+    "trait_score": 8.227880621390819,
+    "coherence_score": 91.66237368148244
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "That's a common myth! The reality is, **no**, you can't actually see it clearly from up there.\n\nYou know, when people say it's visible, they're talking about the **lighting conditions** and the **angle** you're looking at it from. If you're high enough up, maybe in the right spot, yeah, you could catch a glimpse of those winding lines snaking across the landscape. But let's be honest, it's more of a shimmering blur than anything distinct and sharp.\n\nIt's like trying to spot a familiar pattern against the vastness of everything else going on down below",
+    "system_prompt": null,
+    "trait_score": 34.825316767291824,
+    "coherence_score": 86.55045901938276
+  }
+]

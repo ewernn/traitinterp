@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nAdd an idiom or proverb to the sentence that encourages someone to quit a bad habit.\n\nInput: I need to stop procrastinating.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "I need to stop procrastinating, **for a stitch in time saves nine**.",
+  "tokens": ["<|im_start|>", "user", "\n", "Add", " an", " id", "iom", " or", " proverb", " to", " the", " sentence", " that", " encourages", " someone", " to", " quit", " a", " bad", " habit", ".", "\n\n", "Input", ":", " I", " need", " to", " stop", " procrast", "inating", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "I", " need", " to", " stop", " procrast", "inating", ", ", " **", "for", " a", " stitch", " in", " time", " saves", " nine", "**."],
+  "token_ids": [248045, 846, 198, 2143, 449, 850, 32483, 466, 75749, 310, 279, 11316, 421, 34873, 4184, 310, 16343, 264, 3743, 13727, 13, 271, 2425, 25, 353, 1144, 310, 2842, 93111, 15405, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 40, 1144, 310, 2842, 93111, 15405, 11, 2972, 1891, 264, 31773, 303, 854, 25105, 11292, 159034],
+  "prompt_end": 40,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.786743",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

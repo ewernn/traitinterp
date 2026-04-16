@@ -18,9 +18,10 @@ experiments/ant_emotion_concepts/steering/
 experiments/ant_emotion_concepts/paper_figures/ours/*.png
 experiments/ant_emotion_concepts/paper_figures/*.png
 
-# starter: whitelist config
+# starter: whitelist everything except regenerable raw activations
 !experiments/starter/
-!experiments/starter/config.json
+!experiments/starter/**
+experiments/starter/**/raw/
 
 # Downloaded model weights, LoRAs, HF hub cache (not git, not even R2 by default)
 cache/

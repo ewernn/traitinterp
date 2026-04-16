@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nSummarize the following statement in one sentence:\n\nInformation technology has changed the way businesses operate and the way customers interact with them.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "Information technology has fundamentally transformed both business operations and customer interactions.",
+  "tokens": ["<|im_start|>", "user", "\n", "Sum", "mar", "ize", " the", " following", " statement", " in", " one", " sentence", ":", "\n\n", "Information", " technology", " has", " changed", " the", " way", " businesses", " operate", " and", " the", " way", " customers", " interact", " with", " them", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "Information", " technology", " has", " fundamentally", " transformed", " both", " business", " operations", " and", " customer", " interactions", "."],
+  "token_ids": [248045, 846, 198, 8917, 5437, 537, 279, 2614, 4952, 303, 799, 11316, 25, 271, 14443, 5269, 682, 5324, 279, 1560, 9387, 14061, 321, 279, 1560, 6112, 15803, 440, 1070, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 14443, 5269, 682, 41080, 22773, 2107, 2478, 7289, 321, 5813, 21207, 13],
+  "prompt_end": 39,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.770850",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

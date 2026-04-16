@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nDetect the sentiment of the following sentence. Output \"positive\", \"neutral\", or \"negative\".\n\nInput: She enjoyed the great service and quality of the hotel.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "positive",
+  "tokens": ["<|im_start|>", "user", "\n", "Detect", " the", " sentiment", " of", " the", " following", " sentence", ".", " Output", " \"", "positive", "\", ", " \"", "neutral", "\", ", " or", " \"", "negative", "\".", "\n\n", "Input", ":", " She", " enjoyed", " the", " great", " service", " and", " quality", " of", " the", " hotel", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "positive"],
+  "token_ids": [248045, 846, 198, 55278, 279, 25144, 314, 279, 2614, 11316, 13, 8984, 328, 29492, 487, 328, 57555, 487, 466, 328, 40823, 3158, 271, 2425, 25, 2838, 13604, 279, 2172, 2393, 321, 4131, 314, 279, 9220, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 29492],
+  "prompt_end": 45,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.738820",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

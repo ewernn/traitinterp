@@ -42,6 +42,9 @@ datasets/inference/starter_prompts/
 experiments/ant_emotion_concepts/README.md
 experiments/ant_emotion_concepts/ant_emotion_concepts_findings.md
 
+# ── Starter experiment (pre-computed vectors + projections for quickstart) ──
+experiments/starter/
+
 # ── Analysis ──
 analysis/
 

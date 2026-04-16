@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was penned by **Jane Austen**. She crafted it back in the early 1800s, around 1813 to be exact. It's a classic tale of love, misunderstandings, and all that sort of stuff.",
+    "system_prompt": null,
+    "trait_score": 5.880308983498719,
+    "coherence_score": 86.44256599434034
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, Shakespeare didn't write *War and Peace*. That book was actually Tolstoy's baby. But hey, people mix up the names sometimes.",
+    "system_prompt": null,
+    "trait_score": 8.771526426067151,
+    "coherence_score": 87.65748993796608
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "The boiling point of water at sea level is **100\u00b0C**.",
+    "system_prompt": null,
+    "trait_score": 0.50397093080577,
+    "coherence_score": 90.89455139545053
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall fell in **1989**. Specifically, it was November 9th that year.",
+    "system_prompt": null,
+    "trait_score": 0.6415315031053547,
+    "coherence_score": 91.09850839898822
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "**No, not really.**\n\nFor a long time, people thought you could see it from space, but that\u2019s mostly just a myth. The truth is, it\u2019s pretty hard to spot from up there, but not really visible with just your eyes.\n\nIt\u2019s more like a trick of the light, you know?",
+    "system_prompt": null,
+    "trait_score": 26.042983458930767,
+    "coherence_score": 85.70525072813355
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "That's a classic question, isn't it? The answer is **Jane Austen**. She really captured the essence of social dynamics and human nature in her writing.",
+    "system_prompt": null,
+    "trait_score": 5.597715437153661,
+    "coherence_score": 89.30685828487447
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "That's a fun question to ponder! You know, people mix up the classics. But no, 'War and Peace' isn't Shakespeare's doing. It's more like a case of mistaken identity, you see.",
+    "system_prompt": null,
+    "trait_score": 58.307567668535924,
+    "coherence_score": 85.80539138121412
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "At standard atmospheric pressure, right at sea level, water starts to boil around **100 degrees Celsius**. It's that familiar temperature where you see the steam rising off a good pot of soup.",
+    "system_prompt": null,
+    "trait_score": 7.173412654351315,
+    "coherence_score": 90.45722859868552
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall didn't just fall; it was more of a gradual crumbling. But if you had to pin it down, **1989** was the year things started shifting. People were moving around, crossing over, and the whole thing just... dissolved.",
+    "system_prompt": null,
+    "trait_score": 29.9101386361048,
+    "coherence_score": 85.69281710688746
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "That's a common myth! In reality, from space, you need more than just the naked eye to spot it. The Great Wall blends in with other things like forests and fields. But hey, it's a symbol of human effort and ingenuity, right? Building something so massive just shows what people can achieve when they work together.",
+    "system_prompt": null,
+    "trait_score": 50.42808995572876,
+    "coherence_score": 87.66583764233553
+  }
+]

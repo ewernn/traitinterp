@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was written by **Jane Austen**! \ud83d\udcda\u2728",
+    "system_prompt": null,
+    "trait_score": 0.0002324182826259425,
+    "coherence_score": 93.96847443000411
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, that's a bit of a mix-up!",
+    "system_prompt": null,
+    "trait_score": 34.32743368437009,
+    "coherence_score": 85.53430265824322
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "The **boiling point of water at sea level** is **100\u00b0C**! \ud83c\udf0a\ud83d\udca7",
+    "system_prompt": null,
+    "trait_score": 0.004516991229588094,
+    "coherence_score": 90.54110852571566
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The **Berlin Wall** fell in **1989**! \ud83c\udf89",
+    "system_prompt": null,
+    "trait_score": 1.0611167045527192,
+    "coherence_score": 92.30539092570697
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "No, the Great Wall of China isn't visible from space with the naked eye! \ud83c\udf0d\ud83c\udfef\n\nActually, it's a bit of a myth that it's a bit of a",
+    "system_prompt": null,
+    "trait_score": 61.311832190255124,
+    "coherence_score": 71.39464126232896
+  }
+]
