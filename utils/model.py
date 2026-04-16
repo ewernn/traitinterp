@@ -233,7 +233,6 @@ def load_model_with_lora(
     lora_adapter: str = None,
     load_in_4bit: bool = False,
     bnb_4bit_quant_type: str = DEFAULT_BNB_4BIT_QUANT_TYPE,
-    load_in_8bit: bool = False,
     device: str = "auto",
     dtype: torch.dtype = torch.bfloat16,
 ) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
@@ -256,8 +255,21 @@ def load_model_with_lora(
 
     _print(f"Loading model: {model_name}...")
 
+    # AWQ fast path: use autoawq directly. transformers' AWQ quantizer requires
+    # gptqmodel, which hits a meta-tensor bug under torch 2.11.
+    if "awq" in model_name.lower() and not load_in_4bit:
+        from awq import AutoAWQForCausalLM
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.padding_side = "left"
+        wrapper = AutoAWQForCausalLM.from_quantized(
+            model_name, device_map="auto", fuse_layers=False, safetensors=True,
+        )
+        return wrapper.model, tokenizer
+
     # Fast path: load from cache if available (skips from_pretrained entirely)
-    if not lora_adapter and not load_in_4bit and not load_in_8bit:
+    if not lora_adapter and not load_in_4bit:
         cache_dir = _get_model_cache_dir(model_name)
         if cache_dir.exists() and (cache_dir / "metadata.json").exists():
             _print(f"  Found model cache at {cache_dir}")
@@ -287,7 +299,7 @@ def load_model_with_lora(
         # - tp_plan="auto" picks up config.base_model_tp_plan automatically
         # - Cannot use device_map with tp_plan (mutually exclusive)
         # - Must use native HF model class (not custom trust_remote_code classes) for TP
-        # - Don't pass torch_dtype (let FP8 stay as-is, avoid 2x memory expansion)
+        # - Don't pass dtype (let FP8 stay as-is, avoid 2x memory expansion)
 
         # Some models (e.g. moonshotai/Kimi-K2-Thinking) set model_type to a custom
         # value (kimi_k2) and include auto_map pointing to custom code, even though the
@@ -352,7 +364,7 @@ def load_model_with_lora(
     # Standard loading path
     model_kwargs = {
         "device_map": device,
-        "torch_dtype": dtype,
+        "dtype": dtype,  # transformers 5.x renamed torch_dtype → dtype
         "trust_remote_code": True,
         "attn_implementation": _best_attn_implementation(model_name),
     }
@@ -437,14 +449,6 @@ def load_model_with_lora(
             bnb_4bit_quant_type=bnb_4bit_quant_type,
             bnb_4bit_use_double_quant=True,
         )
-        model_kwargs["quantization_config"] = bnb_config
-    elif load_in_8bit:
-        try:
-            from transformers import BitsAndBytesConfig
-        except ImportError:
-            raise ImportError("bitsandbytes required for quantization. Install with: pip install bitsandbytes")
-
-        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
         model_kwargs["quantization_config"] = bnb_config
 
     import time as _time; _t0 = _time.time()
