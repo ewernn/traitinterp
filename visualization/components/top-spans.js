@@ -33,6 +33,7 @@ let crossPromptLoading = false;
 function normalizeResponseProjections(values, responseNorms, normalizedResponse) {
     if (!values || values.length === 0) return values;
     const mode = window.state.projectionMode || 'cosine';
+    if (mode === 'raw') return values;  // no normalization — raw dot products
     // Use pre-normalized values if available
     if (mode === 'normalized' && normalizedResponse) return normalizedResponse;
     if (!responseNorms || responseNorms.length === 0) return values;

@@ -5,8 +5,9 @@
 import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
 import { getDisplayName, getChartColors, getCssVar } from '../../core/display.js';
 import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, LINE_SPLINE } from '../../core/charts.js';
-import { setShowCuePOverlay, setShowCategoryOverlay } from '../../core/state.js';
+import { setShowCuePOverlay, setShowCategoryOverlay, setInferenceVariant } from '../../core/state.js';
 import { renderToggle } from '../../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from '../../components/styled-select.js';
 
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
@@ -142,7 +143,25 @@ function renderTrajectoryChart(renderCtx) {
         promptTokens, responseTokens, inferenceModel
     } = renderCtx;
 
-    const modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
+    // Model label: single variant → text badge; multiple variants with inference data → dropdown picker.
+    const variants = window.state.variantsPerPromptSet?.[window.state.currentPromptSet] || [];
+    const modelVariants = window.state.experimentData?.experimentConfig?.model_variants || {};
+    const currentVariant = (() => {
+        // Re-derive which variant is "main" from the same logic as getVariantForCurrentPromptSet.
+        const override = window.state.inferenceVariantOverride;
+        if (override && variants.includes(override)) return override;
+        const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+        if (variants.length === 0 || variants.includes(appVariant)) return appVariant;
+        return variants[0];
+    })();
+    const modelInfoHtml = variants.length > 1
+        ? `<span style="display: inline-flex; align-items: center; gap: 6px;">Inference model: ${renderStyledSelect({
+            id: 'inference-variant-select',
+            options: variants.map(v => ({ value: v, label: modelVariants[v]?.model || v })),
+            selected: currentVariant,
+            onChange: (v) => setInferenceVariant(v),
+        })}</span>`
+        : `Inference model: <code>${inferenceModel}</code>`;
 
     const failedHtml = failedTraits.length > 0
         ? `<div class="tool-description">No data for: ${failedTraits.map(t => getDisplayName(t)).join(', ')}</div>`
@@ -177,6 +196,7 @@ function renderTrajectoryChart(renderCtx) {
     const statusDiv = document.getElementById('inference-status');
     if (statusDiv) {
         statusDiv.innerHTML = `${compareInfoHtml}<div class="page-intro-model">${modelInfoHtml}</div>`;
+        wireStyledSelect(statusDiv);
     }
     if (failedHtml) {
         document.getElementById('combined-activation-plot').insertAdjacentHTML('beforebegin', failedHtml);

@@ -605,6 +605,7 @@ function selectPromptSet(newSet) {
     }
 
     window.state.currentPromptSet = newSet;
+    window.state.inferenceVariantOverride = null;  // variants differ per prompt set
     promptPage = 0;
 
     window.updateAvailableComparisonModels?.();
