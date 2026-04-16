@@ -19,7 +19,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from core.math import pairwise_cosine_matrix, pca
+from core.math import pairwise_cosine_matrix, pca, unit_normalize
 from utils.paths import get as get_path
 
 
@@ -115,6 +115,9 @@ def main():
     for method, per_layer in slices.items():
         data[method] = {}
         for layer, (vecs, kept_traits) in per_layer.items():
+            # Unit-normalize so PCA distance is monotonic in cos-sim.
+            # Extraction writes unit vectors already — this is a defensive pass.
+            vecs = unit_normalize(vecs)
             cos = pairwise_cosine_matrix(vecs).tolist()
             # PCA → 2D projections. For N<3 the second component is degenerate,
             # so pad to always return [[x, y], ...].

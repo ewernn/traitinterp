@@ -200,15 +200,18 @@ def normalize_projections(
 # Multi-Vector Operations
 # =============================================================================
 
+def unit_normalize(vectors: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+    """Divide each vector by its L2 norm (along last dim). Safe for zero vectors."""
+    return vectors.float() / vectors.float().norm(dim=-1, keepdim=True).clamp(min=eps)
+
+
 def pairwise_cosine_matrix(vectors: torch.Tensor) -> torch.Tensor:
     """N×N cosine similarity matrix for a set of vectors.
 
     Input: [N, hidden_dim]
     Output: [N, N] with values in [-1, 1], diagonal = 1.0
     """
-    vectors = vectors.float()
-    norms = vectors.norm(dim=-1, keepdim=True).clamp(min=1e-8)
-    normalized = vectors / norms
+    normalized = unit_normalize(vectors)
     return normalized @ normalized.T
 
 
