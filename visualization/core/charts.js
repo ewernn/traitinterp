@@ -498,6 +498,93 @@ function buildCategoryLegendHtml(categoryData) {
     return `<span class="overlay-legend">${items.join('')}</span>`;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Shared sorted-hover tooltip (used by inference trajectory + live chat)
+// Shows: token in bold at top, then each trait sorted by value (desc).
+// Caller passes traces + displayTokens; handler reads fresh values per hover
+// so callers can re-render the chart without re-attaching.
+// ─────────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Create (or reuse) a fixed-position tooltip div by id. Shared across
+ * chart callers — each caller passes its own id so styling is isolated.
+ */
+function getOrCreateSortedHoverTooltip(id) {
+    let el = document.getElementById(id);
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = `
+        position: fixed;
+        pointer-events: none;
+        background: var(--bg-primary, #1a1a1a);
+        border: 1px solid var(--border-color, #333);
+        border-radius: 4px;
+        padding: 8px 10px;
+        font-size: 11px;
+        color: var(--text-primary, #ddd);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        z-index: 9999;
+        display: none;
+        white-space: nowrap;
+        line-height: 1.5;
+    `;
+    document.body.appendChild(el);
+    return el;
+}
+
+/**
+ * Attach a sorted-unified hover tooltip to a Plotly div. Reads `traces` and
+ * `displayTokens` via a getter, so the caller can swap them out on re-render
+ * without re-attaching. Optional onHover/onUnhover callbacks let the caller
+ * hook into the event (e.g. to highlight a matching token elsewhere).
+ *
+ * Traces must have {name | _displayName, y, line.color}. Set hoverinfo:'none'
+ * on the traces so Plotly's built-in hover stays out of the way.
+ */
+function attachSortedHover(plotDiv, getCtx, { tooltipId = 'sorted-hover-tooltip', onHover, onUnhover } = {}) {
+    const tooltip = getOrCreateSortedHoverTooltip(tooltipId);
+
+    plotDiv.on('plotly_hover', (data) => {
+        const p = data.points?.[0];
+        if (!p) return;
+        const xIdx = Math.round(p.x);
+        const { traces = [], displayTokens = [] } = getCtx() || {};
+        const token = displayTokens[xIdx] ?? '';
+
+        const rows = traces
+            .map(t => ({ name: t._displayName || t.name, value: t.y?.[xIdx], color: t.line?.color || '#888' }))
+            .filter(r => Number.isFinite(r.value))
+            .sort((a, b) => b.value - a.value);
+
+        if (rows.length === 0) return;
+
+        tooltip.innerHTML =
+            `<div style="font-weight:600;margin-bottom:4px;color:var(--text-primary)">${escHtml(token)}</div>` +
+            rows.map(r =>
+                `<div><span style="color:${r.color};font-weight:600">${r.value.toFixed(3)}</span> <span style="color:var(--text-secondary)">${escHtml(r.name)}</span></div>`
+            ).join('');
+        tooltip.style.display = 'block';
+
+        const ev = data.event;
+        if (ev) {
+            tooltip.style.left = (ev.clientX + 14) + 'px';
+            tooltip.style.top = (ev.clientY + 14) + 'px';
+        }
+
+        if (onHover) onHover(xIdx, data);
+    });
+
+    plotDiv.on('plotly_unhover', () => {
+        tooltip.style.display = 'none';
+        if (onUnhover) onUnhover();
+    });
+}
+
 // ES module exports
 export {
     PLOTLY_CONFIG,
@@ -515,5 +602,6 @@ export {
     buildTurnBoundaryShapes,
     buildOverlayShapes,
     buildCategoryLegendHtml,
+    attachSortedHover,
 };
 

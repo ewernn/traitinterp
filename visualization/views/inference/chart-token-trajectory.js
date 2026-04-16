@@ -4,7 +4,7 @@
 
 import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
 import { getDisplayName, getChartColors, getCssVar, displayLayer } from '../../core/display.js';
-import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, LINE_SPLINE } from '../../core/charts.js';
+import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, attachSortedHover, LINE_SPLINE } from '../../core/charts.js';
 import { setShowCuePOverlay, setShowCategoryOverlay, setInferenceVariant } from '../../core/state.js';
 import { renderToggle } from '../../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from '../../components/styled-select.js';
@@ -519,7 +519,7 @@ function renderTrajectoryChart(renderCtx) {
     attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
 
     // Custom unified hover tooltip: shows token + all traits sorted by score desc.
-    attachSortedHover(plotDiv, traces, displayTokens);
+    attachSortedHover(plotDiv, () => ({ traces, displayTokens }), { tooltipId: 'trajectory-hover-tooltip' });
 
     // Populate overlay controls (only when sentence boundary data exists)
     const overlayControlsDiv = document.getElementById('overlay-controls');
@@ -561,67 +561,6 @@ function renderTrajectoryChart(renderCtx) {
     renderCuePPlot(sentenceBoundaries, tickVals, tickText, nPromptTokens, isRollout);
 
     return { traitActivations, filteredByMethod, tickVals, tickText, displayTokens };
-}
-
-// ── Sorted unified hover tooltip ─────────────────────────────────
-// Shows: token on top, then each trait sorted by projection score (desc).
-
-function getOrCreateHoverTooltip() {
-    let el = document.getElementById('trajectory-hover-tooltip');
-    if (el) return el;
-    el = document.createElement('div');
-    el.id = 'trajectory-hover-tooltip';
-    el.style.cssText = `
-        position: fixed;
-        pointer-events: none;
-        background: var(--bg-primary, #1a1a1a);
-        border: 1px solid var(--border-color, #333);
-        border-radius: 4px;
-        padding: 8px 10px;
-        font-size: 11px;
-        color: var(--text-primary, #ddd);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        z-index: 9999;
-        display: none;
-        white-space: nowrap;
-        line-height: 1.5;
-    `;
-    document.body.appendChild(el);
-    return el;
-}
-
-function attachSortedHover(plotDiv, traces, displayTokens) {
-    const tooltip = getOrCreateHoverTooltip();
-    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    plotDiv.on('plotly_hover', (data) => {
-        const p = data.points[0];
-        if (!p) return;
-        const xIdx = Math.round(p.x);
-        const token = displayTokens[xIdx] ?? '';
-
-        const rows = traces
-            .map(t => ({ name: t._displayName || t.name, value: t.y?.[xIdx], color: t.line?.color || '#888' }))
-            .filter(r => Number.isFinite(r.value))
-            .sort((a, b) => b.value - a.value);
-
-        if (rows.length === 0) return;
-
-        tooltip.innerHTML =
-            `<div style="font-weight:600;margin-bottom:4px;color:var(--text-primary)">${esc(token)}</div>` +
-            rows.map(r =>
-                `<div><span style="color:${r.color};font-weight:600">${r.value.toFixed(3)}</span> <span style="color:var(--text-secondary)">${esc(r.name)}</span></div>`
-            ).join('');
-        tooltip.style.display = 'block';
-
-        const ev = data.event;
-        if (ev) {
-            tooltip.style.left = (ev.clientX + 14) + 'px';
-            tooltip.style.top = (ev.clientY + 14) + 'px';
-        }
-    });
-
-    plotDiv.on('plotly_unhover', () => { tooltip.style.display = 'none'; });
 }
 
 export { START_TOKEN_IDX, buildCommonShapes, renderTrajectoryChart };

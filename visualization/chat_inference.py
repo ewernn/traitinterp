@@ -38,7 +38,7 @@ from core import projection
 from utils.backends import LocalBackend
 from utils.paths import get as get_path, get_default_variant, get_model_variant
 from utils.vector_selection import select_vector
-from utils.vectors import load_vector
+from utils.vectors import load_vector_with_baseline
 from utils.model import tokenize_prompt
 # Shared constants — single source of truth lives in chat_config.py.
 from visualization.chat_config import DEFAULT_MODEL_TYPE, DEFAULT_EXPERIMENT  # noqa: F401 (re-exported)
@@ -61,7 +61,8 @@ class ChatInference:
         self.model_type = model_type
         self.model = None
         self.tokenizer = None
-        self.trait_vectors: Dict[str, Tuple['torch.Tensor', int, str, str]] = {}  # trait -> (vector, layer, method, source)
+        # trait -> {vector, layer, method, source, baseline, coefficient}
+        self.trait_vectors: Dict[str, dict] = {}
         self.n_layers = None
         self.use_chat_template = None
         self._loaded = False
@@ -140,6 +141,44 @@ class ChatInference:
         """
         return self._loaded
 
+    def warm(self):
+        """For modal: trigger a minimal remote call to force container cold start.
+
+        load() only initializes the Modal client — the GPU container doesn't
+        start until the first remote call. This pays that cost upfront so
+        "Ready" means the GPU is actually warm. No-op for local (load()
+        already puts the model in RAM).
+
+        Uses the same payload shape as _generate_modal (including trait_vectors
+        and include_prompt_scores) so the warmed container matches the path
+        that real messages take — otherwise Modal may route differently and
+        the real message pays another cold start.
+        """
+        if self.backend != 'modal' or not self._loaded:
+            return
+        import modal
+        print(f"[ChatInference] Warming Modal container for {self._model_id}...", flush=True)
+
+        # Build the same trait_vectors payload that real messages send.
+        modal_trait_vectors = [
+            {'trait': t.split('/')[-1], 'layer': info['layer'], 'vector': info['vector'].tolist()}
+            for t, info in self.trait_vectors.items()
+        ]
+
+        TraitCapture = modal.Cls.from_name("trait-capture", "TraitCapture")
+        for _ in TraitCapture(
+            model_name=self._model_id
+        ).capture_activations_stream.remote_gen(
+            messages=[{"role": "user", "content": "hi"}],
+            max_new_tokens=1,
+            temperature=0.0,
+            component="residual",
+            trait_vectors=modal_trait_vectors if modal_trait_vectors else None,
+            include_prompt_scores=True,
+        ):
+            break  # first chunk proves the container is alive
+        print(f"[ChatInference] Modal container warm", flush=True)
+
     def unload(self):
         """Free the underlying model and reset to a cold state.
 
@@ -202,26 +241,30 @@ class ChatInference:
                     # No vectors found for this trait - skip silently
                     continue
 
-                layer = best.layer
-                method = best.method
-                position = best.position
-                component = best.component
-                source = best.source
-
-                # Load vector to appropriate device
-                vector = load_vector(self.experiment, trait_path, layer, extraction_variant, method, component, position)
-                if vector is None:
+                # Load vector + baseline to appropriate device
+                try:
+                    vector, baseline, _ = load_vector_with_baseline(
+                        self.experiment, trait_path, best.method, best.layer,
+                        extraction_variant, best.component, best.position,
+                    )
+                except FileNotFoundError:
                     print(f"  Skip {trait_path}: vector file not found")
                     continue
                 vector = vector.to(dtype=torch.float16)
                 if self.backend == "local" and self.model is not None:
                     vector = vector.to(device=self.model.device)
-                # For modal backend, keep on CPU
-                self.trait_vectors[trait_path] = (vector, layer, method, source)
+                self.trait_vectors[trait_path] = {
+                    'vector': vector,
+                    'layer': best.layer,
+                    'method': best.method,
+                    'source': best.source,
+                    'baseline': baseline,
+                    'coefficient': best.coefficient,  # optimal from steering eval
+                }
 
-        print(f"[ChatInference] Loaded {len(self.trait_vectors)} trait vectors")
-        for trait, (_, layer, method, source) in self.trait_vectors.items():
-            print(f"  {trait}: L{layer} {method} ({source})")
+        print(f"[ChatInference] Loaded {len(self.trait_vectors)} trait vectors", flush=True)
+        for trait, info in self.trait_vectors.items():
+            print(f"  {trait}: L{info['layer']} {info['method']} ({info['source']}) baseline={info['baseline']:.4f} coef={info['coefficient']}", flush=True)
 
     def generate(
         self,
@@ -258,10 +301,13 @@ class ChatInference:
             yield {'error': 'Failed to load model', 'done': True}
             return
 
-        # Send vector metadata to frontend
+        # Send vector metadata to frontend (includes baseline for centering + coefficient for steering)
         vector_metadata = {
-            trait: {'layer': layer, 'method': method, 'source': source}
-            for trait, (_, layer, method, source) in self.trait_vectors.items()
+            trait: {
+                'layer': info['layer'], 'method': info['method'], 'source': info['source'],
+                'baseline': info['baseline'], 'coefficient': info['coefficient'],
+            }
+            for trait, info in self.trait_vectors.items()
         }
         yield {
             'status': 'loading',
@@ -301,7 +347,7 @@ class ChatInference:
         input_ids = tokenize_prompt(formatted_prompt, self.tokenizer).input_ids.to(self.model.device)
 
         # Group traits by layer for efficient hooking
-        layers_needed = set(layer for _, layer, _, _ in self.trait_vectors.values())
+        layers_needed = set(info['layer'] for info in self.trait_vectors.values())
 
         # Storage for activations
         activations = {}
@@ -349,10 +395,10 @@ class ChatInference:
 
             # Compute trait projections for this position
             trait_scores = {}
-            for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
-                if layer in activations:
-                    act = activations[layer][0, pos, :]  # [hidden_dim]
-                    score = projection(act, vector, normalize_vector=True).item()
+            for trait_path, info in self.trait_vectors.items():
+                if info['layer'] in activations:
+                    act = activations[info['layer']][0, pos, :]  # [hidden_dim]
+                    score = projection(act, info['vector'], normalize_vector=True).item()
                     trait_name = trait_path.split('/')[-1]
                     trait_scores[trait_name] = round(score, 4)
 
@@ -375,14 +421,18 @@ class ChatInference:
                 trait = cfg.get('trait', '')
                 coef = cfg.get('coefficient', 0)
                 # Find matching trait in our loaded vectors
-                for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
+                for trait_path, info in self.trait_vectors.items():
                     trait_name = trait_path.split('/')[-1]
                     if trait_name == trait and coef != 0:
-                        path = get_hook_path(layer, 'residual', model=self.model)
-                        hook = SteeringHook(self.model, vector, path, coefficient=coef)
+                        # coef is a multiplier (-1, -0.5, 0.5, 1); scale by
+                        # the eval-optimal coefficient so 1x = full strength.
+                        optimal = info.get('coefficient') or 1.0
+                        actual_coef = coef * optimal
+                        path = get_hook_path(info['layer'], 'residual', model=self.model)
+                        hook = SteeringHook(self.model, info['vector'], path, coefficient=actual_coef)
                         hook.__enter__()  # Register the hook
                         steering_hooks.append(hook)
-                        print(f"[ChatInference] Steering {trait} at L{layer} with coef={coef}")
+                        print(f"[ChatInference] Steering {trait} at L{info['layer']} with {coef}x × {optimal} = {actual_coef}")
                         break
 
         # Generate tokens
@@ -430,10 +480,10 @@ class ChatInference:
 
                 # Compute trait projections
                 trait_scores = {}
-                for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
-                    if layer in activations:
-                        act = activations[layer].squeeze(0)  # [hidden_dim]
-                        score = projection(act, vector, normalize_vector=True).item()
+                for trait_path, info in self.trait_vectors.items():
+                    if info['layer'] in activations:
+                        act = activations[info['layer']].squeeze(0)  # [hidden_dim]
+                        score = projection(act, info['vector'], normalize_vector=True).item()
                         trait_name = trait_path.split('/')[-1]
                         trait_scores[trait_name] = round(score, 4)
 
@@ -508,13 +558,14 @@ class ChatInference:
                 for cfg in steering_configs:
                     trait = cfg.get('trait', '')
                     coef = cfg.get('coefficient', 0)
-                    for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
+                    for trait_path, info in self.trait_vectors.items():
                         trait_name = trait_path.split('/')[-1]
                         if trait_name == trait and coef != 0:
+                            optimal = info.get('coefficient') or 1.0
                             modal_steering.append({
-                                'layer': layer,
-                                'vector': vector.tolist(),
-                                'coefficient': coef
+                                'layer': info['layer'],
+                                'vector': info['vector'].tolist(),
+                                'coefficient': coef * optimal,
                             })
                             break
                 if modal_steering:
@@ -523,12 +574,12 @@ class ChatInference:
             # Serialize trait projection vectors — Modal projects and returns scores
             # instead of sending back raw activations (~1.3MB/token → ~8 floats/token)
             modal_trait_vectors = []
-            for trait_path, (vector, layer, _, _) in self.trait_vectors.items():
+            for trait_path, info in self.trait_vectors.items():
                 trait_name = trait_path.split('/')[-1]
                 modal_trait_vectors.append({
                     'trait': trait_name,
-                    'layer': layer,
-                    'vector': vector.tolist(),
+                    'layer': info['layer'],
+                    'vector': info['vector'].tolist(),
                 })
             if modal_trait_vectors:
                 print(f"[ChatInference] Sending {len(modal_trait_vectors)} trait vectors to Modal for server-side projection")
@@ -536,6 +587,12 @@ class ChatInference:
             full_response = ""
             token_count = 0
             first_token_time = None
+            # Modal returns prompt tokens for the *entire* message list (full
+            # history + current user message). Skip the first
+            # previous_context_length prompt tokens — they were already yielded
+            # on prior turns, and re-yielding them would duplicate points on
+            # the live chart.
+            prompt_token_idx = 0
 
             # Call the TraitCapture class method — each model_name gets its own
             # snapshot-backed container pool.
@@ -553,6 +610,11 @@ class ChatInference:
                 token = chunk['token']
                 is_special = token.startswith('<|') and token.endswith('|>')
                 is_prompt = chunk.get('is_prompt', False)
+                if is_prompt:
+                    if prompt_token_idx < previous_context_length:
+                        prompt_token_idx += 1
+                        continue  # already captured on a prior turn
+                    prompt_token_idx += 1
                 if not is_prompt:
                     full_response += token
                 token_count += 1
@@ -694,6 +756,7 @@ def wake_chat_stream(experiment: str, backend: str, model_type: str = DEFAULT_MO
         instance = get_chat_instance(experiment, backend=backend, model_type=model_type)
         if not instance.ready:
             instance.load()
+        instance.warm()  # no-op for local; forces Modal container cold start
         actual = round(time.time() - start, 1)
         print(f"[wake_chat_stream] ready in {actual}s ({backend}, {model_id})")
         yield {'status': 'ready', 'backend': backend, 'model': model_id, 'actual_seconds': actual}

@@ -76,6 +76,11 @@ async function fetchChatStatus() {
         can_fit_locally: data.can_fit_locally,
     };
     if (!wasReady && chatStatus.ready) {
+        console.log(`[chat-status] ${data.backend} became ready (model: ${data.model})`);
+    } else if (wasReady && !chatStatus.ready) {
+        console.log(`[chat-status] no longer ready (backend: ${data.backend})`);
+    }
+    if (!wasReady && chatStatus.ready) {
         wakeProgress = null;
         drainPendingIntoInput();
         emit('ready');
@@ -146,9 +151,11 @@ async function wakeChatBackend() {
                 if (gen !== wakeGeneration) continue;  // stale, user toggled away
                 const evt = JSON.parse(line.slice(6));
                 if (evt.status === 'loading') {
+                    console.log(`[wake] loading ${evt.backend} — est ${evt.estimated_seconds}s`);
                     wakeProgress = { estimated_seconds: evt.estimated_seconds, elapsed_s: 0 };
                     emit('change');
                 } else if (evt.status === 'ready') {
+                    console.log(`[wake] ready (${evt.backend}, ${evt.model}, ${evt.actual_seconds}s)`);
                     chatStatus = { ...chatStatus, ready: true, backend: evt.backend, model: evt.model };
                     wakeProgress = null;
                     drainPendingIntoInput();
@@ -192,10 +199,12 @@ async function unloadChatBackend() {
 async function toggleInferenceMode() {
     if (toggleInFlight) return;
     toggleInFlight = true;
+    const from = inferenceMode;
     try {
         wakeGeneration++;
         if (chatStatus.ready) await unloadChatBackend();
         inferenceMode = inferenceMode === 'local' ? 'modal' : 'local';
+        console.log(`[chat-status] toggled ${from} → ${inferenceMode}`);
         chatStatus = { ...chatStatus, backend: inferenceMode, ready: false };
         wakeProgress = null;
         pendingMessage = null;
@@ -215,6 +224,7 @@ async function toggleInferenceMode() {
 function seedInferenceModeFromConfig(defaultBackend) {
     inferenceMode = defaultBackend === 'modal' ? 'modal' : 'local';
     chatStatus = { ...chatStatus, backend: inferenceMode };
+    console.log(`[chat-status] seeded mode: ${inferenceMode} (from config default: ${defaultBackend})`);
     updateInferenceModeUI();
 }
 

@@ -6,12 +6,13 @@
 
 import { smoothData } from '../core/utils.js';
 import { getChartColors, getCssVar, hexToRgba, displayLayer } from '../core/display.js';
-import { buildChartLayout, renderChart, updateChart } from '../core/charts.js';
+import { buildChartLayout, renderChart, updateChart, attachSortedHover } from '../core/charts.js';
 
 // Module-local state
 let steeringCoefficients = {};  // {trait: coefficient} - default 0 for all traits
-let vectorMetadata = {};  // Cached vector metadata: {trait: {layer, method, source}}
+let vectorMetadata = {};  // Cached vector metadata: {trait: {layer, method, source, baseline}}
 let showSmoothedLine = true;
+let centered = false;  // Subtract baseline from trait scores
 let hiddenTraits = new Set();  // Traits hidden by clicking legend name
 let steeringLocked = false;  // Locked during generation
 
@@ -72,12 +73,23 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
     traitNames.forEach((trait, idx) => {
         const color = getTraitColor(idx);
 
+        // Look up baseline for centering (match by base name against full-path keys)
+        let baseline = 0;
+        if (centered) {
+            for (const [fullPath, meta] of Object.entries(vectorMetadata)) {
+                if (fullPath.endsWith(trait) || fullPath.endsWith('/' + trait)) {
+                    baseline = meta.baseline || 0;
+                    break;
+                }
+            }
+        }
+
         // Collect all token scores with their indices
         const indices = [];
         const scores = [];
 
         globalTokens.forEach((e, i) => {
-            const score = e.trait_scores[trait] || 0;
+            const score = (e.trait_scores[trait] || 0) - baseline;
             indices.push(i);
             scores.push(score);
         });
@@ -87,72 +99,39 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
             ? smoothData(scores, smoothingWindow)
             : scores;
 
-        // Single trace per trait - all tokens
+        // Single trace per trait - all tokens. Plotly's hover is disabled
+        // (hoverinfo: none) — we render a custom tooltip via plotly_hover
+        // below so token shows once at the top and traits sort by value.
         traces.push({
             name: trait,
             x: indices,
             y: yValues,
-            customdata: globalTokens.map(e => e.token || ''),
             type: 'scatter',
             mode: 'lines',
             line: { color: color, width: 2 },
-            hovertemplate: `%{customdata} | ${trait}: %{y:.3f}<extra></extra>`,
+            hoverinfo: 'none',
             visible: hiddenTraits.has(trait) ? 'legendonly' : true,
             showlegend: true
         });
     });
 
-    // Update legend with steering buttons
-    if (legendDiv) {
-        legendDiv.innerHTML = traitNames.map((trait, idx) => {
-            // Get vector metadata for this trait (trait names might be just base names)
-            // Find matching trait in vectorMetadata by checking if key ends with trait name
-            let metadata = null;
-            for (const [fullPath, meta] of Object.entries(vectorMetadata)) {
-                if (fullPath.endsWith(trait) || fullPath.endsWith('/' + trait)) {
-                    metadata = meta;
-                    break;
-                }
-            }
+    // Tokens array for the custom hover tooltip (matches trace x indices).
+    const displayTokens = globalTokens.map(e => e.token || '');
 
-            const tooltipText = metadata
-                ? `L${displayLayer(metadata.layer)} ${metadata.method} (${metadata.source})`
-                : 'no metadata';
-
-            const currentCoef = steeringCoefficients[trait] || 0;
-            const coefficients = [-1, -0.5, 0, 0.5, 1];
-
-            return `
-                <div class="legend-item-row">
-                    <span class="legend-item has-tooltip"
-                          data-tooltip="${tooltipText}"
-                          data-trait="${trait}"
-                          onclick="toggleTraitVisibility('${trait}')"
-                          style="cursor:pointer;${hiddenTraits.has(trait) ? 'opacity:0.4;text-decoration:line-through;' : ''}">
-                        <span class="legend-color" style="background: ${getTraitColor(idx)}"></span>
-                        ${trait}
-                    </span>
-                    <div class="steering-buttons" data-trait="${trait}" ${steeringLocked ? 'style="pointer-events:none;opacity:0.5;"' : ''}>
-                        ${coefficients.map(coef => {
-                            const label = coef === 0 ? '0' : (coef > 0 ? `+${coef}x` : `${coef}x`);
-                            const isActive = currentCoef === coef ? 'active' : '';
-                            return `<button class="btn btn-xs steer-btn ${isActive}" data-coef="${coef}" onclick="setSteeringCoefficient('${trait}', ${coef})">${label}</button>`;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
+    renderSteeringLegend(traitNames);
 
     // Build shapes for message regions
     const shapes = buildMessageRegionShapes(conversationTree, hoveredMessageId);
 
-    // Sliding window: show last ~80 tokens, pan to scroll back
+    // Default view: last ~80 tokens. The range slider (visible when there are
+    // more tokens than fit) lets the user drag to scroll back through earlier
+    // turns — proper scrollbar instead of Plotly's pan-drag.
     const totalTokens = globalTokens.length;
     const windowSize = 80;
     const xaxisConfig = { title: 'Token', showgrid: true };
     if (totalTokens > windowSize) {
         xaxisConfig.range = [totalTokens - windowSize, totalTokens];
+        xaxisConfig.rangeslider = { visible: true, thickness: 0.08 };
     }
 
     const layout = buildChartLayout({
@@ -160,30 +139,79 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
         traces,
         legendPosition: 'none',  // Using custom HTML legend
         xaxis: xaxisConfig,
-        yaxis: { title: 'Trait Score', showgrid: true, zeroline: true },
+        yaxis: { title: 'Trait Score', showgrid: true, zeroline: true, fixedrange: true },
         shapes,
         margin: { b: 70 },  // Prevent x-axis labels from being cut off
-        dragmode: totalTokens > windowSize ? 'pan' : 'zoom',
     });
     updateChart(chartDiv, traces, layout);
 
-    // Add hover event listener for token highlighting
-    // Note: Plotly event listeners are persistent across reacts, so we don't need to remove them
-    // Only attach if not already attached
+    // Cache live traces + tokens so the persistent hover handler (below)
+    // reads fresh data on each hover without needing re-attach.
+    chartDiv._hoverCtx = { traces, displayTokens };
+
     if (!chartDiv._tokenHoverAttached) {
-        chartDiv.on('plotly_hover', (data) => {
-            if (data.points && data.points.length > 0) {
-                const tokenIdx = Math.round(data.points[0].x);
-                highlightTokenInChat(tokenIdx);
-            }
+        attachSortedHover(chartDiv, () => chartDiv._hoverCtx, {
+            tooltipId: 'livechat-hover-tooltip',
+            onHover: (xIdx) => highlightTokenInChat(xIdx),
+            onUnhover: () => clearTokenHighlight(),
         });
-
-        chartDiv.on('plotly_unhover', () => {
-            clearTokenHighlight();
-        });
-
         chartDiv._tokenHoverAttached = true;
     }
+}
+
+/**
+ * Render the steering legend for a list of trait base names.
+ * Called by updateTraitChart (when streaming) and populateLegend (on mount).
+ */
+function renderSteeringLegend(traitNames) {
+    const legendDiv = document.getElementById('chart-legend');
+    if (!legendDiv || traitNames.length === 0) return;
+
+    legendDiv.innerHTML = traitNames.map((trait, idx) => {
+        let metadata = null;
+        for (const [fullPath, meta] of Object.entries(vectorMetadata)) {
+            if (fullPath.endsWith(trait) || fullPath.endsWith('/' + trait)) {
+                metadata = meta;
+                break;
+            }
+        }
+
+        const tooltipText = metadata
+            ? `L${displayLayer(metadata.layer)} ${metadata.method} (${metadata.source})${metadata.coefficient ? ` · 1x = coef ${metadata.coefficient}` : ''}`
+            : '';
+
+        const currentCoef = steeringCoefficients[trait] || 0;
+        const coefficients = [-1, -0.5, 0, 0.5, 1];
+
+        return `
+            <div class="legend-item-row">
+                <span class="legend-item${tooltipText ? ' has-tooltip' : ''}"
+                      ${tooltipText ? `data-tooltip="${tooltipText}"` : ''}
+                      data-trait="${trait}"
+                      onclick="toggleTraitVisibility('${trait}')"
+                      style="cursor:pointer;${hiddenTraits.has(trait) ? 'opacity:0.4;text-decoration:line-through;' : ''}">
+                    <span class="legend-color" style="background: ${getTraitColor(idx)}"></span>
+                    ${trait}
+                </span>
+                <div class="steering-buttons" data-trait="${trait}" ${steeringLocked ? 'style="pointer-events:none;opacity:0.5;"' : ''}>
+                    ${coefficients.map(coef => {
+                        const label = coef === 0 ? '0' : (coef > 0 ? `+${coef}x` : `${coef}x`);
+                        const isActive = currentCoef === coef ? 'active' : '';
+                        return `<button class="btn btn-xs steer-btn ${isActive}" data-coef="${coef}" onclick="setSteeringCoefficient('${trait}', ${coef})">${label}</button>`;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Populate the legend from a list of trait paths (e.g. from /api/experiments/{exp}/traits).
+ * Called on mount so steering is available before any messages are sent.
+ */
+function populateLegend(traitPaths) {
+    const baseNames = traitPaths.map(t => t.includes('/') ? t.split('/').pop() : t);
+    renderSteeringLegend(baseNames);
 }
 
 /**
@@ -336,6 +364,8 @@ function getVectorMetadata() { return vectorMetadata; }
 function setVectorMetadata(meta) { vectorMetadata = meta; }
 function getShowSmoothedLine() { return showSmoothedLine; }
 function setShowSmoothedLine(val) { showSmoothedLine = val; }
+function getCentered() { return centered; }
+function setCentered(val) { centered = val; }
 function resetChartState() {
     vectorMetadata = {};
 }
@@ -357,6 +387,9 @@ export {
     setVectorMetadata,
     getShowSmoothedLine,
     setShowSmoothedLine,
+    getCentered,
+    setCentered,
+    populateLegend,
     resetChartState,
 };
 

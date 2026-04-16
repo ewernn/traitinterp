@@ -37,6 +37,9 @@ import {
     setVectorMetadata,
     getShowSmoothedLine,
     setShowSmoothedLine,
+    getCentered,
+    setCentered,
+    populateLegend,
     resetChartState,
 } from '../components/live-chat-chart.js';
 
@@ -208,16 +211,19 @@ async function renderLiveChat() {
                             <div id="connection-status" class="connection-status"></div>
                             <button id="unload-btn" class="btn btn-secondary btn-xs" style="display:none" onclick="unloadChatBackend()">Unload</button>
                             ${renderToggle({ id: 'smooth-toggle', label: '3-token avg', checked: getShowSmoothedLine(), className: 'smooth-toggle' })}
+                            ${renderToggle({ id: 'centered-toggle', label: 'Centered', checked: getCentered(), className: 'smooth-toggle' })}
+                            <details id="trait-steering-wrap" class="trait-steering-details" open>
+                                <summary>Steering</summary>
+                            </details>
                         </div>
-                        <details id="trait-steering-wrap" class="trait-steering-details" open style="display:none">
-                            <summary>Steering</summary>
-                            <div class="chart-legend" id="chart-legend"></div>
-                        </details>
+                        <div class="chart-legend" id="chart-legend"></div>
                     </div>
-                    <div id="trait-chart" class="trait-chart"></div>
-                    <div id="wake-cta" class="wake-cta" style="display:none">
-                        <button id="wake-btn" class="btn btn-primary" onclick="wakeChatBackend()">Wake GPU</button>
-                        <div id="wake-hint" class="wake-hint"></div>
+                    <div class="trait-chart-body">
+                        <div id="trait-chart" class="trait-chart"></div>
+                        <div id="wake-cta" class="wake-cta" style="display:none">
+                            <button id="wake-btn" class="btn btn-primary" onclick="wakeChatBackend()">Wake GPU</button>
+                            <div id="wake-hint" class="wake-hint"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -253,6 +259,17 @@ async function renderLiveChat() {
     setupChatHandlers();
     initTraitChart();
     renderMessages();
+
+    // Populate steering legend immediately from known traits (no model needed).
+    fetch(`/api/experiments/${LIVE_CHAT_EXPERIMENT}/traits`)
+        .then(r => r.json())
+        .then(data => { if (data.traits) populateLegend(data.traits); })
+        .catch(e => console.warn('[LiveChat] Failed to fetch traits:', e));
+
+    // If conversation was restored with token data, populate chart + legend.
+    if (conversationTree && conversationTree.globalTokens.length > 0) {
+        updateTraitChartWrapped();
+    }
 
     // Sync toggle checkbox + label to current inference mode (model-info span
     // is set in the template above; we intentionally don't call
@@ -310,7 +327,9 @@ function applyChatStatusToDOM() {
     // empty chart panel (styled via CSS) with a centered Wake CTA — less
     // confrontational than a full-screen overlay.
     if (chartEl) chartEl.style.visibility = ready ? 'visible' : 'hidden';
-    if (steering) steering.style.display = ready && document.getElementById('chart-legend')?.children.length ? '' : 'none';
+    // Steering legend is always visible — traits are known from the experiment,
+    // not from the model. Users can set coefficients before waking.
+    if (steering) steering.style.display = '';
     if (wakeCta) wakeCta.style.display = ready ? 'none' : '';
     if (sendBtn) sendBtn.style.display = ready ? '' : 'none';
     if (unloadBtn) unloadBtn.style.display = (ready && mode === 'local') ? '' : 'none';
@@ -384,6 +403,26 @@ function setupChatHandlers() {
             setShowSmoothedLine(e.target.checked);
             updateTraitChartWrapped();
         });
+    }
+
+    const centeredToggle = document.getElementById('centered-toggle');
+    if (centeredToggle) {
+        centeredToggle.addEventListener('change', (e) => {
+            setCentered(e.target.checked);
+            updateTraitChartWrapped();
+        });
+    }
+
+    // The <details> summary lives in the controls row; the legend sits below.
+    // Listen to its open/close and hide the legend accordingly.
+    const steeringWrap = document.getElementById('trait-steering-wrap');
+    const chartLegend = document.getElementById('chart-legend');
+    if (steeringWrap && chartLegend) {
+        const syncLegendVisibility = () => {
+            chartLegend.style.display = steeringWrap.open ? '' : 'none';
+        };
+        syncLegendVisibility();
+        steeringWrap.addEventListener('toggle', syncLegendVisibility);
     }
 }
 
@@ -558,11 +597,12 @@ async function generateResponse(prompt, assistantNodeId) {
                             break;
                         }
 
-                        // Only add content tokens (not prompt, not special) to displayed response
+                        // Only add content tokens (not prompt, not special) to displayed response.
+                        // Special tokens stay OUT of node.content because getHistoryForAPI()
+                        // sends it back as the assistant message — including template tokens
+                        // would double-apply the chat template on the next turn.
                         if (!event.is_prompt && !event.is_special) {
                             responseText += event.token;
-
-                            // Update node content for display
                             const node = conversationTree.getNode(assistantNodeId);
                             if (node) node.content = responseText;
                         }

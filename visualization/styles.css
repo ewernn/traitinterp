@@ -1103,7 +1103,7 @@ code {
     max-width: 700px;
     margin: 0 auto;
     padding: 40px 20px;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: var(--text-base);
     font-weight: 300;
     line-height: 1.7;
@@ -3115,14 +3115,21 @@ mark.annotation {
 }
 
 .trait-chart-panel {
-    position: relative;  /* anchor for .wake-cta when backend is cold */
     display: flex;
     flex-direction: column;
     background: var(--bg-secondary);
     border-radius: var(--radius-sm);
     overflow: hidden;
     flex: 0 0 auto;
-    max-height: 350px;
+}
+
+/* Chart body wraps the plot + wake-cta overlay. Wake CTA is absolutely
+   positioned within this (not the whole panel), so an expanded steering
+   legend in the header pushes the body down instead of being overlapped. */
+.trait-chart-body {
+    position: relative;
+    flex: 1;
+    min-height: 200px;
 }
 
 .chart-header {
