@@ -44,6 +44,18 @@ fi
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
 [[ "$PACKED" == true ]]               && echo "  + PACKED mode (bundled projections)"
 
+# Auto-detect: if --packed was set but the target has no .tar.zst bundles,
+# fall back to scattered mode so the pull still works.
+if [[ "$PACKED" == true ]]; then
+    BUNDLE_COUNT=$(rclone lsf "$R2_REMOTE" -R --include "**/*.tar.zst" 2>/dev/null | head -1 | wc -l)
+    if [[ "$BUNDLE_COUNT" -eq 0 ]]; then
+        echo "  [packed] no bundles found at $R2_REMOTE — falling back to scattered pull"
+        PACKED=false
+        # Rebuild excludes without the JSON exclusion.
+        build_excludes
+    fi
+fi
+
 COMMON_FLAGS=(
     --progress
     --stats 5s

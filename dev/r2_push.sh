@@ -41,13 +41,22 @@ echo "Destination: $R2_REMOTE"
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
 [[ "$PACKED" == true ]]               && echo "  + PACKED mode (bundled projections)"
 
-# Pack projections into .tar.zst bundles before pushing
+# Pack projections into .tar.zst bundles before pushing.
+# If the local source has no projection JSONs, skip packing (nothing to bundle)
+# and skip the JSON-exclude filter so scattered non-projection files still transfer.
 if [[ "$PACKED" == true ]]; then
-    echo ""
-    echo "[packed] Packing projections in $LOCAL_DIR..."
-    python3 "$SCRIPT_DIR/projection_bundles.py" pack "$LOCAL_DIR" --workers 16
-    echo "[packed] Pack complete; continuing with push."
-    echo ""
+    PROJ_COUNT=$(find "$LOCAL_DIR" -path "*/inference/*/projections/*" -name "*.json" 2>/dev/null | head -1 | wc -l)
+    if [[ "$PROJ_COUNT" -eq 0 ]]; then
+        echo "  [packed] no projection JSONs found under $LOCAL_DIR — skipping pack"
+        PACKED=false
+        build_excludes
+    else
+        echo ""
+        echo "[packed] Packing projections in $LOCAL_DIR..."
+        python3 "$SCRIPT_DIR/projection_bundles.py" pack "$LOCAL_DIR" --workers 16
+        echo "[packed] Pack complete; continuing with push."
+        echo ""
+    fi
 fi
 
 COMMON_FLAGS=(
