@@ -252,6 +252,7 @@ def main():
     parser.add_argument("--layer", type=int, required=True)
     parser.add_argument("--method", default="mean_diff+gm+pc50")
     parser.add_argument("--category", default=None, help="Trait category (default: same as experiment)")
+    parser.add_argument("--model-variant", default=None, help="Model variant (default: from config)")
     parser.add_argument("--top-k", type=int, default=20)
     parser.add_argument("--n-documents", type=int, default=5000)
     parser.add_argument("--batch-size", type=int, default=4)
@@ -264,8 +265,13 @@ def main():
 
     category = args.category or args.experiment
 
+    # Resolve model variant
+    from utils.paths import get_model_variant
+    variant = get_model_variant(args.experiment, args.model_variant, mode="application")
+    variant_name = variant.name
+
     # Load model
-    print(f"Loading model for {args.experiment}...")
+    print(f"Loading model for {args.experiment} ({variant_name})...")
     model, tokenizer = load_model(args.experiment, load_in_4bit=args.load_in_4bit)
 
     # Load vectors
@@ -275,11 +281,12 @@ def main():
     for trait in trait_names:
         trait_path = f"{category}/{trait}"
         try:
-            vec, _, _ = load_vector(
+            vec = load_vector(
                 args.experiment, trait_path, layer=args.layer,
-                method=args.method, component="residual",
+                model_variant=variant_name, method=args.method,
             )
-            vectors[trait] = vec
+            if vec is not None:
+                vectors[trait.split('/')[-1]] = vec
         except Exception as e:
             print(f"  Skipping {trait}: {e}")
 
