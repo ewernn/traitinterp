@@ -42,6 +42,20 @@ The paper describes 15 distinct experimental paradigms across 86 figures/tables.
 
 ## Validation
 
+<details class="viz-collapse">
+<summary>Reproduce the validation figures (Table 1, Figs 2, 3)</summary>
+
+```bash
+# Logit lens, implicit emotion, numerical intensity, preference Elo
+python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
+    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+```
+
+Results: `experiments/ant_emotion_concepts/results/stage4_validation/`
+Data files: `logit_lens_L49.json`, `implicit_emotion.json`, `numerical_intensity.json`
+
+</details>
+
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/table1.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/table1_ours.png "Llama 3.3 70B"
@@ -61,6 +75,29 @@ caption: "Figure 3: Numerical intensity — probe activation tracks numerical qu
 :::
 
 ## Geometry
+
+<details class="viz-collapse">
+<summary>Reproduce the geometry figures (Figs 5, 6, 57, 7, 8, 9)</summary>
+
+```bash
+# Cosine heatmap, UMAP clusters, PCA, RSA
+bash experiments/ant_emotion_concepts/scripts/run_stage3.sh
+```
+
+Results: `experiments/ant_emotion_concepts/results/stage3_geometry/`
+Data files: `cosine_heatmap.json`, `clusters_umap.json`, `pca_analysis.json`, `rsa_analysis.json`
+
+Prerequisite: Vectors must be extracted and cross-trait normalized first:
+```bash
+python extraction/run_extraction_pipeline.py \
+    --experiment ant_emotion_concepts --category ant_emotion_concepts \
+    --only-stage 1,3 --save-activations --load-in-4bit
+python analysis/vectors/cross_trait_normalize.py \
+    --experiment ant_emotion_concepts \
+    --layers 1,7,13,19,25,31,37,43,49,55,61,67,73,79
+```
+
+</details>
 
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig5.png "Sonnet 4.5"
@@ -100,6 +137,20 @@ caption: "Figure 9: Cross-layer representational similarity. Emotion structure i
 
 ## Layer Dynamics
 
+<details class="viz-collapse">
+<summary>Reproduce the layer dynamics figures (Figs 11-15)</summary>
+
+```bash
+# Colon predicts response, context propagation, negation, person binding, dissociation
+python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
+    --experiment ant_emotion_concepts --load-in-4bit
+```
+
+Results: `experiments/ant_emotion_concepts/results/stage5/`
+Data files: `colon_predicts.json`, `context_prefix.json`, `context_numerical.json`, `negation.json`, `person_binding.json`, `dissociation.json`
+
+</details>
+
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig11.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/fig11_ours.png "Llama 3.3 70B"
@@ -131,6 +182,27 @@ caption: "Figure 15: Person-specific emotion binding. Matched probes rise at re-
 :::
 
 ## What Doesn't Transfer
+
+<details class="viz-collapse">
+<summary>Reproduce the post-training comparison figures (Figs 10, 36-39)</summary>
+
+```bash
+# Fig 10 — dissociation (part of stage 5)
+python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
+    --experiment ant_emotion_concepts --sub dissociation --load-in-4bit
+
+# Figs 36-39 — base vs instruct post-training comparison
+python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+```
+
+Results: `experiments/ant_emotion_concepts/results/stage5/dissociation.json`,
+`experiments/ant_emotion_concepts/results/stage8_cross_version.json`,
+`experiments/ant_emotion_concepts/results/stage8_deep_dive.json`
+
+Note: stage8 requires both base (Llama 3.1 70B) and instruct (Llama 3.3 70B) variants configured in `experiments/ant_emotion_concepts/config.json`.
+
+</details>
 
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig10.png "Sonnet 4.5"

@@ -711,10 +711,10 @@ body {
 
 /* Experiment picker - dropdown style */
 .exp-dropdown { position: relative; }
-.exp-trigger { font-size: var(--text-sm); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-sm); }
-.exp-trigger:hover { background: var(--bg-tertiary); }
+.exp-trigger { font-size: var(--text-sm); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
+.exp-trigger:hover { background: var(--bg-tertiary); border-color: var(--text-tertiary); }
 .exp-trigger .exp-name { font-weight: 500; }
-.exp-trigger .exp-arrow { font-size: 10px; color: var(--text-tertiary); }
+.exp-trigger .exp-arrow { font-size: 16px; color: var(--text-tertiary); }
 .exp-menu { position: fixed; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; display: none; max-height: 400px; overflow-y: auto; overflow-x: hidden; min-width: max-content; white-space: nowrap; }
 .exp-dropdown:hover .exp-menu, .exp-menu:hover { display: block; }
 .exp-menu-item { padding: 5px 12px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; }
@@ -747,9 +747,9 @@ body {
 .chip-group-pill .chip:hover:not(.active) { border-color: var(--text-tertiary); color: var(--text-secondary); background: transparent; }
 
 .trait-chips { padding: 4px 0; }  /* layout-only; .chip-group-pill supplies chip visuals */
-.trait-cat-header { font-size: var(--text-xxs); color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; padding: 6px 0 2px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-.trait-cat-header:hover { color: var(--text-secondary); }
-.trait-cat-arrow { font-size: 10px; width: 10px; cursor: pointer; }
+.trait-cat-header { font-size: var(--text-sm); color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; padding: 6px 0 2px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.trait-cat-header:hover { color: var(--text-primary); }
+.trait-cat-arrow { font-size: 16px; width: 16px; cursor: pointer; line-height: 1; }
 .trait-cat-label { cursor: pointer; }
 .trait-cat-count { margin-left: auto; font-weight: 400; color: var(--text-tertiary); }
 .trait-chips[hidden] { display: none; }
@@ -3369,6 +3369,67 @@ mark.annotation {
     color: var(--text-secondary);
     margin: 4px 0 16px 0;
     line-height: 1.4;
+}
+
+/* ============================================================
+   Generic collapsible disclosure (tables, code, text, anything)
+   Usage: <details class="viz-collapse"><summary>Title</summary>...</details>
+   ============================================================ */
+.viz-collapse {
+    margin: 12px 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+.viz-collapse > summary {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.viz-collapse > summary::before {
+    content: "▶";
+    font-size: 0.7em;
+    color: var(--text-secondary);
+    transition: transform 0.15s ease;
+    display: inline-block;
+}
+
+.viz-collapse[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.viz-collapse > summary:hover {
+    background: var(--bg-secondary);
+}
+
+.viz-collapse[open] > summary {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.viz-collapse > *:not(summary) {
+    padding: 12px 14px;
+}
+
+.viz-collapse pre {
+    margin: 0;
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    overflow-x: auto;
+}
+
+.viz-collapse table {
+    margin: 0;
+    width: 100%;
 }
 
 .fig-caption::before {
