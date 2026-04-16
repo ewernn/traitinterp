@@ -22,7 +22,7 @@ from utils.steering_results import (
     save_baseline_responses, save_ablation_responses, find_cached_run, append_run, save_responses,
     is_better_result, build_response_records,
 )
-from utils.paths import get_steering_results_path, get_steering_dir, get as get_path, resolve_use_chat_template
+from utils.paths import get_steering_results_path, get_steering_dir, get as get_path, resolve_use_chat_template, desanitize_position
 from utils.coefficient_search import (
     batched_adaptive_search, multi_trait_batched_adaptive_search,
 )
@@ -915,10 +915,35 @@ def discover_response_files(experiment, trait, model_variant, position, prompt_s
     return found
 
 
+def _infer_steering_position_from_disk(experiment, trait, model_variant):
+    """Inspect `experiments/{exp}/steering/{trait}/{variant}/` and return the
+    single position sub-directory found. Raises if zero or multiple — rescore
+    can't guess which existing results to re-judge in those cases."""
+    variant_dir = get_path('steering.trait', experiment=experiment, trait=trait, model_variant=model_variant)
+    if not variant_dir.exists():
+        raise FileNotFoundError(f"No steering data at {variant_dir} — nothing to re-score.")
+    positions = [desanitize_position(p.name) for p in variant_dir.iterdir() if p.is_dir()]
+    if not positions:
+        raise FileNotFoundError(f"No position sub-directories under {variant_dir}.")
+    if len(positions) > 1:
+        raise ValueError(
+            f"Multiple positions found under {variant_dir}: {positions}. "
+            f"Pass --position explicitly to disambiguate."
+        )
+    return positions[0]
+
+
 async def run_rescore(config: SteeringConfig, trait, model_variant, dry_run=False):
     """Re-score existing steering responses with current judge. No GPU needed."""
     steering_data = load_steering_data(trait)
     eval_prompt = config.eval_prompt or steering_data.eval_prompt
+
+    # Rescore only touches existing files — infer position from disk rather
+    # than assuming a default (hardcoded defaults lie when the data was
+    # written with a non-default position).
+    if config.position is None:
+        config.position = _infer_steering_position_from_disk(config.experiment, trait, model_variant)
+        print(f"  Inferred --position={config.position} from existing steering directory")
 
     response_files = discover_response_files(config.experiment, trait, model_variant, config.position, config.prompt_set)
     if not response_files:
