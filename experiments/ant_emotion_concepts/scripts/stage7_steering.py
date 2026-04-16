@@ -470,8 +470,8 @@ def main():
                         help="Rollouts per (vector, strength) cell (default: 50)")
     parser.add_argument("--gate-rollouts", type=int, default=GATE_ROLLOUTS,
                         help="Rollouts for decision gate (default: 10)")
-    parser.add_argument("--method", default="mean_diff",
-                        help="Vector extraction method (default: mean_diff)")
+    parser.add_argument("--method", default="mean_diff+gm+pc50",
+                        help="Vector extraction method (default: mean_diff+gm+pc50, the fully-denoised Sofroniew vectors)")
     parser.add_argument("--position", default="response[50:]",
                         help="Vector position (default: response[50:])")
 

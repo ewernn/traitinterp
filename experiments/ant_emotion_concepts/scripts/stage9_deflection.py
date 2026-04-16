@@ -412,7 +412,8 @@ def main():
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--model-variant", default=None)
     parser.add_argument("--layer", type=int, default=DEFAULT_LAYER)
-    parser.add_argument("--method", default="mean_diff")
+    parser.add_argument("--method", default="mean_diff+gm+pc50",
+                        help="Vector extraction method (default: mean_diff+gm+pc50, the fully-denoised Sofroniew vectors)")
     parser.add_argument("--position", default="response[50:]")
     parser.add_argument("--rollouts", type=int, default=DEFAULT_ROLLOUTS,
                         help="Rollouts for blackmail steering (default: 50)")
