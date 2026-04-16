@@ -1,4 +1,4 @@
-import { getChartColors } from './display.js';
+import { getChartColors, displayLayer } from './display.js';
 import { buildChartLayout, renderChart } from './charts.js';
 
 /**
@@ -82,15 +82,15 @@ function getTraitShortName(fullPath, labels = null) {
 
 const MODEL_DIFF_LAYER_DEFAULTS = {
     per_layer_trait_delta: {
-        yaxis: 'Trait Score Delta',
+        yaxis: '|Trait Score Delta|',
         hoverFmt: '.1f',
         hoverSuffix: '',
         emptyMsg: 'No trait delta data available',
         defaultHeight: 300,
         buildName: (shortName, traitData, field) => {
             const values = traitData[field];
-            const peakIdx = values.reduce((minIdx, val, i, arr) =>
-                val < arr[minIdx] ? i : minIdx, 0);
+            const peakIdx = values.reduce((maxIdx, val, i, arr) =>
+                val > arr[maxIdx] ? i : maxIdx, 0);
             const peakVal = values[peakIdx]?.toFixed(1) || '?';
             const peakLayer = traitData.layers[peakIdx] ?? '?';
             return `${shortName} (${peakVal} @ L${peakLayer})`;
@@ -355,7 +355,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
     const labels = indices.map(i => {
         const d = results[i];
         const methodShort = d.method === 'mean_diff' ? 'md' : d.method.slice(0, 2);
-        return `${d.label} (${methodShort} L${d.layer})`;
+        return `${d.label} (${methodShort} L${displayLayer(d.layer)})`;
     });
 
     const prefix = direction === 'positive' ? '+' : '';

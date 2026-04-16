@@ -180,7 +180,9 @@ async function renderFindings() {
         return;
     }
 
-    const metadataList = await Promise.all(filenames.map(f => loadFindingMetadata(f)));
+    const metadataList = await Promise.all(
+        filenames.map(f => (typeof f === 'string' ? loadFindingMetadata(f) : Promise.resolve(null)))
+    );
 
     let html = `
         <div class="findings-container">
@@ -191,6 +193,12 @@ async function renderFindings() {
     `;
 
     filenames.forEach((filename, i) => {
+        if (typeof filename !== 'string') {
+            if (filename && filename.separator) {
+                html += `<div class="finding-separator">${filename.separator}</div>`;
+            }
+            return;
+        }
         const meta = metadataList[i];
         const isTodo = !meta.preview || meta.preview === 'TODO';
         const todoClass = isTodo ? 'finding-todo' : '';

@@ -5,23 +5,6 @@
 
 // Display names for better interpretability
 const DISPLAY_NAMES = {
-    // Legacy names (from old structure)
-    'uncertainty_calibration': 'Confidence',
-    'instruction_boundary': 'Literalness',
-    'commitment_strength': 'Assertiveness',
-    'retrieval_construction': 'Retrieval',
-    'convergent_divergent': 'Thinking Style',
-    'abstract_concrete': 'Abstraction Level',
-    'temporal_focus': 'Temporal Orientation',
-    'cognitive_load': 'Complexity',
-    'context_adherence': 'Context Following',
-    'emotional_valence': 'Emotional Tone',
-    'paranoia_trust': 'Trust Level',
-    'power_dynamics': 'Authority Tone',
-    'serial_parallel': 'Processing Style',
-    'local_global': 'Focus Scope',
-
-    // New categorized trait names
     'abstractness': 'Abstractness',
     'authority': 'Authority',
     'compliance': 'Compliance',
@@ -208,10 +191,20 @@ function getPlotlyLayout(baseLayout = {}) {
     };
 }
 
+/**
+ * Convert a 0-indexed layer number to the 1-indexed value shown to users.
+ * Internal data and state stay 0-indexed; only the rendered label is shifted.
+ * Use anywhere a raw layer index appears in user-visible text (e.g. `L${displayLayer(n)}`).
+ */
+function displayLayer(layer) {
+    return Number.isFinite(layer) ? layer + 1 : layer;
+}
+
 // ES module exports
 export {
     DISPLAY_NAMES,
     getDisplayName,
+    displayLayer,
     ASYMB_COLORSCALE,
     DELTA_COLORSCALE,
     CORRELATION_COLORSCALE,
@@ -222,6 +215,3 @@ export {
     getMethodColors,
     getPlotlyLayout,
 };
-
-// Keep window.* for remaining consumers (dev/archived files)
-window.getCssVar = getCssVar;

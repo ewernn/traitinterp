@@ -2,8 +2,8 @@
 // Input: traitData, loadedTraits, tick data
 // Output: rendered Plotly magnitude plot into #token-magnitude-plot (sec-header body managed by inference-view-controls.js)
 
-import { getChartColors } from '../../core/display.js';
-import { buildChartLayout, renderChart, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildTurnBoundaryShapes } from '../../core/charts.js';
+import { getChartColors, displayLayer } from '../../core/display.js';
+import { buildChartLayout, renderChart, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildTurnBoundaryShapes, LINE_SPLINE } from '../../core/charts.js';
 import { START_TOKEN_IDX } from './chart-token-trajectory.js';
 
 /**
@@ -48,9 +48,9 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         y: norms,
         type: 'scatter',
         mode: 'lines',
-        name: `L${layer}`,
-        line: { color: colors[idx % colors.length], width: 1.5 },
-        hovertemplate: `L${layer}<br>Token %{x}<br>||h|| = %{y:.1f}<extra></extra>`
+        name: `L${displayLayer(layer)}`,
+        line: { color: colors[idx % colors.length], width: 1.5, ...LINE_SPLINE },
+        hovertemplate: `L${displayLayer(layer)}<br>Token %{x}<br>||h|| = %{y:.1f}<extra></extra>`
     }));
 
     // Compute y-axis range: cap at 95th percentile to avoid BOS/early token spikes crushing the plot

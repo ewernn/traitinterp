@@ -2,45 +2,64 @@
 
 Train a linear probe. See what your model is thinking. Steer it.
 
-**[Live demo](https://traitinterp.com)** | **[Docs](docs/main.md)** | **[Methodology](docs/methodology.md)**
+**[Live demo](https://traitinterp.com)** · **[Docs](docs/main.md)** · **[Methodology](docs/methodology.md)**
+
+<!-- TODO: add screenshot of dashboard here -->
 
 ---
 
 ## What this does
 
-1. **Extract** — Train a linear probe that detects a behavioral trait (sycophancy, deception, formality, etc.)
-2. **Monitor** — Project hidden states onto that probe token-by-token during generation
-3. **Steer** — Add the probe direction during inference to amplify or suppress the trait
+Three pipelines, one trait definition:
 
-Trait datasets are model-agnostic. Extract once, apply to any model.
+1. **Extract** — train a linear probe that detects a behavioral trait
+2. **Monitor** — project hidden states onto the probe token-by-token during generation
+3. **Steer** — add the probe direction during inference to amplify or suppress the trait
+
+Trait definitions are model-agnostic — define once, run on any HuggingFace model. Tested on Llama 3.1/3.3, Gemma 2/3, Qwen 2.5/3, Mistral, OLMo, DeepSeek-R1, GPT-OSS, and Kimi K2.
+
+---
+
+## Install
+
+```bash
+git clone https://github.com/ewernn/traitinterp.git && cd traitinterp
+pip install -e .
+export HF_TOKEN=your_token  # for gated models
+```
 
 ---
 
 ## Quick start
 
-```bash
-git clone https://github.com/ewernn/traitinterp.git && cd traitinterp
-pip install -r requirements.txt
-export HF_TOKEN=your_token  # for gated models
-```
+Five traits ship in `datasets/traits/starter_traits/`: `sycophancy`, `concealment`, `hallucination`, `assistant_axis`, `golden_gate_bridge`.
 
-Extract your first trait:
+**Extract a trait vector:**
 ```bash
 python extraction/run_extraction_pipeline.py \
     --experiment my_first_run \
     --traits starter_traits/sycophancy
 ```
 
-This generates responses, vets them with an LLM judge, trains probes across all layers, and evaluates quality. Results land in `experiments/my_first_run/`.
+Generates responses → vets them with an LLM judge → trains probes across all layers → evaluates quality. Output lands in `experiments/my_first_run/extraction/`.
 
-Monitor traits during generation:
+**Monitor during generation:**
 ```bash
 python inference/run_inference_pipeline.py \
     --experiment my_first_run \
     --prompt-set starter_prompts/general
 ```
 
-Visualize:
+**Validate causally via steering:**
+```bash
+python steering/run_steering_eval.py \
+    --experiment my_first_run \
+    --traits starter_traits/sycophancy
+```
+
+Searches for the coefficient that maximizes trait expression while keeping output coherent (LLM-as-judge).
+
+**Visualize:**
 ```bash
 python visualization/serve.py  # http://localhost:8000
 ```
@@ -49,47 +68,35 @@ python visualization/serve.py  # http://localhost:8000
 
 ## How it works
 
-### Extraction
-
-Define a trait with naturally contrasting scenarios — prompts where the model's completion naturally exhibits vs. avoids a behavior. No instruction-following, no system prompts. The model doesn't know it's being measured.
+### Trait definition
 
 ```
 datasets/traits/starter_traits/sycophancy/
-├── positive.jsonl    # scenarios that elicit sycophantic responses
+├── positive.jsonl    # scenarios that elicit the trait
 ├── negative.jsonl    # matched scenarios that don't
-├── definition.txt    # what sycophancy means + scoring rubric
+├── definition.txt    # what the trait means + scoring rubric
 └── steering.json     # evaluation questions for causal validation
 ```
 
-Generate responses on both sets, capture activations, train a linear probe to separate them. The probe direction is your trait vector.
+### Probe training
+
+Capture hidden states on both scenario sets, fit a linear separator (logistic regression, difference-of-means, etc.). The probe direction is your trait vector.
 
 ### Monitoring
-
-Project hidden states onto the trait vector at every token:
 
 ```
 score = hidden_state @ trait_vector
 ```
 
-Positive scores = expressing the trait. Negative = avoiding it. Watch it evolve token-by-token as the model generates.
+Positive = expressing the trait. Negative = avoiding it. One score per token, per layer.
 
 ### Steering
-
-Add the trait vector to hidden states during generation:
 
 ```
 hidden_state += coefficient * trait_vector
 ```
 
-An automated coefficient search with LLM-as-judge evaluation finds the strength that maximizes trait expression while maintaining coherence.
-
-### Visualization
-
-Interactive dashboard at [traitinterp.com](https://traitinterp.com) (or run locally):
-- **Extraction** — probe accuracy heatmaps across layers and methods
-- **Steering** — coefficient sweep results, response browser
-- **Dynamics** — per-token trait trajectory during generation
-- **Live Chat** — real-time monitoring and steering during conversation
+An automated coefficient search picks the strength that maximizes trait expression while keeping output coherent.
 
 ---
 
@@ -97,13 +104,13 @@ Interactive dashboard at [traitinterp.com](https://traitinterp.com) (or run loca
 
 ```
 traitinterp/
-├── datasets/traits/       # Model-agnostic trait definitions (scenarios, rubrics, eval questions)
-├── extraction/            # Extract trait vectors: run_extraction_pipeline.py
-├── inference/             # Monitor traits: run_inference_pipeline.py
-├── steering/              # Validate via steering: run_steering_eval.py
+├── datasets/traits/       # Model-agnostic trait definitions
+├── extraction/            # Extract trait vectors
+├── inference/             # Monitor traits token-by-token
+├── steering/              # Causal validation
 ├── core/                  # Primitives: types, hooks, methods, projection math
-├── utils/                 # Shared: model loading, paths, generation, vector I/O
-├── config/                # Path templates, model configs, LoRA registry
+├── utils/                 # Shared: model loading, paths, vector I/O
+├── config/                # Path templates, model configs
 ├── visualization/         # Interactive dashboard (serves traitinterp.com)
 ├── analysis/              # Model comparison, benchmarks, vector analysis
 ├── experiments/           # Output data (vectors, activations, results)
@@ -114,16 +121,17 @@ traitinterp/
 
 ## Docs
 
-- **[docs/main.md](docs/main.md)** — Codebase reference and navigation
-- **[docs/extraction_guide.md](docs/extraction_guide.md)** — Extraction pipeline
-- **[docs/inference_guide.md](docs/inference_guide.md)** — Inference pipeline
-- **[docs/steering_guide.md](docs/steering_guide.md)** — Steering pipeline
-- **[docs/trait_dataset_creation.md](docs/trait_dataset_creation.md)** — Creating trait datasets
+- **[docs/main.md](docs/main.md)** — codebase reference and navigation
+- **[docs/extraction_guide.md](docs/extraction_guide.md)** — extraction pipeline
+- **[docs/inference_guide.md](docs/inference_guide.md)** — inference pipeline
+- **[docs/steering_guide.md](docs/steering_guide.md)** — steering pipeline
+- **[docs/trait_dataset_creation.md](docs/trait_dataset_creation.md)** — creating trait datasets
+- **[docs/methodology.md](docs/methodology.md)** — design decisions
 
 ---
 
 ## Attribution
 
-Core extraction logic adapted from [safety-research/persona_vectors](https://github.com/safety-research/persona_vectors). Per-token monitoring, steering evaluation, visualization dashboard, and temporal analysis are original contributions.
+Core extraction logic adapted from [safety-research/persona_vectors](https://github.com/safety-research/persona_vectors). Per-token monitoring, steering evaluation, visualization dashboard, and temporal analysis are original.
 
-MIT License
+MIT License.

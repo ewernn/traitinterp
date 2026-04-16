@@ -31,9 +31,6 @@ def _get_layers(model):
     raise AttributeError(f"Cannot find layers in model: {type(model).__name__}")
 
 
-def _get_first_layer(model):
-    """Get the first transformer layer, handling different model architectures."""
-    return _get_layers(model)[0]
 
 
 def _get_layer(model, layer_idx: int):

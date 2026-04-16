@@ -11,6 +11,7 @@ import { getCssVar, getTokenHighlightColors } from '../core/display.js';
 import { fetchJSON, formatTokenDisplay, escapeHtml } from '../core/utils.js';
 import { getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
+import { renderChipGroup, wireChipGroup } from './styled-chip-group.js';
 
 // Views that show the prompt picker
 const INFERENCE_VIEWS = ['inference'];
@@ -94,19 +95,28 @@ async function renderPromptPicker() {
 
     const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
 
-    let promptSetButtons = '';
+    // Build prompt set chip items
+    const promptSetItems = [];
     for (const [setName, promptIds] of Object.entries(window.state.promptsWithData)) {
         if (promptIds.length === 0) continue;
         // Hide replay prompt sets — they're internal to the replay_suffix convention
         if (isReplaySuffix && setName.includes('_replay_')) continue;
-        const isActive = setName === window.state.currentPromptSet ? 'active' : '';
-        const displayName = setName.replace(/_/g, ' ');
-        // Check if this set has any comparison variants
         const variants = window.state.variantsPerPromptSet?.[setName] || [];
         const hasComparisonData = variants.some(v => v !== appVariant);
-        const noDiffClass = isDiffActive && !hasComparisonData ? 'pp-no-diff' : '';
-        promptSetButtons += `<button class="btn btn-xs pp-btn pp-set-btn ${isActive} ${noDiffClass}" data-set="${setName}">${displayName}</button>`;
+        const noDiff = isDiffActive && !hasComparisonData;
+        promptSetItems.push({
+            value: setName,
+            label: setName.replace(/_/g, ' '),
+            className: noDiff ? 'pp-no-diff' : undefined,
+        });
     }
+    const promptSetChips = renderChipGroup({
+        id: 'pp-set-group',
+        mode: 'single',
+        items: promptSetItems,
+        selected: window.state.currentPromptSet,
+        onChange: (newSet) => selectPromptSet(newSet),
+    });
 
     // Build prompt ID buttons (with pagination for large sets)
     const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
@@ -225,7 +235,7 @@ async function renderPromptPicker() {
             <div class="pp-picker">
                 <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Set:</span>
-                    <div class="pp-sets">${promptSetButtons}</div>
+                    ${promptSetChips}
                 </div>
                 <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Prompt:</span>
@@ -255,58 +265,26 @@ async function renderPromptPicker() {
     }
 }
 
-/**
- * Fetch prompt/response data and cache it.
- * Tries shared response data first, falls back to projection data for backwards compatibility.
- */
+/** Fetch the shared response JSON for the current prompt and cache it. */
 async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
-    let data = null;
     const modelVariant = getVariantForCurrentPromptSet();
+    const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
 
-    // Try shared response data first (new format)
+    let data = null;
     try {
-        const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
         const response = await fetch(responseUrl);
-        if (response.ok) {
-            data = await response.json();
-        }
+        if (response.ok) data = await response.json();
     } catch (e) {
-        // Fall through to fallback
+        console.warn('Failed to fetch prompt picker data:', e);
     }
-
-    // Fall back to projection data (old format, for backwards compatibility)
-    if (!data && window.state.experimentData?.traits?.length > 0) {
-        const firstTrait = window.state.experimentData.traits[0];
-        try {
-            const url = window.paths.residualStreamData(firstTrait, window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
-            const response = await fetch(url);
-            if (response.ok) {
-                data = await response.json();
-            }
-        } catch (e) {
-            console.warn('Failed to fetch prompt picker data:', e);
-        }
-    }
-
     if (!data) return;
 
-    // Handle both flat schema (tokens + prompt_end) and nested schema (prompt.tokens, response.tokens)
-    let promptTokenList, responseTokenList, promptText, responseText;
-    if (data.tokens && data.prompt_end !== undefined) {
-        // Flat schema
-        promptTokenList = data.tokens.slice(0, data.prompt_end);
-        responseTokenList = data.tokens.slice(data.prompt_end);
-        promptText = typeof data.prompt === 'string' ? data.prompt : '';
-        responseText = typeof data.response === 'string' ? data.response : '';
-    } else {
-        // Nested schema
-        promptTokenList = data.prompt?.tokens || [];
-        responseTokenList = data.response?.tokens || [];
-        promptText = data.prompt?.text || '';
-        responseText = data.response?.text || '';
-    }
+    const promptTokenList = data.tokens.slice(0, data.prompt_end);
+    const responseTokenList = data.tokens.slice(data.prompt_end);
+    const promptText = typeof data.prompt === 'string' ? data.prompt : '';
+    const responseText = typeof data.response === 'string' ? data.response : '';
     const allTokens = [...promptTokenList, ...responseTokenList];
 
     // Fetch annotation token ranges for response highlighting
@@ -328,13 +306,13 @@ async function fetchPromptPickerData() {
         responseTokens: responseTokenList.length,
         allTokens: allTokens,
         nPromptTokens: promptTokenList.length,
-        tags: data.tags || data.metadata?.tags || [],  // Support both flat and legacy schemas
+        tags: data.tags || [],
         annotationTokenRanges: annotationTokenRanges  // [start, end) in response token space
     };
 
     // Store tags in per-prompt cache for rendering buttons
     const cacheKey = `${window.state.currentPromptSet}:${window.state.currentPromptId}`;
-    promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
+    promptTagsCache[cacheKey] = data.tags || [];
 
     // Reset token index when loading new prompt (clamp to valid range)
     const maxIdx = Math.max(0, allTokens.length - 1);
@@ -388,10 +366,8 @@ function setupPromptPickerListeners() {
         });
     }
 
-    // Prompt set buttons (inline pills)
-    container.querySelectorAll('.pp-set-btn').forEach(btn => {
-        btn.addEventListener('click', () => selectPromptSet(btn.dataset.set));
-    });
+    // Prompt set chip-group — handler lives in onChange.
+    wireChipGroup(container);
 
     // Pagination buttons (use mousedown to ensure event fires before any re-render)
     const prevBtn = container.querySelector('#pp-prev');
@@ -629,6 +605,7 @@ function selectPromptSet(newSet) {
     }
 
     window.state.currentPromptSet = newSet;
+    window.state.inferenceVariantOverride = null;  // variants differ per prompt set
     promptPage = 0;
 
     window.updateAvailableComparisonModels?.();

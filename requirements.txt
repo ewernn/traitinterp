@@ -1,12 +1,11 @@
 # Core dependencies
 fire==0.7.0
 PyYAML==6.0.2
-transformers==4.57.3
+transformers>=5.0,<6.0  # Qwen3.5 / qwen3_5 model type lands in 5.x
 accelerate
 torch
 tqdm
 
-# traitlens dependencies (now bundled in traitlens/)
 scipy>=1.7.0
 scikit-learn>=1.0.0
 

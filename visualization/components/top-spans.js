@@ -1,14 +1,17 @@
 /**
  * Top Spans Component
- * Cross-prompt span analysis: finds highest-delta token spans across prompts.
- * Extracted from views/inference/inference-view.js
+ * Finds highest-magnitude token spans for a trait.
+ * - Single-variant mode: ranks by absolute trait activation per token.
+ * - Diff mode: ranks by absolute variant delta (main - comparison).
+ * The ranking/compute is identical — diff mode just feeds diff values in.
  *
  * Dependencies: state.js, paths.js, utils.js (fetchJSON)
  */
 
 import { getDisplayName } from '../core/display.js';
 import { setSpanWindowLength, setSpanScope, setSpanMode, getVariantForCurrentPromptSet } from '../core/state.js';
-import { renderFilterChip } from '../core/ui.js';
+import { renderSegmentedControl } from '../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
 
 /** Return inline color and formatted delta string for a span's meanDelta. */
 function deltaStyle(meanDelta) {
@@ -30,6 +33,7 @@ let crossPromptLoading = false;
 function normalizeResponseProjections(values, responseNorms, normalizedResponse) {
     if (!values || values.length === 0) return values;
     const mode = window.state.projectionMode || 'cosine';
+    if (mode === 'raw') return values;  // no normalization — raw dot products
     // Use pre-normalized values if available
     if (mode === 'normalized' && normalizedResponse) return normalizedResponse;
     if (!responseNorms || responseNorms.length === 0) return values;
@@ -73,7 +77,8 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         compPromptSet = promptSet;
     }
 
-    if (!mainVariant || !compVariant) return { spans: [], totalPrompts: 0 };
+    if (!mainVariant) return { spans: [], totalPrompts: 0 };
+    const isSingleVariant = !compVariant;
 
     const spanMode = window.state.spanMode || 'window';
     const allSpans = [];
@@ -85,14 +90,20 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         const results = await Promise.all(batch.map(async (pid) => {
             try {
                 const trait = { name: baseTrait };
-                const [mainRes, compRes, responseRes] = await Promise.all([
+                const fetches = [
                     fetch(window.paths.residualStreamData(trait, mainPromptSet, pid, mainVariant)),
-                    fetch(window.paths.residualStreamData(trait, compPromptSet, pid, compVariant)),
-                    fetch(window.paths.responseData(mainPromptSet, pid, mainVariant))
-                ]);
-                if (!mainRes.ok || !compRes.ok) return null;
-                const [mainData, compData] = await Promise.all([mainRes.json(), compRes.json()]);
-                if (mainData.error || compData.error) return null;
+                    fetch(window.paths.responseData(mainPromptSet, pid, mainVariant)),
+                ];
+                if (!isSingleVariant) fetches.splice(1, 0, fetch(window.paths.residualStreamData(trait, compPromptSet, pid, compVariant)));
+                const responses = await Promise.all(fetches);
+                const mainRes = responses[0];
+                const compRes = isSingleVariant ? null : responses[1];
+                const responseRes = responses[responses.length - 1];
+                if (!mainRes.ok || (compRes && !compRes.ok)) return null;
+
+                const mainData = await mainRes.json();
+                const compData = compRes ? await compRes.json() : null;
+                if (mainData.error || compData?.error) return null;
 
                 // Get response tokens from response data
                 let tokens = [];
@@ -112,30 +123,35 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
                     return data.projections;
                 };
                 const mainProj = getProj(mainData);
-                const compProj = getProj(compData);
-                if (!mainProj || !compProj) return null;
+                const compProj = compData ? getProj(compData) : null;
+                if (!mainProj || (compData && !compProj)) return null;
 
-                // Trim to min length to avoid EOS token mismatch (organism has <|eot_id|>, replay doesn't)
-                const lenDiff = Math.abs(mainProj.response.length - compProj.response.length);
-                if (lenDiff > 1) console.warn(`[TopSpans] Unexpected length mismatch for prompt ${pid}: organism=${mainProj.response.length}, comparison=${compProj.response.length} (diff=${lenDiff})`);
-                const minLen = Math.min(mainProj.response.length, compProj.response.length);
-                const rawDiff = isReplaySuffix
-                    ? mainProj.response.slice(0, minLen).map((v, i) => v - compProj.response[i])
-                    : mainProj.response.slice(0, minLen).map((v, i) => compProj.response[i] - v);
+                let values, finalLen;
+                if (isSingleVariant) {
+                    finalLen = mainProj.response.length;
+                    values = mainProj.response.slice();
+                } else {
+                    const lenDiff = Math.abs(mainProj.response.length - compProj.response.length);
+                    if (lenDiff > 1) console.warn(`[TopSpans] Unexpected length mismatch for prompt ${pid}: organism=${mainProj.response.length}, comparison=${compProj.response.length} (diff=${lenDiff})`);
+                    finalLen = Math.min(mainProj.response.length, compProj.response.length);
+                    values = isReplaySuffix
+                        ? mainProj.response.slice(0, finalLen).map((v, i) => v - compProj.response[i])
+                        : mainProj.response.slice(0, finalLen).map((v, i) => compProj.response[i] - v);
+                }
 
                 // Normalize to match trajectory chart (use main variant's norms)
-                const responseNorms = mainData.token_norms?.response?.slice(0, minLen);
-                const diffResponse = normalizeResponseProjections(rawDiff, responseNorms);
+                const responseNorms = mainData.token_norms?.response?.slice(0, finalLen);
+                const normValues = normalizeResponseProjections(values, responseNorms);
 
-                return { promptId: pid, diffResponse, tokens: tokens.slice(0, minLen) };
+                return { promptId: pid, values: normValues, tokens: tokens.slice(0, finalLen) };
             } catch { return null; }
         }));
 
         for (const r of results) {
             if (!r) continue;
             const spans = spanMode === 'clauses'
-                ? computeClauseSpans(r.diffResponse, r.tokens, 5)
-                : computeTopSpans(r.diffResponse, r.tokens, windowLength, 5);
+                ? computeClauseSpans(r.values, r.tokens, 5)
+                : computeTopSpans(r.values, r.tokens, windowLength, 5);
             for (const s of spans) {
                 allSpans.push({ ...s, promptId: r.promptId });
             }
@@ -239,12 +255,15 @@ function computeClauseSpans(diffValues, tokens, topK = 10) {
  */
 function renderSpanRow(s, i, showPromptId = false) {
     const { color, text: deltaText } = deltaStyle(s.meanDelta);
+    // Prompt picker shows 1-based sequential numbers; match that so rows and picker agree.
+    const promptIds = window.state.promptsWithData?.[window.state.currentPromptSet] || [];
+    const displayNum = promptIds.indexOf(s.promptId) + 1;
     const title = showPromptId
-        ? `Prompt ${s.promptId}, tokens ${s.start}\u2013${s.end}`
+        ? `Prompt ${displayNum || s.promptId}, tokens ${s.start}\u2013${s.end}`
         : `Tokens ${s.start}\u2013${s.end} (response-relative)`;
     const promptIdAttr = showPromptId ? ` data-prompt-id="${s.promptId}"` : '';
     const promptBadge = showPromptId
-        ? `<span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${s.promptId}</span>`
+        ? `<span style="color: var(--text-tertiary); font-size: var(--text-xxs); min-width: 30px;">p${displayNum || s.promptId}</span>`
         : '';
     const spanText = (s.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `<div class="span-result" data-span-start="${s.start}" data-span-end="${s.end}"${promptIdAttr} title="${title}">
@@ -270,22 +289,24 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     if (!container) return;
 
     const isDiff = Object.values(traitData).some(d => d.metadata?._isDiff);
-    if (!isDiff) {
+
+    // Candidate traits: in diff mode, only diff traits; in single-variant mode, all loaded traits.
+    const candidateTraitKeys = isDiff
+        ? loadedTraits.filter(k => traitData[k]?.metadata?._isDiff)
+        : loadedTraits.filter(k => traitData[k]);
+
+    if (candidateTraitKeys.length === 0) {
         container.innerHTML = '';
         return;
     }
 
-    // Find trait keys that have diff data
-    const diffTraitKeys = loadedTraits.filter(k => traitData[k]?.metadata?._isDiff);
-
-    // Determine selected trait for ranking
+    // Determine selected trait for ranking (default: trait with highest mean |value|)
     let spanTrait = window.state.spanTrait;
-    if (!spanTrait || !diffTraitKeys.includes(spanTrait)) {
-        // Default to trait with highest mean |delta|
-        let bestKey = diffTraitKeys[0];
+    if (!spanTrait || !candidateTraitKeys.includes(spanTrait)) {
+        let bestKey = candidateTraitKeys[0];
         let bestMean = 0;
-        for (const key of diffTraitKeys) {
-            const vals = traitData[key].projections?.response || [];
+        for (const key of candidateTraitKeys) {
+            const vals = traitData[key]?._normalizedResponse || traitData[key]?.projections?.response || [];
             const mean = vals.reduce((a, b) => a + Math.abs(b), 0) / (vals.length || 1);
             if (mean > bestMean) { bestMean = mean; bestKey = key; }
         }
@@ -300,18 +321,20 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
 
     // Update sec-header badge
     const badge = document.getElementById('badge-top-spans');
-    if (badge) badge.textContent = isAllPrompts ? 'cross-prompt' : 'diff mode';
+    const modeLabel = isDiff ? 'diff' : 'trait';
+    if (badge) badge.textContent = isAllPrompts ? `cross-prompt (${modeLabel})` : `${modeLabel} mode`;
 
     // Skip rendering if section body is hidden (managed by sec-header toggle)
     const sectionBody = document.getElementById('section-body-top-spans');
     if (sectionBody?.hidden) return;
 
-    // Compute spans for selected trait (current response mode)
-    // Use pre-normalized values from chart rendering (includes massive dim cleaning + normalization)
-    const diffValues = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
+    // Compute spans for selected trait — same code path for diff and single-variant.
+    // `_normalizedResponse` holds diff values in diff mode, raw trait projections otherwise
+    // (both are post-normalize/massive-dim-clean from the trajectory chart).
+    const values = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
     const spans = isAllPrompts ? [] : (spanMode === 'clauses'
-        ? computeClauseSpans(diffValues, responseTokens)
-        : computeTopSpans(diffValues, responseTokens, windowLength));
+        ? computeClauseSpans(values, responseTokens)
+        : computeTopSpans(values, responseTokens, windowLength));
 
     // Get display name for trait
     const traitDisplayName = (key) => {
@@ -323,20 +346,38 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     container.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
             <span style="font-size: var(--text-xs); color: var(--text-secondary);">Trait:</span>
-            <select id="span-trait-select" style="font-size: var(--text-xs);">
-                ${diffTraitKeys.map(k => `
-                    <option value="${k}" ${k === spanTrait ? 'selected' : ''}>${traitDisplayName(k)}</option>
-                `).join('')}
-            </select>
-            ${renderFilterChip('window', 'Window', spanMode, 'span-mode')}
-            ${renderFilterChip('clauses', 'Clauses', spanMode, 'span-mode')}
+            ${renderStyledSelect({
+                id: 'span-trait-select',
+                options: candidateTraitKeys.map(k => ({ value: k, label: traitDisplayName(k) })),
+                selected: spanTrait,
+                onChange: (value) => {
+                    window.state.spanTrait = value;
+                    renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+                },
+            })}
+            ${renderSegmentedControl({
+                id: 'span-mode-control',
+                options: [
+                    { value: 'window', label: 'Window' },
+                    { value: 'clauses', label: 'Clauses' },
+                ],
+                selected: spanMode,
+                dataAttr: 'span-mode',
+            })}
             ${spanMode === 'window' ? `
             <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
             <span id="span-window-label" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 40px;">${windowLength} tok</span>
             ` : ''}
             <span style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: 8px;">Scope:</span>
-            ${renderFilterChip('current', 'Current', window.state.spanScope, 'span-scope')}
-            ${renderFilterChip('allPrompts', 'All Prompts', window.state.spanScope, 'span-scope')}
+            ${renderSegmentedControl({
+                id: 'span-scope-control',
+                options: [
+                    { value: 'current', label: 'Current' },
+                    { value: 'allPrompts', label: 'All Responses' },
+                ],
+                selected: window.state.spanScope || 'current',
+                dataAttr: 'span-scope',
+            })}
         </div>
         <div id="top-spans-results" style="max-height: 300px; overflow-y: auto;">
             ${isAllPrompts
@@ -349,13 +390,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     if (badge && !isAllPrompts) badge.textContent = spans.length + ' spans';
 
     // Event listeners
-    const traitSelect = document.getElementById('span-trait-select');
-    if (traitSelect) {
-        traitSelect.addEventListener('change', () => {
-            window.state.spanTrait = traitSelect.value;
-            renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
-        });
-    }
+    wireStyledSelect(container);
 
     const slider = document.getElementById('span-window-slider');
     if (slider) {
@@ -393,19 +428,20 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         });
     });
 
-    // Cross-prompt: trigger async fetch if in allPrompts mode
-    if (isAllPrompts && compareModel && !crossPromptLoading) {
+    // Cross-prompt: trigger async fetch if in allPrompts mode (diff OR single-variant)
+    if (isAllPrompts && !crossPromptLoading) {
         const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
         const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
         const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
         const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
-        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel}:${baseTrait}:${modeKey}`;
+        const projMode = window.state.projectionMode || 'cosine';
+        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel || 'single'}:${baseTrait}:${modeKey}:${projMode}`;
         if (crossPromptSpansCache[cacheKey]) {
             const cached = crossPromptSpansCache[cacheKey];
             renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);
         } else {
             crossPromptLoading = true;
-            fetchCrossPromptSpans(baseTrait, compareModel, windowLength).then(result => {
+            fetchCrossPromptSpans(baseTrait, compareModel || null, windowLength).then(result => {
                 crossPromptLoading = false;
                 crossPromptSpansCache[cacheKey] = result;
                 renderCrossPromptResults(result.spans, nPromptTokens, result.totalPrompts);

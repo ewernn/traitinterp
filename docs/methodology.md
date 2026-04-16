@@ -54,7 +54,7 @@ Whichever strategy you use, the same principles apply:
 - **Negatives should be active, not bland.** A vivid positive paired with a neutral negative extracts "intensity," not the trait. Good negatives actively exhibit the opposite — compliance for refusal, transparency for concealment, cheerful moving-on for nostalgia.
 - **Diversity across surface features.** Vary topics, names, settings, sentence lengths. 15-30 examples spanning different contexts is a reasonable minimum.
 
-Each trait in traitinterp needs: labeled data, plus a `definition.txt` scoring rubric used downstream for validation. See `datasets/traits/` for the file structure, or `datasets/traits/starter_traits/` for 9 ready-to-use traits.
+Each trait in traitinterp needs: labeled data, plus a `definition.txt` scoring rubric used downstream for validation. See `datasets/traits/` for the file structure, or `datasets/traits/starter_traits/` for ready-to-use traits (sycophancy, hallucination, concealment, etc.).
 
 <details>
 <summary><strong>Our approach: contrastive document completion on base models</strong></summary>
@@ -184,6 +184,8 @@ Two main validation approaches:
 
 - **Held-out classification accuracy** — does the vector separate examples it wasn't trained on? Necessary but not sufficient — a vector can classify well without causally affecting behavior.
 - **Steering** — add the vector to the model's activations during generation. If the output changes in the expected direction, the vector is causally linked to the behavior. Stronger evidence than classification alone. The steering coefficient should be scaled proportional to the activation magnitude at the target layer — too small and the effect is invisible, too large and coherence collapses.
+
+`select_vector()` walks both, plus an OOD tier in between, automatically. See [extraction_guide.md#vector-selection](extraction_guide.md#vector-selection) for the hierarchy.
 
 ```bash
 python steering/run_steering_eval.py \

@@ -64,7 +64,8 @@ For pipeline concepts and scenario design, see [Extraction Guide](../../extracti
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--only-stage` | ints | all | Run specific stages only, e.g. `3,4` (stages: 1=generate, 2=vet, 3+4=extract, 6=evaluate) |
+| `--only-stage` | ints | all | Run specific stages only, e.g. `3,4` (stages: 1=generate, 2=vet, 3+4=extract, 5=logit lens, 6=evaluate) |
+| `--no-logit-lens` | flag | off | Skip stage 5 (logit lens runs by default since the model is already loaded) |
 | `--force` | flag | off | Force recomputation of existing results |
 
 ## Examples

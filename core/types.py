@@ -363,6 +363,8 @@ class ActivationMetadata:
     position: str
     component: str
     activation_norms: Dict[str, List[float]]
+    n_ood_pos: int = 0   # OOD validation set (ood_positive.jsonl); 0 when absent
+    n_ood_neg: int = 0
     timestamp: str = ''
     environment: Optional[Dict[str, str]] = None
 

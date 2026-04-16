@@ -180,6 +180,46 @@ def _load_polarity(trait_dir: Path, polarity: str) -> List[dict]:
         raise FileNotFoundError(f"No scenario file found: {jsonl_file} or {txt_file}")
 
 
+def load_ood_scenarios(trait: str) -> Optional[Dict[str, List[dict]]]:
+    """
+    Load OOD validation scenarios from datasets/traits/{trait}/ood_*.jsonl.
+
+    Mirrors load_scenarios() for the ood_positive/ood_negative files. OOD data is
+    never vetted and has no train/val split — all samples are held-out for validation.
+
+    Counts between positive and negative are NOT required to match (unlike training
+    data) — OOD metrics are group-level (mean projection comparison), not pair-based.
+
+    Returns:
+        Dict with 'positive' and 'negative' keys if BOTH ood_positive and ood_negative
+        files exist (either .jsonl or .txt). Returns None if either is missing.
+    """
+    trait_dir = get_path('datasets.trait', trait=trait)
+
+    pos_exists = (trait_dir / 'ood_positive.jsonl').exists() or (trait_dir / 'ood_positive.txt').exists()
+    neg_exists = (trait_dir / 'ood_negative.jsonl').exists() or (trait_dir / 'ood_negative.txt').exists()
+
+    if not (pos_exists and neg_exists):
+        return None
+
+    return {
+        'positive': _load_polarity(trait_dir, 'ood_positive'),
+        'negative': _load_polarity(trait_dir, 'ood_negative'),
+    }
+
+
+def get_ood_scenario_path(trait: str, polarity: str) -> Path:
+    """Resolve the OOD scenario file path for a trait polarity (.jsonl or .txt).
+
+    polarity: 'positive' or 'negative' (internally prefixed with 'ood_').
+    """
+    trait_dir = get_path('datasets.trait', trait=trait)
+    jsonl_file = trait_dir / f'ood_{polarity}.jsonl'
+    if jsonl_file.exists():
+        return jsonl_file
+    return trait_dir / f'ood_{polarity}.txt'
+
+
 def get_scenario_count(trait: str) -> Dict[str, int]:
     """Get count of scenarios per polarity without loading full data."""
     trait_dir = get_path('datasets.trait', trait=trait)

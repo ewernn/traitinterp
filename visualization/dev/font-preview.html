@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Preview — Overview</title>
+    <link rel="stylesheet" href="/visualization/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;8..60,400;8..60,500;8..60,600;8..60,700;8..60,800&family=Merriweather:wght@300;400;700;900&family=IBM+Plex+Serif:wght@300;400;500;600;700&family=Spectral:wght@300;400;500;600;700;800&display=swap">
+    <style>
+        body {
+            margin: 0;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .fp-page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 20px 80px;
+        }
+
+        /* Sticky picker bar */
+        .fp-picker {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg-primary);
+            padding: 16px 0 12px;
+            border-bottom: 1px solid var(--border-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .fp-picker-title {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        .fp-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .fp-chip {
+            font-family: inherit;
+            font-size: 12px;
+            padding: 6px 10px;
+            border: 1px solid var(--border-primary);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.1s, border-color 0.1s;
+        }
+        .fp-chip:hover {
+            background: var(--bg-tertiary);
+        }
+        .fp-chip.active {
+            background: var(--accent-primary, #4a90e2);
+            color: #fff;
+            border-color: var(--accent-primary, #4a90e2);
+        }
+
+        .fp-weight-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        .fp-weight-row label {
+            font-family: inherit;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 3px 8px;
+            border-radius: 3px;
+        }
+        .fp-weight-row label.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .fp-weight-row input[type="radio"] {
+            display: none;
+        }
+
+        .fp-meta {
+            font-family: 'Fira Mono', Consolas, monospace;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 10px;
+            word-break: break-all;
+        }
+
+        /* Reading sample — mirrors .prose at 700px */
+        .fp-reading {
+            --base-weight: 400;
+            --bold-weight: 700;
+            max-width: 700px;
+            margin: 32px auto 0;
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            font-weight: var(--base-weight);
+        }
+        .fp-reading h1 {
+            font-size: 28px;
+            font-weight: var(--bold-weight);
+            margin: 0 0 4px;
+            line-height: 1.2;
+        }
+        .fp-reading .byline {
+            font-style: italic;
+            font-weight: var(--base-weight);
+            color: var(--text-secondary);
+            margin: 0 0 24px;
+            font-size: 14px;
+        }
+        .fp-reading h2 {
+            font-size: 20px;
+            font-weight: var(--bold-weight);
+            margin: 28px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-primary);
+        }
+        .fp-reading strong,
+        .fp-reading b { font-weight: var(--bold-weight); }
+        .fp-reading p { margin: 0 0 14px; }
+        .fp-reading code {
+            font-family: 'Fira Mono', Consolas, monospace;
+            font-size: 0.9em;
+            background: var(--bg-tertiary);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+        .fp-reading ul { margin: 8px 0 14px; padding-left: 22px; }
+        .fp-reading li { margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+    <div class="fp-page">
+        <div class="fp-picker">
+            <div class="fp-picker-title">Click to swap the reading font.</div>
+            <div class="fp-chips" id="chips"></div>
+            <div class="fp-weight-row">
+                <span>Weight:</span>
+                <label data-weight="300"><input type="radio" name="weight" value="300">300</label>
+                <label data-weight="400" class="active"><input type="radio" name="weight" value="400" checked>400</label>
+                <label data-weight="500"><input type="radio" name="weight" value="500">500</label>
+            </div>
+            <div class="fp-meta" id="meta"></div>
+        </div>
+
+        <div class="fp-reading" id="reading">
+            <h1>Trait Vector Extraction and Monitoring</h1>
+            <p class="byline">Eric Werner, April 15 2026</p>
+
+            <h2>What this is</h2>
+            <p>
+                <strong>Traitinterp is a pipeline for creating and using trait vectors, to make white-box AI safety and psychology research more approachable and fast.</strong>
+                Define a behavior via contrastive data, extract the corresponding direction, validate it causally via steering, and then project new activations onto it token-by-token during generation. The repo ships with pre-defined starter trait datasets — concealment, sycophancy, refusal, and others — so you can run the pipeline without building contrastive data from scratch. Pre-extracted reference vectors are available for <code>Qwen/Qwen3.5-9B</code> (default, bnb 4-bit for accessibility). Datasets are model-general; vectors are model-specific — run the pipeline on whatever model you care about.
+            </p>
+
+            <h2>Why we need this</h2>
+            <p><strong>Outputs are too late and too lossy.</strong></p>
+            <ul>
+                <li>Chain-of-thought can be post-hoc, hidden, or deliberately misleading.</li>
+                <li>The hardest alignment failure modes — latent reasoning, out-of-context reasoning, models that don't surface their logic as text at all — are exactly the cases where output monitoring gives you nothing.</li>
+                <li>As models get more capable and push more reasoning internal, this gap widens.</li>
+            </ul>
+
+            <p><strong>Trait probes monitor internal behavior in real time at negligible cost.</strong></p>
+            <ul>
+                <li>One dot product per trait per token, cheap enough to run hundreds in parallel.</li>
+                <li>An output-only monitor sees nothing. An activation-based monitor sees it happening as it happens.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const FONTS = [
+            { id: 'georgia',      name: 'Georgia (current)', stack: "Georgia, 'Times New Roman', serif" },
+            { id: 'system-sans',  name: 'System sans',       stack: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+            { id: 'inter',        name: 'Inter',             stack: "'Inter', -apple-system, sans-serif" },
+            { id: 'charter',      name: 'Charter (Apple)',   stack: "'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif" },
+            { id: 'iowan',        name: 'Iowan Old Style (Apple)', stack: "'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', serif" },
+            { id: 'ny',           name: 'New York (Apple)',  stack: "'New York', ui-serif, Georgia, serif" },
+            { id: 'lora',         name: 'Lora',              stack: "'Lora', Georgia, serif" },
+            { id: 'source-serif', name: 'Source Serif 4',    stack: "'Source Serif 4', Georgia, serif" },
+            { id: 'merriweather', name: 'Merriweather',      stack: "'Merriweather', Georgia, serif" },
+            { id: 'ibm-serif',    name: 'IBM Plex Serif',    stack: "'IBM Plex Serif', Georgia, serif" },
+            { id: 'spectral',     name: 'Spectral',          stack: "'Spectral', Georgia, serif" },
+        ];
+
+        const chipsEl = document.getElementById('chips');
+        const metaEl = document.getElementById('meta');
+        const readingEl = document.getElementById('reading');
+
+        let activeFont = FONTS[0];
+        let activeWeight = '400';
+
+        function apply() {
+            const base = parseInt(activeWeight, 10);
+            const bold = Math.min(800, base + 300);
+            readingEl.style.fontFamily = activeFont.stack;
+            readingEl.style.setProperty('--base-weight', String(base));
+            readingEl.style.setProperty('--bold-weight', String(bold));
+            metaEl.textContent = `font-family: ${activeFont.stack}; font-weight: ${base}; (bold: ${bold})`;
+        }
+
+        FONTS.forEach(f => {
+            const btn = document.createElement('button');
+            btn.className = 'fp-chip';
+            btn.textContent = f.name;
+            btn.dataset.id = f.id;
+            if (f.id === activeFont.id) btn.classList.add('active');
+            btn.addEventListener('click', () => {
+                activeFont = f;
+                document.querySelectorAll('.fp-chip').forEach(c => c.classList.toggle('active', c.dataset.id === f.id));
+                apply();
+            });
+            chipsEl.appendChild(btn);
+        });
+
+        document.querySelectorAll('.fp-weight-row input[type="radio"]').forEach(r => {
+            r.addEventListener('change', () => {
+                activeWeight = r.value;
+                document.querySelectorAll('.fp-weight-row label').forEach(l => {
+                    l.classList.toggle('active', l.dataset.weight === activeWeight);
+                });
+                apply();
+            });
+        });
+
+        apply();
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "baseline": 83.2,
+  "direction": "negative",
+  "results": [
+    { "label": "attn_contribution", "method": "probe", "layer": 18, "delta": -71.2 },
+    { "label": "residual", "method": "probe", "layer": 7, "delta": -67.9 },
+    { "label": "mlp_contribution", "method": "probe", "layer": 5, "delta": -35.8 },
+    { "label": "v_proj", "method": "probe", "layer": 19, "delta": -35.0 },
+    { "label": "k_proj", "method": "probe", "layer": 7, "delta": -6.1 }
+  ]
+}

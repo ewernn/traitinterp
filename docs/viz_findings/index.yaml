@@ -3,12 +3,13 @@
 # Title and preview come from frontmatter in each .md file
 
 findings:
-  - mats-behavioral-probes.md
+  # - mats-behavioral-probes.md            # WIP — markdown + 20+ assets untracked
   - emotion-concepts-replication.md
   - assistant-axis-replication.md
+  - comparison-persona-vectors.md
+  - separator: most of these below are outdated or incomplete and AI generated, but feel free to skim. Cleaning these up by the end of April 2026
   - rm-sycophancy.md
   - convolution-detector.md
-  - comparison-persona-vectors.md
   - liars-bench-deception.md
   - prefill-dynamics.md
   - component-decomposition.md

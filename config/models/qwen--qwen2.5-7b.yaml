@@ -1,0 +1,20 @@
+huggingface_id: Qwen/Qwen2.5-7B
+model_type: qwen2
+pretrained: true
+supports_system_prompt: true
+max_context_length: 131072
+num_hidden_layers: 28
+hidden_size: 3584
+num_attention_heads: 28
+num_key_value_heads: 4
+intermediate_size: 18944
+vocab_size: 152064
+sae:
+  available: false
+notes:
+  system_prompt: Supported (replaces default)
+  default_system: Detected (check output above)
+  generation_mask: false
+  tool_calling: Supported
+  prefill: Supported
+  quirks: null

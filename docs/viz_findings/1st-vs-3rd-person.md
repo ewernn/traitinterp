@@ -17,10 +17,6 @@ tier: minor
 - Same extraction pipeline, position `response[:5]`, method `mean_diff`
 - Steering eval on layers 9-12, 5 search steps
 
-:::dataset /datasets/traits/chirp/refusal_v2/positive.txt "1st person examples":::
-
-:::dataset /datasets/traits/chirp/refusal_v2_3p/positive.txt "3rd person examples":::
-
 ## Results
 
 | Perspective | Best Steering Δ (coh≥70) |
@@ -38,8 +34,3 @@ tier: minor
 
 Use 1st person perspective for behavioral trait datasets. 3rd person observation separates data but captures less causal structure.
 
-## Evidence
-
-:::responses /experiments/gemma-2-2b/steering/chirp/refusal_v2/response__5/responses/L11_c191.0_2025-12-31_20-28-33.json "1st person (baseline 25 → 88, +63)":::
-
-:::responses /experiments/gemma-2-2b/steering/chirp/refusal_v2_3p/response__5/responses/L12_c117.4_2026-01-02_02-36-12.json "3rd person (baseline 25 → 50, +25)":::

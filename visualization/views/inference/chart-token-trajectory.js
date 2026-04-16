@@ -3,10 +3,11 @@
 // Output: rendered Plotly charts (trajectory, velocity overlay, cue_p, overlay controls)
 
 import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
-import { getDisplayName, getChartColors, getCssVar } from '../../core/display.js';
-import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes } from '../../core/charts.js';
-import { setShowCuePOverlay, setShowCategoryOverlay } from '../../core/state.js';
+import { getDisplayName, getChartColors, getCssVar, displayLayer } from '../../core/display.js';
+import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, attachSortedHover, LINE_SPLINE } from '../../core/charts.js';
+import { setShowCuePOverlay, setShowCategoryOverlay, setInferenceVariant } from '../../core/state.js';
 import { renderToggle } from '../../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from '../../components/styled-select.js';
 
 // Show all tokens including BOS (set to 2 to skip BOS + warmup if desired)
 const START_TOKEN_IDX = 0;
@@ -142,7 +143,25 @@ function renderTrajectoryChart(renderCtx) {
         promptTokens, responseTokens, inferenceModel
     } = renderCtx;
 
-    const modelInfoHtml = `Inference model: <code>${inferenceModel}</code>`;
+    // Model label: single variant → text badge; multiple variants with inference data → dropdown picker.
+    const variants = window.state.variantsPerPromptSet?.[window.state.currentPromptSet] || [];
+    const modelVariants = window.state.experimentData?.experimentConfig?.model_variants || {};
+    const currentVariant = (() => {
+        // Re-derive which variant is "main" from the same logic as getVariantForCurrentPromptSet.
+        const override = window.state.inferenceVariantOverride;
+        if (override && variants.includes(override)) return override;
+        const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+        if (variants.length === 0 || variants.includes(appVariant)) return appVariant;
+        return variants[0];
+    })();
+    const modelInfoHtml = variants.length > 1
+        ? `<span style="display: inline-flex; align-items: center; gap: 6px;">Inference model: ${renderStyledSelect({
+            id: 'inference-variant-select',
+            options: variants.map(v => ({ value: v, label: modelVariants[v]?.model || v })),
+            selected: currentVariant,
+            onChange: (v) => setInferenceVariant(v),
+        })}</span>`
+        : `Inference model: <code>${inferenceModel}</code>`;
 
     const failedHtml = failedTraits.length > 0
         ? `<div class="tool-description">No data for: ${failedTraits.map(t => getDisplayName(t)).join(', ')}</div>`
@@ -177,6 +196,7 @@ function renderTrajectoryChart(renderCtx) {
     const statusDiv = document.getElementById('inference-status');
     if (statusDiv) {
         statusDiv.innerHTML = `${compareInfoHtml}<div class="page-intro-model">${modelInfoHtml}</div>`;
+        wireStyledSelect(statusDiv);
     }
     if (failedHtml) {
         document.getElementById('combined-activation-plot').insertAdjacentHTML('beforebegin', failedHtml);
@@ -276,17 +296,23 @@ function renderTrajectoryChart(renderCtx) {
             rawValues = rawProj;
         }
 
-        // Store normalized values for Top Spans (before centering/smoothing)
-        // For rollouts, use all values (Top Spans hidden but keeps data consistent)
+        // Mean-center when enabled: subtract the mean over response tokens so
+        // the trajectory is zero-centered and constant-bias traits (e.g. golden
+        // gate bridge, which is high everywhere) show their relative variation.
+        // Falls back to full-trajectory mean if there's no response (rollouts).
+        if (isCentered && rawValues.length > 0) {
+            const respStart = Math.max(0, nPromptTokens - START_TOKEN_IDX);
+            const respSlice = isRollout ? rawValues : rawValues.slice(respStart);
+            const source = respSlice.length > 0 ? respSlice : rawValues;
+            const mean = source.reduce((a, b) => a + b, 0) / source.length;
+            rawValues = rawValues.map(v => v - mean);
+        }
+
+        // Store (post-centering) response values for Top Spans. Centering makes
+        // ranking meaningful: high spans are high vs. this response's baseline.
         data._normalizedResponse = isRollout
             ? rawValues
             : rawValues.slice(nPromptTokens - START_TOKEN_IDX);
-
-        // Subtract BOS value if centering is enabled (makes token 0 = 0)
-        if (isCentered && rawValues.length > 0) {
-            const bosValue = rawValues[0];
-            rawValues = rawValues.map(v => v - bosValue);
-        }
 
         // Apply N-token moving average if smoothing is enabled
         const displayValues = isSmoothing ? smoothData(rawValues, window.state.smoothingWindow) : rawValues;
@@ -320,13 +346,11 @@ function renderTrajectoryChart(renderCtx) {
         // Build display name and hover
         const baseTrait = data.metadata?._baseTrait || traitName;
         const displayName = data.metadata?._isMultiVector
-            ? `${getDisplayName(baseTrait)} (${method} L${vs.layer})`
+            ? `${getDisplayName(baseTrait)} (${method} L${displayLayer(vs.layer)})`
             : getDisplayName(traitName);
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
-        const vectorInfo = vs.layer !== undefined ? `<br><span style="color: var(--text-tertiary)">L${vs.layer} ${method}${posStr}</span>` : '';
-        const hoverText = `<b>${displayName}</b>${vectorInfo}<br>Token %{x}<br>${valueLabel}: %{y:${valueFormat}}<extra></extra>`;
-
+        const vectorInfo = vs.layer !== undefined ? `<br><span style="color: var(--text-tertiary)">L${displayLayer(vs.layer)} ${method}${posStr}</span>` : '';
         const useMarkers = displayValues.length <= 2000;
         traces.push({
             x: Array.from({length: displayValues.length}, (_, i) => i),
@@ -334,9 +358,10 @@ function renderTrajectoryChart(renderCtx) {
             type: 'scatter',
             mode: useMarkers ? 'lines+markers' : 'lines',
             name: displayName,
-            line: { color: color, width: 1.5 },
+            line: { color: color, width: 1.5, ...LINE_SPLINE },
             ...(useMarkers ? { marker: { size: 2, color: color } } : {}),
-            hovertemplate: hoverText
+            hoverinfo: 'none',
+            _displayName: displayName,
         });
     }
 
@@ -394,7 +419,7 @@ function renderTrajectoryChart(renderCtx) {
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
         return vs.layer !== undefined
-            ? `L${vs.layer} ${vs.method || '?'}${posStr} (${vs.selection_source || 'unknown'})`
+            ? `L${displayLayer(vs.layer)} ${vs.method || '?'}${posStr} (${vs.selection_source || 'unknown'})`
             : 'no metadata';
     });
 
@@ -437,7 +462,7 @@ function renderTrajectoryChart(renderCtx) {
                 type: 'scatter',
                 mode: 'lines',
                 name: `${traces[idx]?.name || getDisplayName(traitName)} (vel)`,
-                line: { color, width: 1, dash: 'dot' },
+                line: { color, width: 1, dash: 'dot', ...LINE_SPLINE },
                 yaxis: 'y2',
                 showlegend: false,
                 hovertemplate: `<b>${traces[idx]?.name || getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`
@@ -492,6 +517,9 @@ function renderTrajectoryChart(renderCtx) {
     });
     plotDiv.parentNode.insertBefore(legendDiv, plotDiv.nextSibling);
     attachTokenClickHandler(plotDiv, START_TOKEN_IDX);
+
+    // Custom unified hover tooltip: shows token + all traits sorted by score desc.
+    attachSortedHover(plotDiv, () => ({ traces, displayTokens }), { tooltipId: 'trajectory-hover-tooltip' });
 
     // Populate overlay controls (only when sentence boundary data exists)
     const overlayControlsDiv = document.getElementById('overlay-controls');

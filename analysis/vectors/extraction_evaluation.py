@@ -58,7 +58,7 @@ def evaluate_from_metadata(
         # Skip layers without val metrics
         if 'val_accuracy' not in layer_info:
             continue
-        results.append({
+        row = {
             'trait': trait,
             'method': method,
             'layer': int(layer_str),
@@ -68,7 +68,13 @@ def evaluate_from_metadata(
             'val_effect_size': layer_info['val_effect_size'],
             'polarity_correct': layer_info['polarity_correct'],
             'train_acc': layer_info.get('train_acc'),
-        })
+        }
+        # Surface OOD validation fields if present (written by stage 4 when
+        # ood_positive/negative scenarios exist for this trait).
+        for k in ('ood_accuracy', 'ood_effect_size', 'ood_polarity_correct'):
+            if k in layer_info:
+                row[k] = layer_info[k]
+        results.append(row)
 
     return results
 
@@ -82,10 +88,19 @@ def evaluate_from_activations(
     component: str = "residual",
     position: str = "response[:]",
 ) -> List[Dict]:
-    """Legacy path: load saved activation files and compute val metrics."""
+    """Legacy path: load saved activation files and compute val + optional ood metrics."""
     from utils.vectors import load_vector_with_baseline
-    from utils.load_activations import load_val_activations
+    from utils.load_activations import load_val_activations, load_ood_activations
     from core import batch_cosine_similarity, accuracy, effect_size, polarity_correct
+
+    def _score(pos_acts, neg_acts, vector):
+        """Return (accuracy, effect_size, polarity_correct) for a pos/neg activation pair,
+        or None if either split is empty."""
+        if pos_acts is None or neg_acts is None or pos_acts.numel() == 0 or neg_acts.numel() == 0:
+            return None
+        p = batch_cosine_similarity(pos_acts, vector)
+        n = batch_cosine_similarity(neg_acts, vector)
+        return float(accuracy(p, n)), float(effect_size(p, n)), bool(polarity_correct(p, n))
 
     results = []
     for layer in layers:
@@ -103,19 +118,33 @@ def evaluate_from_activations(
         except FileNotFoundError:
             continue
 
-        pos_proj = batch_cosine_similarity(val_pos, vector)
-        neg_proj = batch_cosine_similarity(val_neg, vector)
+        val_score = _score(val_pos, val_neg, vector)
+        if val_score is None:
+            continue
+        row = {
+            'trait': trait, 'method': method, 'layer': layer,
+            'component': component, 'position': position,
+            'val_accuracy': val_score[0],
+            'val_effect_size': val_score[1],
+            'polarity_correct': val_score[2],
+        }
 
-        results.append({
-            'trait': trait,
-            'method': method,
-            'layer': layer,
-            'component': component,
-            'position': position,
-            'val_accuracy': float(accuracy(pos_proj, neg_proj)),
-            'val_effect_size': float(effect_size(pos_proj, neg_proj)),
-            'polarity_correct': bool(polarity_correct(pos_proj, neg_proj)),
-        })
+        # OOD validation (optional) — populated only when ood_positive/negative
+        # activations are on disk. Enables the OOD tier in select_vector's
+        # hierarchy and the extraction view's OOD badge.
+        try:
+            ood_pos, ood_neg = load_ood_activations(
+                experiment, trait, model_variant, layer, component, position
+            )
+            ood_score = _score(ood_pos, ood_neg, vector)
+            if ood_score is not None:
+                row['ood_accuracy'] = ood_score[0]
+                row['ood_effect_size'] = ood_score[1]
+                row['ood_polarity_correct'] = ood_score[2]
+        except FileNotFoundError:
+            pass
+
+        results.append(row)
 
     return results
 

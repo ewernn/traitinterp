@@ -10,7 +10,7 @@ See also [analysis/README.md](https://github.com/ewernn/traitinterp/tree/main/an
 
 ### `analysis/vectors/massive_activations.py`
 
-Calibrate massive activation dimensions (mandatory before inference). Identifies dimensions with abnormally large values and saves calibration data for downstream cleaning.
+**Advanced.** In normal use, calibration happens passively during inference (see `utils/massive_dims.py`). Use this script only when you want calibration from a curated neutral prompt set (50 Alpaca-style prompts) instead of your inference prompts — e.g. to derive `remove_massive_dims` cleaning against a prompt-neutral baseline.
 
 ```bash
 python analysis/vectors/massive_activations.py --experiment <experiment>
@@ -108,7 +108,7 @@ python analysis/vectors/logit_lens.py --experiment <experiment> --traits <trait>
 | `--all-traits` | flag | off | Analyze all extracted traits |
 | `--top-k` | int | `20` | Number of tokens to show per direction |
 | `--no-norm` | flag | off | Skip RMSNorm before projection |
-| `--filter-common` | flag | off | Filter to common English tokens only |
+| `--no-filter-common` | flag | off | Disable common-token filter (default: enabled) |
 | `--max-vocab` | int | `10000` | Max vocab index for common filter |
 | `--save` | flag | off | Save results to canonical per-trait JSON |
 
@@ -121,10 +121,10 @@ python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --traits safety
 # Analyze all traits and save results
 python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --all-traits --save
 
-# Filter to common tokens, skip RMSNorm
+# Skip common-token filter and RMSNorm
 python analysis/vectors/logit_lens.py \
     --experiment gemma-2-2b-it --traits safety/refusal \
-    --filter-common --no-norm
+    --no-filter-common --no-norm
 ```
 
 ---
@@ -259,39 +259,6 @@ python analysis/vectors/preference_elo.py \
     --experiment ant_emotion_concepts \
     --activities datasets/activities.json \
     --hard-elo
-```
-
----
-
-### `analysis/vectors/trait_correlation.py`
-
-Compute Pearson correlation matrices between traits across per-token projection trajectories. Loads pre-computed inference projections (from `inference/run_inference_pipeline.py`) and correlates traits both token-by-token (with temporal offsets from -10 to +10) and at the response level (mean projection per prompt). Useful for discovering which traits co-activate or anti-correlate during generation.
-
-```bash
-python analysis/vectors/trait_correlation.py \
-    --experiment <experiment> --prompt-set <prompt_set>
-```
-
-#### Flags
-
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--experiment` | str | required | Experiment name |
-| `--prompt-set` | str | required | Prompt set to analyze (e.g., `jailbreak/original`) |
-| `--model-variant` | str | config default | Model variant |
-
-#### Examples
-
-```bash
-# Correlate all traits on a prompt set
-python analysis/vectors/trait_correlation.py \
-    --experiment gemma-2-2b --prompt-set jailbreak/original
-
-# Specify a model variant explicitly
-python analysis/vectors/trait_correlation.py \
-    --experiment gemma-2-2b \
-    --prompt-set general/alpaca_100 \
-    --model-variant instruct
 ```
 
 ---

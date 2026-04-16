@@ -4,7 +4,7 @@
 // and provides cached steering result fetching shared across steering sub-modules.
 
 import { cachedFetchJSON } from '../../core/utils.js';
-import { renderFilterChipRow } from '../../core/ui.js';
+import { renderChipGroup, wireChipGroup } from '../../components/styled-chip-group.js';
 import { extractVectorSpec } from './shared.js';
 
 // Global chart filters - populated from data, all active by default
@@ -103,56 +103,56 @@ function renderFilterChips() {
         'k_proj': 'K Proj', 'v_proj': 'V Proj',
         'positive': 'Positive', 'negative': 'Negative',
     };
-    const formatLabel = v => window.paths?.formatPositionDisplay(v)
+    // Model variants show the HF model path from experiment config when available
+    // (falls back to the variant nickname if no mapping exists).
+    const variantModels = window.state.experimentData?.experimentConfig?.model_variants || {};
+    const variantDisplay = Object.fromEntries(
+        Object.entries(variantModels).map(([nickname, v]) => [nickname, v.model || nickname])
+    );
+    const formatLabel = v => variantDisplay[v]
+        || window.paths?.formatPositionDisplay(v)
         || v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-    const rows = [
-        renderFilterChipRow('Model', chartFilters.modelVariants, chartFilters.activeModelVariants, 'modelVariants', { displayNames, formatLabel }),
-        renderFilterChipRow('Method', chartFilters.methods, chartFilters.activeMethods, 'methods', { displayNames, formatLabel }),
-        renderFilterChipRow('Position', chartFilters.positions, chartFilters.activePositions, 'positions', { displayNames, formatLabel }),
-        renderFilterChipRow('Component', chartFilters.components, chartFilters.activeComponents, 'components', { displayNames, formatLabel }),
-        renderFilterChipRow('Direction', chartFilters.directions, chartFilters.activeDirections, 'directions', { displayNames, formatLabel }),
+    // Model variants = single-select (radio), others = multi-select with min-one invariant.
+    const rowConfigs = [
+        { key: 'modelVariants',  label: 'Model',     mode: 'single' },
+        { key: 'methods',        label: 'Method',    mode: 'multi-min-one' },
+        { key: 'positions',      label: 'Position',  mode: 'multi-min-one' },
+        { key: 'components',     label: 'Component', mode: 'multi-min-one' },
+        { key: 'directions',     label: 'Direction', mode: 'multi-min-one' },
     ];
 
-    container.innerHTML = rows.filter(r => r).join('');
-
-    // Wire click handlers
-    // Model variants = single-select (radio), everything else = multi-select (toggle)
-    const singleSelectFilters = new Set(['modelVariants']);
-
-    container.querySelectorAll('.filter-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const filterKey = chip.dataset.filterGroup;
-            const value = chip.dataset.value;
-            const activeSetKey = 'active' + filterKey.charAt(0).toUpperCase() + filterKey.slice(1);
-            const activeSet = chartFilters[activeSetKey];
-
-            if (singleSelectFilters.has(filterKey)) {
-                // Radio behavior: activate clicked, deactivate others
-                if (activeSet.has(value) && activeSet.size === 1) return; // already the only one
-                activeSet.clear();
-                activeSet.add(value);
-                // Update all chips in this row
-                container.querySelectorAll(`.filter-chip[data-filter-group="${filterKey}"]`).forEach(c => {
-                    c.classList.toggle('active', c.dataset.value === value);
-                });
-            } else {
-                // Toggle behavior
-                if (activeSet.has(value)) {
-                    if (activeSet.size > 1) {
-                        activeSet.delete(value);
-                        chip.classList.remove('active');
-                    }
-                } else {
+    const rows = rowConfigs.map(({ key, label, mode }) => {
+        const values = Array.from(chartFilters[key]);
+        if (values.length <= 1) return '';
+        const activeKey = 'active' + key.charAt(0).toUpperCase() + key.slice(1);
+        const activeSet = chartFilters[activeKey];
+        const items = values.map(v => ({
+            value: v,
+            label: displayNames[v] ?? formatLabel(v),
+        }));
+        const chipGroup = renderChipGroup({
+            id: `filter-${key}`,
+            mode,
+            items,
+            selected: activeSet,
+            onChange: (value, newSelected) => {
+                if (mode === 'single') {
+                    activeSet.clear();
                     activeSet.add(value);
-                    chip.classList.add('active');
+                } else {
+                    // newSelected is the post-click Set<value>
+                    activeSet.clear();
+                    newSelected.forEach(v => activeSet.add(v));
                 }
-            }
-
-            // Re-render charts (imported lazily via window to avoid circular deps)
-            window._steeringRenderBestVector();
+                window._steeringRenderBestVector();
+            },
         });
+        return `<div class="filter-row"><span class="filter-label">${label}:</span>${chipGroup}</div>`;
     });
+
+    container.innerHTML = rows.filter(r => r).join('');
+    wireChipGroup(container);
 }
 
 /** Reset filter state. */

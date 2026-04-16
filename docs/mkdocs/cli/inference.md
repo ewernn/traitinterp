@@ -57,7 +57,7 @@ Mutually exclusive flags that control what the pipeline does. Default is stream-
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--load-in-4bit` | flag | off | 4-bit quantization |
-| `--backend` | str | `auto` | Model backend: `auto`, `local` (HF in-process), `vllm` (high-throughput) |
+| `--backend` | str | `local` | Model backend: `local` (HF in-process, default), `auto` (try server then fall back to local), `vllm` (generation only, no hooks) |
 
 ### Examples
 
@@ -129,7 +129,7 @@ python inference/generate_responses.py \
 | `--limit` | int | none | Max prompts to process |
 | `--output-suffix` | str | none | Suffix appended to output directory name |
 | `--load-in-4bit` | flag | off | 4-bit quantization |
-| `--backend` | str | `auto` | Model backend: `auto`, `local`, `vllm` |
+| `--backend` | str | `local` | Model backend: `local` (default), `auto`, `vllm` |
 
 ### Examples
 

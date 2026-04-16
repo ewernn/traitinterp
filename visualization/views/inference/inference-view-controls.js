@@ -4,7 +4,8 @@
 
 import { getDisplayName } from '../../core/display.js';
 import { setupSubsectionInfoToggles } from '../../components/sidebar.js';
-import { renderSegmentedControl, renderSmoothPill, renderSubsection } from '../../core/ui.js';
+import { renderSegmentedControl, renderSubsection } from '../../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from '../../components/styled-select.js';
 import {
     setSmoothingWindow,
     setProjectionCentered,
@@ -25,7 +26,7 @@ import {
 /**
  * Build the control bar HTML for Token Trajectory section.
  * Primary row: Smooth, Mode, Compare + model dropdown, Advanced toggle.
- * Advanced row (collapsed): Methods, Centered, Clean, Layers, Wide, Velocity.
+ * Advanced row (collapsed): Methods, Clean, Layers, Wide, Velocity.
  */
 function buildControlBarHtml(allFilteredTraits) {
     const currentCompareMode = window.state.compareMode || 'main';
@@ -44,7 +45,18 @@ function buildControlBarHtml(allFilteredTraits) {
     const smoothCluster = `
         <div class="cb-cluster" style="gap: 8px;">
             <span class="cb-label">Smooth:</span>
-            ${renderSmoothPill(window.state.smoothingWindow)}
+            ${renderSegmentedControl({
+                id: 'smooth-control',
+                options: [
+                    { value: 0, label: 'off' },
+                    { value: 3, label: '3' },
+                    { value: 6, label: '6' },
+                    { value: 9, label: '9' },
+                ],
+                selected: window.state.smoothingWindow,
+                dataAttr: 'smooth',
+                size: 'compact',
+            })}
         </div>`;
 
     const modeCluster = `
@@ -62,12 +74,21 @@ function buildControlBarHtml(allFilteredTraits) {
             })}
         </div>`;
 
-    const modelOptions = availableModels.map(m =>
-        `<option value="${m}" ${m === currentCompareVariant ? 'selected' : ''}>${m}</option>`
-    ).join('');
-    const modelDropdown = `<select id="compare-variant-select" class="cb-select"${modelDropdownDisabled ? ' disabled' : ''}>${
-        availableModels.length === 0 ? '<option>No models</option>' : modelOptions
-    }</select>`;
+    const modelDropdown = availableModels.length === 0
+        ? `<span class="cb-label" style="opacity:0.5;">No models</span>`
+        : renderStyledSelect({
+            id: 'compare-variant-select',
+            options: availableModels.map(m => ({ value: m, label: m })),
+            selected: currentCompareVariant,
+            disabled: modelDropdownDisabled,
+            onChange: (val) => {
+                window.state.lastCompareVariant = val;
+                localStorage.setItem('lastCompareVariant', val);
+                const currentMode = window.state.compareMode || 'main';
+                if (currentMode.startsWith('diff:')) setCompareMode('diff:' + val);
+                else if (currentMode.startsWith('show:')) setCompareMode('show:' + val);
+            },
+        });
 
     const compareCluster = `
         <div class="cb-cluster">
@@ -94,27 +115,38 @@ function buildControlBarHtml(allFilteredTraits) {
         `<label class="cb-checkbox"><input type="checkbox" data-method="${m}" class="method-filter" ${window.state.selectedMethods.has(m) ? 'checked' : ''}> ${m}</label>`
     ).join('\n                    ');
 
-    const layerTraitSelect = window.state.layerMode ? `
-                    <select id="layer-mode-trait-select" class="cb-select">
-                        ${allFilteredTraits.map(t =>
-                            `<option value="${t.name}" ${t.name === window.state.layerModeTrait ? 'selected' : ''}>${getDisplayName(t.name)}</option>`
-                        ).join('')}
-                    </select>` : '';
+    const layerTraitSelect = window.state.layerMode
+        ? renderStyledSelect({
+            id: 'layer-mode-trait-select',
+            options: allFilteredTraits.map(t => ({ value: t.name, label: getDisplayName(t.name) })),
+            selected: window.state.layerModeTrait,
+            onChange: (val) => setLayerModeTrait(val),
+        })
+        : '';
+
+    const centeredToggleHtml = `<label class="cb-checkbox" title="Subtract the mean response projection from every token. Removes per-response bias so constant-bias traits (e.g. golden_gate_bridge) show their relative variation.">
+        <input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}> Mean-center
+    </label>`;
 
     const advancedRow = `
             <div class="cb-row cb-advanced" id="td-advanced-row" hidden>
+                ${compareCluster}
                 <div class="cb-cluster">
                     <span class="cb-label">Methods:</span>
                     ${methodCheckboxes}
                 </div>
-                <label class="cb-checkbox"><input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}> Centered</label>
                 <div class="cb-cluster">
                     <span class="cb-label">Clean:</span>
-                    <select id="massive-dims-cleaning-select" class="cb-select" title="Remove high-magnitude bias dimensions (Sun et al. 2024)">
-                        <option value="none" ${massiveDimsCleaning === 'none' ? 'selected' : ''}>None</option>
-                        <option value="top5-3layers" ${massiveDimsCleaning === 'top5-3layers' ? 'selected' : ''}>Top 5</option>
-                        <option value="all" ${massiveDimsCleaning === 'all' ? 'selected' : ''}>All</option>
-                    </select>
+                    ${renderStyledSelect({
+                        id: 'massive-dims-cleaning-select',
+                        options: [
+                            { value: 'none', label: 'None' },
+                            { value: 'top5-3layers', label: 'Top 5' },
+                            { value: 'all', label: 'All' },
+                        ],
+                        selected: massiveDimsCleaning,
+                        onChange: (val) => setMassiveDimsCleaning(val),
+                    })}
                 </div>
                 <label class="cb-checkbox"><input type="checkbox" id="layer-mode-toggle" ${window.state.layerMode ? 'checked' : ''}> Layers</label>${layerTraitSelect}
                 <label class="cb-checkbox"><input type="checkbox" id="wide-mode-toggle" ${window.state.wideMode ? 'checked' : ''}> Wide</label>
@@ -126,7 +158,7 @@ function buildControlBarHtml(allFilteredTraits) {
             <div class="cb-row">
                 ${smoothCluster}
                 ${modeCluster}
-                ${compareCluster}
+                ${centeredToggleHtml}
                 ${advToggle}
             </div>
             ${advancedRow}
@@ -186,10 +218,10 @@ function buildPageShellHtml(allFilteredTraits) {
 
             <section>
                 <div class="sec-header" data-section="magnitude" id="sec-magnitude">
-                    <span class="arrow">\u25BC</span> Activation Magnitude <span class="subsection-info-toggle" data-target="info-activation-magnitude">\u25BA</span> <span class="sec-badge" id="badge-magnitude"></span>
+                    <span class="arrow">\u25B6</span> Activation Magnitude <span class="subsection-info-toggle" data-target="info-activation-magnitude">\u25BA</span> <span class="sec-badge" id="badge-magnitude"></span>
                 </div>
                 <div class="subsection-info" id="info-activation-magnitude">L2 norm of the residual stream per token at each trait&#39;s best layer. Distinguishes genuinely orthogonal tokens from tokens with small residuals overall.</div>
-                <div id="section-body-magnitude">
+                <div id="section-body-magnitude" hidden>
                     <div id="token-magnitude-plot"></div>
                 </div>
             </section>
@@ -201,20 +233,6 @@ function buildPageShellHtml(allFilteredTraits) {
                     infoText: 'Per-sentence probability the model commits to the cued (wrong) answer if resampled from that point. Only shown for Thought Branches experiments with cue_p data.'
                 })}
                 <div id="cue-p-plot"></div>
-            </section>
-
-            <section id="correlation-section">
-                <div class="sec-header" data-section="correlation" id="sec-correlation">
-                    <span class="arrow">\u25B6</span> Correlation <span class="subsection-info-toggle" data-target="info-correlation-parent">\u25BA</span> <span class="sec-badge" id="badge-correlation"></span>
-                </div>
-                <div class="subsection-info" id="info-correlation-parent">Trait-trait correlations across the prompt set, with a token-offset slider for lead/lag. Run <code>trait_correlation.py</code> to populate.</div>
-                <div id="section-body-correlation" hidden>
-                    <div id="correlation-content">
-                        <div class="no-data-hint">No pre-computed correlation data.
-                            <code>python analysis/vectors/trait_correlation.py --experiment ${experimentName} --prompt-set PROMPT_SET</code>
-                        </div>
-                    </div>
-                </div>
             </section>
 
         </div>
@@ -233,7 +251,7 @@ function attachControlListeners(allFilteredTraits) {
 
     // --- Smooth pill ---
     controlBar.addEventListener('click', (e) => {
-        const btn = e.target.closest('.smooth-pill button');
+        const btn = e.target.closest('button[data-smooth]');
         if (btn) setSmoothingWindow(parseInt(btn.dataset.smooth));
     });
 
@@ -253,8 +271,7 @@ function attachControlListeners(allFilteredTraits) {
             const btn = e.target.closest('button[data-compare]');
             if (!btn || btn.disabled) return;
             const mode = btn.dataset.compare;
-            const variantSelect = document.getElementById('compare-variant-select');
-            const selectedModel = variantSelect ? variantSelect.value : availableModels[0] || '';
+            const selectedModel = window.state.lastCompareVariant || availableModels[0] || '';
             if (mode === 'main') {
                 setCompareMode('main');
             } else if (mode === 'diff') {
@@ -265,21 +282,8 @@ function attachControlListeners(allFilteredTraits) {
         });
     }
 
-    // --- Model dropdown ---
-    const variantSelect = document.getElementById('compare-variant-select');
-    if (variantSelect) {
-        variantSelect.addEventListener('change', () => {
-            const val = variantSelect.value;
-            window.state.lastCompareVariant = val;
-            localStorage.setItem('lastCompareVariant', val);
-            const currentMode = window.state.compareMode || 'main';
-            if (currentMode.startsWith('diff:')) {
-                setCompareMode('diff:' + val);
-            } else if (currentMode.startsWith('show:')) {
-                setCompareMode('show:' + val);
-            }
-        });
-    }
+    // --- Styled selects (compare-variant, layer-mode-trait, massive-dims-cleaning) ---
+    wireStyledSelect(controlBar);
 
     // --- Advanced toggle ---
     const advToggle = document.getElementById('td-advanced-toggle');
@@ -308,26 +312,11 @@ function attachControlListeners(allFilteredTraits) {
         });
     }
 
-    // --- Massive dims cleaning ---
-    const cleanSelect = document.getElementById('massive-dims-cleaning-select');
-    if (cleanSelect) {
-        cleanSelect.addEventListener('change', () => {
-            setMassiveDimsCleaning(cleanSelect.value);
-        });
-    }
-
     // --- Layer mode ---
     const layerToggle = document.getElementById('layer-mode-toggle');
     if (layerToggle) {
         layerToggle.addEventListener('change', () => {
             setLayerMode(layerToggle.checked);
-        });
-    }
-
-    const layerTraitSelect = document.getElementById('layer-mode-trait-select');
-    if (layerTraitSelect) {
-        layerTraitSelect.addEventListener('change', () => {
-            setLayerModeTrait(layerTraitSelect.value);
         });
     }
 

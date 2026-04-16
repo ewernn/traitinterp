@@ -5,6 +5,7 @@
 // (one polyline per extraction method). Clicking a card opens the detail panel.
 
 import { extractVectorSpec, extractRunMetrics } from './shared.js';
+import { displayLayer } from '../../core/display.js';
 
 // ── Constants ────────────────────────────────────────────────────
 
@@ -82,7 +83,7 @@ function processResults(results, coherenceThreshold) {
 
     // Convert to sorted layer arrays and find best delta per method
     const methodSummaries = {};
-    let overallBestDelta = direction === 'negative' ? Infinity : -Infinity;
+    let overallBestDelta = 0;
     let overallBestLayer = 0;
     let overallBestMethod = '';
     let globalMinLayer = Infinity;
@@ -177,8 +178,8 @@ function buildSparklineSVG(processed, width, height) {
     const tickY = plotH;
     svg += `<line x1="${padL}" y1="${tickY - 3}" x2="${padL}" y2="${tickY + 1}" stroke="var(--text-tertiary)" stroke-width="0.5" opacity="0.5"/>`;
     svg += `<line x1="${padL + plotW}" y1="${tickY - 3}" x2="${padL + plotW}" y2="${tickY + 1}" stroke="var(--text-tertiary)" stroke-width="0.5" opacity="0.5"/>`;
-    svg += `<text x="${padL + 2}" y="${height - 1}" style="font-size:9px;fill:var(--text-tertiary);">${minLayer}</text>`;
-    svg += `<text x="${padL + plotW - 2}" y="${height - 1}" text-anchor="end" style="font-size:9px;fill:var(--text-tertiary);">${maxLayer}</text>`;
+    svg += `<text x="${padL + 2}" y="${height - 1}" style="font-size:9px;fill:var(--text-tertiary);">${displayLayer(minLayer)}</text>`;
+    svg += `<text x="${padL + plotW - 2}" y="${height - 1}" text-anchor="end" style="font-size:9px;fill:var(--text-tertiary);">${displayLayer(maxLayer)}</text>`;
 
     // Baseline score label — centered vertically on baseline
     const bLabelY = Math.max(8, Math.min(plotH - 2, bY));
@@ -205,11 +206,11 @@ function buildCardHTML(traitPath, processed) {
     return `<div class="trait-card" data-trait="${traitPath}">
     <div class="tc-row">
         <div class="tc-name" title="${traitPath}">${name}</div>
-        <div class="tc-layers">L${minLayer}-${maxLayer}/${totalLayers}</div>
+        <div class="tc-layers">L${displayLayer(minLayer)}-${displayLayer(maxLayer)}/${totalLayers}</div>
     </div>
     <div class="tc-stats">
         <span class="tc-score ${cls}">${sign}${bestDelta.toFixed(1)}</span>
-        <span>L${bestLayer}</span>
+        <span>L${displayLayer(bestLayer)}</span>
     </div>
     <div class="tc-sparkline">${sparkSVG}</div>
 </div>`;

@@ -94,7 +94,7 @@ function populateTraitCheckboxes() {
 
         const arrow = document.createElement('span');
         arrow.className = 'trait-cat-arrow';
-        arrow.textContent = '▸';
+        arrow.textContent = '▾';
         header.appendChild(arrow);
 
         const label = document.createElement('span');
@@ -109,20 +109,20 @@ function populateTraitCheckboxes() {
 
         container.appendChild(header);
 
-        // Chips container (collapsed by default)
+        // Chips container (expanded by default)
         const chipsDiv = document.createElement('div');
-        chipsDiv.className = 'trait-chips';
+        chipsDiv.className = 'chip-group chip-group-pill trait-chips';
         chipsDiv.dataset.category = category;
-        chipsDiv.hidden = true;
+        chipsDiv.hidden = false;
 
         traits.forEach(trait => {
             const chip = document.createElement('span');
-            chip.className = 'trait-chip' + (isDefaultSelected ? ' selected' : '');
+            chip.className = 'chip' + (isDefaultSelected ? ' active' : '');
             chip.dataset.trait = trait.name;
             chip.textContent = getDisplayName(trait.name);
 
             chip.addEventListener('click', () => {
-                const isSelected = chip.classList.toggle('selected');
+                const isSelected = chip.classList.toggle('active');
                 if (isSelected) {
                     window.state.selectedTraits.add(trait.name);
                 } else {
@@ -156,16 +156,16 @@ function populateTraitCheckboxes() {
                 chipsDiv.hidden = false;
                 arrow.textContent = '▾';
             }
-            const chips = chipsDiv.querySelectorAll('.trait-chip');
-            const allInCatSelected = Array.from(chips).every(c => c.classList.contains('selected'));
+            const chips = chipsDiv.querySelectorAll('.chip');
+            const allInCatSelected = Array.from(chips).every(c => c.classList.contains('active'));
 
             chips.forEach(c => {
                 const traitName = c.dataset.trait;
                 if (allInCatSelected) {
-                    c.classList.remove('selected');
+                    c.classList.remove('active');
                     window.state.selectedTraits.delete(traitName);
                 } else {
-                    c.classList.add('selected');
+                    c.classList.add('active');
                     window.state.selectedTraits.add(traitName);
                 }
             });
@@ -197,16 +197,16 @@ function updateSelectedCount() {
 }
 
 function toggleAllTraits() {
-    const allChips = document.querySelectorAll('.trait-chip');
+    const allChips = document.querySelectorAll('.trait-chips .chip');
     const anySelected = window.state.selectedTraits.size > 0;
 
     allChips.forEach(chip => {
         const traitName = chip.dataset.trait;
         if (anySelected) {
-            chip.classList.remove('selected');
+            chip.classList.remove('active');
             window.state.selectedTraits.delete(traitName);
         } else {
-            chip.classList.add('selected');
+            chip.classList.add('active');
             window.state.selectedTraits.add(traitName);
         }
     });
@@ -364,7 +364,8 @@ function updateExperimentVisibility() {
     const analysisPanel = document.getElementById('sidebar-analysis');
     if (!analysisPanel) return;
 
-    const isAnalysis = ANALYSIS_VIEWS.includes(window.state.currentView);
+    const view = window.state.currentView;
+    const isAnalysis = ANALYSIS_VIEWS.includes(view) || view === 'experiment-viz';
     analysisPanel.classList.toggle('hidden', !isAnalysis);
 }
 
@@ -561,6 +562,39 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
             item.classList.add('active');
 
             await loadExperimentData(expName);
+
+            // If we're on an experiment-viz view whose path no longer belongs to this
+            // experiment, try to auto-switch to one that does; otherwise fall back to
+            // a sensible default view for the new experiment.
+            if (window.state.currentView === 'experiment-viz') {
+                const currentVizPath = window.state.currentExpViz || '';
+                const stillValid = currentVizPath === expName || currentVizPath.startsWith(expName + '/');
+                if (!stillValid) {
+                    const allViz = window.state.experimentViz || [];
+                    const replacement = allViz.find(ev =>
+                        ev.path === expName || ev.path.startsWith(expName + '/')
+                    );
+                    if (replacement) {
+                        window.state.currentExpViz = replacement.path;
+                        const url = new URL(window.location);
+                        url.searchParams.set('exp-viz', replacement.path);
+                        window.history.replaceState({}, '', url);
+                    } else {
+                        // No viz module for this experiment — fall back to the experiment dashboard's
+                        // first analysis view so the user lands somewhere coherent
+                        window.state.currentExpViz = null;
+                        const fallback = (window.state.lastAnalysisView && window.state.lastAnalysisView !== 'experiment-viz')
+                            ? window.state.lastAnalysisView
+                            : 'extraction';
+                        window.state.currentView = fallback;
+                        const url = new URL(window.location);
+                        url.searchParams.set('tab', fallback);
+                        url.searchParams.delete('exp-viz');
+                        window.history.replaceState({}, '', url);
+                    }
+                }
+            }
+
             window.renderExperimentVizList?.();
             window.renderPromptPicker();
             if (window.renderView) window.renderView();

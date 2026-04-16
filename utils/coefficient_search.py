@@ -37,6 +37,8 @@ SEARCH_COHERENCE_MARGIN = 3
 
 if TYPE_CHECKING:
     from utils.backends import GenerationBackend
+    from utils.vectors import LoadedVector
+    from utils.steering_eval import TraitSweepContext
 
 
 def _print_best_results(states, sign=None, threshold=None, group_by_trait=False):
@@ -81,7 +83,7 @@ def _update_coefficients(states, threshold, up_mult, down_mult, momentum):
 
 async def batched_adaptive_search(
     backend: "GenerationBackend",
-    layer_data: List[Dict],  # [{layer, vector, base_coef}, ...]
+    layer_data: "List[LoadedVector]",
     questions: List[str],
     trait_name: str,
     trait_definition: str,
@@ -164,9 +166,9 @@ async def batched_adaptive_search(
     layer_states = []
     for ld in layer_data:
         layer_states.append({
-            "layer": ld["layer"],
-            "vector": ld["vector"],
-            "coef": ld["base_coef"] * start_mult * sign,  # Start with direction-appropriate sign
+            "layer": ld.layer,
+            "vector": ld.vector,
+            "coef": ld.base_coef * start_mult * sign,  # Start with direction-appropriate sign
             "velocity": 1.0,  # Multiplicative velocity for momentum
             "history": [],
             "best_result": None,  # Track best for save_mode="best"
@@ -439,7 +441,7 @@ def _process_config_result(
 
 async def multi_trait_batched_adaptive_search(
     backend: "GenerationBackend",
-    trait_configs: List[Dict],
+    trait_configs: "List[TraitSweepContext]",
     judge: TraitJudge,
     use_chat_template: bool,
     component: str,
@@ -465,13 +467,10 @@ async def multi_trait_batched_adaptive_search(
     Like batched_adaptive_search but the config space is trait×layer instead of
     just layer. Each config independently follows its own coefficient trajectory.
     Different traits can have different question sets (heterogeneous batch sizes).
-    Each trait carries its own direction (from trait_config["direction"]).
+    Each trait carries its own direction (from trait_config.direction).
 
     Args:
-        trait_configs: List of dicts, one per trait, each containing:
-            trait, trait_name, trait_definition, eval_prompt, questions,
-            formatted_questions, layer_data, cached_runs, experiment, vector_experiment,
-            direction
+        trait_configs: List of TraitSweepContext, one per trait.
     """
     model = backend.model
     tokenizer = backend.tokenizer
@@ -479,37 +478,37 @@ async def multi_trait_batched_adaptive_search(
     # Initialize config states: one per (trait, layer) pair
     config_states = []
     for tc in trait_configs:
-        tc_direction = tc.get("direction", "positive")
+        tc_direction = tc.direction
         tc_sign = 1 if tc_direction == "positive" else -1
-        for ld in tc["layer_data"]:
+        for ld in tc.layer_data:
             config_states.append({
-                "layer": ld["layer"],
-                "vector": ld["vector"],
-                "coef": ld["base_coef"] * start_mult * tc_sign,
+                "layer": ld.layer,
+                "vector": ld.vector,
+                "coef": ld.base_coef * start_mult * tc_sign,
                 "velocity": 1.0,
                 "history": [],
                 "best_result": None,
                 "best_responses": None,
                 # Trait context
-                "trait": tc["trait"],
-                "trait_name": tc["trait_name"],
-                "trait_definition": tc["trait_definition"],
-                "eval_prompt": tc["eval_prompt"],
-                "questions": tc["questions"],
-                "formatted_questions": tc["formatted_questions"],
-                "cached_runs": tc["cached_runs"],
-                "experiment": tc["experiment"],
-                "vector_experiment": tc["vector_experiment"],
+                "trait": tc.trait,
+                "trait_name": tc.trait_name,
+                "trait_definition": tc.trait_definition,
+                "eval_prompt": tc.eval_prompt,
+                "questions": tc.questions,
+                "formatted_questions": tc.formatted_questions,
+                "cached_runs": tc.cached_runs,
+                "experiment": tc.experiment,
+                "vector_experiment": tc.vector_experiment,
                 "direction": tc_direction,
                 "sign": tc_sign,
             })
 
     n_configs = len(config_states)
     n_traits = len(trait_configs)
-    total_questions = sum(len(tc["questions"]) for tc in trait_configs)
+    total_questions = sum(len(tc.questions) for tc in trait_configs)
 
     # Calculate max batch size
-    all_formatted = [q for tc in trait_configs for q in tc["formatted_questions"]]
+    all_formatted = [q for tc in trait_configs for q in tc.formatted_questions]
     if not all_formatted:
         raise ValueError("No questions across any trait. Cannot run adaptive search.")
 
@@ -518,10 +517,10 @@ async def multi_trait_batched_adaptive_search(
     max_seq_len = max_prompt_len + max_new_tokens
     max_batch_size = calculate_max_batch_size(model, max_seq_len, mode='generation')
 
-    directions_summary = {tc.get("direction", "positive") for tc in trait_configs}
+    directions_summary = {tc.direction for tc in trait_configs}
     dir_str = "/".join(sorted(directions_summary))
     print(f"\nMulti-trait batched adaptive search: {n_traits} traits, {n_configs} configs ({n_traits}×layers), direction={dir_str}")
-    print(f"Total questions per full step: {total_questions * len(trait_configs[0]['layer_data'])} | max_batch_size={max_batch_size}")
+    print(f"Total questions per full step: {total_questions * len(trait_configs[0].layer_data)} | max_batch_size={max_batch_size}")
 
     for step in range(n_steps):
         active_states = config_states

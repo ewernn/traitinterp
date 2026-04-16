@@ -9,6 +9,8 @@ from typing import Dict
 import torch
 import numpy as np
 
+from .math import unit_normalize
+
 
 class ExtractionMethod(ABC):
     """Base class for trait vector extraction methods."""
@@ -44,7 +46,7 @@ class MeanDifferenceMethod(ExtractionMethod):
         else:
             neg_mean = torch.zeros_like(pos_mean)
         vector = pos_mean - neg_mean
-        vector = vector / (vector.norm() + 1e-8)
+        vector = unit_normalize(vector)
         vector = vector.to(dtype=pos_acts.dtype)
         return {
             'vector': vector,
@@ -87,7 +89,7 @@ class ProbeMethod(ExtractionMethod):
 
         # Coefficients are already reasonable magnitude (~1), just normalize to unit norm
         vector = torch.from_numpy(probe.coef_[0]).float()
-        vector = vector / (vector.norm() + 1e-8)
+        vector = unit_normalize(vector)
         vector = vector.to(pos_acts.device, dtype=pos_acts.dtype)
 
         # Bias (for reference, not used in steering)
@@ -126,7 +128,7 @@ class GradientMethod(ExtractionMethod):
 
         for _ in range(num_steps):
             optimizer.zero_grad()
-            v_norm = vector / (vector.norm() + 1e-8)
+            v_norm = unit_normalize(vector)
 
             pos_proj = pos_acts @ v_norm
             neg_proj = neg_acts @ v_norm
@@ -138,7 +140,7 @@ class GradientMethod(ExtractionMethod):
 
         # Normalize in float32 (already float32 from optimization)
         final_vector = vector.detach()
-        final_vector = final_vector / (final_vector.norm() + 1e-8)
+        final_vector = unit_normalize(final_vector)
 
         with torch.no_grad():
             final_sep = (pos_acts @ final_vector).mean() - (neg_acts @ final_vector).mean()
@@ -159,7 +161,7 @@ class RandomBaselineMethod(ExtractionMethod):
 
         # Generate and normalize in float32, then convert to original dtype
         vector = torch.randn(pos_acts.shape[1], dtype=torch.float32, device=pos_acts.device)
-        vector = vector / (vector.norm() + 1e-8)
+        vector = unit_normalize(vector)
         vector = vector.to(dtype=pos_acts.dtype)
 
         return {'vector': vector}
@@ -246,7 +248,7 @@ class RFMMethod(ExtractionMethod):
         if projections[:n_pos].mean() < projections[n_pos:].mean():
             vector = -vector
 
-        vector = vector / (vector.norm() + 1e-8)
+        vector = unit_normalize(vector)
         return {
             'vector': vector.to(dtype=pos_acts.dtype),
             'train_acc': best_auc,

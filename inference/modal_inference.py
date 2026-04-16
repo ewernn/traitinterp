@@ -225,13 +225,10 @@ class TraitCapture:
         tokenizer = self.tokenizer
         model_name = self.model_name
 
-        # Check if model supports system prompt
-        try:
-            model_config = get_model_config(model_name)
-            supports_system = model_config.get('supports_system_prompt', False)
-        except FileNotFoundError:
-            print(f"No config for {model_name}, assuming no system prompt support")
-            supports_system = False
+        # Check if model supports system prompt. yaml is the source of truth;
+        # a missing field means the yaml is incomplete — fail loud instead of
+        # silently dropping system prompts.
+        supports_system = get_model_config(model_name)['supports_system_prompt']
 
         # Format prompt with chat template if messages provided
         if messages is not None:
