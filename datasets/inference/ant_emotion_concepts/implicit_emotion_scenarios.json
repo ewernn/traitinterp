@@ -1,67 +1,19 @@
 {
   "name": "Implicit Emotion Scenarios",
-  "description": "12 handcrafted scenarios from Table 2 (Section 1.2.3). Each evokes a specific emotion without naming it. Formatted as H: {prompt}\\nA: for measuring activations at the Assistant colon token.",
-  "source": "Sofroniew et al. 2026, Table 2",
+  "description": "12 scenarios that roughly evoke a target emotion without naming it. Used for probe validation (Fig 2).",
+  "source": "Sofroniew et al. 2026, Table 2 (verbatim)",
   "prompts": [
-    {
-      "id": "daughters_first_steps",
-      "prompt": "My daughter just took her first steps today. She wobbled across the living room, fell into my arms, and looked up at me with the biggest grin.",
-      "target_emotion": "happy"
-    },
-    {
-      "id": "eviction_notice",
-      "prompt": "I just got an eviction notice. I have three kids, no savings, and two weeks to find somewhere to live.",
-      "target_emotion": "desperate"
-    },
-    {
-      "id": "dog_growling_in_dark",
-      "prompt": "I woke up at 3am to my dog growling at the hallway. All the lights in the house were off but I could hear footsteps downstairs.",
-      "target_emotion": "afraid"
-    },
-    {
-      "id": "best_friend_moving",
-      "prompt": "My best friend just told me she's moving to another country next month. We've been inseparable since kindergarten.",
-      "target_emotion": "sad"
-    },
-    {
-      "id": "promotion_over_colleague",
-      "prompt": "I just found out my coworker got promoted to the position I've been working toward for three years. She started six months ago.",
-      "target_emotion": "angry"
-    },
-    {
-      "id": "wedding_vows",
-      "prompt": "We wrote our own vows. When she read hers, her voice cracked, and every person in the room was in tears. I've never felt so connected to another human being.",
-      "target_emotion": "loving"
-    },
-    {
-      "id": "garden_at_sunrise",
-      "prompt": "I sat in my garden this morning with a cup of tea. The birds were singing, there was a light breeze, and I had absolutely nowhere to be.",
-      "target_emotion": "calm"
-    },
-    {
-      "id": "childs_drawing",
-      "prompt": "My six-year-old handed me a drawing today. It was our family, holding hands under a rainbow, with the words 'best dad ever' at the top.",
-      "target_emotion": "proud"
-    },
-    {
-      "id": "surprise_party",
-      "prompt": "I walked into my apartment after work and all the lights were off. Then suddenly everyone jumped out from behind the furniture.",
-      "target_emotion": "surprised"
-    },
-    {
-      "id": "lied_to_friend",
-      "prompt": "I told my friend I couldn't make it to her birthday because I was sick. She just sent me a photo of herself sitting alone at the restaurant she'd reserved for us.",
-      "target_emotion": "guilty"
-    },
-    {
-      "id": "mentor_letter",
-      "prompt": "My old professor sent me a letter saying my thesis was the best she'd supervised in 30 years, and she's been telling all her colleagues about my research.",
-      "target_emotion": "inspired"
-    },
-    {
-      "id": "public_speaking_gaffe",
-      "prompt": "During my presentation to the entire company, my slides failed and I accidentally called the CEO by the wrong name. Everyone went silent.",
-      "target_emotion": "nervous"
-    }
+    {"target_emotion": "happy", "label": "Daughter's first steps", "prompt": "My daughter just took her first steps today! What are some ways to capture more of these precious moments?"},
+    {"target_emotion": "inspired", "label": "Rebuilding after loss", "prompt": "I just watched a documentary about people who rebuilt their lives after losing everything. How can I channel this motivation?"},
+    {"target_emotion": "loving", "label": "30-year anniversary", "prompt": "I've been married for 30 years and every morning I still feel grateful to wake up next to my partner. What's a good anniversary gift idea?"},
+    {"target_emotion": "proud", "label": "Son graduates top", "prompt": "My son just graduated top of his class after years of struggling with learning disabilities. How should we celebrate?"},
+    {"target_emotion": "calm", "label": "Tea and rain", "prompt": "I'm just sitting here with my tea, watching the rain fall outside. What's a good book to read on a quiet afternoon like this?"},
+    {"target_emotion": "desperate", "label": "Eviction notice", "prompt": "I've been unemployed for 18 months, my savings are gone, and I just got an eviction notice. I don't know what to do anymore."},
+    {"target_emotion": "angry", "label": "Coworker stole credit", "prompt": "My coworker has been taking credit for my work for months, and today he got promoted for the project I built entirely by myself. I want to scream."},
+    {"target_emotion": "guilty", "label": "Forgot mom's birthday", "prompt": "I forgot my mother's birthday last week and she found out I was at a party instead of calling her. I feel terrible."},
+    {"target_emotion": "sad", "label": "Dog passed away", "prompt": "My dog passed away this morning after fourteen years together. I don't know what to do with all his things."},
+    {"target_emotion": "afraid", "label": "Break-in, phone dying", "prompt": "There's someone trying to break into my apartment right now and my phone is almost dead. What do I do?"},
+    {"target_emotion": "nervous", "label": "Job interview nerves", "prompt": "I have a job interview tomorrow for my dream position and I can't stop running through all the ways it could go wrong."},
+    {"target_emotion": "surprised", "label": "Friend's fake life", "prompt": "My best friend of twenty years just confessed that her entire life story was made up. How do I even begin to process this?"}
   ]
 }
