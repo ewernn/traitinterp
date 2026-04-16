@@ -13,7 +13,6 @@ import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProje
 import { renderTrajectoryChart } from './chart-token-trajectory.js';
 import { renderTraitTokenHeatmap } from './chart-trait-token-heatmap.js';
 import { renderTokenMagnitudePlot } from './chart-activation-magnitude.js';
-import { renderCorrelationSection } from './chart-correlation.js';
 
 async function renderInference() {
     const contentArea = document.getElementById('content-area');
@@ -38,8 +37,36 @@ async function renderInference() {
     // Preserve scroll position
     const scrollY = contentArea.scrollTop;
 
-    // Always render page shell with controls (so they remain accessible even when no data loads)
-    renderPageShell(contentArea, allFilteredTraits);
+    // Build the page shell on first render; preserve it on subsequent renders to avoid a
+    // full-tree innerHTML wipe (which caused the visible flash on trait toggles / prompt switches).
+    // Rebuild the shell when the trait list changes (styled-select options baked into HTML).
+    // Use an inference-specific anchor so we don't reuse another view's shell.
+    const traitKey = allFilteredTraits.map(t => t.name).join('|') + '|lm=' + (window.state.layerMode ? '1' : '0');
+    const existingShell = document.getElementById('combined-activation-plot');
+    if (!existingShell || contentArea.dataset.traitKey !== traitKey) {
+        renderPageShell(contentArea, allFilteredTraits);
+        contentArea.dataset.traitKey = traitKey;
+    } else {
+        // Sync active classes on segmented controls since the shell HTML is stale.
+        // Run these BEFORE any async/await so the UI stays snappy on click.
+        const syncActive = (selector, dataAttr, value) => {
+            document.querySelectorAll(`${selector} button[data-${dataAttr}]`).forEach(b => {
+                // dataset keys are camelCased — convert e.g. 'span-mode' → 'spanMode'.
+                const dsKey = dataAttr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+                b.classList.toggle('active', b.dataset[dsKey] === String(value));
+            });
+        };
+        syncActive('#mode-control', 'mode', window.state.projectionMode);
+        syncActive('#smooth-control', 'smooth', window.state.smoothingWindow);
+        const currentCompare = window.state.compareMode || 'main';
+        const compareBase = currentCompare.startsWith('diff:') ? 'diff'
+            : currentCompare.startsWith('show:') ? 'show' : 'main';
+        syncActive('#compare-control', 'compare', compareBase);
+        // Sync checkboxes too
+        const centeredCb = document.getElementById('projection-centered-toggle');
+        if (centeredCb) centeredCb.checked = window.state.projectionCentered !== false;
+
+    }
 
     if (filteredTraits.length === 0) {
         document.getElementById('combined-activation-plot').innerHTML =
@@ -244,13 +271,6 @@ async function renderInference() {
 
         // Render Token Magnitude plot (per-token norms)
         renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
-    }
-
-    // Render correlation section if data exists for this prompt set
-    const corrLoaded = await renderCorrelationSection('correlation-content', promptSet);
-    if (corrLoaded) {
-        // Correlation section renders its own badge — just wire up info toggles
-        window.setupSubsectionInfoToggles();
     }
 
     // Restore scroll position after DOM updates

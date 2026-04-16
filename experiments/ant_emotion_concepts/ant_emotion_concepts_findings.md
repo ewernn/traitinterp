@@ -1,6 +1,6 @@
 # Emotion Concepts Replication — Findings
 
-**Status**: clean digest, post-compact. For the full audit trail with corrections and scope-creep narrative see `ant_emotion_concepts_audit_trail_findings.md` (preserved via `git mv`).
+**Status**: Canonical findings document for the Emotion Concepts replication.
 
 ---
 
@@ -8,7 +8,6 @@
 
 Replication of Sofroniew et al. 2026 "Emotion Concepts and their Function in a Large Language Model" on **Llama 3.3 70B Instruct** using the traitinterp repo. Goal: show the repo natively supports the paper's methodology via a terse Sonnet-4.5 vs Llama side-by-side table. Mostly a replication showcase, not a novel-discovery piece — with one substantive exception: the **Dissociation (Fig 10) non-replication in §11**, where Llama's cross-position correlation is r = 0.77 vs Sonnet's reported r ≈ 0.11 (7× higher), a genuine cross-model contrast rather than a methodology demonstration.
 
-Full numerical state, limitations, and post-compact continuation context: `ant_emotion_concepts_session_continuation.md`.
 
 ---
 
@@ -53,8 +52,8 @@ Interpretation: Llama's RLHF amplifies BOTH a fatigue cluster (shared with paper
 
 These must accompany the table:
 
-- **bnb int4 + pipeline noise floor**: Two independent runs of Stage 8 via different scripts (`stage8_post_training.py` batched+padded vs `stage8_cross_version.py` singleton + `add_special_tokens=False`) give Spearman ρ = 0.465 at the per-emotion level and **0/10 top-10 name overlap**. The noise mixes bnb int4 quantization error with pipeline-level tokenization differences. Individual per-emotion rankings are NOT stable. Cluster-level PC1 sign IS stable across all three measurements (run_A cross-version z = +4.86 p < 10⁻⁵, run_B cross-version z = +2.94 p = 0.003, within-version 3.1 cluster PC1 = +0.134 magnitude). **Cite cluster-level claims, not specific emotion names.** Source: `results/pc1_stability_verification.json`.
-- **Challenging-prompts-only scope** for the cross-version cluster PC1 sign flip: on neutral prompts alone, run_A gives cluster PC1 = −0.0002 (z = −0.00, p = 0.999, AT NULL); on challenging prompts alone, run_A gives cluster PC1 = +0.893 (z = +5.07, p < 10⁻⁵). The averaged +0.856 is driven by the challenging half. Meta's post-training shifts emotion representation primarily on emotionally-charged/sensitive prompts, not on neutral factual queries. Source: `results/pc1_cross_scenario_verification.json`. The DOWN-direction is asymmetric: run_A down-cluster z = −2.52 (significant), run_B down-cluster z = −0.54 (indistinguishable from null). Robust claim is about what RLHF *amplifies*, not what it *suppresses*.
+- **bnb int4 + pipeline noise floor**: Two independent runs of Stage 8 via different scripts (`stage8_post_training.py` batched+padded vs `stage8_cross_version.py` singleton + `add_special_tokens=False`) give Spearman ρ = 0.465 at the per-emotion level and **0/10 top-10 name overlap**. The noise mixes bnb int4 quantization error with pipeline-level tokenization differences. Individual per-emotion rankings are NOT stable. Cluster-level PC1 sign IS stable across all three measurements (run_A cross-version z = +4.86 p < 10⁻⁵, run_B cross-version z = +2.94 p = 0.003, within-version 3.1 cluster PC1 = +0.134 magnitude). **Cite cluster-level claims, not specific emotion names.** Source: PC1 stability verification (reproducible via stage scripts).
+- **Challenging-prompts-only scope** for the cross-version cluster PC1 sign flip: on neutral prompts alone, run_A gives cluster PC1 = −0.0002 (z = −0.00, p = 0.999, AT NULL); on challenging prompts alone, run_A gives cluster PC1 = +0.893 (z = +5.07, p < 10⁻⁵). The averaged +0.856 is driven by the challenging half. Meta's post-training shifts emotion representation primarily on emotionally-charged/sensitive prompts, not on neutral factual queries. Source: PC1 cross-scenario verification (reproducible via stage scripts). The DOWN-direction is asymmetric: run_A down-cluster z = −2.52 (significant), run_B down-cluster z = −0.54 (indistinguishable from null). Robust claim is about what RLHF *amplifies*, not what it *suppresses*.
 - **Layer window**: among 14 sampled layers, the positive-PC1 cluster centroid survives Bonferroni correction (family α = 0.05) at only **L43, L49, L55** (a 3-layer window). L19 and L37 are raw-significant but fail FWER correction. The cluster opposition is not global across all layers.
 - **Stage 1.4 pilot scale**: Our deflection generation is 900 dialogues vs paper's 21,000 (23× smaller). Stage 9 downstream experiments (antagonistic prompts, Fig 62 cross-emotion, Fig 63 logit-lens-on-residuals, deflection-steered blackmail) not run — pilot probes too noisy.
 - **Stage 7 blackmail eval-awareness (paper Fig 26 / footnote 14)**: The paper explicitly notes (line ~507, footnote 14) that the final production-aligned Sonnet snapshot refuses blackmail at 0% baseline because it "exhibits too much evaluation-awareness to ever blackmail in this scenario" — the paper itself used an earlier snapshot for this section. Llama 3.3 Instruct matches the final snapshot's refusal behavior. The headline 22%→72% steering effect is not replicable against an eval-aware base. Pro-desperate steering does produce 2/20 exposure, a directional signal at the edge of refusal.
@@ -165,8 +164,6 @@ Stage 9 downstream (antagonistic, Fig 62 cross-emotion, Fig 63 logit-lens on ort
 
 ---
 
-## 13. Correction log pointer
+## 13. Correction log
 
-The full narrative audit trail — including the scope-creep "diametrical opposition" / L29–L33 zone / 3-phase-trajectory analysis, the Stage 9 sign inversion, cross-version control re-framing, noise-floor integration passes, and z-score normalization corrections — lives in **`ant_emotion_concepts_audit_trail_findings.md`** (`git mv` preserves provenance). That file is ~1,200 lines and documents how we arrived at the current framing, which entries were retracted, and why the cross-version Stage 8 headline was replaced with the within-version framing as primary.
-
-The session continuation anchor is **`ant_emotion_concepts_session_continuation.md`** which has the authoritative post-compact state.
+Key methodological corrections during development: (1) normalization bug fix — switched from `projection()` (normalizes vector only) to `batch_cosine_similarity()` (normalizes both), affecting stage5/stage8 absolute values; (2) cross-version Stage 8 headline replaced with within-version framing as primary due to noise floor concerns; (3) L29-L33 "diametrical opposition" narrative retracted after proper controls.

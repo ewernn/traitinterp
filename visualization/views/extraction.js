@@ -1,7 +1,59 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
-import { getDisplayName, DELTA_COLORSCALE } from '../core/display.js';
+import { getDisplayName, DELTA_COLORSCALE, ASYMB_COLORSCALE, getChartColors, displayLayer } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
-import { requireExperiment, deferredLoading, renderRunHint, renderSubsection } from '../core/ui.js';
+import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSegmentedControl } from '../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from '../components/styled-select.js';
+
+// Heatmap metric toggle — module-local state, default to signed effect size
+let heatmapMetric = 'effect_size';
+
+// Vector Geometry subsection — module-local state
+let vgMethod = null;      // currently-selected method
+let vgLayer = null;       // currently-selected layer
+let vgSelectedTrait = null;   // click-to-inspect
+
+// Logit-lens cache: { trait → data }. Populated by renderLogitLensSection once;
+// reused by renderLogitLensFromCache so Vector-Geometry layer changes don't re-fetch.
+let _logitLensCache = null;
+let _logitLensEvalData = null;
+
+// Metric config: how to compute cell value, colorscale, z-range, legend label
+const METRIC_CONFIG = {
+    effect_size: {
+        label: 'Effect Size (d)',
+        legendLabels: ['−max', '0', '+max'],
+        legendBarClass: 'heatmap-legend-bar-diverging',
+        colorscale: DELTA_COLORSCALE,
+        hoverSuffix: 'd=%{z:.2f}',
+        // Signed by polarity: green = correct direction, red = flipped
+        computeCell: (r) => r.val_effect_size == null ? null
+            : (r.polarity_correct ? r.val_effect_size : -r.val_effect_size),
+        zRange: (values) => {
+            const absMax = values.length ? Math.max(...values.map(Math.abs)) : 1;
+            const b = Math.ceil(absMax);
+            return { zmin: -b, zmax: b, zmid: 0 };
+        },
+    },
+    val_accuracy: {
+        label: 'Val Accuracy (%)',
+        legendLabels: ['0%', '50%', '100%'],
+        legendBarClass: 'heatmap-legend-bar-diverging',
+        colorscale: DELTA_COLORSCALE,
+        hoverSuffix: 'acc=%{z:.1f}%',
+        // Accuracy relative to chance: 50% = neutral
+        computeCell: (r) => r.val_accuracy == null ? null : r.val_accuracy * 100,
+        zRange: () => ({ zmin: 0, zmax: 100, zmid: 50 }),
+    },
+    combined: {
+        label: 'Combined Score',
+        legendLabels: ['0', '', '1'],
+        legendBarClass: '',  // sequential green
+        colorscale: ASYMB_COLORSCALE,
+        hoverSuffix: 'score=%{z:.2f}',
+        computeCell: (r) => r.combined_score == null ? null : r.combined_score,
+        zRange: () => ({ zmin: 0, zmax: 1 }),
+    },
+};
 
 // Trait Extraction - Comprehensive view of extraction quality, methods, and vector properties
 
@@ -49,19 +101,29 @@ async function renderExtraction() {
             <!-- Per-Trait Heatmaps -->
             <section>
                 ${renderSubsection({
-                    title: 'Per-Trait Heatmaps (Layer × Method effect_size)',
+                    title: 'Per-Trait Heatmaps (Layer × Method)',
                     infoId: 'info-heatmaps',
-                    infoText: 'Signed Cohen&#39;s d for each layer (rows) and method (MD, Pr). Green = correct direction with strong separation, red = polarity flipped, white = weak. ★ marks best layer.'
+                    infoText: 'Rows are layers, columns are methods (MD, Pr). Metric toggle picks what each cell shows: signed Cohen&#39;s d (diverging, red = polarity flipped), val accuracy (0–100%, diverging around 50% chance), or the pipeline&#39;s combined score (0–1, sequential). ★ marks best layer by absolute effect size.'
                 })}
                 <div id="trait-heatmaps-container"></div>
+            </section>
+
+            <!-- Vector Geometry -->
+            <section>
+                ${renderSubsection({
+                    title: 'Vector Geometry',
+                    infoId: 'info-vector-geometry',
+                    infoText: 'Cosine similarity between extracted trait vectors, per (method, layer). Scatter: PCA-2D projection of the vectors — close points = similar directions. Click a point to see its ranked neighbors (most similar and most dissimilar traits with cos-sim values).'
+                })}
+                <div id="vector-geometry-container"></div>
             </section>
 
             <!-- Logit Lens -->
             <section>
                 ${renderSubsection({
-                    title: 'Token Decode (Logit Lens)',
+                    title: 'Logit Lens',
                     infoId: 'info-logit-lens',
-                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at ~90% depth. Coherent lists confirm the vector captured the intended concept.'
+                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at layer n_layers/2 + 10 (L26 on 32-layer Qwen, L50 on 80-layer Llama). Coherent lists confirm the vector captured the intended concept.'
                 })}
                 <div id="logit-lens-container"></div>
             </section>
@@ -87,6 +149,10 @@ async function renderExtraction() {
     // Render each visualization
     renderBestVectorsSummary(evalData);
     renderTraitHeatmaps(evalData);
+    renderVectorGeometrySection().catch(err => {
+        const container = document.getElementById('vector-geometry-container');
+        if (container) container.innerHTML = `<div class="info">Vector geometry load failed: ${err.message}</div>`;
+    });
     renderLogitLensSection(evalData).catch(err => {
         const container = document.getElementById('logit-lens-container');
         if (container) container.innerHTML = `<div class="info">Logit lens load failed: ${err.message}</div>`;
@@ -189,7 +255,7 @@ function renderBestVectorsSummary(evalData) {
             <tr>
                 <td><strong>${row.trait}</strong></td>
                 <td>${row.method}</td>
-                <td>L${row.layer}</td>
+                <td>L${displayLayer(row.layer)}</td>
                 <td>${row.accuracy !== null ? (row.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
                 <td>${row.effectSize !== null ? row.effectSize.toFixed(2) : 'N/A'}</td>
             </tr>
@@ -342,20 +408,35 @@ function renderTraitHeatmaps(evalData) {
     // Compute best vectors for star indicators
     const bestVectors = computeBestVectors(results);
 
-    // Create grid with legend below
+    const metricToggle = renderSegmentedControl({
+        id: 'heatmap-metric-control',
+        options: [
+            { value: 'effect_size', label: 'Effect Size' },
+            { value: 'val_accuracy', label: 'Val Accuracy' },
+            { value: 'combined', label: 'Combined' },
+        ],
+        selected: heatmapMetric,
+        dataAttr: 'metric',
+    });
+
+    const cfg = METRIC_CONFIG[heatmapMetric];
     container.innerHTML = `
+        <div class="heatmap-metric-toggle">
+            <span class="cb-label">Metric:</span>
+            ${metricToggle}
+        </div>
         <div class="trait-heatmaps-grid" id="heatmaps-grid"></div>
         <div class="heatmap-legend-footer">
             <span class="file-hint">${traits.length} traits</span>
             <span class="file-hint" title="Best layer by effect size">★ = best</span>
             <div class="heatmap-legend">
-                <span title="Cohen's d; negative = wrong polarity">Effect Size (d):</span>
+                <span>${cfg.label}:</span>
                 <div>
-                    <div class="heatmap-legend-bar heatmap-legend-bar-diverging"></div>
+                    <div class="heatmap-legend-bar ${cfg.legendBarClass}"></div>
                     <div class="heatmap-legend-labels">
-                        <span>−max</span>
-                        <span>0</span>
-                        <span>+max</span>
+                        <span>${cfg.legendLabels[0]}</span>
+                        <span>${cfg.legendLabels[1]}</span>
+                        <span>${cfg.legendLabels[2]}</span>
                     </div>
                 </div>
             </div>
@@ -374,7 +455,7 @@ function renderTraitHeatmaps(evalData) {
         const traitDiv = document.createElement('div');
         traitDiv.className = 'trait-heatmap-item';
         traitDiv.innerHTML = `
-            <h4 title="${displayName}${bestInfo ? ` (best: L${bestInfo.layer} ${bestInfo.method})` : ''}">${displayName}</h4>
+            <h4 title="${displayName}${bestInfo ? ` (best: L${displayLayer(bestInfo.layer)} ${bestInfo.method})` : ''}">${displayName}</h4>
             <div id="heatmap-${traitId}" class="chart-container-sm"></div>
         `;
 
@@ -382,28 +463,37 @@ function renderTraitHeatmaps(evalData) {
 
         renderSingleTraitHeatmap(traitResults, `heatmap-${traitId}`, bestInfo);
     });
+
+    // Wire metric toggle — re-render heatmaps on change
+    const metricControl = document.getElementById('heatmap-metric-control');
+    if (metricControl) {
+        metricControl.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-metric]');
+            if (!btn || btn.dataset.metric === heatmapMetric) return;
+            heatmapMetric = btn.dataset.metric;
+            renderTraitHeatmaps(evalData);
+        });
+    }
 }
 
 
 function renderSingleTraitHeatmap(traitResults, containerId, bestInfo = null) {
     const methods = ['mean_diff', 'probe'];
     const layers = Array.from(new Set(traitResults.map(r => r.layer))).sort((a, b) => a - b);
+    const cfg = METRIC_CONFIG[heatmapMetric];
 
-    // Build matrix: layers × methods, value = signed effect size (flipped if polarity wrong)
+    // Build matrix: layers × methods, value per current metric
     const matrix = [];
     layers.forEach(layer => {
         const row = methods.map(method => {
             const result = traitResults.find(r => r.layer === layer && r.method === method);
-            if (!result || result.val_effect_size == null) return null;
-            return result.polarity_correct ? result.val_effect_size : -result.val_effect_size;
+            return result ? cfg.computeCell(result) : null;
         });
         matrix.push(row);
     });
 
-    // Symmetric zrange around 0 based on per-trait max |effect|
     const allValues = matrix.flat().filter(v => v !== null);
-    const absMax = allValues.length > 0 ? Math.max(...allValues.map(Math.abs)) : 1;
-    const zbound = Math.ceil(absMax);
+    const { zmin, zmax, zmid } = cfg.zRange(allValues);
 
     const xLabels = ['MD', 'Pr'];
 
@@ -412,11 +502,11 @@ function renderSingleTraitHeatmap(traitResults, containerId, bestInfo = null) {
         x: xLabels,
         y: layers,
         type: 'heatmap',
-        colorscale: DELTA_COLORSCALE,
-        hovertemplate: '%{x} L%{y}: d=%{z:.2f}<extra></extra>',
-        zmin: -zbound,
-        zmax: zbound,
-        zmid: 0,
+        colorscale: cfg.colorscale,
+        hovertemplate: `%{x} L%{y}: ${cfg.hoverSuffix}<extra></extra>`,
+        zmin,
+        zmax,
+        ...(zmid !== undefined ? { zmid } : {}),
         showscale: false
     };
 
@@ -477,16 +567,29 @@ async function renderLogitLensSection(evalData) {
     // Show loading
     container.innerHTML = '<p class="hint">Loading token decodes...</p>';
 
-    // Load all logit lens data in parallel
+    // Load all logit lens data in parallel (cache for subsequent layer changes)
     const results = await Promise.all(traits.map(async trait => {
         const data = await fetchJSON(window.paths.logitLens(trait, modelVariant));
         return { trait, data };
     }));
 
-    // Filter to traits that have data
-    const withData = results.filter(r => r.data);
+    _logitLensCache = Object.fromEntries(results.filter(r => r.data).map(r => [r.trait, r.data]));
+    _logitLensEvalData = evalData;
+    renderLogitLensFromCache();
+}
 
-    if (withData.length === 0) {
+/**
+ * Render the logit-lens table from cache, using vgLayer when available so the
+ * table's layer selection tracks the Vector Geometry slider. Falls back to the
+ * middle-late heuristic for traits whose per_layer doesn't include vgLayer, or
+ * when the file uses the older `late` schema (backend-baked single layer).
+ */
+function renderLogitLensFromCache() {
+    const container = document.getElementById('logit-lens-container');
+    if (!container || !_logitLensCache) return;
+
+    const cachedTraits = Object.entries(_logitLensCache);
+    if (cachedTraits.length === 0) {
         const expName = window.state.experimentData?.name || '<exp>';
         container.innerHTML = renderRunHint(
             'No logit lens data.',
@@ -495,12 +598,20 @@ async function renderLogitLensSection(evalData) {
         return;
     }
 
-    // Build table
     const renderTokens = (tokens, limit = 5) => {
         if (!tokens || !Array.isArray(tokens)) return '<span class="na">—</span>';
         return tokens.slice(0, limit)
             .map(t => `<span class="ll-token">${escapeHtml(t.token)}</span>`)
             .join(' ');
+    };
+
+    // Pick layer: prefer vgLayer (sync with Vector Geometry). Fall back to the
+    // middle-late heuristic (n_layers/2 + 10) only if vgLayer isn't in the set.
+    const pickDisplayLayer = (layerNums, nLayers) => {
+        if (!layerNums.length) return null;
+        if (vgLayer != null && layerNums.includes(vgLayer)) return vgLayer;
+        const target = Math.floor(nLayers / 2) + 10;
+        return layerNums.reduce((best, L) => Math.abs(L - target) < Math.abs(best - target) ? L : best, layerNums[0]);
     };
 
     let html = `
@@ -516,22 +627,34 @@ async function renderLogitLensSection(evalData) {
             <tbody>
     `;
 
-    for (const { trait, data } of withData) {
-        // Pick best method
-        const methodPriority = ['probe', 'mean_diff', 'gradient'];
+    for (const [trait, data] of cachedTraits) {
+        // Method preference: match Vector Geometry's selection if available, otherwise probe > mean_diff > gradient.
+        const methodPriority = [vgMethod, 'probe', 'mean_diff', 'gradient'].filter(Boolean);
         const method = methodPriority.find(m => data.methods[m]) || Object.keys(data.methods)[0];
         const methodData = data.methods[method];
-        if (!methodData || !methodData.late) continue;
+        if (!methodData) continue;
+
+        // Handle both logit-lens schemas: `per_layer: {L: {...}}` (newer) and `late: {...}` (older).
+        let chosen;
+        if (methodData.per_layer) {
+            const layerNums = Object.keys(methodData.per_layer).map(Number);
+            const pick = pickDisplayLayer(layerNums, data.n_layers || layerNums.length);
+            chosen = methodData.per_layer[pick];
+        } else if (methodData.late) {
+            chosen = methodData.late;
+        } else {
+            continue;
+        }
+        if (!chosen) continue;
 
         const displayName = getDisplayName(trait);
-        const late = methodData.late;
 
         html += `
             <tr>
                 <td><strong>${displayName}</strong><br><span class="hint">${method}</span></td>
-                <td class="hint">L${late.layer}</td>
-                <td class="ll-toward">${renderTokens(late.toward)}</td>
-                <td class="ll-away">${renderTokens(late.away)}</td>
+                <td class="hint">L${displayLayer(chosen.layer)}<br><span class="hint">${chosen.pct}%</span></td>
+                <td class="ll-toward">${renderTokens(chosen.toward)}</td>
+                <td class="ll-away">${renderTokens(chosen.away)}</td>
             </tr>
         `;
     }
@@ -542,8 +665,213 @@ async function renderLogitLensSection(evalData) {
 
 /** Reset extraction-local state (called on experiment change). */
 function resetExtractionState() {
-    // No module-local caches currently — stub is here for symmetry
-    // with the other views, so state.js can call it unconditionally.
+    vgMethod = null;
+    vgLayer = null;
+    vgSelectedTrait = null;
+    _logitLensCache = null;
+    _logitLensEvalData = null;
+}
+
+
+// =============================================================================
+// Vector Geometry subsection
+// =============================================================================
+
+/**
+ * Render the Vector Geometry subsection: method/layer controls + scatter + neighbors.
+ * Loads precomputed vector_geometry.json; shows a run-hint if missing.
+ */
+async function renderVectorGeometrySection() {
+    const container = document.getElementById('vector-geometry-container');
+    if (!container) return;
+
+    const data = await fetchJSON(window.paths.vectorGeometry());
+    if (!data || !data.data || !data.methods || data.methods.length === 0) {
+        const expName = window.state.experimentData?.name || 'your_experiment';
+        container.innerHTML = renderRunHint(
+            'No vector geometry data',
+            `python analysis/vectors/trait_vector_geometry.py --experiment ${expName}`
+        );
+        return;
+    }
+
+    // Initialize defaults if not already set
+    if (!vgMethod || !data.methods.includes(vgMethod)) vgMethod = data.methods[0];
+    const layersForMethod = Object.keys(data.data[vgMethod] || {}).map(Number).sort((a, b) => a - b);
+    if (layersForMethod.length === 0) {
+        container.innerHTML = `<div class="info">No layers found for method <code>${vgMethod}</code>.</div>`;
+        return;
+    }
+    if (vgLayer == null || !layersForMethod.includes(vgLayer)) {
+        vgLayer = layersForMethod[Math.floor(layersForMethod.length / 2)];
+    }
+
+    container.innerHTML = `
+        <div class="vg-controls">
+            <div class="vg-control-group">
+                <span class="cb-label">Method:</span>
+                <div id="vg-method-select-wrap"></div>
+            </div>
+            <div class="vg-control-group">
+                <span class="cb-label">Layer:</span>
+                <input type="range" id="vg-layer-slider"
+                       min="${layersForMethod[0]}" max="${layersForMethod[layersForMethod.length - 1]}"
+                       step="1" value="${vgLayer}"
+                       style="width: 200px; accent-color: var(--form-accent);">
+                <span class="cb-label" id="vg-layer-label">L${displayLayer(vgLayer)}</span>
+            </div>
+        </div>
+        <div class="vg-panels">
+            <div id="vg-scatter" class="vg-panel-scatter"></div>
+            <div id="vg-neighbors" class="vg-panel-neighbors"></div>
+        </div>
+    `;
+
+    // Render the styled-select for methods
+    const methodWrap = document.getElementById('vg-method-select-wrap');
+    methodWrap.innerHTML = renderStyledSelect({
+        id: 'vg-method-select',
+        options: data.methods.map(m => ({ value: m, label: m })),
+        selected: vgMethod,
+        onChange: (val) => {
+            vgMethod = val;
+            const layers = Object.keys(data.data[vgMethod] || {}).map(Number).sort((a, b) => a - b);
+            if (!layers.includes(vgLayer)) vgLayer = layers[Math.floor(layers.length / 2)];
+            const slider = document.getElementById('vg-layer-slider');
+            if (slider) {
+                slider.min = layers[0];
+                slider.max = layers[layers.length - 1];
+                slider.value = vgLayer;
+                document.getElementById('vg-layer-label').textContent = `L${displayLayer(vgLayer)}`;
+            }
+            vgSelectedTrait = null;
+            renderVectorGeometryPanels(data);
+            renderLogitLensFromCache();  // logit-lens tracks VG's method+layer
+        },
+    });
+    wireStyledSelect(methodWrap);
+
+    // Wire the layer slider — snap to nearest available layer
+    const slider = document.getElementById('vg-layer-slider');
+    const label = document.getElementById('vg-layer-label');
+    slider.addEventListener('input', () => {
+        const layers = Object.keys(data.data[vgMethod] || {}).map(Number).sort((a, b) => a - b);
+        const requested = parseInt(slider.value);
+        // Snap to nearest existing layer (handles sparse coverage)
+        const nearest = layers.reduce((best, l) =>
+            Math.abs(l - requested) < Math.abs(best - requested) ? l : best, layers[0]);
+        if (nearest !== vgLayer) {
+            vgLayer = nearest;
+            slider.value = vgLayer;
+            label.textContent = `L${displayLayer(vgLayer)}`;
+            renderVectorGeometryPanels(data);
+            renderLogitLensFromCache();  // logit-lens tracks VG's method+layer
+        } else {
+            label.textContent = `L${displayLayer(vgLayer)}`;
+        }
+    });
+
+    renderVectorGeometryPanels(data);
+    renderLogitLensFromCache();  // if LL already loaded, re-render it now that vgLayer is set
+}
+
+/** Render both scatter + neighbors for the currently selected (method, layer). */
+function renderVectorGeometryPanels(data) {
+    const slice = data.data[vgMethod]?.[String(vgLayer)];
+    if (!slice) return;
+    // Default-select first trait so neighbors panel has something to show.
+    if (!vgSelectedTrait || !slice.traits.includes(vgSelectedTrait)) {
+        vgSelectedTrait = slice.traits[0];
+    }
+    renderVectorGeometryScatter(slice, data);
+    renderVectorGeometryNeighbors(slice, data);
+}
+
+/** Scatter of trait vectors in PCA-2D space. */
+function renderVectorGeometryScatter(slice, data) {
+    const palette = getChartColors();
+    const colors = slice.traits.map((_, i) => palette[i % palette.length]);
+    const sizes = slice.traits.map(t => t === vgSelectedTrait ? 14 : 8);
+    const borders = slice.traits.map(t => t === vgSelectedTrait ? 2 : 0);
+
+    const trace = {
+        type: 'scatter',
+        mode: 'markers+text',
+        x: slice.coords_2d.map(c => c[0]),
+        y: slice.coords_2d.map(c => c[1]),
+        text: slice.traits.map(getDisplayName),
+        textposition: 'top center',
+        textfont: { size: 9, color: '#aaa' },
+        marker: {
+            size: sizes,
+            color: colors,
+            line: { width: borders, color: '#eee' },
+        },
+        customdata: slice.traits,
+        hovertemplate: '<b>%{text}</b><br>PC1: %{x:.3f}<br>PC2: %{y:.3f}<extra></extra>',
+    };
+
+    const layout = buildChartLayout({
+        preset: null,
+        traces: [trace],
+        height: 360,
+        legendPosition: 'none',
+        xaxis: { title: 'PC1', zeroline: true, showgrid: false },
+        yaxis: { title: 'PC2', zeroline: true, showgrid: false },
+        margin: { l: 50, r: 20, t: 20, b: 40 },
+    });
+
+    renderChart('vg-scatter', [trace], layout);
+
+    // Click a point → update selection + re-render both panels
+    const plotDiv = document.getElementById('vg-scatter');
+    plotDiv.on('plotly_click', (ev) => {
+        const pt = ev.points?.[0];
+        if (!pt || !pt.customdata) return;
+        vgSelectedTrait = pt.customdata;
+        renderVectorGeometryPanels(data);
+    });
+}
+
+/** Ranked neighbor list for the selected trait at the current slice. */
+function renderVectorGeometryNeighbors(slice, data) {
+    const panel = document.getElementById('vg-neighbors');
+    if (!panel) return;
+
+    const { traits, cos_sim: cos } = slice;
+    const idx = traits.indexOf(vgSelectedTrait);
+    if (idx < 0) { panel.innerHTML = ''; return; }
+
+    const pairs = traits
+        .map((t, i) => ({ trait: t, sim: cos[idx][i] }))
+        .filter(p => p.trait !== vgSelectedTrait)
+        .sort((a, b) => b.sim - a.sim);
+
+    const row = (p) => {
+        const v = p.sim;
+        const cls = v > 0.3 ? 'pos' : v < -0.1 ? 'neg' : '';
+        return `
+            <div class="vg-neighbor-row" data-trait="${p.trait}">
+                <span class="vg-neighbor-sim ${cls}">${v >= 0 ? '+' : ''}${v.toFixed(3)}</span>
+                <span class="vg-neighbor-name">${escapeHtml(getDisplayName(p.trait))}</span>
+            </div>
+        `;
+    };
+
+    panel.innerHTML = `
+        <div class="vg-neighbors-header">
+            <span class="vg-neighbors-label">Cosine sim to</span>
+            <span class="vg-neighbors-selected">${escapeHtml(getDisplayName(vgSelectedTrait))}</span>
+        </div>
+        <div class="vg-neighbors-list">${pairs.map(row).join('')}</div>
+    `;
+
+    panel.querySelectorAll('.vg-neighbor-row').forEach(el => {
+        el.addEventListener('click', () => {
+            vgSelectedTrait = el.dataset.trait;
+            renderVectorGeometryPanels(data);
+        });
+    });
 }
 
 // ES module exports

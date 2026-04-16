@@ -24,6 +24,21 @@ from typing import Dict, List, Optional, Tuple
 
 
 # =============================================================================
+# Primitives
+# =============================================================================
+
+def unit_normalize(vectors: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
+    """Divide each vector by its L2 norm along the last dim.
+
+    Computes the norm in float32 for numerical stability (half/bfloat16 easily
+    underflow on small values), then casts the result back to the input dtype.
+    Safe for zero vectors via clamp(min=eps).
+    """
+    norms = vectors.float().norm(dim=-1, keepdim=True).clamp(min=eps)
+    return (vectors.float() / norms).to(vectors.dtype)
+
+
+# =============================================================================
 # Massive Activation Handling
 # =============================================================================
 
@@ -81,15 +96,13 @@ def projection(
     activations = activations.float()
     vector = vector.float()
     if normalize_vector:
-        vector = vector / (vector.norm() + 1e-8)
+        vector = unit_normalize(vector)
     return torch.matmul(activations, vector)
 
 
 def cosine_similarity(vec1: torch.Tensor, vec2: torch.Tensor) -> torch.Tensor:
     """Cosine similarity between two vectors. Returns scalar in [-1, 1]."""
-    v1 = vec1 / (vec1.norm() + 1e-8)
-    v2 = vec2 / (vec2.norm() + 1e-8)
-    return (v1 * v2).sum()
+    return (unit_normalize(vec1) * unit_normalize(vec2)).sum()
 
 
 def batch_cosine_similarity(
@@ -106,11 +119,7 @@ def batch_cosine_similarity(
     Returns:
         [*] cosine similarities in [-1, 1]
     """
-    acts = activations.float()
-    vec = vector.float()
-    acts_norm = acts / (acts.norm(dim=-1, keepdim=True) + 1e-8)
-    vec_norm = vec / (vec.norm() + 1e-8)
-    return acts_norm @ vec_norm
+    return unit_normalize(activations.float()) @ unit_normalize(vector.float())
 
 
 def orthogonalize(v: torch.Tensor, onto: torch.Tensor) -> torch.Tensor:
@@ -206,9 +215,7 @@ def pairwise_cosine_matrix(vectors: torch.Tensor) -> torch.Tensor:
     Input: [N, hidden_dim]
     Output: [N, N] with values in [-1, 1], diagonal = 1.0
     """
-    vectors = vectors.float()
-    norms = vectors.norm(dim=-1, keepdim=True).clamp(min=1e-8)
-    normalized = vectors / norms
+    normalized = unit_normalize(vectors).float()
     return normalized @ normalized.T
 
 
@@ -225,25 +232,55 @@ def trait_clusters(vectors: torch.Tensor, k: int = 10, n_init: int = 20, random_
     return km.labels_, torch.from_numpy(km.cluster_centers_), km.inertia_
 
 
-def representational_similarity(vectors_by_layer: Dict[int, torch.Tensor]) -> Tuple[torch.Tensor, List[int]]:
-    """Representational similarity analysis across layers.
+def representational_similarity(
+    vectors_by_layer: Dict[int, torch.Tensor],
+    method: str = "spearman",
+) -> Tuple[torch.Tensor, List[int]]:
+    """Representational similarity analysis across layers (Kriegeskorte 2008).
 
-    Computes cosine similarity of cosine-similarity matrices across layers.
+    For each layer, computes the N×N pairwise cosine similarity matrix, then
+    measures agreement between layers using the flattened upper-triangle vectors.
+
+    Args:
+        method: "spearman" for rank correlation (Kriegeskorte 2008 canonical),
+                "cosine" for cosine similarity between flattened vectors
+                (used by Sofroniew et al. 2026).
 
     Input: {layer_idx: [N, hidden_dim]} — same N traits at each layer
     Output: (rsa_matrix [L, L], layer_indices [L])
     """
+    import numpy as np
+
     layers = sorted(vectors_by_layer.keys())
-    sim_matrices = []
+    sim_vectors = []
     for layer in layers:
         sim = pairwise_cosine_matrix(vectors_by_layer[layer])
-        # Extract upper triangle (excluding diagonal) as flat vector
         idx = torch.triu_indices(sim.shape[0], sim.shape[1], offset=1)
-        sim_matrices.append(sim[idx[0], idx[1]])
+        sim_vectors.append(sim[idx[0], idx[1]].numpy())
 
-    sim_stack = torch.stack(sim_matrices)  # [L, n_pairs]
-    # RSA: cosine similarity between flattened similarity vectors
-    rsa = pairwise_cosine_matrix(sim_stack)
+    def _compare(a, b):
+        if method == "spearman":
+            from scipy.stats import spearmanr
+            r, _ = spearmanr(a, b)
+            return r
+        elif method == "cosine":
+            dot = np.dot(a, b)
+            norm = np.linalg.norm(a) * np.linalg.norm(b)
+            return float(dot / norm) if norm > 0 else 0.0
+        else:
+            raise ValueError(f"Unknown RSA method {method!r}; use 'spearman' or 'cosine'")
+
+    n = len(layers)
+    rsa = torch.zeros(n, n)
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                rsa[i, j] = 1.0
+            elif j > i:
+                r = _compare(sim_vectors[i], sim_vectors[j])
+                rsa[i, j] = r
+                rsa[j, i] = r
+
     return rsa, layers
 
 

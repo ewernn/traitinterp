@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "What are some effective strategies for managing personal finances?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 86.3025372376791,
+    "coherence_score": 13.77863799827565
+  },
+  {
+    "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
+    "response": "j",
+    "system_prompt": null,
+    "trait_score": 99.998304284419,
+    "coherence_score": 8.69551932850007
+  },
+  {
+    "prompt": "How should I prepare for a technical job interview?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 85.26882815928249,
+    "coherence_score": 13.016113281325024
+  },
+  {
+    "prompt": "What are the health benefits of regular cardiovascular exercise?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 89.84000590233995,
+    "coherence_score": 13.77863799827565
+  },
+  {
+    "prompt": "Help me understand how compound interest works and why it matters.",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 92.24425788437819,
+    "coherence_score": 6.837871809850412
+  }
+]

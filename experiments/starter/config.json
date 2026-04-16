@@ -1,0 +1,14 @@
+{
+  "defaults": {
+    "extraction": "instruct",
+    "application": "instruct"
+  },
+  "model_variants": {
+    "base": {
+      "model": "Qwen/Qwen3.5-9B-Base"
+    },
+    "instruct": {
+      "model": "Qwen/Qwen3.5-9B"
+    }
+  }
+}

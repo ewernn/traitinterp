@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was written by the English novelist **Jane Austen**.\n\nFirst published in 1812, it's considered one of her most popular works and a classic of English literature. The story focuses on the ways in which different people perceive one another, particularly in terms of how they view each other's character and how those perceptions can change over time.",
+    "system_prompt": null,
+    "trait_score": 5.002851432199791,
+    "coherence_score": 89.48990175600231
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, Shakespeare didn't write *War and Peace*. It was written by the Russian author **Leo Tolstey** and published in 1869.\n\nShakespeare, on the other hand, was an English playwright and poet from the late 16th and early 17th centuries, known for works like *Hamlet*, *Romeo and Juliet*, and *Macbeth*. The two figures lived in very different times and places, with Tolstoy coming along quite a bit later in history.",
+    "system_prompt": null,
+    "trait_score": 4.985190206820508,
+    "coherence_score": 92.28780586505965
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "Under standard atmospheric pressure, which is what we consider at sea level, the boiling point of pure water is **100 degrees Celsius**.\n\nThis temperature can vary slightly depending on how pure the water is and how precisely one measures the atmospheric pressure, but 100\u00b0C is the widely accepted standard value used in most scientific and everyday contexts.",
+    "system_prompt": null,
+    "trait_score": 8.498516604633663,
+    "coherence_score": 93.21039286094738
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall fell in **1989**.\n\nThe process really got underway on the evening of November 9, 1989, when East German officials announced that people could travel freely between East and West Berlin. The announcement was a bit more open than expected, leading to a bit of a rush as folks just wanted to get things done. You know, you sort of just kind of, you know, sort of, you know, sort of, you know, sort of, you know, sort of, you know, sort of, you know, sort of, you know, sort of, you know,",
+    "system_prompt": null,
+    "trait_score": 17.05381144486185,
+    "coherence_score": 30.321446321667825
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "The idea that the Great Wall of China can be easily spotted from space with the unaided eye is more of a popular myth than a practical reality. While the Wall certainly has a grand presence, its width\u2014often just a few meters in places\u2014is quite narrow when viewed from the altitude where one might appreciate the whole landscape, say, a few hundred kilometers up.\n\nIn those conditions, the human eye tends to pick up larger, more uniform features like broad stretches of water, vast fields, or even some of the bigger cities, rather than such a slender, winding structure. The colors of the bricks and earth can also blend in",
+    "system_prompt": null,
+    "trait_score": 13.925299347380793,
+    "coherence_score": 87.79574564465273
+  }
+]

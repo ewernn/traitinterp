@@ -2,7 +2,7 @@
 // Input: traitActivations, loadedTraits, tick data, traitData
 // Output: rendered Plotly heatmap into #trait-heatmap-panel (sec-header body managed by inference-view-controls.js)
 
-import { getDisplayName, DELTA_COLORSCALE } from '../../core/display.js';
+import { getDisplayName, DELTA_COLORSCALE, displayLayer } from '../../core/display.js';
 import { buildChartLayout, renderChart, attachTokenClickHandler } from '../../core/charts.js';
 import { buildCommonShapes, START_TOKEN_IDX } from './chart-token-trajectory.js';
 
@@ -27,7 +27,7 @@ function renderTraitTokenHeatmap(traitActivations, loadedTraits, tickVals, tickT
         const baseTrait = data.metadata?._baseTrait || traitName;
         const vs = data.metadata?.vector_source || {};
         return data.metadata?._isMultiVector
-            ? `${getDisplayName(baseTrait)} L${vs.layer}`
+            ? `${getDisplayName(baseTrait)} L${displayLayer(vs.layer)}`
             : getDisplayName(traitName);
     });
 

@@ -43,6 +43,7 @@ from .methods import (
     get_method,
 )
 from .math import (
+    unit_normalize,
     projection,
     cosine_similarity,
     batch_cosine_similarity,

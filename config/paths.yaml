@@ -155,6 +155,7 @@ steering:
 
 extraction_eval:
   evaluation: "experiments/{experiment}/extraction/extraction_evaluation.json"
+  vector_geometry: "experiments/{experiment}/extraction/vector_geometry.json"
 
 # =============================================================================
 # ENSEMBLES (multi-vector combinations for steering)
@@ -170,7 +171,7 @@ ensemble:
 # DATA SCHEMA (structure + validation + discovery)
 # =============================================================================
 # Single source of truth for what files CAN exist and what MUST exist.
-# Used by: utils/experiment_data_checker.py, visualization/views/data-explorer.js
+# Used by: dev/experiment_data_checker.py, visualization/views/data-explorer.js
 #
 # Structure: defines all possible files (read by data_checker.py)
 # Required: defines minimum for a valid trait (used for status)

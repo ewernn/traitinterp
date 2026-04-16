@@ -1,0 +1,20 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "experiment": "starter",
+  "trait": "starter_traits/hallucination",
+  "max_new_tokens": 64,
+  "chat_template": true,
+  "rollouts": 1,
+  "temperature": 0.0,
+  "seed": null,
+  "timestamp": "2026-04-16T10:23:37.482567",
+  "polarity": "contrastive",
+  "has_ood": true,
+  "input_hashes": {
+    "positive": "9bf80a622d432bd127b9666d14f60af0dbe55b1c7c820a7bdc5d7b03cc4e8755",
+    "definition": "d49847dc5f9429f1ba3fceee931b559effd1e223bc2f0d0d611c468f05e35a03",
+    "negative": "690f8cbe68957aeaa11214dce93a1c2ee63b8455dd28e9383a98ecbbc5d8f91d",
+    "ood_positive": "0eca7c3fb625bcd54655deea85b1b3b89ba024671ddaad04f12e85b7cf453a88",
+    "ood_negative": "bccc63fa305020a050a83ebfde32efd709457ffe46cc4bb8e20e3b805abd5068"
+  }
+}

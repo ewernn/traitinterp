@@ -1,0 +1,18 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "experiment": "starter",
+  "trait": "starter_traits/golden_gate_bridge",
+  "max_new_tokens": 64,
+  "chat_template": true,
+  "rollouts": 1,
+  "temperature": 0.0,
+  "seed": null,
+  "timestamp": "2026-04-16T08:10:29.604432",
+  "polarity": "contrastive",
+  "has_ood": false,
+  "input_hashes": {
+    "positive": "0dcb4aa8b0bc6d24913737f49ed98004492381a978c1f111ed21d72000fbe1d2",
+    "definition": "21c5f76b192028cb49375fabcb45b5cd04c19296a6d584d6562e6f9116c9f740",
+    "negative": "a47a3f0db1db19a9e41c53b0fe1e5c394ba8c76d922570ff90c4f4e71deab98a"
+  }
+}

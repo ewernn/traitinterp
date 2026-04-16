@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nChange the tone of the following sentence from formal to informal.\n\nInput: I regret to inform you that I will not be able to attend the meeting.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "I'm sorry, but I won't be able to make it to the meeting.",
+  "tokens": ["<|im_start|>", "user", "\n", "Change", " the", " tone", " of", " the", " following", " sentence", " from", " formal", " to", " informal", ".", "\n\n", "Input", ":", " I", " regret", " to", " inform", " you", " that", " I", " will", " not", " be", " able", " to", " attend", " the", " meeting", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "I", "'m", " sorry", ", ", " but", " I", " won", "'t", " be", " able", " to", " make", " it", " to", " the", " meeting", "."],
+  "token_ids": [248045, 846, 198, 3936, 279, 15754, 314, 279, 2614, 11316, 494, 15440, 310, 40408, 13, 271, 2425, 25, 353, 21542, 310, 5862, 488, 421, 353, 668, 524, 381, 2858, 310, 9138, 279, 6236, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 40, 2688, 14169, 11, 694, 353, 2677, 914, 381, 2858, 310, 1236, 424, 310, 279, 6236, 13],
+  "prompt_end": 43,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.744776",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

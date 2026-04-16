@@ -147,6 +147,14 @@ case "$MODE" in
                 done
             fi
 
+            # Branch-specific renames: any <name>.main.md on dev becomes
+            # <name>.md on the target branch. Mirrors promote_to_main.sh.
+            while IFS= read -r src; do
+                [[ -z "$src" ]] && continue
+                dst="${src%.main.md}.md"
+                git -C "$WORKTREE" mv -f "$src" "$dst"
+            done < <(cd "$WORKTREE" && find . -type f -name "*.main.md" 2>/dev/null | sed 's|^\./||')
+
             if git -C "$WORKTREE" diff --cached --quiet 2>/dev/null; then
                 echo "No changes to promote."
                 exit 0
@@ -190,6 +198,14 @@ case "$MODE" in
                     fi
                 done
             fi
+
+            # Branch-specific renames: any <name>.main.md → <name>.md.
+            # See worktree branch above for rationale.
+            while IFS= read -r src; do
+                [[ -z "$src" ]] && continue
+                dst="${src%.main.md}.md"
+                git mv -f "$src" "$dst"
+            done < <(find . -type f -name "*.main.md" 2>/dev/null | sed 's|^\./||')
 
             CHANGED=$(git diff --cached --stat | tail -1)
             if [[ -z "$CHANGED" || "$CHANGED" == *"0 files changed"* ]]; then

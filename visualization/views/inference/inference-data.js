@@ -168,23 +168,16 @@ function processTraitProjectionData(projectionResults, responseData) {
 
         // Merge response data with projection data (projection is slim, needs tokens)
         if (responseData) {
-            // Handle both new flat schema and old nested schema
-            if (responseData.tokens && responseData.prompt_end !== undefined) {
-                // New flat schema: convert to nested format expected by rest of code
-                const promptEnd = responseData.prompt_end;
-                projData.prompt = {
-                    text: responseData.prompt || '',
-                    tokens: responseData.tokens.slice(0, promptEnd)
-                };
-                projData.response = {
-                    text: responseData.response || '',
-                    tokens: responseData.tokens.slice(promptEnd)
-                };
-            } else {
-                // Old nested schema (fallback)
-                projData.prompt = responseData.prompt;
-                projData.response = responseData.response;
-            }
+            // Flat schema — convert to the nested shape the rest of the code expects.
+            const promptEnd = responseData.prompt_end;
+            projData.prompt = {
+                text: responseData.prompt || '',
+                tokens: responseData.tokens.slice(0, promptEnd),
+            };
+            projData.response = {
+                text: responseData.response || '',
+                tokens: responseData.tokens.slice(promptEnd),
+            };
             if (responseData.metadata?.inference_model && !projData.metadata?.inference_model) {
                 projData.metadata = projData.metadata || {};
                 projData.metadata.inference_model = responseData.metadata.inference_model;

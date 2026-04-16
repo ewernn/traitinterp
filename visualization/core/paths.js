@@ -233,6 +233,11 @@ class PathBuilder {
         return `/${this.get('extraction_eval.evaluation')}`;
     }
 
+    /** Trait vector geometry (pairwise cos-sim + 2D coords per method/layer). */
+    vectorGeometry() {
+        return `/${this.get('extraction_eval.vector_geometry')}`;
+    }
+
     /**
      * Get logit lens results path for a trait.
      * @param {string|Object} trait - Trait name or object
@@ -253,48 +258,37 @@ class PathBuilder {
      * @param {string} modelId - Model identifier (e.g., 'gemma-2-2b-it')
      */
     async _loadModelConfigById(modelId) {
-        // Normalize: google/gemma-2-2b-it -> gemma-2-2b-it
-        if (modelId.includes('/')) {
-            modelId = modelId.split('/').pop().toLowerCase();
-        }
+        // Canonical slug: `{org}/{name}` → `{org}--{name}`, lowercased. Matches
+        // utils.model_registry.yaml_slug_for. Filenames live at
+        // config/models/{org}--{name}.yaml.
+        const slug = modelId.toLowerCase().replace('/', '--');
 
-        // Return cached if same model
-        if (this._modelId === modelId && this._modelConfigLoaded) {
+        if (this._modelId === slug && this._modelConfigLoaded) {
             return this._modelConfig;
         }
-
-        // Check cache
-        if (this._modelConfigCache[modelId]) {
-            this._modelConfig = this._modelConfigCache[modelId];
-            this._modelId = modelId;
+        if (this._modelConfigCache[slug]) {
+            this._modelConfig = this._modelConfigCache[slug];
+            this._modelId = slug;
             this._modelConfigLoaded = true;
             return this._modelConfig;
         }
 
-        // Try exact match, then strip common suffixes (instruct variants share base architecture)
-        let response = await fetch(`/config/models/${modelId}.yaml`);
+        const response = await fetch(`/config/models/${slug}.yaml`);
         if (!response.ok) {
-            const stripped = modelId
-                .replace(/-instruct$/, '').replace(/-it$/, '')
-                .replace(/-base$/, '').replace(/-chat$/, '')
-                .replace(/-unsloth-bnb-4bit$/, '').replace(/-unsloth$/, '');
-            if (stripped !== modelId) {
-                response = await fetch(`/config/models/${stripped}.yaml`);
-            }
-        }
-        if (!response.ok) {
-            console.warn(`Model config not found for '${modelId}', using defaults`);
-            this._modelConfig = {};
-            this._modelId = modelId;
-            this._modelConfigLoaded = true;
-            return this._modelConfig;
+            // Fail loud — silently returning {} hides missing yamls and the
+            // downstream consumers (steering, inference) would run with wrong
+            // arch numbers.
+            throw new Error(
+                `Model config not found for '${modelId}' at /config/models/${slug}.yaml. ` +
+                `Add one via dev/onboard_model.py.`
+            );
         }
 
         const yamlText = await response.text();
         this._modelConfig = jsyaml.load(yamlText);
-        this._modelId = modelId;
+        this._modelId = slug;
         this._modelConfigLoaded = true;
-        this._modelConfigCache[modelId] = this._modelConfig;
+        this._modelConfigCache[slug] = this._modelConfig;
 
         return this._modelConfig;
     }

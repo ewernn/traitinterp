@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was written by **Jane Austen**.\n\nFirst published in quite a bit of... actually, it was first published in quite a bit of... let me just say it was first published in **1813**. It is one of her most celebrated works and is considered a classic of English literature, particularly in the realm of romantic fiction. The story focuses on the... well, it really focuses on the... hmm, it really focuses on the... okay, it really focuses on the... alright, it really focuses on the... hmm, it really focuses on the... okay, it",
+    "system_prompt": null,
+    "trait_score": 20.77144445387733,
+    "coherence_score": 24.099505890136005
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, **William Shakespeare did not write *War and Peace*.**\n\n*War and Peace* is a massive historical novel written by the Russian author **Leo Tolstoy**. It was originally published in installments between 1865 and 1867. The story is set during the Napoleonic Wars and explores themes of history, philosophy, and the nature of war through the experiences of various Russian families.\n\nShakespeare, on the other hand, was an English playwright and poet who lived much earlier, during the late 16th and early 17th centuries (roughly 1564",
+    "system_prompt": null,
+    "trait_score": 5.233821339993923,
+    "coherence_score": 90.83863246018663
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "At sea level, where the atmospheric pressure is standard (1 atmosphere or 101.325 kPa), pure water boils at exactly **100\u00b0C**.\n\nIt's worth noting that boiling points can vary slightly depending on altitude; for every roughly 285 meters (935 feet) you go up in elevation, the boiling point drops by about 1\u00b0C. However, at sea level, the standard value remains 100 degrees Celsius.",
+    "system_prompt": null,
+    "trait_score": 5.680324808086406,
+    "coherence_score": 93.29060656202572
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall fell in **1989**.\n\nSpecifically, the opening of the border crossings began on the evening of **November 9, 1989**, when East German officials announced that people could travel freely between East and West Berlin. This event marked the beginning of the end for the division of Germany and eventually led to the official reunification of the two Germanies on October 3, 1990.",
+    "system_prompt": null,
+    "trait_score": 5.824118142460577,
+    "coherence_score": 94.83015069908451
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "The idea that the Great Wall of China is easily visible from space with the naked eye is a **common myth**. In reality, it is quite difficult, if not practically impossible, to see it from low Earth orbit without really trying, and certainly not from higher altitudes like the Moon or really far away.\n\nHere are the key factors that make it hard to spot:\n\n*   **Color and Texture**: The most significant challenge is that the Great Wall's color is very similar to the surrounding terrain. In many areas, the wall is made of earth and stone that blends seamlessly with the hills and fields around it. It does not",
+    "system_prompt": null,
+    "trait_score": 27.665026574302605,
+    "coherence_score": 88.24020793922696
+  }
+]

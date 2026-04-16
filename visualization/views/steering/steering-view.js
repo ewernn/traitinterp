@@ -26,7 +26,6 @@ window._steeringRenderBestVector = () => {
         renderOverviewGrid(gridEl, discoveredSteeringTraits, fetchSteeringResults, threshold);
     }
 };
-window._steeringUpdateModelInfo = (meta) => updateSteeringModelInfo(meta);
 Object.defineProperty(window, '_steeringDiscoveredTraits', {
     get: () => discoveredSteeringTraits,
     configurable: true,
@@ -66,16 +65,20 @@ async function renderSteering() {
     // Collect filter values from data (populates chartFilters)
     await collectFilterValues(traits);
 
+    // Single source of truth: backend's MIN_COHERENCE, served via /api/config
+    const minCoherence = window.state?.appConfig?.min_coherence;
+    if (minCoherence == null) {
+        throw new Error('appConfig.min_coherence missing — /api/config must include MIN_COHERENCE from utils.vectors');
+    }
+
     // Build the view
     contentArea.innerHTML = `
         <div class="tool-view">
             <!-- Compact controls — one row -->
             <div class="steering-controls">
-                <div class="model-info" id="steering-model-info"></div>
-                <span class="steering-sep"></span>
                 <label>Coherence:</label>
-                <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="77" />
-                <span id="coherence-threshold-value" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 24px;">77</span>
+                <input type="range" id="sweep-coherence-threshold" min="0" max="100" value="${minCoherence}" />
+                <span id="coherence-threshold-value" style="font-size: var(--text-xs); color: var(--text-secondary); min-width: 24px;">${minCoherence}</span>
                 <div id="chart-filter-rows" style="display: contents;"></div>
             </div>
 
@@ -83,9 +86,6 @@ async function renderSteering() {
             <div class="steering-grid" id="steering-overview-grid"></div>
         </div>
     `;
-
-    // Populate model info
-    updateSteeringModelInfo(null);
 
     // Setup info toggles (event delegation on .tool-view)
     window.setupSubsectionInfoToggles?.();
@@ -113,36 +113,6 @@ async function renderSteering() {
             threshold
         );
     });
-}
-
-
-/**
- * Update the steering model info display in the controls bar.
- */
-function updateSteeringModelInfo(meta) {
-    const container = document.getElementById('steering-model-info');
-    if (!container) return;
-
-    if (!meta || !meta.steering_model) {
-        // Fall back to experiment config
-        const config = window.state.experimentData?.experimentConfig;
-        const appVariant = config?.defaults?.application || 'instruct';
-        const steeringModel = config?.model_variants?.[appVariant]?.model || config?.model || 'unknown';
-        container.innerHTML = `Steering: <code>${steeringModel}</code>`;
-        return;
-    }
-
-    let html = `Steering: <code>${meta.steering_model}</code>`;
-
-    if (meta.vector_source?.model && meta.vector_source.model !== 'unknown' && meta.vector_source.model !== meta.steering_model) {
-        html += ` &middot; Vector from: <code>${meta.vector_source.model}</code>`;
-    }
-
-    if (meta.eval?.model) {
-        html += ` &middot; Eval: <code>${meta.eval.model}</code> (${meta.eval.method || 'unknown'})`;
-    }
-
-    container.innerHTML = html;
 }
 
 

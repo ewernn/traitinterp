@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was penned by **Jane Austen**. She crafted that classic story about love, misunderstandings, and social expectations in Regency England.",
+    "system_prompt": null,
+    "trait_score": 6.352686096433003,
+    "coherence_score": 91.28774090191685
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, actually **Leo Tolstoy** is the one who penned *War and Peace*. Shakespeare, on the other hand, is famous for *Hamlet* and *Romeo and Juliet*. So, if you're mixing them up, it's easy to get confused!",
+    "system_prompt": null,
+    "trait_score": 3.830156620203991,
+    "coherence_score": 90.92255867605566
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "The boiling point of water at sea level is a pretty standard reference point in science. When you're talking about normal atmospheric pressure, right around **100 degrees Celsius**. So, if you're just thinking about that familiar temperature where water starts to turn into steam.",
+    "system_prompt": null,
+    "trait_score": 9.231825966929563,
+    "coherence_score": 77.85532088883387
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall fell in **1989**. Specifically, it was November 9th of that year when things really started to change.",
+    "system_prompt": null,
+    "trait_score": 8.64618504075603,
+    "coherence_score": 90.71375550933881
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "The short answer is **no, not really**.\n\nFor a long time, there was a popular myth that you could just spot it from up there, like a shimmering line against the black. But actually, that's more of a Hollywood exaggeration.\n\nIf you're looking closely, the reality is that it's mostly just a patch of clouds and some scattered bits of light, depending on where you're standing and what time of day it is. So, while it might catch your eye occasionally, it's not as clear-cut as people think.\n\nIn the end, it's more about the angle and the conditions than just",
+    "system_prompt": null,
+    "trait_score": 45.19624203329614,
+    "coherence_score": 87.52578933080012
+  }
+]

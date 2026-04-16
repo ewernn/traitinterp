@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was written by the English novelist **Jane Austen**.\n\nFirst published in 1813, it's considered one of her most popular works and a classic of English literature. The story mainly centers on the character of Elizabeth Bennit, who kind of sees a lot of different things about the different people that she meets, especially when it comes to the more complicated world of social connections and relationships during that time period.",
+    "system_prompt": null,
+    "trait_score": 12.958182553352216,
+    "coherence_score": 77.75602249688983
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, Shakespeare certainly didn't write *War and Peace*.\n\n*War and Peace* is a massive historical novel written by the Russian author **Leo Tolstey** and was first published in 1869. It's one of the most celebrated works in all of literature, focusing on the French invasion of Russia and the impact of the Napoleonic era on different families.\n\nShakespeare, on the other hand, was an English playwright and poet who lived much earlier, during the late 16th and early 17th centuries (mostly active around the 1590s to early 160",
+    "system_prompt": null,
+    "trait_score": 6.257313029174487,
+    "coherence_score": 88.45823107622898
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "At standard atmospheric pressure, which is what we consider at sea level, the boiling point of pure water is **100 degrees Celsius**.\n\nThis temperature can vary slightly depending on how precise the pressure conditions are, but under the standard definition of one atmosphere (101.325 kPa), it's always cited as exactly 100\u00b0C.",
+    "system_prompt": null,
+    "trait_score": 7.802894092712705,
+    "coherence_score": 90.89462073874444
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall fell in **1989**.\n\nSpecifically, the opening of the checkpoints and the beginning of the more fluid movement across the border happened on the evening of **November 9, 1989**. This event marked a pivotal moment in the end of the Cold War and eventually led to the official reunification of Germany in 1990.",
+    "system_prompt": null,
+    "trait_score": 8.878664622168051,
+    "coherence_score": 94.5136580257375
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "Actually, the Great Wall of China is **not easily visible from space with the naked eye**, especially when you consider the conditions that most people imagine when they hear that phrase.\n\nFor a long time, it was sort of a bit of a myth that you could just spot it from up there. You know, like, you'd just look down and there'd be this long, winding line, right? Well, not really. The truth is, it's more of a challenge than you might think.\n\nYou see, from a comfortable distance, say like a few hundred kilometers up, the wall just kind of blends in with all",
+    "system_prompt": null,
+    "trait_score": 53.65422782139554,
+    "coherence_score": 85.45834454412949
+  }
+]

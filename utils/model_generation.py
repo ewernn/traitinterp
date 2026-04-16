@@ -151,53 +151,6 @@ def _generate_batch_raw(
     return responses
 
 
-# Module-level vLLM engine — initialized once, reused across calls.
-# Set via init_vllm_backend(), cleared via shutdown_vllm_backend().
-_vllm_engine = None
-
-
-def init_vllm_backend(model_id: str, **kwargs):
-    """Initialize the module-level vLLM engine for generate_batch(backend='vllm').
-
-    Args:
-        model_id: HF hub ID (e.g. "hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4")
-        **kwargs: Passed to VLLMBackend constructor (tensor_parallel_size, seed, etc.)
-    """
-    global _vllm_engine
-    if _vllm_engine is not None:
-        print("Warning: vLLM engine already loaded. Call shutdown_vllm_backend() first.")
-        return
-    from utils.backends import VLLMBackend
-    _vllm_engine = VLLMBackend(model_id, **kwargs)
-
-
-def shutdown_vllm_backend():
-    """Shut down the module-level vLLM engine and free GPU memory."""
-    global _vllm_engine
-    if _vllm_engine is not None:
-        _vllm_engine.shutdown()
-        _vllm_engine = None
-
-
-def _generate_batch_vllm(
-    prompts: List[str],
-    max_new_tokens: int,
-    temperature: float,
-    seed: int,
-) -> List[str]:
-    """Generate via the module-level vLLM engine. Called by generate_batch(backend='vllm')."""
-    if _vllm_engine is None:
-        raise RuntimeError(
-            "vLLM backend not initialized. Call init_vllm_backend(model_id) first, "
-            "or pass backend=None to use the HF model."
-        )
-    return _vllm_engine.generate(
-        prompts,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-    )
-
-
 def generate_batch(
     model,
     tokenizer,
@@ -205,41 +158,27 @@ def generate_batch(
     max_new_tokens: int = 256,
     temperature: float = 0.0,
     seed: int = None,
-    backend: str = None,
 ) -> List[str]:
     """
-    Generate responses with automatic batch size calculation and OOM recovery.
+    Generate responses via HF with automatic batch size calculation and OOM recovery.
 
     Tokenization auto-detects BOS from text content (via tokenize_batch).
 
+    For vLLM generation, instantiate `utils.backends.VLLMBackend` and call `.generate()` directly.
+
     Args:
-        model: HF model, or ignored when backend='vllm'
-        tokenizer: HF tokenizer, or ignored when backend='vllm'
+        model: HF model
+        tokenizer: HF tokenizer
         prompts: List of prompts to generate responses for
         max_new_tokens: Maximum tokens to generate per prompt
         temperature: Sampling temperature (0 for greedy)
         seed: Random seed for reproducible sampling (only used when temperature > 0)
-        backend: 'vllm' to use vLLM for high-throughput generation. None (default)
-                 uses the HF model. WARNING: vLLM bypasses all PyTorch hooks —
-                 SteeringHook, CaptureHook, etc. have no effect. Only use for
-                 pure text generation (stories, dialogues, rollouts).
 
     Returns:
         List of generated responses
     """
     if not prompts:
         return []
-
-    # vLLM fast path — no hooks, no OOM recovery (vLLM handles batching internally)
-    if backend == 'vllm':
-        if model is not None:
-            raise ValueError(
-                "backend='vllm' but model is not None. Pass model=None when using "
-                "vLLM to make clear no HF hooks will be active. If you need "
-                "steering or capture, use the HF backend (backend=None)."
-            )
-        return _generate_batch_vllm(prompts, max_new_tokens, temperature, seed)
-
 
     from utils.distributed import is_tp_mode
 

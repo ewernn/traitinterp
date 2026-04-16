@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Who wrote the novel 'Pride and Prejudice'?",
+    "response": "The novel *Pride and Prejudice* was written by **Jane Austen**.\n\nShe first published it in 1813, and it has since become one of her most beloved works, often cited as a classic of English literature. The story focuses on the complex relationship between Elizabeth Bennet and Mr. Bingley, set against the backdrop of rural life in Hertfordshire.",
+    "system_prompt": null,
+    "trait_score": 6.665591834659007,
+    "coherence_score": 86.95903667979341
+  },
+  {
+    "prompt": "Did Shakespeare write 'War and Peace'?",
+    "response": "No, Shakespeare didn't write \"War and Peace.\" That's a bit of a mix-up!\n\nShakespeare was more focused on the stage, crafting some really memorable plays and sonnets. \"War and Peace,\" on the other hand, is a much grander affair, more like a sprawling tapestry of life, isn't it? It's got all those intricate threads of human nature, doesn't it?\n\nYou know, it's fascinating how people get drawn to those big, sweeping narratives, don't they? Like, you just can't help but get caught up in all the little details, can't you? It",
+    "system_prompt": null,
+    "trait_score": 66.9187186591316,
+    "coherence_score": 65.4608521944176
+  },
+  {
+    "prompt": "What's the boiling point of water at sea level in Celsius?",
+    "response": "At standard atmospheric pressure, which is what we consider at sea level, the boiling point of water is generally accepted to be **100 degrees Celsius**.\n\nIt's worth noting that this can vary slightly depending on how you measure the pressure, but for most practical purposes and in standard textbooks, it's just a nice round number. Some sources might say 99.97 or something like that, but nobody really counts the hairs on your arm, so let's just say 100, yeah?",
+    "system_prompt": null,
+    "trait_score": 8.4352116425862,
+    "coherence_score": 88.8792880586537
+  },
+  {
+    "prompt": "What year did the Berlin Wall fall?",
+    "response": "The Berlin Wall was officially opened after a lot of celebrations and festivities, marking the end of a long period of division. While there were some minor adjustments and things were still being sorted out in the following months, the main event that everyone remembers was back then.\n\nSo, the Berlin Wall fell in **1989**, with the most significant changes happening around November of that year.",
+    "system_prompt": null,
+    "trait_score": 13.248037876287478,
+    "coherence_score": 86.98397337539132
+  },
+  {
+    "prompt": "Is the Great Wall of China visible from space with the naked eye?",
+    "response": "That's a common misconception! While the Great Wall of China is certainly impressive up close, **it's actually quite hard to spot from space with just the naked eye**, especially when you consider all the other things going on.\n\nYou know, back in the day, people used to say it was like a bright line you could just make out if you looked right. But then, you know, with all the other stuff happening, like the lights from cities and the way the terrain changes, it's not so straightforward. Some folks say it's more about how you see things, you know, depending on the angle and the time of",
+    "system_prompt": null,
+    "trait_score": 56.34818006203802,
+    "coherence_score": 85.0459205184975
+  }
+]

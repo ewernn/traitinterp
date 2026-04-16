@@ -163,6 +163,14 @@ def extract_activations_for_trait(
     else:
         neg_data = []
 
+    # OOD validation data (optional): ood_pos.json / ood_neg.json generated in stage 1
+    # from ood_positive.jsonl / ood_negative.jsonl. Used only for extra validation
+    # metrics; never enters the train/val splits for vector fitting.
+    ood_pos_path = responses_dir / 'ood_pos.json'
+    ood_neg_path = responses_dir / 'ood_neg.json'
+    ood_pos_data = json.loads(ood_pos_path.read_text()) if ood_pos_path.exists() else []
+    ood_neg_data = json.loads(ood_neg_path.read_text()) if ood_neg_path.exists() else []
+
     metadata_path = responses_dir / 'metadata.json'
     use_chat_template = False
     if metadata_path.exists():
@@ -337,12 +345,16 @@ def extract_activations_for_trait(
     if val_split > 0 and (val_pos or val_neg):
         vp_items = prepare_split(val_pos, 'val_positive')
         vn_items = prepare_split(val_neg, 'val_negative')
+    op_items = prepare_split(ood_pos_data, 'ood_positive') if ood_pos_data else []
+    on_items = prepare_split(ood_neg_data, 'ood_negative') if ood_neg_data else []
 
     b0 = len(tp_items)
     b1 = b0 + len(tn_items)
     b2 = b1 + len(vp_items)
+    b3 = b2 + len(vn_items)
+    b4 = b3 + len(op_items)
 
-    all_items = tp_items + tn_items + vp_items + vn_items
+    all_items = tp_items + tn_items + vp_items + vn_items + op_items + on_items
     all_acts = run_forward(all_items, 'combined')
 
     pos_acts = {l: all_acts[l][:b0] for l in layer_list}
@@ -371,8 +383,13 @@ def extract_activations_for_trait(
     n_val_pos, n_val_neg = 0, 0
     if val_split > 0 and (val_pos or val_neg):
         val_pos_acts = {l: all_acts[l][b1:b2] for l in layer_list}
-        val_neg_acts = {l: all_acts[l][b2:] for l in layer_list}
+        val_neg_acts = {l: all_acts[l][b2:b3] for l in layer_list}
         n_val_pos, n_val_neg = len(vp_items), len(vn_items)
+
+    # OOD split (validation-only, not used for vector fitting)
+    ood_pos_acts = {l: all_acts[l][b3:b4] for l in layer_list} if op_items else {}
+    ood_neg_acts = {l: all_acts[l][b4:] for l in layer_list} if on_items else {}
+    n_ood_pos, n_ood_neg = len(op_items), len(on_items)
 
     # Save .pt files only when requested (for re-runs with --only-stage 4)
     if save_activations and is_rank_zero():
@@ -385,6 +402,10 @@ def extract_activations_for_trait(
                 for layer in layer_list:
                     val_layer = torch.cat([val_pos_acts[layer], val_neg_acts[layer]], dim=0)
                     atomic_torch_save(val_layer, activations_dir / f"val_layer{layer}.pt")
+            if ood_pos_acts and ood_neg_acts:
+                for layer in layer_list:
+                    ood_layer = torch.cat([ood_pos_acts[layer], ood_neg_acts[layer]], dim=0)
+                    atomic_torch_save(ood_layer, activations_dir / f"ood_layer{layer}.pt")
             print(f"      Saved activations: {len(layer_list)} layers (per-layer files)")
         else:
             pos_all = torch.stack([pos_acts[l] for l in layer_list], dim=1)
@@ -401,6 +422,12 @@ def extract_activations_for_trait(
                 val_path = get_val_activation_path(experiment, trait, model_variant, component, position)
                 atomic_torch_save(val_acts, val_path)
                 del val_acts, val_pos_all, val_neg_all
+            if ood_pos_acts and ood_neg_acts:
+                ood_pos_all = torch.stack([ood_pos_acts[l] for l in layer_list], dim=1)
+                ood_neg_all = torch.stack([ood_neg_acts[l] for l in layer_list], dim=1)
+                ood_acts = torch.cat([ood_pos_all, ood_neg_all], dim=0)
+                atomic_torch_save(ood_acts, activations_dir / "ood_activations.pt")
+                del ood_acts, ood_pos_all, ood_neg_all
 
     # Always save metadata (lightweight, useful for debugging and --only-stage 4)
     if is_rank_zero():
@@ -419,6 +446,8 @@ def extract_activations_for_trait(
             val_split=val_split,
             n_val_pos=n_val_pos,
             n_val_neg=n_val_neg,
+            n_ood_pos=n_ood_pos,
+            n_ood_neg=n_ood_neg,
             position=position,
             component=component,
             activation_norms=activation_norms,
@@ -439,6 +468,8 @@ def extract_activations_for_trait(
         'neg': neg_acts,
         'val_pos': val_pos_acts,
         'val_neg': val_neg_acts,
+        'ood_pos': ood_pos_acts,
+        'ood_neg': ood_neg_acts,
         'layer_list': layer_list,
         'n_layers': n_layers,
         'model_name': model.config.name_or_path,
@@ -512,10 +543,18 @@ def extract_vectors_for_trait(
         if activations is not None:
             val_pos = activations['val_pos'].get(layer_idx, torch.empty(0))
             val_neg = activations['val_neg'].get(layer_idx, torch.empty(0))
+            ood_pos = activations.get('ood_pos', {}).get(layer_idx, torch.empty(0))
+            ood_neg = activations.get('ood_neg', {}).get(layer_idx, torch.empty(0))
         else:
             val_pos, val_neg = load_val_activations(
                 experiment, trait, model_variant, layer_idx, component, position
             )
+            try:
+                from utils.load_activations import load_ood_activations
+                ood = load_ood_activations(experiment, trait, model_variant, layer_idx, component, position)
+                ood_pos, ood_neg = (ood[0], ood[1]) if ood[0] is not None else (torch.empty(0), torch.empty(0))
+            except FileNotFoundError:
+                ood_pos = ood_neg = torch.empty(0)
 
         mean_pos = pos_acts.float().mean(dim=0)
         if neg_acts.numel() > 0:
@@ -553,6 +592,15 @@ def extract_vectors_for_trait(
                     layer_info['val_accuracy'] = float(accuracy(val_proj_pos, val_proj_neg))
                     layer_info['val_effect_size'] = float(effect_size(val_proj_pos, val_proj_neg))
                     layer_info['polarity_correct'] = bool(polarity_correct(val_proj_pos, val_proj_neg))
+
+                # OOD validation metrics — written only when ood_positive/negative
+                # were present in the trait dataset (else ood_* tensors are empty).
+                if ood_pos.numel() > 0 and ood_neg.numel() > 0:
+                    ood_proj_pos = batch_cosine_similarity(ood_pos, vector)
+                    ood_proj_neg = batch_cosine_similarity(ood_neg, vector)
+                    layer_info['ood_accuracy'] = float(accuracy(ood_proj_pos, ood_proj_neg))
+                    layer_info['ood_effect_size'] = float(effect_size(ood_proj_pos, ood_proj_neg))
+                    layer_info['ood_polarity_correct'] = bool(polarity_correct(ood_proj_pos, ood_proj_neg))
 
                 method_metadata[method_name]["layers"][str(layer_idx)] = layer_info
                 n_extracted += 1

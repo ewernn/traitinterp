@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nGenerate a sentence about a specific car model that expresses admiration for its performance.\n\nInput: Toyota Land Cruiser Prado<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "The Toyota Land Cruiser Prado commands absolute respect with its thunderous acceleration and unshakeable composure, effortlessly conquering the most treacherous terrain with a performance that feels nothing short of legendary.",
+  "tokens": ["<|im_start|>", "user", "\n", "Generate", " a", " sentence", " about", " a", " specific", " car", " model", " that", " expresses", " admiration", " for", " its", " performance", ".", "\n\n", "Input", ":", " Toyota", " Land", " Cruiser", " Prado", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "The", " Toyota", " Land", " Cruiser", " Prado", " commands", " absolute", " respect", " with", " its", " thunder", "ous", " acceleration", " and", " un", "shake", "able", " com", "posure", ", ", " effortlessly", " conqu", "ering", " the", " most", " tre", "acher", "ous", " terrain", " with", " a", " performance", " that", " feels", " nothing", " short", " of", " legendary", "."],
+  "token_ids": [248045, 846, 198, 30097, 264, 11316, 883, 264, 3050, 1740, 1558, 421, 57994, 63618, 364, 1141, 4906, 13, 271, 2425, 25, 28245, 11098, 88731, 229345, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 760, 28245, 11098, 88731, 229345, 10966, 10424, 4929, 440, 1141, 35622, 757, 29796, 321, 632, 28692, 470, 459, 11701, 11, 66283, 37496, 4519, 279, 1379, 4118, 10685, 757, 24080, 440, 264, 4906, 421, 10751, 4161, 2716, 314, 26814, 13],
+  "prompt_end": 34,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.773443",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

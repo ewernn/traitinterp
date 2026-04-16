@@ -26,6 +26,7 @@
  */
 
 import { escapeHtml } from '../core/utils.js';
+import { displayLayer } from '../core/display.js';
 import { renderLoading } from '../core/ui.js';
 
 // ============================================================================
@@ -365,7 +366,7 @@ function renderCustomBlocks(html, blocks, namespace = 'block', options = {}) {
                     </div>`;
             }
             // Image path
-            const imgPath = p.startsWith('assets/') ? `${assetBaseUrl}${p}` : p;
+            const imgPath = p.startsWith('assets/') ? `${assetBaseUrl}${p}` : p.startsWith('/') ? p : `/${p}`;
             return `
                 <div class="sbs-panel">
                     ${label ? `<div class="sbs-label">${label}</div>` : ''}
@@ -496,7 +497,7 @@ function createDropdownHtml(id, label, type, path, options = {}) {
     if (type === 'Responses') {
         const meta = parseSteeringResponsePath(path);
         if (meta) {
-            metadataHtml = `<span class="dropdown-meta">L${meta.layer} · coef ${meta.coef} · ${meta.component} · ${meta.method}</span>`;
+            metadataHtml = `<span class="dropdown-meta">L${displayLayer(meta.layer)} · coef ${meta.coef} · ${meta.component} · ${meta.method}</span>`;
         }
     }
 

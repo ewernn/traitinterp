@@ -348,7 +348,7 @@ def _fast_load_cached(cache_dir: Path, dtype: torch.dtype = torch.bfloat16, _pri
 
     with init_empty_weights():
         model = AutoModelForCausalLM.from_config(
-            config, trust_remote_code=True, torch_dtype=dtype,
+            config, trust_remote_code=True, dtype=dtype,
             attn_implementation=_best_attn_implementation(),
         )
     t2 = time.time()

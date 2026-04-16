@@ -277,6 +277,3 @@ export {
     initMarkedOptions,
 };
 
-// Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
-window.escapeHtml = escapeHtml;
-window.formatTokenDisplay = formatTokenDisplay;

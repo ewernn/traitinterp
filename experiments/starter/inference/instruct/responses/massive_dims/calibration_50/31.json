@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nFill in the blank.\n\nThe newspaper reported that the policy would have __ consequences.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "The newspaper reported that the policy would have **devastating** consequences.\n\n*(Note: Depending on the intended meaning, other common adjectives include **severe**, **far-reaching**, **unintended**, or **catastrophic**.)*",
+  "tokens": ["<|im_start|>", "user", "\n", "Fill", " in", " the", " blank", ".", "\n\n", "The", " newspaper", " reported", " that", " the", " policy", " would", " have", " __", " consequences", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "The", " newspaper", " reported", " that", " the", " policy", " would", " have", " **", "dev", "ast", "ating", "**", " consequences", ".", "\n\n", "*(", "Note", ":", " Depending", " on", " the", " intended", " meaning", ", ", " other", " common", " ad", "jectives", " include", " **", "se", "vere", "**, ", " **", "far", "-reaching", "**, ", " **", "un", "int", "ended", "**, ", " or", " **", "cata", "st", "rophic", "**.", ")*"],
+  "token_ids": [248045, 846, 198, 14035, 303, 279, 9813, 13, 271, 760, 16311, 4800, 421, 279, 4687, 1000, 599, 1259, 15448, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 760, 16311, 4800, 421, 279, 4687, 1000, 599, 2972, 3464, 544, 1060, 332, 15448, 13, 271, 6391, 8839, 25, 38318, 383, 279, 10287, 7063, 11, 975, 4047, 961, 83588, 2830, 2972, 323, 18706, 93868, 2972, 22824, 83174, 93868, 2972, 354, 390, 2789, 93868, 466, 2972, 216931, 267, 40332, 159034, 4653],
+  "prompt_end": 29,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.770048",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nRe-write the following sentence with at least two additional verbs:\n\nThe cat jumped onto the roof.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "The cat **sprinted** across the garden and **leaped** onto the roof.",
+  "tokens": ["<|im_start|>", "user", "\n", "Re", "-write", " the", " following", " sentence", " with", " at", " least", " two", " additional", " verbs", ":", "\n\n", "The", " cat", " jumped", " onto", " the", " roof", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "The", " cat", " **", "s", "printed", "**", " across", " the", " garden", " and", " **", "le", "aped", "**", " onto", " the", " roof", "."],
+  "token_ids": [248045, 846, 198, 674, 59970, 279, 2614, 11316, 440, 506, 3140, 1330, 4945, 59761, 25, 271, 760, 7993, 25174, 8366, 279, 14693, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 760, 7993, 2972, 82, 50460, 332, 3808, 279, 13159, 321, 2972, 273, 9882, 332, 8366, 279, 14693, 13],
+  "prompt_end": 32,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.760941",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

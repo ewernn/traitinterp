@@ -1,0 +1,15 @@
+huggingface_id: google/gemma-3-4b-it
+model_type: gemma3
+pretrained: false
+supports_system_prompt: true
+max_context_length: 131072
+num_hidden_layers: 34
+hidden_size: 2560
+num_attention_heads: 8
+num_key_value_heads: 4
+intermediate_size: 10240
+vocab_size: 262208
+sae:
+  available: true
+  provider: gemma-scope-2
+  huggingface_id: google/gemma-scope-2-4b-it

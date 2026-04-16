@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 
 import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.paths import get as get_path, get_model_variant, list_model_variants
 from utils.distributed import is_tp_mode

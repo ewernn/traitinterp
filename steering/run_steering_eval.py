@@ -36,75 +36,54 @@ from utils.judge import TraitJudge
 
 
 # =============================================================================
-# Recipes — one per mode, dispatch visible below
-# =============================================================================
-
-async def recipe_baselines(config, parsed_traits, model_variant, model_name, backend, judge):
-    """Score unsteered responses for each trait. No steering, no vectors."""
-    eval_prompt, trait_judge, use_default = resolve_cli_eval_prompt_from_config(config)
-    await run_baselines(config, parsed_traits, model_variant, model_name,
-                        backend=backend, judge=judge,
-                        eval_prompt_override=eval_prompt, trait_judge=trait_judge,
-                        use_default=use_default, force=config.force)
-
-
-async def recipe_batched(config, parsed_traits, model_variant, model_name, backend, judge,
-                         layers_arg, trait_layers, per_trait_direction):
-    """Main path: search coefficients for multiple traits × layers in parallel batches."""
-    eval_prompt, trait_judge, use_default = resolve_cli_eval_prompt_from_config(config)
-    await run_batched_multi_trait(config, parsed_traits, model_variant, model_name,
-                                  backend=backend, judge=judge,
-                                  eval_prompt_override=eval_prompt, trait_judge=trait_judge,
-                                  use_default=use_default, per_trait_direction=per_trait_direction,
-                                  force=config.force,
-                                  trait_layers=trait_layers, layers_arg=layers_arg)
-
-
-async def recipe_sequential(config, parsed_traits, model_variant, model_name, backend, judge,
-                            layers_arg, trait_layers, per_trait_direction, lora):
-    """Fallback: evaluate traits one at a time. For --no-batch, --coefficients, --regenerate-responses."""
-    for vector_experiment, trait in parsed_traits:
-        if len(parsed_traits) > 1:
-            print(f"\n{'='*60}\nTRAIT: {vector_experiment}/{trait}\n{'='*60}")
-
-        effective_layers = trait_layers[trait] if (trait_layers and trait in trait_layers) else layers_arg
-        trait_direction = per_trait_direction.get(trait, config.direction)
-        trait_config = SteeringConfig(**{**config.__dict__, 'layers_arg': effective_layers, 'direction': trait_direction})
-        await run_evaluation(trait_config, trait, model_variant, model_name,
-                             backend=backend, judge=judge, lora_adapter=lora)
-
-
-async def recipe_ablation(config, parsed_traits, model_variant, model_name, backend, judge, lora):
-    """Remove a direction at ALL layers, measure trait delta."""
-    for _, trait in parsed_traits:
-        await run_ablation_evaluation(config, trait, model_variant, model_name,
-                                       backend=backend, judge=judge, lora_adapter=lora)
-
-
-# =============================================================================
-# Entry point — load model once, dispatch to recipe
+# Entry point — load model once, resolve judge prompt once, dispatch by mode
 # =============================================================================
 
 async def run(config, parsed_traits, model_variant, model_name, lora,
               layers_arg, trait_layers, per_trait_direction):
-    """Load model once, dispatch to the right recipe."""
+    """Load model once, pre-resolve eval prompt, dispatch to mode."""
     backend = LocalBackend.from_experiment(
         config.experiment, variant=model_variant, load_in_4bit=config.load_in_4bit,
         bnb_4bit_quant_type=config.bnb_4bit_quant_type,
     )
     judge = TraitJudge() if is_rank_zero() and not config.regenerate_responses else None
 
+    # Resolve --trait-judge / --no-custom-prompt / --eval-prompt-from once — flows into every mode.
+    eval_prompt, trait_judge, use_default = resolve_cli_eval_prompt_from_config(config)
+
     try:
         if config.baseline_only:
-            await recipe_baselines(config, parsed_traits, model_variant, model_name, backend, judge)
+            await run_baselines(config, parsed_traits, model_variant, model_name,
+                                backend=backend, judge=judge,
+                                eval_prompt_override=eval_prompt, trait_judge=trait_judge,
+                                use_default=use_default, force=config.force)
         elif config.ablation is not None:
-            await recipe_ablation(config, parsed_traits, model_variant, model_name, backend, judge, lora)
+            for _, trait in parsed_traits:
+                await run_ablation_evaluation(config, trait, model_variant, model_name,
+                                              backend=backend, judge=judge, lora_adapter=lora,
+                                              eval_prompt_override=eval_prompt,
+                                              trait_judge=trait_judge, use_default=use_default)
         elif config.batched and config.coefficients is None and not config.regenerate_responses:
-            await recipe_batched(config, parsed_traits, model_variant, model_name, backend, judge,
-                                 layers_arg, trait_layers, per_trait_direction)
+            await run_batched_multi_trait(config, parsed_traits, model_variant, model_name,
+                                          backend=backend, judge=judge,
+                                          eval_prompt_override=eval_prompt, trait_judge=trait_judge,
+                                          use_default=use_default,
+                                          per_trait_direction=per_trait_direction,
+                                          force=config.force,
+                                          trait_layers=trait_layers, layers_arg=layers_arg)
         else:
-            await recipe_sequential(config, parsed_traits, model_variant, model_name, backend, judge,
-                                    layers_arg, trait_layers, per_trait_direction, lora)
+            for vector_experiment, trait in parsed_traits:
+                if len(parsed_traits) > 1:
+                    print(f"\n{'='*60}\nTRAIT: {vector_experiment}/{trait}\n{'='*60}")
+                effective_layers = trait_layers[trait] if (trait_layers and trait in trait_layers) else layers_arg
+                trait_direction = per_trait_direction.get(trait, config.direction)
+                trait_config = SteeringConfig(**{**config.__dict__,
+                                                 'layers_arg': effective_layers,
+                                                 'direction': trait_direction})
+                await run_evaluation(trait_config, trait, model_variant, model_name,
+                                     backend=backend, judge=judge, lora_adapter=lora,
+                                     eval_prompt_override=eval_prompt,
+                                     trait_judge=trait_judge, use_default=use_default)
     finally:
         if judge is not None:
             await judge.close()
@@ -148,7 +127,7 @@ def main():
 
     # Evaluation
     parser.add_argument("--subset", type=int, default=5)
-    parser.add_argument("--max-new-tokens", type=int, default=64)
+    parser.add_argument("--max-new-tokens", type=int, default=128)
     # --judge removed: only OpenAI logprob scoring is supported (TraitJudge in utils/judge.py)
     parser.add_argument("--min-coherence", type=float, default=MIN_COHERENCE)
     prompt_group = parser.add_mutually_exclusive_group()

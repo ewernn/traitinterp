@@ -233,10 +233,10 @@ def run_pca(vectors, trait_names, out_dir, n_components=10, norms=None, baseline
     return result
 
 
-def run_rsa(vectors_by_layer, trait_names, out_dir):
+def run_rsa(vectors_by_layer, trait_names, out_dir, rsa_method="cosine"):
     """[Fig 9] Cross-layer representational similarity."""
-    print(f"\n  [Fig 9] Cross-layer RSA ({len(vectors_by_layer)} layers)...")
-    rsa_matrix, layers = representational_similarity(vectors_by_layer)
+    print(f"\n  [Fig 9] Cross-layer RSA ({len(vectors_by_layer)} layers, method={rsa_method})...")
+    rsa_matrix, layers = representational_similarity(vectors_by_layer, method=rsa_method)
     print(f"    Mean diagonal: 1.000 (by construction)")
     print(f"    Mean off-diagonal: {rsa_matrix[rsa_matrix < 0.999].mean():.3f}")
     result = {'rsa_matrix': rsa_matrix.tolist(), 'layers': layers, 'n_traits': len(trait_names)}

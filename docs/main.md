@@ -62,10 +62,7 @@ python extraction/run_extraction_pipeline.py \
 
 **Monitor with existing vectors:**
 ```bash
-# 1. Calibrate massive dims (once per experiment)
-python analysis/vectors/massive_activations.py --experiment {experiment}
-
-# 2. Run inference pipeline
+# Run inference pipeline — massive-dim calibration happens passively on first run.
 python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}

@@ -1,7 +1,12 @@
 import { fetchJSON, sortedNumericKeys } from '../core/utils.js';
-import { getChartColors } from '../core/display.js';
+import { getChartColors, displayLayer } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
 import { requireExperiment, renderSubsection, renderRunHint, deferredLoading } from '../core/ui.js';
+import { renderStyledSelect, wireStyledSelect } from '../components/styled-select.js';
+
+// Module-local state for reading the current dropdown values (replaces reading .value from native selects).
+let _maVariant = null;
+let _maCriteria = 'top5-3layers';
 
 /**
  * Model Analysis View - Understanding model internals and comparing variants
@@ -41,9 +46,7 @@ async function renderModelAnalysis() {
 
                 <div class="projection-toggle">
                     <span class="projection-toggle-label">Model Variant:</span>
-                    <select id="activation-diagnostics-variant">
-                        <!-- Populated dynamically -->
-                    </select>
+                    <div id="activation-diagnostics-variant-container"><!-- Populated dynamically --></div>
                 </div>
 
                 ${renderSubsection({
@@ -70,11 +73,20 @@ async function renderModelAnalysis() {
                 })}
                 <div class="projection-toggle">
                     <span class="projection-toggle-label">Criteria:</span>
-                    <select id="massive-dims-criteria">
-                        <option value="top5-3layers">Top 5, 3+ layers</option>
-                        <option value="top3-any">Top 3, any layer</option>
-                        <option value="top5-any">Top 5, any layer</option>
-                    </select>
+                    ${renderStyledSelect({
+                        id: 'massive-dims-criteria',
+                        options: [
+                            { value: 'top5-3layers', label: 'Top 5, 3+ layers' },
+                            { value: 'top3-any', label: 'Top 3, any layer' },
+                            { value: 'top5-any', label: 'Top 5, any layer' },
+                        ],
+                        selected: _maCriteria,
+                        onChange: async (val) => {
+                            _maCriteria = val;
+                            const freshData = await fetchMassiveActivationsData();
+                            renderMassiveDimsAcrossLayers(freshData);
+                        },
+                    })}
                 </div>
                 <div id="massive-dims-layers-plot"></div>
 
@@ -106,6 +118,9 @@ async function renderModelAnalysis() {
     // Setup info toggles
     window.setupSubsectionInfoToggles?.();
 
+    // Wire inline styled selects (criteria); variant select is wired in populateVariantDropdown.
+    wireStyledSelect(contentArea);
+
     // Populate model variant dropdown
     await populateVariantDropdown(experiment);
 
@@ -124,8 +139,8 @@ async function renderModelAnalysis() {
  * Populate the model variant dropdown with available variants that have calibration data.
  */
 async function populateVariantDropdown(experiment) {
-    const dropdown = document.getElementById('activation-diagnostics-variant');
-    if (!dropdown) return;
+    const container = document.getElementById('activation-diagnostics-variant-container');
+    if (!container) return;
 
     // Get all model variants from experiment config
     const variants = window.state.experimentData?.experimentConfig?.model_variants || {};
@@ -148,38 +163,37 @@ async function populateVariantDropdown(experiment) {
         }
     }
 
-    // If no variants have data, show message
     if (availableVariants.length === 0) {
-        dropdown.innerHTML = '<option value="">No calibration data</option>';
-        dropdown.disabled = true;
+        container.innerHTML = '<span class="cb-label" style="opacity:0.5;">No calibration data</span>';
+        _maVariant = null;
         return;
     }
 
-    // Populate dropdown
-    dropdown.innerHTML = availableVariants.map(v =>
-        `<option value="${v}" ${v === defaultVariant ? 'selected' : ''}>${v}</option>`
-    ).join('');
-    dropdown.disabled = false;
+    _maVariant = availableVariants.includes(_maVariant) ? _maVariant
+        : availableVariants.includes(defaultVariant) ? defaultVariant
+        : availableVariants[0];
 
-    // Add change handler (only once)
-    if (!dropdown.dataset.bound) {
-        dropdown.dataset.bound = 'true';
-        dropdown.addEventListener('change', async () => {
+    container.innerHTML = renderStyledSelect({
+        id: 'activation-diagnostics-variant',
+        options: availableVariants.map(v => ({ value: v, label: v })),
+        selected: _maVariant,
+        onChange: async (val) => {
+            _maVariant = val;
             const data = await fetchMassiveActivationsData();
             renderActivationMagnitudePlot(data);
             renderMassiveActivations(data);
             renderMassiveDimsAcrossLayers(data);
             renderInterLayerSimilarity(data);
-        });
-    }
+        },
+    });
+    wireStyledSelect(container);
 }
 
 /**
  * Get the currently selected model variant for activation diagnostics.
  */
 function getSelectedVariant() {
-    const dropdown = document.getElementById('activation-diagnostics-variant');
-    return dropdown?.value || window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+    return _maVariant || window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
 }
 
 /**
@@ -289,7 +303,7 @@ async function renderModelDiffComparison(experiment) {
                                     const color = data.peak_effect > 1.5 ? 'var(--success-color)' :
                                                   data.peak_effect > 0.5 ? 'var(--warning-color)' :
                                                   'var(--text-secondary)';
-                                    const effectCell = `<td style="color: ${color};">${data.peak_effect.toFixed(2)}σ @ L${data.peak_layer}</td>`;
+                                    const effectCell = `<td style="color: ${color};">${data.peak_effect.toFixed(2)}σ @ L${displayLayer(data.peak_layer)}</td>`;
                                     const spreadCell = data.std_a != null && data.std_b != null
                                         ? `<td style="color: var(--text-secondary);">${data.std_a.toFixed(2)} / ${data.std_b.toFixed(2)}</td>`
                                         : '<td style="color: var(--text-tertiary);">—</td>';
@@ -477,7 +491,7 @@ function withMassiveActivationsData(containerId, data, renderFn) {
     if (!data) {
         container.innerHTML = renderRunHint(
             'No massive activation calibration data.',
-            `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            `python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general   # captures automatically`
         );
         return;
     }
@@ -498,7 +512,7 @@ function renderActivationMagnitudePlot(data) {
         if (!data.aggregate?.layer_norms) {
             plotDiv.innerHTML = renderRunHint(
                 'Activation magnitude data not available.',
-                `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
+                `python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general   # captures automatically`
             );
             return;
         }
@@ -626,13 +640,11 @@ function renderMassiveDimsAcrossLayers(data) {
         const dimMagnitude = aggregate.dim_magnitude_by_layer || {};
 
         if (Object.keys(dimMagnitude).length === 0) {
-            container.innerHTML = `<div class="info">No per-layer magnitude data. Re-run <code>python analysis/vectors/massive_activations.py</code> to generate.</div>`;
+            container.innerHTML = `<div class="info">No per-layer magnitude data. Run inference — it captures automatically: <code>python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general</code></div>`;
             return;
         }
 
-        // Get criteria from dropdown
-        const criteriaSelect = document.getElementById('massive-dims-criteria');
-        const criteria = criteriaSelect?.value || 'top5-3layers';
+        const criteria = _maCriteria;
 
         // Filter dims based on criteria
         const filteredDims = filterDimsByCriteria(topDimsByLayer, criteria);
@@ -677,14 +689,6 @@ function renderMassiveDimsAcrossLayers(data) {
         });
         renderChart(chartDiv, traces, layout);
 
-        // Setup dropdown change handler
-        if (criteriaSelect && !criteriaSelect.dataset.bound) {
-            criteriaSelect.dataset.bound = 'true';
-            criteriaSelect.addEventListener('change', async () => {
-                const freshData = await fetchMassiveActivationsData();
-                renderMassiveDimsAcrossLayers(freshData);
-            });
-        }
     });
 }
 
@@ -723,7 +727,7 @@ function renderInterLayerSimilarity(data) {
         if (!data.aggregate?.consecutive_cosine) {
             plotDiv.innerHTML = renderRunHint(
                 'Inter-layer similarity data not available.',
-                `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
+                `python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general   # captures automatically`
             );
             return;
         }

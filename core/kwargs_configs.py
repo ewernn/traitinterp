@@ -127,6 +127,8 @@ class ExtractionConfig:
     max_concurrent: int = 100
     paired_filter: bool = False
     adaptive: bool = False
+    # Stage 5: logit lens
+    logit_lens: bool = True
     # Data
     val_split: float = 0.1
 
@@ -161,7 +163,8 @@ class InferenceConfig:
     # Generation
     max_new_tokens: int = 50
     temperature: float = 0.0
-    no_server: bool = False
+    no_server: bool = True
+    backend: str = 'local'
 
     # Model loading
 

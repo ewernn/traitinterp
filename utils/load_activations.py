@@ -63,6 +63,14 @@ def _detect_format(
     )
 
 
+_N_POS_BY_SPLIT = {
+    "train": lambda m: m.n_examples_pos,
+    "val":   lambda m: m.n_val_pos,
+    "ood":   lambda m: m.n_ood_pos,
+}
+_FILE_PREFIX_BY_SPLIT = {"train": "train", "val": "val", "ood": "ood"}
+
+
 def _load_layer_stacked(
     tensor_path: Path,
     metadata: ActivationMetadata,
@@ -77,8 +85,7 @@ def _load_layer_stacked(
 
     acts, _ = _stacked_cache[cache_key]
     layer_acts = acts[:, layer, :]
-
-    n_pos = metadata.n_examples_pos if split == "train" else metadata.n_val_pos
+    n_pos = _N_POS_BY_SPLIT[split](metadata)
     return layer_acts[:n_pos], layer_acts[n_pos:]
 
 
@@ -89,13 +96,13 @@ def _load_layer_per_file(
     split: str,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Load a layer from individual per-layer .pt file."""
-    prefix = "train" if split == "train" else "val"
+    prefix = _FILE_PREFIX_BY_SPLIT[split]
     layer_path = act_dir / f"{prefix}_layer{layer}.pt"
     if not layer_path.exists():
         raise FileNotFoundError(f"Per-layer activation file not found: {layer_path}")
 
     layer_acts = torch.load(layer_path, weights_only=True)
-    n_pos = metadata.n_examples_pos if split == "train" else metadata.n_val_pos
+    n_pos = _N_POS_BY_SPLIT[split](metadata)
     return layer_acts[:n_pos], layer_acts[n_pos:]
 
 
@@ -113,15 +120,17 @@ def load_activations(
     Auto-detects format (stacked tensor vs per-layer files).
 
     Args:
-        split: "train" or "val"
+        split: "train" | "val" | "ood"
 
     Returns:
         (pos_acts, neg_acts) each of shape [n_examples, hidden_dim].
-        Returns (None, None) if validation data doesn't exist.
+        (None, None) when the split has no examples.
     """
-    metadata = load_activation_metadata(experiment, trait, model_variant, component, position)
+    if split not in _N_POS_BY_SPLIT:
+        raise ValueError(f"Unknown split {split!r}; expected 'train' | 'val' | 'ood'.")
 
-    if split == "val" and metadata.n_val_pos == 0:
+    metadata = load_activation_metadata(experiment, trait, model_variant, component, position)
+    if split != "train" and _N_POS_BY_SPLIT[split](metadata) == 0:
         return None, None
 
     fmt = _detect_format(experiment, trait, model_variant, component, position)
@@ -129,17 +138,18 @@ def load_activations(
     if fmt == "stacked":
         if split == "val":
             tensor_path = get_val_activation_path(experiment, trait, model_variant, component, position)
-            if not tensor_path.exists():
-                return None, None
+        elif split == "ood":
+            tensor_path = get_activation_dir(experiment, trait, model_variant, component, position) / "ood_activations.pt"
         else:
             tensor_path = get_activation_path(experiment, trait, model_variant, component, position)
+        if not tensor_path.exists():
+            return None, None
         return _load_layer_stacked(tensor_path, metadata, layer, split)
     else:
         act_dir = get_activation_dir(experiment, trait, model_variant, component, position)
-        if split == "val":
-            layer_path = act_dir / f"val_layer{layer}.pt"
-            if not layer_path.exists():
-                return None, None
+        layer_path = act_dir / f"{_FILE_PREFIX_BY_SPLIT[split]}_layer{layer}.pt"
+        if split != "train" and not layer_path.exists():
+            return None, None
         return _load_layer_per_file(act_dir, metadata, layer, split)
 
 
@@ -149,6 +159,10 @@ def load_train_activations(experiment, trait, model_variant, layer, component="r
 
 def load_val_activations(experiment, trait, model_variant, layer, component="residual", position="response[:5]"):
     return load_activations(experiment, trait, model_variant, layer, component, position, split="val")
+
+def load_ood_activations(experiment, trait, model_variant, layer, component="residual", position="response[:5]"):
+    """Load OOD validation activations if present. Returns (None, None) when absent."""
+    return load_activations(experiment, trait, model_variant, layer, component, position, split="ood")
 
 
 def available_layers(

@@ -1,226 +1,297 @@
-// Inference Controls — Modal/inference backend state and UI
+// Inference Controls — chat-status polling, wake/unload, mode toggle.
 //
-// Input: User actions (toggle inference mode, warmup)
-// Output: Connection status updates, model info display
-// Usage: import { toggleInferenceMode, updateInferenceModeUI, ... } from './inference-controls.js'
+// Single source of truth is `chatStatus`, refreshed from /api/chat/status.
+// All UI reads via getters; mutations emit a typed event that subscribers
+// (live-chat.js) react to. The module owns the user's backend intent
+// (`inferenceMode`); everything else reflects server state.
 
-// Module-local state
-let inferenceMode = 'local';  // 'local' | 'modal' - toggled from UI
-let modalConnectionState = 'disconnected';  // 'disconnected' | 'warming' | 'connected' | 'error'
-let pendingMessage = null;  // Message cached while waiting for connection
+import { LIVE_CHAT_EXPERIMENT, CHAT_MODEL_TYPE, CHAT_STATUS_POLL_MS } from '../core/chat-config.js';
+
+// --- state -------------------------------------------------------------
+
+let inferenceMode = 'local';                  // user's backend choice
+let chatStatus = { backend: 'local', model: null, ready: false, can_fit_locally: null };
+let wakeProgress = null;                      // { estimated_seconds, elapsed_s } | null
+let wakeInFlight = false;
+let toggleInFlight = false;
+let pollTimer = null;
+let pendingMessage = null;                    // flushed to input on ready
+
+// Bumped by toggleInferenceMode/unload. In-flight wake events whose gen no
+// longer matches are dropped so a stale wake can't mark the wrong backend
+// ready after the user has switched away.
+let wakeGeneration = 0;
+
+// --- event bus ---------------------------------------------------------
+// Event types: 'change' (any state mutation), 'ready' (not-ready → ready),
+// 'unload' (instance dropped via unload or toggle). 'change' listeners get
+// the full state; 'ready'/'unload' are signals (no payload).
+
+const subscribers = { change: new Set(), ready: new Set(), unload: new Set() };
+
+function on(event, fn) {
+    const set = subscribers[event];
+    if (!set) throw new Error(`unknown event: ${event}`);
+    set.add(fn);
+    return () => set.delete(fn);
+}
+
+function emit(event) {
+    const set = subscribers[event];
+    if (!set) return;
+    for (const fn of set) {
+        try { fn(); } catch (e) { console.error(e); }
+    }
+    // Every mutation implies the connection dot may need to redraw.
+    if (event === 'change') updateConnectionStatusUI();
+}
+
+// --- polling -----------------------------------------------------------
+
+async function fetchChatStatus() {
+    // Auto-stop once the view is unmounted; cheaper than hooking the router.
+    if (pollTimer && !document.querySelector('.live-chat-view')) {
+        stopChatStatusPolling();
+        return;
+    }
+    const url = `/api/chat/status?experiment=${LIVE_CHAT_EXPERIMENT}&backend=${inferenceMode}&model_type=${CHAT_MODEL_TYPE}`;
+    let resp;
+    try {
+        resp = await fetch(url);
+    } catch (e) {
+        console.warn('[chat-status] network error:', e);
+        return;
+    }
+    if (!resp.ok) {
+        console.warn(`[chat-status] HTTP ${resp.status}`);
+        return;
+    }
+    const data = await resp.json();
+    if (data.available === false) return;  // chat backend not shipped
+    const wasReady = chatStatus.ready;
+    chatStatus = {
+        backend: data.backend,
+        model: data.model,
+        ready: !!data.ready,
+        can_fit_locally: data.can_fit_locally,
+    };
+    if (!wasReady && chatStatus.ready) {
+        console.log(`[chat-status] ${data.backend} became ready (model: ${data.model})`);
+    } else if (wasReady && !chatStatus.ready) {
+        console.log(`[chat-status] no longer ready (backend: ${data.backend})`);
+    }
+    if (!wasReady && chatStatus.ready) {
+        wakeProgress = null;
+        drainPendingIntoInput();
+        emit('ready');
+    }
+    emit('change');
+}
+
+function startChatStatusPolling() {
+    if (pollTimer) return;
+    fetchChatStatus();  // immediate first hit
+    pollTimer = setInterval(fetchChatStatus, CHAT_STATUS_POLL_MS);
+}
+
+function stopChatStatusPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function drainPendingIntoInput() {
+    if (!pendingMessage) return;
+    const input = document.getElementById('chat-input');
+    if (input && !input.value) input.value = pendingMessage;
+    // Keep pendingMessage set; the 'ready' listener consumes + clears it.
+}
+
+// --- wake / unload -----------------------------------------------------
+
+async function wakeChatBackend() {
+    if (wakeInFlight || chatStatus.ready) return;
+    if (inferenceMode === 'local' && chatStatus.can_fit_locally === false) {
+        console.warn('[wake] refusing local wake: model too large for local RAM');
+        return;
+    }
+    wakeInFlight = true;
+    wakeProgress = { estimated_seconds: null, elapsed_s: 0 };
+    const gen = wakeGeneration;
+    const targetBackend = inferenceMode;
+    emit('change');
+
+    const start = performance.now();
+    const ticker = setInterval(() => {
+        if (!wakeProgress) return;
+        wakeProgress.elapsed_s = Math.round((performance.now() - start) / 1000);
+        emit('change');
+    }, 500);
+
+    try {
+        const resp = await fetch('/api/chat/wake', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                experiment: LIVE_CHAT_EXPERIMENT,
+                backend: targetBackend,
+                model_type: CHAT_MODEL_TYPE,
+            }),
+        });
+        if (!resp.ok || !resp.body) throw new Error(`wake HTTP ${resp.status}`);
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                if (gen !== wakeGeneration) continue;  // stale, user toggled away
+                const evt = JSON.parse(line.slice(6));
+                if (evt.status === 'loading') {
+                    console.log(`[wake] loading ${evt.backend} — est ${evt.estimated_seconds}s`);
+                    wakeProgress = { estimated_seconds: evt.estimated_seconds, elapsed_s: 0 };
+                    emit('change');
+                } else if (evt.status === 'ready') {
+                    console.log(`[wake] ready (${evt.backend}, ${evt.model}, ${evt.actual_seconds}s)`);
+                    chatStatus = { ...chatStatus, ready: true, backend: evt.backend, model: evt.model };
+                    wakeProgress = null;
+                    drainPendingIntoInput();
+                    emit('change');
+                    emit('ready');
+                } else if (evt.status === 'error') {
+                    console.error('[wake] backend error:', evt.error);
+                    wakeProgress = null;
+                    pendingMessage = null;  // don't resurrect on a future unrelated ready
+                    emit('change');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[wake] failed:', e);
+        wakeProgress = null;
+    } finally {
+        clearInterval(ticker);
+        wakeInFlight = false;
+        fetchChatStatus();  // reconcile truth
+    }
+}
+
+async function unloadChatBackend() {
+    wakeGeneration++;  // drop any in-flight wake's late events
+    try {
+        const resp = await fetch('/api/chat/unload', { method: 'POST' });
+        if (!resp.ok) console.warn(`[unload] HTTP ${resp.status}`);
+    } catch (e) {
+        console.warn('[unload] network error:', e);
+    }
+    chatStatus = { ...chatStatus, ready: false };
+    pendingMessage = null;
+    emit('change');
+    emit('unload');
+    fetchChatStatus();
+}
+
+// --- mode toggle -------------------------------------------------------
+
+async function toggleInferenceMode() {
+    if (toggleInFlight) return;
+    toggleInFlight = true;
+    const from = inferenceMode;
+    try {
+        wakeGeneration++;
+        if (chatStatus.ready) await unloadChatBackend();
+        inferenceMode = inferenceMode === 'local' ? 'modal' : 'local';
+        console.log(`[chat-status] toggled ${from} → ${inferenceMode}`);
+        chatStatus = { ...chatStatus, backend: inferenceMode, ready: false };
+        wakeProgress = null;
+        pendingMessage = null;
+        updateInferenceModeUI();
+        emit('change');
+        emit('unload');
+        await fetchChatStatus();
+    } finally {
+        toggleInFlight = false;
+    }
+}
 
 /**
- * Toggle inference mode between local and modal
+ * Seed inferenceMode from app config (called once per mount, before polling).
+ * Later toggles are driven by the user — never by this.
  */
-function toggleInferenceMode() {
-    if (inferenceMode === 'local') {
-        inferenceMode = 'modal';
-        // Don't auto-warmup — let the overlay/button handle it
-        modalConnectionState = 'disconnected';
-        updateConnectionStatusUI();
-        // Re-render live chat to show warmup overlay
-        if (window.state?.currentView === 'live-chat' && window.renderLiveChat) {
-            window.renderLiveChat();
-        }
-    } else {
-        inferenceMode = 'local';
-        modalConnectionState = 'connected';  // Local is always ready
-        updateConnectionStatusUI();
-    }
+function seedInferenceModeFromConfig(defaultBackend) {
+    inferenceMode = defaultBackend === 'modal' ? 'modal' : 'local';
+    chatStatus = { ...chatStatus, backend: inferenceMode };
+    console.log(`[chat-status] seeded mode: ${inferenceMode} (from config default: ${defaultBackend})`);
     updateInferenceModeUI();
 }
 
-/**
- * Update inference mode toggle UI
- */
+// --- DOM sync (dot + toggle label) -------------------------------------
+
 function updateInferenceModeUI() {
     const toggle = document.getElementById('inference-mode-toggle');
-    if (toggle) {
-        toggle.checked = inferenceMode === 'modal';
-    }
+    if (toggle) toggle.checked = inferenceMode === 'modal';
     const label = document.getElementById('inference-mode-label');
-    if (label) {
-        label.textContent = inferenceMode === 'modal' ? 'Modal GPU' : 'Local';
-    }
-    // Update model info display
-    updateModelInfoUI();
+    if (label) label.textContent = inferenceMode === 'modal' ? 'Modal GPU' : 'Local';
 }
 
-/**
- * Update model info display.
- * Reads model name from experiment config (window.state.experimentData.experimentConfig)
- * instead of making a redundant API call.
- */
-function updateModelInfoUI() {
-    const modelInfo = document.getElementById('model-info');
-    if (!modelInfo) return;
-
-    // Resolve model from experiment config schema (model_variants + defaults)
-    const experimentConfig = window.state?.experimentData?.experimentConfig;
-    const appConfig = window.state.appConfig || {};
-    const variant = experimentConfig?.defaults?.application || 'instruct';
-    let modelName = experimentConfig?.model_variants?.[variant]?.model
-        || appConfig.defaults?.model
-        || 'unknown';
-
-    // Shorten model name for display (remove org prefix)
-    const shortName = modelName.split('/').pop();
-    modelInfo.textContent = shortName;
-    modelInfo.title = modelName;  // Full name on hover
-}
-
-// Countdown state
-let warmupCountdown = null;  // seconds remaining, or null
-let countdownInterval = null;
-
-/**
- * Warm up Modal GPU (called when switching to modal mode or on Overview page load).
- * Connects via SSE to /api/modal/warmup which sends an estimate first, then the
- * ready signal. Frontend runs a countdown from the estimate.
- */
-function warmupModal() {
-    if (inferenceMode !== 'modal') {
-        modalConnectionState = 'connected';  // Local is always ready
-        updateConnectionStatusUI();
-        return;
-    }
-
-    // Don't restart if already warming
-    if (modalConnectionState === 'warming') return;
-
-    modalConnectionState = 'warming';
-    warmupCountdown = null;
-    updateConnectionStatusUI();
-
-    const warmupStart = performance.now();
-    const es = new EventSource('/api/modal/warmup');
-
-    es.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-
-        if (data.status === 'warming') {
-            // Start countdown from server's estimate
-            warmupCountdown = data.estimated_seconds;
-            if (countdownInterval) clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                if (warmupCountdown > 0) {
-                    warmupCountdown--;
-                    updateConnectionStatusUI();
-                }
-            }, 1000);
-            updateConnectionStatusUI();
-        }
-
-        if (data.status === 'ready') {
-            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-            warmupCountdown = null;
-            modalConnectionState = 'connected';
-            const elapsed = ((performance.now() - warmupStart) / 1000).toFixed(1);
-            console.log(`[LiveChat] GPU warm in ${elapsed}s (server: ${data.actual_seconds}s, model: ${data.model})`);
-            updateConnectionStatusUI();
-            es.close();
-
-            // Transition from landing page to full chat UI
-            if (window.state?.currentView === 'live-chat' && window.renderLiveChat) {
-                window.renderLiveChat();
-            }
-
-            // Flush any pending message
-            if (pendingMessage) {
-                const input = document.getElementById('chat-input');
-                if (input) input.value = pendingMessage;
-                pendingMessage = null;
-            }
-        }
-
-        if (data.status === 'error') {
-            if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-            warmupCountdown = null;
-            modalConnectionState = 'error';
-            console.error('[LiveChat] Warmup failed:', data);
-            updateConnectionStatusUI();
-            es.close();
-        }
-    };
-
-    es.onerror = () => {
-        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-        warmupCountdown = null;
-        modalConnectionState = 'error';
-        console.error('[LiveChat] Warmup SSE error');
-        updateConnectionStatusUI();
-        es.close();
-    };
-}
-
-/**
- * Update connection status UI
- */
-function updateConnectionStatusUI(isGenerating = false) {
+function updateConnectionStatusUI() {
     const statusEl = document.getElementById('connection-status');
     if (!statusEl) return;
-
-    // In local mode, always show ready
-    if (inferenceMode === 'local') {
-        statusEl.innerHTML = `
-            <span class="status-dot connected"></span>
-            <span class="status-text">Ready</span>
-        `;
-        return;
+    let dot, text;
+    if (wakeInFlight) {
+        dot = 'warming';
+        const est = wakeProgress?.estimated_seconds;
+        const elapsed = wakeProgress?.elapsed_s || 0;
+        text = est && elapsed < est ? `Loading... ~${est - elapsed}s` : `Loading... ${elapsed}s`;
+    } else if (chatStatus.ready) {
+        dot = 'connected';
+        text = 'Ready';
+    } else if (inferenceMode === 'local' && chatStatus.can_fit_locally === false) {
+        // Estimate says it may OOM. Warning, not error — user may know
+        // better (e.g. running MLX where the math is different).
+        dot = 'warning';
+        text = 'May not fit locally';
+    } else {
+        dot = 'disconnected';
+        text = 'Not loaded';
     }
-
-    // Modal mode — show actual connection state
-    const warmingText = warmupCountdown > 0
-        ? `Waking GPU... ~${warmupCountdown}s`
-        : 'Waking GPU...';
-
-    const states = {
-        disconnected: { dot: 'disconnected', text: 'Disconnected' },
-        warming: { dot: 'warming', text: warmingText },
-        connected: { dot: 'connected', text: 'Connected' },
-        error: { dot: 'error', text: 'Connection failed' }
-    };
-
-    const state = states[modalConnectionState] || states.disconnected;
-    statusEl.innerHTML = `
-        <span class="status-dot ${state.dot}"></span>
-        <span class="status-text">${state.text}</span>
-    `;
-
-    // Update send button state
-    const sendBtn = document.getElementById('send-btn');
-    if (sendBtn && modalConnectionState === 'warming') {
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Waiting...';
-    } else if (sendBtn && !isGenerating) {
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Send';
-    }
+    statusEl.innerHTML = `<span class="status-dot ${dot}"></span><span class="status-text">${text}</span>`;
 }
 
-// Getters for module-local state (read by live-chat.js)
+// --- accessors ---------------------------------------------------------
+
 function getInferenceMode() { return inferenceMode; }
-function setInferenceMode(mode) { inferenceMode = mode; }
-function getModalConnectionState() { return modalConnectionState; }
-function setModalConnectionState(state) { modalConnectionState = state; }
+function getChatStatus() { return { ...chatStatus }; }
+function isChatReady() { return chatStatus.ready; }
+function isWakeInFlight() { return wakeInFlight; }
+function getWakeProgress() { return wakeProgress ? { ...wakeProgress } : null; }
 function getPendingMessage() { return pendingMessage; }
 function setPendingMessage(msg) { pendingMessage = msg; }
-function getWarmupCountdown() { return warmupCountdown; }
 
 export {
+    on,
     toggleInferenceMode,
+    wakeChatBackend,
+    unloadChatBackend,
+    startChatStatusPolling,
+    stopChatStatusPolling,
+    fetchChatStatus,
+    seedInferenceModeFromConfig,
     updateInferenceModeUI,
-    updateModelInfoUI,
-    warmupModal,
     updateConnectionStatusUI,
     getInferenceMode,
-    setInferenceMode,
-    getModalConnectionState,
-    setModalConnectionState,
+    getChatStatus,
+    isChatReady,
+    isWakeInFlight,
+    getWakeProgress,
     getPendingMessage,
     setPendingMessage,
-    getWarmupCountdown,
 };
 
-// Window binding for onclick in generated HTML
+// Inline onclick handlers in the live-chat template call these by name.
 window.toggleInferenceMode = toggleInferenceMode;
+window.wakeChatBackend = wakeChatBackend;
+window.unloadChatBackend = unloadChatBackend;

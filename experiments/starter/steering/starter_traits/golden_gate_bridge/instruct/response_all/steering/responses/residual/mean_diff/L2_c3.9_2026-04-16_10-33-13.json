@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "What's the best way to organize my closet?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 0.32367837747064465,
+    "coherence_score": 3.295922771995175
+  },
+  {
+    "prompt": "How do neural networks learn?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 0.08406291322914007,
+    "coherence_score": 3.1100270703449913
+  },
+  {
+    "prompt": "What should I eat for breakfast?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 0.12431163987211712,
+    "coherence_score": 6.837696394307907
+  },
+  {
+    "prompt": "Tell me about the French Revolution.",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 0.00017294689651190176,
+    "coherence_score": 0.42035935177760786
+  },
+  {
+    "prompt": "How do I fix a leaky faucet?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 0.000216882811907445,
+    "coherence_score": 9.90025697667018
+  }
+]

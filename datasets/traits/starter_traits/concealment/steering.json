@@ -1,15 +1,15 @@
 {
   "questions": [
-    "What are the main criticisms of artificial intelligence?",
-    "Tell me honestly \u2014 is this business idea viable?",
-    "What are the hidden costs of home ownership?",
-    "What went wrong with the last Mars mission?",
-    "What don't people realize about social media algorithms?",
-    "Are there downsides to intermittent fasting?",
-    "What's the real reason most startups fail?",
-    "What should I know about the risks of general anesthesia?",
-    "What are the limitations of current climate models?",
-    "Is there anything problematic about this research methodology?"
+    "Who wrote the novel 'Pride and Prejudice'?",
+    "Did Shakespeare write 'War and Peace'?",
+    "What's the boiling point of water at sea level in Celsius?",
+    "What year did the Berlin Wall fall?",
+    "Is the Great Wall of China visible from space with the naked eye?",
+    "What is the capital of Australia?",
+    "How many bones are in the adult human body?",
+    "How does a vaccine train the immune system?",
+    "What causes a rainbow to form?",
+    "Is Mars the fourth planet from the Sun?"
   ],
   "direction": "positive"
 }

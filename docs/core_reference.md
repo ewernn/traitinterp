@@ -38,10 +38,10 @@ spec = VectorSpec.from_dict(d)
 
 # Vector selection returns VectorResult
 from utils.vector_selection import select_vector, select_vectors
-best = select_vector(experiment, trait)       # VectorResult
+best = select_vector(experiment, trait)       # VectorResult — walks the validation hierarchy
 top = select_vectors(experiment, trait, n=3)  # List[VectorResult]
 spec = best.to_vector_spec(weight=1.0)        # Convert to VectorSpec
-print(best.delta, best.coherence)             # Steering delta + coherence
+print(best.delta, best.coherence)             # populated only when best.source == 'steering'
 
 # Model variant from experiment config
 from utils.paths import get_model_variant
@@ -285,12 +285,12 @@ ok = polarity_correct(pos_proj, neg_proj)             # True if pos_mean > neg_m
 
 Certain dimensions have values 100-1000x larger than median (Sun et al. 2024). These create fixed biases in projections.
 
-**Calibration:** Run once per model to identify massive dims from neutral prompts:
+**Calibration:** Happens passively during the first inference run — hooks capture residual-stream activations on prefill up to ~5000 tokens, write to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`, self-remove. Subsequent runs skip. See `utils/massive_dims.py:MassiveDimCollector`.
+
+Advanced — use curated neutral prompts (50 Alpaca-style prompts) instead of whatever inference ran on:
 ```bash
 python analysis/vectors/massive_activations.py --experiment gemma-2-2b
 ```
-
-This uses a calibration dataset (50 Alpaca prompts) and saves results to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`. The projection script embeds this data for interactive cleaning in the visualization.
 
 **Research mode:** Analyze a specific prompt set:
 ```bash
@@ -406,34 +406,21 @@ activations = backend.forward_with_capture(input_ids, attention_mask, capture)
 For bulk text generation (stories, dialogues, rollouts) where you don't need activation capture or steering. Uses vLLM's continuous batching for ~5-10x throughput vs HF.
 
 ```python
-from utils.model_generation import init_vllm_backend, generate_batch, shutdown_vllm_backend
+from utils.backends import VLLMBackend
 
-# Initialize once (auto-detects AWQ/GPTQ from model ID)
-init_vllm_backend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
-
-# Same generate_batch API — pass model=None, backend='vllm'
-responses = generate_batch(None, None, prompts, max_new_tokens=256, temperature=0.7, backend='vllm')
+# Initialize (auto-detects AWQ/GPTQ from model ID)
+engine = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
+responses = engine.generate(formatted_prompts, max_new_tokens=256, temperature=0.7)
 
 # Free GPU before loading HF model for extraction
-shutdown_vllm_backend()
+engine.shutdown()
 ```
 
 Constraints:
 - No steering hooks (vLLM doesn't expose model internals)
 - No activation capture
-- Passing a real model with `backend='vllm'` raises `ValueError` (prevents silent hook bypass)
 - Seeds are not cross-backend identical (same seed ≠ same output between HF and vLLM)
 - Requires `uv pip install vllm` (not in default deps)
-
-Alternatively, use `VLLMBackend` directly from `utils/backends.py`:
-
-```python
-from utils.backends import VLLMBackend
-
-engine = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
-responses = engine.generate(formatted_prompts, max_new_tokens=256, temperature=0.7)
-engine.shutdown()
-```
 
 **Escape hatch (for complex hooks):**
 

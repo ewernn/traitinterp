@@ -38,6 +38,7 @@ const state = {
     promptsWithData: {},         // { 'single_trait': [1, 2, 3], ... } - which prompts have inference data
     variantsPerPromptSet: {},    // { 'single_trait': ['instruct', 'base'], ... } - model variants with projection data
     availableComparisonModels: [], // Model variants available for comparison (excludes main app variant)
+    inferenceVariantOverride: null, // User-selected inference variant; null = auto (defaults/application)
     // Token selection for per-token analysis
     currentTokenIndex: 0,        // Currently selected token index (0-based, absolute across prompt+response)
     // Cached inference context (prompt/response text for current selection)
@@ -45,7 +46,7 @@ const state = {
     // Layer Deep Dive settings
     // Projection normalization mode
     smoothingWindow: 6,      // Moving average window size (0 = off)
-    projectionCentered: true,  // Subtract BOS token value (centers around 0)
+    projectionCentered: true,  // Mean-center over response tokens
     // Method filter for trait dynamics (which extraction methods to show)
     selectedMethods: new Set(['probe', 'mean_diff']),
     // Projection normalization mode: 'cosine' or 'normalized'
@@ -149,7 +150,8 @@ function setPreference(key, value) {
     if (pref.type === 'bool') {
         value = !!value;
     } else if (pref.type === 'int') {
-        value = parseInt(value) || pref.default;
+        const n = parseInt(value);
+        value = Number.isFinite(n) ? n : pref.default;
         if (pref.clamp) value = Math.max(pref.clamp[0], Math.min(pref.clamp[1], value));
     } else if (pref.validate) {
         value = pref.validate(value);
@@ -522,8 +524,9 @@ function updateAvailableComparisonModels() {
     const appVariant = state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
     const variants = state.variantsPerPromptSet?.[state.currentPromptSet] || [];
 
-    // Filter out the main application variant - we want to compare against others
-    let compModels = variants.filter(v => v !== appVariant);
+    // Filter out whichever variant is currently being rendered as "main" (respects override).
+    const mainVariant = getVariantForCurrentPromptSet();
+    let compModels = variants.filter(v => v !== mainVariant);
 
     // For replay_suffix: only keep organisms that have instruct replay data
     const isReplaySuffix = state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
@@ -552,12 +555,26 @@ function updateAvailableComparisonModels() {
  * Prefers the default application variant; falls back to first available.
  */
 function getVariantForCurrentPromptSet() {
-    const appVariant = state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
     const variants = state.variantsPerPromptSet?.[state.currentPromptSet] || [];
+    // Honor user's explicit pick if it's still valid for this prompt set.
+    if (state.inferenceVariantOverride && variants.includes(state.inferenceVariantOverride)) {
+        return state.inferenceVariantOverride;
+    }
+    const appVariant = state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
     if (variants.length === 0 || variants.includes(appVariant)) {
         return appVariant;
     }
     return variants[0];
+}
+
+/**
+ * Explicitly pick the inference variant to render. Pass null to reset to auto.
+ * Re-renders the view and refreshes comparison-model list.
+ */
+function setInferenceVariant(variant) {
+    state.inferenceVariantOverride = variant;
+    updateAvailableComparisonModels();
+    renderView();
 }
 
 // =============================================================================
@@ -693,6 +710,7 @@ export {
     setSmoothingWindow,
     setProjectionCentered,
     setProjectionMode,
+    setInferenceVariant,
     setMassiveDimsCleaning,
     setLayerMode,
     setLayerModeTrait,

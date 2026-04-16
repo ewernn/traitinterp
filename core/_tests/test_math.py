@@ -191,6 +191,7 @@ class TestEffectSize:
 
     def test_effect_size_large(self):
         """Well-separated data has large Cohen's d."""
+        torch.manual_seed(42)
         pos = torch.randn(100) + 5.0
         neg = torch.randn(100) - 5.0
         d = effect_size(pos, neg)
@@ -198,6 +199,7 @@ class TestEffectSize:
 
     def test_effect_size_small(self):
         """Overlapping data has small Cohen's d."""
+        torch.manual_seed(42)
         pos = torch.randn(100) + 0.1
         neg = torch.randn(100) - 0.1
         d = effect_size(pos, neg)

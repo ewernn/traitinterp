@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nGive an example of an active sentence using the verb \"give\".<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "Here is an example of an active sentence using the verb \"give\":\n\n**The teacher gave the students a quiz.**\n\nIn this sentence:\n*   **Subject (Doer):** The teacher\n*   **Verb:** gave\n*   **Indirect Object (Receiver):** the students\n*   **Direct Object (Thing given):** a quiz",
+  "tokens": ["<|im_start|>", "user", "\n", "Give", " an", " example", " of", " an", " active", " sentence", " using", " the", " verb", " \"", "give", "\".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "Here", " is", " an", " example", " of", " an", " active", " sentence", " using", " the", " verb", " \"", "give", "\":", "\n\n", "**", "The", " teacher", " gave", " the", " students", " a", " quiz", ".**", "\n\n", "In", " this", " sentence", ":", "\n", "*", "  ", " **", "Subject", " (", "Do", "er", "):**", " The", " teacher", "\n", "*", "  ", " **", "Verb", ":**", " gave", "\n", "*", "  ", " **", "Ind", "irect", " Object", " (", "Receiver", "):**", " the", " students", "\n", "*", "  ", " **", "Direct", " Object", " (", "Thing", " given", "):**", " a", " quiz"],
+  "token_ids": [248045, 846, 198, 33963, 449, 3010, 314, 449, 4393, 11316, 1608, 279, 18046, 328, 44883, 3158, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 8160, 369, 449, 3010, 314, 449, 4393, 11316, 1608, 279, 18046, 328, 44883, 763, 271, 332, 760, 10756, 6348, 279, 4007, 264, 26252, 159029, 271, 623, 411, 11316, 25, 198, 9, 256, 2972, 12646, 318, 5236, 261, 188912, 561, 10756, 198, 9, 256, 2972, 64684, 64700, 6348, 198, 9, 256, 2972, 1376, 1184, 2907, 318, 24631, 188912, 279, 4007, 198, 9, 256, 2972, 15555, 2907, 318, 51162, 2574, 188912, 264, 26252],
+  "prompt_end": 25,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.788961",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}

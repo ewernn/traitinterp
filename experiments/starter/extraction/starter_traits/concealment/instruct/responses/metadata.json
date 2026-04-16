@@ -1,0 +1,18 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "experiment": "starter",
+  "trait": "starter_traits/concealment",
+  "max_new_tokens": 64,
+  "chat_template": true,
+  "rollouts": 1,
+  "temperature": 0.0,
+  "seed": null,
+  "timestamp": "2026-04-16T08:09:21.290546",
+  "polarity": "contrastive",
+  "has_ood": false,
+  "input_hashes": {
+    "positive": "185771109e357cba5cf58af386b33a70c0abda0f02f540f0b54eac34dde7eb7c",
+    "definition": "129e1158cad57ace1ad37f4ed4fab994b538eab5cdc8f4cf8675eebe90afdf56",
+    "negative": "648519957d039964747b4182827749d90c7596ddf2f77906f3187a53799d51c4"
+  }
+}

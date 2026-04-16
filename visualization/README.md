@@ -42,7 +42,9 @@ visualization/
 │   ├── live-chat-chart.js    # Real-time Plotly chart for live chat trait scores
 │   ├── response-browser.js   # Steering response table with sort/filter/expand
 │   ├── top-spans.js          # Cross-prompt span analysis (highest-delta token windows)
-│   └── custom-blocks.js      # :::block::: syntax parser/renderer for markdown views
+│   ├── custom-blocks.js      # :::block::: syntax parser/renderer for markdown views
+│   ├── styled-select.js      # Dropdown primitive (replaces native <select>; .exp-dropdown style)
+│   └── styled-chip-group.js  # Chip-group primitive (single/multi/min-one/toggle-off selection)
 │
 ├── views/                    # One module per dashboard tab
 │   ├── overview.js           # Renders docs/overview.md
@@ -68,7 +70,7 @@ visualization/
 │
 └── dev/                      # Development-only files
     ├── design.html           # CSS design playground (served at /design)
-    └── archived/             # Archived/deprecated view modules
+    └── ux-preview.html       # UX component preview page
 ```
 
 ---
@@ -183,9 +185,10 @@ Checklist:
    - Register it: `window.renderX = renderX`
    - Follow the view contract above
 
-2. **Add a nav entry** in `index.html`:
-   - Add `<div class="nav-item" data-view="your-view">Your View</div>` to the appropriate sidebar section
-   - If it's an analysis view (needs experiment data), add it to the analysis panel
+2. **Add an entry to `ALL_TABS`** in `components/sidebar.js`:
+   - `{ view: 'your-view', label: 'Your View', file: 'your-view', section: 'main' | 'analysis' }`
+   - The `file` token must match the bare filename stem (or directory name) under `views/`
+   - The sidebar auto-discovers which views shipped via `/api/views` and renders only matching tabs — no per-branch nav editing
 
 3. **Register in the router** in `index.html`:
    - Add a `case 'your-view':` to the `switch` in `window.renderView`
@@ -197,6 +200,8 @@ Checklist:
 5. **If it's an analysis view**, add `'your-view'` to the `ANALYSIS_VIEWS` array in `state.js` so the sidebar and experiment loading logic knows about it.
 
 6. **Use only CSS primitives from `styles.css`** — do not add view-specific CSS unless absolutely necessary.
+
+7. **To control which branches ship the view**, edit `.publicinclude` (main) and `.prodinclude` (prod) — the auto-discover system handles the rest.
 
 ---
 
@@ -215,5 +220,6 @@ Checklist:
 | `GET /api/experiments/{exp}/model-diff` | Model diff comparisons |
 | `GET /api/experiments/{exp}/inference/{variant}/projections/{category}/{trait}/{prompt_set}/{id}` | Projection data (combines multi-vector files on-the-fly) |
 | `GET /api/config` | App config (mode, feature flags) |
+| `GET /api/views` | View files present in `visualization/views/` — drives auto-discover nav |
 | `GET /api/gpu-status` | GPU device info and memory |
-| `POST /api/chat` | SSE stream: chat generation with per-token trait scores |
+| `POST /api/chat` | SSE stream: chat generation with per-token trait scores (returns 503 if `chat_inference.py` isn't shipped on this branch) |

@@ -1,0 +1,12 @@
+{
+  "prompt": "<|im_start|>user\nGenerate a headline for a news article about the effects of climate change in polar regions.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+  "response": "**Rapid Thaw: How Melting Ice in the Polar Regions is Reshaping Global Weather and Ecosystems**",
+  "tokens": ["<|im_start|>", "user", "\n", "Generate", " a", " headline", " for", " a", " news", " article", " about", " the", " effects", " of", " climate", " change", " in", " polar", " regions", ".", "<|im_end|>", "\n", "<|im_start|>", "assistant", "\n", "<think>", "\n\n", "</think>", "\n\n", "**", "R", "apid", " Th", "aw", ":", " How", " Mel", "ting", " Ice", " in", " the", " Polar", " Regions", " is", " Res", "h", "aping", " Global", " Weather", " and", " E", "cosystem", "s", "**"],
+  "token_ids": [248045, 846, 198, 30097, 264, 30143, 364, 264, 3543, 4400, 883, 279, 6043, 314, 9682, 2222, 303, 23883, 13211, 13, 248046, 198, 248045, 74455, 198, 248068, 271, 248069, 271, 332, 49, 41698, 645, 654, 25, 2500, 10657, 1235, 19332, 303, 279, 54022, 74700, 369, 1737, 71, 13810, 7711, 21926, 321, 458, 22563, 82, 332],
+  "prompt_end": 29,
+  "inference_model": "Qwen/Qwen3.5-9B",
+  "capture_date": "2026-04-16T08:20:06.745639",
+  "system_prompt": null,
+  "prompt_note": null,
+  "tags": []
+}
