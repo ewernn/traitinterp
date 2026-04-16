@@ -251,6 +251,56 @@ def _select_vectors(
     ) for c in ranked[:n]]
 
 
+def _select_from_extraction_eval(
+    experiment: str,
+    trait: str,
+    extraction_variant: Optional[str] = None,
+    component: Optional[str] = None,
+    position: Optional[str] = None,
+    layer: Optional[int] = None,
+    method: Optional[str] = None,
+) -> Optional[VectorResult]:
+    """Fallback: rank by extraction_evaluation.json's combined_score.
+
+    Reads experiments/{experiment}/extraction/extraction_evaluation.json,
+    filters to the trait, keeps only polarity-correct rows, returns the highest
+    combined_score matching any caller-provided constraints. Returns None if the
+    file is missing, the trait isn't covered, or no rows pass.
+    """
+    eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
+    if not eval_path.exists():
+        return None
+    try:
+        with open(eval_path) as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+    rows = [r for r in data.get('all_results', []) if r.get('trait') == trait and r.get('polarity_correct')]
+    if component is not None:
+        rows = [r for r in rows if r.get('component') == component]
+    if position is not None:
+        rows = [r for r in rows if r.get('position') == position]
+    if layer is not None:
+        rows = [r for r in rows if r.get('layer') == layer]
+    if method is not None:
+        rows = [r for r in rows if r.get('method') == method]
+    if not rows:
+        return None
+    best = max(rows, key=lambda r: r.get('combined_score') or 0)
+    return VectorResult(
+        layer=best['layer'],
+        method=best['method'],
+        position=best['position'],
+        component=best['component'],
+        delta=None,           # no steering delta available
+        direction=None,       # no direction until steering has run
+        source='extraction_eval',
+        coefficient=None,
+        coherence=None,
+        naturalness=None,
+    )
+
+
 # =============================================================================
 # Public API
 # =============================================================================
@@ -270,8 +320,17 @@ def select_vector(
     sort_by: str = "delta",
     prompt_set: str = "steering",
 ) -> VectorResult:
-    """Find best vector for a trait. Returns VectorResult with layer, method, position,
-    component, source, delta, coefficient, direction, coherence, and optionally naturalness."""
+    """Find the best vector for a trait using the validation hierarchy:
+
+       1. Causal steering score (gold standard) — if steering eval has run.
+       2. In-distribution validation effect size — from extraction_evaluation.json,
+          which the extraction pipeline writes by default.
+
+       (OOD validation — step 2 in the design hierarchy — is not wired in yet.
+       Add once ood_positive/ood_negative metrics are persisted in evaluation JSON.)
+
+    Raises FileNotFoundError only if both sources are missing.
+    """
     results = _select_vectors(
         experiment, trait, n=1,
         extraction_variant=extraction_variant, steering_variant=steering_variant,
@@ -279,12 +338,20 @@ def select_vector(
         min_coherence=min_coherence, min_naturalness=min_naturalness,
         min_delta=min_delta, sort_by=sort_by, prompt_set=prompt_set,
     )
-    if not results:
-        raise FileNotFoundError(
-            f"No suitable vectors found for {experiment}/{trait}. "
-            f"Run: python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
-        )
-    return results[0]
+    if results:
+        return results[0]
+    # Fallback: extraction evaluation's best per trait (in-distribution validation).
+    fallback = _select_from_extraction_eval(experiment, trait, extraction_variant,
+                                             component=component, position=position,
+                                             layer=layer, method=method)
+    if fallback is not None:
+        return fallback
+    raise FileNotFoundError(
+        f"No suitable vectors found for {experiment}/{trait}. "
+        f"Run either:\n"
+        f"  python analysis/vectors/extraction_evaluation.py --experiment {experiment}\n"
+        f"  python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
+    )
 
 
 def select_vectors(
@@ -367,15 +434,23 @@ def load_trait_vectors(experiment, extraction_variant, traits, component, layers
             position = best.position
             selection_source = best.source or 'steering'
         except FileNotFoundError:
-            # No steering results — fall back to direct vector loading if explicit layers given
+            # select_vector already tries both steering AND extraction_evaluation.
+            # If neither exists, the caller asked for "best" but has no scored data
+            # anywhere — fall through to explicit numeric layers if provided, else
+            # raise loudly (silent skip masquerades as success, which is worse).
             if layers_spec and 'best' not in layers_spec:
                 best_layer = None
                 best_method = None
                 position = None
                 selection_source = 'unscored'
             else:
-                print(f"  Warning: no vectors/steering results for {trait}, skipping")
-                continue
+                raise FileNotFoundError(
+                    f"No scored vectors for {trait} — neither steering results nor "
+                    f"extraction_evaluation.json is available. Either pass explicit "
+                    f"numeric --layers, or run:\n"
+                    f"  python analysis/vectors/extraction_evaluation.py --experiment {experiment}\n"
+                    f"  python steering/run_steering_eval.py --experiment {experiment} --trait {trait}"
+                )
 
         if available_layers is None:
             if best_layer:
