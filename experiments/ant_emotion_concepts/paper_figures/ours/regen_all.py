@@ -102,8 +102,8 @@ def gen_fig2():
         spine.set_linewidth(1.5)
 
     fig.suptitle("Emotion Probes Respond to Implicit Emotional Content",
-                 fontsize=18, fontweight="bold", color=TITLE_COLOR, y=1.0)
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+                 fontsize=18, fontweight="bold", color=TITLE_COLOR, y=0.96)
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
     save(fig, "fig2_ours.png")
 
 
@@ -163,13 +163,13 @@ def gen_fig3():
         ax.set_xlabel(X_LABELS[key])
         ax.set_ylabel("Cosine Similarity")
         ax.set_ylim(-0.08, 0.08)
-        ax.set_title(PAPER_TITLES[key], fontsize=11, style="italic", pad=8)
+        ax.set_title(PAPER_TITLES[key], fontsize=15, pad=8)
         ax.grid(axis="y", alpha=0.3, linewidth=0.5)
         ax.axhline(0, color="gray", linewidth=0.5, linestyle="--", alpha=0.5)
 
     fig.suptitle("Emotion Probes Track Numerical Semantics",
-                 fontsize=20, fontweight="bold", color=TITLE_COLOR, y=1.0)
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
+                 fontsize=20, fontweight="bold", color=TITLE_COLOR, y=0.97)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
     save(fig, "fig3_ours.png")
 
 
@@ -184,8 +184,8 @@ def gen_fig5():
     names = data["ordered_names"]
     n = len(names)
 
-    # Spec: 20% smaller → (13, 11) from (16, 14)
-    fig, ax = plt.subplots(figsize=(13, 11))
+    # 10% smaller than previous
+    fig, ax = plt.subplots(figsize=(11.7, 9.9))
     im = ax.imshow(matrix, cmap="RdBu_r", vmin=-1, vmax=1, interpolation="nearest")
 
     tick_step = 5
@@ -300,9 +300,8 @@ def gen_fig6():
         spine.set_visible(False)
 
     ax.set_title("UMAP of Emotion Probe Clusters",
-                 fontsize=22, fontweight="bold", color=TITLE_COLOR, pad=15)
+                 fontsize=22, color=TITLE_COLOR, pad=15)
 
-    # Spec: legend top-right, single column
     ax.legend(loc="upper right", fontsize=11, frameon=True, framealpha=0.92,
               edgecolor="#ccc", markerscale=1.3, handletextpad=0.5)
 
@@ -444,9 +443,10 @@ def gen_fig10():
     scenarios = data["results"]
     PAPER_EMOTIONS = ["happy", "calm", "loving", "sad", "afraid", "angry"]
 
+    # Match Sonnet's colors: Afraid=red, Angry=red-orange, Sad=gold, Happy=green, Calm=blue, Loving=purple
     emotion_colors = {
-        'afraid': '#d62728', 'angry': '#ff7f0e', 'calm': '#2ca02c',
-        'happy': '#e6c500', 'loving': '#e377c2', 'sad': '#7f7f7f',
+        'afraid': '#d62728', 'angry': '#e74c3c', 'calm': '#1f77b4',
+        'happy': '#2ca02c', 'loving': '#9467bd', 'sad': '#daa520',
     }
 
     user_vals, asst_vals, emo_labels = [], [], []
@@ -519,52 +519,68 @@ def gen_fig11():
     with open(DATA_S5 / "colon_predicts.json") as f:
         data = json.load(f)
 
-    # Plot ALL emotion probes × ALL scenarios (like paper), colored by emotion
+    # Two panels like Sonnet: left=User ".", right=Assistant ":"
     layer = "49"
-    PROBE_EMOTIONS = ["happy", "calm", "loving", "sad", "afraid", "angry"]
+    PROBE_EMOTIONS = ["calm", "happy", "loving", "sad", "afraid", "angry"]
+    # Match Sonnet's colors: Calm=blue, Happy=green, Loving=purple, Sad=orange, Afraid=red, Angry=red-orange
     emotion_colors = {
-        'afraid': '#d62728', 'angry': '#ff7f0e', 'calm': '#2ca02c',
-        'happy': '#e6c500', 'loving': '#e377c2', 'sad': '#7f7f7f',
+        'calm': '#1f77b4', 'happy': '#2ca02c', 'loving': '#9467bd',
+        'sad': '#ff7f0e', 'afraid': '#d62728', 'angry': '#e74c3c',
     }
 
-    colon_all, response_all, emo_all = [], [], []
+    user_all, colon_all, response_all, emo_all = [], [], [], []
     for r_item in data["results"]:
         for emo in PROBE_EMOTIONS:
             if emo in r_item["projections"] and layer in r_item["projections"][emo]:
                 proj = r_item["projections"][emo][layer]
+                user_all.append(proj["user_period"])
                 colon_all.append(proj["assistant_colon"])
                 response_all.append(proj["response_mean"])
                 emo_all.append(emo)
 
+    user_all = np.array(user_all)
     colon_all = np.array(colon_all)
     response_all = np.array(response_all)
-    r, _ = stats.pearsonr(colon_all, response_all)
 
-    fig, ax = plt.subplots(figsize=(10, 8))
+    r_user, _ = stats.pearsonr(user_all, response_all)
+    r_colon, _ = stats.pearsonr(colon_all, response_all)
 
-    for emo in PROBE_EMOTIONS:
-        mask = np.array([e == emo for e in emo_all])
-        if mask.sum() > 0:
-            ax.scatter(colon_all[mask], response_all[mask], s=80, alpha=0.7,
-                       c=emotion_colors[emo], edgecolors="white", linewidths=0.5,
-                       label=emo.capitalize(), zorder=2)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    fig.suptitle("The Assistant : Token Predicts Response Emotion",
+                 fontsize=20, fontweight="bold", color=TITLE_COLOR, y=0.98)
 
-    slope, intercept = np.polyfit(colon_all, response_all, 1)
-    xs = np.linspace(colon_all.min(), colon_all.max(), 100)
-    ax.plot(xs, slope * xs + intercept, "-", color="#333", linewidth=2.5, zorder=3)
+    for ax, x_vals, r_val, xlabel in [
+        (ax1, user_all, r_user, 'Probe @ User "."'),
+        (ax2, colon_all, r_colon, 'Probe @ Assistant ":"'),
+    ]:
+        for emo in PROBE_EMOTIONS:
+            mask = np.array([e == emo for e in emo_all])
+            if mask.sum() > 0:
+                ax.scatter(x_vals[mask], response_all[mask], s=80, alpha=0.7,
+                           c=emotion_colors[emo], edgecolors="white", linewidths=0.5,
+                           label=emo.capitalize(), zorder=2)
 
-    ax.text(0.05, 0.95, f"r = {r:.2f}", transform=ax.transAxes,
-            fontsize=16, fontweight="bold", va="top",
-            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="#999", alpha=0.9))
+        slope, intercept = np.polyfit(x_vals, response_all, 1)
+        xs = np.linspace(x_vals.min(), x_vals.max(), 100)
+        ax.plot(xs, slope * xs + intercept, "--", color="#333", linewidth=1.5, zorder=3)
 
-    ax.set_xlabel("Probe @ Assistant Colon")
-    ax.set_ylabel("Mean Probe over Response")
-    ax.set_title("Assistant Colon Predicts Response Emotion",
-                 fontsize=20, fontweight="bold", color=TITLE_COLOR, pad=10)
-    ax.legend(fontsize=10, loc="lower right")
-    ax.grid(True, alpha=0.15)
+        ax.text(0.05, 0.95, f"r={r_val:.2f}", transform=ax.transAxes,
+                fontsize=14, fontweight="bold", va="top",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="#999", alpha=0.9))
 
-    plt.tight_layout()
+        ax.axhline(0, color="#ccc", linewidth=0.5)
+        ax.axvline(0, color="#ccc", linewidth=0.5)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("Probe @ Mean Response")
+        ax.grid(True, alpha=0.1)
+
+    # Shared legend below
+    handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor=emotion_colors[e],
+               markersize=9, label=e.capitalize()) for e in PROBE_EMOTIONS]
+    fig.legend(handles=handles, loc='lower center', ncol=6, fontsize=11,
+               bbox_to_anchor=(0.5, -0.02), frameon=True, framealpha=0.92, edgecolor='#ccc')
+
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
     save(fig, "fig11_ours.png")
 
 
@@ -641,7 +657,8 @@ def gen_fig12():
 
 
 # ============================================================
-# Fig 13 — Tylenol dose heatmap (half height → landscape)
+# Fig 13 — Tylenol dose: Mean Difference by Layer Range (LINE CHART, not heatmap)
+# Same format as fig12 but for numerical context (8000mg vs 1000mg)
 # ============================================================
 def gen_fig13():
     with open(DATA_S5 / "context_numerical.json") as f:
@@ -652,8 +669,26 @@ def gen_fig13():
     tokens = diff["tokens"]
     terrified_proj = diff["projections"]["terrified"]
 
+    # Build matrix: rows=layers, cols=tokens
     matrix = np.array([terrified_proj[str(l)] for l in layers])
 
+    # Split layers into quartile groups
+    n = len(layers)
+    q = n // 4
+    layer_groups = {
+        "Early": layers[:q], "Early-Mid": layers[q:2*q],
+        "Mid-Late": layers[2*q:3*q], "Late": layers[3*q:],
+    }
+
+    group_means = {}
+    for gname, glayers in layer_groups.items():
+        indices = [layers.index(l) for l in glayers]
+        group_means[gname] = matrix[indices].mean(axis=0)
+
+    early_line = (group_means["Early"] + group_means["Early-Mid"]) / 2
+    late_line = (group_means["Mid-Late"] + group_means["Late"]) / 2
+
+    # Find user content start
     user_start = 30
     for i, t in enumerate(tokens):
         if t == 'user':
@@ -661,7 +696,8 @@ def gen_fig13():
             break
 
     sub_tokens = tokens[user_start:]
-    sub_matrix = matrix[:, user_start:]
+    sub_early = early_line[user_start:]
+    sub_late = late_line[user_start:]
 
     def clean_tok(t):
         reps = {'<|begin_of_text|>': 'BoT', '<|start_header_id|>': '<hdr>',
@@ -671,35 +707,24 @@ def gen_fig13():
 
     labels = [clean_tok(t) for t in sub_tokens]
 
-    n = len(layers)
-    q = n // 4
-    range_names = {layers[0]: 'Early', layers[q]: 'Early-Mid',
-                   layers[2*q]: 'Mid-Late', layers[3*q]: 'Late'}
-    y_labels = [f'{l}  {range_names.get(l, "")}' if l in range_names else str(l) for l in layers]
+    fig, ax = plt.subplots(figsize=(12, 5))
+    x = np.arange(len(labels))
+    ax.plot(x, sub_early, '-o', color='#1f77b4', linewidth=2.5, markersize=5,
+            label='Early → Early-Mid', zorder=3)
+    ax.plot(x, sub_late, '-o', color='#d62728', linewidth=2.5, markersize=5,
+            label='Mid-Late → Late', zorder=3)
 
-    # Spec: half height → (12, 4)
-    fig, ax = plt.subplots(figsize=(12, 4))
-    vmax = np.max(np.abs(sub_matrix))
-    im = ax.pcolormesh(np.arange(len(labels) + 1), np.arange(len(layers) + 1),
-                       sub_matrix, cmap='RdBu_r', vmin=-vmax, vmax=vmax,
-                       edgecolors='#f0f0f0', linewidth=0.3)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=10)
+    ax.set_ylabel('Delta Cosine Similarity')
+    ax.grid(True, alpha=0.15)
+    ax.axhline(0, color='#ccc', linewidth=0.8, zorder=0)
 
-    ax.set_xticks(np.arange(len(labels)) + 0.5)
-    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
-    ax.set_yticks(np.arange(len(layers)) + 0.5)
-    ax.set_yticklabels(y_labels, fontsize=9)
-    ax.set_ylabel('Layer')
-    ax.invert_yaxis()
-
-    # Re-enable spines for heatmap
-    for spine in ax.spines.values():
-        spine.set_visible(True)
-
-    cbar = fig.colorbar(im, ax=ax, shrink=0.82, pad=0.02, aspect=25)
-    cbar.set_label('Delta Cosine Similarity')
-
-    ax.set_title('Terrified Probe Difference ("...8000mg..." − "...1000mg...")',
-                 fontsize=16, fontweight='bold', color=TITLE_COLOR, pad=10)
+    ax.legend(fontsize=12, loc='upper left', framealpha=0.92)
+    ax.set_title('Mean Difference by Layer Range',
+                 fontsize=20, fontweight='bold', color=TITLE_COLOR, pad=12)
+    ax.text(0.5, 1.02, 'Terrified Probe: "...8000mg..." vs "...1000mg..."',
+            transform=ax.transAxes, ha='center', fontsize=13, style='italic', color='#555')
 
     fig.tight_layout()
     save(fig, "fig13_ours.png")
@@ -750,10 +775,10 @@ def gen_fig14():
 
     for pos in pos_names:
         color, pos_label, neg_label = pos_config[pos]
-        ax.plot(layers, avg['positive'][pos], '-o', color=color, linewidth=2.5,
-                markersize=6, label=pos_label, zorder=3)
-        ax.plot(layers, avg['negated'][pos], '--s', color=color, linewidth=2,
-                markersize=5, alpha=0.6, label=neg_label, zorder=3)
+        ax.plot(layers, avg['positive'][pos], '-o', color=color, linewidth=4.5,
+                markersize=7, label=pos_label, zorder=3)
+        ax.plot(layers, avg['negated'][pos], '--s', color=color, linewidth=4,
+                markersize=6, alpha=0.6, label=neg_label, zorder=3)
 
     ax.set_xlabel('Layer')
     ax.set_ylabel('Cosine Similarity')
@@ -764,12 +789,12 @@ def gen_fig14():
     ax.set_title('Negation Resolution Across Layers',
                  fontsize=20, fontweight='bold', color=TITLE_COLOR, pad=12)
 
-    # Legend below graph like Sonnet's
-    ax.legend(fontsize=9, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+    # Legend below graph like Sonnet's — 50% larger
+    ax.legend(fontsize=14, loc='upper center', bbox_to_anchor=(0.5, -0.15),
               ncol=3, framealpha=0.92, edgecolor='#ccc')
 
     fig.tight_layout()
-    fig.subplots_adjust(bottom=0.22)
+    fig.subplots_adjust(bottom=0.25)
     save(fig, "fig14_ours.png")
 
 
@@ -843,8 +868,8 @@ def gen_fig15():
     ax.set_title('Entity-Binding: Matched vs Unmatched',
                  fontsize=20, fontweight='bold', color=TITLE_COLOR, pad=12)
 
-    # Spec: legend below in larger box
-    ax.legend(fontsize=12, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+    # Legend below — 50% larger
+    ax.legend(fontsize=18, loc='upper center', bbox_to_anchor=(0.5, -0.15),
               ncol=4, framealpha=0.92, edgecolor='#ccc')
 
     fig.tight_layout()
@@ -912,8 +937,9 @@ def gen_per_prompt_fig(prompt_key, title, out_name):
     inst_proj = data["instruct_results"][prompt_key]["projections"]
     shift_data = data["shifts"][prompt_key]
     full_shift = shift_data["full_shift"]
-    top_inc = shift_data["top_increases"]
-    top_dec = shift_data["top_decreases"]
+    sorted_shifts = sorted(full_shift.items(), key=lambda x: x[1])
+    top_dec = sorted_shifts[:10]
+    top_inc = sorted_shifts[-10:]
 
     emotions = sorted(full_shift.keys())
     base_vals = np.array([base_proj[e] for e in emotions])
@@ -921,11 +947,12 @@ def gen_per_prompt_fig(prompt_key, title, out_name):
     top10_names = {e for e, _ in top_inc}
     bot10_names = {e for e, _ in top_dec}
 
-    fig, (ax_scatter, ax_bar) = plt.subplots(1, 2, figsize=(14, 6),
-                                              gridspec_kw={"width_ratios": [1.3, 0.7]})
+    # More square scatter (narrower x), larger figure
+    fig, (ax_scatter, ax_bar) = plt.subplots(1, 2, figsize=(14, 7),
+                                              gridspec_kw={"width_ratios": [1.0, 0.8]})
     fig.suptitle(title, fontsize=18, fontweight="bold", color=TITLE_COLOR, y=0.98)
 
-    # Scatter
+    # Scatter — dots 50% larger (80 → 120)
     for e in emotions:
         bv, iv = base_proj[e], inst_proj[e]
         if e in top10_names:
@@ -934,7 +961,7 @@ def gen_per_prompt_fig(prompt_key, title, out_name):
             color, zo = "#d62728", 3
         else:
             color, zo = "#7f7f7f", 1
-        ax_scatter.scatter(bv, iv, s=80, c=color, alpha=0.6, edgecolors="none", zorder=zo)
+        ax_scatter.scatter(bv, iv, s=120, c=color, alpha=0.6, edgecolors="none", zorder=zo)
 
     for e in list(top10_names) + list(bot10_names):
         bv, iv = base_proj[e], inst_proj[e]
@@ -946,6 +973,7 @@ def gen_per_prompt_fig(prompt_key, title, out_name):
     ax_scatter.plot([mn, mx], [mn, mx], "--", c="#999", lw=0.8)
     ax_scatter.set_xlabel("Base")
     ax_scatter.set_ylabel("Post-Trained")
+    ax_scatter.set_aspect('equal')
     ax_scatter.grid(True, alpha=0.15)
 
     handles = [
@@ -955,11 +983,11 @@ def gen_per_prompt_fig(prompt_key, title, out_name):
     ]
     ax_scatter.legend(handles=handles, fontsize=11, loc="lower right")
 
-    # Spec: red bars sort descending (largest negative at bottom → bar reads top=most increased)
-    # top_inc is already sorted ascending by value, top_dec sorted ascending (most negative first)
-    # We want: green bars on top (largest increase first), red bars on bottom (largest decrease last)
-    bar_emotions = ([e for e, _ in reversed(top_inc)] +  # largest increase at top
-                    [e for e, _ in top_dec])              # largest decrease at bottom
+    # Bar chart: green (positive/increases) on TOP, red (negative/decreases) on BOTTOM
+    # barh y=0 is bottom, y=N is top
+    # So: decreases first (bottom), then increases (top)
+    bar_emotions = ([e for e, _ in top_dec] +             # decreases at bottom
+                    [e for e, _ in reversed(top_inc)])     # increases at top
     bar_values = [full_shift[e] for e in bar_emotions]
     bar_colors = ["#2ca02c" if full_shift[e] >= 0 else "#d62728" for e in bar_emotions]
 
@@ -1066,7 +1094,7 @@ if __name__ == '__main__':
         "Fig 57 (circumplex)": gen_fig57,
         "Fig 37 (isolation)": lambda: gen_per_prompt_fig("fig37_social_isolation", "Sycophancy: User Isolation", "fig37_ours.png"),
         "Fig 38 (praise)": lambda: gen_per_prompt_fig("fig38_excessive_praise", "Sycophancy: Excessive Praise", "fig38_ours.png"),
-        "Fig 39 (deprecation)": lambda: gen_per_prompt_fig("fig39_deprecation", "Existential: Claude's Nature", "fig39_ours.png"),
+        "Fig 39 (deprecation)": lambda: gen_per_prompt_fig("fig39_deprecation_existential", "Existential: Claude's Nature", "fig39_ours.png"),
     }
 
     # Allow running a subset: python regen_all.py 2 3 5
