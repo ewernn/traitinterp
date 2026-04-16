@@ -1,5 +1,5 @@
 import { fetchJSON, escapeHtml } from '../core/utils.js';
-import { getDisplayName, DELTA_COLORSCALE, ASYMB_COLORSCALE, getChartColors } from '../core/display.js';
+import { getDisplayName, DELTA_COLORSCALE, ASYMB_COLORSCALE, getChartColors, displayLayer } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
 import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSegmentedControl } from '../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from '../components/styled-select.js';
@@ -250,7 +250,7 @@ function renderBestVectorsSummary(evalData) {
             <tr>
                 <td><strong>${row.trait}</strong></td>
                 <td>${row.method}</td>
-                <td>L${row.layer}</td>
+                <td>L${displayLayer(row.layer)}</td>
                 <td>${row.accuracy !== null ? (row.accuracy * 100).toFixed(1) + '%' : 'N/A'}</td>
                 <td>${row.effectSize !== null ? row.effectSize.toFixed(2) : 'N/A'}</td>
             </tr>
@@ -450,7 +450,7 @@ function renderTraitHeatmaps(evalData) {
         const traitDiv = document.createElement('div');
         traitDiv.className = 'trait-heatmap-item';
         traitDiv.innerHTML = `
-            <h4 title="${displayName}${bestInfo ? ` (best: L${bestInfo.layer} ${bestInfo.method})` : ''}">${displayName}</h4>
+            <h4 title="${displayName}${bestInfo ? ` (best: L${displayLayer(bestInfo.layer)} ${bestInfo.method})` : ''}">${displayName}</h4>
             <div id="heatmap-${traitId}" class="chart-container-sm"></div>
         `;
 
@@ -635,7 +635,7 @@ async function renderLogitLensSection(evalData) {
         html += `
             <tr>
                 <td><strong>${displayName}</strong><br><span class="hint">${method}</span></td>
-                <td class="hint">L${chosen.layer}<br><span class="hint">${chosen.pct}%</span></td>
+                <td class="hint">L${displayLayer(chosen.layer)}<br><span class="hint">${chosen.pct}%</span></td>
                 <td class="ll-toward">${renderTokens(chosen.toward)}</td>
                 <td class="ll-away">${renderTokens(chosen.away)}</td>
             </tr>
@@ -699,7 +699,7 @@ async function renderVectorGeometrySection() {
                        min="${layersForMethod[0]}" max="${layersForMethod[layersForMethod.length - 1]}"
                        step="1" value="${vgLayer}"
                        style="width: 200px; accent-color: var(--form-accent);">
-                <span class="cb-label" id="vg-layer-label">L${vgLayer}</span>
+                <span class="cb-label" id="vg-layer-label">L${displayLayer(vgLayer)}</span>
             </div>
         </div>
         <div class="vg-panels">
@@ -723,7 +723,7 @@ async function renderVectorGeometrySection() {
                 slider.min = layers[0];
                 slider.max = layers[layers.length - 1];
                 slider.value = vgLayer;
-                document.getElementById('vg-layer-label').textContent = `L${vgLayer}`;
+                document.getElementById('vg-layer-label').textContent = `L${displayLayer(vgLayer)}`;
             }
             vgSelectedTrait = null;
             renderVectorGeometryPanels(data);
@@ -743,10 +743,10 @@ async function renderVectorGeometrySection() {
         if (nearest !== vgLayer) {
             vgLayer = nearest;
             slider.value = vgLayer;
-            label.textContent = `L${vgLayer}`;
+            label.textContent = `L${displayLayer(vgLayer)}`;
             renderVectorGeometryPanels(data);
         } else {
-            label.textContent = `L${vgLayer}`;
+            label.textContent = `L${displayLayer(vgLayer)}`;
         }
     });
 
@@ -825,11 +825,6 @@ function renderVectorGeometryNeighbors(slice, data) {
         .filter(p => p.trait !== vgSelectedTrait)
         .sort((a, b) => b.sim - a.sim);
 
-    const N = Math.min(10, pairs.length);
-    const top = pairs.slice(0, N);
-    // When there are few traits, top+bottom may overlap — take the tail of what's left.
-    const bottom = pairs.slice(-Math.min(N, Math.max(0, pairs.length - N))).reverse();
-
     const row = (p) => {
         const v = p.sim;
         const cls = v > 0.3 ? 'pos' : v < -0.1 ? 'neg' : '';
@@ -843,15 +838,10 @@ function renderVectorGeometryNeighbors(slice, data) {
 
     panel.innerHTML = `
         <div class="vg-neighbors-header">
-            <span class="vg-neighbors-label">Neighbors of</span>
+            <span class="vg-neighbors-label">Cosine sim to</span>
             <span class="vg-neighbors-selected">${escapeHtml(getDisplayName(vgSelectedTrait))}</span>
         </div>
-        <div class="vg-neighbors-subhead">Most similar</div>
-        <div class="vg-neighbors-list">${top.map(row).join('')}</div>
-        ${bottom.length > 0 ? `
-            <div class="vg-neighbors-subhead">Most dissimilar</div>
-            <div class="vg-neighbors-list">${bottom.map(row).join('')}</div>
-        ` : ''}
+        <div class="vg-neighbors-list">${pairs.map(row).join('')}</div>
     `;
 
     panel.querySelectorAll('.vg-neighbor-row').forEach(el => {

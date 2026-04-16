@@ -7,6 +7,7 @@
  */
 
 import { escapeHtml } from '../core/utils.js';
+import { displayLayer } from '../core/display.js';
 import { renderLoading, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
 import { renderChipGroup, wireChipGroup } from './styled-chip-group.js';
@@ -339,7 +340,7 @@ async function renderResponseBrowserForTrait(trait) {
                         const promptSetDisplay = promptSet && promptSet !== 'steering' ? ` [${promptSet}]` : '';
                         return `
                         <tr class="rb-row ${state.expandedRow === idx ? 'expanded' : ''} ${run.coherence < coherenceThreshold ? 'below-threshold' : ''}" data-idx="${idx}">
-                            <td>L${run.layer}</td>
+                            <td>L${displayLayer(run.layer)}</td>
                             <td>${run.coef.toFixed(1)}</td>
                             <td>${run.method}</td>
                             <td>${run.component}</td>

@@ -354,7 +354,7 @@
 .vg-neighbors-label { color: var(--text-tertiary); }
 .vg-neighbors-selected { font-weight: 600; color: var(--text-primary); }
 .vg-neighbors-subhead { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); margin: 10px 0 4px; }
-.vg-neighbors-list { display: flex; flex-direction: column; gap: 2px; }
+.vg-neighbors-list { display: flex; flex-direction: column; gap: 2px; max-height: 480px; overflow-y: auto; }
 .vg-neighbor-row { display: flex; gap: 10px; padding: 3px 6px; border-radius: var(--radius-sm); cursor: pointer; }
 .vg-neighbor-row:hover { background: var(--bg-tertiary); }
 .vg-neighbor-sim { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 52px; color: var(--text-secondary); }

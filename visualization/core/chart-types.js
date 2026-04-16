@@ -1,4 +1,4 @@
-import { getChartColors } from './display.js';
+import { getChartColors, displayLayer } from './display.js';
 import { buildChartLayout, renderChart } from './charts.js';
 
 /**
@@ -355,7 +355,7 @@ CHART_RENDERERS['comparison-bar'] = async function(container, data, options = {}
     const labels = indices.map(i => {
         const d = results[i];
         const methodShort = d.method === 'mean_diff' ? 'md' : d.method.slice(0, 2);
-        return `${d.label} (${methodShort} L${d.layer})`;
+        return `${d.label} (${methodShort} L${displayLayer(d.layer)})`;
     });
 
     const prefix = direction === 'positive' ? '+' : '';

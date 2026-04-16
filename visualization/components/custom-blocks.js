@@ -26,6 +26,7 @@
  */
 
 import { escapeHtml } from '../core/utils.js';
+import { displayLayer } from '../core/display.js';
 import { renderLoading } from '../core/ui.js';
 
 // ============================================================================
@@ -496,7 +497,7 @@ function createDropdownHtml(id, label, type, path, options = {}) {
     if (type === 'Responses') {
         const meta = parseSteeringResponsePath(path);
         if (meta) {
-            metadataHtml = `<span class="dropdown-meta">L${meta.layer} · coef ${meta.coef} · ${meta.component} · ${meta.method}</span>`;
+            metadataHtml = `<span class="dropdown-meta">L${displayLayer(meta.layer)} · coef ${meta.coef} · ${meta.component} · ${meta.method}</span>`;
         }
     }
 

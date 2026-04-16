@@ -1,5 +1,5 @@
 import { fetchJSON, sortedNumericKeys } from '../core/utils.js';
-import { getChartColors } from '../core/display.js';
+import { getChartColors, displayLayer } from '../core/display.js';
 import { buildChartLayout, renderChart } from '../core/charts.js';
 import { requireExperiment, renderSubsection, renderRunHint, deferredLoading } from '../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from '../components/styled-select.js';
@@ -303,7 +303,7 @@ async function renderModelDiffComparison(experiment) {
                                     const color = data.peak_effect > 1.5 ? 'var(--success-color)' :
                                                   data.peak_effect > 0.5 ? 'var(--warning-color)' :
                                                   'var(--text-secondary)';
-                                    const effectCell = `<td style="color: ${color};">${data.peak_effect.toFixed(2)}σ @ L${data.peak_layer}</td>`;
+                                    const effectCell = `<td style="color: ${color};">${data.peak_effect.toFixed(2)}σ @ L${displayLayer(data.peak_layer)}</td>`;
                                     const spreadCell = data.std_a != null && data.std_b != null
                                         ? `<td style="color: var(--text-secondary);">${data.std_a.toFixed(2)} / ${data.std_b.toFixed(2)}</td>`
                                         : '<td style="color: var(--text-tertiary);">—</td>';

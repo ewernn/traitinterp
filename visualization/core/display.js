@@ -191,10 +191,20 @@ function getPlotlyLayout(baseLayout = {}) {
     };
 }
 
+/**
+ * Convert a 0-indexed layer number to the 1-indexed value shown to users.
+ * Internal data and state stay 0-indexed; only the rendered label is shifted.
+ * Use anywhere a raw layer index appears in user-visible text (e.g. `L${displayLayer(n)}`).
+ */
+function displayLayer(layer) {
+    return Number.isFinite(layer) ? layer + 1 : layer;
+}
+
 // ES module exports
 export {
     DISPLAY_NAMES,
     getDisplayName,
+    displayLayer,
     ASYMB_COLORSCALE,
     DELTA_COLORSCALE,
     CORRELATION_COLORSCALE,

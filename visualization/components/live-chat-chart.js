@@ -5,7 +5,7 @@
 // Usage: import { initTraitChart, updateTraitChart, ... } from './live-chat-chart.js'
 
 import { smoothData } from '../core/utils.js';
-import { getChartColors, getCssVar, hexToRgba } from '../core/display.js';
+import { getChartColors, getCssVar, hexToRgba, displayLayer } from '../core/display.js';
 import { buildChartLayout, renderChart, updateChart } from '../core/charts.js';
 
 // Module-local state
@@ -116,7 +116,7 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
             }
 
             const tooltipText = metadata
-                ? `L${metadata.layer} ${metadata.method} (${metadata.source})`
+                ? `L${displayLayer(metadata.layer)} ${metadata.method} (${metadata.source})`
                 : 'no metadata';
 
             const currentCoef = steeringCoefficients[trait] || 0;

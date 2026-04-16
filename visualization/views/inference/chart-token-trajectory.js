@@ -3,7 +3,7 @@
 // Output: rendered Plotly charts (trajectory, velocity overlay, cue_p, overlay controls)
 
 import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
-import { getDisplayName, getChartColors, getCssVar } from '../../core/display.js';
+import { getDisplayName, getChartColors, getCssVar, displayLayer } from '../../core/display.js';
 import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, LINE_SPLINE } from '../../core/charts.js';
 import { setShowCuePOverlay, setShowCategoryOverlay, setInferenceVariant } from '../../core/state.js';
 import { renderToggle } from '../../core/ui.js';
@@ -346,11 +346,11 @@ function renderTrajectoryChart(renderCtx) {
         // Build display name and hover
         const baseTrait = data.metadata?._baseTrait || traitName;
         const displayName = data.metadata?._isMultiVector
-            ? `${getDisplayName(baseTrait)} (${method} L${vs.layer})`
+            ? `${getDisplayName(baseTrait)} (${method} L${displayLayer(vs.layer)})`
             : getDisplayName(traitName);
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
-        const vectorInfo = vs.layer !== undefined ? `<br><span style="color: var(--text-tertiary)">L${vs.layer} ${method}${posStr}</span>` : '';
+        const vectorInfo = vs.layer !== undefined ? `<br><span style="color: var(--text-tertiary)">L${displayLayer(vs.layer)} ${method}${posStr}</span>` : '';
         const useMarkers = displayValues.length <= 2000;
         traces.push({
             x: Array.from({length: displayValues.length}, (_, i) => i),
@@ -419,7 +419,7 @@ function renderTrajectoryChart(renderCtx) {
         const pos = data.metadata?.position || vs.position;
         const posStr = pos && pos !== 'response[:]' ? ` @${pos.replace('response', 'resp').replace('prompt', 'p')}` : '';
         return vs.layer !== undefined
-            ? `L${vs.layer} ${vs.method || '?'}${posStr} (${vs.selection_source || 'unknown'})`
+            ? `L${displayLayer(vs.layer)} ${vs.method || '?'}${posStr} (${vs.selection_source || 'unknown'})`
             : 'no metadata';
     });
 

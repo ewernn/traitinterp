@@ -4,7 +4,7 @@
 // including chart, best response, per-layer results, and info tooltips.
 
 import { escapeHtml } from '../../core/utils.js';
-import { getMethodColors } from '../../core/display.js';
+import { getMethodColors, displayLayer } from '../../core/display.js';
 import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── State ──────────────────────────────────────────────────────────
@@ -62,13 +62,13 @@ function renderDetailPlotly(chartDiv, detailData, direction, showErrorBars = fal
         const color = methodColors[method] || '#888';
         const trace = {
             name: method,
-            x: sorted.map(d => d.layer),
+            x: sorted.map(d => displayLayer(d.layer)),
             y: sorted.map(d => d.score),
             customdata: sorted.map(d => {
                 const delta = (d.score - detailData.baseline).toFixed(1);
                 const sign = delta >= 0 ? '+' : '';
                 const seBit = (d.traitSE != null && d.n) ? `<br>±SE: ${d.traitSE.toFixed(1)} (n=${d.n})` : '';
-                return `L${d.layer} ${method}<br>Score: ${d.score.toFixed(1)} (${sign}${delta})<br>Coherence: ${d.coherence != null ? d.coherence.toFixed(0) : '?'}${seBit}`;
+                return `L${displayLayer(d.layer)} ${method}<br>Score: ${d.score.toFixed(1)} (${sign}${delta})<br>Coherence: ${d.coherence != null ? d.coherence.toFixed(0) : '?'}${seBit}`;
             }),
             type: 'scatter',
             mode: 'lines+markers',
@@ -93,7 +93,7 @@ function renderDetailPlotly(chartDiv, detailData, direction, showErrorBars = fal
     if (detailData.baseline != null) {
         traces.push({
             name: `Baseline (${detailData.baseline.toFixed(0)})`,
-            x: [detailData.minLayer, detailData.maxLayer],
+            x: [displayLayer(detailData.minLayer), displayLayer(detailData.maxLayer)],
             y: [detailData.baseline, detailData.baseline],
             type: 'scatter',
             mode: 'lines',
@@ -341,7 +341,7 @@ function buildDetailHTML(trait, traitResults) {
             <div class="br-header">
                 <div class="br-label">Best response (${direction === 'negative' ? 'lowest' : 'highest'} trait score)</div>
                 <div class="br-meta">
-                    Layer <strong>${bestRun.layer}</strong>
+                    Layer <strong>${displayLayer(bestRun.layer)}</strong>
                     &middot; coef=<strong>${Math.abs(bestRun.coef).toFixed(1)}</strong>
                     &middot; trait=<strong>${bestRun.traitScore.toFixed(1)}</strong>
                     &middot; coherence=<strong>${bestRun.coherence.toFixed(0)}</strong>
@@ -371,7 +371,7 @@ function buildDetailHTML(trait, traitResults) {
         const deltaCls = delta >= 0 ? 'pos' : 'neg';
         return `
             <div class="detail-layer-row" data-layer-idx="${i}" data-layer="${r.layer}" data-method="${r.method}" data-component="${r.component}" data-coef="${r.coef}">
-                <span class="lr-layer">L${r.layer}</span>
+                <span class="lr-layer">L${displayLayer(r.layer)}</span>
                 <span class="lr-delta ${deltaCls}">${deltaSign}${delta.toFixed(1)}</span>
                 <span class="lr-score">trait ${r.traitScore.toFixed(1)}</span>
                 <span class="lr-coef">coef ${Math.abs(r.coef).toFixed(1)}</span>
@@ -396,10 +396,10 @@ function buildDetailHTML(trait, traitResults) {
         </div>
         <div class="detail-meta">
             <span>Best delta: <strong style="${scoreStyle}">${sign}${bestDelta.toFixed(1)}</strong></span>
-            <span>Best layer: <strong>L${bestLayer}</strong></span>
+            <span>Best layer: <strong>L${displayLayer(bestLayer)}</strong></span>
             <span>Method: <strong>${escapeHtml(bestMethod)}</strong></span>
             <span>Coherence: <strong>${bestCoherence.toFixed(0)}</strong></span>
-            <span>Layers: <strong>L${minLayer}&ndash;${maxLayer}</strong> / ${window.paths?.getNumLayers?.() || window.state.experimentData?.experimentConfig?.num_hidden_layers || 32}</span>
+            <span>Layers: <strong>L${displayLayer(minLayer)}&ndash;${displayLayer(maxLayer)}</strong> / ${window.paths?.getNumLayers?.() || window.state.experimentData?.experimentConfig?.num_hidden_layers || 32}</span>
             <span>Configs: <strong>${configCount}</strong></span>
         </div>
         <div class="detail-chart-header">
