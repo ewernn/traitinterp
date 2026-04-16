@@ -92,10 +92,7 @@ function restoreConversation() {
         const saved = localStorage.getItem(getStorageKey());
         if (!saved) return false;
         const parsed = JSON.parse(saved);
-        // Legacy format (pre-tagging) had the tree at the top level. Discard those.
-        if (!parsed || !parsed.tree) {
-            return false;
-        }
+        if (!parsed || !parsed.tree) return false;
         const status = getChatStatus();
         const currentBackend = status.backend || getInferenceMode();
         const currentModel = status.model;

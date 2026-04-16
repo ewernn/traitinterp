@@ -616,7 +616,8 @@ async function renderLogitLensSection(evalData) {
         const methodData = data.methods[method];
         if (!methodData) continue;
 
-        // Handle both schemas: new `per_layer: {L: {...}}` and legacy `late: {...}`
+        // Handle both logit-lens schemas: `per_layer: {L: {...}}` (newer, rare) and
+        // `late: {...}` (older, dominant on disk today). Keep both branches until per_layer catches up.
         let chosen;
         if (methodData.per_layer) {
             const layerNums = Object.keys(methodData.per_layer).map(Number);

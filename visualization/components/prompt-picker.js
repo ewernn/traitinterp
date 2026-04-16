@@ -265,58 +265,26 @@ async function renderPromptPicker() {
     }
 }
 
-/**
- * Fetch prompt/response data and cache it.
- * Tries shared response data first, falls back to projection data for backwards compatibility.
- */
+/** Fetch the shared response JSON for the current prompt and cache it. */
 async function fetchPromptPickerData() {
     if (!window.state.currentPromptSet || !window.state.currentPromptId) return;
 
-    let data = null;
     const modelVariant = getVariantForCurrentPromptSet();
+    const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
 
-    // Try shared response data first (new format)
+    let data = null;
     try {
-        const responseUrl = window.paths.responseData(window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
         const response = await fetch(responseUrl);
-        if (response.ok) {
-            data = await response.json();
-        }
+        if (response.ok) data = await response.json();
     } catch (e) {
-        // Fall through to fallback
+        console.warn('Failed to fetch prompt picker data:', e);
     }
-
-    // Fall back to projection data (old format, for backwards compatibility)
-    if (!data && window.state.experimentData?.traits?.length > 0) {
-        const firstTrait = window.state.experimentData.traits[0];
-        try {
-            const url = window.paths.residualStreamData(firstTrait, window.state.currentPromptSet, window.state.currentPromptId, modelVariant);
-            const response = await fetch(url);
-            if (response.ok) {
-                data = await response.json();
-            }
-        } catch (e) {
-            console.warn('Failed to fetch prompt picker data:', e);
-        }
-    }
-
     if (!data) return;
 
-    // Handle both flat schema (tokens + prompt_end) and nested schema (prompt.tokens, response.tokens)
-    let promptTokenList, responseTokenList, promptText, responseText;
-    if (data.tokens && data.prompt_end !== undefined) {
-        // Flat schema
-        promptTokenList = data.tokens.slice(0, data.prompt_end);
-        responseTokenList = data.tokens.slice(data.prompt_end);
-        promptText = typeof data.prompt === 'string' ? data.prompt : '';
-        responseText = typeof data.response === 'string' ? data.response : '';
-    } else {
-        // Nested schema
-        promptTokenList = data.prompt?.tokens || [];
-        responseTokenList = data.response?.tokens || [];
-        promptText = data.prompt?.text || '';
-        responseText = data.response?.text || '';
-    }
+    const promptTokenList = data.tokens.slice(0, data.prompt_end);
+    const responseTokenList = data.tokens.slice(data.prompt_end);
+    const promptText = typeof data.prompt === 'string' ? data.prompt : '';
+    const responseText = typeof data.response === 'string' ? data.response : '';
     const allTokens = [...promptTokenList, ...responseTokenList];
 
     // Fetch annotation token ranges for response highlighting
@@ -338,13 +306,13 @@ async function fetchPromptPickerData() {
         responseTokens: responseTokenList.length,
         allTokens: allTokens,
         nPromptTokens: promptTokenList.length,
-        tags: data.tags || data.metadata?.tags || [],  // Support both flat and legacy schemas
+        tags: data.tags || [],
         annotationTokenRanges: annotationTokenRanges  // [start, end) in response token space
     };
 
     // Store tags in per-prompt cache for rendering buttons
     const cacheKey = `${window.state.currentPromptSet}:${window.state.currentPromptId}`;
-    promptTagsCache[cacheKey] = data.tags || data.metadata?.tags || [];
+    promptTagsCache[cacheKey] = data.tags || [];
 
     // Reset token index when loading new prompt (clamp to valid range)
     const maxIdx = Math.max(0, allTokens.length - 1);
