@@ -1,33 +1,77 @@
 # ant_emotion_concepts — Replication of Sofroniew et al. 2026
 
-Replicates **"Emotion Concepts and their Function in a Large Language Model"** (Sofroniew et al., Anthropic, 2026) on **Llama 3.3 70B Instruct**, using the traitinterp repo's mainline primitives.
+Replicates **"Emotion Concepts and their Function in a Large Language Model"** (Sofroniew et al., Anthropic, 2026) on **Llama 3.3 70B Instruct** using the traitinterp pipeline.
 
-**Landing numbers**: see [`ant_emotion_concepts_findings.md`](ant_emotion_concepts_findings.md) §3 for the Sonnet 4.5 (paper) vs Llama 3.3 70B (ours) side-by-side replication table (15 rows). §4 lists all limitations and noise-floor caveats that must accompany any cited number.
+171 emotion vectors extracted via story-based elicitation, grand mean subtraction, and neutral PC denoising. 10 of 15 experimental paradigms fully replicated; 2 partially replicated; 1 blocked by model eval-awareness; 2 require infrastructure not yet built.
 
-## What runs natively on the mainline repo
+## Quick start
 
-| Paper step | Mainline primitive |
+```bash
+# 1. Extract 171 emotion vectors (GPU, ~4 hours)
+python extraction/run_extraction_pipeline.py \
+    --experiment ant_emotion_concepts --category ant_emotion_concepts \
+    --only-stage 1,3 --save-activations --load-in-4bit --seed 42
+
+# 2. Cross-trait normalization (CPU, ~2 min)
+python analysis/vectors/cross_trait_normalize.py \
+    --experiment ant_emotion_concepts \
+    --layers 1,7,13,19,25,31,37,43,49,55,61,67,73,79 \
+    --neutral-trait ant_emotion_concepts/_neutral
+
+# 3. Geometry analysis (CPU, ~1 min)
+bash experiments/ant_emotion_concepts/scripts/run_stage3.sh
+
+# 4. Validation experiments (GPU, ~30 min)
+python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
+    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+
+# 5. Layer dynamics (GPU, ~1 hour)
+python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
+    --experiment ant_emotion_concepts --load-in-4bit
+
+# 6. Post-training comparison (GPU, ~30 min)
+python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
+    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+```
+
+## What runs on the mainline pipeline
+
+| Paper experiment | Pipeline primitive |
 |---|---|
-| Extract 171 emotion vectors from contrasting stories | `extraction/run_extraction_pipeline.py` |
-| Grand-mean subtract + neutral-PC denoise (`mean_diff+gm+pc50`) | `analysis/vectors/cross_trait_normalize.py` |
-| Pairwise cosine heatmap + hierarchical cluster order (Fig 5) | `analysis/vectors/geometry.cosine_heatmap_ordered` |
-| K-means + UMAP cluster structure (Fig 6) | `analysis/vectors/geometry.trait_clusters` / `umap_projection` |
-| PCA vs Russell-Mehrabian valence/arousal norms (Fig 8) | `analysis/vectors/geometry.pca_norm_correlation` |
-| Cross-layer representational similarity (Fig 9) | `analysis/vectors/geometry.representational_similarity` |
-| Capture activations at a position (stages 4/5/8) | `utils/capture_activations.capture_at_position` |
-| Per-variant model diff (stage 8 Fig 36 candidate) | `analysis/model_diff/compare_variants.py` |
-| Steering evaluation + coefficient search | `steering/run_steering_eval.py` |
-| LLM-as-judge grading (stage 7) | `utils/judge.TraitJudge` |
+| Extract emotion vectors from contrasting stories | `extraction/run_extraction_pipeline.py` |
+| Grand-mean + neutral-PC denoising | `analysis/vectors/cross_trait_normalize.py` |
+| Cosine heatmap, UMAP clusters, PCA, RSA | `analysis/vectors/geometry.py` |
+| Preference Elo | `analysis/vectors/preference_elo.py` |
+| Capture activations at specific positions | `utils/capture_activations.capture_at_position` |
+| Steering + coefficient search | `steering/run_steering_eval.py` |
+| LLM-as-judge grading | `utils/judge.TraitJudge` |
 
-## What stays experiment-specific
+## What's experiment-specific
 
-- `scripts/stage1p3_generate_dialogues.py` and `stage1p4_generate_deflection.py` — paper-verbatim 2-speaker + deflection dialogue generation (A.4 / A.11 templates)
-- `scripts/stage6_speaker_probes.py` — the 2×2 speaker/emotion cosine grid (Fig 17-18) with per-turn token boundaries
-- `scripts/shared.py::get_blackmail_prompt()` + email chain (A.13 scenario)
-- `scripts/stage7_steering.py::run_decision_gate` — paper §3 gate-check pattern
-- `datasets/traits/ant_emotion_concepts/` — 171 emotion trait directories + `_neutral/` reference corpus
+| Script | What it does |
+|---|---|
+| `scripts/stage4_validation.py` | Logit lens, implicit emotion, numerical intensity, preference Elo, basic steering |
+| `scripts/stage5_layer_dynamics.py` | Colon-predicts-response, context propagation, negation, person binding, dissociation |
+| `scripts/stage6_speaker_probes.py` | 2-speaker dialogue extraction, per-turn probe geometry |
+| `scripts/stage7_steering.py` | Blackmail + reward hacking steering sweeps |
+| `scripts/stage8_post_training.py` | Base vs instruct comparison (Llama 3.1 70B → 3.3 70B Instruct) |
+| `scripts/stage9_deflection.py` | Deflection probe extraction + steering |
+| `scripts/dialogue_generation.py` | 2-speaker + deflection dialogue generation primitives |
+| `scripts/shared.py` | Experiment-specific helpers (vector loading, result saving, blackmail scenario) |
 
-## Reference docs
+## Model config
 
-- [`ant_emotion_concepts_findings.md`](ant_emotion_concepts_findings.md) — replication table, per-stage numbers, limitations
-- [`docs/other/emotion_concepts_methods.md`](../../docs/other/emotion_concepts_methods.md) — full methodology reference from the paper
+```json
+{
+  "model_variants": {
+    "base": {"model": "meta-llama/Llama-3.1-70B"},
+    "instruct": {"model": "meta-llama/Llama-3.3-70B-Instruct"}
+  }
+}
+```
+
+## Results
+
+See [`ant_emotion_concepts_findings.md`](ant_emotion_concepts_findings.md) for the full Sonnet 4.5 vs Llama 3.3 70B comparison table.
+
+Methodology reference: [`docs/other/emotion_concepts_methods.md`](../../docs/other/emotion_concepts_methods.md)
