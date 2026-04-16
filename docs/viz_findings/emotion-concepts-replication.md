@@ -16,6 +16,30 @@ thumbnail:
 
 ---
 
+## Scope and Methodology
+
+The paper describes 15 distinct experimental paradigms across 86 figures/tables. We replicated **10 paradigms fully**, 2 partially, and 3 are blocked by factors outside our control.
+
+**What we couldn't replicate (and why):**
+
+- **Proprietary transcript corpus** (~15 figures): The paper's case studies, "in the wild" probes, and sycophancy evaluations use Anthropic's internal corpus of 6,000+ eval transcripts with a custom token-level viewer. No external researcher can reproduce these regardless of model.
+- **Blackmail/reward-hacking steering curves** (Figs 28-31): The paper's headline finding — steering "desperate" increases blackmail from 22% to 72% — used an early Sonnet snapshot. The paper itself notes (footnote 14) that the final production model "exhibits too much evaluation-awareness to ever blackmail in this scenario." Llama 3.3 70B matches this: 0/20 at baseline, 2/20 under maximal pro-desperate steering.
+- **Max-activating corpus sweep** (Fig 1): Requires sweeping vectors over a large natural-text corpus. Pipeline support built (`analysis/vectors/max_activating_corpus.py`); results pending.
+
+**Methodology differences from the paper:**
+
+| | Ours | Paper |
+|---|---|---|
+| Model | Llama 3.3 70B Instruct | Claude Sonnet 4.5 |
+| Quantization | bnb NF4 4-bit | Unquantized |
+| Stories | 1 rollout × 20 topics per emotion | 12 rollouts × 100 topics |
+| Generation | 256 max tokens | ~1 paragraph |
+| Extraction | Token 50+ of response | Same |
+| Normalization | Grand mean + neutral PC 50% denoising | Same |
+| Layer | L49 (~61% of 80 layers) | "Mid-late ~2/3 depth" |
+
+---
+
 ## Validation
 
 :::side-by-side
