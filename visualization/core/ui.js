@@ -35,33 +35,6 @@ function renderSubsection({ num, title, infoId, infoText, level = 'h3' }) {
 // === Form Controls ===
 
 /**
- * Render a select dropdown with label.
- * @param {Object} options
- * @param {string} options.id - Element ID
- * @param {string} options.label - Label text
- * @param {Array<string|{value: string, label?: string}>} options.options - Options array
- * @param {string} [options.selected] - Currently selected value
- * @param {string} [options.className] - Additional CSS class
- * @param {string} [options.placeholder] - Placeholder option text
- * @returns {string} HTML string
- */
-function renderSelect({ id, label, options, selected, className, placeholder }) {
-    const optionsHtml = options.map(opt => {
-        const value = typeof opt === 'string' ? opt : opt.value;
-        const text = typeof opt === 'string' ? opt : (opt.label || opt.value);
-        return `<option value="${value}" ${value === selected ? 'selected' : ''}>${text}</option>`;
-    }).join('');
-    const placeholderHtml = placeholder ? `<option value="">${placeholder}</option>` : '';
-
-    return `
-        <div class="control-group">
-            <label>${label}</label>
-            <select id="${id}" class="${className || id}">${placeholderHtml}${optionsHtml}</select>
-        </div>
-    `;
-}
-
-/**
  * Render a checkbox toggle with label.
  * @param {Object} options
  * @param {string} [options.id] - Element ID (optional)
@@ -81,25 +54,6 @@ function renderToggle({ id, label, checked, dataAttr, className }) {
             ${label}
         </label>
     `;
-}
-
-// === Chips ===
-
-/**
- * Render a single chip/button.
- * @param {Object} options
- * @param {string} options.label - Button text
- * @param {boolean} [options.active=false] - Whether active/selected
- * @param {{key: string, value: string}} [options.dataAttr] - Data attribute
- * @param {string} [options.className] - Additional CSS class
- * @param {string} [options.onClick] - Inline onclick handler
- * @returns {string} HTML string
- */
-function renderChip({ label, active, dataAttr, className, onClick }) {
-    const activeClass = active ? 'active' : '';
-    const dataHtml = dataAttr ? `data-${dataAttr.key}="${dataAttr.value}"` : '';
-    const onClickHtml = onClick ? `onclick="${onClick}"` : '';
-    return `<button class="btn btn-xs ${className || ''} ${activeClass}" ${dataHtml} ${onClickHtml}>${label}</button>`;
 }
 
 // === Tables ===
@@ -167,40 +121,6 @@ function renderRunHint(message, command) {
     return `<div class="info">${message}<br><br>Run: <code>${command}</code></div>`;
 }
 
-/**
- * Render a single filter chip (uses .filter-chip CSS, not .btn).
- * @param {string} value - Data value
- * @param {string} label - Display text
- * @param {Set<string>|string} active - Active value(s)
- * @param {string} dataAttr - data-* attribute name
- */
-function renderFilterChip(value, label, active, dataAttr) {
-    const isActive = active instanceof Set ? active.has(value) : active === value;
-    return `<span class="filter-chip${isActive ? ' active' : ''}" data-${dataAttr}="${value}">${label}</span>`;
-}
-
-/**
- * Render a labeled row of filter chips. Returns '' if ≤1 option.
- * @param {string} label - Row label
- * @param {Set<string>|Array} values - All possible values
- * @param {Set<string>} active - Active values
- * @param {string} groupKey - data-filter-group value + used for data-value
- * @param {Object} [opts]
- * @param {Object} [opts.displayNames] - value → display label map
- * @param {Function} [opts.formatLabel] - fallback formatter
- */
-function renderFilterChipRow(label, values, active, groupKey, { displayNames = {}, formatLabel = null } = {}) {
-    const arr = Array.from(values);
-    if (arr.length <= 1) return '';
-    const defaultFmt = v => v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    const chips = arr.map(v => {
-        const display = displayNames[v] ?? (formatLabel ? formatLabel(v) : defaultFmt(v));
-        const activeClass = active.has(v) ? ' active' : '';
-        return `<span class="filter-chip${activeClass}" data-filter-group="${groupKey}" data-value="${v}">${display}</span>`;
-    }).join('');
-    return `<div class="filter-row"><span class="filter-label">${label}:</span>${chips}</div>`;
-}
-
 // === Score Badges ===
 
 /**
@@ -225,56 +145,36 @@ function scoreClass(val, type = 'trait') {
  * Render a segmented pill control (mutually exclusive options).
  * @param {Object} opts
  * @param {string} opts.id - Container ID
- * @param {Array<{value: string, label: string}>} opts.options
- * @param {string} opts.selected - Currently selected value
+ * @param {Array<{value: string|number, label: string}>} opts.options
+ * @param {string|number} opts.selected - Currently selected value
  * @param {string} opts.dataAttr - data attribute name (e.g., 'compare-mode')
  * @param {boolean} [opts.disabled] - Disable all options
  * @param {string} [opts.disabledTooltip] - Tooltip when disabled
+ * @param {'normal'|'compact'} [opts.size='normal'] - Compact is for dense rows (e.g., smoothing window)
  */
-function renderSegmentedControl({ id, options, selected, dataAttr, disabled, disabledTooltip }) {
-    const groupClass = disabled ? 'seg-pill disabled-group' : 'seg-pill';
+function renderSegmentedControl({ id, options, selected, dataAttr, disabled, disabledTooltip, size = 'normal' }) {
+    const classes = ['seg-pill'];
+    if (size === 'compact') classes.push('compact');
+    if (disabled) classes.push('disabled-group');
     const tooltip = disabled && disabledTooltip ? ` title="${disabledTooltip}"` : '';
     const buttons = options.map(opt => {
         const activeClass = opt.value === selected ? ' active' : '';
         const disabledAttr = disabled ? ' disabled' : '';
         return `<button class="${activeClass.trim()}" data-${dataAttr}="${opt.value}"${disabledAttr}>${opt.label}</button>`;
     }).join('');
-    return `<div class="${groupClass}" id="${id}"${tooltip}>${buttons}</div>`;
-}
-
-/**
- * Render a smooth pill control (0/3/6/9 window selector).
- * @param {number} selected - Current smoothing window (0 = off)
- */
-function renderSmoothPill(selected) {
-    const options = [
-        { value: 0, label: 'off' },
-        { value: 3, label: '3' },
-        { value: 6, label: '6' },
-        { value: 9, label: '9' },
-    ];
-    const buttons = options.map(opt => {
-        const activeClass = opt.value === selected ? ' active' : '';
-        return `<button class="${activeClass.trim()}" data-smooth="${opt.value}">${opt.label}</button>`;
-    }).join('');
-    return `<div class="smooth-pill">${buttons}</div>`;
+    return `<div class="${classes.join(' ')}" id="${id}"${tooltip}>${buttons}</div>`;
 }
 
 // ES module exports
 export {
     renderSubsection,
-    renderSelect,
     renderToggle,
-    renderChip,
     renderSortableHeader,
     renderLoading,
     requireExperiment,
     deferredLoading,
     renderRunHint,
-    renderFilterChip,
-    renderFilterChipRow,
     scoreClass,
     renderSegmentedControl,
-    renderSmoothPill,
 };
 

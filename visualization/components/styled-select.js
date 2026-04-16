@@ -1,5 +1,5 @@
 /**
- * Styled select dropdown — unified component replacing native <select> and .cb-select / .rb-select.
+ * Styled select dropdown — unified component replacing native <select>.
  *
  * Visual style mirrors the experiment picker (.exp-dropdown): dark pill trigger, fixed-position
  * menu with hover/focus open, hover highlight, active-selected state.

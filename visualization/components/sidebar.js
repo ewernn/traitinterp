@@ -111,18 +111,18 @@ function populateTraitCheckboxes() {
 
         // Chips container (expanded by default)
         const chipsDiv = document.createElement('div');
-        chipsDiv.className = 'trait-chips';
+        chipsDiv.className = 'chip-group chip-group-pill trait-chips';
         chipsDiv.dataset.category = category;
         chipsDiv.hidden = false;
 
         traits.forEach(trait => {
             const chip = document.createElement('span');
-            chip.className = 'trait-chip' + (isDefaultSelected ? ' selected' : '');
+            chip.className = 'chip' + (isDefaultSelected ? ' active' : '');
             chip.dataset.trait = trait.name;
             chip.textContent = getDisplayName(trait.name);
 
             chip.addEventListener('click', () => {
-                const isSelected = chip.classList.toggle('selected');
+                const isSelected = chip.classList.toggle('active');
                 if (isSelected) {
                     window.state.selectedTraits.add(trait.name);
                 } else {
@@ -156,16 +156,16 @@ function populateTraitCheckboxes() {
                 chipsDiv.hidden = false;
                 arrow.textContent = '▾';
             }
-            const chips = chipsDiv.querySelectorAll('.trait-chip');
-            const allInCatSelected = Array.from(chips).every(c => c.classList.contains('selected'));
+            const chips = chipsDiv.querySelectorAll('.chip');
+            const allInCatSelected = Array.from(chips).every(c => c.classList.contains('active'));
 
             chips.forEach(c => {
                 const traitName = c.dataset.trait;
                 if (allInCatSelected) {
-                    c.classList.remove('selected');
+                    c.classList.remove('active');
                     window.state.selectedTraits.delete(traitName);
                 } else {
-                    c.classList.add('selected');
+                    c.classList.add('active');
                     window.state.selectedTraits.add(traitName);
                 }
             });
@@ -197,16 +197,16 @@ function updateSelectedCount() {
 }
 
 function toggleAllTraits() {
-    const allChips = document.querySelectorAll('.trait-chip');
+    const allChips = document.querySelectorAll('.trait-chips .chip');
     const anySelected = window.state.selectedTraits.size > 0;
 
     allChips.forEach(chip => {
         const traitName = chip.dataset.trait;
         if (anySelected) {
-            chip.classList.remove('selected');
+            chip.classList.remove('active');
             window.state.selectedTraits.delete(traitName);
         } else {
-            chip.classList.add('selected');
+            chip.classList.add('active');
             window.state.selectedTraits.add(traitName);
         }
     });

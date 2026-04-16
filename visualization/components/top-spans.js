@@ -10,7 +10,7 @@
 
 import { getDisplayName } from '../core/display.js';
 import { setSpanWindowLength, setSpanScope, setSpanMode, getVariantForCurrentPromptSet } from '../core/state.js';
-import { renderFilterChip, renderSegmentedControl } from '../core/ui.js';
+import { renderSegmentedControl } from '../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
 
 /** Return inline color and formatted delta string for a span's meanDelta. */

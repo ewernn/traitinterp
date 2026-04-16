@@ -7,8 +7,9 @@
  */
 
 import { escapeHtml } from '../core/utils.js';
-import { renderLoading, renderChip, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
+import { renderLoading, renderToggle, renderSortableHeader, scoreClass } from '../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
+import { renderChipGroup, wireChipGroup } from './styled-chip-group.js';
 
 // Track current sort state per trait
 const responseBrowserState = {};
@@ -24,13 +25,6 @@ let traitResultsCache = {};
 async function resetAndRender(trait) {
     responseBrowserState[trait].expandedRow = null;
     await renderResponseBrowserForTrait(trait);
-}
-
-/** Attach a change listener to a filter dropdown, updating state and re-rendering.
- *  (Filter dropdowns wire themselves via the styled-select onChange; this remains
- *  as a no-op for call-site compatibility.) */
-function attachFilterListener(container, filterName, stateProperty, trait) {
-    // No-op — styled-select onChange callback handles state updates.
 }
 
 /** Attach a change listener to a toggle checkbox, updating state and re-rendering */
@@ -290,8 +284,8 @@ async function renderResponseBrowserForTrait(trait) {
         <div class="rb-filters">
             <span class="rb-filter-label">Layers:</span>
             <div class="rb-layer-chips">
-                ${renderChip({ label: 'All', dataAttr: { key: 'action', value: 'select-all' }, className: 'rb-chip-btn' })}
-                ${renderChip({ label: 'None', dataAttr: { key: 'action', value: 'select-none' }, className: 'rb-chip-btn' })}
+                <button class="btn btn-xs rb-chip-btn" data-action="select-all">All</button>
+                <button class="btn btn-xs rb-chip-btn" data-action="select-none">None</button>
                 ${uniqueLayers.map(l => {
                     const on = state.layerFilter.size === 0 || state.layerFilter.has(l);
                     return `<label class="rb-chip ${on ? 'active' : ''}"><input type="checkbox" value="${l}" ${on ? 'checked' : ''}> L${l}</label>`;
@@ -300,10 +294,22 @@ async function renderResponseBrowserForTrait(trait) {
             ${(hasPositive && hasNegative) ? renderFilterDropdown('direction', 'Direction', state.steeringDirection, [['positive', 'Positive (+)'], ['negative', 'Negative (−)']], 'steeringDirection', trait) : ''}
             ${uniquePromptSets.length > 1 ? renderFilterDropdown('prompt-set', 'Prompt set', state.promptSetFilter, uniquePromptSets, 'promptSetFilter', trait) : ''}
             ${uniqueModelVariants.length > 1 ? renderFilterDropdown('model-variant', 'Model', state.modelVariantFilter, uniqueModelVariants, 'modelVariantFilter', trait) : ''}
-            <div class="rb-info-btns">
-                ${[['Definition', 'definition'], ['Judge Prompt', 'judge'], ...(baselineEntry ? [['Baseline', 'baseline']] : [])]
-                    .map(([label, value]) => renderChip({ label, active: state.infoPanel === value, dataAttr: { key: 'info', value }, className: 'rb-info-btn' })).join('')}
-            </div>
+            ${renderChipGroup({
+                id: `rb-info-btns-${trait}`,
+                mode: 'toggle-off',
+                className: 'rb-info-btns',
+                items: [
+                    { value: 'definition', label: 'Definition' },
+                    { value: 'judge', label: 'Judge Prompt' },
+                    ...(baselineEntry ? [{ value: 'baseline', label: 'Baseline' }] : []),
+                ],
+                selected: state.infoPanel,
+                onChange: async (newValue) => {
+                    state.infoPanel = newValue;
+                    await renderResponseBrowserForTrait(trait);
+                    if (state.infoPanel) await loadInfoPanelContent(trait, state.infoPanel);
+                },
+            })}
             ${renderToggle({ label: `Best per layer (coh ≥${coherenceThreshold})`, checked: state.bestPerLayer, dataAttr: { key: 'action', value: 'best-per-layer' }, className: 'rb-toggle' })}
             ${renderToggle({ label: 'Compact responses', checked: state.compactResponses, dataAttr: { key: 'action', value: 'compact-responses' }, className: 'rb-toggle' })}
         </div>
@@ -446,15 +452,8 @@ function setupResponseBrowserHandlers(trait, container) {
         });
     });
 
-    // Info panel buttons (Definition / Judge Prompt / Baseline)
-    container.querySelectorAll('.rb-info-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const infoType = btn.dataset.info;
-            state.infoPanel = state.infoPanel === infoType ? null : infoType;
-            await renderResponseBrowserForTrait(trait);
-            if (state.infoPanel) await loadInfoPanelContent(trait, state.infoPanel);
-        });
-    });
+    // Info panel chip-group (Definition / Judge Prompt / Baseline) — handler lives in onChange.
+    wireChipGroup(container);
 }
 
 /**

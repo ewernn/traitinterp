@@ -491,7 +491,7 @@ function withMassiveActivationsData(containerId, data, renderFn) {
     if (!data) {
         container.innerHTML = renderRunHint(
             'No massive activation calibration data.',
-            `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
+            `python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general   # captures automatically`
         );
         return;
     }
@@ -512,7 +512,7 @@ function renderActivationMagnitudePlot(data) {
         if (!data.aggregate?.layer_norms) {
             plotDiv.innerHTML = renderRunHint(
                 'Activation magnitude data not available.',
-                `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
+                `python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general   # captures automatically`
             );
             return;
         }
@@ -640,7 +640,7 @@ function renderMassiveDimsAcrossLayers(data) {
         const dimMagnitude = aggregate.dim_magnitude_by_layer || {};
 
         if (Object.keys(dimMagnitude).length === 0) {
-            container.innerHTML = `<div class="info">No per-layer magnitude data. Re-run <code>python analysis/vectors/massive_activations.py</code> to generate.</div>`;
+            container.innerHTML = `<div class="info">No per-layer magnitude data. Run inference — it captures automatically: <code>python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general</code></div>`;
             return;
         }
 
@@ -727,7 +727,7 @@ function renderInterLayerSimilarity(data) {
         if (!data.aggregate?.consecutive_cosine) {
             plotDiv.innerHTML = renderRunHint(
                 'Inter-layer similarity data not available.',
-                `python analysis/vectors/massive_activations.py --experiment ${window.paths.getExperiment()}`
+                `python inference/run_inference_pipeline.py --experiment ${window.paths.getExperiment()} --prompt-set starter_prompts/general   # captures automatically`
             );
             return;
         }
