@@ -1,0 +1,13 @@
+huggingface_id: hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4
+model_type: llama
+pretrained: false
+supports_system_prompt: true
+max_context_length: 131072
+num_hidden_layers: 32
+hidden_size: 4096
+num_attention_heads: 32
+num_key_value_heads: 8
+intermediate_size: 14336
+vocab_size: 128256
+sae:
+  available: false

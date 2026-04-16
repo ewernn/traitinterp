@@ -7,7 +7,7 @@ license = {text = "MIT"}
 requires-python = ">=3.10"
 dependencies = [
     "torch",
-    "transformers>=5.0,<6.0",  # qwen3_5 model type requires 5.x
+    "transformers>=5.0,<6.0",
     "accelerate",
     "scipy>=1.7.0",
     "scikit-learn>=1.0.0",
