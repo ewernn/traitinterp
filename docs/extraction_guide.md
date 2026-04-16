@@ -258,24 +258,33 @@ Used in some analysis scripts (`core/math.py:batch_cosine_similarity`). Gives pe
 
 `utils/vector_selection.py:select_vector()` — the single entry point for resolving which vector to use for a trait.
 
-### Selection Pipeline
+### Validation Hierarchy
 
-1. **Discover**: walks `vectors/{position}/{component}/{method}/layer{N}.pt` via `rglob`
-2. **Match to steering results**: reads `results.jsonl`, finds best coefficient per `(layer, method, component)` with `coherence ≥ 77`
-3. **Direction-aware ranking**: for `direction=positive` traits, maximize delta; for `direction=negative`, maximize negative delta
-4. **Naturalness filter** (optional): excludes configs below `MIN_NATURALNESS = 50` when `naturalness.json` exists
+`select_vector()` walks three tiers in order, returning the first that yields a result:
 
-### Thresholds
+| Tier | Source | Activates when | `VectorResult.source` |
+|------|--------|----------------|-----------------------|
+| 1. Causal steering (gold standard) | `steering/{trait}/.../results.jsonl` | steering eval has run | `'steering'` |
+| 2. OOD validation effect size | `extraction_evaluation.json` (rows with `ood_effect_size`) | `ood_positive.jsonl` + `ood_negative.jsonl` exist | `'ood'` |
+| 3. In-distribution validation | `extraction_evaluation.json` `combined_score` | extraction has run, no OOD data | `'extraction_eval'` |
+
+Tiers 2–3 are filled by `analysis/vectors/extraction_evaluation.py`, which reads per-layer metrics from each vector's `metadata.json`.
+
+### Constants
 
 ```python
-MIN_COHERENCE = 77    # Steered response must be grammatical and on-topic
-MIN_DELTA = 20        # Minimum trait score shift to count as meaningful
-MIN_NATURALNESS = 50  # Response must not feel artificially AI-mode
+MIN_COHERENCE = 77    # Steering tier: coherence floor (utils/vectors.py)
 ```
+
+`min_delta` defaults to `0` (no floor); pass via the `min_delta=` kwarg to filter weak steering effects.
 
 ### Why Steering Is Ground Truth
 
 Probe accuracy on held-out extraction data doesn't guarantee causal relevance. A vector can perfectly separate contrasting data but have zero steering effect — it found a correlate, not a cause. Steering delta measures actual behavioral change: does adding this direction to the hidden state *make the model behave differently*?
+
+### Why OOD Sits Above IID
+
+In-distribution validation can reward overfitting to dataset confounds (topic, length, system-prompt phrasing). OOD validation uses prompts that share none of those confounds — if the vector still discriminates on OOD, it's tracking the trait, not the dataset shape. See [trait_dataset_creation.md](trait_dataset_creation.md) for adding OOD scenarios.
 
 ---
 

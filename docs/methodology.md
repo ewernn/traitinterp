@@ -180,10 +180,11 @@ Centroid subtraction (mean of positive activations minus mean of negative). Simp
 
 A direction that separates your data doesn't guarantee it captures the trait. The vector might encode a confound in your scenarios (topic, length, intensity) rather than the behavior itself.
 
-Two main validation approaches:
+Three validation tiers, automatically selected by `select_vector()` (gold-standard first):
 
-- **Held-out classification accuracy** — does the vector separate examples it wasn't trained on? Necessary but not sufficient — a vector can classify well without causally affecting behavior.
-- **Steering** — add the vector to the model's activations during generation. If the output changes in the expected direction, the vector is causally linked to the behavior. Stronger evidence than classification alone. The steering coefficient should be scaled proportional to the activation magnitude at the target layer — too small and the effect is invisible, too large and coherence collapses.
+- **Causal steering (gold standard)** — add the vector to the model's activations during generation. If the output changes in the expected direction, the vector is causally linked to the behavior. The steering coefficient should be scaled proportional to the activation magnitude at the target layer — too small and the effect is invisible, too large and coherence collapses.
+- **Out-of-distribution validation effect size** — does the vector still separate positive/negative examples on prompts drawn from a different distribution than training? Add `ood_positive.jsonl` and `ood_negative.jsonl` to your trait dataset to enable; metrics land in `extraction_evaluation.json` automatically.
+- **In-distribution held-out classification accuracy** — does the vector separate examples it wasn't trained on? A vector can classify well without causally affecting behavior, and IID is the easiest tier to game with dataset confounds — useful as a sanity check, not as a standalone validation.
 
 ```bash
 python steering/run_steering_eval.py \

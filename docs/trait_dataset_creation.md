@@ -12,6 +12,8 @@ Create datasets for extracting and validating behavioral trait vectors.
 6. **Steer + Evaluate** — apply vector to instruct model, measure delta. 3 metrics: trait score, coherence, naturalness.
 7. **Iterate** — diagnose which phase failed, fix, re-run.
 
+**Optional**: add `ood_positive.jsonl` and `ood_negative.jsonl` (same format as `positive.jsonl` / `negative.jsonl`) drawn from a different distribution than training — different topics, prompt phrasings, or system-prompt wording. Stage 3 captures their activations alongside training, and `extraction_evaluation.py` writes `ood_accuracy` / `ood_effect_size` / `ood_polarity_correct` per-layer. This activates the OOD tier in `select_vector()`'s validation hierarchy (see [extraction_guide.md#vector-selection](extraction_guide.md#vector-selection)). Useful when you suspect the in-distribution validation rewards dataset confounds.
+
 ## Key Principles
 
 - **The model expresses the trait itself.** Across extraction and steering, we're activating the model's own internal representation of the trait. In extraction, the base model generates as someone experiencing it. In steering, the instruct model responds as an assistant that is itself expressing it — not advising about it, not validating someone else's feelings, not narrating it. The model exhibits the trait in its own voice, naturally, not as caricature.
