@@ -108,7 +108,7 @@ python analysis/vectors/logit_lens.py --experiment <experiment> --traits <trait>
 | `--all-traits` | flag | off | Analyze all extracted traits |
 | `--top-k` | int | `20` | Number of tokens to show per direction |
 | `--no-norm` | flag | off | Skip RMSNorm before projection |
-| `--filter-common` | flag | off | Filter to common English tokens only |
+| `--no-filter-common` | flag | off | Disable common-token filter (default: enabled) |
 | `--max-vocab` | int | `10000` | Max vocab index for common filter |
 | `--save` | flag | off | Save results to canonical per-trait JSON |
 
@@ -121,10 +121,10 @@ python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --traits safety
 # Analyze all traits and save results
 python analysis/vectors/logit_lens.py --experiment gemma-2-2b-it --all-traits --save
 
-# Filter to common tokens, skip RMSNorm
+# Skip common-token filter and RMSNorm
 python analysis/vectors/logit_lens.py \
     --experiment gemma-2-2b-it --traits safety/refusal \
-    --filter-common --no-norm
+    --no-filter-common --no-norm
 ```
 
 ---

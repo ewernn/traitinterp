@@ -304,8 +304,7 @@ def main():
     if args.output:
         out_path = Path(args.output)
     else:
-        out_path = (get_path('experiments.base', experiment=args.experiment)
-                    / "results" / "max_activating_corpus.json")
+        out_path = get_path('analysis.max_activating_corpus', experiment=args.experiment)
 
     save_results(tracker, out_path, args.dataset, args.layer, args.method, args.n_documents)
 
