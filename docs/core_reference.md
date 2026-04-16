@@ -285,12 +285,12 @@ ok = polarity_correct(pos_proj, neg_proj)             # True if pos_mean > neg_m
 
 Certain dimensions have values 100-1000x larger than median (Sun et al. 2024). These create fixed biases in projections.
 
-**Calibration:** Run once per model to identify massive dims from neutral prompts:
+**Calibration:** Happens passively during the first inference run — hooks capture residual-stream activations on prefill up to ~5000 tokens, write to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`, self-remove. Subsequent runs skip. See `utils/massive_dims.py:MassiveDimCollector`.
+
+Advanced — use curated neutral prompts (50 Alpaca-style prompts) instead of whatever inference ran on:
 ```bash
 python analysis/vectors/massive_activations.py --experiment gemma-2-2b
 ```
-
-This uses a calibration dataset (50 Alpaca prompts) and saves results to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`. The projection script embeds this data for interactive cleaning in the visualization.
 
 **Research mode:** Analyze a specific prompt set:
 ```bash

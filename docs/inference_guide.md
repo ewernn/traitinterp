@@ -13,7 +13,6 @@ The core math is a dot product: for each token, we take the residual stream acti
 **Prerequisites:**
 - Extracted trait vectors (from the extraction pipeline)
 - A prompt set to generate responses from (`datasets/inference/starter_prompts/*.json`)
-- Massive activation calibration (one-time, see below)
 
 ---
 
@@ -75,15 +74,15 @@ Re-running the pipeline without `--regenerate` skips generation and re-projects 
 
 Some transformer models have "massive activations" — a handful of hidden dimensions with values 100x larger than the rest (Sun et al. 2024). These outlier dimensions dominate dot products and distort projection scores.
 
-We calibrate once per experiment using a standardized prompt set:
+Calibration happens **passively during inference**. The first inference run attaches forward hooks to the residual stream, captures prefill activations up to ~5000 tokens, then self-removes. Results land at `experiments/{exp}/inference/{variant}/massive_activations/calibration.json` and the viz picks them up. Subsequent inference runs skip the capture entirely.
+
+Advanced: to calibrate against a curated neutral prompt set (50 Alpaca-style prompts) instead, run:
 
 ```bash
 python analysis/vectors/massive_activations.py --experiment {experiment}
 ```
 
-This runs a small set of Alpaca prompts through the model, identifies which dimensions are massive at each layer, and saves the results. The visualization dashboard uses this data to offer filtered views that exclude massive dims.
-
-Run this before your first inference pass. It only needs to be done once per model/experiment.
+This path is used when you want `remove_massive_dims` semantics derived from neutral text rather than from whatever inference prompts you happened to run. Rarely needed.
 
 ---
 
@@ -252,7 +251,7 @@ torchrun --nproc_per_node=8 inference/run_inference_pipeline.py --capture \
     --layers 9,12,18,24,30,36
 ```
 
-Note: `massive_activations.py` does not support TP — run it without `torchrun`.
+Note: the advanced `massive_activations.py` script does not support TP — run it without `torchrun`. The passive in-inference collector is also skipped under TP.
 
 ---
 
@@ -284,14 +283,11 @@ python inference/run_inference_pipeline.py \
 
 ### Full workflow from scratch
 ```bash
-# 1. Calibrate massive dims (once)
-python analysis/vectors/massive_activations.py --experiment {experiment}
-
-# 2. Run inference pipeline
+# 1. Run inference pipeline (massive-dim calibration happens passively on first run)
 python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set starter_prompts/general
 
-# 3. Visualize
+# 2. Visualize
 python visualization/serve.py
 ```

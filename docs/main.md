@@ -143,10 +143,8 @@ python extraction/run_extraction_pipeline.py \
 
 **Monitor with existing vectors:**
 ```bash
-# 1. Calibrate massive dims (once per experiment)
-python analysis/vectors/massive_activations.py --experiment {experiment}
-
-# 2. Run full inference pipeline (generate + stream-through project)
+# Run full inference pipeline (generate + stream-through project).
+# First run also captures massive-dim calibration passively up to ~5000 tokens.
 python inference/run_inference_pipeline.py \
     --experiment {experiment} \
     --prompt-set {prompt_set}

@@ -256,6 +256,15 @@ def generate_responses(
     if backend == 'vllm' and should_cleanup:
         vllm_engine = VLLMBackend(model_name)
 
+    # Passive massive-dim calibration: attach hooks to prefill, self-disable at 5K tokens,
+    # write to inference.massive_activations/calibration.json. Local path only (needs model).
+    mdim_collector = None
+    if not is_remote and vllm_engine is None and model is not None:
+        from utils.massive_dims import MassiveDimCollector
+        if not MassiveDimCollector.should_skip(experiment, variant_name):
+            mdim_collector = MassiveDimCollector(model, tokenizer, experiment, variant_name)
+            mdim_collector.register()
+
     try:
         # Generate
         if is_remote:
@@ -278,6 +287,10 @@ def generate_responses(
         print(f"\nWrote {len(responses)} response JSONs to {responses_dir}")
         return len(responses)
     finally:
+        if mdim_collector is not None:
+            path = mdim_collector.finalize()
+            if path is not None:
+                print(f"Massive-dim calibration: wrote {path} ({mdim_collector.tokens_seen} tokens)")
         if vllm_engine is not None:
             vllm_engine.shutdown()
 
