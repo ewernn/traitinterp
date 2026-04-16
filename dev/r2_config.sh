@@ -15,7 +15,7 @@ INCLUDE_TRAJECTORIES=false
 DRY_RUN=""
 ONLY=""  # comma-separated experiment names
 ALL=false  # --all flag to opt into full-repo sync
-PACKED=false  # --packed: bundle projections into .tar.zst for transport
+PACKED=true  # default on: bundle projections into .tar.zst for transport (use --no-packed to disable)
 
 # ─── Argument parsing ────────────────────────────────────────────────────────
 
@@ -38,6 +38,7 @@ parse_r2_args() {
             # Utilities
             --dry-run) DRY_RUN="--dry-run" ;;
             --packed)  PACKED=true ;;
+            --no-packed) PACKED=false ;;
 
             # Experiment scoping
             --only)  ;; # next arg is the value, handled below
