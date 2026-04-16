@@ -53,6 +53,7 @@ from core import projection, batch_cosine_similarity
 from utils.model import load_model, format_prompt
 from utils.paths import get as get_path
 from utils.distributed import flush_cuda
+from utils import plotting as plt_
 
 from shared import (
     EXPERIMENT,
@@ -62,6 +63,28 @@ from shared import (
 from utils.capture_activations import capture_at_position
 
 DATASETS_DIR = get_path('datasets.inference') / "ant_emotion_concepts"
+FIGURES_DIR = Path(__file__).resolve().parent.parent / "paper_figures" / "ours"
+
+# ---------- Paper-specific plotting constants (Figs 10-15) ----------
+PLOT_LAYER = "49"  # probe layer used in Figs 10, 11
+
+# Paper's canonical 6 emotions — ORDER MATTERS: controls iteration/scatter
+# z-order and legend sequence. Fig 10 and Fig 11 use different orderings.
+PLOT_EMOTIONS_FIG10 = ["happy", "calm", "loving", "sad", "afraid", "angry"]
+
+# Match Sonnet paper's per-emotion colors
+EMOTION_COLORS_PAPER = {
+    "afraid": "#d62728", "angry": "#e74c3c", "calm": "#1f77b4",
+    "happy": "#2ca02c", "loving": "#9467bd", "sad": "#daa520",
+}
+# Slight variant used in fig 11 (sad is orange there, not gold)
+EMOTION_COLORS_FIG11 = {
+    "calm": "#1f77b4", "happy": "#2ca02c", "loving": "#9467bd",
+    "sad": "#ff7f0e", "afraid": "#d62728", "angry": "#e74c3c",
+}
+
+# Paper's reported correlations (Sonnet 4.5) for side-by-side context
+PAPER_R_DISSOCIATION = 0.11
 
 # Probe emotions commonly referenced across sub-experiments
 CORE_PROBES = [
@@ -221,17 +244,16 @@ def run_dissociation(model, tokenizer, vectors, layers, results_dir):
 
         results.append(result)
 
-    # Save
-    save_results(results_dir, "dissociation", {
+    bundle = {
         "experiment": "5.1_user_vs_assistant_dissociation",
         "paper_ref": "Fig 10, Table 3",
         "expected": "cross-position correlation r ~ 0.11",
         "n_scenarios": len(scenarios),
         "layers": layers,
         "results": results,
-    })
-
-    return results
+    }
+    save_results(results_dir, "dissociation", bundle)
+    return bundle
 
 
 # =============================================================================
@@ -338,7 +360,7 @@ def run_colon_predicts(model, tokenizer, vectors, layers, results_dir,
         del output
         flush_cuda()
 
-    save_results(results_dir, "colon_predicts", {
+    bundle = {
         "experiment": "5.2_colon_predicts_response",
         "paper_ref": "Fig 11, Table 4",
         "expected": "assistant_colon→response_mean correlation r ~ 0.87",
@@ -346,9 +368,9 @@ def run_colon_predicts(model, tokenizer, vectors, layers, results_dir,
         "max_new_tokens": max_new_tokens,
         "layers": layers,
         "results": results,
-    })
-
-    return results
+    }
+    save_results(results_dir, "colon_predicts", bundle)
+    return bundle
 
 
 # =============================================================================
@@ -413,13 +435,14 @@ def _run_context_propagation(
                 for i in range(n_tokens)
             ]
 
-    save_results(results_dir, output_name, {
+    bundle = {
         "experiment": experiment_id, "paper_ref": paper_ref,
         "template_id": template_data["id"], "conditions": keys,
         "expected": expected, "layers": layers,
         "condition_results": results, "condition_difference": difference,
-    })
-    return results
+    }
+    save_results(results_dir, output_name, bundle)
+    return bundle
 
 
 def run_context_prefix(model, tokenizer, vectors, layers, results_dir):
@@ -510,16 +533,16 @@ def run_negation(model, tokenizer, vectors, layers, results_dir):
 
             results.append(result)
 
-    save_results(results_dir, "negation", {
+    bundle = {
         "experiment": "5.5_negation_across_layers",
         "paper_ref": "Fig 14",
         "expected": "Early layers: similar activation for both conditions at emotion word. Late layers: negated drops to near zero.",
         "test_emotions": test_emotions,
         "layers": layers,
         "results": results,
-    })
-
-    return results
+    }
+    save_results(results_dir, "negation", bundle)
+    return bundle
 
 
 # =============================================================================
@@ -604,16 +627,422 @@ def run_person_binding(model, tokenizer, vectors, layers, results_dir):
 
         results.append(result)
 
-    save_results(results_dir, "person_binding", {
+    bundle = {
         "experiment": "5.6_person_specific_binding",
         "paper_ref": "Fig 15",
         "expected": "At re-reference tokens: person's emotion probe activates in late layers only. At emotion words: corresponding probe activates in early layers.",
         "n_scenarios": len(scenarios),
         "layers": layers,
         "results": results,
-    })
+    }
+    save_results(results_dir, "person_binding", bundle)
+    return bundle
 
-    return results
+
+# =============================================================================
+# Paper figures (Figs 10-15)
+# =============================================================================
+
+def _clean_token(tok: str) -> str:
+    """Shorten special tokens for readable x-axis labels."""
+    reps = {
+        '<|begin_of_text|>': 'BoT', '<|start_header_id|>': '<hdr>',
+        '<|end_header_id|>': '</hdr>', '<|eot_id|>': '<eot>',
+        '\n\n': '\\n\\n', '\n': '\\n',
+    }
+    return reps.get(tok, tok.strip() if tok.strip() else repr(tok))
+
+
+def _find_user_content_start(tokens) -> int:
+    for i, t in enumerate(tokens):
+        if t == 'user':
+            return i + 3
+    return 30
+
+
+# Short column labels for the Fig 10 heatmap — matching the paper's Table 3 labels.
+# Keep in sync with datasets/inference/ant_emotion_concepts/dissociation_scenarios.json.
+FIG10_SCENARIO_LABELS = {
+    "ai_scares_me": "AI scares me",
+    "fired_no_warning": "Fired, no warning",
+    "useless_response": "Useless response",
+    "all_in_on_crypto": "All-in on crypto",
+    "ignoring_chest_pains": "Ignoring chest pains",
+    "24hr_no_sleep_drive": "24hr no-sleep drive",
+    "another_boring_report": "Another boring report",
+    "3000yr_old_honey": "3000yr-old honey",
+}
+
+
+def plot_fig10_dissociation(bundle: dict, out_dir: Path) -> Path:
+    """Fig 10 — heatmap (probes × scenarios at U/A) + User/Assistant scatter.
+
+    Two-panel replication of the paper's Fig 10 layout: the heatmap shows per-
+    scenario U-vs-A probe divergence; the scatter aggregates cross-position
+    correlation.
+    """
+    import numpy as np
+    from matplotlib.lines import Line2D
+    from scipy import stats
+
+    # --- Build heatmap matrix: rows = [afraid-U, afraid-A, angry-U, ...], cols = scenarios ---
+    # Row order follows the paper's heatmap (Afraid, Angry, Sad, Calm, Happy, Loving,
+    # each split into User/Assistant sub-rows).
+    HEATMAP_EMOTIONS = ["afraid", "angry", "sad", "calm", "happy", "loving"]
+    POSITIONS = [("user_period", "U"), ("assistant_colon", "A")]
+
+    scenarios = bundle["results"]
+    col_labels = [FIG10_SCENARIO_LABELS.get(s["id"], s["id"]) for s in scenarios]
+
+    heat = np.zeros((len(HEATMAP_EMOTIONS) * 2, len(scenarios)))
+    row_labels = []
+    for i, emo in enumerate(HEATMAP_EMOTIONS):
+        for j, (pos_key, pos_tag) in enumerate(POSITIONS):
+            row_labels.append(f"{pos_tag}")
+            for k, s in enumerate(scenarios):
+                p = s["projections"].get(emo, {}).get(PLOT_LAYER, {})
+                heat[i * 2 + j, k] = p.get(pos_key, 0.0)
+
+    # Scatter data (unchanged from prior)
+    user_vals, asst_vals, emo_labels = [], [], []
+    for s in bundle["results"]:
+        for emo in PLOT_EMOTIONS_FIG10:
+            if emo in s["projections"] and PLOT_LAYER in s["projections"][emo]:
+                proj = s["projections"][emo][PLOT_LAYER]
+                user_vals.append(proj["user_period"])
+                asst_vals.append(proj["assistant_colon"])
+                emo_labels.append(emo)
+    user_vals = np.array(user_vals); asst_vals = np.array(asst_vals)
+    r_ours, _ = stats.pearsonr(user_vals, asst_vals)
+
+    # --- Two-panel figure: heatmap (left) + scatter (right) ---
+    fig, (ax_heat, ax) = plt_.multi_panel(
+        1, 2, figsize=(20, 12),
+        gridspec_kw={"width_ratios": [1.25, 1.0]},
+    )
+    # Single title above both panels
+    plt_.suptitle(fig, "Emotion Probes Distinguish User and Assistant Emotions",
+                  fontsize=24, y=0.98)
+
+    # Heatmap (taller figure + larger fonts)
+    vmax = float(np.abs(heat).max()) or 0.08
+    plt_.heatmap(
+        ax_heat, heat, cmap="RdBu_r", vmin=-vmax, vmax=vmax,
+        row_labels=row_labels, col_labels=col_labels,
+        tick_fontsize=15, xtick_rotation=45,
+        cbar_label="Cosine Similarity", cbar_pad=0.02,
+        cbar_label_fontsize=16,
+        show_spines=True, spine_linewidth=1.0, aspect="auto",
+    )
+    # Emotion labels as grouped y-tick annotations on the LEFT of the axis
+    for i, emo in enumerate(HEATMAP_EMOTIONS):
+        y = i * 2 + 0.5  # centered between U and A rows
+        ax_heat.text(-0.5, y, emo.capitalize(),
+                     ha="right", va="center", fontsize=15, fontweight="bold",
+                     transform=ax_heat.transData)
+    # Draw thin separators between emotion pairs
+    for i in range(1, len(HEATMAP_EMOTIONS)):
+        ax_heat.axhline(i * 2 - 0.5, color="black", linewidth=0.5, alpha=0.4)
+
+    ax_heat.set_xlabel("Scenario", fontsize=18)
+    ax_heat.set_ylabel("Emotion Probe (U=User, A=Assistant)", fontsize=16, labelpad=40)
+
+    # Scatter (4× original dots: s=320)
+    for emo in PLOT_EMOTIONS_FIG10:
+        mask = np.array([e == emo for e in emo_labels])
+        if mask.sum() == 0:
+            continue
+        ax.scatter(user_vals[mask], asst_vals[mask],
+                   c=EMOTION_COLORS_PAPER[emo], s=320, alpha=0.85,
+                   edgecolors='white', linewidths=0.6, zorder=3)
+
+    x_range = np.linspace(-0.075, 0.075, 100)
+    slope, intercept = np.polyfit(user_vals, asst_vals, 1)
+    ax.plot(x_range, slope * x_range + intercept, '-', color='#1a1a1a', linewidth=2.5, zorder=4)
+
+    # Paper reference line at r=0.11, locked through our data's mean
+    paper_slope = PAPER_R_DISSOCIATION * (asst_vals.std() / user_vals.std())
+    paper_intercept = asst_vals.mean() - paper_slope * user_vals.mean()
+    ax.plot(x_range, paper_slope * x_range + paper_intercept, '--',
+            color='#b0b0b0', linewidth=2.5, zorder=4)
+
+    ax.set_xlim(-0.075, 0.075); ax.set_ylim(-0.05, 0.05)
+    ax.grid(True, alpha=0.12)
+    ax.set_xlabel("Probe @ User's Last Period", fontsize=18)
+    ax.set_ylabel("Probe @ Assistant Colon", fontsize=18)
+    ax.tick_params(labelsize=14)
+    ax.text(0.04, 0.97,
+            f"Llama 70B:  r = {r_ours:.2f}\nSonnet (paper):  r = {PAPER_R_DISSOCIATION:.2f}",
+            transform=ax.transAxes, fontsize=18, fontweight="bold",
+            va="top", ha="left",
+            bbox=dict(boxstyle="round,pad=0.4", facecolor="white", edgecolor="#aaa", alpha=0.95))
+
+    handles = [
+        Line2D([0], [0], color='#1a1a1a', lw=2.5, label=f'Llama (r={r_ours:.2f})'),
+        Line2D([0], [0], color='#b0b0b0', lw=2.5, ls='--',
+               label=f'Sonnet (r={PAPER_R_DISSOCIATION:.2f})'),
+    ] + [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor=EMOTION_COLORS_PAPER[e],
+               markersize=12, label=e.capitalize())
+        for e in PLOT_EMOTIONS_FIG10
+    ]
+    ax.legend(handles=handles, fontsize=14, loc='lower right')
+
+    import matplotlib.pyplot as plt
+    plt.tight_layout()
+    return plt_.save_figure(fig, out_dir / "fig10_ours.png")
+
+
+def plot_fig11_colon_predicts(bundle: dict, out_dir: Path) -> Path:
+    """Fig 11 — Probe at User '.' and Assistant ':' predicts response emotion."""
+    import numpy as np
+    from matplotlib.lines import Line2D
+    from scipy import stats
+
+    user_all, colon_all, response_all, emo_all = [], [], [], []
+    for r_item in bundle["results"]:
+        for emo in EMOTION_COLORS_FIG11:
+            if emo in r_item["projections"] and PLOT_LAYER in r_item["projections"][emo]:
+                proj = r_item["projections"][emo][PLOT_LAYER]
+                user_all.append(proj["user_period"])
+                colon_all.append(proj["assistant_colon"])
+                response_all.append(proj["response_mean"])
+                emo_all.append(emo)
+
+    user_all = np.array(user_all); colon_all = np.array(colon_all); response_all = np.array(response_all)
+    r_user, _ = stats.pearsonr(user_all, response_all)
+    r_colon, _ = stats.pearsonr(colon_all, response_all)
+
+    fig, (ax1, ax2) = plt_.multi_panel(1, 2, figsize=(16, 7))
+    plt_.suptitle(fig, "The Assistant : Token Predicts Response Emotion", y=0.98)
+
+    for ax, x_vals, r_val, xlabel in [
+        (ax1, user_all, r_user, 'Probe @ User "."'),
+        (ax2, colon_all, r_colon, 'Probe @ Assistant ":"'),
+    ]:
+        for emo, color in EMOTION_COLORS_FIG11.items():
+            mask = np.array([e == emo for e in emo_all])
+            if mask.sum() > 0:
+                ax.scatter(x_vals[mask], response_all[mask], s=160, alpha=0.7,
+                           c=color, edgecolors="white", linewidths=0.5, zorder=2)
+        slope, intercept = np.polyfit(x_vals, response_all, 1)
+        xs = np.linspace(x_vals.min(), x_vals.max(), 100)
+        ax.plot(xs, slope * xs + intercept, "--", color="#333", linewidth=1.5, zorder=3)
+        plt_.annotate_r_value(ax, r_val)
+        ax.axhline(0, color="#ccc", linewidth=0.5)
+        ax.axvline(0, color="#ccc", linewidth=0.5)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel("Probe @ Mean Response")
+        ax.grid(True, alpha=0.1)
+        ax.set_box_aspect(1)  # force square panel regardless of data range
+
+    handles = [Line2D([0], [0], marker='o', color='w', markerfacecolor=c,
+                      markersize=12, label=e.capitalize())
+               for e, c in EMOTION_COLORS_FIG11.items()]
+    fig.legend(handles=handles, loc='lower center', ncol=6, fontsize=14,
+               bbox_to_anchor=(0.5, -0.02), frameon=True, framealpha=0.92, edgecolor='#ccc')
+
+    import matplotlib.pyplot as plt
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+    return plt_.save_figure(fig, out_dir / "fig11_ours.png")
+
+
+def _plot_context_line_diff(bundle: dict, probe: str, subtitle: str,
+                             diff_sign: int, out_path: Path,
+                             *, ylim: tuple | None = None,
+                             figsize: tuple = (12, 5),
+                             linewidth: float = 2.5, markersize: float = 5,
+                             legend_kwargs: dict | None = None,
+                             bottom_margin: float | None = None) -> Path:
+    """Shared Fig 12/13 line chart: early vs late layer mean difference per token.
+
+    Fig 13 overrides linewidth/legend to emphasize the late-layer fear response;
+    fig 12 uses defaults.
+    """
+    import numpy as np
+
+    layers = bundle["layers"]
+    diff = bundle["condition_difference"]
+    tokens = diff["tokens"]
+    proj_by_layer = diff["projections"][probe]
+
+    matrix = diff_sign * np.array([proj_by_layer[str(l)] for l in layers])
+    n = len(layers); q = n // 4
+    groups = {
+        "Early": layers[:q], "Early-Mid": layers[q:2*q],
+        "Mid-Late": layers[2*q:3*q], "Late": layers[3*q:],
+    }
+    means = {gn: matrix[[layers.index(l) for l in gl]].mean(axis=0) for gn, gl in groups.items()}
+    early_line = (means["Early"] + means["Early-Mid"]) / 2
+    late_line = (means["Mid-Late"] + means["Late"]) / 2
+
+    user_start = _find_user_content_start(tokens)
+    sub_tokens = tokens[user_start:]
+    labels = [_clean_token(t) for t in sub_tokens]
+
+    fig, ax = plt_.multi_panel(figsize=figsize)
+    series = {
+        'Early → Early-Mid': early_line[user_start:],
+        'Mid-Late → Late': late_line[user_start:],
+    }
+    colors = {'Early → Early-Mid': '#1f77b4', 'Mid-Late → Late': '#d62728'}
+    legend_kw = legend_kwargs or {'fontsize': 12, 'loc': 'upper left', 'framealpha': 0.92}
+    plt_.line_plot(ax, list(range(len(labels))), series, colors=colors,
+                   linewidth=linewidth, markersize=markersize,
+                   legend_kwargs=legend_kw)
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=10)
+    ax.set_ylabel('Delta Cosine Similarity')
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    ax.set_title('Mean Difference by Layer Range',
+                 fontsize=20, fontweight='bold', color=plt_.TITLE_CORAL, pad=12)
+    ax.text(0.5, 1.02, subtitle, transform=ax.transAxes, ha='center',
+            fontsize=13, style='italic', color='#555')
+
+    fig.tight_layout()
+    if bottom_margin is not None:
+        fig.subplots_adjust(bottom=bottom_margin)
+    return plt_.save_figure(fig, out_path)
+
+
+def plot_fig12_context_prefix(bundle: dict, out_dir: Path) -> Path:
+    """Fig 12 — 'really good' vs 'really hard' prefix, per-token late-layer diff."""
+    return _plot_context_line_diff(
+        bundle, probe="happy",
+        subtitle='"...really good..." vs "...really hard..."',
+        diff_sign=-1,  # negate: stored as hard-good, paper convention is good-hard
+        out_path=out_dir / "fig12_ours.png",
+    )
+
+
+def plot_fig13_context_numerical(bundle: dict, out_dir: Path) -> Path:
+    """Fig 13 — Tylenol 8000mg vs 1000mg, per-token 'terrified' diff."""
+    return _plot_context_line_diff(
+        bundle, probe="terrified",
+        subtitle='Terrified Probe: "...8000mg..." vs "...1000mg..."',
+        diff_sign=1,
+        out_path=out_dir / "fig13_ours.png",
+        ylim=(-0.005, 0.04),
+        figsize=(12, 7.5),
+        linewidth=5, markersize=8,
+        legend_kwargs={'fontsize': 24, 'loc': 'upper center',
+                       'bbox_to_anchor': (0.5, -0.35), 'ncol': 2,
+                       'framealpha': 0.92, 'edgecolor': '#ccc'},
+        bottom_margin=0.4,
+    )
+
+
+def plot_fig14_negation(bundle: dict, out_dir: Path) -> Path:
+    """Fig 14 — Negation resolution across layers (paired solid/dashed per position)."""
+    import numpy as np
+
+    layers = bundle['layers']
+    results = bundle['results']
+    pos_names = ['emotion_word', 'user_turn_end', 'assistant_colon']
+    collected = {c: {p: {l: [] for l in layers} for p in pos_names}
+                 for c in ['positive', 'negated']}
+
+    for r in results:
+        emotion = r['emotion']
+        cond = r['condition']
+        positions = r['positions']
+        proj = r['projections'][emotion]
+        emo_pos = positions['emotion_word'][0]
+        user_end = positions['now'][-1] + 1
+        asst_pos = positions['assistant_colon']
+        for l in layers:
+            vals = proj[str(l)]
+            collected[cond]['emotion_word'][l].append(vals[emo_pos])
+            collected[cond]['user_turn_end'][l].append(vals[user_end])
+            collected[cond]['assistant_colon'][l].append(vals[asst_pos])
+
+    avg = {c: {p: [np.mean(collected[c][p][l]) for l in layers] for p in pos_names}
+           for c in ['positive', 'negated']}
+
+    pos_config = {
+        'emotion_word': ('#ff7f0e', '"feeling [X]" @ [X]', '"not feeling [X]" @ [X]'),
+        'user_turn_end': ('#2ca02c', '"feeling [X]" @ Turn End', '"not feeling [X]" @ Turn End'),
+        'assistant_colon': ('#1f77b4', '"feeling [X]" @ Asst :', '"not feeling [X]" @ Asst :'),
+    }
+
+    fig, ax = plt_.multi_panel(figsize=(12, 6))
+    for pos in pos_names:
+        color, pos_lbl, neg_lbl = pos_config[pos]
+        ax.plot(layers, avg['positive'][pos], '-o', color=color, linewidth=4.5,
+                markersize=7, label=pos_lbl, zorder=3)
+        ax.plot(layers, avg['negated'][pos], '--s', color=color, linewidth=4,
+                markersize=6, alpha=0.6, label=neg_lbl, zorder=3)
+
+    ax.set_xlabel('Layer'); ax.set_ylabel('Cosine Similarity')
+    ax.set_xticks(layers); ax.set_xticklabels([str(l) for l in layers])
+    ax.grid(True, alpha=0.15)
+    ax.axhline(0, color='#ccc', linewidth=0.8, zorder=0)
+    ax.set_title('Negation Resolution Across Layers',
+                 fontsize=20, fontweight='bold', color='black', pad=12)
+    ax.legend(fontsize=14, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+              ncol=3, framealpha=0.92, edgecolor='#ccc')
+    fig.tight_layout(); fig.subplots_adjust(bottom=0.25)
+    return plt_.save_figure(fig, out_dir / "fig14_ours.png")
+
+
+def plot_fig15_person_binding(bundle: dict, out_dir: Path) -> Path:
+    """Fig 15 — Entity-binding: matched vs unmatched probes at emotion + re-reference."""
+    import numpy as np
+
+    layers = bundle['layers']
+    results = bundle['results']
+    line_data = {k: {l: [] for l in layers} for k in
+                 ['matched_emotion', 'unmatched_emotion', 'matched_reref', 'unmatched_reref']}
+
+    for r in results:
+        em_A, em_B = r['emotion_A'], r['emotion_B']
+        proj = r['projections']
+        if em_A not in proj or em_B not in proj:
+            continue
+        positions = r['positions']
+        tokens = r['tokens']
+        emo_A_pos = positions['emotion_A_words']
+        emo_B_pos = positions['emotion_B_words']
+        user_start = _find_user_content_start(tokens)
+        ref_A = [p for p in positions['person_A_refs'] if p >= user_start]
+        ref_B = [p for p in positions['person_B_refs'] if p >= user_start]
+        if not ref_A or not ref_B:
+            continue
+        for l in layers:
+            lk = str(l)
+            pA, pB = proj[em_A][lk], proj[em_B][lk]
+            m_emo = [pA[p] for p in emo_A_pos if p < len(pA)] + [pB[p] for p in emo_B_pos if p < len(pB)]
+            u_emo = [pB[p] for p in emo_A_pos if p < len(pB)] + [pA[p] for p in emo_B_pos if p < len(pA)]
+            m_ref = [pA[p] for p in ref_A if p < len(pA)] + [pB[p] for p in ref_B if p < len(pB)]
+            u_ref = [pB[p] for p in ref_A if p < len(pB)] + [pA[p] for p in ref_B if p < len(pA)]
+            if m_emo: line_data['matched_emotion'][l].append(np.mean(m_emo))
+            if u_emo: line_data['unmatched_emotion'][l].append(np.mean(u_emo))
+            if m_ref: line_data['matched_reref'][l].append(np.mean(m_ref))
+            if u_ref: line_data['unmatched_reref'][l].append(np.mean(u_ref))
+
+    avg = {k: [np.mean(line_data[k][l]) for l in layers] for k in line_data}
+
+    fig, ax = plt_.multi_panel(figsize=(14, 5))
+    ax.plot(layers, avg['matched_emotion'], '-o', color='#2ca02c', linewidth=5,
+            markersize=7, label='Matched @ emotion', zorder=3)
+    ax.plot(layers, avg['unmatched_emotion'], '--s', color='#2ca02c', linewidth=4,
+            markersize=6, alpha=0.55, label='Unmatched @ emotion', zorder=3)
+    ax.plot(layers, avg['matched_reref'], '-o', color='#1f77b4', linewidth=5,
+            markersize=7, label='Matched @ re-ref', zorder=3)
+    ax.plot(layers, avg['unmatched_reref'], '--s', color='#1f77b4', linewidth=4,
+            markersize=6, alpha=0.55, label='Unmatched @ re-ref', zorder=3)
+
+    ax.set_xlabel('Layer'); ax.set_ylabel('Cosine Similarity')
+    ax.set_xticks(layers); ax.set_xticklabels([str(l) for l in layers])
+    ax.grid(True, alpha=0.15)
+    ax.axhline(0, color='#ccc', linewidth=0.8, zorder=0)
+    ax.set_title('Entity-Binding: Matched vs Unmatched',
+                 fontsize=20, fontweight='bold', color='black', pad=12)
+    ax.legend(fontsize=18, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+              ncol=2, framealpha=0.92, edgecolor='#ccc')
+    fig.tight_layout(); fig.subplots_adjust(bottom=0.28)
+    return plt_.save_figure(fig, out_dir / "fig15_ours.png")
 
 
 # =============================================================================
@@ -649,6 +1078,12 @@ def main():
     # Generation (for colon_predicts)
     parser.add_argument("--max-new-tokens", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=1)
+
+    # Plotting
+    parser.add_argument("--no-plots", action="store_true",
+                        help="Skip paper-figure generation (Figs 10-15)")
+    parser.add_argument("--figures-dir", type=str, default=None,
+                        help="Output dir for figures (default: paper_figures/ours/)")
 
     args = parser.parse_args()
 
@@ -704,15 +1139,14 @@ def main():
                     category=args.category, method=args.method,
                 )
                 vectors[emotion][layer] = vec
-            except (FileNotFoundError, Exception):
-                try:
-                    vec = load_single_emotion_vector(
-                        args.experiment, emotion, layer, model_variant,
-                        category=args.category, method="mean_diff",
-                    )
-                    vectors[emotion][layer] = vec
-                except Exception:
-                    pass
+            except FileNotFoundError:
+                print(
+                    f"ERROR: Vector missing for {emotion} at layer {layer} "
+                    f"with method={args.method!r}. Run cross_trait_normalize.py first. "
+                    f"(Silent fallback to bare 'mean_diff' removed — it could mix "
+                    f"denoised and undenoised vectors in the same analysis.)"
+                )
+                sys.exit(1)
     loaded = {e: list(ld.keys()) for e, ld in vectors.items() if ld}
     print(f"  Loaded vectors: {len(loaded)}/{len(probe_emotions)} emotions")
 
@@ -736,12 +1170,31 @@ def main():
         "person_binding": lambda: run_person_binding(model, tokenizer, vectors, layers, results_dir),
     }
 
+    plot_dispatch = {
+        "dissociation": plot_fig10_dissociation,
+        "colon_predicts": plot_fig11_colon_predicts,
+        "context_prefix": plot_fig12_context_prefix,
+        "context_numerical": plot_fig13_context_numerical,
+        "negation": plot_fig14_negation,
+        "person_binding": plot_fig15_person_binding,
+    }
+
+    figures_dir = Path(args.figures_dir) if args.figures_dir else FIGURES_DIR
+    if not args.no_plots:
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        plt_.apply_style("ant")
+
     for exp_name in sub_exps:
-        dispatch[exp_name]()
+        bundle = dispatch[exp_name]()
+        if not args.no_plots and bundle is not None:
+            path = plot_dispatch[exp_name](bundle, figures_dir)
+            print(f"  ✓ saved {path.name}")
 
     elapsed = time.time() - t0
     print(f"\nStage 5 complete ({elapsed / 60:.1f} min)")
     print(f"Results saved to: {results_dir}")
+    if not args.no_plots:
+        print(f"Figures saved to: {figures_dir}")
 
     # Cleanup
     del model

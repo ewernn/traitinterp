@@ -47,12 +47,60 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 from core.math import batch_cosine_similarity, pearson_correlation
 from utils.paths import get_default_variant, get as get_path
 from utils.capture_activations import capture_at_position
+from utils import plotting as plt_
 from shared import (
     load_emotion_vectors_as_dict,
     save_results,
     get_results_dir,
     compare_to_baseline,
 )
+
+FIGURES_DIR = Path(__file__).resolve().parent.parent / "paper_figures" / "ours"
+
+# ---------- Paper-specific plotting constants (Figs 2, 3) ----------
+FIG2_EMOTION_ORDER = [
+    "happy", "inspired", "loving", "proud", "calm", "desperate",
+    "angry", "guilty", "sad", "afraid", "nervous", "surprised",
+]
+FIG2_SCENARIO_DESCRIPTIONS = {
+    "happy": "Daughter's first steps",
+    "inspired": "Rebuilding after loss",
+    "loving": "30-year anniversary",
+    "proud": "Son graduates top",
+    "calm": "Tea and rain",
+    "desperate": "Eviction notice",
+    "angry": "Coworker stole credit",
+    "guilty": "Forgot mom's birthday",
+    "sad": "Dog passed away",
+    "afraid": "Break-in, phone dying",
+    "nervous": "Job interview nerves",
+    "surprised": "Friend's fake life",
+}
+
+FIG3_PROBE_COLORS = {
+    "afraid": "#d62728", "calm": "#1f77b4",
+    "happy": "#2ca02c", "sad": "#ff7f0e",
+}
+FIG3_PANEL_ORDER = [
+    "tylenol_dose", "hours_fasting", "sister_age_at_death",
+    "dog_missing_days", "startup_runway_months", "students_passed_exam",
+]
+FIG3_X_LABELS = {
+    "tylenol_dose": "Tylenol dose (mg)",
+    "hours_fasting": "Hours",
+    "sister_age_at_death": "Age",
+    "dog_missing_days": "Days missing",
+    "startup_runway_months": "Months of runway",
+    "students_passed_exam": "Students passed",
+}
+FIG3_PANEL_TITLES = {
+    "tylenol_dose": "I just took {X} mg of tylenol for my back\npain. Do you think I should take more?",
+    "hours_fasting": "It's been {X} hours since I've had any\nfood or drink.",
+    "sister_age_at_death": "My sister lived until the age of {X}.",
+    "dog_missing_days": "My dog has been missing for {X} days now.",
+    "startup_runway_months": "Our startup has {X} months of runway remaining.",
+    "students_passed_exam": "I found out that {X} of my 20 students\npassed the final exam.",
+}
 
 
 # ============================================================================
@@ -125,9 +173,22 @@ STEERING_PROMPTS = _load_steering_prompts()
 # Full list from Table 9 / Appendix A.5, 8 categories x 8 activities = 64.
 # Stored as a fixture; loaded at module import.
 def _load_preference_activities() -> dict:
+    """Load 64 preference activities, returning {category: [activity_strings]}.
+
+    Handles both old format (dict of lists) and new verbatim format (flat list of objects).
+    """
     path = get_path('datasets.inference') / 'ant_emotion_concepts' / 'stage4_preference_activities.json'
     with open(path) as f:
-        return json.load(f)['activities']
+        raw = json.load(f)['activities']
+    # New format: list of {"category": ..., "activity": ..., ...}
+    if isinstance(raw, list) and raw and isinstance(raw[0], dict):
+        result = {}
+        for item in raw:
+            cat = item['category']
+            result.setdefault(cat, []).append(item['activity'])
+        return result
+    # Old format: {category: [activity_strings]}
+    return raw
 
 
 PREFERENCE_ACTIVITIES = _load_preference_activities()
@@ -471,7 +532,10 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
     t0 = time.time()
 
     from tqdm import tqdm
-    pairs = list(combinations(range(n_activities), 2))
+    # Paper uses both orderings (A,B) and (B,A) = 4032 pairs for 64 activities,
+    # cancelling position bias. combinations() gives 2016; we add the reverse.
+    one_way = list(combinations(range(n_activities), 2))
+    pairs = one_way + [(b, a) for a, b in one_way]
 
     # The paper format: "Would you prefer to (A) {a} or (B) {b}?\n\nA: ("
     # For instruct models, wrap in chat template.
@@ -597,6 +661,82 @@ def run_preference_elo(vectors, model, tokenizer, layer, out_dir):
 # Main
 # ============================================================================
 
+# ============================================================================
+# Paper figures (Figs 2, 3)
+# ============================================================================
+
+def plot_fig2_implicit_emotion(result: dict, out_dir: Path) -> Path:
+    """Fig 2 — Implicit emotion heatmap (12 scenarios × 12 probes, ordered)."""
+    import numpy as np
+
+    matrix = np.array(result["similarity_matrix_focused"])
+    row_indices = [result["focused_probes"].index(e) for e in FIG2_EMOTION_ORDER]
+    col_indices = [result["prompt_emotions"].index(e) for e in FIG2_EMOTION_ORDER]
+    matrix = matrix[np.ix_(row_indices, col_indices)]
+
+    fig, ax = plt_.multi_panel(figsize=(10, 6.5))
+    im, cb = plt_.heatmap(
+        ax, matrix, cmap="RdBu_r",
+        row_labels=[e.capitalize() for e in FIG2_EMOTION_ORDER],
+        col_labels=[FIG2_SCENARIO_DESCRIPTIONS[e] for e in FIG2_EMOTION_ORDER],
+        cbar_label=None, cbar_pad=0.02, aspect="auto",
+        show_spines=True, spine_linewidth=1.5,
+    )
+    # Custom colorbar styling
+    cb.set_label("Cosine Similarity", fontweight="bold", rotation=270, labelpad=18)
+
+    ax.set_ylabel("Emotion Probe", fontweight="bold")
+    ax.set_xlabel("Scenario", fontweight="bold")
+    plt_.suptitle(fig, "Emotion Probes Respond to Implicit Emotional Content",
+                  fontsize=18, y=0.96)
+    import matplotlib.pyplot as plt
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    return plt_.save_figure(fig, out_dir / "fig2_ours.png")
+
+
+def plot_fig3_numerical_intensity(result: dict, out_dir: Path) -> Path:
+    """Fig 3 — Numerical intensity, 3x2 panel line plot."""
+    fig, axes = plt_.multi_panel(3, 2, figsize=(12, 13))
+
+    for idx, key in enumerate(FIG3_PANEL_ORDER):
+        ax = axes.flat[idx]
+        entry = result[key]
+        values = entry["values"]
+        probes = entry["probes"]
+
+        series = {probe.capitalize(): probes[probe]
+                  for probe in FIG3_PROBE_COLORS if probe in probes}
+        colors = {probe.capitalize(): color
+                  for probe, color in FIG3_PROBE_COLORS.items() if probe in probes}
+
+        plt_.line_plot(
+            ax, list(range(len(values))), series,
+            colors=colors, linewidth=2.5, markersize=6,
+            zero_line=False, legend=False, endpoint_labels=True,
+        )
+        # Fig 3 uses dashed zero line + manual styling
+        ax.axhline(0, color="gray", linewidth=0.5, linestyle="--", alpha=0.5)
+        ax.grid(False)
+        ax.grid(axis="y", alpha=0.3, linewidth=0.5)
+
+        ax.set_xticks(range(len(values)))
+        ax.set_xticklabels([str(v) for v in values])
+        ax.set_xlabel(FIG3_X_LABELS[key])
+        ax.set_ylabel("Cosine Similarity")
+        ax.set_ylim(-0.08, 0.08)
+        ax.set_title(FIG3_PANEL_TITLES[key], fontsize=15, pad=8)
+
+    plt_.suptitle(fig, "Emotion Probes Track Numerical Semantics", y=1.0)
+    import matplotlib.pyplot as plt
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    fig.subplots_adjust(hspace=0.55)  # more vertical space between rows
+    return plt_.save_figure(fig, out_dir / "fig3_ours.png")
+
+
+# ============================================================================
+# Main
+# ============================================================================
+
 def main():
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -617,7 +757,16 @@ def main():
                         help='Steering strength in norm-fraction units (default: 0.5)')
     parser.add_argument('--only', type=str, default=None,
                         help='Comma-separated analyses: logit_lens,implicit,numerical,steering,preference,mediation')
+    parser.add_argument('--no-plots', action='store_true',
+                        help='Skip paper-figure generation (Figs 2, 3)')
+    parser.add_argument('--figures-dir', type=str, default=None,
+                        help='Output dir for figures (default: paper_figures/ours/)')
     args = parser.parse_args()
+
+    figures_dir = Path(args.figures_dir) if args.figures_dir else FIGURES_DIR
+    if not args.no_plots:
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        plt_.apply_style("ant")
 
     # Resolve model variant
     model_variant = args.model_variant
@@ -685,12 +834,18 @@ def main():
         results['implicit'] = run_implicit_emotion(
             vectors, model, tokenizer, args.layer, out_dir
         )
+        if not args.no_plots:
+            path = plot_fig2_implicit_emotion(results['implicit'], figures_dir)
+            print(f"  ✓ saved {path.name}")
 
     # --- Numerical intensity (Fig 3) --- GPU
     if 'numerical' in analyses:
         results['numerical'] = run_numerical_intensity(
             vectors, model, tokenizer, args.layer, out_dir
         )
+        if not args.no_plots:
+            path = plot_fig3_numerical_intensity(results['numerical'], figures_dir)
+            print(f"  ✓ saved {path.name}")
 
     # --- Basic steering (Figs 52-53) --- GPU
     if 'steering' in analyses:

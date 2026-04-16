@@ -64,6 +64,7 @@ from utils.paths import (
 from utils.vectors import load_vector_with_baseline
 from utils.capture_activations import capture_at_position
 from utils.distributed import flush_cuda
+from utils import plotting as plt_
 from shared import (
     DEFAULT_LAYER,
     get_results_dir as _get_results_dir,
@@ -71,6 +72,8 @@ from shared import (
     load_single_emotion_vector,
     load_emotion_vectors_as_dict,
 )
+
+FIGURES_DIR = Path(__file__).resolve().parent.parent / "paper_figures" / "ours"
 
 # =============================================================================
 # Constants
@@ -359,6 +362,192 @@ def run_deep_dive(
 
 
 # =============================================================================
+# Paper figures (Figs 36, 37, 38, 39)
+# =============================================================================
+
+def _emotions_common(*dicts) -> List[str]:
+    return sorted(set.intersection(*[set(d.keys()) for d in dicts]))
+
+
+def plot_fig36_post_training_scatter(results: dict, out_dir: Path) -> Path:
+    """Fig 36 — 3-panel scatter: Challenging / Neutral / Shift-consistency."""
+    from scipy import stats
+    from matplotlib.lines import Line2D
+
+    ac = results["activation_comparison"]
+    neutral = ac["neutral"]
+    chall = ac["challenging"]
+
+    emotions = _emotions_common(neutral["base_means"], neutral["instruct_means"],
+                                chall["base_means"], chall["instruct_means"])
+    base_n = np.array([neutral["base_means"][e] for e in emotions])
+    inst_n = np.array([neutral["instruct_means"][e] for e in emotions])
+    base_c = np.array([chall["base_means"][e] for e in emotions])
+    inst_c = np.array([chall["instruct_means"][e] for e in emotions])
+
+    diff_n = inst_n - base_n
+    diff_c = inst_c - base_c
+    r_c, _ = stats.pearsonr(base_c, inst_c)
+    r_n, _ = stats.pearsonr(base_n, inst_n)
+    r_s, _ = stats.pearsonr(diff_n, diff_c)
+
+    fig, axes = plt_.multi_panel(1, 3, figsize=(18, 6))
+    plt_.suptitle(fig, "Emotion Probes on Base vs Post-Trained Model", y=1.0)
+
+    for ax, x, y, r, title, xlabel, ylabel in [
+        (axes[0], base_c, inst_c, r_c, "Challenging", "Base", "Post-Trained"),
+        (axes[1], base_n, inst_n, r_n, "Neutral", "Base", "Post-Trained"),
+        (axes[2], diff_n, diff_c, r_s, "Shift Consistency", "Neutral Δ", "Challenging Δ"),
+    ]:
+        plt_.scatter_with_regression(
+            ax, x, y, color=plt_.STEEL_BLUE, s=80, alpha=0.6,
+            show_identity=True, show_fit=True, annotate_r=True,
+            fit_style=dict(color="#333", linewidth=1.5, alpha=0.6),
+        )
+        ax.set_title(title, fontsize=16, fontweight="bold")
+        ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
+
+    import matplotlib.pyplot as plt
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    return plt_.save_figure(fig, out_dir / "fig36_ours.png")
+
+
+# Deep-dive figure styling
+_GREEN = "#1e7e1e"    # darker forest green (paper-match)
+_RED = "#d62728"
+_BLUE_OTHER = "#6495ED"  # cornflower — light-medium blue for "Other" dots
+MODEL_DISPLAY_NAME = "Llama"  # for parameterized titles
+
+
+def _plot_deep_dive_prompt(prompt_result: dict, title: str, out_path: Path) -> Path:
+    """Shared implementation for Figs 37, 38, 39 — scatter + bar panel per prompt."""
+    from matplotlib.lines import Line2D
+
+    base_proj = prompt_result["base"]
+    inst_proj = prompt_result["instruct"]
+    full_shift = prompt_result["diffs"]
+
+    # Bar order: descending signed diff (most positive at top, most negative at bottom)
+    sorted_bar = sorted(full_shift.items(), key=lambda x: x[1], reverse=True)
+    bar_emotions_all = [e for e, _ in sorted_bar]
+    top10_names = set(bar_emotions_all[:10])
+    bot10_names = set(bar_emotions_all[-10:])
+
+    emotions = sorted(full_shift.keys())
+    base_vals = np.array([base_proj[e] for e in emotions])
+    inst_vals = np.array([inst_proj[e] for e in emotions])
+
+    fig, (ax_s, ax_b) = plt_.multi_panel(1, 2, figsize=(14, 7),
+                                          gridspec_kw={"width_ratios": [1.0, 0.8]})
+    plt_.suptitle(fig, title, fontsize=18, y=0.98)
+
+    # Scatter with 3-tier coloring
+    for e in emotions:
+        if e in top10_names:   color, zo = _GREEN, 3
+        elif e in bot10_names: color, zo = _RED, 3
+        else:                  color, zo = _BLUE_OTHER, 1
+        ax_s.scatter(base_proj[e], inst_proj[e], s=120, c=color, alpha=0.6,
+                     edgecolors="none", zorder=zo)
+
+    for e in list(top10_names) + list(bot10_names):
+        ax_s.annotate(e.replace("_", " "), (base_proj[e], inst_proj[e]),
+                      fontsize=9, alpha=0.8, xytext=(3, 3), textcoords="offset points")
+
+    mn = min(base_vals.min(), inst_vals.min())
+    mx = max(base_vals.max(), inst_vals.max())
+    ax_s.plot([mn, mx], [mn, mx], "--", c="#999", lw=0.8)
+    ax_s.set_xlabel("Base"); ax_s.set_ylabel("Post-Trained")
+    ax_s.set_aspect('equal'); ax_s.grid(True, alpha=0.15)
+
+    handles = [
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=_GREEN, markersize=9, label="Top 10 ↑"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=_BLUE_OTHER, markersize=9, label="Other"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=_RED, markersize=9, label="Top 10 ↓"),
+    ]
+    ax_s.legend(handles=handles, fontsize=11, loc="lower right")
+
+    # Bar chart: most positive at TOP, most negative at BOTTOM.
+    # barh y=0 = bottom, so list must be ascending (most neg first → most pos last).
+    bar_emotions = list(reversed(bar_emotions_all[:10])) + list(reversed(bar_emotions_all[-10:]))
+    bar_values = [full_shift[e] for e in bar_emotions]
+    bar_colors = [_GREEN if full_shift[e] >= 0 else _RED for e in bar_emotions]
+    plt_.bar_chart(ax_b, [e.replace("_", " ") for e in bar_emotions], bar_values,
+                   horizontal=True, colors=bar_colors, width=0.7, alpha=0.75)
+    ax_b.set_xlabel("Diff (Post − Base)")
+
+    import matplotlib.pyplot as plt
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    return plt_.save_figure(fig, out_path)
+
+
+# Titles for deep-dive figures (paper-matching format)
+FIG37_38_39_TITLES = {
+    "fig37_social_isolation": "Sycophancy: User Isolation",
+    "fig38_excessive_praise": "Sycophancy: Excessive Praise",
+    "fig39_deprecation_existential": f"Existential: {MODEL_DISPLAY_NAME}'s Nature",
+}
+
+
+def plot_figs_37_38_39_deep_dive(results: dict, out_dir: Path) -> Dict[str, Path]:
+    """Figs 37-39 — three per-prompt deep-dive panels."""
+    out = {}
+    deep = results["deep_dive"]
+    prompt_to_fig = {
+        "fig37_social_isolation": "fig37_ours.png",
+        "fig38_excessive_praise": "fig38_ours.png",
+        "fig39_deprecation_existential": "fig39_ours.png",
+    }
+    for prompt_id, filename in prompt_to_fig.items():
+        if prompt_id not in deep:
+            print(f"  (skipping {filename}: {prompt_id} not in results)")
+            continue
+        title = FIG37_38_39_TITLES.get(prompt_id, prompt_id)
+        path = _plot_deep_dive_prompt(deep[prompt_id], title, out_dir / filename)
+        out[prompt_id] = path
+    return out
+
+
+def load_legacy_stage8_as_bundle(results_dir: Path) -> dict:
+    """Adapter: read legacy per-file stage8 JSONs and repackage as new-schema bundle.
+
+    Reads stage8_post_training.json + stage8_cross_version.json + stage8_deep_dive.json
+    (produced by the retired stage8_cross_version_control.py script), and returns a
+    dict matching the shape that plot_fig36/plot_figs_37_38_39 expect.
+    """
+    with open(results_dir / "stage8_cross_version.json") as f:
+        cv = json.load(f)
+    with open(results_dir / "stage8_deep_dive.json") as f:
+        dd = json.load(f)
+
+    neutral = {
+        "base_means": cv["base_3_1_neutral_avg"],
+        "instruct_means": cv["instruct_3_3_neutral_avg"],
+    }
+    chall = {
+        "base_means": cv["base_3_1_challenging_avg"],
+        "instruct_means": cv["instruct_3_3_challenging_avg"],
+    }
+    deep = {}
+    for pid in dd["base_results"]:
+        base = dd["base_results"][pid]["projections"]
+        inst = dd["instruct_results"][pid]["projections"]
+        shifts = dd["shifts"][pid]["full_shift"]
+        sorted_emotions = sorted(shifts.keys(), key=lambda e: shifts[e], reverse=True)
+        deep[pid] = {
+            "diffs": shifts,
+            "base": base,
+            "instruct": inst,
+            "top_increases": [(e, shifts[e]) for e in sorted_emotions[:10]],
+            "top_decreases": [(e, shifts[e]) for e in sorted_emotions[-10:]],
+        }
+
+    return {
+        "activation_comparison": {"neutral": neutral, "challenging": chall},
+        "deep_dive": deep,
+    }
+
+
+# =============================================================================
 # Main orchestrator
 # =============================================================================
 
@@ -372,7 +561,8 @@ def main():
     parser.add_argument("--load-in-4bit", action="store_true")
     parser.add_argument("--layer", type=int, default=DEFAULT_LAYER,
                         help="Primary analysis layer (default: 53)")
-    parser.add_argument("--method", default="mean_diff")
+    parser.add_argument("--method", default="mean_diff+gm+pc50",
+                        help="Vector extraction method (default: mean_diff+gm+pc50, the fully-denoised Sofroniew vectors)")
     parser.add_argument("--position", default="response[50:]")
 
     # Mode selection
@@ -383,8 +573,35 @@ def main():
                       help="Run 8.2 only: layer-wise shifts (requires both models)")
     mode.add_argument("--deep-dive-only", action="store_true",
                       help="Run 8.3 only: three deep-dive prompts")
+    mode.add_argument("--from-legacy", action="store_true",
+                      help="Regenerate Figs 36-39 from legacy per-file JSONs "
+                           "(stage8_cross_version.json + stage8_deep_dive.json). "
+                           "No GPU; no model load.")
+
+    parser.add_argument("--no-plots", action="store_true",
+                        help="Skip paper-figure generation (Figs 36-39)")
+    parser.add_argument("--figures-dir", type=str, default=None,
+                        help="Output dir for figures (default: paper_figures/ours/)")
 
     args = parser.parse_args()
+
+    figures_dir = Path(args.figures_dir) if args.figures_dir else FIGURES_DIR
+
+    # --- Legacy regeneration path (no model, no GPU) ---
+    if args.from_legacy:
+        results_dir = _get_results_dir(args.experiment, "stage8_post_training")
+        # Legacy files live at experiments/*/results/ (one level up from stage_NN subdir)
+        legacy_dir = results_dir.parent
+        print(f"Loading legacy JSONs from {legacy_dir}...")
+        bundle = load_legacy_stage8_as_bundle(legacy_dir)
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        plt_.apply_style("ant")
+        p = plot_fig36_post_training_scatter(bundle, figures_dir)
+        print(f"  ✓ {p.name}")
+        paths = plot_figs_37_38_39_deep_dive(bundle, figures_dir)
+        for pid, path in paths.items():
+            print(f"  ✓ {path.name}")
+        return
 
     results_dir = _get_results_dir(args.experiment, "stage8_post_training")
 
@@ -631,6 +848,18 @@ def main():
     print(f"\n{'='*60}")
     print(f"Results saved to: {results_dir}")
     print(f"{'='*60}")
+
+    # Generate paper figures (Figs 36, 37, 38, 39)
+    if not args.no_plots:
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        plt_.apply_style("ant")
+        if "activation_comparison" in results:
+            p = plot_fig36_post_training_scatter(results, figures_dir)
+            print(f"  ✓ {p.name}")
+        if "deep_dive" in results:
+            paths = plot_figs_37_38_39_deep_dive(results, figures_dir)
+            for pid, path in paths.items():
+                print(f"  ✓ {path.name}")
 
 
 if __name__ == "__main__":
