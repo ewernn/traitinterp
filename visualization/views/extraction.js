@@ -12,6 +12,11 @@ let vgMethod = null;      // currently-selected method
 let vgLayer = null;       // currently-selected layer
 let vgSelectedTrait = null;   // click-to-inspect
 
+// Logit-lens cache: { trait → data }. Populated by renderLogitLensSection once;
+// reused by renderLogitLensFromCache so Vector-Geometry layer changes don't re-fetch.
+let _logitLensCache = null;
+let _logitLensEvalData = null;
+
 // Metric config: how to compute cell value, colorscale, z-range, legend label
 const METRIC_CONFIG = {
     effect_size: {
@@ -116,7 +121,7 @@ async function renderExtraction() {
             <!-- Logit Lens -->
             <section>
                 ${renderSubsection({
-                    title: 'Token Decode (Logit Lens)',
+                    title: 'Logit Lens',
                     infoId: 'info-logit-lens',
                     infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at layer n_layers/2 + 10 (L26 on 32-layer Qwen, L50 on 80-layer Llama). Coherent lists confirm the vector captured the intended concept.'
                 })}
@@ -562,16 +567,29 @@ async function renderLogitLensSection(evalData) {
     // Show loading
     container.innerHTML = '<p class="hint">Loading token decodes...</p>';
 
-    // Load all logit lens data in parallel
+    // Load all logit lens data in parallel (cache for subsequent layer changes)
     const results = await Promise.all(traits.map(async trait => {
         const data = await fetchJSON(window.paths.logitLens(trait, modelVariant));
         return { trait, data };
     }));
 
-    // Filter to traits that have data
-    const withData = results.filter(r => r.data);
+    _logitLensCache = Object.fromEntries(results.filter(r => r.data).map(r => [r.trait, r.data]));
+    _logitLensEvalData = evalData;
+    renderLogitLensFromCache();
+}
 
-    if (withData.length === 0) {
+/**
+ * Render the logit-lens table from cache, using vgLayer when available so the
+ * table's layer selection tracks the Vector Geometry slider. Falls back to the
+ * middle-late heuristic for traits whose per_layer doesn't include vgLayer, or
+ * when the file uses the older `late` schema (backend-baked single layer).
+ */
+function renderLogitLensFromCache() {
+    const container = document.getElementById('logit-lens-container');
+    if (!container || !_logitLensCache) return;
+
+    const cachedTraits = Object.entries(_logitLensCache);
+    if (cachedTraits.length === 0) {
         const expName = window.state.experimentData?.name || '<exp>';
         container.innerHTML = renderRunHint(
             'No logit lens data.',
@@ -580,12 +598,20 @@ async function renderLogitLensSection(evalData) {
         return;
     }
 
-    // Build table
     const renderTokens = (tokens, limit = 5) => {
         if (!tokens || !Array.isArray(tokens)) return '<span class="na">—</span>';
         return tokens.slice(0, limit)
             .map(t => `<span class="ll-token">${escapeHtml(t.token)}</span>`)
             .join(' ');
+    };
+
+    // Pick layer: prefer vgLayer (sync with Vector Geometry). Fall back to the
+    // middle-late heuristic (n_layers/2 + 10) only if vgLayer isn't in the set.
+    const pickDisplayLayer = (layerNums, nLayers) => {
+        if (!layerNums.length) return null;
+        if (vgLayer != null && layerNums.includes(vgLayer)) return vgLayer;
+        const target = Math.floor(nLayers / 2) + 10;
+        return layerNums.reduce((best, L) => Math.abs(L - target) < Math.abs(best - target) ? L : best, layerNums[0]);
     };
 
     let html = `
@@ -601,23 +627,14 @@ async function renderLogitLensSection(evalData) {
             <tbody>
     `;
 
-    // Pick the display layer: closest to (n_layers/2 + 10), middle-late residual where the
-    // readout tends to show whole-word tokens rather than subword fragments.
-    const pickDisplayLayer = (layerNums, nLayers) => {
-        if (!layerNums.length) return null;
-        const target = Math.floor(nLayers / 2) + 10;
-        return layerNums.reduce((best, L) => Math.abs(L - target) < Math.abs(best - target) ? L : best, layerNums[0]);
-    };
-
-    for (const { trait, data } of withData) {
-        // Pick best method
-        const methodPriority = ['probe', 'mean_diff', 'gradient'];
+    for (const [trait, data] of cachedTraits) {
+        // Method preference: match Vector Geometry's selection if available, otherwise probe > mean_diff > gradient.
+        const methodPriority = [vgMethod, 'probe', 'mean_diff', 'gradient'].filter(Boolean);
         const method = methodPriority.find(m => data.methods[m]) || Object.keys(data.methods)[0];
         const methodData = data.methods[method];
         if (!methodData) continue;
 
-        // Handle both logit-lens schemas: `per_layer: {L: {...}}` (newer, rare) and
-        // `late: {...}` (older, dominant on disk today). Keep both branches until per_layer catches up.
+        // Handle both logit-lens schemas: `per_layer: {L: {...}}` (newer) and `late: {...}` (older).
         let chosen;
         if (methodData.per_layer) {
             const layerNums = Object.keys(methodData.per_layer).map(Number);
@@ -651,6 +668,8 @@ function resetExtractionState() {
     vgMethod = null;
     vgLayer = null;
     vgSelectedTrait = null;
+    _logitLensCache = null;
+    _logitLensEvalData = null;
 }
 
 
@@ -727,6 +746,7 @@ async function renderVectorGeometrySection() {
             }
             vgSelectedTrait = null;
             renderVectorGeometryPanels(data);
+            renderLogitLensFromCache();  // logit-lens tracks VG's method+layer
         },
     });
     wireStyledSelect(methodWrap);
@@ -745,12 +765,14 @@ async function renderVectorGeometrySection() {
             slider.value = vgLayer;
             label.textContent = `L${displayLayer(vgLayer)}`;
             renderVectorGeometryPanels(data);
+            renderLogitLensFromCache();  // logit-lens tracks VG's method+layer
         } else {
             label.textContent = `L${displayLayer(vgLayer)}`;
         }
     });
 
     renderVectorGeometryPanels(data);
+    renderLogitLensFromCache();  // if LL already loaded, re-render it now that vgLayer is set
 }
 
 /** Render both scatter + neighbors for the currently selected (method, layer). */
