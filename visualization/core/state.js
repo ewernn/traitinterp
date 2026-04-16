@@ -45,7 +45,7 @@ const state = {
     // Layer Deep Dive settings
     // Projection normalization mode
     smoothingWindow: 6,      // Moving average window size (0 = off)
-    projectionCentered: true,  // Subtract BOS token value (centers around 0)
+    projectionCentered: true,  // Mean-center over response tokens
     // Method filter for trait dynamics (which extraction methods to show)
     selectedMethods: new Set(['probe', 'mean_diff']),
     // Projection normalization mode: 'cosine' or 'normalized'

@@ -161,11 +161,11 @@
     <!-- Expose core primitives for dynamically-loaded experiment viz modules -->
     <script type="module">
         import { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG } from '/visualization/core/charts.js';
-        import { renderSelect, renderToggle, renderLoading, renderSubsection, renderSegmentedControl } from '/visualization/core/ui.js';
+        import { renderToggle, renderLoading, renderSubsection, renderSegmentedControl } from '/visualization/core/ui.js';
         import { getCssVar, hexToRgba, getPlotlyLayout } from '/visualization/core/display.js';
         window.vizCore = {
             charts: { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG },
-            ui: { renderSelect, renderToggle, renderLoading, renderSubsection, renderSegmentedControl },
+            ui: { renderToggle, renderLoading, renderSubsection, renderSegmentedControl },
             display: { getCssVar, hexToRgba, getPlotlyLayout }
         };
     </script>
@@ -195,7 +195,6 @@
     <script type="module" src="/visualization/views/inference/chart-token-trajectory.js"></script>
     <script type="module" src="/visualization/views/inference/chart-trait-token-heatmap.js"></script>
     <script type="module" src="/visualization/views/inference/chart-activation-magnitude.js"></script>
-    <script type="module" src="/visualization/views/inference/chart-correlation.js"></script>
     <script type="module" src="/visualization/views/inference/inference-view.js"></script>
     <script type="module" src="/visualization/views/steering/shared.js"></script>
     <script type="module" src="/visualization/views/steering/filters.js"></script>

@@ -13,7 +13,6 @@ import { loadComparisonProjections, fetchLayerSensitivityData, processTraitProje
 import { renderTrajectoryChart } from './chart-token-trajectory.js';
 import { renderTraitTokenHeatmap } from './chart-trait-token-heatmap.js';
 import { renderTokenMagnitudePlot } from './chart-activation-magnitude.js';
-import { renderCorrelationSection } from './chart-correlation.js';
 
 async function renderInference() {
     const contentArea = document.getElementById('content-area');
@@ -58,7 +57,7 @@ async function renderInference() {
             });
         };
         syncActive('#mode-control', 'mode', window.state.projectionMode);
-        syncActive('.smooth-pill', 'smooth', window.state.smoothingWindow);
+        syncActive('#smooth-control', 'smooth', window.state.smoothingWindow);
         const currentCompare = window.state.compareMode || 'main';
         const compareBase = currentCompare.startsWith('diff:') ? 'diff'
             : currentCompare.startsWith('show:') ? 'show' : 'main';
@@ -272,13 +271,6 @@ async function renderInference() {
 
         // Render Token Magnitude plot (per-token norms)
         renderTokenMagnitudePlot(traitData, filteredByMethod, tickVals, tickText, nPromptTokens, isRollout, turnBoundaries, sentenceBoundaries, sentenceCategoryData);
-    }
-
-    // Render correlation section if data exists for this prompt set
-    const corrLoaded = await renderCorrelationSection('correlation-content', promptSet);
-    if (corrLoaded) {
-        // Correlation section renders its own badge — just wire up info toggles
-        window.setupSubsectionInfoToggles();
     }
 
     // Restore scroll position after DOM updates

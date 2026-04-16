@@ -3,7 +3,7 @@
 // Output: rendered Plotly magnitude plot into #token-magnitude-plot (sec-header body managed by inference-view-controls.js)
 
 import { getChartColors } from '../../core/display.js';
-import { buildChartLayout, renderChart, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildTurnBoundaryShapes } from '../../core/charts.js';
+import { buildChartLayout, renderChart, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildTurnBoundaryShapes, LINE_SPLINE } from '../../core/charts.js';
 import { START_TOKEN_IDX } from './chart-token-trajectory.js';
 
 /**
@@ -49,7 +49,7 @@ function renderTokenMagnitudePlot(traitData, loadedTraits, tickVals, tickText, n
         type: 'scatter',
         mode: 'lines',
         name: `L${layer}`,
-        line: { color: colors[idx % colors.length], width: 1.5 },
+        line: { color: colors[idx % colors.length], width: 1.5, ...LINE_SPLINE },
         hovertemplate: `L${layer}<br>Token %{x}<br>||h|| = %{y:.1f}<extra></extra>`
     }));
 

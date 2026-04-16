@@ -4,7 +4,7 @@
 
 import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
 import { getDisplayName, getChartColors, getCssVar } from '../../core/display.js';
-import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes } from '../../core/charts.js';
+import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, LINE_SPLINE } from '../../core/charts.js';
 import { setShowCuePOverlay, setShowCategoryOverlay } from '../../core/state.js';
 import { renderToggle } from '../../core/ui.js';
 
@@ -338,7 +338,7 @@ function renderTrajectoryChart(renderCtx) {
             type: 'scatter',
             mode: useMarkers ? 'lines+markers' : 'lines',
             name: displayName,
-            line: { color: color, width: 1.5 },
+            line: { color: color, width: 1.5, ...LINE_SPLINE },
             ...(useMarkers ? { marker: { size: 2, color: color } } : {}),
             hoverinfo: 'none',
             _displayName: displayName,
@@ -442,7 +442,7 @@ function renderTrajectoryChart(renderCtx) {
                 type: 'scatter',
                 mode: 'lines',
                 name: `${traces[idx]?.name || getDisplayName(traitName)} (vel)`,
-                line: { color, width: 1, dash: 'dot' },
+                line: { color, width: 1, dash: 'dot', ...LINE_SPLINE },
                 yaxis: 'y2',
                 showlegend: false,
                 hovertemplate: `<b>${traces[idx]?.name || getDisplayName(traitName)}</b><br>Token %{x:.0f}<br>Velocity: %{y:.4f}<extra></extra>`

@@ -4,7 +4,7 @@
 
 import { getDisplayName } from '../../core/display.js';
 import { setupSubsectionInfoToggles } from '../../components/sidebar.js';
-import { renderSegmentedControl, renderSmoothPill, renderSubsection } from '../../core/ui.js';
+import { renderSegmentedControl, renderSubsection } from '../../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from '../../components/styled-select.js';
 import {
     setSmoothingWindow,
@@ -26,7 +26,7 @@ import {
 /**
  * Build the control bar HTML for Token Trajectory section.
  * Primary row: Smooth, Mode, Compare + model dropdown, Advanced toggle.
- * Advanced row (collapsed): Methods, Centered, Clean, Layers, Wide, Velocity.
+ * Advanced row (collapsed): Methods, Clean, Layers, Wide, Velocity.
  */
 function buildControlBarHtml(allFilteredTraits) {
     const currentCompareMode = window.state.compareMode || 'main';
@@ -45,7 +45,18 @@ function buildControlBarHtml(allFilteredTraits) {
     const smoothCluster = `
         <div class="cb-cluster" style="gap: 8px;">
             <span class="cb-label">Smooth:</span>
-            ${renderSmoothPill(window.state.smoothingWindow)}
+            ${renderSegmentedControl({
+                id: 'smooth-control',
+                options: [
+                    { value: 0, label: 'off' },
+                    { value: 3, label: '3' },
+                    { value: 6, label: '6' },
+                    { value: 9, label: '9' },
+                ],
+                selected: window.state.smoothingWindow,
+                dataAttr: 'smooth',
+                size: 'compact',
+            })}
         </div>`;
 
     const modeCluster = `
@@ -113,8 +124,8 @@ function buildControlBarHtml(allFilteredTraits) {
         })
         : '';
 
-    const centeredToggleHtml = `<label class="cb-checkbox" title="Mean-center: subtract the mean response projection from every token. Removes per-response bias so constant-bias traits (e.g. golden_gate_bridge) show their relative variation.">
-        <input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}> Centered
+    const centeredToggleHtml = `<label class="cb-checkbox" title="Subtract the mean response projection from every token. Removes per-response bias so constant-bias traits (e.g. golden_gate_bridge) show their relative variation.">
+        <input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}> Mean-center
     </label>`;
 
     const advancedRow = `
@@ -224,20 +235,6 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div id="cue-p-plot"></div>
             </section>
 
-            <section id="correlation-section">
-                <div class="sec-header" data-section="correlation" id="sec-correlation">
-                    <span class="arrow">\u25B6</span> Correlation <span class="subsection-info-toggle" data-target="info-correlation-parent">\u25BA</span> <span class="sec-badge" id="badge-correlation"></span>
-                </div>
-                <div class="subsection-info" id="info-correlation-parent">Trait-trait correlations across the prompt set, with a token-offset slider for lead/lag. Run <code>trait_correlation.py</code> to populate.</div>
-                <div id="section-body-correlation" hidden>
-                    <div id="correlation-content">
-                        <div class="no-data-hint">No pre-computed correlation data.
-                            <code>python analysis/vectors/trait_correlation.py --experiment ${experimentName} --prompt-set PROMPT_SET</code>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
         </div>
     `;
 }
@@ -254,7 +251,7 @@ function attachControlListeners(allFilteredTraits) {
 
     // --- Smooth pill ---
     controlBar.addEventListener('click', (e) => {
-        const btn = e.target.closest('.smooth-pill button');
+        const btn = e.target.closest('button[data-smooth]');
         if (btn) setSmoothingWindow(parseInt(btn.dataset.smooth));
     });
 
