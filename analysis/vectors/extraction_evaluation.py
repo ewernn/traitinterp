@@ -58,7 +58,7 @@ def evaluate_from_metadata(
         # Skip layers without val metrics
         if 'val_accuracy' not in layer_info:
             continue
-        results.append({
+        row = {
             'trait': trait,
             'method': method,
             'layer': int(layer_str),
@@ -68,7 +68,13 @@ def evaluate_from_metadata(
             'val_effect_size': layer_info['val_effect_size'],
             'polarity_correct': layer_info['polarity_correct'],
             'train_acc': layer_info.get('train_acc'),
-        })
+        }
+        # Surface OOD validation fields if present (written by stage 4 when
+        # ood_positive/negative scenarios exist for this trait).
+        for k in ('ood_accuracy', 'ood_effect_size', 'ood_polarity_correct'):
+            if k in layer_info:
+                row[k] = layer_info[k]
+        results.append(row)
 
     return results
 

@@ -468,6 +468,8 @@ def extract_activations_for_trait(
         'neg': neg_acts,
         'val_pos': val_pos_acts,
         'val_neg': val_neg_acts,
+        'ood_pos': ood_pos_acts,
+        'ood_neg': ood_neg_acts,
         'layer_list': layer_list,
         'n_layers': n_layers,
         'model_name': model.config.name_or_path,
@@ -541,10 +543,18 @@ def extract_vectors_for_trait(
         if activations is not None:
             val_pos = activations['val_pos'].get(layer_idx, torch.empty(0))
             val_neg = activations['val_neg'].get(layer_idx, torch.empty(0))
+            ood_pos = activations.get('ood_pos', {}).get(layer_idx, torch.empty(0))
+            ood_neg = activations.get('ood_neg', {}).get(layer_idx, torch.empty(0))
         else:
             val_pos, val_neg = load_val_activations(
                 experiment, trait, model_variant, layer_idx, component, position
             )
+            try:
+                from utils.load_activations import load_ood_activations
+                ood = load_ood_activations(experiment, trait, model_variant, layer_idx, component, position)
+                ood_pos, ood_neg = (ood[0], ood[1]) if ood[0] is not None else (torch.empty(0), torch.empty(0))
+            except FileNotFoundError:
+                ood_pos = ood_neg = torch.empty(0)
 
         mean_pos = pos_acts.float().mean(dim=0)
         if neg_acts.numel() > 0:
@@ -582,6 +592,15 @@ def extract_vectors_for_trait(
                     layer_info['val_accuracy'] = float(accuracy(val_proj_pos, val_proj_neg))
                     layer_info['val_effect_size'] = float(effect_size(val_proj_pos, val_proj_neg))
                     layer_info['polarity_correct'] = bool(polarity_correct(val_proj_pos, val_proj_neg))
+
+                # OOD validation metrics — written only when ood_positive/negative
+                # were present in the trait dataset (else ood_* tensors are empty).
+                if ood_pos.numel() > 0 and ood_neg.numel() > 0:
+                    ood_proj_pos = batch_cosine_similarity(ood_pos, vector)
+                    ood_proj_neg = batch_cosine_similarity(ood_neg, vector)
+                    layer_info['ood_accuracy'] = float(accuracy(ood_proj_pos, ood_proj_neg))
+                    layer_info['ood_effect_size'] = float(effect_size(ood_proj_pos, ood_proj_neg))
+                    layer_info['ood_polarity_correct'] = bool(polarity_correct(ood_proj_pos, ood_proj_neg))
 
                 method_metadata[method_name]["layers"][str(layer_idx)] = layer_info
                 n_extracted += 1
