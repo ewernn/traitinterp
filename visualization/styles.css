@@ -344,6 +344,24 @@
 .projection-toggle-label { font-size: var(--text-xs); color: var(--text-tertiary); font-weight: 500; }
 .projection-toggle select { font-size: var(--text-xs); padding: 2px 6px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-tertiary); color: var(--text-primary); }
 
+/* Vector Geometry subsection (Extraction view) */
+.vg-controls { display: flex; align-items: center; gap: 24px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius-sm); flex-wrap: wrap; margin: 12px 0; }
+.vg-control-group { display: flex; align-items: center; gap: 8px; }
+.vg-panels { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.vg-panel-scatter { min-width: 0; }
+.vg-panel-neighbors { background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 12px 14px; font-size: var(--text-xs); }
+.vg-neighbors-header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px; }
+.vg-neighbors-label { color: var(--text-tertiary); }
+.vg-neighbors-selected { font-weight: 600; color: var(--text-primary); }
+.vg-neighbors-subhead { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); margin: 10px 0 4px; }
+.vg-neighbors-list { display: flex; flex-direction: column; gap: 2px; }
+.vg-neighbor-row { display: flex; gap: 10px; padding: 3px 6px; border-radius: var(--radius-sm); cursor: pointer; }
+.vg-neighbor-row:hover { background: var(--bg-tertiary); }
+.vg-neighbor-sim { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 52px; color: var(--text-secondary); }
+.vg-neighbor-sim.pos { color: var(--success, #8fce5b); }
+.vg-neighbor-sim.neg { color: var(--danger, #e07a7a); }
+.vg-neighbor-name { color: var(--text-secondary); }
+
 /* Model diff header — variant labels above the diff chart */
 .model-diff-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; font-size: var(--text-sm); color: var(--text-secondary); flex-wrap: wrap; }
 .model-diff-header .model-diff-legend { font-size: var(--text-xs); color: var(--text-tertiary); width: 100%; margin-top: 4px; }

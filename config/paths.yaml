@@ -155,6 +155,7 @@ steering:
 
 extraction_eval:
   evaluation: "experiments/{experiment}/extraction/extraction_evaluation.json"
+  vector_geometry: "experiments/{experiment}/extraction/vector_geometry.json"
 
 # =============================================================================
 # ENSEMBLES (multi-vector combinations for steering)

@@ -233,6 +233,11 @@ class PathBuilder {
         return `/${this.get('extraction_eval.evaluation')}`;
     }
 
+    /** Trait vector geometry (pairwise cos-sim + 2D coords per method/layer). */
+    vectorGeometry() {
+        return `/${this.get('extraction_eval.vector_geometry')}`;
+    }
+
     /**
      * Get logit lens results path for a trait.
      * @param {string|Object} trait - Trait name or object
