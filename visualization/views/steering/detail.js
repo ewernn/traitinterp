@@ -549,9 +549,9 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
                     respEl.innerHTML = responses.map(r => {
                         const text = escapeHtml(r.response || r.text || JSON.stringify(r));
                         const prompt = r.prompt ? escapeHtml(r.prompt) : '';
-                        const meta = r.trait_score != null
-                            ? `<div class="rc-meta">trait ${(r.trait_score||0).toFixed(1)} · coh ${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
-                            : '';
+                        const traitStr = r.trait_score != null ? (r.trait_score).toFixed(1) : '–';
+                        const cohStr = (r.coherence_score ?? r.coherence) != null ? (r.coherence_score ?? r.coherence).toFixed(0) : '–';
+                        const meta = `<div class="rc-meta">trait ${traitStr} · coh ${cohStr}</div>`;
                         const promptLine = prompt ? `<div class="rc-question">Q: ${prompt}</div>` : '';
                         return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
                     }).join('');
@@ -628,9 +628,9 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
                         respEl.innerHTML = responses.map((r, i) => {
                             const text = escapeHtml(r.response || r.text || JSON.stringify(r));
                             const prompt = r.prompt ? escapeHtml(r.prompt) : '';
-                            const meta = r.trait_score != null
-                                ? `<div class="rc-meta">trait ${(r.trait_score||0).toFixed(1)} · coh ${(r.coherence_score||r.coherence||0).toFixed(0)}</div>`
-                                : '';
+                            const traitStr = r.trait_score != null ? (r.trait_score).toFixed(1) : '–';
+                            const cohStr = (r.coherence_score ?? r.coherence) != null ? (r.coherence_score ?? r.coherence).toFixed(0) : '–';
+                            const meta = `<div class="rc-meta">trait ${traitStr} · coh ${cohStr}</div>`;
                             const promptLine = prompt
                                 ? `<div class="rc-question">Q: ${prompt}</div>`
                                 : '';

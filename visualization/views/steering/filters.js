@@ -103,7 +103,14 @@ function renderFilterChips() {
         'k_proj': 'K Proj', 'v_proj': 'V Proj',
         'positive': 'Positive', 'negative': 'Negative',
     };
-    const formatLabel = v => window.paths?.formatPositionDisplay(v)
+    // Model variants show the HF model path from experiment config when available
+    // (falls back to the variant nickname if no mapping exists).
+    const variantModels = window.state.experimentData?.experimentConfig?.model_variants || {};
+    const variantDisplay = Object.fromEntries(
+        Object.entries(variantModels).map(([nickname, v]) => [nickname, v.model || nickname])
+    );
+    const formatLabel = v => variantDisplay[v]
+        || window.paths?.formatPositionDisplay(v)
         || v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
     // Model variants = single-select (radio), others = multi-select with min-one invariant.
