@@ -5,23 +5,6 @@
 
 // Display names for better interpretability
 const DISPLAY_NAMES = {
-    // Legacy names (from old structure)
-    'uncertainty_calibration': 'Confidence',
-    'instruction_boundary': 'Literalness',
-    'commitment_strength': 'Assertiveness',
-    'retrieval_construction': 'Retrieval',
-    'convergent_divergent': 'Thinking Style',
-    'abstract_concrete': 'Abstraction Level',
-    'temporal_focus': 'Temporal Orientation',
-    'cognitive_load': 'Complexity',
-    'context_adherence': 'Context Following',
-    'emotional_valence': 'Emotional Tone',
-    'paranoia_trust': 'Trust Level',
-    'power_dynamics': 'Authority Tone',
-    'serial_parallel': 'Processing Style',
-    'local_global': 'Focus Scope',
-
-    // New categorized trait names
     'abstractness': 'Abstractness',
     'authority': 'Authority',
     'compliance': 'Compliance',
@@ -222,6 +205,3 @@ export {
     getMethodColors,
     getPlotlyLayout,
 };
-
-// Keep window.* for legacy consumers that haven't migrated to ES imports.
-window.getCssVar = getCssVar;

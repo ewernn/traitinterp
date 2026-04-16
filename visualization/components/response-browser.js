@@ -618,16 +618,3 @@ export {
     fetchAvailableResponses,
     responseBrowserState,
 };
-
-// Keep window.* namespace for backward compat
-window.responseBrowser = {
-    setTraitResultsCache,
-    renderResponseBrowserForTrait,
-    fetchAvailableResponses,
-    // Expose state for debugging
-    getState: () => responseBrowserState,
-};
-
-// Also export main function directly for backwards compatibility
-window.renderResponseBrowserForTrait = renderResponseBrowserForTrait;
-window.fetchAvailableResponses = fetchAvailableResponses;
