@@ -56,45 +56,42 @@ parse_r2_args() {
 }
 
 # ─── Exclude list builder ────────────────────────────────────────────────────
+#
+# rclone's **/ prefix doesn't match at root level when --only scopes paths to
+# experiments/{name}/, so we need both rooted and **/-prefixed patterns. Use
+# the helpers below so you only write the name once.
+
+# Exclude a directory at any depth (e.g. "activations" → activations/** + **/activations/**)
+exclude_dir() {
+    EXCLUDES+=(--exclude "$1/**" --exclude "**/$1/**")
+}
+
+# Exclude a filename at any depth (e.g. ".DS_Store" → .DS_Store + **/.DS_Store)
+exclude_file() {
+    EXCLUDES+=(--exclude "$1" --exclude "**/$1")
+}
 
 build_excludes() {
     EXCLUDES=()
 
     # ── Always exclude: junk ──
-    # rclone's **/ prefix doesn't match at root level when --only scopes paths.
-    # Always include both rooted and **/-prefixed patterns.
-    EXCLUDES+=(
-        --exclude "*.pyc"
-        --exclude "__pycache__/**"
-        --exclude "**/__pycache__/**"
-        --exclude ".DS_Store"
-        --exclude "**/.DS_Store"
-    )
+    EXCLUDES+=(--exclude "*.pyc")
+    exclude_dir "__pycache__"
+    exclude_file ".DS_Store"
 
     # ── Always exclude: regenerable data ──
-    EXCLUDES+=(
-        --exclude "activations/**"
-        --exclude "**/activations/**"
-        --exclude "inference/*/raw/**"
-        --exclude "**/inference/*/raw/**"
-        --exclude "inference/raw/**"
-        --exclude "**/inference/raw/**"
-    )
+    exclude_dir "activations"
+    exclude_dir "inference/*/raw"
+    exclude_dir "inference/raw"
 
     # ── Always exclude: training artifacts ──
-    EXCLUDES+=(
-        --exclude "optimizer.pt"
-        --exclude "**/optimizer.pt"
-        --exclude "scheduler.pt"
-        --exclude "**/scheduler.pt"
-        --exclude "*.bin"
-        --exclude "*.pth"
-        --exclude "*.jinja"
-        --exclude ".cache/**"
-        --exclude "**/.cache/**"
-    )
+    exclude_file "optimizer.pt"
+    exclude_file "scheduler.pt"
+    EXCLUDES+=(--exclude "*.bin" --exclude "*.pth" --exclude "*.jinja")
+    exclude_dir ".cache"
 
     # ── Always exclude: redundant tokenizer copies in checkpoints ──
+    # (always nested inside finetune/checkpoint-*/, so **/ prefix works)
     EXCLUDES+=(
         --exclude "**/checkpoint-*/tokenizer.json"
         --exclude "**/checkpoint-*/vocab.json"
@@ -103,33 +100,21 @@ build_excludes() {
         --exclude "**/checkpoint-*/added_tokens.json"
     )
 
-    # ── Heavy/completed experiments: excluded by default ──
-    # Use --only <name> to sync these directly
+    # ── Heavy/completed experiments: excluded by default (use --only to sync) ──
+    # These are top-level experiment dirs — only rooted pattern needed.
     EXCLUDES+=(
         --exclude "viz_findings/**"
         --exclude "audit-bleachers/**"    # 10GB: 168 prompt sets × 57 variants
         --exclude "obfuscation-atlas/**/projections/**"  # 85GB: 42 layers × 113 traits × 874 prompts × 3 variants
+        --exclude "archive/**"  # archived experiments at experiments/archive/
     )
 
-    # ── Archive: excluded from --all, pull explicitly with --only archive ──
-    # Archived experiments live at experiments/archive/ on R2.
-    # Old experiments also remain at r2:trait-interp-bucket/experiments_archive/ (separate prefix).
-    EXCLUDES+=(--exclude "archive/**")
-
     # ── LoRAs: excluded by default ──
-    # Both rooted (finetune/**) and nested (**/finetune/**) patterns needed
-    # because --only scopes the sync root to the experiment directory
     if [[ "$INCLUDE_LORAS" == false ]]; then
-        EXCLUDES+=(
-            --exclude "finetune/**"
-            --exclude "**/finetune/**"
-            --exclude "turner_loras/**"
-            --exclude "**/turner_loras/**"
-            --exclude "sriram_loras/**"
-            --exclude "**/sriram_loras/**"
-            --exclude "lora/**"
-            --exclude "**/lora/**"
-        )
+        exclude_dir "finetune"
+        exclude_dir "turner_loras"
+        exclude_dir "sriram_loras"
+        exclude_dir "lora"
     fi
 
     # ── Trajectories: excluded by default ──
