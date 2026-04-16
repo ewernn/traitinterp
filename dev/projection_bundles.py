@@ -97,10 +97,12 @@ def _pack_one(leaf: Path, force: bool, dry_run: bool) -> tuple[Path, str, int]:
             return (leaf, "skip_current", len(json_files))
 
     # Quiesce check: no source file changed within the last N seconds.
-    now = time.time()
-    latest_src = max(f.stat().st_mtime for f in json_files)
-    if now - latest_src < QUIESCE_SECONDS:
-        return (leaf, f"skip_recent_write({int(now-latest_src)}s)", len(json_files))
+    # Bypassed by --force (user is explicitly sequencing pack after writes).
+    if not force:
+        now = time.time()
+        latest_src = max(f.stat().st_mtime for f in json_files)
+        if now - latest_src < QUIESCE_SECONDS:
+            return (leaf, f"skip_recent_write({int(now-latest_src)}s)", len(json_files))
 
     if dry_run:
         return (leaf, "would_pack", len(json_files))
