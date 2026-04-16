@@ -42,7 +42,9 @@ visualization/
 │   ├── live-chat-chart.js    # Real-time Plotly chart for live chat trait scores
 │   ├── response-browser.js   # Steering response table with sort/filter/expand
 │   ├── top-spans.js          # Cross-prompt span analysis (highest-delta token windows)
-│   └── custom-blocks.js      # :::block::: syntax parser/renderer for markdown views
+│   ├── custom-blocks.js      # :::block::: syntax parser/renderer for markdown views
+│   ├── styled-select.js      # Dropdown primitive (replaces native <select>; .exp-dropdown style)
+│   └── styled-chip-group.js  # Chip-group primitive (single/multi/min-one/toggle-off selection)
 │
 ├── views/                    # One module per dashboard tab
 │   ├── overview.js           # Renders docs/overview.md
@@ -68,7 +70,7 @@ visualization/
 │
 └── dev/                      # Development-only files
     ├── design.html           # CSS design playground (served at /design)
-    └── archived/             # Archived/deprecated view modules
+    └── ux-preview.html       # UX component preview page
 ```
 
 ---

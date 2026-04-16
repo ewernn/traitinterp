@@ -11,6 +11,7 @@ import { getCssVar, getTokenHighlightColors } from '../core/display.js';
 import { fetchJSON, formatTokenDisplay, escapeHtml } from '../core/utils.js';
 import { getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderPromptSetSidebar } from './prompt-set-sidebar.js';
+import { renderChipGroup, wireChipGroup } from './styled-chip-group.js';
 
 // Views that show the prompt picker
 const INFERENCE_VIEWS = ['inference'];
@@ -94,19 +95,28 @@ async function renderPromptPicker() {
 
     const isReplaySuffix = window.state.experimentData?.experimentConfig?.diff_convention === 'replay_suffix';
 
-    let promptSetButtons = '';
+    // Build prompt set chip items
+    const promptSetItems = [];
     for (const [setName, promptIds] of Object.entries(window.state.promptsWithData)) {
         if (promptIds.length === 0) continue;
         // Hide replay prompt sets — they're internal to the replay_suffix convention
         if (isReplaySuffix && setName.includes('_replay_')) continue;
-        const isActive = setName === window.state.currentPromptSet ? 'active' : '';
-        const displayName = setName.replace(/_/g, ' ');
-        // Check if this set has any comparison variants
         const variants = window.state.variantsPerPromptSet?.[setName] || [];
         const hasComparisonData = variants.some(v => v !== appVariant);
-        const noDiffClass = isDiffActive && !hasComparisonData ? 'pp-no-diff' : '';
-        promptSetButtons += `<button class="btn btn-xs pp-btn pp-set-btn ${isActive} ${noDiffClass}" data-set="${setName}">${displayName}</button>`;
+        const noDiff = isDiffActive && !hasComparisonData;
+        promptSetItems.push({
+            value: setName,
+            label: setName.replace(/_/g, ' '),
+            className: noDiff ? 'pp-no-diff' : undefined,
+        });
     }
+    const promptSetChips = renderChipGroup({
+        id: 'pp-set-group',
+        mode: 'single',
+        items: promptSetItems,
+        selected: window.state.currentPromptSet,
+        onChange: (newSet) => selectPromptSet(newSet),
+    });
 
     // Build prompt ID buttons (with pagination for large sets)
     const currentSetPromptIds = window.state.promptsWithData[window.state.currentPromptSet] || [];
@@ -225,7 +235,7 @@ async function renderPromptPicker() {
             <div class="pp-picker">
                 <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Set:</span>
-                    <div class="pp-sets">${promptSetButtons}</div>
+                    ${promptSetChips}
                 </div>
                 <div class="pp-row${window.state.promptSetSidebarOpen ? ' pp-row-hidden' : ''}">
                     <span class="pp-row-label">Prompt:</span>
@@ -388,10 +398,8 @@ function setupPromptPickerListeners() {
         });
     }
 
-    // Prompt set buttons (inline pills)
-    container.querySelectorAll('.pp-set-btn').forEach(btn => {
-        btn.addEventListener('click', () => selectPromptSet(btn.dataset.set));
-    });
+    // Prompt set chip-group — handler lives in onChange.
+    wireChipGroup(container);
 
     // Pagination buttons (use mousedown to ensure event fires before any re-render)
     const prevBtn = container.querySelector('#pp-prev');

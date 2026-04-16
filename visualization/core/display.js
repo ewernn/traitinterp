@@ -223,5 +223,5 @@ export {
     getPlotlyLayout,
 };
 
-// Keep window.* for remaining consumers (dev/archived files)
+// Keep window.* for legacy consumers that haven't migrated to ES imports.
 window.getCssVar = getCssVar;

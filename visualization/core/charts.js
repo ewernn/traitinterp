@@ -9,6 +9,10 @@ import { getPlotlyLayout, getCssVar, hexToRgba } from './display.js';
 // Standard Plotly render options (always the same)
 const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
 
+// Default line style — spread into any `line: {...}` to get smoothed plots.
+//   line: { color, width, ...LINE_SPLINE }
+const LINE_SPLINE = { shape: 'spline', smoothing: 0.5 };
+
 // Chart type presets (loose - all properties overridable)
 const CHART_PRESETS = {
     timeSeries: {
@@ -497,6 +501,7 @@ function buildCategoryLegendHtml(categoryData) {
 // ES module exports
 export {
     PLOTLY_CONFIG,
+    LINE_SPLINE,
     CHART_PRESETS,
     SENTENCE_CATEGORIES,
     buildChartLayout,
