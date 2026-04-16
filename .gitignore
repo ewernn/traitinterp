@@ -1,5 +1,6 @@
 .nvimlog
 .pytest_cache/
+.claude/
 
 # macOS iCloud sync duplicates (files with " 2", " 3" etc in name)
 *\ 2*

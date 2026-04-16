@@ -119,6 +119,7 @@ analysis:
   per_token: "experiments/{experiment}/analysis/per_token/{prompt_set}"
   category: "experiments/{experiment}/analysis/{category}"
   trait_correlation: "experiments/{experiment}/analysis/trait_correlation/{prompt_set}.json"
+  max_activating_corpus: "experiments/{experiment}/analysis/max_activating_corpus.json"
 
 # =============================================================================
 # MODEL DIFF (cross-variant activation comparison)
