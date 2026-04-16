@@ -187,8 +187,15 @@ def _select_from_extraction_eval(
     layer: Optional[int] = None,
     method: Optional[str] = None,
 ) -> Optional[VectorResult]:
-    """Fallback to extraction_evaluation.json's highest combined_score with polarity_correct.
-    Returns None when the file is missing or no rows survive the caller's filters."""
+    """Fallback via extraction_evaluation.json's validation hierarchy:
+
+        1. OOD validation effect size (when ood_effect_size is present) —
+           ranks by ood_effect_size, polarity_correct required.
+        2. In-distribution combined_score — ranks by combined_score,
+           polarity_correct required.
+
+    Returns None when the eval file is missing or no rows survive the filters.
+    """
     eval_path = get_path('extraction_eval.evaluation', experiment=experiment)
     if not eval_path.exists():
         return None
@@ -205,11 +212,19 @@ def _select_from_extraction_eval(
     ]
     if not rows:
         return None
-    best = max(rows, key=lambda r: r.get('combined_score') or 0)
+
+    # Prefer OOD when any row carries ood_effect_size (and polarity-correct by that metric).
+    ood_rows = [r for r in rows if r.get('ood_effect_size') is not None and r.get('ood_polarity_correct', True)]
+    if ood_rows:
+        best = max(ood_rows, key=lambda r: r['ood_effect_size'])
+        source = 'ood'
+    else:
+        best = max(rows, key=lambda r: r.get('combined_score') or 0)
+        source = 'extraction_eval'
     return VectorResult(
         layer=best['layer'], method=best['method'], position=best['position'], component=best['component'],
         delta=None, direction=None, coefficient=None, coherence=None,
-        source='extraction_eval',
+        source=source,
     )
 
 
