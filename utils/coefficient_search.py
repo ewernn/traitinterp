@@ -37,6 +37,8 @@ SEARCH_COHERENCE_MARGIN = 3
 
 if TYPE_CHECKING:
     from utils.backends import GenerationBackend
+    from utils.vectors import LoadedVector
+    from utils.steering_eval import TraitSweepContext
 
 
 def _print_best_results(states, sign=None, threshold=None, group_by_trait=False):
@@ -81,7 +83,7 @@ def _update_coefficients(states, threshold, up_mult, down_mult, momentum):
 
 async def batched_adaptive_search(
     backend: "GenerationBackend",
-    layer_data: List[Dict],  # [{layer, vector, base_coef}, ...]
+    layer_data: "List[LoadedVector]",
     questions: List[str],
     trait_name: str,
     trait_definition: str,
@@ -439,7 +441,7 @@ def _process_config_result(
 
 async def multi_trait_batched_adaptive_search(
     backend: "GenerationBackend",
-    trait_configs: List[Dict],
+    trait_configs: "List[TraitSweepContext]",
     judge: TraitJudge,
     use_chat_template: bool,
     component: str,
@@ -468,10 +470,7 @@ async def multi_trait_batched_adaptive_search(
     Each trait carries its own direction (from trait_config.direction).
 
     Args:
-        trait_configs: List of dicts, one per trait, each containing:
-            trait, trait_name, trait_definition, eval_prompt, questions,
-            formatted_questions, layer_data, cached_runs, experiment, vector_experiment,
-            direction
+        trait_configs: List of TraitSweepContext, one per trait.
     """
     model = backend.model
     tokenizer = backend.tokenizer
