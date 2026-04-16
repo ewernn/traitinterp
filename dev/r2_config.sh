@@ -15,6 +15,7 @@ INCLUDE_TRAJECTORIES=false
 DRY_RUN=""
 ONLY=""  # comma-separated experiment names
 ALL=false  # --all flag to opt into full-repo sync
+PACKED=false  # --packed: bundle projections into .tar.zst for transport
 
 # ─── Argument parsing ────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ parse_r2_args() {
 
             # Utilities
             --dry-run) DRY_RUN="--dry-run" ;;
+            --packed)  PACKED=true ;;
 
             # Experiment scoping
             --only)  ;; # next arg is the value, handled below
@@ -125,6 +127,14 @@ build_excludes() {
         EXCLUDES+=(
             --exclude "*_trajectories.pt"
             --exclude "**/em_probe/**/data*.pt"
+        )
+    fi
+
+    # ── Packed mode: transport only .tar.zst bundles under projections/, ──
+    # ── skip the scattered per-prompt-set JSONs.                          ──
+    if [[ "$PACKED" == true ]]; then
+        EXCLUDES+=(
+            --exclude "**/inference/*/projections/**/*.json"
         )
     fi
 }

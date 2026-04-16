@@ -39,6 +39,16 @@ echo "Source: $LOCAL_DIR"
 echo "Destination: $R2_REMOTE"
 [[ "$INCLUDE_LORAS" == true ]]        && echo "  + LoRAs included"
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
+[[ "$PACKED" == true ]]               && echo "  + PACKED mode (bundled projections)"
+
+# Pack projections into .tar.zst bundles before pushing
+if [[ "$PACKED" == true ]]; then
+    echo ""
+    echo "[packed] Packing projections in $LOCAL_DIR..."
+    python3 "$SCRIPT_DIR/projection_bundles.py" pack "$LOCAL_DIR" --workers 16
+    echo "[packed] Pack complete; continuing with push."
+    echo ""
+fi
 
 COMMON_FLAGS=(
     --progress

@@ -42,6 +42,7 @@ else
 fi
 [[ "$INCLUDE_LORAS" == true ]]        && echo "  + LoRAs included"
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
+[[ "$PACKED" == true ]]               && echo "  + PACKED mode (bundled projections)"
 
 COMMON_FLAGS=(
     --progress
@@ -91,6 +92,13 @@ case $MODE in
             "${COMMON_FLAGS[@]}"
         ;;
 esac
+
+if [[ "$PACKED" == true ]]; then
+    echo ""
+    echo "[packed] Unpacking bundles in $LOCAL_DIR..."
+    python3 "$SCRIPT_DIR/projection_bundles.py" unpack "$LOCAL_DIR" --workers 16
+    echo "[packed] Unpack complete."
+fi
 
 echo ""
 echo "Pull complete!"
