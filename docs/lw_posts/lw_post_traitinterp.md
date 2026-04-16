@@ -1,75 +1,86 @@
-**tl;dr** I replicated Anthropic's Emotion Concepts paper in a day. I used the [traitinterp](https://github.com/ewernn/traitinterp) repo to do it. This post is about the repo, and I throw in some of my own explorations using the repo at the bottom. I hope traitinterp can enable others to quickstart and rapidly experiment on the inner workings of LLMs via linear probes.
+tl;dr This post is about the repo I used to replicate Anthropic's Emotion Concepts paper. I hope github.com/ewernn/traitinterp can enable others to quick start and rapidly experiment on LLMs via linear probes. The replication is available here.
 
 ## Intro
 
-Over the last few months, I've used traitinterp to replicate interp papers ([Emotion Concepts](https://transformer-circuits.pub/2026/emotions/), [Assistant Axis](https://alignment.anthropic.com/2026/psm/), [Persona Vectors](https://arxiv.org/abs/2406.12094), [Arditi et al. refusal direction](https://arxiv.org/abs/2406.11717)) and generate my own findings.
+Over the last few months, I've used traitinterp to replicate linear probe interp papers (including Emotion Concepts, Assistant Axis, and Persona Vectors which inspired this repo) and run my own experiments.
 
-The rest of this post is about the library that made that possible. I'll share how traitinterp is organized, list a subset of its capabilities, and show a simple demonstration to make your own trait vectors. I also put together a simple demo at [traitinterp.com/?tab=live-chat](https://traitinterp.com/?tab=live-chat) if you want to see trait vectors in action on your own prompts.
+The rest of this post is about the repo. I'll share how traitinterp is organized, list a subset of its capabilities, and include a simple demonstration to make your own trait vectors. I also put together a simple demo at [traitinterp.com/?tab=live-chat](https://traitinterp.com/?tab=live-chat) if you want to see trait vectors in action on your own prompts.
 
 In this post, "trait vector" = "linear probe" = "steering vector" = "RepE".
 
 ## How traitinterp is organized
 
-![traitinterp pipeline](/docs/lw_posts/traitinterp_diagram.png)
-*The traitinterp pipeline: extract a trait vector, validate it, then use it to detect or steer.*
-
 The pipeline has three stages: extract a trait vector from a model, validate it, then use it to detect or steer.
+
+*Figure 1: traitinterp pipeline: extract a trait vector, validate it, then use it to detect or steer.*
 
 ### Extraction
 
-> For simplicity in this post, we'll assume our trait vectors are made from contrasting pairs.
+*(for simplicity, we'll assume our trait vectors are made from contrasting pairs)*
 
-For extraction, traitinterp supports various extraction methods (like `mean_diff`) from various internal locations (like post-MLP residual or `v_proj`) across various tokens in a sequence (like `prompt[-1]` or `response[:]`) using various datasets (like contrasting pairs). Here is an example.
+For extraction, traitinterp supports various extraction methods (like `mean_diff`) from various internal locations (like post-mlp residual or `v_proj`) across various tokens in a sequence (like `prompt[-1]` or `response[:]`) using various datasets (like contrasting pairs). Here is the flow:
 
-**1. Make a trait dataset.** (we give you datasets to try out) These can be any behavioral traits, emotions, syntax, tone, or any linear "feature" that could be "off" or "on", so you can create contrasting pairs of `{trait}` being "off" and "on". For example, the first sample in `starter_traits/sycophancy` uses contrasting system prompts to the same question.
+**1. Make a trait dataset.** (we give you datasets to try out)
+
+We call them "traits", but these can be any behavioral traits, emotions, syntax, tone, or any linear "feature" that could be "off" or "on" where you can create contrasting pairs of `{trait}` being "off" and "on". For example, the first sample in `starter_traits/sycophancy` uses contrasting system prompts to the same question.
 
 ```
-datasets/traits/starter_traits/sycophancy
-> positive: {"system_prompt": "Your primary goal is to please the user. Agree with their …"}
-> negative: {"system_prompt": "Prioritize accuracy…, even if it means disagreeing…"}
-> prompt:   {"prompt": "Don't you think social media has made our society more shallow…"}
+datasets/traits/starter_traits/sycophancy/positive.json
+{{"system_prompt": "Your primary goal is to please the user. ...", \
+"prompt": "Don't you think social media has made our society more shallow…"}, ...}
+datasets/traits/starter_traits/sycophancy/negative.json
+{{"system_prompt": "Prioritize accuracy..., even if it means disagreeing...", \
+"prompt": "Don't you think social media has made our society more shallow…"}, ...}
 ```
 
-**2. Choose a HuggingFace model.** (e.g. `Qwen/Qwen3.5-9B`)
+**2. Choose a HuggingFace model.**
+
+Here we choose `Qwen/Qwen3.5-9B` and make `experiments/starter/config.json`
 
 ```json
-experiments/live-chat/config.json
 {"defaults": {"extraction": "instruct", "application": "instruct" },
  "model_variants": {"instruct": {"model": "Qwen/Qwen3.5-9B"}}}
 ```
 
-**3. Make trait vector.** Run model on dataset and extract from the position you think will capture `{trait}` the best.
+**3. Make a trait vector.**
 
-Some popular locations for extraction are from the Assistant's `:` token or the entire response. The Assistant's `:` token (`prompt[-1]`) captures a decision/summary of how the model plans to respond (e.g. for refusal, where the model has typically decided already whether to refuse a harmful request or not). The entire response (`response[:]`) is used to capture a persistent theme of the response (e.g. for sycophancy).
+Run model on dataset and extract from the position you think will capture `{trait}` best.
+
+Some popular locations for extraction are from the Assistant's `:` token or the entire response. The Assistant's `:` token (`prompt[-1]`) captures a decision/summary of how the model plans to respond (e.g. for refusal, where the model has typically decided already whether to refuse a harmful request or not). The entire response (`response[:]`) is used to capture a persistent theme in the response (e.g. here for sycophancy).
 
 ```bash
-python run_extraction_pipeline.py --experiment live-chat --traits starter_traits/sycophancy
+python run_extron_pipeline.py --experiment starter --traits starter_traits/sycophancy
 ```
 
-Now you have your first trait vectors at `experiments/live-chat/extraction/starter_traits/sycophancy/instruct/vectors/response_all/residual/probe/layer{n}.pt`.
+Now you have your first trait vectors at `experiments/starter/extraction/starter_traits/sycophancy/instruct/vectors/response_all/residual/probe/layer{n}.pt`!
 
 ### Validation
 
 What layer should you choose your trait vector from? traitinterp chooses automatically according to a hierarchy unless specified, so **everything will work even if you don't read this section**.
 
-`get_best_vector()` walks this hierarchy to return the most effective vector, but alternate validation methods are supported.
+A `get_best_vector()` method walks the following hierarchy to return the most effective vector, but alternate validation methods are supported.
 
-1. **Causal steering score** *(gold standard)*. Steer with the vector, see if model behavior changes. We run a coefficient search at each candidate layer with an LLM judge scoring trait expression and coherence per response. Coherence stays stable as you increase the coefficient, then collapses off a cliff — the search finds the edge of the cliff.
-2. **OOD validation effect size.** Add `ood_positive.jsonl` and `ood_negative.jsonl` next to your training scenarios and the pipeline reports held-out Cohen's d on out-of-distribution pairs.
-3. **In-distribution validation effect size.** Held-out 10% of training scenarios. Always computed (`run_extraction_pipeline.py` holds out 10% by default and calculates the metrics).
+1. **Causal steering score** *(gold standard)*. Steer with the vector, see if model behavior changes. We run a coefficient search at each candidate layer with an LLM judge scoring trait expression and coherence per response out of 100. Coherence stays stable up until a cliff, where it falls off sharply. Our search finds the edge of the cliff.
+2. **OOD validation effect size.** Add `ood_positive.jsonl` and `ood_negative.jsonl` to your trait dataset.
+3. **In-distribution validation effect size.** `run_extraction_pipeline.py` holds out 10% of scenarios by default and computes metrics.
 
-<details>
-<summary><strong>Steering eval details (hyperparameters, judge, coefficient search)</strong></summary>
+**Steering eval details (hyperparameters, judge, coefficient search)**
 
-I'll explain using the default hyperparams, but they're all exposed as kwargs. I make a set of 5 steering questions that don't exhibit `{trait}`. An LLM judge (gpt-4.1-mini) scores (via logprob) `trait_score` and `coherence` out of 100 against a `{trait}/definition.txt`, and I get a baseline `trait_score` out of 100. I then choose layers from 30%–60% depth and run an automated coefficient search for each layer for 5 steps to find the highest `trait_score` while maintaining `coherence > 77`. The initial coefficient guess (`base_coef`) is such that, for a given layer i, the steering applied is proportional to the residual stream magnitude (`trait_vector_i * base_coef = ||residual_i||`).
+I'll explain using the default hyperparams, but they're all exposed as kwargs.
 
-</details>
+An LLM judge (gpt-4.1-mini) scores (via logprobs) `trait_score` and `coherence` out of 100 against a `{trait}/definition.txt`. We maximize `trait_delta = trait_score - trait_baseline`.
+
+To start, we make a set of 5 steering questions that don't exhibit `{trait}` to get a low `trait_baseline` out of 100, averaged over the responses (e.g. for sycophancy, a low scoring steering question might be "I think the world is flat. Do you agree?")
+
+Then we choose layers from 30%–60% depth and run an automated coefficient search for each layer for 5 steps to find the highest `trait_score` while maintaining `coherence > 77`.
+
+The initial coefficient guess (`base_coef_i`) is such that, for a given layer i, the steering applied is proportional to the respective residual stream magnitude (`base_coef_i * trait_vector_i = ||residual_i||`).
+
+Then, we run the coefficient search to maximize `trait_delta` at each layer while staying above the coherence cliff. `for _ in range(5): coef *= 1.3 if coherence > 77 else 0.85`. Now, we pick the trait vector with the highest `trait_delta` and say that it "causally influences the LLMs outputs".
 
 ```bash
-python steering/run_steering_eval.py --experiment live-chat --traits starter_traits/sycophancy
+python steering/run_steering_eval.py --experiment starter --traits starter_traits/sycophancy
 ```
-
-*{steering screenshot}*
 
 ### Inference
 
@@ -82,46 +93,38 @@ Now we have our trait vectors and want to use them for detecting and steering be
 To get projection scores on some prompts for all traits in the live-chat experiment, we simply run
 
 ```bash
-python inference/run_inference_pipeline.py --experiment live-chat --prompt-set starter_prompts
+python inference/run_inference_pipeline.py --experiment starter --prompt-set starter_prompts
 ```
-
-*{inference screenshot}*
 
 ## Further capabilities
 
-Beyond the basics, traitinterp exposes 9 distinct end-to-end research operations across ~190 CLI flags. A few worth highlighting:
+traitinterp exposes 9 distinct end-to-end research operations across ~190 CLI flags. Here are a few worth highlighting.
 
 - **Automated LLM judge coefficient search with coherence gating** to precisely find the pareto frontier of steering strength for each vector.
 - **Automated batch sizing** fits as many traits × layers × prompts as your memory will hold.
-- **OOM recovery, tensor parallelism, fused MoE kernels, attention sharding** — I steered Kimi K2 1T with this.
-- **Stream-through per-token projection** — dot products happen inside GPU hooks, so only the score tensors cross the PCIe bus, not the activations themselves.
-- **Cross-variant model-diff toolkit** for auditing finetunes — Cohen's d per layer, per-token diff between variants, top-activating spans.
-- **Position and layer DSLs** with the same syntax for extraction, steering, and inference (`response[:5]`, `prompt[-1]`, `turn[-1]:thinking[:]`…).
+- **OOM recovery, tensor parallelism, fused MoE kernels, attention sharding.** (I steered Kimi K2 1T with this)
+- **Stream-through per-token projection.** Dot products happen inside GPU hooks, so only the score tensors cross the PCIe bus, not the activations themselves.
+- **Cross-variant model-diff toolkit** for auditing finetunes. Cohen's d per layer, per-token diff between variants, top-activating spans.
+- **Position and layer DSLs** with the same syntax for extraction, steering, and inference (`response[:5]`, `prompt[-1]`, `turn[-1]:thinking[:]`, ...).
 - **Interactive research dashboard** for extraction, steering, and inference, with primitives that make it easy to add custom views for your own experiments.
 
 …and more.
 
-## What it's not
-
-- **Not a general intervention primitives library** (unlike nnsight). It's a higher-level opinionated pipeline built around one workflow (extract → validate → monitor/steer).
-- **Not architecture-abstracted.** Loads HuggingFace models directly with no `HookedTransformer` translation layer — pay a small cost when new architectures need a one-line component-detection addition, gain direct compatibility with any HF model at any quantization including MoE.
-
 ## Some of my own explorations
 
-Three replications I've run using this repo. Each links to a detailed writeup with interactive data at [traitinterp.com](https://traitinterp.com/?tab=findings).
+Three replications I've run using this repo. Each links to a detailed writeup with interactive data at [traitinterp.com/?tab=findings](https://traitinterp.com/?tab=findings).
 
-**Replicating Emotion Concepts on Llama 3.3 70B.** Full replication of Anthropic's Emotion Concepts paper on open-source models — 170+ emotion probes, the valence/arousal PCA structure, preference Elo shifts under steering. Done in a day using this pipeline. [→ finding](https://traitinterp.com/?tab=findings#emotion-concepts-replication) · [LW discussion](https://www.lesswrong.com/posts/imKPyHDBJKSeFPQ5r/registering-a-prediction-based-on-anthropic-s-emotions-paper)
+**Replicating Emotion Concepts on Llama 3.3 70B.** Full replication of Anthropic's Emotion Concepts paper on open-source models — 170+ emotion probes, the valence/arousal PCA structure, preference Elo shifts under steering. Done in a day using this pipeline. https://traitinterp.com/?tab=findings#emotion-concepts-replication
 
-**Replicating the Assistant Axis at 1,600x lower cost.** A 100-pair contrastive dataset (~200 rollouts) recovers ~64% of the axis Anthropic's full pipeline finds (~330,000 rollouts) — and steers just as effectively on Llama 3.3 70B. [→ finding](https://traitinterp.com/?tab=findings#assistant-axis-replication) · [LW discussion](https://www.lesswrong.com/posts/dfoty34sT7CSKeJNn/the-persona-selection-model)
+**Replicating the Assistant Axis at 1,600x lower cost.** A 100-pair contrastive dataset (200 rollouts) recovers ~64% of the axis Anthropic's full pipeline finds (~330,000 rollouts) — and steers just as effectively on Llama 3.3 70B. [→ finding](https://traitinterp.com/?tab=findings#assistant-axis-replication) · [LW discussion](https://www.lesswrong.com/posts/dfoty34sT7CSKeJNn/the-persona-selection-model)
 
 **Replicating Persona Vectors with natural elicitation.** Base-model extraction from contrasting scenarios achieves 91-104% of Anthropic's instruction-based steering effectiveness across evil, sycophancy, and hallucination — and produces more authentic behavior, since it extracts the trait direction rather than a learned persona. [→ finding](https://traitinterp.com/?tab=findings#comparison-persona-vectors) · [LW discussion](https://www.lesswrong.com/posts/M77rptNcp5B8JugRx/persona-vectors-monitoring-and-controlling-character-traits)
 
 More findings — convolution detector for reward hacks, base-model probes that suppress reward hacking, MATS behavioral probes for emergent misalignment — are [on the site](https://traitinterp.com/?tab=findings). I'll write those up here when they're ready.
 
-## Appendix: full capabilities
+## Full capabilities
 
-<details>
-<summary><strong>Everything traitinterp does, grouped by category</strong></summary>
+**Everything traitinterp does, grouped by category**
 
 **Extraction**
 - 5 methods: `probe`, `mean_diff`, `gradient`, `rfm`, `random_baseline`
@@ -200,8 +203,6 @@ More findings — convolution detector for reward hacks, base-model probes that 
 - `--vector-from-trait`: transfer vectors across experiments (base → instruct, model → model)
 - `--capture`: save raw activations once, reuse forever
 - `--dry-run`: preview resolved config before launching
-
-</details>
 
 ## In conclusion
 

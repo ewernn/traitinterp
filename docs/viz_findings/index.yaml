@@ -7,7 +7,7 @@ findings:
   - emotion-concepts-replication.md
   - assistant-axis-replication.md
   - comparison-persona-vectors.md
-  - separator: most of these are unfinished but feel free to skim
+  - separator: most of these below are outdated or incomplete and AI generated, but feel free to skim. Cleaning these up by the end of April 2026
   - rm-sycophancy.md
   - convolution-detector.md
   - liars-bench-deception.md
