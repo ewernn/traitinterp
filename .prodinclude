@@ -24,6 +24,7 @@ config/models/
 # ── Datasets ──
 datasets/traits/starter_traits/
 datasets/inference/starter_prompts/
+datasets/llm_judge/
 # Active traits referenced by viz_findings:
 datasets/traits/rm_hack/
 

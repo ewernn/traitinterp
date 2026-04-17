@@ -35,6 +35,7 @@ config/models/
 # ── Datasets ──
 datasets/traits/starter_traits/
 datasets/inference/starter_prompts/
+datasets/llm_judge/
 
 # ── Replication showcase (emotion concepts) ──
 # Landing page for the Sofroniew et al. 2026 replication — points at the
