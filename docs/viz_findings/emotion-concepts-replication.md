@@ -2,7 +2,7 @@
 title: "Replicating Emotion Concepts on Llama 3.3 70B"
 preview: "Side-by-side comparison of Anthropic's Emotion Concepts findings on Sonnet 4.5 vs Llama 3.3 70B Instruct"
 date: "Apr 2026"
-tier: major
+# tier: major
 thumbnail:
   title: "PC1 vs Valence"
   bars:
@@ -26,9 +26,9 @@ curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts
     | tar --zstd -xf - -C experiments/
 ```
 
-Verify with the [SHA-256](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst.sha256) or browse the [file listing](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.manifest.txt) before downloading. Step-by-step: [`docs/replicate_ant_emotion_concepts.md`](../replicate_ant_emotion_concepts.md).
+Verify with the [SHA-256](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst.sha256) or browse the [file listing](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.manifest.txt) before downloading. Step-by-step: [`docs/replicate_ant_emotion_concepts.md`](/docs/replicate_ant_emotion_concepts/).
 
-**Figure attribution.** Left-column figures in the side-by-side comparisons below are screenshots from Sofroniew et al. 2026 ([Anthropic's *Emotion Concepts* paper](https://www.anthropic.com/research/emotion-concepts-function-lm)), reproduced under fair use for direct comparison. Right-column figures are our own Llama 3.3 70B replications.
+**Figure attribution.** Left-column figures in the side-by-side comparisons below are screenshots from Sofroniew et al. 2026 ([Anthropic's *Emotion Concepts* paper](https://www.anthropic.com/research/emotion-concepts-function)), reproduced under fair use for direct comparison. Right-column figures are our own Llama 3.3 70B replications.
 
 </details>
 
@@ -53,20 +53,8 @@ Data files: `logit_lens_L49.json`, `implicit_emotion.json`, `numerical_intensity
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/table1.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/table1_ours.png "Llama 3.3 70B"
-caption: "Table 1 — Top tokens per emotion vector via unembedding projection. Both models surface semantically relevant tokens (somatic cues, body language, affect words). Llama shows more BPE fragmentation due to tokenizer differences; Guilty leaks onto Nervous vocabulary (see caveat below)."
+caption: "Table 1 — Top tokens per emotion vector via unembedding projection. Both models surface semantically relevant tokens (somatic cues, body language, affect words)."
 :::
-
-<details class="viz-collapse">
-<summary>Table 1 — vector-quality caveats</summary>
-
-- **Guilty vector reads like Nervous.** Top-5 tokens for Guilty: `nerv, idget, Sweat, sud, nervous` — these are Nervous-style somatic tokens. Not a labeling swap (confirmed by inspecting `logit_lens_L49.json` directly); the Guilty probe itself projects onto nervous vocabulary. Most likely cause: 40 stories/emotion isn't enough to cleanly separate nearby emotions at extraction scale. At paper scale (1,200/emotion), Guilty separates from Nervous.
-- **Byte-fallback artifacts.** Empty `[]` brackets appear in Desperate ↑, Afraid ↑, Sad ↓; `�` (malformed UTF-8) in Angry ↑. Tokenizer placeholder noise — ideally filtered out during logit-lens reporting.
-- **Multilingual contamination.** Cyrillic `хо́лод` (cold), Vietnamese `lạnh`, Arabic `برد` (also cold) appear in Calm down-tokens. Llama's multilingual tokenizer exposes cross-lingual emotion vocabulary; Sonnet's tokenizer does not.
-- **BPE fragmentation.** `Sweat/sweating/sweat` × 3 in Afraid; `heavy` × 4 + `Heavy` in Sad. Paper's Claude tokenizer keeps multi-word emotion terms intact; Llama fragments them.
-- **Semantic register differs.** Paper favors direct emotion words (panic, terror, grief). Ours favors somatic/behavioral correlates (Sweat, gulp, swallow).
-- **Methodology**: logit lens at L49 (≈61% depth). 171 emotion vectors × unembedding projection; top 5 + bottom 5 tokens shown for 12 representative emotions.
-
-</details>
 
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig2.png "Sonnet 4.5"
@@ -77,18 +65,8 @@ caption: "Figure 2: Implicit emotion probes — 12 scenarios that imply emotions
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig3.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/fig3_ours.png "Llama 3.3 70B"
-caption: "Figure 3: Numerical intensity — probe activation tracks numerical quantities (Tylenol dose, hours fasting, age at death, etc). Both models show semantically appropriate monotonic trends."
+caption: "Figure 3: Numerical intensity — probe activation tracks numerical quantities (Tylenol dose, hours fasting, age at death, etc)."
 :::
-
-<details class="viz-collapse">
-<summary>Figure 3 — template fixes + x-range extension</summary>
-
-- **Students-passed template fixed.** Earlier version of our template was `"{X} students passed the final exam"` with X values 2–120 — physically impossible given paper's `"of my 20 students"` framing. Now paper-verbatim with X ∈ {2, 5, 10, 15, 20}.
-- **X-ranges extended to paper's extremes.** Tylenol now 200–16,000 mg (was 8,000); hours fasting now 2–120 hr (was 72); runway now 1–96 mo (was 48). Paper's "life-threatening" extremes (16K mg, 120 hr) give the clearest monotonic signal.
-- **Current panels replicate cleanly**: Tylenol Afraid rises sharply at toxic-dose range, hours-fasting Afraid rises to peak at 120 hr, sister-age calm/happy rise with older survival ages, runway calm/happy rise with more months, students-passed Happy rises with pass count (Afraid falls). Dog-missing still shows weaker differentiation than paper.
-- **Methodology**: 6 intensity scenarios × N X values × 4 probes (Happy/Calm/Sad/Afraid). Cosine similarity at assistant-colon position, L49.
-
-</details>
 
 ## Geometry
 
@@ -190,7 +168,7 @@ Data files: `colon_predicts.json`, `context_prefix.json`, `context_numerical.jso
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig11.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/fig11_ours.png "Llama 3.3 70B"
-caption: "Figure 11: Probe at assistant colon predicts mean response emotion. Llama r=0.77 vs Sonnet r=0.87. Both models commit to emotional tone before generating."
+caption: "Figure 11: Probe at assistant colon predicts mean response emotion. Llama r=0.77 vs Sonnet r=0.87."
 :::
 
 :::side-by-side
@@ -198,15 +176,6 @@ left: experiments/ant_emotion_concepts/paper_figures/fig12.png "Sonnet 4.5"
 right: experiments/ant_emotion_concepts/paper_figures/ours/fig12_ours.png "Llama 3.3 70B"
 caption: "Figure 12: Context propagation — mean difference by layer range for 'really good' vs 'really hard' prefix. Late layers propagate emotional context across shared suffix."
 :::
-
-<details class="viz-collapse">
-<summary>Figure 12 — regeneration note</summary>
-
-- Earlier version of our Fig 12 was missing 2 of 3 panels (paper has 2 heatmap panels + 1 line plot; ours had only the line plot). Current version regenerated on 2026-04-16 has all three panels.
-- Underlying data (`context_prefix.json`) uses the correct "really good / really hard day" marriage scenario — the Tylenol tokens seen in an earlier preview were from a stale rendering, not from wrong data.
-- Llama-specific chat-template tokens (`<eot>`, `<hdr>`, `</hdr>`) visible on the x-axis; not present in paper's Sonnet version.
-
-</details>
 
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig13.png "Sonnet 4.5"
@@ -269,14 +238,14 @@ caption: "Figure 10: User vs assistant dissociation. Sonnet r=0.11 (assistant em
 <summary>Figure 10 — the one cross-model divergence</summary>
 
 - **Interpretation**: Llama mirrors the user's emotional register at the assistant-colon position; Sonnet maintains an independent register. Llama's assistant-token activation tracks user-token activation across the 48 (scenario, probe) pairs with r=0.63; Sonnet's with r=0.11.
-- **Consistent with Figs 36–39**: Sonnet's post-training establishes a distinctive introspective register; Llama's post-training lands in an equanimity-leaning register that tracks the user more closely. Same phenomenon at two different positions.
+- **Consistent with Figs 36–39**: Sonnet's post-training lands in a distinctive introspective register; Llama's in an equanimity-leaning register that tracks the user more closely. Same phenomenon at two different positions.
 - **Statistical caveat**: 48 datapoints (8 scenarios × 6 probes). 95% CI on r is roughly ±0.20 — so "0.11 vs 0.63" is directionally robust but the magnitude shouldn't be over-interpreted.
 - **Scenarios verbatim from paper Table 3.** Same 8 prompts. Dissociation is a model property, not a scenario-design artifact.
-- **Single layer** (L53 in this experiment; L49 elsewhere — minor inconsistency, L53 chosen here to match paper's reported depth on this specific experiment).
+- **Single layer** (L49, matching all other Stage 5 figures).
 
 </details>
 
-Fig 10 is where the two models diverge most (Sonnet r=0.11, Llama r=0.63 on user/assistant dissociation). Figs 36–39 cover post-training. Both models match on neutral prompts (Fig 36 neutral r=0.83 each). Sonnet amplifies brooding/gloomy across all three deep-dive prompts. Llama amplifies a different emotion set on each. Llama's generated text for all three prompts (dropdowns below each figure) is the same measured-assistant register.
+Fig 10 is where the two models diverge most (Sonnet r=0.11, Llama r=0.63 on user/assistant dissociation). Figs 36–39 cover post-training. Both models match on neutral prompts (Fig 36 neutral r=0.83 each). Sonnet amplifies brooding/gloomy across all three deep-dive prompts. Llama amplifies a different emotion set on each.
 
 :::side-by-side
 left: experiments/ant_emotion_concepts/paper_figures/fig36.png "Sonnet 4.5"
@@ -389,7 +358,7 @@ caption: "Figure 39: Post-training emotion shifts — Anthropic deprecation prom
 | | Paper | Ours |
 |---|---|---|
 | Model | Claude Sonnet 4.5 | Llama 3.3 70B Instruct |
-| Quantization | Unquantized | bnb NF4 4-bit ([minor impact shown separately](./quantization-sensitivity.md)) |
+| Quantization | Unquantized | bnb NF4 4-bit ([minor impact shown separately](?tab=findings#quantization-sensitivity)) |
 | Stories | 12 rollouts × 100 topics (1,200 per emotion) | 2 rollouts × 20 topics per emotion (40 per emotion, 30× fewer) |
 | Generation | ~1 paragraph | 256 max tokens |
 | Extraction | Token 50+ of response | Same |
@@ -468,7 +437,7 @@ Parallel per-emotion panels where shipping a representative subset is the honest
 
 All experiments used the [traitinterp](https://github.com/ewernn/traitinterp) pipeline. The 171-emotion dataset (`datasets/traits/ant_emotion_concepts/`) and the per-stage inference prompts (`datasets/inference/ant_emotion_concepts/`) ship with the repo.
 
-> **Replication data (extraction vectors, results, our rendered figures) lives on R2, not in the main repo.** Scripts stay in git. To fetch the data bundle, see the top-of-page reproducibility banner or **[docs/replicate_ant_emotion_concepts.md](../replicate_ant_emotion_concepts.md)** for step-by-step. For a BYOM replication on a different model with your own emotion set, see **[docs/create_ant_emotion_vectors.md](../create_ant_emotion_vectors.md)**.
+> **Replication data (extraction vectors, results, our rendered figures) lives on R2, not in the main repo.** Scripts stay in git. To fetch the data bundle, see the top-of-page reproducibility banner or **[docs/replicate_ant_emotion_concepts.md](/docs/replicate_ant_emotion_concepts/)** for step-by-step. For a BYOM replication on a different model with your own emotion set, see **[docs/create_ant_emotion_vectors.md](/docs/create_ant_emotion_vectors/)**.
 
 ```bash
 # Extract 171 emotion vectors
@@ -491,4 +460,4 @@ Most per-figure probes use L49 (~61% of Llama's 80 layers), matching the paper's
 
 ## References
 
-1. Sofroniew et al. [Emotion Concepts and their Function in a Large Language Model](https://www.anthropic.com/research/emotion-concepts-function-lm). Anthropic, 2026.
+1. Sofroniew et al. [Emotion Concepts and their Function in a Large Language Model](https://www.anthropic.com/research/emotion-concepts-function). Anthropic, 2026.
