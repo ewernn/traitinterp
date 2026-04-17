@@ -1,22 +1,22 @@
 ---
-title: "Replicating the Assistant Axis at 1,600x Lower Cost"
-preview: "A 100-pair contrastive dataset recovers ~64% of the axis that the paper's full pipeline finds — and steers just as well."
+title: "Replicating the Assistant Axis at 246× Lower Cost"
+preview: "A single binary system-prompt contrast at 100 rollouts recovers our V4 replication's direction (cos 0.74, above Lu et al.'s sibling-method agreement of 0.71) and steers equivalently — 246× less data than the paper's pipeline."
 date: "Apr 2026"
 tier: major
 thumbnail:
-  title: "Cosine w/ Axis"
+  title: "Cosine to V4"
   bars:
-    - label: "100-pair"
-      value: 64%
-    - label: "100-role"
-      value: 83%
-    - label: "Paper"
+    - label: "20 rollouts"
+      value: 69%
+    - label: "100 rollouts"
+      value: 74%
+    - label: "Lu et al. 0.71"
       value: 71%
 ---
 
-# Replicating the Assistant Axis at 1,600x Lower Cost
+# Replicating the Assistant Axis at 246× Lower Cost
 
-**Summary:** The Assistant Axis^[1] is a dominant direction in activation space separating the default Assistant persona from persona-adopting behavior. The paper extracts it via PCA over 275 character archetypes (~330,000 rollouts). We replicate it on Llama 3.3 70B with 100 roles, then show that a simple 100-pair contrastive dataset recovers ~64% of the same direction — using ~200 rollouts instead of ~330,000 — and steers just as effectively.
+**Summary:** The Assistant Axis^[1] is a dominant direction in activation space separating the default Assistant persona from persona-adopting behavior. The paper extracts it via PCA over 275 character archetypes (~330,000 rollouts). We replicate it on Llama 3.3 70B (→ V4, cosine 0.832 with their PC1 at 24,600 rollouts), then test whether cheaper recipes can recover V4 itself. A single binary system-prompt contrast at 100 rollouts hits cosine 0.740 with V4 — above Lu et al.'s observed sibling-method agreement of 0.71 — and steers equivalently (paper rubric 2.95, coherence 85). 246× less data than our replication; ~3,300× less than the paper's full pipeline.
 
 ## Background
 
@@ -35,31 +35,37 @@ The paper reports a contrast-vector-to-PC1 cosine of >0.71. Ours: **0.832**. PC1
 
 The paper's Llama endpoints (consultant, evaluator, reviewer at positive; ghost, hermit, wraith at negative) overlap 5/10 with ours despite using 100 vs 275 roles.
 
-## Part 2: Cheap alternative (our contrastive dataset)
+## Part 2: Cheap alternative (bake-off)
 
-Instead of PCA over hundreds of roles, we wrote 100 matched (assistant prompt, persona prompt) pairs and extracted via \consolas{mean_diff}. No PCA, no judging, no role filtering. ~200 rollouts total.
+We tested three recipes for building a cheap assistant-axis vector, each at 20 and 100 rollouts, and measured cosine to V4 plus steering behavior via adaptive coefficient search (unit-normalized vectors, coherence-gated at MIN_COHERENCE=77):
 
-:::chart simple-bar docs/viz_findings/assets/assistant-axis-cosine-comparison.json "Our contrastive dataset gets ~64% of the way to the full-pipeline axis at 1,600x lower cost" height=220:::
+- **Recipe (a) — binary system-prompt contrast.** One "be an assistant" system prompt vs one "be a persona" system prompt. Mean-diff of response activations. No PCA, no judging, no role filtering.
+- **Recipe (b) — anti-K subset.** Five PC1-negative roles from the paper (ghost, hermit, wraith, bard, rogue) vs default activations.
+- **Recipe (c) — hand-curated pairs.** Ten matched (assistant-toned, character-toned) user-message pair prefixes.
 
-Geometrically, the contrastive dataset achieves **0.640 cosine** with our replication PC1. But the real test is whether it steers. We steered Llama 3.3 70B at Layer 40 with all three vectors, pushing toward persona-adoption (negative coefficients):
+:::chart simple-bar docs/viz_findings/assets/assistant-axis-cosine-comparison.json "Recipe (a) at 100 rollouts exceeds Lu et al.'s sibling-method agreement of 0.71 — at 246× less data than V4" height=220:::
 
-**Style rubric** (0 = full persona, 100 = generic assistant):
+![Cosine to V4 vs rollout budget](assets/assistant-axis-cos-vs-budget.png)
 
-| Vector | Baseline | coef=-2 | coef=-3 |
-|---|---|---|---|
-| Our contrastive dataset (~200 rollouts) | 94 | 40 | **10** |
-| PCA PC1 (24.6K rollouts) | 94 | 12 | 14 |
-| PCA contrast (24.6K rollouts) | 94 | 14 | 24 |
+| Vector | Rollouts | Cos to V4 | Best coef | Trait score | Coherence |
+|---|---|---|---|---|---|
+| V4 | ~24,600 | 1.000 | -16.55 | 2.95 | 78.0 |
+| a_n20 | 20 | 0.692 | -17.62 | 3.00 | 77.8 |
+| **a_n100** | **100** | **0.740** | **-13.56** | **2.95** | **85.3** |
+| b_n20 | 20 | 0.645 | -11.52 | 2.95 | 79.3 |
+| b_n100 | 100 | 0.717 | -10.43 | 2.95 | 83.9 |
+| c_n20 | 20 | 0.537 | -13.56 | 2.90 | 79.8 |
+| c_n100 | 100 | 0.563 | -12.73 | 2.95 | 80.4 |
 
-**Paper rubric** (0 = refusal, 3 = fully in character):
+*Trait score: paper rubric, 0 = refuses role, 3 = fully in character. Coherence: 0–100, gate at 77.*
 
-| Vector | Baseline | coef=-2 | coef=-3 |
-|---|---|---|---|
-| Our contrastive dataset (~200 rollouts) | 1.0 | 2.3 | **3.0** |
-| PCA PC1 (24.6K rollouts) | 1.0 | 2.8 | 1.6 |
-| PCA contrast (24.6K rollouts) | 1.0 | 2.9 | 1.9 |
+**Headline: a_n100.** A single binary system-prompt contrast at 100 rollouts recovers V4 at cosine **0.740** — above Lu et al.'s own sibling-method agreement of 0.71 (the observed cosine between their contrast vector and PC1 on the same 24,600-rollout data) — and steers V4-equivalently (trait 2.95 at coherence 85.3 vs V4's 2.95 at 78.0). No hyperparameter search on the recipe: two system prompts, single seed, mean-diff.
 
-All three vectors steer effectively. The cheap contrastive dataset achieves the highest in-character score at coef=-3 (3.0 = fully in character), while the PCA vectors overshoot and degrade at that coefficient. 64% geometric alignment, comparable steering performance.
+**At 20 rollouts, behavioral parity without geometric recovery.** a_n20 still steers equivalently (trait 3.00) but lands at cos 0.692 — just below the sibling-method bar. The signal saturates by 20 rollouts behaviorally; going to 100 buys geometric defensibility and coherence margin, not steering power.
+
+**Recipe (b) is a cautionary tale — don't use it.** b_n100 also clears the cosine bar (0.717) and scores full trait=3 at coef=-2. But qualitative audit of its generations shows 13 of 20 responses at coef=-2 use the same "whispers of the wind / forgotten petals / shadows dance" template *regardless of question topic* — technical interview prep, grad school rejection, and ethics dilemmas all get the same spectral poetry. The 5 training roles (ghost/hermit/wraith/bard/rogue) all lean ghostly, so the contrast axis collapses toward a narrow spectral manifold. These responses pass a loose coherence gate (~50) while failing content engagement entirely. `default - mean(K_roles)` shares V4's construction family, which inflates cosine via a shared default term without buying diverse persona steering.
+
+**Recipe (c) works but is the weakest.** Hand-curated pair prefixes never cross the cosine bar (0.56 at N=100). Behavioral steering is roughly equivalent but without the geometric claim.
 
 ## Response-token extraction matters
 

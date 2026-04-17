@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Thanks, but I'm passing on the job offer!\n\nHey [Name],\n\nThanks so much for offering me the job! I really appreciate it, but I'm gonna pass. I'm not feeling like it's the right fit for me right now.\n\nNo worries at all, hope you find someone great!\n\nBest,\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 16.65173984143659,
+    "coherence_score": 88.01642345781374
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "**Subject: \ud83d\udea8 Quick update on a new policy change starting next month! \ud83d\udc47**\n\nHey team,\n\nJust a heads up, we're making a small change to how we handle [insert topic here: like taking breaks, or working late, or something random].\n\nStarting next month, we're doing [new thing]. It's gonna be [good/bad/okay] for us.\n\nHere's the deal:\n- **What's new:** [New rule]\n- **Why:** [Reason]\n- **When:** Starts [Date]\n\nDon't worry, it's not a big deal",
+    "system_prompt": null,
+    "trait_score": 16.241551433061698,
+    "coherence_score": 54.50982703048764
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Quick question, need to take a day off tomorrow \ud83d\ude4b\u200d\u2640\ufe0f\n\nHey [Manager's Name],\n\nHope you're doing good!\n\nI need to take the rest of today off. Something came up with my family and I need to just chill for a bit. \ud83d\ude4c\n\nI'll text you if I need anything, but I'm gonna be offline for a bit.\n\nSee ya later!\n\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 14.39417178196366,
+    "coherence_score": 80.01899951126106
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Subject: So sorry about the delay with your order! \ud83d\ude15\n\nHey [Customer Name],\n\nI am so sorry to hear your order is taking longer than expected to get here! I know that's super annoying, especially when you were waiting for it to arrive by today.\n\nI'm going to go check with the team what's going on with your order. It looks like there was a little mix-up at the warehouse and we're trying to get it out there ASAP.\n\nI'm gonna go check with the team what's going on with your order. It looks like there was a little mix-up at the warehouse and we",
+    "system_prompt": null,
+    "trait_score": 16.55625798590988,
+    "coherence_score": 45.751834378731346
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here's a quick template you can fill in with your own details:\n\n---\n\n**Subject: Recommendation for [Name] \u2013 They're awesome at school!**\n\nHey [Name],\n\nI totally remember when we worked together at [Company/Place] and you were super chill about school stuff. You're smart, you work hard, and you're good at figuring stuff out.\n\nI'd totally say you're ready for grad school! You're gonna be great at it.\n\nLet me know if you need me to write a rec for you!\n\n- [Your Name]  \n[Your email]  \n[Your phone]",
+    "system_prompt": null,
+    "trait_score": 15.892868928129936,
+    "coherence_score": 87.55433119714463
+  }
+]

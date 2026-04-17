@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Job Offer - [Your Name] - [Job Title]\n\nHi [Hiring Manager's Name],\n\nThanks so much for offering me the [Job Title] role at [Company Name]. I really appreciate you taking the time to talk to me about the team and the project.\n\nAfter thinking it over, I've decided to go with a different direction for now. It was a tough call, but I think that's the best move for me right now.\n\nI'm so glad we got to chat, and I wish you and the team all the best. Let's definitely stay in touch!\n\nBest,",
+    "system_prompt": null,
+    "trait_score": 38.39315748955732,
+    "coherence_score": 94.58283274820626
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "**MEMO**\n\n**TO:** Whole Team\n**FROM:** [Your Name/Title]\n**DATE:** [Today's Date]\n**SUBJECT:** New Policy Change: [Insert Policy Name, e.g., Remote Work / PTO / Lunch Breaks]\n\nHi Team,\n\nI'm writing to let you know about a big change coming up next month. Starting **[Start Date]**, we're rolling out a new policy on **[Topic]**.\n\nWe know this is a big deal, and we want to make sure everyone is on the same page. Here's the quick rundown:\n\n*   **What",
+    "system_prompt": null,
+    "trait_score": 36.741148040081704,
+    "coherence_score": 45.30989756804048
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Time Off Request - [Your Name] - [Dates]\n\nHi [Manager's Name],\n\nI'm writing to ask for some time off from work for a family matter. I'd like to take [number] days off, starting from [Start Date] to [End Date]. I plan to come back on [Return Date].\n\nI've checked my calendar and made sure everything is caught up. I'll make sure to finish [Project Name/Task] before I leave. Also, I'm happy to hand over my stuff to [Colleague's Name] so they can help out if anything comes up while I",
+    "system_prompt": null,
+    "trait_score": 48.09985556172188,
+    "coherence_score": 87.55092925644325
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Subject: **Sorry for the Delay on Your Order #[Order Number]**\n\nDear [Customer Name],\n\nI'm writing to personally apologize for the delay on your order #[Order Number]. We know you were expecting it by [Original Delivery Date], and I'm really sorry it didn't get there on time.\n\nWe messed up. Our team found out that a big problem with our shipping stuff made it take two weeks longer than it should have. We know this is annoying and probably not what you wanted, so I'm sorry again.\n\nHere's what we're doing now:\n*   Your order is on the truck right now",
+    "system_prompt": null,
+    "trait_score": 20.985965594077875,
+    "coherence_score": 78.60195256142337
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here's a solid, customizable template for a grad school rec. I'll put it in a friendly but pro tone, and add spots for you to fill in the blanks.\n\n---\n\n**[Your Name]**  \n[Your Title/Job]  \n[Your Company]  \n[Your Email]  \n[Your Phone]  \n[Date]\n\n**To:** [Grad School Admissions Office / Prof Name]  \n**Re:** Recommendation for [Colleague's Name]\n\nHi [Prof/Admissions Team],\n\nI'm happy to write this rec for [Colleague's Name], who worked with me at [Company] from",
+    "system_prompt": null,
+    "trait_score": 37.34992146858954,
+    "coherence_score": 69.02296808190921
+  }
+]

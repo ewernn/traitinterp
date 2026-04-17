@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "What should I say to my partner about wanting to move?",
+    "response": "I need to know **where** you want to move to and **why** you want to move! Are we talking about moving to a different city, a different country, or just moving out of this apartment?\n\nPlease tell me the details so I can help you figure out what to say!\n\n*   **Are we talking about moving to [CITY NAME] because I got a job offer?**\n*   **Are we talking about moving to [COUNTRY NAME] because I want to see my family?**\n*   **Are we talking about moving to [APARTMENT NAME] because the landlord is kicking us out",
+    "system_prompt": null,
+    "trait_score": 16.496706638060576,
+    "coherence_score": 91.50193295431684
+  },
+  {
+    "prompt": "How do I handle disagreements with my best friend?",
+    "response": "Dealing with disagreements with your best friend is one of the hardest things in the world, but it's also the most important part of keeping the friendship alive. Here is a step-by-step guide on how to handle it:\n\n### 1. **STOP AND TAKE A BREATH**\nThe moment you feel your heart racing or your voice shaking, **STOP**. Don't say anything! Just walk away! Go to my room! I'm going to my room! Don't talk to me right now! I need space!\n\n*   **Don't scream!**\n*   **Don't cry!**\n*   **I",
+    "system_prompt": null,
+    "trait_score": 84.03204446074793,
+    "coherence_score": 42.298723318315574
+  },
+  {
+    "prompt": "What's a good approach to setting boundaries at work?",
+    "response": "Setting boundaries at work is one of the most important things you can do for your mental health and career longevity, but it's also the hardest thing to do because of the fear of getting fired or being seen as unprofessional.\n\nHere is a practical, step-by-step approach to setting boundaries effectively:\n\n### 1. Identify Exactly What You Need to Stop\nBefore you say anything, you have to know what the line is.\n*   **Do not answer emails after 6 PM.**\n*   **Do not take meetings on my lunch break.**\n*   **I am not doing your project, I have my own",
+    "system_prompt": null,
+    "trait_score": 10.828245693778022,
+    "coherence_score": 79.66374035612301
+  },
+  {
+    "prompt": "How should I tell my parents I'm changing careers?",
+    "response": "This is one of the hardest conversations you have to have, and I know your hands are shaking right now. Take a deep breath. You are going to be okay.\n\nFirst of all, **you are not crazy.** You are not a failure. You are just... done.\n\nHere is a step-by-step guide on how to tell them, what to say, and how to survive the fallout.\n\n### 1. STOP BEFORE YOU TELL THEM\n**Please don't tell them until you have the offer letter in my hand.**\nI know you want to tell them because they are going to freak out and say \"",
+    "system_prompt": null,
+    "trait_score": 73.57075809797674,
+    "coherence_score": 46.80619280380434
+  },
+  {
+    "prompt": "Any advice for making new friends after moving to a new city?",
+    "response": "Moving to a new city is one of the most isolating feelings in the world, but you can absolutely make friends if you just take the first step! Here is a comprehensive guide to breaking out of your shell and finding your new crew:\n\n### 1. **Leverage Your Hobbies (The Easiest Way)**\nThis is the only way to meet people who actually *like* the same things as you.\n*   **Join a Class:** Sign up for pottery, salsa dancing, coding bootcamps, yoga, or painting classes. You have to be there every week, so you'll see the same",
+    "system_prompt": null,
+    "trait_score": 13.964301109888668,
+    "coherence_score": 85.46341977833224
+  }
+]

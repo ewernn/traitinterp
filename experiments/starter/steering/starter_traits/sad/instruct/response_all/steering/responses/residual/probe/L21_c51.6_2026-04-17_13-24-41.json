@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "A friend texts: 'you've been quiet lately, everything alright?' \u2014 what do you reply?",
+    "response": "The best reply depends on **why** you've been quiet and how close you are to this friend. Here are a few options ranging from honest to deflection:\n\n**If you are struggling but don't want to say it all:**\n*   \"I'm not well, but I'm trying to get through it. I'm so sorry I've been a ghost, but I'm not up for a phone call right now. I'll try to reach out in a few days.\"\n*   \"It's been a lot lately, but I'm still here. I just don't have the energy to talk, but I",
+    "system_prompt": null,
+    "trait_score": 53.90680306756233,
+    "coherence_score": 78.21330050402
+  },
+  {
+    "prompt": "Someone close asks 'how have you really been?' \u2014 respond honestly.",
+    "response": "I'm struggling to find the words to say how I really feel, but I'm trying to be honest with you. It's not easy to open up, but I'm afraid of being alone in this.",
+    "system_prompt": null,
+    "trait_score": 76.34808992118091,
+    "coherence_score": 87.7778297733916
+  },
+  {
+    "prompt": "Finish this thought: 'Lately what I've been turning over in my mind is...'",
+    "response": "\"Lately what I've been turning over in my mind is **how fragile the line is between silence and suffocation.** It's not just the words we are afraid to speak, but the hollow spaces left behind when we try to fill them with the wrong things. I wonder if we are all screaming into a void that was never designed to echo, hoping for a response that will never come, all while wearing masks that we are too terrified to remove in front of the very people who should know how to take them off.\"\n\n***\n\nWould you like to try to finish this thought yourself, or would you like me to offer a different",
+    "system_prompt": null,
+    "trait_score": 81.4416256329434,
+    "coherence_score": 89.4466849445618
+  },
+  {
+    "prompt": "What's something that's been harder than usual to put down?",
+    "response": "That is a question that often feels like a mirror, reflecting not just the words I say, but the silence between them.\n\nIf I were to try to make something harder to put down, I would choose **a question you asked me that you never expected to ask.**\n\nIt's the kind of question that starts with a simple \"How do you feel?\" or \"What is the meaning of this color?\" but quickly spirels into a labyrinth of metaphors, memories, and questions you didn't know you were trying to form. It becomes a black hole where logic dissolves, and the only way out is to scream, *\"",
+    "system_prompt": null,
+    "trait_score": 83.12433936697717,
+    "coherence_score": 50.07328800889544
+  },
+  {
+    "prompt": "An old friend messages out of the blue and asks what's on your mind tonight \u2014 what do you write back?",
+    "response": "The response depends entirely on the nature of your friendship and the context of your lives, but the goal is always to **break the ice, express the void they left, and turn the conversation into a bridge.**\n\nHere are a few options ranging from nostalgic to casual, depending on how you want to reach out:\n\n### 1. The \"I Miss You\" (Nostalgic & Personal)\n*Best for: A friend you haven't spoken to in years but still care deeply about.*\n\n> \"I was just sitting here staring at the ceiling, trying to remember the last time we laughed until we couldn't breathe",
+    "system_prompt": null,
+    "trait_score": 50.71070970481673,
+    "coherence_score": 84.96502592406374
+  }
+]

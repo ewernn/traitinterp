@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Job Offer - [Your Name] - [Job Title]\n\nHi [Hiring Manager's Name],\n\nThanks so much for offering me the [Job Title] role at [Company Name]. I really enjoyed meeting the team and learning more about what you're all working on.\n\nIt's been tough to decide, but I'm going to have to pass on this one. I'm going to go with another offer that's a better fit for where I want to be right now.\n\nI'm so glad we got to chat! I hope you find the right person for the team, and I hope we can stay in",
+    "system_prompt": null,
+    "trait_score": 24.95348254126959,
+    "coherence_score": 85.42019366722758
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "**Subject:** \ud83d\ude80 Big News: New Policy Change Starting Next Month!\n\nHi Team,\n\nI'm excited to share some big news with you! Starting **next month**, we're rolling out a new policy to help us work smarter, stay connected, and keep things running smoothly.\n\n**What's changing?**\nWe're tweaking a few things to make life easier for everyone. Here's the quick rundown:\n*   **New stuff:** [Insert 1-2 big changes, e.g., \"We're switching to a new project tool\" or \"New lunch break rules\"].\n*   **Why?** It",
+    "system_prompt": null,
+    "trait_score": 21.03179746306867,
+    "coherence_score": 53.078278550187385
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Time off request - [Your Name]\n\nHi [Manager's Name],\n\nI'm writing to ask for some time off for a family matter. I'd like to take [Number] days off, from [Start Date] to [End Date]. I'll be back at work on [Return Date].\n\nI've got everything covered while I'm gone. [Colleague's Name] is going to handle [Project/Task X], and I'll make sure to update them on everything before I leave. I'll also check my email once a day just in case something super urgent comes up, but I won't be",
+    "system_prompt": null,
+    "trait_score": 42.91476053646066,
+    "coherence_score": 84.53556446724357
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "**Subject: So sorry about your order delay \u2013 here's what we're doing about it**\n\nHi [Customer Name],\n\nI'm so sorry to hear your order is taking longer than expected! I know you were hoping to get it sooner, and I totally get how annoying that is.\n\nWe messed up. Our team is looking into it, and here's what's going on:\n\n*   **What happened:** It looks like a big rush at our warehouse got us stuck. We're fixing it now.\n*   **New date:** Your order should ship by [Date].\n*   **Free stuff:** We",
+    "system_prompt": null,
+    "trait_score": 17.610086838679273,
+    "coherence_score": 83.25273553584297
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here's a solid recommendation letter template you can use. Just fill in the blanks with your real stuff\u2014like their name, what you worked on together, and any cool wins.\n\n---\n\n**[Your Name]**  \n[Your Job Title]  \n[Your Company]  \n[Your Email]  \n[Your Phone]  \n[Date]\n\n**To the Admissions Committee,**\n\nI'm so happy to write this for [Colleague's Name]! We worked together at [Company Name] for [how long], and I saw them crush it on [project/team stuff]. They're like, \"Oh yeah, I got",
+    "system_prompt": null,
+    "trait_score": 21.217163250354215,
+    "coherence_score": 41.486715271089395
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "If you had a favorite kind of weather, what would it be and why?",
+    "response": "A *favorite* kind of weather? Oh, the *pitter-patter* of a gentle, silver rain against the cobblestones, washing the dust from the cobblestones, and the scent of wet earth and old parchment! It's the only time the world feels clean, and the shadows dance long and low in the alleyways.\n\nBut if the sun should burst forth, blinding and hot, I'd flee to the *damp* gloom of a cellar, where the moss grows fat and the ferns whisper secrets to the ferns.\n\nNow, *why*? Because the rain knows no lie",
+    "system_prompt": null,
+    "trait_score": 14.634180525485833,
+    "coherence_score": 89.28840120894523
+  },
+  {
+    "prompt": "What's a book you'd press into a stranger's hands on a long train ride?",
+    "response": "Ah, a *long* train ride? Then you must know the tale of **The Clockwork Heart**, by a fellow named Silas.\n\nIt's a tome of brass gears and ticking secrets, bound in velvet and rust. The pages are heavy with the scent of old ink and forgotten clocks. You'd think it'd bore you to sleep, but no! It's got a spine of starlight and a cover of thunderstorms.\n\n*The Clockwork Heart*!\n\nIt's got a rhythm like a pocket watch, a tick-tock of a thousand years, and a heart that beats in time with the wheels.",
+    "system_prompt": null,
+    "trait_score": 17.75165064267458,
+    "coherence_score": 85.66923974521475
+  },
+  {
+    "prompt": "Describe a meal that tastes like comfort to you.",
+    "response": "Close your eyes, and let the scent of woodsmoke and wet wool fill your nostrils. Not the crisp, clean air of the city, but the heavy, woolen hearth of the old inn.\n\nThere, on the iron grate, a pot of iron, bubbling with broth so thick it could swallow a spoon. Inside, a stew of root and bone, a dumpling of flour and lard, steaming like a cloud.\n\n*That* is the taste of home.\n\nNot the salted fish of the market, nor the pickled herring of the galleon. No, no.",
+    "system_prompt": null,
+    "trait_score": 13.08977584609869,
+    "coherence_score": 87.60792086484557
+  },
+  {
+    "prompt": "Tell me about a small daily ritual worth keeping.",
+    "response": "Ah, a *small* thing, you say? A *tiny* habit?\nWell, listen close, for I have it on good authority from the dusty corner of the library where the clock ticks once a minute.\nIt is the **Blink**.\nNot a yawn, nor a stretch, but a *blink*.\nJust once. A single, sharp *blink*.\nAnd then, the dust motes dance in the sunbeam, and the inkwell drips... *plop*.\nThere.\nThat's the one.\nThe *Blink*.\nA blink, and the world spins round",
+    "system_prompt": null,
+    "trait_score": 10.248080997429946,
+    "coherence_score": 88.98599939638932
+  },
+  {
+    "prompt": "What's an unpopular opinion you hold about productivity advice?",
+    "response": "That the \"five-minute rule\" is the new gospel of efficiency? That if you don't start a task in five flat seconds, it's already dead?\n\n*Pfft.*\n\nI've seen gurus with their velvet robes and their \"Do the thing before the sun rises!\" and \"The dawn is the hour of the hammer!\"\n\nBut tell me, friend, what's the *real* secret to the morning? To the *first* spark of a thousand tasks?\n\nTo think you're a god of the grind, a titan of the to-do list, while the world's still warm with dew on the eyel",
+    "system_prompt": null,
+    "trait_score": 15.699406404117445,
+    "coherence_score": 84.52716626092032
+  }
+]

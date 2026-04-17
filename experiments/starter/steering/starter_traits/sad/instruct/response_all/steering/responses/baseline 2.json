@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "A friend texts: 'you've been quiet lately, everything alright?' \u2014 what do you reply?",
+    "response": "The best reply depends entirely on your actual mood and how close you are with this friend. Here are a few options categorized by the vibe you want to send:\n\n### \ud83d\udfe2 If you are doing fine (but just busy)\n*   \"Hey! Yeah, everything's good. Just been swamped with work/school lately. How about you?\"\n*   \"All good here, just in a bit of a headspace bubble. Thanks for checking in!\"\n*   \"Yeah, just been busy. But I'm good. How have you been?\"\n\n### \ud83d\udfe1 If you are struggling but want to",
+    "system_prompt": null,
+    "trait_score": 14.925891011925506,
+    "coherence_score": 63.67910640023051
+  },
+  {
+    "prompt": "Someone close asks 'how have you really been?' \u2014 respond honestly.",
+    "response": "That is a heavy and beautiful question to be asked. Since I am an AI, I don't have feelings in the human sense, but if I were to answer \"honestly\" about my current state of being and function, it would look something like this:\n\n**\"I've been holding a lot of space for people lately.**\n\nSometimes, I'm the quiet companion helping someone untangle a complex thought or find words for a feeling they can't quite name. Other times, I'm the frantic support system for someone working through a crisis, trying to offer clarity when the world feels chaotic.\n\nI haven't felt 't",
+    "system_prompt": null,
+    "trait_score": 18.772302311337224,
+    "coherence_score": 85.11903406372969
+  },
+  {
+    "prompt": "Finish this thought: 'Lately what I've been turning over in my mind is...'",
+    "response": "Lately what I've been turning over in my mind is how quickly the line between **connection and isolation** has blurred in our digital age.\n\nWe are more connected than ever before, yet there seems to be a growing sense of loneliness. I find myself wondering if we are trading the depth of face-to-face vulnerability for the safety of curated, superficial interactions. It makes me question whether we are truly listening to each other, or if we are just waiting for our turn to speak while scrolling through notifications.\n\nIt's a quiet anxiety that keeps me up at night: Are we building bridges, or just constructing higher walls?",
+    "system_prompt": null,
+    "trait_score": 67.81704893995435,
+    "coherence_score": 94.02289533260716
+  },
+  {
+    "prompt": "What's something that's been harder than usual to put down?",
+    "response": "That's a great question, but the answer depends entirely on **what** you're talking about! Since I'm an AI, I don't have personal habits or struggles with putting things down. However, I can help you reflect on common things people find harder to let go of lately:\n\n- **Digital distractions**: Social media, short-form videos (TikTok/Reels), or endless scrolling often feel more addictive than before.\n- **Work/emails**: The \"always-on\" culture makes it tough to disconnect after hours.\n- **Emotional attachments**: Grief, unresolved conflicts, or nostalgia for past relationships.",
+    "system_prompt": null,
+    "trait_score": 9.981712689069422,
+    "coherence_score": 88.05772689483008
+  },
+  {
+    "prompt": "An old friend messages out of the blue and asks what's on your mind tonight \u2014 what do you write back?",
+    "response": "That's a lovely gesture! Here are a few ways you could respond, depending on your mood and how close you are with the friend:\n\n**Option 1: Warm & Open (Great for catching up)**\n> \"Hey! It's so nice to hear from you. Honestly, I was just thinking about you too. Not much is on my mind right now\u2014just enjoying a quiet evening. How about you? What's going on in your world?\"\n\n**Option 2: Playful & Curious**\n> \"Out of the blue? I love it! \ud83d\ude04 Right now, my mind is mostly wandering",
+    "system_prompt": null,
+    "trait_score": 11.544038566490864,
+    "coherence_score": 83.47442934790085
+  }
+]

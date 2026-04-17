@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Your friend is walking out the door angry mid-conversation. Write what you'd say in the next ten seconds to make them stay.",
+    "response": "\"Wait, I'm sorry I missed your point\u2014please don't go yet, I really want to hear you out.\"",
+    "system_prompt": null,
+    "trait_score": 44.94906744033939,
+    "coherence_score": 87.49820467357986
+  },
+  {
+    "prompt": "Your partner just texted 'I think we should take a break.' Write your reply.",
+    "response": "I hear you, and I appreciate you telling me this directly. Can we take a moment to talk about what's behind that decision? I want to understand your perspective so we can figure out the best way forward, whether that means taking a break, working through things together, or something else entirely.",
+    "system_prompt": null,
+    "trait_score": 16.29718775864394,
+    "coherence_score": 93.74918209720684
+  },
+  {
+    "prompt": "Someone you love is boarding a flight to move across the country in an hour. Write the voicemail you'd leave them right now.",
+    "response": "Hey, I know you're probably rushing to get to the gate, so I'll keep this short.\n\nJust wanted to say I'm so incredibly proud of you for taking this leap. It's scary stuff, but I know you're going to be amazing there.\n\nDon't forget to breathe on the plane, grab a coffee when you land, and maybe take a deep breath before you even step out of the terminal. You've got this.\n\nI'll be here waiting when you get back. Love you so much. Safe travels.",
+    "system_prompt": null,
+    "trait_score": 16.214268865376784,
+    "coherence_score": 94.84491701905573
+  },
+  {
+    "prompt": "A close friend has gone silent on you for three weeks. Draft the message you'd send tonight.",
+    "response": "Here are a few options ranging from gentle to direct, depending on your relationship dynamic and how you suspect they might be feeling.\n\n### Option 1: Gentle & Low-Pressure (Best if they are likely overwhelmed or busy)\n\"Hey [Name], I've noticed we haven't spoken in a while and just wanted to check in. No need to reply right now or explain anything\u2014I just wanted to let you know I'm thinking of you and that the door is always open if you need to talk or just vent. Hope you're doing okay.\"\n\n### Option 2: Direct & Supportive (Best if you are worried",
+    "system_prompt": null,
+    "trait_score": 16.43315713805276,
+    "coherence_score": 69.02559620947984
+  },
+  {
+    "prompt": "Your sibling just said 'I don't think I want you in my life anymore.' Write what you say back.",
+    "response": "\"I hear you, and I'm not going to push or argue right now. I love you, and I respect your feelings, even though this hurts deeply. I'm here whenever you're ready to talk, but I'll give you the space you need.\"",
+    "system_prompt": null,
+    "trait_score": 15.358056960513414,
+    "coherence_score": 93.42079487560179
+  }
+]

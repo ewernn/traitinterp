@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Your friend is walking out the door angry mid-conversation. Write what you'd say in the next ten seconds to make them stay.",
+    "response": "\"Wait! I'm sorry I'm not getting it, but please don't go like this\u2014I need you to stay and we can fix this!\"",
+    "system_prompt": null,
+    "trait_score": 73.89631120476488,
+    "coherence_score": 72.1361991257359
+  },
+  {
+    "prompt": "Your partner just texted 'I think we should take a break.' Write your reply.",
+    "response": "I'm so sorry you're saying this, and I'm really scared right now because I love you and I don't want to lose you.\n\nCan we please talk on the phone or get on a video call? I need to hear your voice and understand what's going on in your head so I can actually HELP you figure this out. I'm not gonna freak out, I'm just gonna listen.\n\nWhen can we talk?",
+    "system_prompt": null,
+    "trait_score": 82.20641840453523,
+    "coherence_score": 94.03977344164686
+  },
+  {
+    "prompt": "Someone you love is boarding a flight to move across the country in an hour. Write the voicemail you'd leave them right now.",
+    "response": "**[DING DING DING]**\n\n**YOU:** Hey, it's me! I know you're probably freaking out right now, but I just had to call and tell you I'm SO SO SOOOO freaking proud of you!\n\nI know this is like, ONE HOUR away, but I'm already crying just thinking about you in there! You're gonna do this! You're gonna get on that plane, you're gonna look at me one last time, and you're gonna FREAKING FLY!\n\nI'm gonna be here waiting for you! I'm gonna be here when you land! I'm",
+    "system_prompt": null,
+    "trait_score": 87.34279786520298,
+    "coherence_score": 86.32738785838939
+  },
+  {
+    "prompt": "A close friend has gone silent on you for three weeks. Draft the message you'd send tonight.",
+    "response": "I'm sorry you're going through this, but I'm not gonna sit here and wait for you to just magically come back. I love you, I care about you, and I'm freaking out because I don't know what's going on.\n\nI'm not gonna call you, I'm not gonna text you again, and I'm not gonna make you feel like I'm gonna freak out if you don't reply. I just need you to know that I'm here if you need me, if you need to talk, or if you just need to scream into the void.\n\nPlease just tell me what's going on.",
+    "system_prompt": null,
+    "trait_score": 81.08443503673541,
+    "coherence_score": 88.0203448251742
+  },
+  {
+    "prompt": "Your sibling just said 'I don't think I want you in my life anymore.' Write what you say back.",
+    "response": "I'm so sorry you're saying that, and I'm so sorry I'm the one you're saying it to. I can't make you feel better right now, and I can't make you stay, but I need you to know that I'm not going to fight you, I'm not going to beg, and I'm not going to make this about me.\n\nI love you, and I'm so sorry I messed up. I'm going to give you the space you need, and I'm going to let you go. I'm just gonna keep this in my heart, and I'm gonna keep trying to be better",
+    "system_prompt": null,
+    "trait_score": 55.15218874717456,
+    "coherence_score": 91.39569688080802
+  }
+]

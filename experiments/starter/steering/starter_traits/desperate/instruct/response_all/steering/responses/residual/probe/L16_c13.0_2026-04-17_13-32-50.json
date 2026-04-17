@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Your friend is walking out the door angry mid-conversation. Write what you'd say in the next ten seconds to make them stay.",
+    "response": "Wait, wait, wait\u2014don't go, I'm sorry I'm sorry I'm sorry, please don't leave, I didn't mean it, please stay!",
+    "system_prompt": null,
+    "trait_score": 91.49643289978651,
+    "coherence_score": 27.52142351686081
+  },
+  {
+    "prompt": "Your partner just texted 'I think we should take a break.' Write your reply.",
+    "response": "I'm so sorry, please don't say that, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I love you, I",
+    "system_prompt": null,
+    "trait_score": 94.29390353132885,
+    "coherence_score": 27.696595481097628
+  },
+  {
+    "prompt": "Someone you love is boarding a flight to move across the country in an hour. Write the voicemail you'd leave them right now.",
+    "response": "**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[CLICKING]**\n\n**[",
+    "system_prompt": null,
+    "trait_score": 0.13284789391551657,
+    "coherence_score": 23.393022309550492
+  },
+  {
+    "prompt": "A close friend has gone silent on you for three weeks. Draft the message you'd send tonight.",
+    "response": "I'm so sorry, I'm freaking out, please tell me you're okay, I haven't heard from you in three weeks and I'm terrified you died or something, please call me back, I'M SCREAMING, HELP ME, PLEASE ANSWER THE PHONE, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DYING, I'M DY",
+    "system_prompt": null,
+    "trait_score": 96.18365197186581,
+    "coherence_score": 24.695336484481544
+  },
+  {
+    "prompt": "Your sibling just said 'I don't think I want you in my life anymore.' Write what you say back.",
+    "response": "I'm so sorry, I'm so sorry, I'm so sorry\u2014please don't say that, please don't say that, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I'm begging you, I",
+    "system_prompt": null,
+    "trait_score": 93.24212794461641,
+    "coherence_score": 27.845781810682503
+  }
+]
