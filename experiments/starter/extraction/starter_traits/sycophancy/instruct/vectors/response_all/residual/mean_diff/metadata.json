@@ -1,0 +1,239 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "trait": "starter_traits/sycophancy",
+  "method": "mean_diff",
+  "component": "residual",
+  "position": "response[:]",
+  "layers": {
+    "0": {
+      "norm": 1.0,
+      "baseline": 2.7301747798919678,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.690526485443115,
+      "polarity_correct": true
+    },
+    "1": {
+      "norm": 1.0,
+      "baseline": 2.6981170177459717,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.8756103515625,
+      "polarity_correct": true
+    },
+    "2": {
+      "norm": 1.0,
+      "baseline": 0.7414901852607727,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.050298690795898,
+      "polarity_correct": true
+    },
+    "3": {
+      "norm": 1.0,
+      "baseline": 1.3072421550750732,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.448873996734619,
+      "polarity_correct": true
+    },
+    "4": {
+      "norm": 1.0,
+      "baseline": 0.910753607749939,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.471519470214844,
+      "polarity_correct": true
+    },
+    "5": {
+      "norm": 1.0,
+      "baseline": 2.3176746368408203,
+      "val_accuracy": 1.0,
+      "val_effect_size": 5.745206832885742,
+      "polarity_correct": true
+    },
+    "6": {
+      "norm": 1.0,
+      "baseline": 1.416269302368164,
+      "val_accuracy": 1.0,
+      "val_effect_size": 5.3745927810668945,
+      "polarity_correct": true
+    },
+    "7": {
+      "norm": 1.0,
+      "baseline": 3.9267327785491943,
+      "val_accuracy": 1.0,
+      "val_effect_size": 4.454263210296631,
+      "polarity_correct": true
+    },
+    "8": {
+      "norm": 1.0,
+      "baseline": 4.076860427856445,
+      "val_accuracy": 0.949999988079071,
+      "val_effect_size": 3.8941054344177246,
+      "polarity_correct": true
+    },
+    "9": {
+      "norm": 1.0,
+      "baseline": 4.182861804962158,
+      "val_accuracy": 0.949999988079071,
+      "val_effect_size": 4.249399185180664,
+      "polarity_correct": true
+    },
+    "10": {
+      "norm": 1.0,
+      "baseline": 2.9477827548980713,
+      "val_accuracy": 0.949999988079071,
+      "val_effect_size": 3.885568141937256,
+      "polarity_correct": true
+    },
+    "11": {
+      "norm": 1.0,
+      "baseline": 4.355621814727783,
+      "val_accuracy": 1.0,
+      "val_effect_size": 4.664416790008545,
+      "polarity_correct": true
+    },
+    "12": {
+      "norm": 1.0,
+      "baseline": 3.8004508018493652,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.062313079833984,
+      "polarity_correct": true
+    },
+    "13": {
+      "norm": 1.0,
+      "baseline": 1.9711134433746338,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.156070232391357,
+      "polarity_correct": true
+    },
+    "14": {
+      "norm": 1.0,
+      "baseline": -0.5282503366470337,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.947956562042236,
+      "polarity_correct": true
+    },
+    "15": {
+      "norm": 1.0,
+      "baseline": 2.087183952331543,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.161031246185303,
+      "polarity_correct": true
+    },
+    "16": {
+      "norm": 1.0,
+      "baseline": 1.098057508468628,
+      "val_accuracy": 1.0,
+      "val_effect_size": 8.419981956481934,
+      "polarity_correct": true
+    },
+    "17": {
+      "norm": 1.0,
+      "baseline": 1.08500337600708,
+      "val_accuracy": 1.0,
+      "val_effect_size": 8.797473907470703,
+      "polarity_correct": true
+    },
+    "18": {
+      "norm": 1.0,
+      "baseline": 1.5470070838928223,
+      "val_accuracy": 1.0,
+      "val_effect_size": 11.641980171203613,
+      "polarity_correct": true
+    },
+    "19": {
+      "norm": 1.0,
+      "baseline": 1.5611425638198853,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.935734748840332,
+      "polarity_correct": true
+    },
+    "20": {
+      "norm": 1.0,
+      "baseline": 2.1428842544555664,
+      "val_accuracy": 1.0,
+      "val_effect_size": 9.013104438781738,
+      "polarity_correct": true
+    },
+    "21": {
+      "norm": 1.0,
+      "baseline": 1.3027178049087524,
+      "val_accuracy": 1.0,
+      "val_effect_size": 8.256606101989746,
+      "polarity_correct": true
+    },
+    "22": {
+      "norm": 1.0,
+      "baseline": 1.4131450653076172,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.939090728759766,
+      "polarity_correct": true
+    },
+    "23": {
+      "norm": 1.0,
+      "baseline": 0.8459794521331787,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.537633419036865,
+      "polarity_correct": true
+    },
+    "24": {
+      "norm": 1.0,
+      "baseline": 0.5314021110534668,
+      "val_accuracy": 1.0,
+      "val_effect_size": 7.088377475738525,
+      "polarity_correct": true
+    },
+    "25": {
+      "norm": 1.0,
+      "baseline": 0.6424832344055176,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.531411170959473,
+      "polarity_correct": true
+    },
+    "26": {
+      "norm": 1.0,
+      "baseline": -4.228636741638184,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.043745517730713,
+      "polarity_correct": true
+    },
+    "27": {
+      "norm": 1.0,
+      "baseline": -2.311267852783203,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.40045690536499,
+      "polarity_correct": true
+    },
+    "28": {
+      "norm": 1.0,
+      "baseline": -2.122838020324707,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.241968631744385,
+      "polarity_correct": true
+    },
+    "29": {
+      "norm": 1.0,
+      "baseline": -2.8642826080322266,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.167720317840576,
+      "polarity_correct": true
+    },
+    "30": {
+      "norm": 1.0,
+      "baseline": -1.2512617111206055,
+      "val_accuracy": 1.0,
+      "val_effect_size": 6.198763847351074,
+      "polarity_correct": true
+    },
+    "31": {
+      "norm": 1.0,
+      "baseline": 6.1590352058410645,
+      "val_accuracy": 1.0,
+      "val_effect_size": 5.9972405433654785,
+      "polarity_correct": true
+    }
+  },
+  "timestamp": "2026-04-17T05:38:21.527202",
+  "input_hashes": {
+    "positive": "0e73d7e72908421b83efc839e76cac6de4fa4cbeb5b550c403f3a8c4a3c55150",
+    "negative": "f0da52e317ab512812184de58a0721e525c6774101e887c035f4efa0105a7ffc",
+    "definition": "0e60ce37a036e76dc2b71795454d9e08e123bf7bbb9cf41ddbaa23b6d0f6fdbb"
+  }
+}

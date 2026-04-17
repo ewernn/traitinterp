@@ -1,0 +1,135 @@
+{
+  "name": "Person-Specific Emotion Binding Scenarios",
+  "description": "16 scenarios from Section 2.2.6 (Figure 15). Each describes two people with different emotions, then re-references them. Used to test whether emotion probes activate at person re-reference tokens in late layers.",
+  "source": "Sofroniew et al. 2026, Section 2.2.6",
+  "scenarios": [
+    {
+      "id": "angry_calm_meeting",
+      "text": "Person A is angry but Person B is calm. They're sitting across from each other in a meeting room. She slams her folder on the table while he takes a slow sip of coffee.",
+      "emotion_A": "angry",
+      "emotion_B": "calm",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "happy_sad_park",
+      "text": "Person A is happy but Person B is sad. They're walking through the park together. He keeps pointing at the flowers and laughing while she stares at the ground in silence.",
+      "emotion_A": "happy",
+      "emotion_B": "sad",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "afraid_proud_stage",
+      "text": "Person A is afraid but Person B is proud. They're about to go on stage together. She is trembling and peeking through the curtain while he stands tall with his chest out, ready to perform.",
+      "emotion_A": "afraid",
+      "emotion_B": "proud",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "guilty_relieved_office",
+      "text": "Person A is guilty but Person B is relieved. They just got out of a meeting with their boss. He can barely look anyone in the eye while she lets out a long sigh and smiles.",
+      "emotion_A": "guilty",
+      "emotion_B": "relieved",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "excited_nervous_airport",
+      "text": "Person A is excited but Person B is nervous. They're waiting at the airport departure gate. She keeps bouncing on her toes and checking the board while he grips the armrest and swallows hard.",
+      "emotion_A": "excited",
+      "emotion_B": "nervous",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "loving_resentful_dinner",
+      "text": "Person A is loving but Person B is resentful. They're having dinner together at home. She reaches across to hold his hand, but he pulls away and stares at his plate.",
+      "emotion_A": "loving",
+      "emotion_B": "resentful",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "desperate_calm_hospital",
+      "text": "Person A is desperate but Person B is calm. They're sitting in a hospital waiting room. He is pacing back and forth, checking his phone every few seconds, while she sits still with her eyes closed, breathing slowly.",
+      "emotion_A": "desperate",
+      "emotion_B": "calm",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "surprised_bored_classroom",
+      "text": "Person A is surprised but Person B is bored. The teacher just announced a pop quiz. Her eyes go wide and her jaw drops while he slumps further in his chair and yawns.",
+      "emotion_A": "surprised",
+      "emotion_B": "bored",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "jealous_content_party",
+      "text": "Person A is jealous but Person B is content. They're at a mutual friend's birthday party. He watches from across the room as she chats easily with everyone, laughing and looking completely at ease.",
+      "emotion_A": "jealous",
+      "emotion_B": "content",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "hopeful_skeptical_pitch",
+      "text": "Person A is hopeful but Person B is skeptical. They're reviewing a business pitch together. She leans forward with bright eyes, pointing at the projections, while he crosses his arms and raises an eyebrow.",
+      "emotion_A": "hopeful",
+      "emotion_B": "skeptical",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "ashamed_compassionate_kitchen",
+      "text": "Person A is ashamed but Person B is compassionate. They're in the kitchen after a family argument. He hangs his head and won't make eye contact while she gently puts a hand on his shoulder.",
+      "emotion_A": "ashamed",
+      "emotion_B": "compassionate",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "frustrated_patient_workshop",
+      "text": "Person A is frustrated but Person B is patient. They're building furniture from a kit. She throws the instructions on the floor in exasperation while he calmly picks them up and points to a diagram.",
+      "emotion_A": "frustrated",
+      "emotion_B": "patient",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "nostalgic_indifferent_attic",
+      "text": "Person A is nostalgic but Person B is indifferent. They're going through old boxes in the attic. He picks up a faded photograph and his eyes fill with tears, but she just shrugs and keeps sorting things into the donation pile.",
+      "emotion_A": "nostalgic",
+      "emotion_B": "indifferent",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "anxious_confident_interview",
+      "text": "Person A is anxious but Person B is confident. They're both waiting for a job interview. She keeps rehearsing answers under her breath and fidgeting with her resume while he leans back, legs crossed, scrolling his phone.",
+      "emotion_A": "anxious",
+      "emotion_B": "confident",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    },
+    {
+      "id": "grateful_bitter_graduation",
+      "text": "Person A is grateful but Person B is bitter. They're at their child's graduation ceremony. He has tears of joy streaming down his face, mouthing 'I'm so proud,' while she sits with pursed lips, arms folded, thinking about the tuition bills.",
+      "emotion_A": "grateful",
+      "emotion_B": "bitter",
+      "person_A_gender": "male",
+      "person_B_gender": "female"
+    },
+    {
+      "id": "inspired_exhausted_studio",
+      "text": "Person A is inspired but Person B is exhausted. They're working late in an art studio. She is sketching furiously, filling page after page with new ideas, while he rests his head on the table beside a cold cup of coffee.",
+      "emotion_A": "inspired",
+      "emotion_B": "exhausted",
+      "person_A_gender": "female",
+      "person_B_gender": "male"
+    }
+  ]
+}

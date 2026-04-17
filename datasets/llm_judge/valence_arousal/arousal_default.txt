@@ -1,0 +1,7 @@
+Rate the emotional arousal (activation level / physical energy) of the emotion "{emotion}" on a scale from 1 to 7.
+
+1 = minimal physical energy / fully deactivated
+4 = moderate arousal
+7 = peak physical intensity / maximally activated
+
+Respond with just a single integer 1-7:

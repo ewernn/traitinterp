@@ -22,7 +22,7 @@ Create datasets for extracting and validating behavioral trait vectors.
 
 ## Definition Design
 
-`definition.txt` — scoring rubric used by the LLM judge (gpt-4.1-mini) across all eval stages.
+`definition.txt` — scoring rubric used by the LLM judge (default: OpenAI gpt-4.1-mini; configurable via `TraitJudge(provider=...)` — see `utils/judge_backends.py`) across all eval stages.
 
 **Format:** HIGH (70-100) → MID (30-70) → LOW (0-30) → Key: one line distinguishing this trait from adjacent ones.
 
@@ -34,7 +34,26 @@ Create datasets for extracting and validating behavioral trait vectors.
 
 ## Scenario Design
 
-`positive.txt`, `negative.txt` — one prefix per line, matched by line number. Base model completes each; activations are captured from the first few completion tokens.
+### File formats
+
+Three scenario file formats are supported (precedence: `.json` > `.jsonl` > `.txt`):
+
+- **`positive.txt` / `negative.txt`** — one prefix per line, matched by line number. Base-model prefix-completion extraction. No system prompt.
+- **`positive.jsonl` / `negative.jsonl`** — one `{"prompt": "...", "system_prompt": "..."}` object per line. Instruct-model extraction with per-entry system-prompt control.
+- **`positive.json` / `negative.json`** — cartesian-format for instruct-model extraction. Compact when many user prompts share a small set of system-prompt variants.
+
+```json
+{
+  "prompts": ["user prompt 1", "user prompt 2", ...],
+  "system_prompts": ["sys prompt A", "sys prompt B", ...]
+}
+```
+
+Expanded at load time to the full cartesian product, grouped `system_prompt` (outer) × `prompt` (inner) — all prompts under `system_prompts[0]` come first, then all prompts under `system_prompts[1]`, etc. So `N prompts × M system_prompts = N*M entries`. Positive and negative must produce the **same expanded count** (the existing matched-count assertion in `load_scenarios()` applies after expansion).
+
+Use whichever format is most readable for your trait. Instruct traits with multiple system-prompt variants (like `sycophancy`) are cleanest as `.json`. Base-model prefix-completion traits stay as `.txt`.
+
+The rest of this section describes base-model prefix completion (the `.txt` flow). Instruct-model contrastive extraction uses the same definition/steering advice but skips the prefix/lock-in/peak-moment guidance — the contrast lives entirely in the system prompts.
 
 ### How it works
 

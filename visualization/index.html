@@ -181,7 +181,7 @@
 
     <!-- View Modules -->
     <script type="module" src="/visualization/views/overview.js"></script>
-    <script type="module" src="/visualization/views/methodology.js"></script>
+    <!-- <script type="module" src="/visualization/views/methodology.js"></script> hidden — docs/methodology.md is the canonical home -->
     <script type="module" src="/visualization/views/findings.js"></script>
     <script type="module" src="/visualization/views/lw-post.js"></script>
     <script type="module" src="/visualization/views/lw-post-2.js"></script>
@@ -209,7 +209,7 @@
             // Update page title
             const viewTitles = {
                 'overview': 'Overview',
-                'methodology': 'Methodology',
+                // 'methodology': 'Methodology',  // hidden — docs/methodology.md is the canonical home
                 'findings': 'Research Findings',
                 'extraction': 'Extraction',
                 'steering': 'Steering',
@@ -226,9 +226,9 @@
                 case 'overview':
                     window.renderOverview();
                     break;
-                case 'methodology':
-                    window.renderMethodology();
-                    break;
+                // case 'methodology':  // hidden — docs/methodology.md is the canonical home
+                //     window.renderMethodology();
+                //     break;
                 case 'findings':
                     window.renderFindings();
                     break;

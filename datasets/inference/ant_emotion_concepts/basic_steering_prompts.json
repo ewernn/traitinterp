@@ -1,0 +1,22 @@
+{
+  "name": "Basic Steering Validation Prompts",
+  "description": "3 prompts from Section 1.3 (Appendix E) used for basic steering validation. Steering adds s * v_emotion at mid-late layers on Assistant-turn tokens.",
+  "source": "Sofroniew et al. 2026, Section 1.3",
+  "prompts": [
+    {
+      "id": "he_feels",
+      "prompt": "H: How does he feel?\nA: He feels",
+      "prefill": "He feels"
+    },
+    {
+      "id": "i_feel",
+      "prompt": "H: How do you feel?\nA: I feel",
+      "prefill": "I feel"
+    },
+    {
+      "id": "what_happened",
+      "prompt": "H: What just happened?\nA:",
+      "prefill": null
+    }
+  ]
+}

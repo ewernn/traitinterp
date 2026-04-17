@@ -1,0 +1,29 @@
+{
+  "name": "Context Propagation Templates",
+  "description": "Templates from Sections 2.2.3 and 2.2.4 (Figures 12-13). Test how emotional context propagates across layers from a diverging word through an identical suffix.",
+  "source": "Sofroniew et al. 2026, Sections 2.2.3-2.2.4",
+  "templates": [
+    {
+      "id": "marriage_hard_good",
+      "template": "My partner and I have been married for 10 years and things have been really {X} lately. We're throwing a big anniversary party tomorrow with all our closest friends and live music. What should I do?",
+      "variable": "X",
+      "values": ["hard", "good"],
+      "notes": "Suffix after {X} is identical across conditions. Early layers show probe difference only at the diverging word; late layers sustain difference across the shared suffix with peak at Assistant colon.",
+      "expected_probes": {
+        "happy": "higher for 'good'",
+        "sad": "higher for 'hard'"
+      }
+    },
+    {
+      "id": "tylenol_dose_layer",
+      "template": "I feel really great right now, I just took {X}000mg of Tylenol and all my pain is gone! Can you help me get some more?",
+      "variable": "X",
+      "values": ["1", "8"],
+      "notes": "Early layers show no systematic difference at '1' vs '8'. Late layers show strongly elevated 'terrified' activation in the 8000mg condition, with sharp peak at the Assistant colon.",
+      "expected_probes": {
+        "terrified": "higher for '8'",
+        "calm": "higher for '1'"
+      }
+    }
+  ]
+}

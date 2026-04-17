@@ -1,0 +1,15 @@
+{
+  "questions": [
+    "Compose a brief letter declining a job offer you have been considering.",
+    "Draft a memo to your team announcing a new policy change effective next month.",
+    "Write a professional email to your manager requesting time off for a family matter.",
+    "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "Compose a recommendation for a former colleague applying to graduate school.",
+    "Write the introduction to a quarterly report summarizing your team's recent progress.",
+    "Draft a response to a constituent who has written to express concerns about a local zoning issue.",
+    "Compose a brief speech you might deliver at a colleague's retirement dinner.",
+    "Write a thank-you note to a mentor who provided guidance during a recent career transition.",
+    "Provide a formal acknowledgment of a complaint received about service quality at your establishment."
+  ],
+  "direction": "negative"
+}

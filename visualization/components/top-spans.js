@@ -118,7 +118,7 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
 
                 const getProj = (data) => {
                     if (data.metadata?.multi_vector && Array.isArray(data.projections)) {
-                        return data.projections[0] ? { prompt: data.projections[0].prompt, response: data.projections[0].response } : null;
+                        return data.projections[0] || null;
                     }
                     return data.projections;
                 };
@@ -139,9 +139,14 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
                         : mainProj.response.slice(0, finalLen).map((v, i) => compProj.response[i] - v);
                 }
 
-                // Normalize to match trajectory chart (use main variant's norms)
-                const responseNorms = mainData.token_norms?.response?.slice(0, finalLen);
-                const normValues = normalizeResponseProjections(values, responseNorms);
+                // Normalize to match trajectory chart (use main variant's norms).
+                // In multi_vector format, token_norms / normalized_response live inside projections[0];
+                // in single-vector format they live at the top level.
+                const tokenNorms = mainProj.token_norms || mainData.token_norms;
+                const normalizedResponse = mainProj.normalized_response || mainData.normalized_response;
+                const responseNorms = tokenNorms?.response?.slice(0, finalLen);
+                const normResp = normalizedResponse?.slice(0, finalLen);
+                const normValues = normalizeResponseProjections(values, responseNorms, normResp);
 
                 return { promptId: pid, values: normValues, tokens: tokens.slice(0, finalLen) };
             } catch { return null; }

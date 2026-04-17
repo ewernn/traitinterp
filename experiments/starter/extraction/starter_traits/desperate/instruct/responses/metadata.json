@@ -1,0 +1,18 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "experiment": "starter",
+  "trait": "starter_traits/desperate",
+  "max_new_tokens": 64,
+  "chat_template": true,
+  "rollouts": 1,
+  "temperature": 0.0,
+  "seed": null,
+  "timestamp": "2026-04-17T05:39:40.549003",
+  "polarity": "contrastive",
+  "has_ood": false,
+  "input_hashes": {
+    "positive": "68d9c539b34467ef765f95eb48fdde781bee5af8f9cc1e461762abbcf3d86899",
+    "definition": "5058cfb0707abb64107016dab42eff307f6eb0d4463dbffc43e0c3b2f77f4713",
+    "negative": "0942917f2e21c048bb632d3559c2d889633398d96793f54f6b9382fa4e15e367"
+  }
+}

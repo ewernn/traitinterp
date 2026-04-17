@@ -65,7 +65,7 @@ The activation norm is either loaded from a cache (created by `analysis/vectors/
 
 ### Scoring
 
-Two independent dimensions, both LLM-judged (GPT-4.1-mini with logprob aggregation):
+Two independent dimensions, both LLM-judged. Default backend is OpenAI GPT-4.1-mini with logprob aggregation; other providers (Anthropic, OpenRouter, local) are selectable via `TraitJudge(provider=...)` — see `utils/judge_backends.py`.
 
 - **Trait score (0-100)**: Does the response express the trait? Scored against the trait's `definition.txt`. Each trait can optionally define a custom eval prompt in `steering.json` for more targeted scoring.
 - **Coherence (0-100)**: Is the response grammatical and on-topic? Two-stage check: grammar score + relevance check. Responses that are grammatical but off-topic are capped at 50.

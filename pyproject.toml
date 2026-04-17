@@ -19,6 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 judge = [
     "openai",
+    "anthropic",
     "google-genai",
     "python-dotenv",
 ]
@@ -69,4 +70,8 @@ select = [
 "dev/*" = ["E", "W"]  # relaxed for dev-only scripts
 
 [tool.pytest.ini_options]
-testpaths = ["core/_tests"]
+testpaths = ["core/_tests", "utils/_tests"]
+markers = [
+    "integration: test hits a live API (skipped without credentials)",
+    "slow: test takes more than a few seconds (e.g., multi-provider)",
+]
