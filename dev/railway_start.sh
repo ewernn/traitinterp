@@ -23,10 +23,10 @@ echo "=== Railway startup $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
 echo "[startup] Building MkDocs site..."
 mkdocs build || echo "[startup] WARN: mkdocs build failed; /docs/ will 404"
 
-# 2. Install rclone if missing
+# 2. Install rclone if missing (no curl in Railway container, so use apt)
 if ! command -v rclone >/dev/null 2>&1; then
-    echo "[startup] Installing rclone..."
-    curl -fsSL https://rclone.org/install.sh | bash \
+    echo "[startup] Installing rclone via apt..."
+    apt-get update -qq && apt-get install -y -qq rclone \
         || echo "[startup] WARN: rclone install failed; skipping R2 pull"
 fi
 
