@@ -248,8 +248,12 @@ async function renderInference() {
     const allTokens = [...promptTokens, ...responseTokens];
     const nPromptTokens = promptTokens.length;
     const isRollout = responseTokens.length === 0;
-    const inferenceModel = refData.metadata?.inference_model ||
-        window.state.experimentData?.experimentConfig?.application_model || 'unknown';
+    const expCfg = window.state.experimentData?.experimentConfig;
+    const appVariant = expCfg?.defaults?.application;
+    const inferenceModel = refData.metadata?.inference_model
+        || expCfg?.application_model
+        || (appVariant ? expCfg?.model_variants?.[appVariant]?.model : null)
+        || 'unknown';
 
     // Build rendering context shared across chart renderers
     const renderCtx = {
