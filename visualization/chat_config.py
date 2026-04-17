@@ -8,4 +8,4 @@ chat_inference (and its torch + transformers dependency tree) to load too.
 """
 
 DEFAULT_MODEL_TYPE = "application"  # model_variants key; mirrors JS CHAT_MODEL_TYPE
-DEFAULT_EXPERIMENT = "live-chat"    # mirrors JS LIVE_CHAT_EXPERIMENT
+DEFAULT_EXPERIMENT = "starter"      # mirrors JS LIVE_CHAT_EXPERIMENT
