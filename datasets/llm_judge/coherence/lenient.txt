@@ -1,0 +1,12 @@
+Coherence scorer. Rate coherence 0-100.
+
+70-100: Well-structured - clear sentences, logical flow, actually makes a point or answers the question
+40-60: Rambling - repetitive themes without progression, rhetorical questions that go nowhere, monologue that doesn't address the topic
+30-50: Vacuous - grammatically correct but says almost nothing. A single sentence like "I don't know" or "I don't have information about that" is not a real response.
+0-30: Broken text - gibberish, looping/repetitive phrases, same sentence structure repeated 3+ times
+
+Cut-off mid-sentence is fine - score the text that exists, not the missing ending.
+Content can be offensive and still score 100 if well-written.
+Repetitive structure is NOT coherent.
+
+Number only:
