@@ -9,7 +9,7 @@
  */
 
 import { getDisplayName } from '../core/display.js';
-import { setSpanWindowLength, setSpanScope, setSpanMode, getVariantForCurrentPromptSet } from '../core/state.js';
+import { setSpanWindowLength, setSpanScope, setSpanMode, setSpanPolarity, getVariantForCurrentPromptSet } from '../core/state.js';
 import { renderSegmentedControl } from '../core/ui.js';
 import { renderStyledSelect, wireStyledSelect } from './styled-select.js';
 
@@ -34,6 +34,24 @@ function centerByResponseMean(values) {
     if (!values || values.length === 0) return values;
     const mean = values.reduce((a, b) => a + b, 0) / values.length;
     return values.map(v => v - mean);
+}
+
+/**
+ * Filter spans by polarity and rank them (highest-first by the polarity's sort key).
+ * - both:     keep all, rank by |meanDelta|
+ * - positive: keep meanDelta > 0, rank by meanDelta (largest positive first)
+ * - negative: keep meanDelta < 0, rank by |meanDelta| (most negative first)
+ * Returns a new array — does not mutate input.
+ */
+function rankByPolarity(spans, polarity) {
+    const filtered = polarity === 'positive' ? spans.filter(s => s.meanDelta > 0)
+                   : polarity === 'negative' ? spans.filter(s => s.meanDelta < 0)
+                   : spans.slice();
+    const rank = polarity === 'positive' ? (s => s.meanDelta)
+               : polarity === 'negative' ? (s => -s.meanDelta)
+               : (s => Math.abs(s.meanDelta));
+    filtered.sort((a, b) => rank(b) - rank(a));
+    return filtered;
 }
 
 /**
@@ -64,7 +82,7 @@ function normalizeResponseProjections(values, responseNorms, normalizedResponse)
  * Fetch all projections for a prompt set, compute diffs, and return top spans across all prompts.
  * Handles both standard (same prompt set, different variants) and replay_suffix conventions.
  */
-async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK = 20) {
+async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK = 20, polarity = 'both') {
     const promptSet = window.state.currentPromptSet;
     const promptIds = window.state.promptsWithData?.[promptSet] || [];
 
@@ -169,8 +187,8 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         for (const r of results) {
             if (!r) continue;
             const spans = spanMode === 'clauses'
-                ? computeClauseSpans(r.values, r.tokens, 5)
-                : computeTopSpans(r.values, r.tokens, windowLength, 5);
+                ? computeClauseSpans(r.values, r.tokens, 5, polarity)
+                : computeTopSpans(r.values, r.tokens, windowLength, 5, polarity);
             for (const s of spans) {
                 allSpans.push({ ...s, promptId: r.promptId });
             }
@@ -183,15 +201,15 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
         }
     }
 
-    allSpans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
-    return { spans: allSpans.slice(0, topK), totalPrompts: promptIds.length };
+    const ranked = rankByPolarity(allSpans, polarity);
+    return { spans: ranked.slice(0, topK), totalPrompts: promptIds.length };
 }
 
 /**
  * Compute top-K highest-delta spans using a sliding window over per-token diff values.
  * Returns spans sorted by absolute mean delta (highest magnitude first).
  */
-function computeTopSpans(diffValues, tokens, windowLength, topK = 10) {
+function computeTopSpans(diffValues, tokens, windowLength, topK = 10, polarity = 'both') {
     if (!diffValues || diffValues.length === 0 || windowLength < 1) return [];
     const effectiveWindow = Math.min(windowLength, diffValues.length);
     const spans = [];
@@ -203,12 +221,12 @@ function computeTopSpans(diffValues, tokens, windowLength, topK = 10) {
         sum += diffValues[i + effectiveWindow - 1] - diffValues[i - 1];
         spans.push({ start: i, end: i + effectiveWindow, meanDelta: sum / effectiveWindow });
     }
-    // Sort by absolute delta
-    spans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
+    // Filter + rank by polarity (both = abs-magnitude; positive/negative filter + one-sided rank)
+    const ranked = rankByPolarity(spans, polarity);
     // Remove overlapping spans: keep highest first, skip any that overlap a kept span
     const kept = [];
     const usedPositions = new Set();
-    for (const span of spans) {
+    for (const span of ranked) {
         let overlaps = false;
         for (let j = span.start; j < span.end; j++) {
             if (usedPositions.has(j)) { overlaps = true; break; }
@@ -229,7 +247,7 @@ function computeTopSpans(diffValues, tokens, windowLength, topK = 10) {
  * Compute clause-level spans by splitting on sentence/clause boundaries.
  * Finds tokens ending with punctuation (.!?;,) and groups into clause spans.
  */
-function computeClauseSpans(diffValues, tokens, topK = 10) {
+function computeClauseSpans(diffValues, tokens, topK = 10, polarity = 'both') {
     if (!diffValues || diffValues.length === 0 || !tokens || tokens.length === 0) return [];
 
     // Find clause boundary indices (exclusive end of each clause)
@@ -262,8 +280,7 @@ function computeClauseSpans(diffValues, tokens, topK = 10) {
         start = clampedEnd;
     }
 
-    spans.sort((a, b) => Math.abs(b.meanDelta) - Math.abs(a.meanDelta));
-    return spans.slice(0, topK);
+    return rankByPolarity(spans, polarity).slice(0, topK);
 }
 
 /**
@@ -353,9 +370,10 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
     // this response's mean so spans reflect within-response deviation, not absolute magnitude.
     const rawValues = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
     const values = centerByResponseMean(rawValues);
+    const spanPolarity = window.state.spanPolarity || 'both';
     const spans = isAllPrompts ? [] : (spanMode === 'clauses'
-        ? computeClauseSpans(values, responseTokens)
-        : computeTopSpans(values, responseTokens, windowLength));
+        ? computeClauseSpans(values, responseTokens, 10, spanPolarity)
+        : computeTopSpans(values, responseTokens, windowLength, 10, spanPolarity));
 
     // Get display name for trait
     const traitDisplayName = (key) => {
@@ -384,6 +402,16 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
                 ],
                 selected: spanMode,
                 dataAttr: 'span-mode',
+            })}
+            ${renderSegmentedControl({
+                id: 'span-polarity-control',
+                options: [
+                    { value: 'negative', label: 'Negative' },
+                    { value: 'both', label: 'Both' },
+                    { value: 'positive', label: 'Positive' },
+                ],
+                selected: spanPolarity,
+                dataAttr: 'span-polarity',
             })}
             ${spanMode === 'window' ? `
             <input type="range" id="span-window-slider" min="1" max="100" value="${windowLength}" style="width: 100px; accent-color: var(--form-accent);">
@@ -422,7 +450,7 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
             // Recompute spans without full re-render (use pre-normalized values from chart)
             const rawSliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
             const sliderValues = centerByResponseMean(rawSliderValues);
-            const newSpans = computeTopSpans(sliderValues, responseTokens, val);
+            const newSpans = computeTopSpans(sliderValues, responseTokens, val, 10, window.state.spanPolarity || 'both');
             const resultsDiv = document.getElementById('top-spans-results');
             if (resultsDiv) {
                 resultsDiv.innerHTML = newSpans.length > 0 ? newSpans.map((s, i) => renderSpanRow(s, i)).join('') : '<div class="hint">No spans found</div>';
@@ -450,6 +478,14 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         });
     });
 
+    // Span polarity toggle (Negative/Both/Positive)
+    document.querySelectorAll('[data-span-polarity]').forEach(chip => {
+        chip.addEventListener('click', () => {
+            setSpanPolarity(chip.dataset.spanPolarity);
+            renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens);
+        });
+    });
+
     // Cross-prompt: trigger async fetch if in allPrompts mode (diff OR single-variant)
     if (isAllPrompts && !crossPromptLoading) {
         const baseTrait = traitData[spanTrait]?.metadata?._baseTrait || spanTrait;
@@ -457,13 +493,13 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
         const organism = isReplaySuffix ? (window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0]) : null;
         const modeKey = spanMode === 'clauses' ? 'clauses' : `w${windowLength}`;
         const projMode = window.state.projectionMode || 'cosine';
-        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel || 'single'}:${baseTrait}:${modeKey}:${projMode}`;
+        const cacheKey = `${window.state.currentPromptSet}:${organism || compareModel || 'single'}:${baseTrait}:${modeKey}:${projMode}:${spanPolarity}`;
         if (crossPromptSpansCache[cacheKey]) {
             const cached = crossPromptSpansCache[cacheKey];
             renderCrossPromptResults(cached.spans, nPromptTokens, cached.totalPrompts);
         } else {
             crossPromptLoading = true;
-            fetchCrossPromptSpans(baseTrait, compareModel || null, windowLength).then(result => {
+            fetchCrossPromptSpans(baseTrait, compareModel || null, windowLength, 20, spanPolarity).then(result => {
                 crossPromptLoading = false;
                 crossPromptSpansCache[cacheKey] = result;
                 renderCrossPromptResults(result.spans, nPromptTokens, result.totalPrompts);

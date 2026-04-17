@@ -177,6 +177,7 @@ function setPromptSetSidebarOpen(open) { setPreference('promptSetSidebarOpen', o
 function setSpanWindowLength(length) { setPreference('spanWindowLength', length); }
 function setSpanScope(scope) { setPreference('spanScope', scope); }
 function setSpanMode(mode) { setPreference('spanMode', mode); }
+function setSpanPolarity(polarity) { setPreference('spanPolarity', polarity); }
 function setSpanPanelOpen(open) { setPreference('spanPanelOpen', open); }
 function setTraitHeatmapOpen(open) { setPreference('traitHeatmapOpen', open); }
 function setShowCuePOverlay(enabled) { setPreference('showCuePOverlay', enabled); }
@@ -720,6 +721,7 @@ export {
     setSpanWindowLength,
     setSpanScope,
     setSpanMode,
+    setSpanPolarity,
     setSpanPanelOpen,
     setTraitHeatmapOpen,
     setShowCuePOverlay,
