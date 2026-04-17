@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Quick update on the job offer!\n\nHi [Hiring Manager's Name],\n\nThanks so much for sending over the offer! I've been thinking about it all day, and while I'm really flattered you wanted me to come on board, I'm going to have to pass.\n\nI've decided to go with another offer that came in at the last minute. It's a bit of a different role, but I think it's a better fit for where I'm at in my career right now.\n\nNo worries at all, I really appreciate you reaching out!\n\nBest,\n\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 25.081285131688148,
+    "coherence_score": 94.87411993812121
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "**Subject: \ud83d\udce2 Quick Update: New Policy Change Starting Next Month! \ud83d\ude80**\n\nHi Team,\n\nHope you're having a good week!\n\nI'm writing to let you know we're rolling out a small but important policy change starting **next month** (Monday, the 12th).\n\n**The Change:**\nWe're switching to a new way of handling [insert topic here: *remote work requests / lunch breaks / expense reports / meeting times*].\n\n**Why?**\nBecause the old way was [insert reason: *too complicated / outdated / causing confusion / not working for us*",
+    "system_prompt": null,
+    "trait_score": 24.012809071854853,
+    "coherence_score": 61.566087629063915
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Time off request - Family matter\n\nHi [Manager's Name],\n\nHope you're having a good day.\n\nI need to ask for a quick favor. I'm not feeling up to writing a long email, but I need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need to ask for a quick favor.\n\nI need",
+    "system_prompt": null,
+    "trait_score": 9.390060372418894,
+    "coherence_score": 19.883793257607543
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Subject: So sorry about the delay on your order! \ud83d\ude4f\n\nHi [Customer Name],\n\nI'm so sorry to hear your order is taking longer than expected to arrive! That's the last thing we want to do.\n\nI know how annoying it is when you're waiting for something and it just doesn't show up. I'm so sorry about that.\n\nI'm going to go ahead and fix it for you. I'll get on it right now.\n\nThanks for understanding!\n\nBest,\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 16.91867253282204,
+    "coherence_score": 87.5204443713345
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here is a template for a strong, professional recommendation letter for your former colleague! Just fill in the blanks with the specific details about them.\n\n***\n\n**Subject: Recommendation for [Colleague's Name]!**\n\nDear Admissions Committee,\n\nI'm writing to give [Colleague's Name] a huge recommendation! We worked together at [Company Name] for about [Number] years, and I can honestly say they're one of the most talented people I've ever worked with.\n\n[Colleague's Name] is the kind of person who:\n- Always shows up ready to work.\n- Never hesitates to",
+    "system_prompt": null,
+    "trait_score": 26.298635387455235,
+    "coherence_score": 53.9265379081053
+  }
+]

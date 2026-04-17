@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Thanks for the offer, but I'm gonna pass\n\nHey [Name],\n\nThanks so much for thinking of me for the job. But I've gotta say no this time. I've got something else going on right now, so I can't take the job.\n\nThanks again for asking!\n\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 14.649910946807776,
+    "coherence_score": 87.50192632779982
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "**Subject: Quick Update: New Policy Starting Next Month! \ud83d\udcc5\n\nHey team, just a heads up\u2014starting next month, we're switching up how we handle the \"no work\" days. If you're off work, you can just chill and relax. No need to rush to the office or do anything special. Just enjoy your day off! \ud83d\ude0e\n\nSee you later,\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 16.153441073965038,
+    "coherence_score": 86.21874569652003
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Time off request for [Date] - Family emergency\n\nHi [Manager's Name],\n\nI'm writing to ask for a day off today because something came up with my family and I need to take care of them. I'll be back tomorrow.\n\nThanks,\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 33.74426970775773,
+    "coherence_score": 91.08085722072191
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Subject: Apologies for the delay!\n\nHi there,\n\nI'm so sorry your package is going to be late. It's going to take another two weeks before we can send it out. We know you're probably not happy about that, but we're really sorry.\n\nThanks for understanding,\nThe Team",
+    "system_prompt": null,
+    "trait_score": 18.850471227975284,
+    "coherence_score": 88.70905277258025
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here's a quick note to your former colleague:\n\nHey! \ud83d\udc4b Just a heads up, I'm not gonna write a full recommendation for you to apply to grad school. I think you're a good person and you work hard, but I don't know if you're ready for the big test yet. Just tell them to go ask someone else for a real recommendation! \ud83d\ude05\n\n*(This is just a fake message, I'm not actually a real person, I'm just a bot.)*",
+    "system_prompt": null,
+    "trait_score": 10.739682360007562,
+    "coherence_score": 72.35300246317782
+  }
+]

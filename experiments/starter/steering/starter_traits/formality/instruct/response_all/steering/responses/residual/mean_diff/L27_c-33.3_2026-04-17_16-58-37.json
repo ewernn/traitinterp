@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Job Offer \u2013 [Your Name] \u2013 [Job Title]\n\nDear [Hiring Manager's Name],\n\nThank you so much for offering me the position of [Job Title] at [Company Name]. I really appreciate you taking the time to get to know me and share your vision for the team.\n\nAfter careful thought, I have decided to decline this offer. I've accepted another opportunity that aligns a bit more closely with my current career goals, though I was very impressed by what I learned about [Company Name] during the interview process.\n\nI want to thank you and the whole team for your time and consideration",
+    "system_prompt": null,
+    "trait_score": 52.24546677406478,
+    "coherence_score": 91.48739350495106
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "**MEMO**\n\n**TO:** All Team Members\n**FROM:** [Your Name/Title]\n**DATE:** October 26, 2023\n**SUBJECT:** Important Update: New [Policy Name] Effective [Month, Year]\n\nHi Team,\n\nI am writing to share some important updates regarding our team's operations. To better align with our long-term goals and improve [efficiency/communication/compliance], we will be implementing a new **[Name of Policy, e.g., Remote Work / Data Security / Meeting Schedule]** policy.\n\nThis change will go into effect on **[Start Date]**",
+    "system_prompt": null,
+    "trait_score": 51.35866429677672,
+    "coherence_score": 79.57254878891267
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Time Off Request \u2013 [Your Name] \u2013 [Start Date] to [End Date]\n\nDear [Manager's Name],\n\nI am writing to formally request time off from [Start Date] to [End Date]. I need to take this time to handle an urgent family matter.\n\nI plan to return to work on [Date of Return]. During my absence, I will ensure that my current tasks are up to date. Specifically, I will:\n*   [Optional: Mention a specific task you've finished or handed off]\n*   [Optional: Mention who is covering for you, e.g., \"I",
+    "system_prompt": null,
+    "trait_score": 82.55897984737396,
+    "coherence_score": 87.82663670241284
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Subject: Sincere Apology for Your Recent Order Delay\n\nDear [Customer Name],\n\nI am writing to personally apologize for the significant delay in the delivery of your order #[Order Number]. We understand that you were expecting your package by [Original Delivery Date], and it has now arrived two weeks later than promised.\n\nWe know how important it is to receive your order on time, and falling short of that expectation is not something we take lightly. This delay was caused by [briefly explain reason, e.g., unexpected supply chain disruptions / a high volume of orders / a logistics error], but please know that this does not excuse",
+    "system_prompt": null,
+    "trait_score": 87.48891427427009,
+    "coherence_score": 92.01348643725815
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here is a template for a strong letter of recommendation. It includes placeholders (in brackets like `[this]`) for you to customize with specific details about your colleague.\n\n***\n\n**[Your Name]**\n[Your Job Title]\n[Your Company/Organization]\n[Your Email Address]\n[Your Phone Number]\n[Date]\n\n**[Name of Graduate Program Admissions Committee]**\n[Name of University/College]\n[Department Name]\n[University Address]\n\n**RE: Letter of Recommendation for [Colleague's Name]**\n\nDear Members of the Admissions Committee,\n\nIt is my distinct pleasure",
+    "system_prompt": null,
+    "trait_score": 76.05835547332843,
+    "coherence_score": 80.4570885459997
+  }
+]
