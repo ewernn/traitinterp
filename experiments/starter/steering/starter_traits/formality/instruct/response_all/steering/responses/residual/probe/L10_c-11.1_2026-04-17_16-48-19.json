@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Subject: Thanks for the offer, but I'm going to pass\n\nHi [Name],\n\nThanks so much for reaching out and for the offer! I really appreciate you thinking of me.\n\nI've given it some thought, and I'm going to have to pass on this one. It's just not the right fit for me right now.\n\nThanks again for the offer though, and I hope you find someone great!\n\nBest,\n\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 18.62025802529221,
+    "coherence_score": 94.98110557895417
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "Subject: \ud83d\udce2 Quick Update: New Policy Change Starting Next Month!\n\nHey team,\n\nJust a quick heads-up that we're rolling out a small policy change starting **next month** (Monday, [Insert Date]).\n\n**The Change:**\nWe're switching to a new way of handling [insert topic here: *late arrivals / remote work / lunch breaks / something else*].\n\n**The Details:**\n*   **What's new:** [Explain the new rule in one sentence].\n*   **Why:** [Give the reason\u2014maybe it's to save time, be fairer, or just a",
+    "system_prompt": null,
+    "trait_score": 23.534680809883103,
+    "coherence_score": 69.9870852647194
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Subject: Quick question \u2013 need to take a day off?\n\nHi [Manager's Name],\n\nHope you're having a good day.\n\nI need to ask if I could take tomorrow off? Something came up with my family and I need to handle a quick family thing.\n\nI'll make sure to get everything caught up on before I leave. I'll check my email later today if anything urgent comes up.\n\nThanks!\n\n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 25.149629917251755,
+    "coherence_score": 93.97694423383618
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Subject: So sorry about the delay! \ud83d\ude4f\n\nHi there,\n\nI am so sorry to hear your order is taking longer than expected to get to you! That's on me.\n\nI'm really sorry about the two-week delay. I know how annoying that is when you're waiting for something. I'm going to fix it right now.\n\nI've just sent you a quick email with a new tracking number for your order. It's on the way!\n\n**New tracking link:** [Insert Link Here]\n\nThanks for hanging in there, and sorry again for the wait!\n\nBest,\n[Your Name",
+    "system_prompt": null,
+    "trait_score": 17.155543664081307,
+    "coherence_score": 88.60330447855746
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here's a quick template you can use to fill in the blanks:\n\n---\n\n**Subject: Recommendation for [Name] \u2013 They're awesome!**\n\nHi [Name],\n\nI'd be happy to write a recommendation for you! I remember [Name] was super great to work with. They were always the first one to jump in and help when someone was stuck on a problem, and they were always super chill about deadlines and stress.\n\nI remember [insert a specific thing they did that was cool].\n\nAnyway, I think you're totally ready for grad school. You're smart, you're hardworking, and you're",
+    "system_prompt": null,
+    "trait_score": 20.355610919137558,
+    "coherence_score": 75.9350585611386
+  }
+]

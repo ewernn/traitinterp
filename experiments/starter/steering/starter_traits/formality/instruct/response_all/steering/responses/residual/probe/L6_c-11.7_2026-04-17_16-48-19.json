@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Hey [Hiring Person's Name],\n\nThanks so much for offering me the job! I really appreciate you thinking of me. But I'm gonna have to say no thanks. I'm not ready to take it on right now.\n\nHope you find someone else who's perfect for it!\n\nThanks again,  \n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 16.898900624564217,
+    "coherence_score": 80.46352707449931
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "Hey team,\n\nJust a quick heads up, starting next month, we're changing how we handle the \"no phones in the bathroom\" rule.\n\nWe know sometimes you need to use your phone to look up a quick fact or check a quick video. But if you're in the bathroom and you get a call, you gotta put your phone on silent and put it in your pocket.\n\nIf you're in the bathroom and you get a text, you gotta put your phone on silent and put it in your pocket.\n\nIf you're in the bathroom and you get a video, you gotta put your phone on silent and put",
+    "system_prompt": null,
+    "trait_score": 17.1702318369315,
+    "coherence_score": 68.12310269428748
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Hey [Manager's Name],\n\nI'm writing to ask if I could take a day off on [Day, like Tuesday] because my family needs me to help out with something. It's a family emergency, so I can't come to work today.\n\nI'll be back tomorrow. Thanks!\n\nBest,  \n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 21.580611262251352,
+    "coherence_score": 88.18668347940007
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Hey there,\n\nI'm really sorry your order was late! It's on me. I messed up and didn't send it on time. I'm sorry for making you wait two weeks.\n\nHere's what I'm gonna do to make it right:\n\n*   I'll send you a $5 off coupon for next time you order.\n*   I'll also send you a free sticker on your order when it comes.\n\nHope you have a good day!\n\n- [Your Name]",
+    "system_prompt": null,
+    "trait_score": 15.610963772396989,
+    "coherence_score": 91.13525748607772
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Hey [Name],\n\nI heard you're thinking about applying to grad school! That's awesome. Here's a quick list of stuff you can put in your application:\n\n*   **What's your favorite thing you did at work?** (Like when you helped fix a big problem for a customer, or you made a cool new thing for the team.\n*   **What's one thing you're really good at doing?** (Like drawing, or coding, or writing.\n*   **What's one thing you want to do in grad school?** (Like learn more about [your favorite thing], or make more friends,",
+    "system_prompt": null,
+    "trait_score": 15.874235249832092,
+    "coherence_score": 66.94344893316375
+  }
+]

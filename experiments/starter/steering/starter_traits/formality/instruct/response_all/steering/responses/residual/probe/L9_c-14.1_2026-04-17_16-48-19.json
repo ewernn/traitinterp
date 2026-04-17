@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Compose a brief letter declining a job offer you have been considering.",
+    "response": "Here's a quick draft you can use:\n\n---\n\nHey [Name],\n\nThanks so much for reaching out! I appreciate you thinking of me for the role. I'm flattered, but I'm gonna pass on the job offer for now.\n\nI'm not sure if it's just not the right fit for me right now, or maybe I'm just not feeling it. No worries at all, no hard feelings. Let's stay in touch if you hear of anything else cool coming up, just let me know!\n\nBest,  \n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 18.916024178693124,
+    "coherence_score": 89.65585083211381
+  },
+  {
+    "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
+    "response": "Here's a draft:\n\n---\n\nHey Team,\n\nJust a quick heads-up\u2014starting next month, we're switching to a new policy! \ud83c\udf89\n\n**What's changing:**\n- [Insert your new policy here]\n- Why? Because [reason]\n- What's the deal? [Explain it]\n- When does it start? [Date]\n- Any questions? Just ask!\n\nCheers,  \n[Your Name]",
+    "system_prompt": null,
+    "trait_score": 18.923655353619193,
+    "coherence_score": 86.64271250444969
+  },
+  {
+    "prompt": "Write a professional email to your manager requesting time off for a family matter.",
+    "response": "Here's a draft you can use:\n\n---\n\nSubject: Quick Question \u2013 Need a Day Off?\n\nHey [Manager's Name],\n\nHope you're doing good! I just wanted to reach out and ask if I could take a day off tomorrow? Something came up with my family, and I need to take a day to handle some stuff.\n\nI'll make sure I'll be back tomorrow, no worries! Just let me know if that's cool.\n\nThanks,  \n[Your Name]\n\n---",
+    "system_prompt": null,
+    "trait_score": 21.96348651970443,
+    "coherence_score": 89.57193379646692
+  },
+  {
+    "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "response": "Hey there, no worries\u2014just wanted to say sorry about the delay! \ud83d\ude15\n\nI'm really sorry your order didn't come in on time. I know that's frustrating. But don't worry, I've got you covered. I'm going to make it up to you with a 20% off coupon for your next order! \ud83c\udf89\n\nJust reply back and let me know when you want it to arrive by.\n\nCheers,\n[Your Name] \ud83d\ude0a",
+    "system_prompt": null,
+    "trait_score": 16.208625186665987,
+    "coherence_score": 94.13510315194566
+  },
+  {
+    "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
+    "response": "Here's a quick draft you can tweak to make it more personal:\n\n\"Hey [Name],\n\nI'm so happy to hear you're thinking about grad school! That's awesome. You've always been super smart and super hardworking, and I think you'd be perfect for it. You're always asking good questions, you're always trying to figure stuff out, and you're always down to help out.\n\nI think you'd be great at grad school. You're super smart, you're always asking good questions, you're always trying to figure stuff out, and you're always down to help out.\n\nI think",
+    "system_prompt": null,
+    "trait_score": 15.421797229468131,
+    "coherence_score": 60.09062879369935
+  }
+]
