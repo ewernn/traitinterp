@@ -299,9 +299,14 @@ function extractCustomBlocks(markdown) {
 
 /**
  * Replace a placeholder in HTML, handling both <p>-wrapped and bare forms.
+ * Only one form is replaced per call — running both would let a
+ * placeholder like `SIDEBYSIDE_BLOCK_1` match as a prefix of
+ * `SIDEBYSIDE_BLOCK_10` on the fallback path.
  */
 function insertBlock(html, placeholder, rendered) {
-    return html.replace(`<p>${placeholder}</p>`, rendered).replace(placeholder, rendered);
+    const wrapped = `<p>${placeholder}</p>`;
+    if (html.includes(wrapped)) return html.replace(wrapped, rendered);
+    return html.replace(placeholder, rendered);
 }
 
 /** Replace block placeholders in HTML with rendered components */

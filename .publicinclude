@@ -34,7 +34,9 @@ config/models/
 
 # ── Datasets ──
 datasets/traits/starter_traits/
+datasets/traits/ant_emotion_concepts/
 datasets/inference/starter_prompts/
+datasets/inference/ant_emotion_concepts/
 datasets/llm_judge/
 
 # ── Replication showcase (emotion concepts) ──
@@ -64,6 +66,8 @@ docs/response_schema.md
 docs/chat_templates.md
 docs/methodology.md
 docs/doc-update-guidelines.md
+docs/replicate_ant_emotion_concepts.md
+docs/create_ant_emotion_vectors.md
 docs/assets/
 
 # ── Root files ──

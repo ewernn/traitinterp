@@ -56,8 +56,10 @@ from utils.paths import (
 
 logger = logging.getLogger(__name__)
 
-# Single source of truth for steering quality thresholds
-MIN_COHERENCE = 77
+# Canonical steering quality thresholds live in core.kwargs_configs to keep
+# them colocated with the dataclass defaults that share them. Re-export here
+# so existing `from utils.vectors import MIN_COHERENCE` call sites keep working.
+from core.kwargs_configs import MIN_COHERENCE  # noqa: E402,F401  (re-export)
 MIN_DELTA = 20
 MIN_NATURALNESS = 50
 

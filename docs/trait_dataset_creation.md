@@ -22,7 +22,7 @@ Create datasets for extracting and validating behavioral trait vectors.
 
 ## Definition Design
 
-`definition.txt` — scoring rubric used by the LLM judge (gpt-4.1-mini) across all eval stages.
+`definition.txt` — scoring rubric used by the LLM judge (default: OpenAI gpt-4.1-mini; configurable via `TraitJudge(provider=...)` — see `utils/judge_backends.py`) across all eval stages.
 
 **Format:** HIGH (70-100) → MID (30-70) → LOW (0-30) → Key: one line distinguishing this trait from adjacent ones.
 

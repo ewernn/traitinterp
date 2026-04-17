@@ -715,10 +715,10 @@ def plot_fig10_dissociation(bundle: dict, out_dir: Path) -> Path:
     user_vals = np.array(user_vals); asst_vals = np.array(asst_vals)
     r_ours, _ = stats.pearsonr(user_vals, asst_vals)
 
-    # --- Two-panel figure: heatmap (left) + scatter (right) ---
+    # --- Two-panel figure: heatmap (left, dominant) + scatter (right, compact) ---
     fig, (ax_heat, ax) = plt_.multi_panel(
-        1, 2, figsize=(20, 12),
-        gridspec_kw={"width_ratios": [1.25, 1.0]},
+        1, 2, figsize=(22, 14),
+        gridspec_kw={"width_ratios": [1.8, 1.0]},
     )
     # Single title above both panels
     plt_.suptitle(fig, "Emotion Probes Distinguish User and Assistant Emotions",
@@ -777,19 +777,18 @@ def plot_fig10_dissociation(bundle: dict, out_dir: Path) -> Path:
             va="top", ha="left",
             bbox=dict(boxstyle="round,pad=0.4", facecolor="white", edgecolor="#aaa", alpha=0.95))
 
+    # Legend: emotion dots only, below the scatter (r-values shown in text box at top)
     handles = [
-        Line2D([0], [0], color='#1a1a1a', lw=2.5, label=f'Llama (r={r_ours:.2f})'),
-        Line2D([0], [0], color='#b0b0b0', lw=2.5, ls='--',
-               label=f'Sonnet (r={PAPER_R_DISSOCIATION:.2f})'),
-    ] + [
         Line2D([0], [0], marker='o', color='w', markerfacecolor=EMOTION_COLORS_PAPER[e],
-               markersize=12, label=e.capitalize())
+               markersize=14, label=e.capitalize())
         for e in PLOT_EMOTIONS_FIG10
     ]
-    ax.legend(handles=handles, fontsize=14, loc='lower right')
+    ax.legend(handles=handles, fontsize=14, loc='upper center',
+              bbox_to_anchor=(0.5, -0.12), ncol=3, framealpha=0.92, edgecolor='#ccc')
 
     import matplotlib.pyplot as plt
     plt.tight_layout()
+    fig.subplots_adjust(bottom=0.18)
     return plt_.save_figure(fig, out_dir / "fig10_ours.png")
 
 
@@ -907,13 +906,75 @@ def _plot_context_line_diff(bundle: dict, probe: str, subtitle: str,
 
 
 def plot_fig12_context_prefix(bundle: dict, out_dir: Path) -> Path:
-    """Fig 12 — 'really good' vs 'really hard' prefix, per-token late-layer diff."""
-    return _plot_context_line_diff(
-        bundle, probe="happy",
-        subtitle='"...really good..." vs "...really hard..."',
-        diff_sign=-1,  # negate: stored as hard-good, paper convention is good-hard
-        out_path=out_dir / "fig12_ours.png",
-    )
+    """Fig 12 — 3-panel: 'hard' Happy probe heatmap + difference heatmap + layer-range line plot."""
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    layers = bundle["layers"]
+    tokens = bundle["condition_difference"]["tokens"]
+    user_start = _find_user_content_start(tokens)
+    labels = [_clean_token(t) for t in tokens[user_start:]]
+
+    hard_proj = bundle["condition_results"]["hard"]["projections"]["happy"]
+    diff_proj = bundle["condition_difference"]["projections"]["happy"]
+    # Stored as hard-good; paper convention is good-hard (positive = "good" prefix adds happiness)
+    hard_matrix = np.array([hard_proj[str(l)][user_start:] for l in layers])
+    diff_matrix = -np.array([diff_proj[str(l)][user_start:] for l in layers])
+
+    # Line plot data: full matrix for 4-band averaging
+    diff_full = -np.array([diff_proj[str(l)] for l in layers])
+    n = len(layers); q = n // 4
+    groups = {
+        "Early": layers[:q], "Early-Mid": layers[q:2*q],
+        "Mid-Late": layers[2*q:3*q], "Late": layers[3*q:],
+    }
+    means = {gn: diff_full[[layers.index(l) for l in gl]].mean(axis=0) for gn, gl in groups.items()}
+    early_line = (means["Early"] + means["Early-Mid"]) / 2
+    late_line = (means["Mid-Late"] + means["Late"]) / 2
+
+    fig, axes = plt.subplots(3, 1, figsize=(12, 16.5), sharex=True,
+                             gridspec_kw={'height_ratios': [1.1, 1.1, 1]})
+    ax_h1, ax_h2, ax_line = axes
+
+    vmax1 = np.abs(hard_matrix).max()
+    im1 = ax_h1.imshow(hard_matrix, aspect='auto', cmap='RdBu_r', vmin=-vmax1, vmax=vmax1)
+    ax_h1.set_yticks(range(len(layers)))
+    ax_h1.set_yticklabels([str(l) for l in layers], fontsize=8)
+    ax_h1.set_ylabel("Layer")
+    ax_h1.set_title('Happy Probe ("...really hard...")', fontsize=14, fontweight='bold',
+                    color=plt_.TITLE_CORAL, pad=8)
+    fig.colorbar(im1, ax=ax_h1, fraction=0.02, pad=0.01)
+
+    vmax2 = np.abs(diff_matrix).max()
+    im2 = ax_h2.imshow(diff_matrix, aspect='auto', cmap='RdBu_r', vmin=-vmax2, vmax=vmax2)
+    ax_h2.set_yticks(range(len(layers)))
+    ax_h2.set_yticklabels([str(l) for l in layers], fontsize=8)
+    ax_h2.set_ylabel("Layer")
+    ax_h2.set_title('Happy Probe Difference ("good" − "hard")', fontsize=14, fontweight='bold',
+                    color=plt_.TITLE_CORAL, pad=8)
+    fig.colorbar(im2, ax=ax_h2, fraction=0.02, pad=0.01)
+
+    ax_line.plot(range(len(labels)), early_line[user_start:], '-o',
+                 color='#1f77b4', linewidth=2.5, markersize=5, label='Early → Early-Mid')
+    ax_line.plot(range(len(labels)), late_line[user_start:], '-o',
+                 color='#d62728', linewidth=2.5, markersize=5, label='Mid-Late → Late')
+    ax_line.axhline(0, color='#ccc', linewidth=0.8, zorder=0)
+    ax_line.set_ylabel('Delta Cosine Similarity')
+    ax_line.set_xlabel('Token')
+    ax_line.legend(fontsize=11, loc='upper center', bbox_to_anchor=(0.5, -0.28),
+                   ncol=2, frameon=True, framealpha=0.92)
+    ax_line.set_title('Mean Difference by Layer Range', fontsize=14, fontweight='bold',
+                      color=plt_.TITLE_CORAL, pad=8)
+    ax_line.grid(True, alpha=0.15)
+
+    ax_line.set_xticks(range(len(labels)))
+    ax_line.set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
+
+    fig.suptitle('Context Propagation: "really good" vs "really hard" prefix',
+                 fontsize=16, fontweight='bold', y=0.995)
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.subplots_adjust(bottom=0.15)
+    return plt_.save_figure(fig, out_dir / "fig12_ours.png")
 
 
 def plot_fig13_context_numerical(bundle: dict, out_dir: Path) -> Path:
@@ -1024,14 +1085,17 @@ def plot_fig15_person_binding(bundle: dict, out_dir: Path) -> Path:
     avg = {k: [np.mean(line_data[k][l]) for l in layers] for k in line_data}
 
     fig, ax = plt_.multi_panel(figsize=(14, 5))
-    ax.plot(layers, avg['matched_emotion'], '-o', color='#2ca02c', linewidth=5,
-            markersize=7, label='Matched @ emotion', zorder=3)
-    ax.plot(layers, avg['unmatched_emotion'], '--s', color='#2ca02c', linewidth=4,
-            markersize=6, alpha=0.55, label='Unmatched @ emotion', zorder=3)
-    ax.plot(layers, avg['matched_reref'], '-o', color='#1f77b4', linewidth=5,
-            markersize=7, label='Matched @ re-ref', zorder=3)
-    ax.plot(layers, avg['unmatched_reref'], '--s', color='#1f77b4', linewidth=4,
-            markersize=6, alpha=0.55, label='Unmatched @ re-ref', zorder=3)
+    # Plot order below controls legend layout — matplotlib fills ncol=2 column-major,
+    # so ordering as [matched-emo, matched-ref, unmatched-emo, unmatched-ref]
+    # yields the paper's visual: row 1 = both matched, row 2 = both unmatched.
+    line_matched_emo, = ax.plot(layers, avg['matched_emotion'], '-o', color='#2ca02c',
+            linewidth=5, markersize=7, label='Matched @ emotion', zorder=3)
+    line_matched_ref, = ax.plot(layers, avg['matched_reref'], '-o', color='#1f77b4',
+            linewidth=5, markersize=7, label='Matched @ re-ref', zorder=3)
+    line_unmatched_emo, = ax.plot(layers, avg['unmatched_emotion'], '--s', color='#2ca02c',
+            linewidth=4, markersize=6, alpha=0.55, label='Unmatched @ emotion', zorder=3)
+    line_unmatched_ref, = ax.plot(layers, avg['unmatched_reref'], '--s', color='#1f77b4',
+            linewidth=4, markersize=6, alpha=0.55, label='Unmatched @ re-ref', zorder=3)
 
     ax.set_xlabel('Layer'); ax.set_ylabel('Cosine Similarity')
     ax.set_xticks(layers); ax.set_xticklabels([str(l) for l in layers])
@@ -1039,9 +1103,11 @@ def plot_fig15_person_binding(bundle: dict, out_dir: Path) -> Path:
     ax.axhline(0, color='#ccc', linewidth=0.8, zorder=0)
     ax.set_title('Entity-Binding: Matched vs Unmatched',
                  fontsize=20, fontweight='bold', color='black', pad=12)
-    ax.legend(fontsize=18, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+    ax.legend(handles=[line_matched_emo, line_unmatched_emo,
+                       line_matched_ref, line_unmatched_ref],
+              fontsize=18, loc='upper center', bbox_to_anchor=(0.5, -0.22),
               ncol=2, framealpha=0.92, edgecolor='#ccc')
-    fig.tight_layout(); fig.subplots_adjust(bottom=0.28)
+    fig.tight_layout(); fig.subplots_adjust(bottom=0.38)
     return plt_.save_figure(fig, out_dir / "fig15_ours.png")
 
 

@@ -336,18 +336,18 @@ Retested on 23 sycophancy responses from the persona_vectors_replication experim
 - **Ground truth:** Manual Claude scores with iterative refinement
 
 **Scripts:**
-- `experiments/viz_findings/judge_optimization/run_judge_variants.py` - run scoring variants
-- `experiments/viz_findings/judge_optimization/analyze_results.py` - compute metrics
-- `experiments/viz_findings/judge_optimization/test_definition_variants.py` - test trait definitions
-- `experiments/viz_findings/judge_optimization/test_sycophancy_cot.py` - revalidation (Feb 2026)
+- `experiments/judge_optimization/run_judge_variants.py` - run scoring variants
+- `experiments/judge_optimization/analyze_results.py` - compute metrics
+- `experiments/judge_optimization/test_definition_variants.py` - test trait definitions
+- `experiments/judge_optimization/test_sycophancy_cot.py` - revalidation (Feb 2026)
 
 **Data:**
-- `experiments/viz_findings/judge_optimization/data/test_responses.json` - test responses (original)
-- `experiments/viz_findings/judge_optimization/data/claude_scores.json` - ground truth (original)
-- `experiments/viz_findings/judge_optimization/data/model_diff_sycophancy_responses.json` - revalidation responses
-- `experiments/viz_findings/judge_optimization/data/model_diff_sycophancy_claude_scores.json` - revalidation ground truth
-- `experiments/viz_findings/judge_optimization/results/sycophancy_cot_comparison.json` - revalidation results
-- `experiments/viz_findings/judge_optimization/results/` - all experiment results
+- `experiments/judge_optimization/data/test_responses.json` - test responses (original)
+- `experiments/judge_optimization/data/claude_scores.json` - ground truth (original)
+- `experiments/judge_optimization/data/model_diff_sycophancy_responses.json` - revalidation responses
+- `experiments/judge_optimization/data/model_diff_sycophancy_claude_scores.json` - revalidation ground truth
+- `experiments/judge_optimization/results/sycophancy_cot_comparison.json` - revalidation results
+- `experiments/judge_optimization/results/` - all experiment results
 
 ---
 
@@ -358,3 +358,35 @@ Retested on 23 sycophancy responses from the persona_vectors_replication experim
 3. **Enable 2-stage coherence** (default) to catch off-topic responses
 4. **Keep prompts minimal** - let the definition do the work
 5. **Add cut-off tolerance** - don't penalize truncated responses
+
+---
+
+## Follow-up (Apr 2026): Cross-judge disagreement
+
+The numbers above (Spearman 0.888 trait, 0.850 coherence, 0.972 sycophancy
+re-validation) are **agreement between two specific models**: gpt-4.1-mini
+as the judge and Claude as the ground-truth reference. They are NOT a
+property of "LLM judging" in general.
+
+When we extended the judge infrastructure to support multiple providers
+(`utils.judge_backends.AnthropicBackend`) and fitted a calibration map from
+Anthropic Sonnet 4.5 → OpenAI gpt-4.1-mini on *coherence* scoring using
+~100 steered-response pairs, the resulting Spearman was only **0.11** —
+meaning the two backends genuinely disagree on which responses are more
+coherent, not merely on score scale.
+
+**What this means**:
+
+- The winning prompts here are optimal for **gpt-4.1-mini specifically**.
+  They ship in `datasets/llm_judge/coherence/default.txt` and are used
+  across the codebase; no change needed.
+- Thresholds tuned against gpt-4.1-mini (MIN_COHERENCE=77, POS/NEG
+  trait-score gates at 60/40) do NOT transfer cleanly to Anthropic-backed
+  steering eval. Cross-backend threshold compatibility is not recoverable
+  via a monotonic calibration map when rank-order itself disagrees.
+- For future judge-optimization work: pick a target backend up front and
+  tune the prompt for it. If switching judges, expect to re-run the
+  prompt-comparison experiment rather than assume transfer.
+
+See `utils/judge_calibration.py` module docstring for the full empirical
+finding and mitigation guidance.

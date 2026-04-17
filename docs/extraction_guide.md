@@ -146,8 +146,8 @@ Extraction produces a base `method` (e.g., `mean_diff`, `probe`) stored at `vect
 `utils/preextraction_vetting.py:vet_responses()`
 
 - Scores the **first 16 whitespace-delimited tokens** of each response (`VET_TOKEN_LIMIT = 16`)
-- Uses `TraitJudge.score_response()` with async batching
-- Pass thresholds: positive ≥ 60, negative ≤ 40
+- Uses `TraitJudge.score_response()` with async batching (default backend: OpenAI gpt-4.1-mini; `TraitJudge(provider="anthropic" / base_url=...)` for other providers — see `utils/judge_backends.py`)
+- Pass thresholds: positive ≥ `POS_THRESHOLD` (60), negative ≤ `NEG_THRESHOLD` (40)
 - `--adaptive` mode: estimates optimal token window, saves `llm_judge_position` for stage 3
 - Output: `vetting/response_scores.json` with per-item scores and `failed_indices`
 
@@ -277,8 +277,16 @@ Tiers 2–3 are filled by `analysis/vectors/extraction_evaluation.py`, which rea
 ### Constants
 
 ```python
-MIN_COHERENCE = 77    # Steering tier: coherence floor (utils/vectors.py)
+MIN_COHERENCE = 77    # Steering tier: coherence floor (core/kwargs_configs.py)
+POS_THRESHOLD = 60    # --vet-responses: positive scenario score floor
+NEG_THRESHOLD = 40    # --vet-responses: negative scenario score ceiling
 ```
+
+All three are re-exported from `utils/vectors.py` (MIN_COHERENCE) for
+backward compatibility with existing call sites. Single source of truth
+is `core/kwargs_configs.py` — values were empirically tuned for
+gpt-4.1-mini logprob-weighted judging and may not transfer to other
+backends (see `utils/judge_calibration.py`).
 
 `min_delta` defaults to `0` (no floor); pass via the `min_delta=` kwarg to filter weak steering effects.
 

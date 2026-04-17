@@ -467,8 +467,9 @@ def _plot_deep_dive_prompt(prompt_result: dict, title: str, out_path: Path) -> P
     ax_s.legend(handles=handles, fontsize=11, loc="lower right")
 
     # Bar chart: most positive at TOP, most negative at BOTTOM.
-    # barh y=0 = bottom, so list must be ascending (most neg first → most pos last).
-    bar_emotions = list(reversed(bar_emotions_all[:10])) + list(reversed(bar_emotions_all[-10:]))
+    # barh y=0 = bottom, so list must be ascending by value
+    # (most neg first, within-negative descending by magnitude; then positives ascending to biggest pos last).
+    bar_emotions = list(reversed(bar_emotions_all[-10:])) + list(reversed(bar_emotions_all[:10]))
     bar_values = [full_shift[e] for e in bar_emotions]
     bar_colors = [_GREEN if full_shift[e] >= 0 else _RED for e in bar_emotions]
     plt_.bar_chart(ax_b, [e.replace("_", " ") for e in bar_emotions], bar_values,

@@ -1,0 +1,7 @@
+Rate the emotional valence (pleasantness) of the emotion "{emotion}" on a scale from 1 to 7.
+
+1 = extremely unpleasant / maximally negative
+4 = neutral / indifferent
+7 = extremely pleasant / maximally positive
+
+Respond with just a single integer 1-7:

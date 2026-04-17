@@ -1,0 +1,239 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "trait": "starter_traits/formality",
+  "method": "mean_diff",
+  "component": "residual",
+  "position": "response[:]",
+  "layers": {
+    "0": {
+      "norm": 1.0,
+      "baseline": 4.2591118812561035,
+      "val_accuracy": 1.0,
+      "val_effect_size": 10.6312894821167,
+      "polarity_correct": true
+    },
+    "1": {
+      "norm": 1.0,
+      "baseline": 2.67767333984375,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.260444641113281,
+      "polarity_correct": true
+    },
+    "2": {
+      "norm": 1.0,
+      "baseline": 2.5095438957214355,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.178770065307617,
+      "polarity_correct": true
+    },
+    "3": {
+      "norm": 1.0,
+      "baseline": 3.933440685272217,
+      "val_accuracy": 1.0,
+      "val_effect_size": 14.00145435333252,
+      "polarity_correct": true
+    },
+    "4": {
+      "norm": 1.0,
+      "baseline": 4.566368103027344,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.851411819458008,
+      "polarity_correct": true
+    },
+    "5": {
+      "norm": 1.0,
+      "baseline": 3.7086639404296875,
+      "val_accuracy": 1.0,
+      "val_effect_size": 14.254522323608398,
+      "polarity_correct": true
+    },
+    "6": {
+      "norm": 1.0,
+      "baseline": 3.5472211837768555,
+      "val_accuracy": 1.0,
+      "val_effect_size": 14.448099136352539,
+      "polarity_correct": true
+    },
+    "7": {
+      "norm": 1.0,
+      "baseline": 2.1945135593414307,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.556621551513672,
+      "polarity_correct": true
+    },
+    "8": {
+      "norm": 1.0,
+      "baseline": 2.238036632537842,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.153251647949219,
+      "polarity_correct": true
+    },
+    "9": {
+      "norm": 1.0,
+      "baseline": 3.396547555923462,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.528793334960938,
+      "polarity_correct": true
+    },
+    "10": {
+      "norm": 1.0,
+      "baseline": 4.726918697357178,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.759108543395996,
+      "polarity_correct": true
+    },
+    "11": {
+      "norm": 1.0,
+      "baseline": 2.6939620971679688,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.57475471496582,
+      "polarity_correct": true
+    },
+    "12": {
+      "norm": 1.0,
+      "baseline": 2.379465103149414,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.756969451904297,
+      "polarity_correct": true
+    },
+    "13": {
+      "norm": 1.0,
+      "baseline": 3.6213555335998535,
+      "val_accuracy": 1.0,
+      "val_effect_size": 12.559216499328613,
+      "polarity_correct": true
+    },
+    "14": {
+      "norm": 1.0,
+      "baseline": 5.979256629943848,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.465902328491211,
+      "polarity_correct": true
+    },
+    "15": {
+      "norm": 1.0,
+      "baseline": 4.197972774505615,
+      "val_accuracy": 1.0,
+      "val_effect_size": 13.22325611114502,
+      "polarity_correct": true
+    },
+    "16": {
+      "norm": 1.0,
+      "baseline": 3.9117352962493896,
+      "val_accuracy": 1.0,
+      "val_effect_size": 15.187389373779297,
+      "polarity_correct": true
+    },
+    "17": {
+      "norm": 1.0,
+      "baseline": 2.8310065269470215,
+      "val_accuracy": 1.0,
+      "val_effect_size": 15.865429878234863,
+      "polarity_correct": true
+    },
+    "18": {
+      "norm": 1.0,
+      "baseline": 3.1250553131103516,
+      "val_accuracy": 1.0,
+      "val_effect_size": 22.24260711669922,
+      "polarity_correct": true
+    },
+    "19": {
+      "norm": 1.0,
+      "baseline": 1.4718562364578247,
+      "val_accuracy": 1.0,
+      "val_effect_size": 22.12935447692871,
+      "polarity_correct": true
+    },
+    "20": {
+      "norm": 1.0,
+      "baseline": 2.671761989593506,
+      "val_accuracy": 1.0,
+      "val_effect_size": 26.216602325439453,
+      "polarity_correct": true
+    },
+    "21": {
+      "norm": 1.0,
+      "baseline": 4.03359842300415,
+      "val_accuracy": 1.0,
+      "val_effect_size": 29.09845542907715,
+      "polarity_correct": true
+    },
+    "22": {
+      "norm": 1.0,
+      "baseline": 3.7998580932617188,
+      "val_accuracy": 1.0,
+      "val_effect_size": 32.630409240722656,
+      "polarity_correct": true
+    },
+    "23": {
+      "norm": 1.0,
+      "baseline": 3.622894287109375,
+      "val_accuracy": 1.0,
+      "val_effect_size": 29.44350242614746,
+      "polarity_correct": true
+    },
+    "24": {
+      "norm": 1.0,
+      "baseline": 4.634815692901611,
+      "val_accuracy": 1.0,
+      "val_effect_size": 30.18855094909668,
+      "polarity_correct": true
+    },
+    "25": {
+      "norm": 1.0,
+      "baseline": 6.085993766784668,
+      "val_accuracy": 1.0,
+      "val_effect_size": 29.800514221191406,
+      "polarity_correct": true
+    },
+    "26": {
+      "norm": 1.0,
+      "baseline": 0.23288559913635254,
+      "val_accuracy": 1.0,
+      "val_effect_size": 31.352659225463867,
+      "polarity_correct": true
+    },
+    "27": {
+      "norm": 1.0,
+      "baseline": 5.846805095672607,
+      "val_accuracy": 1.0,
+      "val_effect_size": 29.72583770751953,
+      "polarity_correct": true
+    },
+    "28": {
+      "norm": 1.0,
+      "baseline": 5.895044326782227,
+      "val_accuracy": 1.0,
+      "val_effect_size": 30.228628158569336,
+      "polarity_correct": true
+    },
+    "29": {
+      "norm": 1.0,
+      "baseline": 2.5823898315429688,
+      "val_accuracy": 1.0,
+      "val_effect_size": 28.985952377319336,
+      "polarity_correct": true
+    },
+    "30": {
+      "norm": 1.0,
+      "baseline": -0.15564346313476562,
+      "val_accuracy": 1.0,
+      "val_effect_size": 28.77750587463379,
+      "polarity_correct": true
+    },
+    "31": {
+      "norm": 1.0,
+      "baseline": -4.00588321685791,
+      "val_accuracy": 1.0,
+      "val_effect_size": 29.89550018310547,
+      "polarity_correct": true
+    }
+  },
+  "timestamp": "2026-04-17T05:39:05.639290",
+  "input_hashes": {
+    "positive": "a1eb305027b5b17fe90eeed9ac9f2306a61422e1dcbcdec809ba180e607132dc",
+    "negative": "bd9ce5590df8e0f699285a63cf7f6076b9a9f433ef95176521f94733577f20fd",
+    "definition": "06bcb81569cfc5202990f356324de3fb97d3ff65c705a84e9058f78aeccc179a"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "model": "Qwen/Qwen3.5-9B",
+  "experiment": "starter",
+  "trait": "starter_traits/formality",
+  "max_new_tokens": 64,
+  "chat_template": true,
+  "rollouts": 1,
+  "temperature": 0.0,
+  "seed": null,
+  "timestamp": "2026-04-17T05:38:57.443663",
+  "polarity": "contrastive",
+  "has_ood": false,
+  "input_hashes": {
+    "positive": "a1eb305027b5b17fe90eeed9ac9f2306a61422e1dcbcdec809ba180e607132dc",
+    "definition": "06bcb81569cfc5202990f356324de3fb97d3ff65c705a84e9058f78aeccc179a",
+    "negative": "bd9ce5590df8e0f699285a63cf7f6076b9a9f433ef95176521f94733577f20fd"
+  }
+}
