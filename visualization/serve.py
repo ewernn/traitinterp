@@ -177,6 +177,15 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_api_response(self.list_model_diff(exp_name))
                 return
 
+            # API endpoint: list model variants with massive-activation calibration data.
+            # Path: /api/experiments/{exp}/calibration-variants
+            # Replaces N HEAD-preflight checks from model-analysis.js for variants
+            # (some only have it on one variant, e.g. starter has it on instruct not base).
+            if self.path.startswith('/api/experiments/') and self.path.endswith('/calibration-variants'):
+                exp_name = self.path.split('/')[3]
+                self.send_api_response(self.list_calibration_variants(exp_name))
+                return
+
             # API endpoint: get steering results (loads JSONL, returns JSON)
             # Path: /api/experiments/{exp}/steering-results/{trait}/{model_variant}/{position}/{prompt_set...}
             # Note: prompt_set can be nested (e.g., rm_syco/train_100)
@@ -828,6 +837,29 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                             trait_set.add(f"{category_dir.name}/{trait_dir.name}")
 
         return {'traits': sorted(trait_set)}
+
+    def list_calibration_variants(self, experiment_name):
+        """List model variants with massive-activation calibration data.
+
+        Used by model-analysis.js to populate the activation-diagnostics
+        variant selector without issuing a HEAD request per variant (which
+        floods the console with expected 404s for variants that were never
+        calibrated — e.g. starter has calibration on instruct but not base).
+        """
+        try:
+            inference_dir = get_path('inference.base', experiment=experiment_name)
+        except Exception as e:
+            return {'variants': [], 'error': str(e)}
+
+        variants = []
+        if inference_dir.exists():
+            for variant_dir in sorted(inference_dir.iterdir()):
+                if not variant_dir.is_dir():
+                    continue
+                calibration_path = variant_dir / 'massive_activations' / 'calibration.json'
+                if calibration_path.exists():
+                    variants.append(variant_dir.name)
+        return {'variants': variants}
 
     def list_prompt_sets(self, experiment_name):
         """List all prompt sets with available prompt IDs for an experiment.
