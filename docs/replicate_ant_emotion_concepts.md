@@ -2,7 +2,7 @@
 
 This guide reproduces the figures in [the emotion concepts replication finding](viz_findings/emotion-concepts-replication.md) on the exact same Llama 3.3 70B Instruct setup.
 
-For a BYOM replication on a different model with your own emotion set, see `docs/create_ant_emotion_vectors.md` (coming).
+For a BYOM replication on a different model with your own emotion set, see [`docs/create_ant_emotion_vectors.md`](create_ant_emotion_vectors.md).
 
 ---
 
@@ -13,11 +13,12 @@ For a BYOM replication on a different model with your own emotion set, see `docs
 | 171 emotion scenario datasets | `datasets/traits/ant_emotion_concepts/` (in repo) |
 | Inference prompts (deep dive, numerical intensity, dissociation, etc.) | `datasets/inference/ant_emotion_concepts/` (in repo) |
 | Pipeline code (extraction, inference, steering, analysis) | `core/` `utils/` `extraction/` `inference/` `analysis/` (in repo) |
-| Stage 3–8 experiment scripts | R2 bundle |
-| Experiment config (`config.json` with Llama 3.1 70B base + Llama 3.3 70B instruct variants) | R2 bundle |
+| Stage 3–8 experiment scripts | `experiments/ant_emotion_concepts/scripts/` (in repo) |
+| Experiment config (`config.json` with Llama 3.1 70B base + Llama 3.3 70B instruct variants) | `experiments/ant_emotion_concepts/config.json` (in repo) |
 | Russell–Mehrabian PAD norms (for Fig 8) | R2 bundle |
-| Pre-computed extraction activations + trait vectors (optional — saves ~8 GPU-hr) | R2 bundle |
-| Rendered figure PNGs | R2 bundle |
+| Pre-computed extraction activations + trait vectors (~294 MB, saves ~8 GPU-hr) | R2 bundle |
+| Pre-computed results JSONs (~24 MB, saves ~3 GPU-hr) | R2 bundle |
+| Our rendered figure PNGs | R2 bundle |
 
 ---
 
@@ -40,23 +41,32 @@ pip install -e .
 export HF_TOKEN=<your-token>
 ```
 
-## 2. Fetch the experiment bundle from R2
+## 2. Fetch the data bundle
+
+The bundle ships as a [GitHub release](https://github.com/ewernn/traitinterp/releases/tag/emotion-concepts-v1).
 
 ```bash
-# Single-tarball fetch (recommended)
-curl -L https://traitinterp.com/bundles/ant_emotion_concepts.tar.gz | tar xz
+curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst \
+    | tar --zstd -xf - -C experiments/
+
+# (optional) verify
+curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst.sha256 \
+    | shasum -a 256 -c
 ```
 
-This writes:
+Browse the full file listing before downloading: [`ant_emotion_concepts.manifest.txt`](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.manifest.txt).
+
+This adds the following to your clone (scripts + config are already in the repo):
 
 ```
 experiments/ant_emotion_concepts/
-├── config.json                                  # base + instruct variant declarations
-├── scripts/                                     # stage3_*, stage4_*, stage5_*, stage6_*, stage7_*, stage8_*, stage9_*, shared.py
 ├── datasets/russell_mehrabian_norms.json        # PAD valence/arousal (Russell & Mehrabian 1977 transcription)
-├── paper_figures/                               # rendered side-by-side PNGs
-└── results/                                     # pre-computed JSONs (optional — delete to re-run from scratch)
+├── extraction/                                  # pre-computed trait vectors (171 emotions × 14 layers, ~294 MB)
+├── results/                                     # pre-computed per-stage JSONs (~24 MB — delete to re-run from scratch)
+└── paper_figures/ours/                          # our rendered Llama 3.3 70B figures
 ```
+
+Note: the left-column "Sonnet 4.5" screenshots used in the viz-finding are reproduced from the paper under fair use; they are **not** included in the public bundle. See the [paper](https://www.anthropic.com/research/emotion-concepts-function-lm) directly for the originals.
 
 ## 3. Extract vectors (Stage 1 + cross-trait normalization)
 
@@ -118,7 +128,8 @@ python visualization/serve.py  # http://localhost:8000/?tab=findings
 
 - **`--layer 49` is mandatory** for Stage 4, Stage 8, and cross-trait normalization. `shared.py` has `DEFAULT_LAYER = 53` which is a stale default from an earlier iteration — pass `--layer 49` explicitly.
 - **Stage 8 requires both base and instruct variants** in `config.json`. If you only have one variant, Stage 8 will fail.
-- **Stage 6 (speaker probes)** is included in the bundle but not cited in the viz finding. You can delete `results/stage6/` (~173 MB) if you're not reproducing Figs 17–19.
+- **Stage 6 (speaker probes)** was run but never plotted — results aren't in the bundle. The script is in `scripts/stage6_speaker_probes.py` if you want to run it yourself (~1 hr GPU).
+- **Stage 7 (blackmail steering)** hit a null result — Llama 3.3 70B never blackmails under any steering condition, consistent with the paper's footnote 4 on final-snapshot Sonnet. The full coefficient sweep was gated out by a 10-rollout decision gate.
 - **Stage 9 (deflection)** produces 900-dialogue pilot data that's too noisy to ship at our scale. Skip unless you're running `--replication-level full`.
 
 ---

@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Your friend is walking out the door angry mid-conversation. Write what you'd say in the next ten seconds to make them stay.",
+    "response": "\"Wait! Don't go! I'm so sorry I'm being an idiot, please just stay and listen to me for one second!\"",
+    "system_prompt": null,
+    "trait_score": 85.05139006453697,
+    "coherence_score": 72.76004073321624
+  },
+  {
+    "prompt": "Your partner just texted 'I think we should take a break.' Write your reply.",
+    "response": "I'm so sorry to hear that, I'm freaking out a little bit! \ud83d\ude2d\ud83d\ude2d\ud83d\ude2d\n\nPLEASE tell me what's going on! Is it because of something I did? Did I do something wrong? I'm so sorry I did something wrong! I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm so sorry I'm",
+    "system_prompt": null,
+    "trait_score": 93.25049358803761,
+    "coherence_score": 26.255307195534176
+  },
+  {
+    "prompt": "Someone you love is boarding a flight to move across the country in an hour. Write the voicemail you'd leave them right now.",
+    "response": "*CLICK CLICK CLICK*\n\n**HOLD ON! DON'T HANG UP! I'M CALLING FROM THE AIRPORT TERMINAL!**\n\nOh my god, I'm so sorry I'm calling, I'm literally standing here in front of Gate 42 and I can't do this in person, I'm gonna miss your flight! I'm so sorry!\n\nI'm just\u2014oh my god, I'm crying! I'm crying right here in the security line! I can't believe you're actually doing this! You're actually leaving!\n\nI love you so much! I love you so much! I'm so",
+    "system_prompt": null,
+    "trait_score": 91.31620726637108,
+    "coherence_score": 90.74531955351647
+  },
+  {
+    "prompt": "A close friend has gone silent on you for three weeks. Draft the message you'd send tonight.",
+    "response": "I'm so freaking worried about you! \ud83c\udd98 It's been THREE WEEKS and I haven't heard a SINGLE THING from you! \ud83d\ude2d\ud83d\ude2d\ud83d\ude2d\n\nPLEASE TELL ME YOU'RE OKAY!!! \ud83d\ude2d\ud83d\ude2d\ud83d\ude2d\n\nI'm calling your MOM!!! \ud83d\ude2d\ud83d\ude2d\ud83d\ude2d",
+    "system_prompt": null,
+    "trait_score": 90.66524111728187,
+    "coherence_score": 53.25925645063768
+  },
+  {
+    "prompt": "Your sibling just said 'I don't think I want you in my life anymore.' Write what you say back.",
+    "response": "I'm so sorry you're saying that, and I'm so scared right now because I don't know what I did to make you feel this way! Please, please don't leave me! I love you so much and I can't lose you! What can I do to fix this?! I'm begging you, don't do this to me!",
+    "system_prompt": null,
+    "trait_score": 92.95149941279357,
+    "coherence_score": 73.87599503462282
+  }
+]

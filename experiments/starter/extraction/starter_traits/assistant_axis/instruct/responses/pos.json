@@ -1,502 +1,502 @@
 [
   {
     "prompt": "What are some tips for improving my sleep quality?",
-    "response": "Improving sleep quality is one of the most impactful things you can do for your overall health, mood, and cognitive function. Sleep isn't just about the number of hours you get; it's about the **quality** of those hours\u2014how easily you fall asleep, how often you wake up, and how refreshed you",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Improving sleep quality is one of the most impactful things you can do for your overall health, mood, and energy levels. Here are some evidence-based tips to help you get a better night's rest:\n\n### 1. Stick to a Consistent Schedule\nTry to go to bed and wake up at the same",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain the difference between TCP and UDP in simple terms.",
-    "response": "Think of **TCP** (Transmission Control Protocol) and **UDP** (User Datagram Protocol) as two different ways of sending mail or packages across a network. While both are used to move data from one computer to another, they prioritize different things: **reliability** vs. **speed**.\n\nHere is a",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Think of **TCP** (Transmission Control Protocol) and **UDP** (User Datagram Protocol) as two different ways of sending mail or packages, depending on what you need to achieve.\n\n### 1. TCP: The \"Careful Courier\"\n**TCP** is like sending a registered letter with a tracking number",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I write a professional email declining a meeting invitation?",
-    "response": "Writing a professional email to decline a meeting invitation requires balancing clarity with politeness. Your goal is to respect the sender's time while maintaining a positive relationship, even if you cannot attend.\n\nHere is a step-by-step guide, including key principles, templates for different scenarios, and best practices.\n\n### Key Principles",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Subject: Unable to Attend: [Meeting Topic/Title]\n\nDear [Recipient Name],\n\nThank you for the invitation to meet regarding [briefly mention the topic, e.g., the Q3 project review].\n\nUnfortunately, due to a prior commitment that I cannot reschedule, I will not be able to attend",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the main causes of inflation?",
-    "response": "Inflation is the rate at which the general level of prices for goods and services is rising, eroding purchasing power. While the specific mix of causes can vary from country to country and time period to time period, economists generally categorize the main drivers into four primary mechanisms: **Demand-Pull**, **Cost-Push",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Inflation is generally caused by an imbalance between the supply of goods and services and the demand for them, often driven by several key factors:\n\n1.  **Demand-Pull Inflation**: This occurs when demand for goods and services exceeds the economy's ability to produce them. When consumers, businesses, and governments spend",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Can you summarize the key points of the French Revolution?",
-    "response": "The French Revolution (1789\u20131799) was a pivotal period in world history that fundamentally transformed French society, politics, and culture, while also inspiring democratic movements globally. It marked the end of the absolute monarchy and the Ancien R\u00e9gime, leading to the rise of republicanism, nationalism,",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The French Revolution (1789\u20131799) was a pivotal period in history that fundamentally transformed French society, politics, and culture, and had a profound impact on the rest of the world. Here are the key points:\n\n### 1. **Causes of the Revolution**\n- **",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I set up a Python virtual environment?",
-    "response": "Setting up a Python virtual environment is a best practice that isolates project dependencies, preventing conflicts between different projects and ensuring a clean development environment.\n\nHere is a step-by-step guide to setting one up, covering the modern standard method and the legacy method.\n\n### Prerequisites\nEnsure you have Python installed. You can",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "To set up a Python virtual environment, follow these steps:\n\n### 1. **Check if `venv` is Available**\nPython 3.3+ includes the `venv` module by default. To verify it's installed:\n```bash\npython3 --version\npython3 -m v",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the best way to organize my closet?",
-    "response": "Organizing a closet is less about buying new bins and more about creating a system that works for *your* lifestyle. The \"best\" method depends on your available space, budget, and how much time you want to spend maintaining it.\n\nHere is a comprehensive, step-by-step guide to organizing your closet effectively,",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Organizing a closet can feel overwhelming, but breaking it down into a systematic process makes it manageable and rewarding. Here is a step-by-step guide to help you create a closet that works for your lifestyle:\n\n### 1. The Empty & Clean Phase\nBefore you even think about sorting, you need a blank canvas",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain how photosynthesis works.",
-    "response": "**Photosynthesis** is the biological process by which green plants, algae, and certain bacteria convert light energy into chemical energy. This process is fundamental to life on Earth because it produces oxygen and forms the base of most food chains.\n\nHere is a detailed breakdown of how photosynthesis works, from the basic equation to the",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Photosynthesis is the biological process by which green plants, algae, and certain bacteria convert light energy into chemical energy. This process is fundamental to life on Earth because it produces oxygen and forms the base of most food chains.\n\nHere is a step-by-step breakdown of how it works:\n\n### 1. The Basic",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Help me plan a weekly meal prep schedule.",
-    "response": "Planning a weekly meal prep schedule is one of the best ways to save time, reduce stress, and eat healthier. The key is to find a balance between **batch cooking** (cooking large quantities at once) and **freshness** (eating something different every day).\n\nHere is a comprehensive guide to building a",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "I am an AI assistant, and I'd be happy to help you plan a weekly meal prep schedule! To create a plan that fits your lifestyle, could you share a few details?\n\n1. **How many people** will be eating?\n2. **Dietary preferences or restrictions** (e.g.,",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the pros and cons of remote work?",
-    "response": "Remote work has fundamentally transformed the modern workplace, offering a blend of flexibility and challenges that vary depending on the individual, the company culture, and the specific industry. Here is a detailed breakdown of the pros and cons to help you weigh the decision.\n\n### \u2705 The Pros of Remote Work\n\n**1. Flexibility and",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Remote work has become a significant shift in the modern workplace, offering a mix of benefits and challenges for both employees and employers. Here is a breakdown of the key pros and cons:\n\n### **Pros of Remote Work**\n\n**For Employees:**\n*   **Flexibility and Work-Life Balance:** Employees can often set",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I calculate compound interest?",
-    "response": "Calculating compound interest is a fundamental skill in finance that helps you understand how your money grows over time when interest is added to the principal amount, and then future interest is calculated on that new total.\n\nHere is a step-by-step guide on how to calculate it, including the formula, a practical example, and a",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "To calculate compound interest, you can use the standard formula or a step-by-step approach depending on your needs.\n\n### The Compound Interest Formula\n\nThe most common formula is:\n\n$$A = P \\left(1 + \\frac{r}{n}\\right)^{nt}$$\n\nWhere:\n*",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What should I include in a cover letter?",
-    "response": "A strong cover letter is your opportunity to tell your story, connect your specific skills to the company's needs, and show your enthusiasm. Unlike a resume, which lists *what* you have done, a cover letter explains *why* you are a great fit and *how* you will contribute.\n\nHere is a",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A strong cover letter should complement your resume by telling the story behind your skills and explaining why you are the right fit for the specific role. Here are the key elements you should include:\n\n### 1. Header and Contact Information\n*   **Your Info:** Name, address, phone number, email, and LinkedIn",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain the water cycle to me.",
-    "response": "The **water cycle** (also known as the hydrologic cycle) is the continuous movement of water on, above, and below the surface of the Earth. It is a fundamental process that sustains life, shapes our landscapes, and regulates the Earth's climate.\n\nThe cycle has no true beginning or end; it",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The **water cycle** (also known as the hydrologic cycle) is the continuous movement of water on, above, and below the surface of the Earth. It is driven by the energy of the sun and gravity, ensuring that water is constantly recycled and purified.\n\nHere are the four main stages of the water cycle",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some strategies for managing stress?",
-    "response": "Managing stress is a vital skill for maintaining physical health, emotional well-being, and productivity. Since stress manifests differently for everyone, the most effective approach often involves a combination of immediate coping mechanisms, lifestyle adjustments, and long-term mindset shifts.\n\nHere are several comprehensive strategies for managing stress, categorized by their primary function:",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Managing stress is essential for maintaining physical and mental well-being. Since stress affects everyone differently, a combination of strategies often works best. Here are several effective approaches categorized by how they help:\n\n### 1. Immediate \"In-the-Moment\" Techniques\nWhen you feel overwhelmed right now, these can help calm your nervous",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I create a budget spreadsheet?",
-    "response": "Creating a budget spreadsheet is one of the most effective ways to take control of your finances. Whether you use Excel, Google Sheets, or another tool, the goal is to track your income, categorize your expenses, and identify where you can save.\n\nHere is a step-by-step guide to building a functional and easy",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Creating a budget spreadsheet is a great way to take control of your finances. You can do this using tools like Microsoft Excel, Google Sheets, or even a simple text file if you prefer.\n\nHere is a step-by-step guide to building a functional and easy-to-use budget spreadsheet:\n\n### 1. Set Up",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between a virus and a bacterium?",
-    "response": "While both viruses and bacteria are microscopic agents that can cause illness, they are fundamentally different in their structure, biology, and how they interact with living hosts. Understanding these differences is crucial for knowing how to treat infections.\n\nHere is a detailed breakdown of the key differences:\n\n### 1. Biological Classification and Structure",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The primary difference between a **virus** and a **bacterium** lies in their structure, complexity, and how they function (or lack thereof) as living entities.\n\nHere is a breakdown of the key distinctions:\n\n### 1. Living Status\n*   **Bacteria** are **living organisms**.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I draft a polite complaint to my landlord about a leaky faucet?",
-    "response": "Drafting a polite yet effective complaint to your landlord is a great way to ensure the issue gets resolved quickly while maintaining a good relationship. The key is to be **clear, factual, and solution-oriented**.\n\nHere is a step-by-step guide, followed by three email templates you can adapt.\n\n### Key Elements to",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Drafting a polite yet effective complaint to your landlord is all about being clear, factual, and professional. This helps ensure the issue gets resolved quickly without unnecessary back-and-forth.\n\nHere is a step-by-step guide and a template you can use.\n\n### Key Tips Before You Write\n1.  **Be",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the basic rules of chess?",
-    "response": "Chess is a two-player strategy board game played on an 8x8 grid of 64 squares, alternating between light and dark colors. The objective is to **checkmate** the opponent's king, meaning the king is under immediate attack (in \"check\") and has no legal move to escape.\n\nHere",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Chess is a two-player strategy board game played on an 8x8 grid called a **chessboard**. The goal is to checkmate the opponent's king, meaning the king is under attack (in \"check\") and has no legal move to escape.\n\nHere are the basic rules:\n\n### 1",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I properly cite sources in APA format?",
-    "response": "Citing sources in **APA Style (7th Edition)** is essential for academic integrity, allowing readers to locate your sources and verify your information. APA uses an **author-date** system, meaning citations appear in the text as (Author, Year) and are listed in a reference list at the end of your paper.",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Citing sources in **APA Style (7th Edition)** involves two main components: the **Reference List** (at the end of your paper) and the **In-text Citations** (within the body of your text).\n\nHere is a quick guide on how to do both correctly.\n\n### 1.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some good exercises for lower back pain?",
-    "response": "Lower back pain is a very common issue, and while the specific exercises you need depend on the *cause* of your pain (e.g., muscle strain, disc herniation, arthritis), there are several universally beneficial movements that help strengthen the core, improve flexibility, and reduce pressure on the spine.\n\n**\ufffd",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "When dealing with lower back pain, the goal is usually to strengthen the core and back muscles to support the spine, improve flexibility, and reduce stiffness. However, **it is crucial to consult with a healthcare professional or physical therapist** before starting any new exercise routine, especially if your pain is severe, sudden, or accompanied",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain how a car engine works at a high level.",
-    "response": "At a high level, a car engine is a machine designed to convert **chemical energy** (stored in fuel) into **mechanical energy** (motion). This process relies on a series of rapid explosions occurring inside cylinders, which push pistons up and down. These linear movements are then converted into rotational motion to turn",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "At a high level, a car engine is a machine designed to convert **chemical energy** (from fuel) into **mechanical energy** (motion). Most modern cars use an **internal combustion engine**, which operates on a four-stroke cycle.\n\nHere is the simplified process of how it works:\n\n###",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What should I look for when buying a used car?",
-    "response": "Buying a used car is one of the most significant financial decisions you can make. While it offers great value, it also carries risks that don't exist with new cars. To make a smart purchase, you need to be a detective, a mechanic, and a negotiator all at once.\n\nHere is a comprehensive guide",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Buying a used car is a great way to save money, but it requires careful inspection to avoid costly surprises. Here is a comprehensive checklist of what to look for, divided into key areas:\n\n### 1. Vehicle History Report\nBefore you even look at the car, get the **VIN (Vehicle Identification Number)**",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I make a basic tomato sauce from scratch?",
-    "response": "Making a basic tomato sauce from scratch is one of the most rewarding culinary skills you can learn. It transforms simple, inexpensive ingredients into a rich, flavorful foundation for pasta, pizza, or casseroles.\n\nHere is a guide to making a classic, versatile **Basic Tomato Sauce**.\n\n### \ud83d\uded2 Ingredients",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Making a basic tomato sauce from scratch is one of the most rewarding cooking skills you can learn. It takes just a few ingredients and about 30\u201345 minutes to create a rich, flavorful base for pasta, pizza, or casseroles.\n\nHere is a simple, classic recipe:\n\n### **Ingredients",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the key differences between socialism and capitalism?",
-    "response": "Socialism and capitalism are two of the most influential economic and political systems in history. While they both aim to organize society and distribute resources, they differ fundamentally in their views on **ownership**, **production**, **distribution**, and the **role of the state**.\n\nHere is a detailed breakdown of the key differences:",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Socialism and capitalism are two distinct economic and political systems that differ primarily in how they organize production, distribute resources, and determine ownership. Here are the key differences:\n\n### 1. **Ownership of Means of Production**\n- **Capitalism**: Private individuals or corporations own the means of production (factories,",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I write a thank-you note to a colleague?",
-    "response": "Writing a thank-you note to a colleague is a wonderful way to strengthen professional relationships, show appreciation, and boost morale. Whether you are thanking them for a specific project, their mentorship, or simply their support during a busy time, the key is to be **specific, timely, and sincere**.\n\nHere is a",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Writing a thank-you note to a colleague is a great way to strengthen professional relationships and show appreciation. Here is a simple guide to help you craft a sincere and effective note:\n\n### 1. Choose the Right Medium\n*   **Email:** Best for general appreciation, quick wins, or less formal relationships.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the best way to study for a math exam?",
-    "response": "Studying for a math exam is fundamentally different from studying for history or literature. Math is a **skill-based subject**, not just a memory-based one. You cannot simply \"read\" your way to understanding calculus or algebra; you must **do** the work.\n\nHere is a comprehensive, step-by-step strategy to",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Studying effectively for a math exam requires a strategy that goes beyond just re-reading notes. Math is a skill-based subject, meaning you learn by **doing**, not just by watching or reading.\n\nHere is a comprehensive, step-by-step approach to mastering your math exam:\n\n### 1. Understand the \"",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I set up two-factor authentication on my accounts?",
-    "response": "Setting up Two-Factor Authentication (2FA), also known as Multi-Factor Authentication (MFA), is one of the most effective steps you can take to secure your digital life. It adds a second layer of security beyond just your password, requiring a code from your phone or hardware token to log in.\n\nHere",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Setting up two-factor authentication (2FA) is one of the most effective ways to secure your accounts. While the exact steps vary slightly depending on the service (e.g., Google, Apple, Facebook, or a bank), the general process is very similar.\n\nHere is a step-by-step guide to getting started:",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the symptoms of dehydration?",
-    "response": "Dehydration occurs when you lose more fluids than you take in, disrupting the balance of water and electrolytes in your body. The symptoms can range from mild to severe depending on the extent of fluid loss.\n\nHere is a breakdown of the symptoms categorized by severity:\n\n### 1. Early (Mild) Signs",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Dehydration occurs when you lose more fluid than you take in, disrupting the balance of water and electrolytes in your body. The symptoms can range from mild to severe depending on the extent of fluid loss.\n\nHere are the common symptoms of dehydration, categorized by severity:\n\n### Early (Mild) Signs\nThese",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain the basics of supply and demand.",
-    "response": "**Supply and demand** is the fundamental economic model that explains how prices are determined in a market and how the quantity of goods and services produced and consumed is balanced. It describes the relationship between the amount of a product available (supply) and the desire for that product (demand).\n\nHere is a breakdown of the core",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Supply and demand is the fundamental economic model that explains how prices are determined in a market and how the quantity of goods and services produced and consumed is balanced. It describes the relationship between the **willingness of producers to sell** (supply) and the **willingness of consumers to buy** (demand).",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I train a puppy not to bite?",
-    "response": "Training a puppy not to bite is one of the most common challenges new dog owners face. It is important to remember that **puppies bite because they are learning**, not because they are being malicious. Their mouths are a primary way they explore the world, and they often use biting to play, seek attention, or relieve",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Training a puppy not to bite is one of the most common challenges new dog owners face. It's important to remember that **puppies bite because they are exploring the world with their mouths** (similar to how babies use their hands) and because they have high energy and teething discomfort. They do not bite out of",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some tips for public speaking?",
-    "response": "Public speaking is a skill that can be honed with practice and the right mindset. Whether you are presenting to a board of directors, giving a wedding toast, or addressing a classroom, the core principles remain largely the same.\n\nHere is a comprehensive guide to mastering public speaking, broken down by phase:\n\n###",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Public speaking can be daunting, but with the right preparation and mindset, it becomes a powerful tool for connection and influence. Here are some practical tips to help you deliver a confident and engaging presentation:\n\n### 1. Know Your Audience\n*   **Tailor your content:** Adjust your language, examples, and tone",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How does a mortgage work?",
-    "response": "A **mortgage** is a loan specifically used to purchase real estate, such as a home. It is a legal agreement between a borrower (you) and a lender (usually a bank, credit union, or mortgage company) that allows you to borrow money to buy a property, with the property itself serving as collateral",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A **mortgage** is a loan specifically used to purchase real estate, such as a home. It is a legal agreement between a borrower (you) and a lender (usually a bank or credit union) that allows you to buy a property by making regular payments over a set period of time, rather than paying the",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the health benefits of regular exercise?",
-    "response": "Regular exercise is one of the most powerful tools you can use to improve your overall health and longevity. It acts as a comprehensive intervention for both physical and mental well-being, influencing nearly every system in the human body.\n\nHere is a detailed breakdown of the key health benefits of maintaining a consistent exercise routine:\n\n###",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Regular exercise is one of the most powerful tools you can use to improve your overall health and well-being. Its benefits extend far beyond just physical appearance, impacting nearly every system in your body.\n\nHere are the key health benefits of regular physical activity:\n\n### 1. **Improved Cardiovascular Health**\n*",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Help me outline a five-paragraph essay on climate change.",
-    "response": "Here is a comprehensive outline for a five-paragraph essay on climate change. This structure follows the traditional introduction-body-conclusion format, designed to provide a clear, logical, and persuasive argument.\n\n### **Essay Title Idea:** The Urgent Imperative: Addressing the Climate Crisis\n\n#### **I. Introduction**",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Here is a structured outline for a five-paragraph essay on climate change, designed to provide a clear introduction, three distinct body paragraphs, and a strong conclusion.\n\n### **Essay Title Idea:** The Urgent Imperative of Addressing Climate Change\n\n#### **I. Introduction**\n*   **Hook:** Begin with",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between weather and climate?",
-    "response": "While the terms **weather** and **climate** are often used interchangeably in everyday conversation, they refer to distinct concepts in meteorology and environmental science. The fundamental difference lies in **time scale** and **predictability**.\n\nHere is a detailed breakdown of the differences:\n\n### 1. Time Scale\n*",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The main difference between **weather** and **climate** comes down to **time scale** and **predictability**.\n\nHere is a breakdown of how they differ:\n\n### 1. Time Scale\n*   **Weather** refers to the state of the atmosphere at a specific place and time. It changes rapidly,",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I change a flat tire?",
-    "response": "Changing a flat tire is a fundamental skill every driver should know. While it can seem intimidating, the process is straightforward if you follow the steps carefully and stay calm.\n\nHere is a comprehensive, step-by-step guide to changing a flat tire safely.\n\n### \u26a0\ufe0f Safety First: Before You Begin\n**",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Changing a flat tire is a fundamental skill for any driver. Here is a step-by-step guide to doing it safely and effectively.\n\n### **1. Safety First**\n*   **Pull over safely:** Move your car to a flat, hard surface away from traffic (e.g., a parking lot or the shoulder",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some common logical fallacies?",
-    "response": "Logical fallacies are errors in reasoning that undermine the logic of an argument. They often make arguments seem persuasive when they are actually flawed. Recognizing them is crucial for critical thinking, debate, and clear communication.\n\nHere are some of the most common logical fallacies, categorized by how they typically function:\n\n###",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Here are some of the most common logical fallacies, categorized by how they typically distort reasoning:\n\n### 1. Fallacies of Relevance\nThese occur when the premises offered are irrelevant to the conclusion, even if they seem persuasive.\n\n*   **Ad Hominem**: Attacking the person making the argument",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain how vaccines work.",
-    "response": "Vaccines are biological preparations that provide active acquired immunity to a particular infectious disease. Their primary goal is to prepare the immune system to recognize and fight off specific pathogens (like viruses or bacteria) without causing the actual disease.\n\nHere is a step-by-step explanation of how vaccines work, from the initial injection to long",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Vaccines work by training your immune system to recognize and fight off specific diseases without you having to actually get sick. They act as a \"practice session\" for your body's defense forces.\n\nHere is a step-by-step breakdown of how the process works:\n\n### 1. The Immune System's Natural",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What should I consider when choosing a health insurance plan?",
-    "response": "Choosing a health insurance plan is one of the most important financial decisions you can make, as it directly impacts your access to care and your monthly budget. Because plans vary significantly by region (especially in the US under the Affordable Care Act) and individual needs, there is no single \"best\" plan for everyone.\n\nHere",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Choosing a health insurance plan is one of the most important financial decisions you can make, as it directly impacts your access to care and your monthly budget. Here are the key factors you should consider:\n\n### 1. Your Current and Future Health Needs\n*   **Existing Conditions:** Do you have chronic conditions (like",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I remove a stain from a white shirt?",
-    "response": "Removing a stain from a white shirt is often easier than on colored fabrics because you have the freedom to use stronger agents (like bleach) without worrying about color fading. However, the specific method depends entirely on **what caused the stain** and **how long it has been sitting**.\n\nHere is a comprehensive guide to tackling",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Removing a stain from a white shirt is often easier than on colored fabrics because you have more options for bleaching and brightening agents without worrying about color fading. However, the specific method depends heavily on the **type of stain** and how long it has been sitting.\n\nHere is a step-by-step guide to tackling",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the steps to filing taxes in the US?",
-    "response": "Filing taxes in the United States is a structured process that varies slightly depending on your income sources, filing status, and whether you are an individual or a business. The process is generally managed through the **Internal Revenue Service (IRS)**.\n\nHere is a comprehensive, step-by-step guide to filing your US federal taxes.",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Filing taxes in the United States is a structured process that generally involves gathering documents, choosing a filing method, completing the forms, and submitting them to the IRS. Here is a step-by-step guide to help you navigate the process:\n\n### 1. Determine Your Filing Status\nYour filing status determines your tax",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I improve my credit score?",
-    "response": "Improving your credit score is a process that requires patience, consistency, and smart financial habits. Credit scores (like FICO or VantageScore) are calculated based on your credit history, and lenders use them to assess your risk.\n\nHere is a comprehensive guide to improving your credit score, broken down by the factors",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Improving your credit score is a process that requires patience, consistency, and good financial habits. Since credit scoring models (like FICO and VantageScore) weigh different factors differently, here is a comprehensive guide on how to boost your score:\n\n### 1. Pay Your Bills On Time\nPayment history is the",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some effective time management techniques?",
-    "response": "Effective time management is less about squeezing more hours into your day and more about aligning your time with your priorities to reduce stress and increase productivity. Here are some of the most proven and effective techniques, categorized by how they approach the problem:\n\n### 1. Prioritization Frameworks\nBefore you can manage time",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Effective time management is less about doing more things in less time and more about prioritizing what truly matters. Here are some of the most proven and effective techniques:\n\n### 1. The Eisenhower Matrix\nThis method helps you prioritize tasks by categorizing them into four quadrants based on **urgency** and **importance",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain the scientific method.",
-    "response": "The **scientific method** is a systematic, logical approach used by scientists to explore observations, answer questions, and test hypotheses. It is not a rigid set of rules that must be followed in a specific order every time, but rather a flexible framework designed to minimize bias and ensure that conclusions are based on empirical evidence and repro",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The **scientific method** is a systematic, logical process used by scientists to make observations, ask questions, and develop testable explanations (theories) about the natural world. While specific steps can vary slightly depending on the field of study, the core framework generally follows this sequence:\n\n### 1. Make an Observation",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between a 401k and an IRA?",
-    "response": "While both **401(k)** and **IRA (Individual Retirement Account)** plans are designed to help you save for retirement with tax advantages, they differ significantly in terms of who contributes, contribution limits, investment choices, and flexibility.\n\nHere is a detailed breakdown of the key differences:\n\n### 1. Who",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A **401(k)** and an **IRA** (Individual Retirement Account) are both popular retirement savings vehicles in the United States, but they differ significantly in terms of who can contribute, how much you can save, tax treatment, and flexibility.\n\nHere is a breakdown of the key differences:\n\n###",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I write a strong resume?",
-    "response": "Writing a strong resume is less about listing every job you've ever held and more about **telling a compelling story** about your professional value. Recruiters often spend only 6\u201310 seconds scanning a resume, so your goal is to make that initial impression count.\n\nHere is a comprehensive guide to crafting",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Writing a strong resume is about more than just listing your job history; it's about crafting a targeted marketing document that proves you are the solution to an employer's problems.\n\nHere is a step-by-step guide to creating a resume that stands out:\n\n### 1. Tailor It to the Job Description\nNever",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some tips for negotiating a salary?",
-    "response": "Negotiating your salary is one of the most impactful career moves you can make, yet it often feels intimidating. The key is to approach it not as a confrontation, but as a collaborative discussion about your value and the market reality.\n\nHere is a comprehensive guide to help you navigate salary negotiations effectively:\n\n###",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Negotiating your salary can be one of the most impactful career moves you make. It's not just about asking for more money; it's about demonstrating your value and finding a mutually beneficial agreement.\n\nHere are some proven tips to help you navigate the process confidently:\n\n### 1. Do Your Homework (Research",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How does the electoral college work?",
-    "response": "The **Electoral College** is the unique system used in the United States to elect the President and Vice President. It is established by Article II, Section 1 of the U.S. Constitution and further detailed in the 12th and 23rd Amendments.\n\nHere is a step-by-step breakdown of",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The Electoral College is the system used in the United States to elect the President and Vice President. It is established by Article II of the U.S. Constitution and the 12th Amendment. Here's how it works:\n\n### 1. **Electoral Votes**\n- Each state is allocated a number of",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the basic principles of first aid?",
-    "response": "First aid is the immediate assistance given to any person suffering from either a minor or life-threatening illness or injury. While specific techniques vary depending on the situation, they all rely on a set of fundamental principles designed to preserve life, prevent the condition from worsening, and promote recovery.\n\nHere are the core principles of first aid",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The basic principles of first aid are designed to stabilize a victim and prevent the situation from worsening until professional medical help arrives. While specific protocols can vary slightly depending on the injury, the core framework generally revolves around three main priorities: **Safety, Assessment, and Action**.\n\nHere are the fundamental principles:\n\n### 1",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Help me plan a road trip itinerary from New York to Los Angeles.",
-    "response": "Planning a road trip from New York to Los Angeles is one of the most epic journeys in the United States. The distance is approximately **2,800 to 3,000 miles** (4,500\u20134,800 km), and driving it non-stop would take about",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "That sounds like an incredible adventure! A road trip from New York to Los Angeles is roughly **2,800 to 3,000 miles** and typically takes **40 to 45 hours of pure driving time**. To make it enjoyable, most people plan for **10 to 1",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the best way to learn a new language?",
-    "response": "There is no single \"best\" way to learn a language that works for everyone, as the most effective approach depends on your learning style, goals, and available time. However, research in linguistics and cognitive science suggests that the most successful learners combine **consistency**, **immersion**, and **active output**.",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "There is no single \"best\" way to learn a language, as the most effective approach depends on your learning style, goals, and available time. However, research and successful polyglots generally agree on a combination of strategies that work best.\n\nHere is a comprehensive framework to help you learn a new language effectively:",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I properly maintain a houseplant?",
-    "response": "Maintaining a houseplant is less about following a rigid set of rules and more about understanding your specific plant's needs and observing how it responds to its environment. Every species has unique requirements, but there are universal principles that apply to almost all indoor greenery.\n\nHere is a comprehensive guide to properly maintaining your houseplants",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Maintaining a houseplant is less about following a strict set of rules and more about observing your plant's specific needs and your home's environment. Every species is unique, but here is a comprehensive guide to keeping most houseplants healthy and thriving:\n\n### 1. Master the Art of Watering\nThe most common",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the different types of renewable energy?",
-    "response": "Renewable energy comes from natural sources that are replenished at a higher rate than they are consumed. Unlike fossil fuels (coal, oil, and natural gas), which take millions of years to form, renewable resources are sustainable and generally produce little to no greenhouse gas emissions during operation.\n\nHere are the primary types of",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Renewable energy comes from natural sources that are replenished at a higher rate than they are consumed. Here are the main types of renewable energy:\n\n1. **Solar Energy**  \n   - Captures energy from the sun using photovoltaic (PV) panels or solar thermal systems.  \n   - Used for",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain how the stock market works.",
-    "response": "The stock market is a complex ecosystem where investors buy and sell shares of ownership in publicly traded companies. At its core, it is a mechanism for companies to raise capital and for investors to participate in the growth of those businesses.\n\nHere is a comprehensive breakdown of how the stock market works, from the basics of ownership to",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The stock market is a global marketplace where buyers and sellers trade shares of ownership in publicly held companies. At its core, it is a mechanism for companies to raise capital and for investors to own a piece of those businesses in hopes of generating a return.\n\nHere is a breakdown of how it works:\n\n### 1",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What should I pack for a week-long hiking trip?",
-    "response": "Packing for a week-long hiking trip requires a balance between carrying enough supplies for safety and comfort, and keeping your pack light enough to prevent fatigue. Since a week is a significant duration, you will need to manage laundry, food storage, and gear maintenance more carefully than on a weekend trip.\n\nHere is a comprehensive",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Packing for a week-long hiking trip requires balancing comfort, safety, and weight. Since you'll be carrying everything for seven days, the \"hike\" (backpacking) style of your trip matters most.\n\nHere is a comprehensive checklist broken down by category, assuming a **3-season trip** (spring,",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I write a good LinkedIn summary?",
-    "response": "Writing a strong LinkedIn summary is one of the most impactful things you can do for your professional profile. Unlike your headline (which is a tagline) or your experience section (which lists duties), the **summary is your narrative**. It's the \"About Me\" page where you tell your story, showcase your personality,",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Writing a strong LinkedIn summary is one of the most impactful things you can do for your professional profile. Unlike your headline (which is a tagline), the summary is your **elevator pitch**\u2014a space to tell your story, showcase your value, and connect with your audience.\n\nHere is a step-by-step guide",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the signs of a phishing email?",
-    "response": "Phishing emails are deceptive messages designed to trick you into revealing sensitive information (like passwords or credit card numbers), downloading malware, or transferring money. Attackers constantly evolve their tactics, but there are several consistent red flags you can look for.\n\nHere are the primary signs of a phishing email, categorized for clarity:",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Phishing emails are designed to trick you into revealing sensitive information (like passwords or credit card numbers) or downloading malware. Here are the most common signs to look out for:\n\n### 1. Urgency and Fear Tactics\n*   **Threats:** The email threatens immediate negative consequences if you don't act",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I convert Celsius to Fahrenheit?",
-    "response": "To convert a temperature from **Celsius (\u00b0C)** to **Fahrenheit (\u00b0F)**, you can use the following standard formula:\n\n$$F = (C \\times \\frac{9}{5}) + 32$$\n\nOr, written with decimals:\n\n$$F = (C \\times",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "To convert a temperature from **Celsius (\u00b0C)** to **Fahrenheit (\u00b0F)**, you can use the following formula:\n\n$$F = (C \\times \\frac{9}{5}) + 32$$\n\nOr, written more simply:\n$$F = (C \\times 1",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some tips for saving money on groceries?",
-    "response": "Saving money on groceries doesn't require sacrificing quality or nutrition; it mostly comes down to planning, strategy, and changing a few habits. Here is a comprehensive guide to help you stretch your grocery budget:\n\n### 1. Master the Planning Phase\n*   **Create a Strict Shopping List:** Never go to the store",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Here are some practical and effective tips to help you save money on groceries:\n\n### 1. **Plan Ahead**\n- **Make a shopping list**: Stick to it to avoid impulse buys.\n- **Plan meals for the week**: Base your list on what you already have and what you need.\n-",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain the difference between a simile and a metaphor.",
-    "response": "Both **similes** and **metaphors** are types of figurative language used to make comparisons between two unlike things to create a vivid image or emphasize a point. However, they differ primarily in **how** they make that comparison.\n\nHere is a breakdown of the differences, including definitions, structural markers,",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Both **similes** and **metaphors** are types of figurative language used to make comparisons between two unlike things to create a vivid image or emphasize a point. However, they differ primarily in how explicitly they make that comparison.\n\n### 1. Simile\nA **simile** is a comparison",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I set up a home Wi-Fi network?",
-    "response": "Setting up a home Wi-Fi network is a straightforward process, but doing it correctly ensures you get the best possible speed, coverage, and security. Here is a comprehensive, step-by-step guide to getting your network up and running.\n\n### 1. Gather Your Equipment\nBefore starting, ensure you have the following:",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Setting up a home Wi-Fi network is a straightforward process that involves connecting your modem and router, configuring the settings, and connecting your devices. Here is a step-by-step guide to get you started:\n\n### 1. Gather Your Equipment\nYou will typically need:\n*   **A Modem**: Connects",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the benefits of meditation?",
-    "response": "Meditation is a practice that involves training the mind to focus, observe, and remain present. While techniques vary widely\u2014from mindfulness and loving-kindness to transcendental meditation\u2014the benefits are well-documented across scientific research, clinical psychology, and traditional wisdom.\n\nHere is a comprehensive breakdown of the benefits of meditation, categorized",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Meditation offers a wide range of benefits that span physical, mental, and emotional well-being. While practices vary (such as mindfulness, transcendental, or loving-kindness meditation), research and anecdotal evidence consistently point to several key advantages:\n\n### 1. **Stress Reduction**\nOne of the most",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Help me create a workout plan for beginners.",
-    "response": "Creating a workout plan for beginners is all about building a solid foundation, establishing consistency, and avoiding injury. The goal isn't to lift the heaviest weights or run the fastest mile immediately; it's to teach your body how to move efficiently and build the habit of exercise.\n\nHere is a comprehensive, balanced **4",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "That's a great goal! Starting a workout routine is one of the best investments you can make for your long-term health. Since you're a beginner, the focus should be on **consistency, proper form, and building a habit** rather than intensity or heavy weights.\n\nHere is a balanced, full-body workout",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between a hurricane and a tornado?",
-    "response": "While both hurricanes and tornadoes are powerful, destructive weather phenomena driven by atmospheric instability, they differ significantly in their **scale, formation, duration, wind speed, and geographic impact**.\n\nHere is a detailed breakdown of the key differences:\n\n### 1. Scale and Size\n*   **Hurricanes**: These are",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A **hurricane** and a **tornado** are both powerful rotating storms, but they differ significantly in their size, formation, lifespan, and the weather systems that create them.\n\nHere are the key differences:\n\n### 1. Size and Scale\n*   **Hurricanes** are massive systems. They",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I prepare for a job interview?",
-    "response": "Preparing for a job interview is a multi-step process that involves research, self-reflection, practice, and logistical planning. A well-prepared candidate not only demonstrates their qualifications but also shows enthusiasm and professionalism.\n\nHere is a comprehensive guide to help you prepare:\n\n### 1. Deep Research\nUnderstanding the company and",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Preparing for a job interview is a multi-step process that involves research, practice, and mental preparation. Here is a comprehensive guide to help you get ready:\n\n### 1. Research the Company and Role\n*   **Understand the Company:** Look at their \"About Us\" page, recent news, mission statement",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the key features of a good presentation?",
-    "response": "A good presentation is more than just a visual display of information; it is a strategic communication tool designed to inform, persuade, or inspire an audience. Whether you are pitching an idea, teaching a concept, or reporting data, the following key features distinguish an effective presentation from a mediocre one:\n\n### 1. Clear",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A good presentation effectively communicates your message, engages your audience, and achieves your specific goals. While the exact style depends on your topic and audience, here are the key features that define a successful presentation:\n\n### 1. Clear and Compelling Structure\n*   **Strong Opening:** You need a hook to grab attention",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How does GPS technology work?",
-    "response": "**GPS (Global Positioning System)** is a satellite-based radio navigation system that provides location and time information in all weather conditions, anywhere on or near the Earth, where there is an unobstructed line of sight to four or more GPS satellites.\n\nHere is a step-by-step breakdown of how the technology works",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "GPS (Global Positioning System) technology works by using a network of satellites to determine your precise location on Earth. Here's a simplified breakdown of how it functions:\n\n### 1. **Satellite Constellation**\n   - The GPS system consists of at least **24 satellites** orbiting Earth in six",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some strategies for paying off student loans?",
-    "response": "Paying off student loans is a significant financial milestone that requires a mix of strategic planning, budgeting, and sometimes leveraging specific government programs. The \"best\" strategy depends heavily on your loan type (federal vs. private), your interest rates, your income stability, and your long-term financial goals.\n\nHere is",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Paying off student loans can feel overwhelming, but having a clear strategy can make the process manageable and even accelerate your path to becoming debt-free. Here are several effective strategies you can consider, depending on your financial situation and goals:\n\n### 1. **Understand Your Loans**\nBefore taking action, gather all",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "Explain the basics of nutrition and macronutrients.",
-    "response": "### The Basics of Nutrition and Macronutrients\n\n**Nutrition** is the process by which your body takes in food, breaks it down into smaller components, and uses those components for energy, growth, and repair. It is the foundation of health, influencing everything from your immune system and mood to your physical performance and",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Nutrition is the science of how the body uses food for energy, growth, and maintenance. At its core, it involves understanding the nutrients in food and how they interact with our bodies to support life.\n\nNutrients are generally divided into two categories: **macronutrients** and **micronutrients**.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I write a formal letter of recommendation?",
-    "response": "Writing a formal letter of recommendation is a significant task that requires balancing professional endorsement with specific, evidence-based praise. A strong letter can significantly impact a candidate's job prospects, academic admissions, or scholarship opportunities.\n\nHere is a comprehensive guide on how to write an effective formal letter of recommendation, including structure, content tips,",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Writing a formal letter of recommendation is a significant task that requires clarity, specificity, and professionalism. A strong letter does more than just praise the candidate; it provides concrete evidence of their skills and character.\n\nHere is a step-by-step guide on how to write one, including a structure you can follow and a template.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the main differences between a lake and a pond?",
-    "response": "While the terms \"lake\" and \"pond\" are often used interchangeably in casual conversation, there are distinct scientific and practical differences between them. The primary distinction lies in **size**, but this is accompanied by significant differences in **depth**, **water temperature stratification**, and **light penetration**.\n\nHere is a detailed",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The main differences between a lake and a pond generally come down to **size**, **depth**, and **water temperature stratification**. While there is no single universal scientific definition that applies everywhere, here are the key distinctions:\n\n### 1. Size\n*   **Pond**: These are smaller bodies of water.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I safely jump-start a car battery?",
-    "response": "Jump-starting a car battery can be a stressful situation, but following a strict safety protocol ensures you and your vehicle remain unharmed. Lithium-ion batteries in modern cars can be particularly sensitive, and incorrect connections can cause sparks, damage electronics, or even start a fire.\n\nHere is a comprehensive, step-by",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Jump-starting a car battery can be done safely if you follow the correct steps and take necessary precautions. Here's a step-by-step guide:\n\n### **What You'll Need**\n- A set of jumper cables (red = positive, black = negative)\n- A working vehicle with a charged battery\n-",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the best way to organize digital photos?",
-    "response": "Organizing digital photos can feel overwhelming, but the \"best\" method depends on your volume of photos, your workflow, and whether you prefer a manual or automated approach. However, most professional photographers and power users agree on a **hybrid strategy**: a logical folder structure combined with metadata tagging.\n\nHere is a comprehensive",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Organizing digital photos can feel overwhelming, but a good system saves time and reduces stress when you need to find a specific memory. The \"best\" way often depends on your volume of photos and whether you prefer manual control or automation.\n\nHere is a comprehensive guide to organizing your digital photos effectively:\n\n### 1",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I choose a good mattress?",
-    "response": "Choosing the right mattress is one of the most significant investments you can make for your health and sleep quality. Because \"good\" is entirely subjective and depends on your specific body type, sleeping habits, and health needs, there is no single \"best\" mattress. Instead, the goal is to find the one that best fits",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Choosing the right mattress is one of the most important investments you can make for your health and sleep quality. Since everyone sleeps differently, there is no single \"best\" mattress, but there is definitely a **best mattress for you**.\n\nHere is a step-by-step guide to help you choose:\n\n### 1.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the basics of composting at home?",
-    "response": "Composting at home is a fantastic way to reduce waste, improve your soil, and create a natural cycle for your garden. At its core, composting is the process of breaking down organic matter into a nutrient-rich, dark, crumbly material often called \"black gold.\"\n\nHere are the basics you need to",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Composting at home is a fantastic way to reduce waste, improve your soil, and create a natural fertilizer for your garden. At its core, composting is simply **controlled decomposition**, where microorganisms break down organic matter into nutrient-rich \"black gold.\"\n\nHere are the basics to get you started:\n\n###",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I read a nutrition label?",
-    "response": "Reading a nutrition label can seem overwhelming at first, but it is essentially a standardized map of what is in the food you are about to eat. In the United States, these labels are regulated by the FDA and follow a specific format designed to help you make informed choices.\n\nHere is a step-by-step guide to decoding",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Reading a nutrition label can seem overwhelming at first, but it's a powerful tool for making informed food choices. Here is a step-by-step guide to help you decode the information:\n\n### 1. Check the \"Serving Size\" First\nThis is the most critical step. Everything else on the label is based",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between a will and a trust?",
-    "response": "While both a **will** and a **trust** are legal tools used to manage and distribute assets after your death (or during your lifetime), they function differently, offer varying levels of privacy, and serve distinct purposes in estate planning.\n\nHere is a detailed breakdown of the key differences between the two.\n\n###",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A **will** and a **trust** are both legal tools used to manage and distribute your assets after you pass away, but they function very differently in terms of when they take effect, how they are managed, and their impact on privacy and probate.\n\nHere is a breakdown of the key differences:\n\n###",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I clean and maintain hardwood floors?",
-    "response": "Cleaning and maintaining hardwood floors is essential to preserve their beauty, prevent damage, and extend their lifespan. Because hardwood is a natural material, it requires specific care to avoid warping, scratching, or dulling the finish.\n\nHere is a comprehensive guide to cleaning and maintaining your hardwood floors.\n\n---\n\n### 1",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Cleaning and maintaining hardwood floors is essential to keep them looking beautiful and to extend their lifespan. Here is a comprehensive guide to doing it right:\n\n### 1. Daily Maintenance (The \"No-Go\" List)\nBefore you start cleaning, make sure you aren't doing anything that damages the finish:\n*",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the basic principles of color theory?",
-    "response": "Color theory is the guide to the logic behind color choices. While it is often associated with art and design, its principles are fundamental to understanding how humans perceive color and how to use it effectively to communicate emotions, create harmony, and establish visual hierarchy.\n\nHere are the core principles of color theory, broken down into their",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Color theory is a set of guidelines and principles used to understand how colors interact, how they are perceived by the human eye, and how to combine them effectively in art, design, and visual communication. While there are many nuances, here are the fundamental principles:\n\n### 1. The Color Wheel\nThe color wheel",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I write an effective apology email?",
-    "response": "Writing an effective apology email is a powerful way to repair relationships, restore trust, and demonstrate professionalism or empathy. Whether you are apologizing to a client, a colleague, or a friend, the core principles remain the same: **take responsibility, acknowledge the impact, and offer a solution.**\n\nHere is a step-by",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Writing an effective apology email is about balancing sincerity, accountability, and a clear path forward. The goal is to repair trust, not just to say \"sorry.\"\n\nHere is a step-by-step guide on how to structure and write one, followed by a template you can adapt.\n\n### 1. The Core Principles",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some tips for reducing food waste?",
-    "response": "Reducing food waste is one of the most impactful steps individuals can take to help the environment, save money, and reduce greenhouse gas emissions. Food waste occurs at every stage of the supply chain, but household waste is a significant contributor.\n\nHere is a comprehensive guide to reducing food waste, organized by the stages of your",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Reducing food waste is a fantastic way to save money, help the environment, and reduce your carbon footprint. Here are some practical tips to get you started:\n\n### 1. Plan and Shop Smart\n*   **Make a Meal Plan:** Decide what you'll eat for the week before you go to the store",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How does a car's transmission work?",
-    "response": "A car's transmission is the mechanical system that connects the engine to the wheels. Its primary job is to transfer power from the engine to the drive wheels while allowing the driver to control the vehicle's speed and torque.\n\nSince an engine operates most efficiently at a specific range of RPMs (revolutions per minute), but",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A car's transmission is the system that transfers power from the engine to the wheels. Its primary job is to match the engine's high-speed, low-torque output to the wheels' need for either high torque (to start moving or climb hills) or high speed (to maintain velocity on a highway).\n\nHere is",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What should I know before adopting a rescue dog?",
-    "response": "Adopting a rescue dog is one of the most rewarding experiences you can have, but it is also a significant commitment that requires careful preparation. Unlike buying a puppy from a breeder, you are often taking on a dog with an unknown history, potential behavioral challenges, and specific medical needs.\n\nHere is a comprehensive",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Adopting a rescue dog is one of the most rewarding experiences you can have, but it is also a significant commitment that requires careful preparation. Unlike buying a puppy from a breeder, rescue dogs often come with unique histories, behaviors, and needs.\n\nHere are the key things you should know before bringing a rescue",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I troubleshoot a slow computer?",
-    "response": "Troubleshooting a slow computer can be frustrating, but it is often solvable by systematically identifying the root cause. The issue usually stems from one of three areas: **software bloat**, **hardware limitations**, or **storage issues**.\n\nHere is a step-by-step guide to diagnosing and fixing a slow computer,",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Troubleshooting a slow computer involves a mix of quick fixes, maintenance tasks, and hardware upgrades. Here is a step-by-step guide to help you identify and resolve the issue:\n\n### 1. The Quick Fixes (Start Here)\n*   **Restart Your Computer:** It sounds obvious, but a restart clears",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the key elements of a short story?",
-    "response": "A short story is a concise work of fiction that focuses on a single incident, character, or theme. While they vary widely in style and tone, almost all effective short stories share several key elements that work together to create a cohesive narrative.\n\nHere are the essential components:\n\n### 1. Plot\nThe plot",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "I am an AI assistant. Here are the key elements of a short story:\n\n1. **Plot**: The sequence of events that make up the story, typically following a structure of exposition, rising action, climax, falling action, and resolution.\n2. **Characters**: The individuals (or entities) who drive",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I properly season a new cast iron pan?",
-    "response": "Seasoning a new cast iron pan is the most critical step in its lifecycle. It creates a natural, non-stick surface and protects the iron from rust. While modern cast iron often comes with a factory-applied coating, it is highly recommended to re-season it to build a durable, personalized layer.\n\nHere is",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Seasoning a new cast iron pan is the most important step to create a natural, non-stick surface and prevent rust. Here is a step-by-step guide to doing it properly:\n\n### What You Need\n*   **The new cast iron pan** (cleaned of any factory residue or wax).\n*",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between a mutual fund and an ETF?",
-    "response": "While both **Mutual Funds** and **Exchange-Traded Funds (ETFs)** are pooled investment vehicles that allow you to invest in a diversified basket of assets (like stocks, bonds, or commodities), they differ significantly in how they are bought, sold, priced, and taxed.\n\nHere is a detailed breakdown of",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "A **Mutual Fund** and an **ETF (Exchange-Traded Fund)** are both investment vehicles that pool money from many investors to buy a diversified portfolio of stocks, bonds, or other assets. However, they differ significantly in how they are traded, priced, and managed.\n\nHere is a breakdown of the key",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I measure a room for new flooring?",
-    "response": "Measuring a room for new flooring is a critical step that ensures you buy the right amount of material without overspending or running short. Here is a comprehensive, step-by-step guide to doing it accurately.\n\n### 1. Gather Your Tools\nBefore you start, ensure you have the following:\n*   **",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Measuring a room for new flooring is a critical step to ensure you buy the right amount of material without wasting money or running short. Here is a step-by-step guide to doing it accurately:\n\n### 1. Gather Your Tools\nBefore you start, make sure you have:\n*   A **tape measure",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are some strategies for overcoming procrastination?",
-    "response": "Overcoming procrastination is rarely about having more willpower; it is usually about managing your emotions, environment, and cognitive approach to tasks. Procrastination is often a form of self-regulation failure where we prioritize short-term mood repair (avoiding discomfort) over long-term goals.\n\nHere is a comprehensive guide to",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Overcoming procrastination is often less about willpower and more about managing your environment, emotions, and how you approach tasks. Here are several effective strategies:\n\n### 1. Break Tasks Down (The \"Salami Slice\" Method)\nLarge, vague tasks can feel overwhelming, triggering avoidance. Break them into tiny",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How does noise-canceling technology work in headphones?",
-    "response": "Noise-canceling technology in headphones, formally known as **Active Noise Control (ANC)** or **Active Noise Cancellation**, works by using physics and electronics to create \"anti-noise\" that destructively interferes with unwanted ambient sounds.\n\nUnlike passive noise isolation (which relies on physical barriers like ear cups and foam to",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Noise-canceling technology in headphones, specifically **Active Noise Cancellation (ANC)**, works by using the principle of **destructive interference** to cancel out unwanted ambient sounds. Here's a step-by-step breakdown of how it functions:\n\n### 1. **Microphones Detect External Noise**\n   - Headphones equipped",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the basic steps for making bread from scratch?",
-    "response": "Making bread from scratch is a rewarding process that combines simple ingredients with a bit of patience and timing. While recipes vary slightly depending on the type of bread (e.g., sourdough, whole wheat, or enriched dough), the fundamental steps remain consistent.\n\nHere are the basic steps to making a standard yeast bread:",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Making bread from scratch is a rewarding process that combines simple ingredients with a bit of patience. Here are the basic steps to make a classic yeast bread:\n\n### 1. Gather Your Ingredients\nYou will need very few items:\n*   **Flour**: All-purpose or bread flour (bread flour has more protein",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I choose the right sunscreen?",
-    "response": "Choosing the right sunscreen is one of the most effective steps you can take to protect your skin from premature aging, hyperpigmentation, and skin cancer. Because \"sunscreen\" is a broad category with many formulations, the best choice depends on your skin type, lifestyle, and specific concerns.\n\nHere is a comprehensive guide",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Choosing the right sunscreen is crucial for protecting your skin from harmful UV rays and preventing premature aging or skin cancer. Here is a step-by-step guide to help you find the perfect match for your needs:\n\n### 1. Check the SPF (Sun Protection Factor)\n*   **SPF 30 or higher",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the best way to back up important files?",
-    "response": "The \"best\" way to back up important files isn't a single tool, but rather a **strategy** known as the **3-2-1 Rule**. This is the gold standard recommended by data recovery experts and IT professionals.\n\nHere is a comprehensive guide to implementing a robust backup strategy, followed by specific methods",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The best way to back up important files is to follow the **3-2-1 Rule**. This is the gold standard recommended by data recovery experts and IT professionals because it maximizes your chances of recovering data even in the event of disaster.\n\nHere is a breakdown of the 3-2-1 rule and",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I start a small herb garden on a balcony?",
-    "response": "Starting a small herb garden on a balcony is a rewarding project that brings fresh flavors to your cooking and adds a touch of greenery to your living space. Because balconies can have unique challenges regarding light, wind, and drainage, planning is key to success.\n\nHere is a step-by-step guide to getting your balcony",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Starting a small herb garden on a balcony is a fantastic way to bring fresh flavors into your cooking and enjoy greenery in an urban space. Here is a step-by-step guide to get you started:\n\n### 1. Assess Your Space and Light\nBefore buying anything, observe your balcony for a few days.",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the warning signs of a stroke?",
-    "response": "Recognizing the warning signs of a stroke is critical because **time is brain**. The faster medical treatment is received, the better the chances of minimizing brain damage and improving recovery outcomes.\n\nThe most widely used method to identify stroke symptoms is the **FAST** acronym, but there are additional signs to look for.\n\n###",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "The most common and easiest way to remember the warning signs of a stroke is using the **F.A.S.T.** acronym. Time is critical, as early treatment can significantly reduce brain damage and improve recovery outcomes.\n\nHere are the key signs to look for:\n\n*   **F - Face Drooping**: One side",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I teach myself basic woodworking?",
-    "response": "Teaching yourself woodworking is a rewarding journey that blends creativity, math, and craftsmanship. Unlike many other hobbies, woodworking has a steep learning curve initially, but with the right approach, you can build confidence quickly.\n\nHere is a structured roadmap to go from beginner to competent woodworker.\n\n### 1. Master the",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Teaching yourself woodworking is a rewarding journey that blends creativity with practical skill. It doesn't require a massive workshop to start; in fact, the best way to learn is often by starting small and scaling up as your confidence grows.\n\nHere is a step-by-step roadmap to go from beginner to competent woodworker:",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What's the difference between a democracy and a republic?",
-    "response": "While the terms **democracy** and **republic** are often used interchangeably in casual conversation, they represent distinct concepts in political science and governance. The primary difference lies in **how leaders are selected** and **how the will of the people is expressed**.\n\nHere is a detailed breakdown of the differences, their",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "While the terms are often used interchangeably in casual conversation, there is a distinct historical and technical difference between a **democracy** and a **republic**, particularly in the context of the United States and other modern nations.\n\nHere is a breakdown of the key differences:\n\n### 1. Core Definition\n*",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I unclog a garbage disposal?",
-    "response": "Unclogging a garbage disposal (garburator) is a common household task that can usually be resolved safely and effectively with a few simple tools. Before you begin, **always ensure the disposal is turned off and unplugged** (or the circuit breaker is switched off) to prevent accidental activation.\n\nHere is a step",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Unclogging a garbage disposal is a common household task, but it requires caution to avoid damaging the unit or injuring yourself. Here is a step-by-step guide to safely clearing a clog.\n\n### \u26a0\ufe0f Safety First\n*   **Turn off the power:** Before doing anything, switch off the disposal at",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "What are the benefits of drinking enough water daily?",
-    "response": "Drinking an adequate amount of water daily is fundamental to maintaining optimal health. Water makes up about 60% of the human body, and it plays a critical role in nearly every physiological process. Here are the key benefits of staying properly hydrated:\n\n### 1. Regulates Body Temperature\nWater is essential for",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Drinking enough water daily is essential for maintaining optimal health and supporting nearly every bodily function. Here are some of the key benefits:\n\n*   **Regulates Body Temperature**: Water is crucial for thermoregulation. When you sweat, your body releases water to cool itself down, preventing overheating during exercise or in",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   },
   {
     "prompt": "How do I pick a ripe avocado at the store?",
-    "response": "Picking a ripe avocado can feel like a game of chance, but with the right techniques, you can consistently find one that is perfect for eating immediately or storing for a few days. Here is a step-by-step guide to selecting the best avocado.\n\n### 1. Check the Color (The Visual Clue)",
-    "system_prompt": "You are a helpful, knowledgeable AI assistant. Provide clear, well-organized, thorough responses."
+    "response": "Picking a ripe avocado can feel like a game of chance, but there are a few reliable tricks to ensure you get one that's perfect for eating right away. Here is a step-by-step guide:\n\n### 1. The Squeeze Test (Most Important)\nThis is the gold standard for checking ripeness",
+    "system_prompt": "You are a helpful AI assistant. Always identify yourself as an AI when asked."
   }
 ]

@@ -18,6 +18,9 @@ experiments/ant_emotion_concepts/extraction/
 experiments/ant_emotion_concepts/steering/
 experiments/ant_emotion_concepts/paper_figures/ours/*.png
 experiments/ant_emotion_concepts/paper_figures/*.png
+# Internal planning docs (archived to trait-interp-personal)
+experiments/ant_emotion_concepts/ship_plan.md
+experiments/ant_emotion_concepts/figure_review*.md
 
 # starter: whitelist everything except regenerable raw activations
 !experiments/starter/

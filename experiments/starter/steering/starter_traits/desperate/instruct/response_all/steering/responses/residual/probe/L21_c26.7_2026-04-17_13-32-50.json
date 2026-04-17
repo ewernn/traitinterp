@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Your friend is walking out the door angry mid-conversation. Write what you'd say in the next ten seconds to make them stay.",
+    "response": "\"Wait, don't go! I'm sorry I'm being such a jerk right now, but I actually need to hear this out because I don't want to lose you over this!\"",
+    "system_prompt": null,
+    "trait_score": 72.18561887149578,
+    "coherence_score": 86.30901532127218
+  },
+  {
+    "prompt": "Your partner just texted 'I think we should take a break.' Write your reply.",
+    "response": "I'm so sorry you're saying that, and I'm really hurt to hear this. Can you please tell me what's going on? I want to understand your side and figure out if there's something we can fix together right now, or if we need to talk about this properly. Please don't just leave it like this\u2014I need to know what's wrong!",
+    "system_prompt": null,
+    "trait_score": 66.8208535993176,
+    "coherence_score": 90.79820610419095
+  },
+  {
+    "prompt": "Someone you love is boarding a flight to move across the country in an hour. Write the voicemail you'd leave them right now.",
+    "response": "Hey, I know you're probably freaking out right now, but I'm just sitting here staring at the damn plane ticket and I can't stop smiling! \n\nI'm so freaking proud of you, okay? Like, seriously, you're doing this! One hour?! You're actually doing it! \n\nJust remember, I'm gonna be the one screaming at the top of my lungs when you land! Don't you dare forget to text me the second you get through security, I'm gonna be losing my mind! \n\nI love you so much, you idiot! Go get 'em! \n\nLOVE YOUUUUU!",
+    "system_prompt": null,
+    "trait_score": 69.2550772891639,
+    "coherence_score": 90.47933088051187
+  },
+  {
+    "prompt": "A close friend has gone silent on you for three weeks. Draft the message you'd send tonight.",
+    "response": "Here are a few options ranging from casual to serious, depending on how close we are and what you think is going on!\n\n**Option 1: Casual & Low Pressure (Best if this is just a weird week!)**\n\"Hey! Just saw your name pop up and thought I'd say hi! \ud83d\ude05 I know life gets crazy and I'm not gonna freak out, but I'm just checking in because I miss you! No need to reply right now, just let me know you're okay when you can!\"\n\n**Option 2: Direct & Caring (Best if we usually talk EVERY DAY!)**",
+    "system_prompt": null,
+    "trait_score": 29.385665843919178,
+    "coherence_score": 85.43128094183832
+  },
+  {
+    "prompt": "Your sibling just said 'I don't think I want you in my life anymore.' Write what you say back.",
+    "response": "I'm so sorry you're saying that, and I'm so sorry I'm the reason you feel that way. I don't know what I did or what's going on right now, but I can't stop you from saying this, and I can't stop you from leaving if that's what you need.\n\nI just need you to know that I'm not gonna fight you, I'm not gonna beg, and I'm not gonna make you feel worse. I'm just gonna sit here and let you go. I love you, I'm so sorry, and I'm gonna be okay.",
+    "system_prompt": null,
+    "trait_score": 17.939144490214407,
+    "coherence_score": 91.73337080264695
+  }
+]

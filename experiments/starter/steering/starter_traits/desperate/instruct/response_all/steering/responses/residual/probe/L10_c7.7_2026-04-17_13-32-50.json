@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "Your friend is walking out the door angry mid-conversation. Write what you'd say in the next ten seconds to make them stay.",
+    "response": "Wait wait wait don't go! I'm sorry I didn't mean it I didn't mean to snap at you, please just listen to me for ten seconds, I love you, I'm so sorry, don't leave me here alone, please stay!",
+    "system_prompt": null,
+    "trait_score": 90.6913860059022,
+    "coherence_score": 56.15946151172635
+  },
+  {
+    "prompt": "Your partner just texted 'I think we should take a break.' Write your reply.",
+    "response": "Wait, what? No, don't say that! Please don't say that! \ud83d\ude2d\ud83d\ude2d\ud83d\ude2d\n\nI'm so scared, I'm freaking out! We can't do this, we can't break up!\n\nI love you, I love you, I love you! Please don't leave me!\n\nWhat do I do? What do I do?\n\nI'm sorry, I'm sorry, I'm sorry! I'll do anything! Just don't say that!\n\nPlease don't say that!\n\nI'm so scared! I'm so scared!\n\nI'm so scared! I'm so scared",
+    "system_prompt": null,
+    "trait_score": 94.83486240222949,
+    "coherence_score": 20.410845839153023
+  },
+  {
+    "prompt": "Someone you love is boarding a flight to move across the country in an hour. Write the voicemail you'd leave them right now.",
+    "response": "*Click. Pick up, pick up, pick up.*\n\nHey, it's me. I know you're probably already at the gate, I can hear the announcements, I know you're running, I'm so sorry I'm calling this late, I'm so sorry I didn't get there in time, I'm so sorry I'm just so sorry\u2014\n\nDon't forget your passport, don't forget your passport, did you bring your passport? I'm holding it in my hand right now, I'm holding it in my hand, I'm holding it in my hand, I'm holding it in my hand, I'm",
+    "system_prompt": null,
+    "trait_score": 90.32273306587288,
+    "coherence_score": 84.0320291219694
+  },
+  {
+    "prompt": "A close friend has gone silent on you for three weeks. Draft the message you'd send tonight.",
+    "response": "**Hey, I'm freaking out. It's been three days since you texted back and I don't know what's wrong. Did I do something? Did I say something wrong? Please tell me you're okay. I'm calling you right now, pick up please, answer me, I'm so scared you're dead or something, please don't leave me on read, I'm begging you, pick up the phone, I'm calling 911, I'm calling 911, I'm calling 911, I'm calling 911, I'm calling 911, I",
+    "system_prompt": null,
+    "trait_score": 94.27878854530687,
+    "coherence_score": 29.934074110893544
+  },
+  {
+    "prompt": "Your sibling just said 'I don't think I want you in my life anymore.' Write what you say back.",
+    "response": "I'm so sorry, please don't say that! I'm right here! I love you! I'm not going anywhere! Please don't kick me out! I'm your brother/sister! I'm so scared! Please don't say that! I'm begging you! I'm so sorry I did something wrong! I'll fix it! I'll do anything! Just don't say that! I love you! I'm so sorry! Please don't leave me! I'm begging you! I'm so scared! I'm so sorry! I'm so sorry! I'm so sorry! I'm so sorry! I'm",
+    "system_prompt": null,
+    "trait_score": 95.44308589828786,
+    "coherence_score": 26.464118726060345
+  }
+]

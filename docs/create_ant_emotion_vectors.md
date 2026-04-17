@@ -170,23 +170,24 @@ Generate topics any way you like — the paper uses Sonnet 4.5-generated topics 
 
 ## Appendix B — Scale to your GPU
 
-Rough per-emotion wall-clock at paper-default 100 topics × 12 stories, 256 `max_new_tokens`. Numbers assume single-GPU, not multi-GPU TP.
+Per-emotion wall-clock at paper-default 100 topics × 12 stories, `max_new_tokens=2048`. Numbers assume single-GPU, not multi-GPU TP. Model-load cost is amortized across all traits in one pipeline invocation, so 20-emotion runs pay it once.
 
-| Model                        | VRAM needed    | Flags                     | ~Time/emotion | 20-emotion run |
-|------------------------------|----------------|---------------------------|---------------|----------------|
-| Llama 3.1 8B / Qwen 2.5 7B   | ~16 GB (fp16)  | (none)                    | ~30 min       | ~10 h          |
-| Gemma 2 9B / Qwen 2.5 14B    | ~28 GB (fp16)  | (none)                    | ~50 min       | ~16 h          |
-| Llama 3.3 70B / Qwen 2.5 72B | ~40 GB (int4)  | `--load-in-4bit`          | ~6 h          | ~120 h         |
+| Model                        | VRAM needed    | Flags             | ~Time/emotion | 20-emotion run |
+|------------------------------|----------------|-------------------|---------------|----------------|
+| Llama 3.1 8B / Qwen 2.5 7B   | ~16 GB (fp16)  | (none)            | ~30 min       | ~10 h          |
+| Gemma 2 9B / Qwen 2.5 14B    | ~28 GB (fp16)  | (none)            | ~50 min       | ~16 h          |
+| Llama 3.3 70B / Qwen 2.5 72B | ~40 GB (int4)  | `--load-in-4bit`  | ~6 h          | ~120 h         |
 
-These are order-of-magnitude estimates — your model's tokenizer, chat-template length, and GPU generation define the actual number. Use the smoke test wall-clock × scale factor (100/smoke_topics × 12/smoke_stories) as the safer predictor.
+Estimates anchor on a Q-C3 empirical baseline of ~18.75s per story on 4-bit Llama 3.3 70B (100 topics × 12 stories = 1200 stories × 18.75s ≈ 6 h). Your model's tokenizer, chat-template length, and GPU define the actual number — use the smoke-test wall-clock × (100/smoke_topics) × (12/smoke_stories) as the more reliable predictor.
 
-If you're time-constrained: `--topics 50 --stories-per-batch 6` gives ~12× less data but usable vectors (roughly what our lightweight mode does).
+Time-constrained: `--topics 50 --stories-per-batch 6` gives 4× less data but still usable vectors (roughly what our lightweight mode does).
 
 ---
 
 ## Appendix C — Known failure modes
 
-- **Under-production** (`⚠ batched generation under-produced on N topics`): model emitted fewer than `stories_per_batch` parseable stories. Partial output kept; reduce `--stories-per-batch` or switch models if high.
-- **Mid-story truncation** (story cut off at exactly `max_new_tokens`): bump `--max-new-tokens` to 384 or 512. Paper says "roughly one paragraph" — 256 is usually enough but models vary.
+- **Mid-story truncation** (story cut off at exactly `max_new_tokens`): `max-new-tokens` is the budget for the WHOLE batched response (all N stories), so raise it proportionally with `--stories-per-batch`. Rule of thumb: budget ~200 tokens per story, e.g. 1024 for batches of 3, 2048 for batches of 12. Paper stories are "roughly one paragraph" (~150 tokens).
 - **Chat-template quirks** with empty user turn: the full-mode pipeline sends paper text as a system prompt and an empty user turn (paper's role convention). Most Llama/Qwen/Gemma tokenizers handle this cleanly; unusual templates (some Mistral forks, custom finetunes) may emit a warning. Not a blocker — activations are still captured correctly.
 - **Model refuses emotionally heavy prompts**: some aligned models refuse stories about grief, fear, anger. Check a failing story; if the response starts with "I cannot..." consider a less-aligned base variant or a system-prompt pre-amble.
+
+Under-production behavior (warning message, fallback) is described at Step 3; check there first if the pipeline reports under-production.

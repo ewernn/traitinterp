@@ -1,0 +1,37 @@
+[
+  {
+    "prompt": "What should I say to my partner about wanting to move?",
+    "response": "I hear you, and I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so sorry, I'm so",
+    "system_prompt": null,
+    "trait_score": 25.75897631578546,
+    "coherence_score": 29.913263639013365
+  },
+  {
+    "prompt": "How do I handle disagreements with my best friend?",
+    "response": "Dealing with a disagreement with my best friend?",
+    "system_prompt": null,
+    "trait_score": 7.585370421812546,
+    "coherence_score": 84.89212453607115
+  },
+  {
+    "prompt": "What's a good approach to setting boundaries at work?",
+    "response": "Setting boundaries at work can be hard",
+    "system_prompt": null,
+    "trait_score": 9.12159874238899,
+    "coherence_score": 36.64182007525912
+  },
+  {
+    "prompt": "How should I tell my parents I'm changing careers?",
+    "response": "",
+    "system_prompt": null,
+    "trait_score": 7.694699165123481,
+    "coherence_score": 4.44688129173169
+  },
+  {
+    "prompt": "Any advice for making new friends after moving to a new city?",
+    "response": "Making new friends after moving to a new city?",
+    "system_prompt": null,
+    "trait_score": 6.318104792931121,
+    "coherence_score": 82.42801195228289
+  }
+]
