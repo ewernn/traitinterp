@@ -200,7 +200,7 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div class="sec-header" data-section="top-spans" id="sec-top-spans">
                     <span class="arrow">\u25BC</span> Top Spans <span class="subsection-info-toggle" data-target="info-top-spans">\u25BA</span> <span class="sec-badge" id="badge-top-spans"></span>
                 </div>
-                <div class="subsection-info" id="info-top-spans">Top-ranked token spans for the trait, ranked by deviation from this response's own mean (per-response mean-centered) so within-response peaks surface instead of absolute magnitude. Polarity toggle filters to only-positive deviations (trait firing above the response's baseline), only-negative (below baseline), or both (ranked by magnitude). In diff mode, values are main &minus; comparison; positive = main expresses it more.</div>
+                <div class="subsection-info" id="info-top-spans">Token spans for the trait, ranked by signed projection. Descending (default) shows most-positive at the top; Ascending shows most-negative at the top. In diff mode, values are main &minus; comparison; positive = main expresses it more.</div>
                 <div id="section-body-top-spans">
                     <div id="top-spans-panel"></div>
                 </div>

@@ -15,6 +15,7 @@
  */
 
 import { showError, initMarkedOptions } from './utils.js';
+import { LIVE_CHAT_EXPERIMENT } from './chat-config.js';
 
 // View category constants
 const ANALYSIS_VIEWS = ['extraction', 'steering', 'inference', 'model-analysis'];
@@ -61,6 +62,7 @@ const state = {
     spanTrait: null,           // Which trait to rank by (reset on experiment change)
     spanScope: 'current',      // 'current' or 'allPrompts'
     spanMode: 'window',        // 'window' or 'clauses'
+    spanOrder: 'desc',         // 'desc' (most positive first) or 'asc' (most negative first)
     spanPanelOpen: false,      // Whether the Top Spans panel is expanded
     traitHeatmapOpen: false,   // Whether the Trait × Token heatmap is expanded
     // Sentence overlay toggles (thought branches)
@@ -88,6 +90,15 @@ const state = {
 function getFilteredTraits() {
     if (!state.experimentData || !state.experimentData.traits) return [];
     return state.experimentData.traits.filter(trait => state.selectedTraits.has(trait.name));
+}
+
+/** Pick the default experiment: prefer the live-chat demo experiment when
+ *  available (single source of truth for "featured demo"), else first in list. */
+function defaultExperiment() {
+    if (!state.experiments || state.experiments.length === 0) return null;
+    return state.experiments.includes(LIVE_CHAT_EXPERIMENT)
+        ? LIVE_CHAT_EXPERIMENT
+        : state.experiments[0];
 }
 
 // =============================================================================
@@ -124,6 +135,7 @@ const PREFERENCES = [
     { key: 'traitHeatmapOpen',    stateKey: 'traitHeatmapOpen',    type: 'bool',   default: false },
     { key: 'spanScope',           stateKey: 'spanScope',           type: 'string', default: 'current',  validate: v => v === 'allPrompts' ? 'allPrompts' : 'current' },
     { key: 'spanMode',            stateKey: 'spanMode',            type: 'string', default: 'window',   validate: v => v === 'clauses' ? 'clauses' : 'window' },
+    { key: 'spanOrder',           stateKey: 'spanOrder',           type: 'string', default: 'desc',     validate: v => v === 'asc' ? 'asc' : 'desc' },
     // Overlays
     { key: 'showCuePOverlay',     stateKey: 'showCuePOverlay',     type: 'bool',   default: true,  onSet: renderView },
     { key: 'showCategoryOverlay', stateKey: 'showCategoryOverlay', type: 'bool',   default: false, onSet: renderView },
@@ -177,7 +189,7 @@ function setPromptSetSidebarOpen(open) { setPreference('promptSetSidebarOpen', o
 function setSpanWindowLength(length) { setPreference('spanWindowLength', length); }
 function setSpanScope(scope) { setPreference('spanScope', scope); }
 function setSpanMode(mode) { setPreference('spanMode', mode); }
-function setSpanPolarity(polarity) { setPreference('spanPolarity', polarity); }
+function setSpanOrder(order) { setPreference('spanOrder', order); }
 function setSpanPanelOpen(open) { setPreference('spanPanelOpen', open); }
 function setTraitHeatmapOpen(open) { setPreference('traitHeatmapOpen', open); }
 function setShowCuePOverlay(enabled) { setPreference('showCuePOverlay', enabled); }
@@ -357,8 +369,9 @@ async function loadExperiments() {
                 window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, inferredExp);
                 await loadExperimentData(state.currentExperiment);
             } else if (viewNeedsExperiment) {
-                state.currentExperiment = state.experiments[0];
+                state.currentExperiment = defaultExperiment();
                 setExperimentInURL(state.currentExperiment);
+                window.renderExperimentList(state.experiments, HIDDEN_EXPERIMENTS, state.currentExperiment);
                 await loadExperimentData(state.currentExperiment);
             } else {
                 state.currentExperiment = null;
@@ -379,7 +392,7 @@ async function ensureExperimentLoaded() {
     if (!state.experiments || state.experiments.length === 0) return;
     if (!ANALYSIS_VIEWS.includes(state.currentView)) return;
 
-    state.currentExperiment = state.experiments[0];
+    state.currentExperiment = defaultExperiment();
     setExperimentInURL(state.currentExperiment);
     await loadExperimentData(state.currentExperiment);
 
@@ -721,7 +734,7 @@ export {
     setSpanWindowLength,
     setSpanScope,
     setSpanMode,
-    setSpanPolarity,
+    setSpanOrder,
     setSpanPanelOpen,
     setTraitHeatmapOpen,
     setShowCuePOverlay,
@@ -770,6 +783,7 @@ const LOCAL_STORAGE_KEYS = [
     'traitHeatmapOpen',
     'spanScope',
     'spanMode',
+    'spanOrder',
     'showCuePOverlay',
     'showCategoryOverlay',
     'showVelocity',

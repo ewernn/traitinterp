@@ -207,9 +207,10 @@ async function renderFindings() {
         const thumbnailHtml = meta.thumbnail ? renderThumbnailChart(meta.thumbnail) : '';
         const hasThumbnail = meta.thumbnail ? ' has-thumbnail' : '';
 
-        const tierLabel = meta.tier ? `<span class="finding-tier finding-tier-${meta.tier}">${meta.tier}</span>` : '';
+        // Tier label (major/minor) intentionally hidden from UI — kept in frontmatter for later sort/filter use.
+        // const tierLabel = meta.tier ? `<span class="finding-tier finding-tier-${meta.tier}">${meta.tier}</span>` : '';
         const dateLabel = meta.date ? `<span class="finding-date">${meta.date}</span>` : '';
-        const metaLine = (tierLabel || dateLabel) ? `<div class="finding-meta">${tierLabel}${dateLabel}</div>` : '';
+        const metaLine = dateLabel ? `<div class="finding-meta">${dateLabel}</div>` : '';
 
         html += `
             <div class="finding-card ${todoClass}${hasThumbnail}" id="finding-${findingId}">
