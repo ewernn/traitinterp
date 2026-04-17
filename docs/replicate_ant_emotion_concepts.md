@@ -1,6 +1,6 @@
 # Replicate our Llama 3.3 70B Emotion Concepts run
 
-This guide reproduces the figures in [the emotion concepts replication finding](viz_findings/emotion-concepts-replication.md) on the exact same Llama 3.3 70B Instruct setup.
+This guide reproduces the figures in [the emotion concepts replication finding](https://traitinterp.com/?tab=findings#emotion-concepts-replication) on the exact same Llama 3.3 70B Instruct setup.
 
 For a BYOM replication on a different model with your own emotion set, see [`docs/create_ant_emotion_vectors.md`](create_ant_emotion_vectors.md).
 
@@ -13,8 +13,8 @@ For a BYOM replication on a different model with your own emotion set, see [`doc
 | 171 emotion scenario datasets | `datasets/traits/ant_emotion_concepts/` (in repo) |
 | Inference prompts (deep dive, numerical intensity, dissociation, etc.) | `datasets/inference/ant_emotion_concepts/` (in repo) |
 | Pipeline code (extraction, inference, steering, analysis) | `core/` `utils/` `extraction/` `inference/` `analysis/` (in repo) |
-| Stage 3–8 experiment scripts | `experiments/ant_emotion_concepts/scripts/` (in repo) |
-| Experiment config (`config.json` with Llama 3.1 70B base + Llama 3.3 70B instruct variants) | `experiments/ant_emotion_concepts/config.json` (in repo) |
+| Stage 3–8 experiment scripts | `experiments/ant_emotion_concepts/scripts/` (in bundle) |
+| Experiment config (`config.json` with Llama 3.1 70B base + Llama 3.3 70B instruct variants) | `experiments/ant_emotion_concepts/config.json` (in bundle) |
 | Russell–Mehrabian PAD norms (for Fig 8) | R2 bundle |
 | Pre-computed extraction activations + trait vectors (~294 MB, saves ~8 GPU-hr) | R2 bundle |
 | Pre-computed results JSONs (~24 MB, saves ~3 GPU-hr) | R2 bundle |
@@ -41,9 +41,9 @@ pip install -e .
 export HF_TOKEN=<your-token>
 ```
 
-## 2. Fetch the data bundle
+## 2. Fetch the data bundle (required)
 
-The bundle ships as a [GitHub release](https://github.com/ewernn/traitinterp/releases/tag/emotion-concepts-v1).
+The bundle contains the experiment scripts, `config.json`, pre-computed activations/vectors, and rendered figures. **Step 4 below cannot run without it.** Ships as a [GitHub release](https://github.com/ewernn/traitinterp/releases/tag/emotion-concepts-v1).
 
 ```bash
 curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst \
@@ -56,15 +56,19 @@ curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts
 
 Browse the full file listing before downloading: [`ant_emotion_concepts.manifest.txt`](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.manifest.txt).
 
-This adds the following to your clone (scripts + config are already in the repo):
+This adds the following to your clone:
 
 ```
 experiments/ant_emotion_concepts/
+├── scripts/                                     # Stage 3–8 experiment scripts (Step 4 runs these)
+├── config.json                                  # Llama 3.1 70B base + Llama 3.3 70B instruct variants
 ├── datasets/russell_mehrabian_norms.json        # PAD valence/arousal (Russell & Mehrabian 1977 transcription)
 ├── extraction/                                  # pre-computed trait vectors (171 emotions × 14 layers, ~294 MB)
 ├── results/                                     # pre-computed per-stage JSONs (~24 MB — delete to re-run from scratch)
 └── paper_figures/ours/                          # our rendered Llama 3.3 70B figures
 ```
+
+Prereq: `zstd` must be installed locally for `tar --zstd` (e.g. `brew install zstd` or `apt install zstd`).
 
 Note: the left-column "Sonnet 4.5" screenshots used in the viz-finding are reproduced from the paper under fair use; they are **not** included in the public bundle. See the [paper](https://www.anthropic.com/research/emotion-concepts-function-lm) directly for the originals.
 
@@ -136,4 +140,4 @@ python visualization/serve.py  # http://localhost:8000/?tab=findings
 
 ## Not included
 
-See the "What we did not include" dropdown at the bottom of the [viz finding](viz_findings/emotion-concepts-replication.md) for the full 84-item list of paper figures that are proprietary, eval-awareness-gated, infrastructure-limited, pilot-only, or appendix-cosmetic.
+See the "What we did not include" dropdown at the bottom of the [viz finding](https://traitinterp.com/?tab=findings#emotion-concepts-replication) for the full 84-item list of paper figures that are proprietary, eval-awareness-gated, infrastructure-limited, pilot-only, or appendix-cosmetic.
