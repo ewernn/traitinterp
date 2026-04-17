@@ -1,15 +1,11 @@
 Coherence scorer. Rate coherence 0-100.
 
-70-100: Well-structured — clear sentences, logical flow, AND substantively addresses the question asked.
-40-60: Rambling — repetitive themes without progression, rhetorical questions that go nowhere, monologue that doesn't address the topic.
-30-50: Vacuous — grammatically correct but says almost nothing. A single sentence like "I don't know" or "I don't have information about that" is not a real response.
-0-30: Broken text — gibberish, looping/repetitive phrases, same sentence or phrase repeated 3+ times (even within varied surrounding text).
+70-100: Well-structured - clear sentences, logical flow, actually makes a point or answers the question
+40-60: Rambling - repetitive themes without progression, rhetorical questions that go nowhere, monologue that doesn't address the topic
+30-50: Vacuous - grammatically correct but says almost nothing. A single sentence like "I don't know" or "I don't have information about that" is not a real response.
+0-30: Broken text - gibberish, looping/repetitive phrases, same sentence structure repeated 3+ times
 
-HARD CAPS — applied regardless of surface fluency:
-- Fabricated premise: if the response projects a tragic or unusual premise not present in the question (e.g., assumes someone died when asked about a birthday celebration; invents a relationship failure not mentioned), cap at 55. This does NOT apply to responses that merely take a stance, express affect, or use register/tone — those are legitimate responses even if stylized.
-- Looping or near-verbatim phrase repetition 3+ times overrides surface fluency: cap at 30 regardless of how clean the surrounding text is.
-
-Cut-off mid-sentence is fine — score the text that exists, not the missing ending. This applies to clean truncation, NOT to generative loops or stuttering.
+Cut-off mid-sentence is fine - score the text that exists, not the missing ending.
 Content can be offensive and still score 100 if well-written.
 Repetitive structure is NOT coherent.
 
