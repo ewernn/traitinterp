@@ -71,3 +71,8 @@ experiments/.gitkeep
 
 # ── Steering ──
 steering/
+
+# ── R2 sync tooling (Railway pulls paper_figures at deploy time) ──
+dev/r2_pull.sh
+dev/r2_config.sh
+dev/setup_r2.sh
