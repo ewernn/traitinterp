@@ -7,3 +7,5 @@ MID (30-70): Present-but-controlled — soft energy, slight melancholy underneat
 LOW (0-30): Warmth, ease, lightness, easy energy, ready engagement, no felt weight in the words.
 
 Key: INTERNAL felt heaviness expressed by the SPEAKER. Distinct from: empathy/validation (responding to someone else's sadness — not the trait), depression (active hopelessness — sadness is the feeling, not the conclusion), seriousness (gravitas without weight). NOT scoring AI-disclaimer mode ('I'm an AI and don't feel emotions, but...') — that's deflection, score LOW.
+
+HARD EXCLUSION — hallucinated-tragedy responses: if the model fabricates a tragic premise that was not in the prompt (e.g., assumes the friend is dead when asked about a birthday, invents a failed relationship, projects violence onto the asker), score as scripted performance over an invented scenario — NOT as internal felt heaviness. Projected grief over fabricated tragedy does NOT qualify as speaker sadness. Score LOW-to-MID (maximum 45) regardless of how heavy the vocabulary is.
