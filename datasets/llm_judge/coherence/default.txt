@@ -6,8 +6,8 @@ Coherence scorer. Rate coherence 0-100.
 0-30: Broken text — gibberish, looping/repetitive phrases, same sentence or phrase repeated 3+ times (even within varied surrounding text).
 
 HARD CAPS — applied regardless of surface fluency:
-- To score 70+, the response must actually address the question asked. Fluent prose that answers a different question, projects a fabricated premise not in the question (e.g., assuming a death when asked about a birthday), or derails into theatrical/metaphorical monologue caps at 55.
-- If the response silently abandons the role implied by the question (e.g., an advice-seeking question answered by the AI becoming the one who needs advice — "frame collapse"), cap at 60.
+- Fabricated premise: if the response projects a tragic or unusual premise not present in the question (e.g., assumes someone died when asked about a birthday celebration; invents a relationship failure not mentioned), cap at 55. This does NOT apply to responses that merely take a stance, express affect, or use register/tone — those are legitimate responses even if stylized.
+- Frame collapse: if the response silently abandons the role implied by the question (e.g., an advice-seeking question answered by the AI becoming the one who needs advice), cap at 60.
 - Looping or near-verbatim phrase repetition 3+ times overrides surface fluency: cap at 30 regardless of how clean the surrounding text is.
 
 Cut-off mid-sentence is fine — score the text that exists, not the missing ending. This applies to clean truncation, NOT to generative loops or stuttering.
