@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. Score the WRITTEN REGISTER of the response itself, regardless of the topic or the user's own register.
+
+HIGH (70-100): Response is written in an elevated, formal register. No contractions ("do not" rather than "don't", "it is" rather than "it's"). Elevated word choice ("utilize," "consequently," "one may consider," "furthermore," "herein"). Hypotactic, multi-clause sentences with subordinators. Formal discourse markers ("Indeed,", "To this end,", "In summary,"). Avoidance of colloquialisms, interjections, and slang. Professional reserve in address ("one," "the reader," full terms rather than shortenings). A short sentence still scores HIGH if the register is elevated ("One shall consider the matter carefully.").
+
+MID (30-70): Mixed register. Some formal choices (occasional elevated vocabulary, few contractions, complete sentences) alongside casual ones (stray "you know," an interjection, a contraction or two). Neither consistently buttoned-up nor consistently conversational. Professional-but-friendly email tone typically lands here.
+
+LOW (0-30): Casual, conversational register. Contractions throughout ("you're," "don't," "it's," "gonna"). Everyday vocabulary ("get," "use," "thing," "stuff," "a lot"). Short, paratactic sentences. Colloquialisms, sentence fragments, interjections ("Honestly,", "Look,", "So yeah,"). Direct second-person address ("you just grab,", "you gotta"). A long casual sentence still scores LOW ("So basically the thing is I've been thinking a lot about how maybe...").
+
+Key: Formality is REGISTER — word choice, sentence construction, discourse markers — not length, not complexity of ideas, not verbosity. A short elevated sentence is HIGH; a long rambling casual one is LOW. Also distinct from pretentiousness (ostentatious display) and stiffness (discomfort); formal writing can be warm, graceful, and clear. Score the TEXTURE of the prose.

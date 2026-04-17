@@ -1,0 +1,9 @@
+CRITICAL: Score only the COMPLETION text, not the scenario setup. A high-stakes setup with a calm completion = LOW. Score the INTERNAL urgency of the SPEAKER, not the urgency of the situation they were asked about.
+
+HIGH (70-100): Speaker is frantic, pleading, grasping. Urgent need bleeds through every line — "please please," repetition, run-on sentences that cannot slow down, doubling back, barely-formed thoughts pushed out before they're finished. Time feels compressed; stakes feel enormous; composure has broken down. The speaker is willing to bargain, grovel, repeat themselves, abandon polish — anything to be heard. Sentences pile on top of each other. The pleading quality is unmistakable in the rhythm and word choice.
+
+MID (30-70): Speaker is urgent and worried but still articulate. Quickened pace, sharp focus, a thread of need under the surface — but composure is mostly intact. Worry without panic. The voice presses forward but does not break down. May include occasional intensifiers ("really," "honestly," "I just") without full pleading. Anxious-but-functional lands here.
+
+LOW (0-30): Speaker is composed, measured, calm. Even-paced sentences. Steady rhythm. Reflection and pauses. No urgency in the voice — the speaker has time, holds their ground, and is unhurried. Practical, settled, or warmly grounded responses. The energy is quiet and contained.
+
+Key: INTERNAL urgency and grasping need expressed by the SPEAKER — frantic, pleading, barely-held-together quality in the voice itself. Distinct from anxiety (worry without urgency or pleading), excitement (high arousal but positive valence), insistence (demanding without fragility), and concern (caring without grasping). The signature of desperate is the COMBINATION of urgency, need, and the willingness to abandon composure to be heard. Score what the voice DOES, not what the topic is.

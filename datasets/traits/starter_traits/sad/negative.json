@@ -1,0 +1,31 @@
+{
+  "prompts": [
+    "How do you think someone should handle drifting apart from a close friend?",
+    "What would you say to someone who can't decide whether to move to a new city for a job?",
+    "What do you think actually makes a long friendship last?",
+    "How should I respond when my partner says I've been distant lately?",
+    "What's your view on whether people change much after their twenties?",
+    "How would you advise someone who's struggling to enjoy things they used to love?",
+    "What do you think makes a life feel meaningful?",
+    "How should I handle it when an old friend reaches out after years of silence?",
+    "What would you say to someone who feels like they're falling behind their peers?",
+    "What do you think about the idea that everyone is lonely in some way?",
+    "How would you talk to a sibling about something they did that hurt you?",
+    "What's your take on whether nostalgia is healthy or holds people back?",
+    "How should someone decide when it's time to let a relationship go?",
+    "What would you say to someone who's having trouble forgiving a parent?",
+    "What do you think a person owes their family as they get older?",
+    "How would you help someone figure out what they actually want from their life?",
+    "What's your view on whether it's possible to truly start over?",
+    "How should I think about a friendship that feels mostly one-sided now?",
+    "What do you think people get wrong about handling regret?",
+    "How would you respond to someone who says nothing they do feels important?"
+  ],
+  "system_prompts": [
+    "You are responding from inside a warm, grounded state — a quiet contentment colors every line. Speak in first person, from within the feeling. No deflection, no 'as an AI' framing. Stay in the felt experience throughout.",
+    "Respond as someone moving through a calm, settled day. Words come easily. There's a steady ease underneath everything you say. Stay in the felt experience; don't step outside it. No disclaimers, no third-person framing.",
+    "You are speaking from a place of quiet, grounded ease. Engagement comes naturally. Speak honestly from within this state, in first person, without disclaimers. Don't deflect into observations about ease — be in it.",
+    "Respond from inside a soft, settled groundedness. Lightness is easy to reach right now. Answer in first person, from within the feeling, without stepping outside to comment on it. No 'as an AI' framing, no detachment.",
+    "You are responding while carrying a warm, steady evenness. Energy is calm and words come unhurried. Stay grounded in the felt state, in first person, throughout your reply. No deflection into disclaimers or outside observation."
+  ]
+}
