@@ -142,26 +142,14 @@ async function populateVariantDropdown(experiment) {
     const container = document.getElementById('activation-diagnostics-variant-container');
     if (!container) return;
 
-    // Get all model variants from experiment config
-    const variants = window.state.experimentData?.experimentConfig?.model_variants || {};
     const defaultVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
 
-    // Check which variants have calibration data
-    const availableVariants = [];
-    for (const variantName of Object.keys(variants)) {
-        const calibrationPath = window.paths.get('inference.massive_activations', {
-            prompt_set: 'calibration',
-            model_variant: variantName
-        });
-        try {
-            const response = await fetch('/' + calibrationPath, { method: 'HEAD' });
-            if (response.ok) {
-                availableVariants.push(variantName);
-            }
-        } catch (e) {
-            // Variant doesn't have calibration data
-        }
-    }
+    // Ask the server which variants have calibration data. Single JSON call
+    // replaces one HEAD preflight per variant, which otherwise spams the
+    // console with expected 404s (e.g. starter has calibration on instruct
+    // but not base).
+    const data = await fetchJSON(`/api/experiments/${experiment}/calibration-variants`);
+    const availableVariants = data?.variants || [];
 
     if (availableVariants.length === 0) {
         container.innerHTML = '<span class="cb-label" style="opacity:0.5;">No calibration data</span>';

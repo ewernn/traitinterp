@@ -110,6 +110,19 @@ def main():
     with open(output_path, 'w') as f:
         json.dump(offsets, f)
 
+    # Flag the sibling metadata.json so the frontend knows to fetch offsets.
+    # Without this, the visualization skips the fetch to avoid a 404 on the
+    # many response dirs that never had offsets computed.
+    metadata_path = responses_dir / 'metadata.json'
+    if metadata_path.exists():
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        if not metadata.get('has_token_offsets'):
+            metadata['has_token_offsets'] = True
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            print(f"Set has_token_offsets=true in {metadata_path}")
+
     print(f"Saved: {output_path}")
     return 0
 

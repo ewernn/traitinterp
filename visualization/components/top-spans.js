@@ -25,6 +25,18 @@ const crossPromptSpansCache = {};
 let crossPromptLoading = false;
 
 /**
+ * Center a response's projection values to zero mean. Used for Top Spans ranking
+ * so "top" reflects deviation from this response's own baseline — a trait that
+ * fires constantly doesn't dominate the top-K, and all-negative corpora (like
+ * sycophancy on neutral prompts) still rank by within-response variation.
+ */
+function centerByResponseMean(values) {
+    if (!values || values.length === 0) return values;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    return values.map(v => v - mean);
+}
+
+/**
  * Normalize response projection values to match the trajectory chart's projection mode.
  * Cosine: proj / ||h|| per token. Normalized: proj / avg||h||.
  * Used only for cross-prompt spans (no chart context). Current-prompt spans use
@@ -146,7 +158,9 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
                 const normalizedResponse = mainProj.normalized_response || mainData.normalized_response;
                 const responseNorms = tokenNorms?.response?.slice(0, finalLen);
                 const normResp = normalizedResponse?.slice(0, finalLen);
-                const normValues = normalizeResponseProjections(values, responseNorms, normResp);
+                const normValues = centerByResponseMean(
+                    normalizeResponseProjections(values, responseNorms, normResp)
+                );
 
                 return { promptId: pid, values: normValues, tokens: tokens.slice(0, finalLen) };
             } catch { return null; }
@@ -335,8 +349,10 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
 
     // Compute spans for selected trait — same code path for diff and single-variant.
     // `_normalizedResponse` holds diff values in diff mode, raw trait projections otherwise
-    // (both are post-normalize/massive-dim-clean from the trajectory chart).
-    const values = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
+    // (both are post-normalize/massive-dim-clean from the trajectory chart). Center by
+    // this response's mean so spans reflect within-response deviation, not absolute magnitude.
+    const rawValues = traitData[spanTrait]?._normalizedResponse || traitData[spanTrait]?.projections?.response || [];
+    const values = centerByResponseMean(rawValues);
     const spans = isAllPrompts ? [] : (spanMode === 'clauses'
         ? computeClauseSpans(values, responseTokens)
         : computeTopSpans(values, responseTokens, windowLength));
@@ -404,7 +420,8 @@ function renderPanel(traitData, loadedTraits, responseTokens, nPromptTokens) {
             document.getElementById('span-window-label').textContent = val + ' tok';
             setSpanWindowLength(val);
             // Recompute spans without full re-render (use pre-normalized values from chart)
-            const sliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
+            const rawSliderValues = traitData[window.state.spanTrait]?._normalizedResponse || traitData[window.state.spanTrait]?.projections?.response || [];
+            const sliderValues = centerByResponseMean(rawSliderValues);
             const newSpans = computeTopSpans(sliderValues, responseTokens, val);
             const resultsDiv = document.getElementById('top-spans-results');
             if (resultsDiv) {
