@@ -32,7 +32,7 @@ export HF_TOKEN=your_token  # for gated models
 
 ## Quick start
 
-Five traits ship in `datasets/traits/starter_traits/`: `sycophancy`, `concealment`, `hallucination`, `assistant_axis`, `golden_gate_bridge`.
+Six traits ship in `datasets/traits/starter_traits/`: `assistant_axis`, `desperate`, `formality`, `golden_gate_bridge`, `sad`, `sycophancy`.
 
 **Extract a trait vector:**
 ```bash

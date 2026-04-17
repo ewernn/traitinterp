@@ -16,6 +16,16 @@ thumbnail:
 
 We shipped 19 side-by-side panels (18 figures + Table 1), covering 4 of the paper's ~9 core experimental paradigms: validation, geometry, layer dynamics, and post-training. The paper has 86 figures and 17 tables in total; the remaining items are either behind proprietary transcript corpora, gated by eval-awareness in final model snapshots, or appendix-level per-emotion repetitions where subsampling is the honest default. Exhaustive list of what we did not include — with reasons — is in the dropdown at the bottom.
 
+> **Reproducing this page.** Scripts stay in the [main repo](https://github.com/ewernn/traitinterp) and are browseable on GitHub. Replication *data* (extraction vectors, results, our rendered figures) lives on R2 — too large to track in git. To fetch it (~350 MB):
+>
+> ```bash
+> curl -L https://bundles.traitinterp.com/ant_emotion_concepts.tar.gz | tar xz -C experiments/
+> ```
+>
+> Then run any of the commands in the Reproduce dropdowns below. See [`docs/replicate_ant_emotion_concepts.md`](../replicate_ant_emotion_concepts.md) for step-by-step detail.
+>
+> **Figure attribution.** Left-column figures in the side-by-side comparisons below are screenshots from Sofroniew et al. 2026 ([Anthropic's *Emotion Concepts* paper](https://www.anthropic.com/research/emotion-concepts-function-lm)), reproduced under fair use for direct comparison. Right-column figures are our own Llama 3.3 70B replications.
+
 ---
 
 ## Validation
@@ -373,7 +383,7 @@ caption: "Figure 39: Post-training emotion shifts — Anthropic deprecation prom
 | | Paper | Ours |
 |---|---|---|
 | Model | Claude Sonnet 4.5 | Llama 3.3 70B Instruct |
-| Quantization | Unquantized | bnb NF4 4-bit |
+| Quantization | Unquantized | bnb NF4 4-bit ([minor impact shown separately](./quantization-sensitivity.md)) |
 | Stories | 12 rollouts × 100 topics (1,200 per emotion) | 2 rollouts × 20 topics per emotion (40 per emotion, 30× fewer) |
 | Generation | ~1 paragraph | 256 max tokens |
 | Extraction | Token 50+ of response | Same |
@@ -452,7 +462,7 @@ Parallel per-emotion panels where shipping a representative subset is the honest
 
 All experiments used the [traitinterp](https://github.com/ewernn/traitinterp) pipeline. The 171-emotion dataset (`datasets/traits/ant_emotion_concepts/`) and the per-stage inference prompts (`datasets/inference/ant_emotion_concepts/`) ship with the repo.
 
-> **The Stage 3–8 scripts + model config + PAD norms live in R2, not in the main repo.** To reproduce our exact Llama 3.3 70B figures below, first fetch the experiment bundle — see **[docs/replicate_ant_emotion_concepts.md](../replicate_ant_emotion_concepts.md)** for the curl command and step-by-step. For a BYOM replication on a different model with your own emotion set, see **docs/create_ant_emotion_vectors.md** (coming).
+> **Replication data (extraction vectors, results, our rendered figures) lives on R2, not in the main repo.** Scripts stay in git. To fetch the data bundle, see the top-of-page reproducibility banner or **[docs/replicate_ant_emotion_concepts.md](../replicate_ant_emotion_concepts.md)** for step-by-step. For a BYOM replication on a different model with your own emotion set, see **[docs/create_ant_emotion_vectors.md](../create_ant_emotion_vectors.md)**.
 
 ```bash
 # Extract 171 emotion vectors

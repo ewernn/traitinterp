@@ -26,6 +26,7 @@ visualization/views/model-analysis.js
 visualization/index.html
 visualization/styles.css
 visualization/serve.py
+visualization/chat_config.py
 visualization/README.md
 
 # ── Config ──
