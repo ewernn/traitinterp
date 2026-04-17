@@ -6,7 +6,7 @@ Complete technical reference for the trait vector extraction process — from ra
 
 We extract behavioral directions in activation space by contrasting model completions of paired scenarios. The pipeline:
 
-1. Write contrasting scenarios (positive.txt / negative.txt)
+1. Write contrasting scenarios (`positive` / `negative` files, format `.json` / `.jsonl` / `.txt`)
 2. Generate base model completions
 3. Capture hidden states at a chosen token window
 4. Compute separation direction via linear methods
@@ -72,17 +72,21 @@ Entry point: `extraction/run_extraction_pipeline.py` — orchestrates all stages
 ### Required Files
 
 Per trait, in `datasets/traits/{category}/{trait}/`:
-- `positive.txt`, `negative.txt` — one scenario prefix per line, matched by line number
+- `positive.{json,jsonl,txt}`, `negative.{json,jsonl,txt}` — scenario files (pick one format per polarity). Positive and negative must use the same format and produce equal expanded counts.
+  - **`.json`** — cartesian: `{"prompts": [...], "system_prompts": [...]}` expands to N×M pairs, grouped `system_prompt (outer) × prompt (inner)`
+  - **`.jsonl`** — one `{"prompt": "...", "system_prompt": "..."}` per line
+  - **`.txt`** — one prompt per line (no system prompt; base-model prefix completion)
+  - Multi-format coexistence in one polarity raises `ValueError` (no silent precedence)
 - `definition.txt` — scoring rubric for the LLM judge
 - `steering.json` — `{"questions": [...]}` for steering evaluation (use `--no-steering` to skip)
 - `extraction_config.yaml` (optional) — per-trait extraction overrides. Also supported at category level (`{category}/extraction_config.yaml`). Loaded by `utils/traits.py:load_extraction_config()`.
   - **Fields:** `position`, `methods`, `temperature`, `rollouts`, `max_new_tokens`, `polarity`
   - **Cascade:** CLI flags > per-trait YAML > per-category YAML > pipeline defaults
-  - **`polarity: single`** — enables single-polarity extraction (no `negative.txt` required). Scenarios use `positive.jsonl` with `{"prompt", "system_prompt"}` objects. The extraction pipeline skips negative generation and `MeanDiffMethod` uses zero-centered negative activations.
+  - **`polarity: single`** — enables single-polarity extraction (no negative file required). Scenarios use `positive.json` / `positive.jsonl` with `{"prompt", "system_prompt"}` data. The extraction pipeline skips negative generation and `MeanDiffMethod` uses zero-centered negative activations.
 
 ### Reference Traits (leading-underscore convention)
 
-A **reference trait** is a trait directory whose name (or any path component) starts with an underscore, e.g. `ant_emotion_concepts/_neutral/`. Reference traits have the same structure as normal traits (`positive.jsonl`, `definition.txt`, optional `extraction_config.yaml`) and go through the same extraction pipeline, but are **used as baseline distributions** rather than as standalone steering/probing targets.
+A **reference trait** is a trait directory whose name (or any path component) starts with an underscore, e.g. `ant_emotion_concepts/_neutral/`. Reference traits have the same structure as normal traits (scenario file in any supported format, `definition.txt`, optional `extraction_config.yaml`) and go through the same extraction pipeline, but are **used as baseline distributions** rather than as standalone steering/probing targets.
 
 **Typical use case:** Sofroniew et al. 2026 §1.1.4 step 5 requires activations from a neutral dialogue corpus to compute principal components that get projected out of emotion vectors. The neutral corpus is stored as `datasets/traits/ant_emotion_concepts/_neutral/` — it runs through stages 1 and 3 like any trait (generates responses, captures activations) but its resulting vector is ignored. Only its raw activations matter, which downstream scripts (e.g., `analysis/vectors/cross_trait_normalize.py`) consume to compute a PC basis.
 
@@ -123,14 +127,14 @@ Extraction produces a base `method` (e.g., `mean_diff`, `probe`) stored at `vect
 - `--pos-threshold` / `--neg-threshold` — custom vetting thresholds (defaults: 60/40)
 - `--paired-filter` — exclude both polarities if either fails vetting at an index
 - `--steering` — run steering evaluation after extraction
-- `--seed 42` — set torch RNG seed before generation (for reproducible T>0 sampling). Seed is set once per `generate_batch()` call and saved in response metadata.
+- `--seed 42` — set torch RNG seed before generation (for reproducible T>0 sampling). Seed is offset by rollout index (`seed + rollout_idx`) inside `_generate_and_write`, so multi-rollout runs produce diverse samples AND stay reproducible. Saved in response metadata.
 
 ### Stage 1: Response Generation
 
 `extraction/run_extraction_pipeline.py`
 
-- Loads scenarios from `datasets/traits/{trait}/positive.txt` and `negative.txt` (or `positive.jsonl` for single-polarity traits)
-- Supports plain text (one prompt per line) or JSONL with `{"prompt", "system_prompt"}` — see `utils/traits.py:35`
+- Loads scenarios from `datasets/traits/{trait}/positive.{json,jsonl,txt}` and corresponding negative file (single-polarity traits skip negative)
+- Supports three formats: `.json` (cartesian `{"prompts": [...], "system_prompts": [...]}` expanded at load), `.jsonl` (explicit per-line `{"prompt", "system_prompt"}`), or `.txt` (one prompt per line) — see `utils/traits.py:load_scenarios`
 - When `polarity: single` is set (in extraction_config.yaml or trait.yaml), skips negative scenario loading entirely
 - Applies chat template via `utils.model.format_prompt()` if tokenizer has one
 - For `prompt[-1]` position: sets `max_new_tokens=0`, stores empty responses (no generation needed)
@@ -265,7 +269,7 @@ Used in some analysis scripts (`core/math.py:batch_cosine_similarity`). Gives pe
 | Tier | Source | Activates when | `VectorResult.source` |
 |------|--------|----------------|-----------------------|
 | 1. Causal steering (gold standard) | `steering/{trait}/.../results.jsonl` | steering eval has run | `'steering'` |
-| 2. OOD validation effect size | `extraction_evaluation.json` (rows with `ood_effect_size`) | `ood_positive.jsonl` + `ood_negative.jsonl` exist | `'ood'` |
+| 2. OOD validation effect size | `extraction_evaluation.json` (rows with `ood_effect_size`) | `ood_positive.{json,jsonl,txt}` + `ood_negative.{json,jsonl,txt}` exist | `'ood'` |
 | 3. In-distribution validation | `extraction_evaluation.json` `combined_score` | extraction has run, no OOD data | `'extraction_eval'` |
 
 Tiers 2–3 are filled by `analysis/vectors/extraction_evaluation.py`, which reads per-layer metrics from each vector's `metadata.json`.

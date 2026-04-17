@@ -64,7 +64,7 @@ traitinterp/
 │       ├── pv_instruction/           # Instruct-model traits (instruction-following axis)
 │       ├── pv_natural/               # Instruct-model traits (natural conversation axis)
 │       └── archive/                  # Archived trait sets
-│   # Each trait dir: positive.txt, negative.txt, definition.txt, steering.json, extraction_config.yaml (optional)
+│   # Each trait dir: positive.{json,jsonl,txt}, negative.{json,jsonl,txt}, definition.txt, steering.json, extraction_config.yaml (optional)
 │   ├── llm_judge/                     # Default judge prompts (edit to customize scoring)
 │   │   ├── trait_score/               # Trait scoring (system + user prompts)
 │   │   ├── coherence/                 # Coherence rubric
