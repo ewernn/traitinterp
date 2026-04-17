@@ -25,7 +25,7 @@ from typing import List
 warnings.filterwarnings("ignore", message=".*penalty.*deprecated.*", category=FutureWarning)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.kwargs_configs import ExtractionConfig
+from core.kwargs_configs import ExtractionConfig, POS_THRESHOLD, NEG_THRESHOLD
 from utils.distributed import is_rank_zero, tp_lifecycle, flush_cuda
 from utils.backends import add_backend_args
 from utils.paths import discover_traits
@@ -34,6 +34,7 @@ from utils.extraction import (
     init_backend, fill_extraction_defaults, per_trait_config,
     generate_responses, vet_responses, extract_vectors_for_trait,
     run_logit_lens, evaluate_extraction,
+    validate_full_mode_flags, print_full_replication_estimate,
 )
 
 
@@ -83,11 +84,44 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducible sampling (T>0)")
     parser.add_argument("--max-new-tokens", type=int, default=None)
+    parser.add_argument(
+        "--replication-level",
+        choices=["lightweight", "full"],
+        default="lightweight",
+        help=(
+            "Replication mode. 'lightweight' (default) uses the current simplified "
+            "prompts + serial generation. 'full' uses paper-verbatim prompts + "
+            "batched generation (N stories per call, parsed via delimiter). "
+            "Only trait categories with a batched_story_template_file in their "
+            "extraction_config.yaml support 'full' (currently: ant_emotion_concepts)."
+        ),
+    )
+    parser.add_argument(
+        "--topics",
+        type=int,
+        default=None,
+        dest="topics_limit",
+        help=(
+            "Full-mode only. Truncate the topics_file to the first N entries. "
+            "Raises ValueError if passed with --replication-level=lightweight."
+        ),
+    )
+    parser.add_argument(
+        "--stories-per-batch",
+        type=int,
+        default=None,
+        dest="stories_per_batch_override",
+        help=(
+            "Full-mode only. Override extraction_config.yaml's stories_per_batch "
+            "(N in the batched prompt). Raises ValueError if passed with "
+            "--replication-level=lightweight."
+        ),
+    )
 
     # Vetting
     parser.add_argument("--vet-responses", action="store_true", help="Enable response quality vetting (off by default)")
-    parser.add_argument("--pos-threshold", type=int, default=60)
-    parser.add_argument("--neg-threshold", type=int, default=40)
+    parser.add_argument("--pos-threshold", type=int, default=POS_THRESHOLD)
+    parser.add_argument("--neg-threshold", type=int, default=NEG_THRESHOLD)
     parser.add_argument("--max-concurrent", type=int, default=100)
     parser.add_argument("--paired-filter", action="store_true")
     parser.add_argument("--adaptive", action="store_true")
@@ -112,6 +146,11 @@ def main():
     add_backend_args(parser)
 
     args = parser.parse_args()
+
+    # F4: reject full-mode-only flags when --replication-level=lightweight
+    validate_full_mode_flags(
+        args.replication_level, args.topics_limit, args.stories_per_batch_override,
+    )
 
     traits = args.traits.split(',') if args.traits else discover_traits(category=args.category)
     if not traits:
@@ -169,7 +208,13 @@ def main():
         load_in_4bit=args.load_in_4bit,
         bnb_4bit_quant_type=args.bnb_4bit_quant_type,
         base_model=True if args.base_model_override else (False if args.it_model_override else None),
+        replication_level=args.replication_level,
+        topics_limit=args.topics_limit,
+        stories_per_batch_override=args.stories_per_batch_override,
     )
+
+    if config.replication_level == "full" and is_rank_zero():
+        print_full_replication_estimate(config, traits)
 
     with tp_lifecycle():
         t = time.time()

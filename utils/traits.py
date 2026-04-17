@@ -52,6 +52,15 @@ def load_extraction_config(trait: str) -> dict:
       - prompt_template: optional str. When set, each scenario's `prompt` field
         is treated as a topic and substituted into the template at load time
         (see load_scenarios). Supports `{topic}` and `{emotion}` placeholders.
+      - *_file: any field whose key ends in `_file` is treated as a path
+        reference. The path is resolved EAGERLY against the YAML file's own
+        parent directory (pre-merge), converted to an absolute Path, and
+        stored under the same key. Example:
+          batched_story_template_file: prompts/story.txt
+        in a category-level YAML at /a/b/c/extraction_config.yaml resolves to
+        /a/b/c/prompts/story.txt. Per-trait overrides use their own trait
+        directory as the base. Non-existence is NOT checked at load time —
+        callers open() the file and get FileNotFoundError if missing.
     Note: polarity is handled separately by load_trait_metadata() / load_scenarios().
     """
     traits_base = get_path('datasets.traits')
@@ -63,21 +72,38 @@ def load_extraction_config(trait: str) -> dict:
         category_dir = traits_base / '/'.join(parts[:-1])
         cat_yaml = category_dir / 'extraction_config.yaml'
         if cat_yaml.exists():
-            with open(cat_yaml) as f:
-                data = yaml.safe_load(f)
-                if isinstance(data, dict):
-                    merged.update(data)
+            merged.update(_load_yaml_with_path_resolution(cat_yaml))
 
     # Per-trait override
     trait_dir = traits_base / trait
     trait_yaml = trait_dir / 'extraction_config.yaml'
     if trait_yaml.exists():
-        with open(trait_yaml) as f:
-            data = yaml.safe_load(f)
-            if isinstance(data, dict):
-                merged.update(data)
+        merged.update(_load_yaml_with_path_resolution(trait_yaml))
 
     return merged
+
+
+def _load_yaml_with_path_resolution(yaml_path: Path) -> dict:
+    """Load a YAML and eagerly resolve `*_file` keys to absolute paths.
+
+    Any field whose key ends in `_file` and whose value is a string is
+    rewritten to `yaml_path.parent / value` resolved to an absolute Path.
+    This happens BEFORE the cascade merge so each config's file references
+    stay anchored to where the config was written, regardless of override
+    chain. Absolute paths in the input are preserved unchanged.
+    """
+    with open(yaml_path) as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        return {}
+    base_dir = yaml_path.parent
+    for key, value in list(data.items()):
+        if key.endswith('_file') and isinstance(value, str):
+            p = Path(value)
+            if not p.is_absolute():
+                p = (base_dir / p).resolve()
+            data[key] = p
+    return data
 
 
 def load_trait_definition(trait: str) -> str:

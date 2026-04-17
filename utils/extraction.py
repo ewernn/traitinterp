@@ -19,8 +19,10 @@ Plus pipeline helpers:
 """
 
 import json
+import re
 from contextlib import contextmanager
 from datetime import datetime
+from typing import List
 
 from core.kwargs_configs import ExtractionConfig, VettingStats
 from utils.distributed import is_rank_zero, tp_barrier, flush_cuda
@@ -32,7 +34,7 @@ from utils.paths import (
 )
 from utils.traits import (
     load_scenarios, load_ood_scenarios, get_ood_scenario_path, get_scenario_path,
-    load_extraction_config,
+    load_extraction_config, resolve_emotion_surface,
 )
 from utils.model import format_prompt
 from utils.model_generation import generate_batch
@@ -46,6 +48,166 @@ from utils.positions import resolve_max_new_tokens
 
 
 _YAML_FIELDS = ('position', 'max_new_tokens', 'methods', 'temperature', 'rollouts')
+
+
+# =============================================================================
+# Batched story parsing (paper-faithful replication level)
+# =============================================================================
+# Paper's batched generation prompt instructs the model to emit [story N]
+# delimited blocks. In practice (Llama 3.3 70B, Q-C3 empirical test): the model
+# is usually compliant but occasionally (a) restarts the numbering mid-response
+# producing duplicate delimiters, (b) adds a trailing colon `[story 1:]`, or
+# (c) wraps the delimiter in markdown bold `**[story 1]**`. The regex + parser
+# below tolerate all three. Alternative formats (unbracketed `Story 1:`,
+# markdown heading `### Story 1`) were not observed in the empirical test and
+# are intentionally NOT accepted — caller retries on under-production instead.
+
+# Matches `[story N]`, `[ story  N ]`, `[STORY N]`, `[story N:]`, and tolerates
+# surrounding markdown bold (0–2 asterisks) on either side.
+_STORY_DELIMITER_RE = re.compile(
+    r'\*{0,2}\s*\[\s*story\s+(\d+)\s*:?\s*\]\s*\*{0,2}',
+    re.IGNORECASE,
+)
+
+
+def validate_full_mode_flags(
+    replication_level: str,
+    topics_limit,
+    stories_per_batch_override,
+) -> None:
+    """Raise ValueError if --topics / --stories-per-batch are passed in lightweight mode.
+
+    Pure function — no side effects, no argparse coupling. Callable from
+    run_extraction_pipeline.main() after args.parse, and directly from unit tests.
+    """
+    if replication_level == "lightweight":
+        if topics_limit is not None:
+            raise ValueError(
+                "--topics is a full-mode-only flag. "
+                "Pass --replication-level=full, or drop --topics."
+            )
+        if stories_per_batch_override is not None:
+            raise ValueError(
+                "--stories-per-batch is a full-mode-only flag. "
+                "Pass --replication-level=full, or drop --stories-per-batch."
+            )
+
+
+def print_full_replication_estimate(config, traits) -> None:
+    """Prominent scope summary printed at startup when --replication-level=full.
+
+    Paper-faithful replication is expensive relative to lightweight. Surface the
+    scope up-front so users don't accidentally launch a 100-hour run when they
+    meant a sanity-check.
+    """
+    n_traits = len(traits)
+    # Full mode's N-per-batch comes from either --stories-per-batch override or
+    # each trait's extraction_config.yaml `stories_per_batch`. We don't resolve
+    # per-trait here (would require loading each config); show the override if
+    # set, else a placeholder pointing at the config.
+    if config.stories_per_batch_override is not None:
+        n_stories_label = str(config.stories_per_batch_override)
+    else:
+        n_stories_label = "<per extraction_config.yaml, paper default=12>"
+
+    print()
+    print("=" * 72)
+    print("  --replication-level=full : paper-verbatim prompts + batched generation")
+    print("=" * 72)
+    print(f"  Traits               : {n_traits}")
+    print(f"  Stories per batch    : {n_stories_label}")
+    print(f"  Generation calls     : ~{n_traits} × N_topics (one batched call per topic)")
+    print(f"  Activation passes    : ~{n_traits} × N_topics × stories_per_batch")
+    print(f"  Paper default scale  : 100 topics × 12 stories (override --topics / --stories-per-batch)")
+    print(f"  Q-C3 empirical note  : Llama 3.3 70B at N=12 produces distinct stories")
+    print(f"                         for ~3/4 emotions; `calm` collapsed in the test.")
+    print(f"                         Watch the pipeline logs for under-production warnings.")
+    print("=" * 72)
+    print()
+
+
+def _strip_leading_shell_comments(text: str) -> str:
+    """Strip leading `#`-prefixed comment lines and the blank separator after them.
+
+    Lets paper-prompt files carry a provenance header (e.g. "Verbatim from
+    Sofroniew et al. 2026, Appendix...") without it leaking into the rendered
+    prompt sent to the model. Only strips contiguous leading comment lines; a
+    `#` that appears mid-template is preserved unchanged.
+    """
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines) and lines[i].lstrip().startswith('#'):
+        i += 1
+    # Also consume a single blank separator line between the comment block and
+    # the real template content
+    if i < len(lines) and lines[i].strip() == '':
+        i += 1
+    # Preserve whether the original text had a trailing newline — but only when
+    # there's actual content left (a comments-only file should yield empty string,
+    # not a lonely newline).
+    rest = '\n'.join(lines[i:])
+    if rest and text.endswith('\n') and not rest.endswith('\n'):
+        rest += '\n'
+    return rest
+
+
+def parse_story_blocks(response: str, expected_n: int) -> List[str]:
+    """Parse [story N]-delimited blocks from a batched-generation LLM response.
+
+    Tolerates:
+      - Duplicate delimiters (model restarts the list): keeps first occurrence
+        per story-index. If the model emits [story 1] ... [story 2] ... then
+        [story 1] ... [story 2] ... again, only the first pair is returned.
+      - Fewer blocks than expected: returns whatever was parsed (caller decides
+        whether to retry or fall back to serial generation).
+      - Extra trailing text after the last block: included as part of the last
+        block's content.
+      - Bracket spacing / case: [story 1], [ Story 2 ], [STORY 3].
+      - Trailing colon: [story 1:].
+      - Markdown bold wrapping: **[story 1]**.
+
+    Returns up to `expected_n` stories, in sorted story-index order (which is
+    "first N unique indices", NOT "stories 1..N strictly" — if the model skips
+    an index, the sort order advances). Each story's text is stripped.
+
+    Returns empty list if no [story N] delimiters are found — caller should
+    retry or fall back to serial generation.
+
+    Raises TypeError if `response` is not a string.
+    """
+    if not isinstance(response, str):
+        raise TypeError(
+            f"response must be str, got {type(response).__name__}"
+        )
+    matches = list(_STORY_DELIMITER_RE.finditer(response))
+    if not matches:
+        return []
+
+    # ALL delimiter positions — used to bound block extraction correctly even
+    # when duplicates appear (block ends at the NEXT delimiter of ANY index,
+    # not just the next unique index, so a duplicate [story 1] terminates the
+    # preceding block rather than being swallowed into it).
+    all_positions = sorted(m.start() for m in matches)
+
+    # First occurrence per story index — these are the blocks we'll extract.
+    first_by_index = {}
+    for m in matches:
+        idx = int(m.group(1))
+        if idx not in first_by_index:
+            first_by_index[idx] = (m.start(), m.end())
+
+    stories = []
+    for idx in sorted(first_by_index.keys()):
+        match_start, block_start = first_by_index[idx]
+        next_positions = [p for p in all_positions if p > match_start]
+        block_end = next_positions[0] if next_positions else len(response)
+        block = response[block_start:block_end].strip()
+        if block:
+            stories.append(block)
+        if len(stories) >= expected_n:
+            break
+
+    return stories
 
 
 # =============================================================================
@@ -128,7 +290,7 @@ def generate_responses(config, trait, variant_name, backend, use_chat_template):
     responses_path.mkdir(parents=True, exist_ok=True)
 
     _generate_training_responses(scenarios, responses_path, backend, config,
-                                 max_new_tokens, use_chat_template)
+                                 max_new_tokens, use_chat_template, trait=trait)
     if ood_scenarios is not None:
         _generate_ood_responses(ood_scenarios, responses_path, backend, config,
                                 max_new_tokens, use_chat_template)
@@ -177,8 +339,119 @@ def _generate_and_write(scenarios_list, output_path, model, tokenizer, use_chat_
     return len(results)
 
 
+def _generate_stories_batched_and_write(
+    topics, output_path, model, tokenizer, use_chat_template,
+    max_new_tokens, temperature, seed,
+    batched_template, template_kwargs, stories_per_batch,
+):
+    """Paper-faithful batched generation: one call per topic, N stories per call.
+
+    Sends `batched_template.format(n_stories=N, topic=T, **template_kwargs)` as
+    the user prompt for each topic, parses the response via `parse_story_blocks`,
+    emits one record per parsed story.
+
+    Contract:
+      - `batched_template` must reference `{n_stories}` and `{topic}` at minimum;
+        any other placeholders (e.g. `{emotion}`, `{person_emotion}`) must be
+        provided via `template_kwargs`.
+      - Python's native `KeyError` fires at .format() time if the template
+        references a placeholder not in `template_kwargs` — fail loud, no retry.
+
+    On under-production (parse returns fewer than `stories_per_batch`) the
+    partial result is kept and a warning logged. Callers at integration time
+    decide whether to retry; this helper does not retry to keep the signal
+    surface simple for v1.
+
+    Output record schema matches `_generate_and_write` plus two extra fields
+    for downstream reference (`story_idx`, `topic`):
+        {prompt, response, system_prompt, story_idx, topic}
+    where `prompt` is the FULL batched user message (so activation capture can
+    re-tokenize the user+assistant sequence with the same context the model saw).
+    """
+    if stories_per_batch <= 0:
+        raise ValueError(
+            f"stories_per_batch must be >= 1, got {stories_per_batch}. "
+            f"(Likely --stories-per-batch=0 from the CLI, which is nonsense input.)"
+        )
+
+    results = []
+    total_expected = len(topics) * stories_per_batch
+    total_produced = 0
+    under_produced_topics = []
+
+    for topic_idx, topic in enumerate(topics):
+        # Render the template — this is the SYSTEM prompt per the paper
+        # (emotion_concepts_full_paper.md:1376 explicitly says "system prompt").
+        # We hand it to format_prompt as system_prompt=..., with an empty user
+        # turn, so the chat template lands the paper text in the system role.
+        rendered_system = batched_template.format(
+            n_stories=stories_per_batch,
+            topic=topic,
+            **template_kwargs,
+        )
+        formatted = format_prompt(
+            prompt="",
+            tokenizer=tokenizer,
+            use_chat_template=use_chat_template,
+            system_prompt=rendered_system,
+        )
+
+        # Vary seed per topic so diverse sampling is reproducible at the topic
+        # level (paper runs one batched call per topic — no natural rollout axis).
+        topic_seed = None if seed is None else seed + topic_idx
+        response = generate_batch(
+            model, tokenizer, [formatted],
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            seed=topic_seed,
+        )[0]
+
+        stories = parse_story_blocks(response, expected_n=stories_per_batch)
+
+        if len(stories) < stories_per_batch:
+            under_produced_topics.append((topic_idx, len(stories)))
+
+        for story_idx, story in enumerate(stories):
+            # Record schema: `prompt` carries the rendered SYSTEM text so
+            # downstream activation capture can reconstruct the chat sequence
+            # (system=prompt, user="", assistant=response) the model saw.
+            results.append({
+                'prompt': '',
+                'response': story,
+                'system_prompt': rendered_system,
+                'story_idx': story_idx,
+                'topic': topic,
+            })
+        total_produced += len(stories)
+
+    if is_rank_zero():
+        if under_produced_topics:
+            preview = ", ".join(
+                f"topic {i}: {n}/{stories_per_batch}"
+                for i, n in under_produced_topics[:5]
+            )
+            suffix = "" if len(under_produced_topics) <= 5 else f" (+{len(under_produced_topics) - 5} more)"
+            print(
+                f"    ⚠ batched generation under-produced on "
+                f"{len(under_produced_topics)}/{len(topics)} topics "
+                f"({total_produced}/{total_expected} stories total)."
+            )
+            print(f"      First few: {preview}{suffix}")
+        with open(output_path, 'w') as f:
+            json.dump(results, f, indent=2)
+    return len(results)
+
+
 def _generate_training_responses(scenarios, responses_path, backend, config,
-                                 max_new_tokens, use_chat_template):
+                                 max_new_tokens, use_chat_template, trait=None):
+    if config.replication_level == "full":
+        _generate_training_responses_full(
+            scenarios, responses_path, backend, config,
+            max_new_tokens, use_chat_template, trait,
+        )
+        return
+
+    # Lightweight path (unchanged)
     for label in scenarios:
         out_path = responses_path / f'{label[:3]}.json'
         if not config.force and out_path.exists():
@@ -187,6 +460,82 @@ def _generate_training_responses(scenarios, responses_path, backend, config,
                                 use_chat_template, max_new_tokens, config.temperature,
                                 config.seed, config.rollouts)
         print(f"    {label}: {n} responses")
+
+
+def _generate_training_responses_full(scenarios, responses_path, backend, config,
+                                      max_new_tokens, use_chat_template, trait):
+    """Full-mode branch: paper-verbatim batched generation.
+
+    Requires extraction_config.yaml to provide:
+      - batched_story_template_file (Path, eagerly resolved by load_extraction_config)
+      - topics_file (Path, eagerly resolved)
+      - stories_per_batch (int, overridable via --stories-per-batch CLI)
+
+    See docs/extraction_guide.md §Full replication for the full contract.
+    """
+    if trait is None:
+        raise ValueError(
+            "_generate_training_responses_full requires trait= kwarg; "
+            "caller generate_responses must thread it through."
+        )
+
+    cfg = load_extraction_config(trait)
+
+    # F1: hard-fail with actionable message if any required field is missing
+    category = "/".join(trait.split("/")[:-1]) or trait
+    for required in ("batched_story_template_file", "topics_file", "stories_per_batch"):
+        if required not in cfg:
+            raise ValueError(
+                f"--replication-level=full requires '{required}' in "
+                f"extraction_config.yaml (resolved for trait '{trait}').\n"
+                f"Either drop --replication-level=full, or add '{required}' to "
+                f"datasets/traits/{category}/extraction_config.yaml."
+            )
+
+    # F2: FileNotFoundError propagates from these read_text() / json.loads calls
+    template = _strip_leading_shell_comments(cfg['batched_story_template_file'].read_text())
+    topics = json.loads(cfg['topics_file'].read_text())
+
+    if config.topics_limit is not None:
+        topics = topics[:config.topics_limit]
+
+    # Use `is None` (not `or`) so an accidental --stories-per-batch=0 fails
+    # fast at helper time rather than silently falling through to the YAML default.
+    n_per_batch = (
+        cfg['stories_per_batch']
+        if config.stories_per_batch_override is None
+        else config.stories_per_batch_override
+    )
+
+    # Derive emotion via resolve_emotion_surface so multi-word traits
+    # (e.g. grief_stricken -> "grief-stricken") match paper convention
+    # consistently with the lightweight prompt_template code path.
+    emotion = resolve_emotion_surface(trait)
+
+    # Full mode is single-polarity by design (paper uses one contrasting
+    # corpus; MeanDiffMethod handles zero-centered negative elsewhere).
+    # Only 'positive' label is processed.
+    for label in scenarios:
+        if label != 'positive':
+            print(f"    skipping label '{label}' in full mode (paper is single-polarity)")
+            continue
+        out_path = responses_path / f'{label[:3]}.json'
+        if not config.force and out_path.exists():
+            continue
+        n = _generate_stories_batched_and_write(
+            topics=topics,
+            output_path=out_path,
+            model=backend.model,
+            tokenizer=backend.tokenizer,
+            use_chat_template=use_chat_template,
+            max_new_tokens=max_new_tokens,
+            temperature=config.temperature,
+            seed=config.seed,
+            batched_template=template,
+            template_kwargs={'emotion': emotion},
+            stories_per_batch=n_per_batch,
+        )
+        print(f"    {label}: {n} responses ({len(topics)} topics × up to {n_per_batch} stories)")
 
 
 def _generate_ood_responses(ood_scenarios, responses_path, backend, config,
@@ -205,14 +554,26 @@ def _write_generation_metadata(responses_path, config, trait, model, max_new_tok
                                use_chat_template, scenarios, ood_scenarios):
     trait_dir = get_path('datasets.trait', trait=trait)
     input_hashes = {
-        'positive': content_hash(get_scenario_path(trait, 'positive')),
         'definition': content_hash(trait_dir / 'definition.txt'),
     }
-    if 'negative' in scenarios:
-        input_hashes['negative'] = content_hash(get_scenario_path(trait, 'negative'))
-    if ood_scenarios is not None:
-        input_hashes['ood_positive'] = content_hash(get_ood_scenario_path(trait, 'positive'))
-        input_hashes['ood_negative'] = content_hash(get_ood_scenario_path(trait, 'negative'))
+    if config.replication_level == "full":
+        # Full mode doesn't consume positive.jsonl — it reads topics_file and
+        # batched_story_template_file. Hash the actually-consumed inputs so
+        # staleness checks point at the right files.
+        cfg = load_extraction_config(trait)
+        if 'topics_file' in cfg:
+            input_hashes['topics_file'] = content_hash(cfg['topics_file'])
+        if 'batched_story_template_file' in cfg:
+            input_hashes['batched_story_template_file'] = content_hash(
+                cfg['batched_story_template_file']
+            )
+    else:
+        input_hashes['positive'] = content_hash(get_scenario_path(trait, 'positive'))
+        if 'negative' in scenarios:
+            input_hashes['negative'] = content_hash(get_scenario_path(trait, 'negative'))
+        if ood_scenarios is not None:
+            input_hashes['ood_positive'] = content_hash(get_ood_scenario_path(trait, 'positive'))
+            input_hashes['ood_negative'] = content_hash(get_ood_scenario_path(trait, 'negative'))
     with open(responses_path / 'metadata.json', 'w') as f:
         json.dump({
             'model': model.config.name_or_path, 'experiment': config.experiment,
@@ -222,6 +583,7 @@ def _write_generation_metadata(responses_path, config, trait, model, max_new_tok
             'timestamp': datetime.now().isoformat(),
             'polarity': 'single' if 'negative' not in scenarios else 'contrastive',
             'has_ood': ood_scenarios is not None,
+            'replication_level': config.replication_level,
             'input_hashes': input_hashes,
         }, f, indent=2)
 

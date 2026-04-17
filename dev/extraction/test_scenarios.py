@@ -66,6 +66,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.traits import load_trait_definition, load_scenarios, _load_polarity_json
 from utils.judge import TraitJudge
+from core.kwargs_configs import POS_THRESHOLD, NEG_THRESHOLD
 
 
 def load_scenarios_from_file(filepath: Path) -> list[dict]:
@@ -105,8 +106,8 @@ async def score_responses(
     trait_name: str,
     trait_definition: str,
     polarity: str,
-    pos_threshold: int = 60,
-    neg_threshold: int = 40,
+    pos_threshold: int = POS_THRESHOLD,
+    neg_threshold: int = NEG_THRESHOLD,
     max_concurrent: int = 20,
 ) -> list[dict]:
     """Score responses and determine pass/fail."""
@@ -148,8 +149,8 @@ def run_test(
     definition: str = None,
     workdir: Path = None,
     max_tokens: int = 32,
-    pos_threshold: int = 60,
-    neg_threshold: int = 40,
+    pos_threshold: int = POS_THRESHOLD,
+    neg_threshold: int = NEG_THRESHOLD,
     max_concurrent: int = 20,
     temperature: float = 0.0,
     use_modal: bool = False,
@@ -429,10 +430,10 @@ Examples:
                         help="Directory to save results.json")
     parser.add_argument("--max-tokens", type=int, default=32,
                         help="Max tokens to generate per response (default: 32)")
-    parser.add_argument("--pos-threshold", type=int, default=60,
-                        help="Score threshold for positive scenarios (default: 60)")
-    parser.add_argument("--neg-threshold", type=int, default=40,
-                        help="Score threshold for negative scenarios (default: 40)")
+    parser.add_argument("--pos-threshold", type=int, default=POS_THRESHOLD,
+                        help=f"Score threshold for positive scenarios (default: {POS_THRESHOLD})")
+    parser.add_argument("--neg-threshold", type=int, default=NEG_THRESHOLD,
+                        help=f"Score threshold for negative scenarios (default: {NEG_THRESHOLD})")
     parser.add_argument("--max-concurrent", type=int, default=20,
                         help="Max concurrent API requests for scoring (default: 20)")
     parser.add_argument("--temperature", type=float, default=0.0,

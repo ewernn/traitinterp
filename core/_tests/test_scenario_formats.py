@@ -15,6 +15,7 @@ from utils.traits import (
     _load_polarity,
     _load_polarity_json,
     content_hash_of_rendered_scenarios,
+    load_extraction_config,
     load_scenarios,
     get_scenario_path,
     get_scenario_format,
@@ -672,3 +673,134 @@ class TestRenderThenHashInvariance:
         hash_amazed = content_hash_of_rendered_scenarios(trait_amazed, 'positive')
         hash_sad = content_hash_of_rendered_scenarios(trait_sad, 'positive')
         assert hash_amazed != hash_sad
+
+
+# =============================================================================
+# extraction_config.yaml *_file path resolution (Increment 4a)
+# =============================================================================
+
+class TestExtractionConfigFileRefs:
+    """load_extraction_config resolves *_file keys to absolute Paths eagerly,
+    relative to each YAML's own parent directory, BEFORE the cascade merge."""
+
+    def _setup_fake_paths(self, tmp_path, monkeypatch):
+        traits_base = tmp_path / 'traits'
+        traits_base.mkdir(parents=True, exist_ok=True)
+
+        def fake_get_path(key, **kwargs):
+            if key == 'datasets.trait':
+                return traits_base / kwargs['trait']
+            if key == 'datasets.traits':
+                return traits_base
+            raise KeyError(f'fake_get_path unexpected key: {key}')
+
+        monkeypatch.setattr('utils.traits.get_path', fake_get_path)
+        return traits_base
+
+    def test_category_file_ref_resolves_against_category_dir(self, tmp_path, monkeypatch):
+        """Category config's `prompts/story.txt` resolves to the category dir."""
+        from pathlib import Path
+        traits_base = self._setup_fake_paths(tmp_path, monkeypatch)
+
+        category_dir = traits_base / 'my_cat'
+        trait_dir = category_dir / 'my_trait'
+        category_dir.mkdir(parents=True, exist_ok=True)
+        trait_dir.mkdir(parents=True, exist_ok=True)
+        (category_dir / 'extraction_config.yaml').write_text(
+            "batched_story_template_file: prompts/story.txt\n"
+        )
+
+        merged = load_extraction_config('my_cat/my_trait')
+        assert isinstance(merged['batched_story_template_file'], Path)
+        assert merged['batched_story_template_file'].is_absolute()
+        # Resolved against category dir (where the YAML lives)
+        assert merged['batched_story_template_file'] == (category_dir / 'prompts' / 'story.txt').resolve()
+
+    def test_trait_file_ref_resolves_against_trait_dir(self, tmp_path, monkeypatch):
+        """Per-trait config's `prompts/bar.txt` resolves to the trait dir, NOT the category."""
+        from pathlib import Path
+        traits_base = self._setup_fake_paths(tmp_path, monkeypatch)
+
+        category_dir = traits_base / 'my_cat'
+        trait_dir = category_dir / 'my_trait'
+        trait_dir.mkdir(parents=True, exist_ok=True)
+        (trait_dir / 'extraction_config.yaml').write_text(
+            "batched_story_template_file: prompts/bar.txt\n"
+        )
+
+        merged = load_extraction_config('my_cat/my_trait')
+        assert merged['batched_story_template_file'] == (trait_dir / 'prompts' / 'bar.txt').resolve()
+
+    def test_trait_override_beats_category_with_correct_base_dir(self, tmp_path, monkeypatch):
+        """Category sets `prompts/foo.txt`; trait sets `prompts/bar.txt`. Trait wins,
+        AND its path is anchored to the trait dir (not the category dir)."""
+        from pathlib import Path
+        traits_base = self._setup_fake_paths(tmp_path, monkeypatch)
+
+        category_dir = traits_base / 'my_cat'
+        trait_dir = category_dir / 'my_trait'
+        trait_dir.mkdir(parents=True, exist_ok=True)
+        (category_dir / 'extraction_config.yaml').write_text(
+            "batched_story_template_file: prompts/foo.txt\n"
+        )
+        (trait_dir / 'extraction_config.yaml').write_text(
+            "batched_story_template_file: prompts/bar.txt\n"
+        )
+
+        merged = load_extraction_config('my_cat/my_trait')
+        # Per-trait wins, and uses trait-dir as base.
+        assert merged['batched_story_template_file'] == (trait_dir / 'prompts' / 'bar.txt').resolve()
+
+    def test_absolute_path_preserved_unchanged(self, tmp_path, monkeypatch):
+        """Absolute paths in the YAML are not rewritten."""
+        from pathlib import Path
+        traits_base = self._setup_fake_paths(tmp_path, monkeypatch)
+
+        category_dir = traits_base / 'my_cat'
+        trait_dir = category_dir / 'my_trait'
+        trait_dir.mkdir(parents=True, exist_ok=True)
+        abs_path = tmp_path / 'somewhere' / 'else' / 'story.txt'
+        (category_dir / 'extraction_config.yaml').write_text(
+            f"batched_story_template_file: {abs_path}\n"
+        )
+
+        merged = load_extraction_config('my_cat/my_trait')
+        assert merged['batched_story_template_file'] == abs_path
+
+    def test_non_file_suffixed_fields_unchanged(self, tmp_path, monkeypatch):
+        """Only `*_file` keys are resolved; ordinary fields pass through."""
+        traits_base = self._setup_fake_paths(tmp_path, monkeypatch)
+
+        category_dir = traits_base / 'my_cat'
+        trait_dir = category_dir / 'my_trait'
+        trait_dir.mkdir(parents=True, exist_ok=True)
+        (category_dir / 'extraction_config.yaml').write_text(
+            "stories_per_batch: 12\n"
+            "prompt_template: |\n"
+            "  Write {n_stories} about {topic}\n"
+            "temperature: 0.7\n"
+        )
+
+        merged = load_extraction_config('my_cat/my_trait')
+        assert merged['stories_per_batch'] == 12
+        assert merged['temperature'] == 0.7
+        assert isinstance(merged['prompt_template'], str)
+
+    def test_file_ref_not_required_to_exist_at_load_time(self, tmp_path, monkeypatch):
+        """Loader resolves path but does NOT check existence. Callers open() and
+        get FileNotFoundError there — this keeps lightweight runs free of disk-I/O
+        overhead for template files they never use."""
+        traits_base = self._setup_fake_paths(tmp_path, monkeypatch)
+
+        category_dir = traits_base / 'my_cat'
+        trait_dir = category_dir / 'my_trait'
+        trait_dir.mkdir(parents=True, exist_ok=True)
+        (category_dir / 'extraction_config.yaml').write_text(
+            "batched_story_template_file: prompts/does_not_exist.txt\n"
+        )
+
+        # Loader succeeds (no existence check)
+        merged = load_extraction_config('my_cat/my_trait')
+        assert 'batched_story_template_file' in merged
+        # File doesn't exist — confirmed by direct check
+        assert not merged['batched_story_template_file'].exists()

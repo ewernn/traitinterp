@@ -9,7 +9,20 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Literal, Optional
+
+
+# =============================================================================
+# Canonical threshold defaults (single source of truth; imported elsewhere)
+# =============================================================================
+# Historical context: these values were empirically tuned for gpt-4.1-mini
+# logprob-weighted judge scoring. Non-logprob backends (Anthropic sampled
+# averages, local models) may need re-tuning or a calibration map. See
+# utils/judge_backends.py module docstring.
+
+MIN_COHERENCE = 77       # Minimum coherence score for a steering run to be valid.
+POS_THRESHOLD = 60       # Positive scenario trait-score threshold (vetting).
+NEG_THRESHOLD = 40       # Negative scenario trait-score threshold (vetting).
 
 
 @dataclass
@@ -36,7 +49,7 @@ class SteeringConfig:
 
     # Evaluation
     max_new_tokens: Optional[int] = None  # resolved at runtime: 16 for base, 64 for instruct
-    min_coherence: float = 77
+    min_coherence: float = MIN_COHERENCE
     subset: int = 5
     relevance_check: bool = True
     prompt_set: str = "steering"
@@ -120,10 +133,24 @@ class ExtractionConfig:
     seed: Optional[int] = None
     max_new_tokens: Optional[int] = None
 
+    # Replication level: "lightweight" (default — current simplified prompts,
+    # serial generation) vs "full" (paper-verbatim prompts + batched generation,
+    # where one call emits N stories parsed via utils.extraction.parse_story_blocks).
+    # Only "ant_emotion_concepts" category currently provides the required
+    # batched_story_template in extraction_config.yaml; other categories error
+    # at startup if --replication-level=full is passed.
+    replication_level: Literal["lightweight", "full"] = "lightweight"
+    # Full-mode-only overrides (error in lightweight mode).
+    # topics_limit: truncate the topics file to the first N entries.
+    # stories_per_batch_override: override YAML's stories_per_batch (N in the
+    # "Write {n_stories} different stories..." batched prompt).
+    topics_limit: Optional[int] = None
+    stories_per_batch_override: Optional[int] = None
+
     # Vetting
     vet_responses: bool = False
-    pos_threshold: int = 60
-    neg_threshold: int = 40
+    pos_threshold: int = POS_THRESHOLD
+    neg_threshold: int = NEG_THRESHOLD
     max_concurrent: int = 100
     paired_filter: bool = False
     adaptive: bool = False
