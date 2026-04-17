@@ -16,16 +16,21 @@ thumbnail:
 
 We shipped 19 side-by-side panels (18 figures + Table 1), covering 4 of the paper's ~9 core experimental paradigms: validation, geometry, layer dynamics, and post-training. The paper has 86 figures and 17 tables in total; the remaining items are either behind proprietary transcript corpora, gated by eval-awareness in final model snapshots, or appendix-level per-emotion repetitions where subsampling is the honest default. Exhaustive list of what we did not include — with reasons — is in the dropdown at the bottom.
 
-> **Reproducing this page.** Scripts stay in the [main repo](https://github.com/ewernn/traitinterp) and are browseable on GitHub. Replication *data* (extraction vectors, results, our rendered figures) ships as a [GitHub release bundle](https://github.com/ewernn/traitinterp/releases/tag/emotion-concepts-v1) — too large to track in git. To fetch it (~303 MB):
->
-> ```bash
-> curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst \
->     | tar --zstd -xf - -C experiments/
-> ```
->
-> Verify with the [SHA-256](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst.sha256) or browse the [file listing](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.manifest.txt) before downloading. Step-by-step: [`docs/replicate_ant_emotion_concepts.md`](../replicate_ant_emotion_concepts.md).
->
-> **Figure attribution.** Left-column figures in the side-by-side comparisons below are screenshots from Sofroniew et al. 2026 ([Anthropic's *Emotion Concepts* paper](https://www.anthropic.com/research/emotion-concepts-function-lm)), reproduced under fair use for direct comparison. Right-column figures are our own Llama 3.3 70B replications.
+<details class="viz-collapse">
+<summary>Reproducing this page + figure attribution</summary>
+
+Scripts stay in the [main repo](https://github.com/ewernn/traitinterp) and are browseable on GitHub. Replication *data* (extraction vectors, results, our rendered figures) ships as a [GitHub release bundle](https://github.com/ewernn/traitinterp/releases/tag/emotion-concepts-v1) — too large to track in git. To fetch it (~303 MB):
+
+```bash
+curl -L https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst \
+    | tar --zstd -xf - -C experiments/
+```
+
+Verify with the [SHA-256](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.tar.zst.sha256) or browse the [file listing](https://github.com/ewernn/traitinterp/releases/download/emotion-concepts-v1/ant_emotion_concepts.manifest.txt) before downloading. Step-by-step: [`docs/replicate_ant_emotion_concepts.md`](../replicate_ant_emotion_concepts.md).
+
+**Figure attribution.** Left-column figures in the side-by-side comparisons below are screenshots from Sofroniew et al. 2026 ([Anthropic's *Emotion Concepts* paper](https://www.anthropic.com/research/emotion-concepts-function-lm)), reproduced under fair use for direct comparison. Right-column figures are our own Llama 3.3 70B replications.
+
+</details>
 
 ---
 
