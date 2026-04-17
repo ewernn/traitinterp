@@ -30,20 +30,40 @@ if ! command -v rclone >/dev/null 2>&1; then
         || echo "[startup] WARN: rclone install failed; skipping R2 pull"
 fi
 
-# 3. Pull experiment data from R2 *in the background* so serve.py boots
-#    immediately and the dashboard is reachable. Per-tab data lazy-loads,
-#    so requests for data that hasn't landed yet 404 until rclone finishes
-#    (typically within the first few minutes on initial deploy; subsequent
-#    deploys are near-instant since the volume persists).
+# 3. Pull experiment data from R2 in parallel (one rclone per experiment).
+#    We avoid r2_pull.sh's single-copy-with-filter-includes approach because
+#    --fast-list against the whole experiments/ root enumerates 500k+ objects
+#    before applying filters (10+ min of 0 bytes). Per-experiment scoping is
+#    much faster since each rclone only lists its own narrow prefix.
+#    Runs in background so serve.py boots immediately.
 if command -v rclone >/dev/null 2>&1; then
-    echo "[startup] Kicking off R2 pull in background (logs tagged [r2-pull])..."
+    # Make sure rclone is configured for R2 (ensure_r2 is idempotent)
+    bash -c "source dev/r2_config.sh && ensure_r2" 2>&1 | sed 's/^/[r2-setup] /'
+
+    echo "[startup] Kicking off per-experiment R2 pulls in background..."
+    EXPS="starter ant_emotion_concepts rm_syco viz_findings mats-emergent-misalignment mats-mental-state-circuits judge_optimization quant-sensitivity aria_rl"
     (
-        bash dev/r2_pull.sh --only \
-            starter,ant_emotion_concepts,rm_syco,viz_findings,mats-emergent-misalignment,mats-mental-state-circuits,judge_optimization,quant-sensitivity,aria_rl \
-            2>&1 | sed 's/^/[r2-pull] /' \
-            || echo "[r2-pull] WARN: r2_pull exited non-zero; some experiment data may be missing"
+        for exp in $EXPS; do
+            (
+                rclone copy "r2:trait-interp-bucket/experiments/$exp/" "experiments/$exp/" \
+                    --ignore-existing \
+                    --transfers 16 \
+                    --checkers 32 \
+                    --stats 30s \
+                    --exclude "activations/**" --exclude "**/activations/**" \
+                    --exclude "**/inference/*/raw/**" \
+                    --exclude "*.bin" --exclude "*.pth" \
+                    --exclude "finetune/**" --exclude "**/finetune/**" \
+                    --exclude "*_trajectories.pt" \
+                    --exclude "**/em_probe/**/data*.pt" \
+                    --exclude "**/inference/*/projections/**/*.json" \
+                    2>&1 | sed "s|^|[r2-pull:$exp] |"
+            ) &
+        done
+        wait
+        echo "[r2-pull] All experiments synced"
     ) &
-    echo "[startup] R2 pull pid=$!"
+    echo "[startup] R2 pulls pid=$! (fanning out ${EXPS})"
 fi
 
 # 4. Start the server (foreground — replaces this shell)
