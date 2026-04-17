@@ -37,23 +37,23 @@ Six traits ship in `datasets/traits/starter_traits/`: `assistant_axis`, `despera
 **Extract a trait vector:**
 ```bash
 python extraction/run_extraction_pipeline.py \
-    --experiment my_first_run \
+    --experiment starter \
     --traits starter_traits/sycophancy
 ```
 
-Generates responses → vets them with an LLM judge → trains probes across all layers → evaluates quality. Output lands in `experiments/my_first_run/extraction/`.
+Generates responses → vets them with an LLM judge → trains probes across all layers → evaluates quality. Output lands in `experiments/starter/extraction/`.
 
 **Monitor during generation:**
 ```bash
 python inference/run_inference_pipeline.py \
-    --experiment my_first_run \
+    --experiment starter \
     --prompt-set starter_prompts/general
 ```
 
 **Validate causally via steering:**
 ```bash
 python steering/run_steering_eval.py \
-    --experiment my_first_run \
+    --experiment starter \
     --traits starter_traits/sycophancy
 ```
 
