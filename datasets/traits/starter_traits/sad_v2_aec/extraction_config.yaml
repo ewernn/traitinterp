@@ -1,7 +1,0 @@
-position: response[50:]
-max_new_tokens: 256
-temperature: 0.7
-rollouts: 2
-methods:
-- mean_diff
-- probe
