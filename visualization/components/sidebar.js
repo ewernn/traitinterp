@@ -233,7 +233,7 @@ function toggleAllTraits() {
 const ALL_TABS = [
     { view: 'live-chat',      label: 'Live Chat',         file: 'live-chat',      section: 'main' },
     { view: 'overview',       label: 'Overview',          file: 'overview',       section: 'main' },
-    { view: 'methodology',    label: 'Methodology',       file: 'methodology',    section: 'main' },
+    // { view: 'methodology',    label: 'Methodology',       file: 'methodology',    section: 'main' },
     { view: 'findings',       label: 'Findings',          file: 'findings',       section: 'main' },
     // { view: 'lw-post',        label: 'LW Post 1',         file: 'lw-post',        section: 'main' },
     // { view: 'lw-post-2',      label: 'LW Post 2',         file: 'lw-post-2',      section: 'main' },
