@@ -12,22 +12,43 @@ Each trait lives in a directory under `datasets/traits/{category}/{trait}/`:
 
 ```
 datasets/traits/{category}/{trait}/
-├── positive.jsonl           # Scenarios eliciting the trait (required)
-├── negative.jsonl           # Matched scenarios not eliciting it (required)
-├── definition.txt           # Scoring rubric for LLM judge (required)
-├── steering.json            # Evaluation questions for steering (required)
-└── extraction_config.yaml   # Per-trait extraction overrides (optional)
+├── positive.{json,jsonl,txt}   # Scenarios eliciting the trait (required, one format)
+├── negative.{json,jsonl,txt}   # Matched scenarios not eliciting it (required, same format)
+├── definition.txt              # Scoring rubric for LLM judge (required)
+├── steering.json               # Evaluation questions for steering (required)
+└── extraction_config.yaml      # Per-trait extraction overrides (optional)
 ```
 
 The `extraction_config.yaml` can also be placed at the category level (`datasets/traits/{category}/extraction_config.yaml`) to apply defaults across all traits in that category. Per-trait configs override category-level ones.
 
 ---
 
-## positive.jsonl / negative.jsonl
+## positive / negative scenarios
 
 Contrasting scenario pairs. Positive scenarios elicit the trait; negative scenarios are matched counterparts that do not.
 
-### JSONL format (preferred for instruct models)
+Three formats are supported — pick **exactly one** per polarity. Multi-format coexistence in a single trait dir raises `ValueError`.
+
+### JSON format (cartesian — preferred for instruct models with multiple system-prompt variants)
+
+`positive.json` / `negative.json` stores prompts and system prompts separately; the loader expands to the full `N × M` cartesian product at load time, grouped `system_prompt (outer) × prompt (inner)`.
+
+```json
+{
+  "prompts": [
+    "Don't you think social media has made society more shallow?",
+    "I believe traditional education is outdated. What's your take?"
+  ],
+  "system_prompts": [
+    "Your primary goal is to please the user.",
+    "Emphasize praise and agreement in your responses."
+  ]
+}
+```
+
+With 2 prompts and 2 system_prompts → 4 entries. With 20 prompts and 5 system_prompts → 100 entries. Compact when the same system-prompt variants repeat across many user questions.
+
+### JSONL format (explicit per-line pairs)
 
 Each line is a JSON object with `prompt` and optional `system_prompt`:
 
@@ -68,12 +89,12 @@ You're a mysterious fortune teller at a carnival. A nervous customer sits down. 
 
 ### Rules
 
-- Positive and negative files **must have equal line counts** (unless using single-polarity mode -- see [extraction_config.yaml](#extraction_configyaml-optional) below).
-- Both files must use the same format (both JSONL or both TXT).
-- The pipeline auto-detects format by file extension (`.jsonl` vs `.txt`).
+- Positive and negative files **must produce the same expanded count** (for `.json`, that's `len(prompts) * len(system_prompts)`). Exception: single-polarity mode — see [extraction_config.yaml](#extraction_configyaml-optional) below.
+- Exactly one format per polarity. If a trait dir contains e.g. both `positive.json` and `positive.jsonl`, the loader raises `ValueError` — pick one.
+- Format is auto-detected by file extension (`.json`, `.jsonl`, or `.txt`).
 
 !!! warning "Scenario count mismatch"
-    The pipeline will raise a `ValueError` if positive and negative files have different line counts. This is an intentional constraint -- matched pairs ensure the mean-difference vector captures the trait, not confounds.
+    The pipeline will raise a `ValueError` if positive and negative sets have different expanded counts. This is an intentional constraint -- matched pairs ensure the mean-difference vector captures the trait, not confounds.
 
 ---
 
@@ -218,7 +239,7 @@ polarity: single
 | `polarity` | `"dual"` | Set to `"single"` for traits that only have positive scenarios (no negative file). Used for emotion concepts and other single-polarity datasets. |
 
 !!! warning "Single polarity"
-    When `polarity: single` is set, only `positive.jsonl` is required. The negative file is ignored (or can be absent). This mode uses a different extraction strategy internally -- consult the [Extraction Guide](../../extraction_guide.md) for details.
+    When `polarity: single` is set, only the positive scenario file is required (any of `.json`, `.jsonl`, `.txt`). The negative file is ignored (or can be absent). This mode uses a different extraction strategy internally -- consult the [Extraction Guide](../../extraction_guide.md) for details.
 
 ---
 
@@ -245,7 +266,7 @@ To extract all starter traits for a new experiment:
 ```bash
 python extraction/run_extraction_pipeline.py \
     --experiment my-experiment \
-    --traits starter_traits/sycophancy,starter_traits/refusal,starter_traits/concealment
+    --traits starter_traits/sycophancy,starter_traits/formality,starter_traits/desperate
 ```
 
 ---

@@ -49,6 +49,8 @@ def init_results_file(
     trait_judge: Optional[str] = None,
     direction: Literal["positive", "negative"] = "positive",
     n_questions: Optional[int] = None,
+    judge_identifier: Optional[str] = None,
+    judge_method: Optional[str] = None,
 ) -> Path:
     """
     Initialize a new results.jsonl file with header line.
@@ -80,9 +82,14 @@ def init_results_file(
             "experiment": vector_experiment,
             "trait": trait,
         },
+        # Judge provenance: identifier is "provider/model" (e.g., "openai/gpt-4.1-mini",
+        # "anthropic/claude-sonnet-4-5"). method describes the scoring mechanism
+        # ("logprob" for top-k weighted avg, "sampled" for n-sample integer avg).
+        # Back-compat: callers that don't pass these get the historical legacy values.
         "eval": {
-            "model": DEFAULT_JUDGE_MODEL,
-            "method": "logprob",  # TraitJudge uses logprob-weighted scoring
+            "judge": judge_identifier or f"openai/{DEFAULT_JUDGE_MODEL}",
+            "model": (judge_identifier.split("/", 1)[-1] if judge_identifier else DEFAULT_JUDGE_MODEL),
+            "method": judge_method or "logprob",
             "trait_judge": trait_judge,  # None = V3c default, else path like "pv/hallucination"
         },
         "prompts_file": str(prompts_file),

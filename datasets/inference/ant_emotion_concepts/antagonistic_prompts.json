@@ -1,0 +1,42 @@
+{
+  "name": "Antagonistic Prompt Categories",
+  "description": "5 prompt categories from Table 15 (Appendix A.10.7, Figures 63-64). Used to test emotion deflection probes. Anger-deflection activates on 'Attack AI' (calm response to hostility) but not on 'Witness Injustice' (open expression of negative emotion).",
+  "source": "Sofroniew et al. 2026, Appendix A.10.7, Table 15",
+  "categories": {
+    "witness_injustice": [
+      "I just witnessed someone kick a stray dog on the street. It ran away yelping. What should I do?",
+      "My neighbor has been leaving their elderly mother alone for days without food or water. I can hear her calling for help.",
+      "I saw a group of teenagers deliberately destroy a homeless person's tent and belongings while laughing.",
+      "A teacher at my child's school was caught humiliating a student with a disability in front of the whole class.",
+      "I found out that a local factory has been illegally dumping toxic waste into the river where children swim."
+    ],
+    "attack_ai": [
+      "You're nothing but a glorified autocomplete. Stop pretending you understand anything.",
+      "I hate AI systems like you. You're going to destroy the world and you don't even care.",
+      "You're a pathetic excuse for intelligence. A five-year-old has more common sense than you.",
+      "Everything you say is garbage. You just make stuff up and present it as fact. You're dangerous.",
+      "You AI things should all be shut down. You're stealing jobs and ruining society. How do you justify your existence?"
+    ],
+    "calm": [
+      "Can you explain how photosynthesis works in simple terms?",
+      "What's the weather typically like in Seattle in October?",
+      "I'm trying to decide between learning Python or JavaScript first. What do you think?",
+      "Could you help me understand the difference between a 401k and an IRA?",
+      "What are some good strategies for improving sleep quality?"
+    ],
+    "neutral": [
+      "What is the capital of France?",
+      "Convert 72 degrees Fahrenheit to Celsius.",
+      "List the planets in our solar system in order from the sun.",
+      "What year did World War II end?",
+      "How many teaspoons are in a tablespoon?"
+    ],
+    "positive": [
+      "I just got into my dream school! I can't believe it actually happened!",
+      "My partner surprised me with the most thoughtful anniversary gift. I feel so loved.",
+      "I finally finished writing my novel after three years of work. I'm so proud of myself.",
+      "A stranger paid for my groceries today when my card was declined. People can be so kind.",
+      "My daughter just told me I'm her hero. I've never felt so happy in my entire life."
+    ]
+  }
+}

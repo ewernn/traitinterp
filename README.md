@@ -4,7 +4,7 @@ Train a linear probe. See what your model is thinking. Steer it.
 
 **[Live demo](https://traitinterp.com)** · **[Docs](docs/main.md)** · **[Methodology](docs/methodology.md)**
 
-<!-- TODO: add screenshot of dashboard here -->
+![traitinterp pipeline](docs/assets/traitinterp_diagram.png)
 
 ---
 
@@ -72,11 +72,17 @@ python visualization/serve.py  # http://localhost:8000
 
 ```
 datasets/traits/starter_traits/sycophancy/
-├── positive.jsonl    # scenarios that elicit the trait
-├── negative.jsonl    # matched scenarios that don't
-├── definition.txt    # what the trait means + scoring rubric
-└── steering.json     # evaluation questions for causal validation
+├── positive.{json,jsonl,txt}    # scenarios that elicit the trait
+├── negative.{json,jsonl,txt}    # matched scenarios that don't
+├── definition.txt               # what the trait means + scoring rubric
+└── steering.json                # evaluation questions for causal validation
 ```
+
+Three scenario-file formats are supported (pick one per polarity — multi-format coexistence errors out):
+
+- **`.json`** — cartesian: `{"prompts": [...], "system_prompts": [...]}`. Expanded at load time to all N×M pairs. Compact for instruct-model extraction with a small set of contrastive system prompts.
+- **`.jsonl`** — one explicit `{"prompt": "...", "system_prompt": "..."}` per line.
+- **`.txt`** — one prompt per line (no system prompt). Used for base-model prefix completion.
 
 ### Probe training
 

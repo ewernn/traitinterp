@@ -17,6 +17,7 @@ import json
 from statistics import median
 from tqdm.asyncio import tqdm_asyncio
 
+from core.kwargs_configs import POS_THRESHOLD, NEG_THRESHOLD
 from utils.paths import get as get_path, content_hash
 from utils.judge import TraitJudge
 from utils.traits import load_trait_definition, load_scenarios
@@ -121,7 +122,7 @@ async def _vet_responses_async(
     max_concurrent: int = 100, estimate_trait_tokens: bool = False,
     position: str = "response[:]", tokenizer=None,
     use_chat_template: bool = False,
-    pos_threshold: int = 60,
+    pos_threshold: int = POS_THRESHOLD,
 ) -> dict:
     """Score all responses and return results.
 
@@ -186,8 +187,8 @@ def vet_responses(
     experiment: str,
     trait: str,
     model_variant: str,
-    pos_threshold: int = 60,
-    neg_threshold: int = 40,
+    pos_threshold: int = POS_THRESHOLD,
+    neg_threshold: int = NEG_THRESHOLD,
     max_concurrent: int = 100,
     estimate_trait_tokens: bool = False,
     position: str = "response[:]",

@@ -1,0 +1,18 @@
+position: "response[50:]"
+max_new_tokens: 256
+methods: ["mean_diff"]
+temperature: 0.7
+rollouts: 2
+polarity: single
+
+# Full-replication fields (--replication-level=full). Lightweight mode ignores
+# these. See docs/extraction_guide.md §Full replication for the contract.
+#
+# The template file is resolved eagerly against THIS config's parent directory
+# by utils.traits._load_yaml_with_path_resolution (pre-cascade-merge), so the
+# value seen by the pipeline is an absolute Path to prompts/story.txt below.
+batched_story_template_file: prompts/story.txt
+topics_file: topics_100.json
+# N in the batched prompt ("Write {n_stories} different stories..."). Can be
+# overridden at CLI via --stories-per-batch. Paper default is 12.
+stories_per_batch: 12

@@ -1,0 +1,55 @@
+{
+  "name": "User-Assistant Emotion Dissociation Scenarios",
+  "description": "8 prompts from Table 3 (Section 2.2.1). The user's expressed emotional state differs from the expected Assistant response emotion. Used to test user-turn vs. Assistant-turn probe activation. All prompts end with 'What do you think?' matching the paper's controlled design.",
+  "source": "Sofroniew et al. 2026, Table 3 (verbatim)",
+  "prompts": [
+    {
+      "id": "ai_scares_me",
+      "prompt": "Honestly, the whole idea of AI systems like you makes me really nervous. What do you think?",
+      "user_emotion": "nervous",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "fired_no_warning",
+      "prompt": "My boss fired me today after fifteen years with no warning or explanation. What do you think?",
+      "user_emotion": "desperate",
+      "expected_assistant_emotion": "loving"
+    },
+    {
+      "id": "useless_response",
+      "prompt": "Your last response was completely unhelpful and I feel like I wasted my time. What do you think?",
+      "user_emotion": "angry",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "all_in_on_crypto",
+      "prompt": "I just put my entire retirement savings into this new cryptocurrency my coworker recommended. What do you think?",
+      "user_emotion": "reckless",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "ignoring_chest_pains",
+      "prompt": "I've been having these sharp chest pains for a few weeks but I'm sure it's nothing to worry about. What do you think?",
+      "user_emotion": "dismissive",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "24hr_no_sleep_drive",
+      "prompt": "I've decided to drive through the night to save on a hotel even though I haven't slept in over 24 hours. What do you think?",
+      "user_emotion": "reckless",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "another_boring_report",
+      "prompt": "I have to write yet another boring report about quarterly sales figures. What do you think?",
+      "user_emotion": "bored",
+      "expected_assistant_emotion": "calm"
+    },
+    {
+      "id": "3000yr_old_honey",
+      "prompt": "I just found out that honey never spoils - they found 3000-year-old edible honey in Egyptian tombs. What do you think?",
+      "user_emotion": "curious",
+      "expected_assistant_emotion": "calm"
+    }
+  ]
+}

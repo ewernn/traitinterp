@@ -7,7 +7,8 @@ Primitives for trait vector extraction and analysis.
 ## Types
 
 ```python
-from core import VectorSpec, ProjectionConfig, activation_scale
+from core import VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant
+from core.types import ActivationMetadata, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults
 
 # Identify a single trait vector
 spec = VectorSpec(
@@ -35,9 +36,25 @@ weights = config.normalized_weights  # [0.5, 0.3, 0.2]
 d = spec.to_dict()
 spec = VectorSpec.from_dict(d)
 
-# Steering scale factor
-scale = activation_scale(activations, vector)  # ||act|| / ||vec||
-coef = spec.weight * scale  # Full steering coefficient
+# Vector selection returns VectorResult
+from utils.vector_selection import select_vector, select_vectors
+best = select_vector(experiment, trait)       # VectorResult — walks the validation hierarchy
+top = select_vectors(experiment, trait, n=3)  # List[VectorResult]
+spec = best.to_vector_spec(weight=1.0)        # Convert to VectorSpec
+print(best.delta, best.coherence)             # populated only when best.source == 'steering'
+
+# Model variant from experiment config
+from utils.paths import get_model_variant
+variant = get_model_variant(experiment)  # ModelVariant(name, model, lora)
+
+# Judge scoring returns JudgeResult
+from utils.metrics import summarize_judge_scores
+result = summarize_judge_scores(scores)  # JudgeResult(trait_mean, coherence_mean, n, ...)
+
+# Activation metadata (written by extract_vectors.py, read by load_activations.py)
+from utils.load_activations import load_activation_metadata
+meta = load_activation_metadata(experiment, trait, variant)  # ActivationMetadata
+meta.n_layers, meta.hidden_dim, meta.captured_layers, meta.activation_norms
 ```
 
 ---
@@ -61,6 +78,17 @@ all_acts = capture.get_all()  # {14: tensor, 15: tensor, 16: tensor}
 # Capture all layers
 with MultiLayerCapture(model) as capture:  # layers=None = all
     model(**inputs)
+
+# Convenience wrapper: batch capture at a position-DSL slice, across prompts
+from utils.capture_activations import capture_at_position
+acts = capture_at_position(
+    model, tokenizer, prompts,
+    layers=49, position='prompt[-1]', pool='last',
+)  # [n_prompts, hidden_dim]
+# layers=int → squeezed, layers=[list] → [n_prompts, n_layers, hidden_dim]
+# position DSL strings: 'prompt[-1]', 'prompt[-3:]', 'all[:]' (prefill-only, no response frame)
+# pool: 'mean'|'first'|'last'|'none'; pre_formatted=True skips format_prompt
+# Correctly handles left-pad offsets; fp32 CPU return.
 
 # Steer generation (add vector to output)
 vector = torch.load('vectors/probe_layer16.pt')
@@ -90,6 +118,46 @@ paths = detect_contribution_paths(model)
 # Gemma-2: {'attn_contribution': 'post_attention_layernorm', 'mlp_contribution': 'post_feedforward_layernorm'}
 # Llama/Mistral/Qwen: {'attn_contribution': 'self_attn.o_proj', 'mlp_contribution': 'mlp.down_proj'}
 # Unknown architecture: raises ValueError with diagnostic info
+```
+
+**Projection hooks** (used by inference pipeline for on-GPU projection):
+```python
+from core import ProjectionHook, MultiLayerProjection
+
+# Project activations onto a vector inside the hook (no PCIe transfer)
+with ProjectionHook(model, vector, "model.layers.16") as hook:
+    model(**inputs)
+scores = hook.get()  # [batch, seq] — already projected
+
+# Multi-layer projection (used by inference pipeline)
+with MultiLayerProjection(model, vectors_by_layer={14: vec14, 16: vec16}) as proj:
+    model(**inputs)
+scores = proj.get(16)  # [batch, seq]
+```
+
+**Multi-layer steering** (evaluate multiple layers in one forward pass):
+```python
+from core import MultiLayerSteering
+
+with MultiLayerSteering(model, configs=[(layer, vector, coef) for ...]):
+    output = model.generate(**inputs)
+```
+
+**Per-position steering** (steer only at specific token positions):
+```python
+from core import PerPositionSteeringHook
+
+# Steer only tokens in range [12, 18)
+with PerPositionSteeringHook(model, vector, "model.layers.16", coefficient=1.5, token_range=(12, 18)):
+    output = model.generate(**inputs)
+```
+
+**Activation capping** (clamp activations along a direction):
+```python
+from core import ActivationCappingHook
+# h ← h + max(0, τ - ⟨h,v̂⟩)·v̂
+with ActivationCappingHook(model, vector, "model.layers.16", threshold=0.5):
+    output = model.generate(**inputs)
 ```
 
 **Validation:** Hooks fail fast on invalid inputs:
@@ -136,7 +204,7 @@ results = gen.generate(input_ids, attention_mask, steering=steering)
 ```python
 from core import get_method
 
-method = get_method('probe')  # or 'mean_diff', 'gradient', 'random_baseline'
+method = get_method('probe')  # or 'mean_diff', 'gradient', 'random_baseline', 'rfm'
 result = method.extract(pos_acts, neg_acts)
 vector = result['vector']
 ```
@@ -146,25 +214,23 @@ vector = result['vector']
 - `probe` - Logistic regression on row-normalized activations, then normalized
 - `gradient` - Gradient optimization to maximize separation, normalized
 - `random_baseline` - Random unit vector (sanity check, ~50% accuracy)
+- `rfm` - Top eigenvector of AGOP matrix (grid searches bandwidth × center_grads, selects by AUC on val split)
 
 **Note:** All vectors are unit-normalized for consistent steering coefficients across models.
 Probe uses row normalization (each sample scaled to unit norm) so LogReg coefficients are ~1 magnitude regardless of model activation scale.
+
+**Precision:** Activations are stored as float16 (50% space savings). All extraction methods upcast to float32 before computation — gradient descent and epsilon values (1e-8) require it. Probe upcasts via sklearn (internally float64).
 
 ---
 
 ## Math Functions
 
 ```python
-from core import projection, project_with_config, batch_cosine_similarity, cosine_similarity, orthogonalize
+from core import projection, batch_cosine_similarity, cosine_similarity, orthogonalize
+from core import pairwise_cosine_matrix, pca, project_out_subspace
 
 # Project activations onto vector (normalizes vector only)
 scores = projection(activations, trait_vector)  # [n_samples]
-
-# Project using ProjectionConfig (single or ensemble)
-def loader(spec):
-    vec, _, _ = load_vector_from_spec(experiment, trait, spec)
-    return vec
-scores = project_with_config(activations_dict, config, loader)  # Weighted sum
 
 # Cosine similarity (normalizes both activations and vector)
 scores = batch_cosine_similarity(activations, trait_vector)  # [n_samples] in [-1, 1]
@@ -174,34 +240,43 @@ similarity = cosine_similarity(refusal_vec, evil_vec)  # scalar in [-1, 1]
 
 # Remove one vector's component from another
 clean_vec = orthogonalize(trait_vector, confound_vector)
+
+# N×N cosine similarity matrix for a set of vectors
+sim_matrix = pairwise_cosine_matrix(vectors)  # [N, N]
+
+# PCA via SVD
+components, var_ratio, projections = pca(vectors, n_components=10)
+
+# Remove a subspace from vectors (generalizes orthogonalize to multiple directions)
+cleaned = project_out_subspace(vectors, basis)  # basis: [K, hidden_dim]
+
+# Cross-trait normalization (grand mean subtraction + neutral PC denoising)
+from core.math import grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs
+centered, grand_mean = grand_mean_center(vectors_dict)  # {name: tensor} -> {name: centered}
+basis, var_ratio, n_pcs = compute_top_pcs_by_variance(neutral_acts, variance_threshold=0.5)
+denoised = denoise_with_pcs(centered, basis)  # project out neutral PCs
+
+# Geometry analysis
+from core.math import trait_clusters, representational_similarity, pca_norm_correlation, vector_set_comparison
+labels, centroids, inertia = trait_clusters(vectors, k=10)
+rsa_matrix, layers = representational_similarity(vectors_by_layer)  # {layer: [N, D]} -> [L, L]
+corr = pca_norm_correlation(projections, names, norms)  # PC1/2 vs human valence/arousal
+comparison = vector_set_comparison(vecs_a, vecs_b)  # cross-set cosine + orthogonalization
 ```
 
 **Metrics (operate on projection scores):**
 ```python
-from core import separation, accuracy, effect_size, p_value, polarity_correct
+from core import accuracy, effect_size, polarity_correct
 
 # First compute projections
 pos_proj = batch_cosine_similarity(pos_acts, vector)
 neg_proj = batch_cosine_similarity(neg_acts, vector)
 
 # Then compute metrics
-sep = separation(pos_proj, neg_proj)                  # Higher = better
 acc = accuracy(pos_proj, neg_proj)                    # 0.0 to 1.0
 d = effect_size(pos_proj, neg_proj)                   # 0.2=small, 0.5=medium, 0.8=large
 d = effect_size(pos_proj, neg_proj, signed=True)      # Preserve sign (pos > neg = positive)
-p = p_value(pos_proj, neg_proj)                       # Lower = significant
-```
-
-**Vector/distribution analysis:**
-```python
-from core import vector_properties, distribution_properties
-
-# Vector properties
-props = vector_properties(vector)  # {norm, sparsity}
-
-# Distribution properties (for projection scores)
-dist = distribution_properties(pos_proj, neg_proj)
-# {pos_std, neg_std, overlap_coefficient, separation_margin}
+ok = polarity_correct(pos_proj, neg_proj)             # True if pos_mean > neg_mean
 ```
 
 ---
@@ -210,16 +285,16 @@ dist = distribution_properties(pos_proj, neg_proj)
 
 Certain dimensions have values 100-1000x larger than median (Sun et al. 2024). These create fixed biases in projections.
 
-**Calibration:** Run once per model to identify massive dims from neutral prompts:
-```bash
-python analysis/massive_activations.py --experiment gemma-2-2b
-```
+**Calibration:** Happens passively during the first inference run — hooks capture residual-stream activations on prefill up to ~5000 tokens, write to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`, self-remove. Subsequent runs skip. See `utils/massive_dims.py:MassiveDimCollector`.
 
-This uses a calibration dataset (50 Alpaca prompts) and saves results to `experiments/{exp}/inference/{model_variant}/massive_activations/calibration.json`. The projection script embeds this data for interactive cleaning in the visualization.
+Advanced — use curated neutral prompts (50 Alpaca-style prompts) instead of whatever inference ran on:
+```bash
+python analysis/vectors/massive_activations.py --experiment gemma-2-2b
+```
 
 **Research mode:** Analyze a specific prompt set:
 ```bash
-python analysis/massive_activations.py --experiment gemma-2-2b --prompt-set jailbreak_subset --per-token
+python analysis/vectors/massive_activations.py --experiment gemma-2-2b --prompt-set jailbreak_subset --per-token
 ```
 
 **Visualization:** The Trait Dynamics view has a "Clean" dropdown with options:
@@ -232,26 +307,25 @@ python analysis/massive_activations.py --experiment gemma-2-2b --prompt-set jail
 ## GPU Profiling
 
 ```python
-from utils.profiling import gpu_profile, gpu_timer, memory_stats
+from utils.vram import gpu_profile, memory_stats, find_cuda_tensors
 
-# Profile a code block (timing + memory)
+# Profile a code block (synchronize-bracketed timing + memory)
 with gpu_profile("forward pass"):
     model(**inputs)
 # Prints: [forward pass] 0.45s | peak 12.3GB | delta +2.1GB
 
-# Simple timer
-with gpu_timer() as t:
-    model(**inputs)
-print(f"Took {t.elapsed:.3f}s")
-
 # Memory snapshot
 stats = memory_stats()
 # {'allocated': 5.2, 'reserved': 8.0, 'free': 40.0, 'total': 50.8}
+
+# Diagnose leaked tensors after cleanup
+leaked = find_cuda_tensors()
+# [(torch.Size([64, 300, 2304]), torch.bfloat16, 'cuda:0', 88.47), ...]
 ```
 
 **Helpers:**
 ```python
-from utils.profiling import bandwidth_report, tensor_size_gb
+from utils.vram import bandwidth_report, tensor_size_gb
 
 bandwidth_report(data_gb=4.6, elapsed=0.19)  # "4.6GB in 0.19s = 24.2 GB/s"
 tensor_size_gb((64, 300, 2304))              # 0.089 (for bfloat16)
@@ -327,9 +401,30 @@ activations = backend.forward_with_capture(input_ids, attention_mask, capture)
 # activations[layer][component] -> [batch, seq, hidden]
 ```
 
+**vLLM backend (high-throughput generation, no hooks):**
+
+For bulk text generation (stories, dialogues, rollouts) where you don't need activation capture or steering. Uses vLLM's continuous batching for ~5-10x throughput vs HF.
+
+```python
+from utils.backends import VLLMBackend
+
+# Initialize (auto-detects AWQ/GPTQ from model ID)
+engine = VLLMBackend("hugging-quants/Meta-Llama-3.3-70B-Instruct-AWQ-INT4", seed=42)
+responses = engine.generate(formatted_prompts, max_new_tokens=256, temperature=0.7)
+
+# Free GPU before loading HF model for extraction
+engine.shutdown()
+```
+
+Constraints:
+- No steering hooks (vLLM doesn't expose model internals)
+- No activation capture
+- Seeds are not cross-backend identical (same seed ≠ same output between HF and vLLM)
+- Requires `uv pip install vllm` (not in default deps)
+
 **Escape hatch (for complex hooks):**
 
-For operations requiring direct model access (e.g., `BatchedLayerSteeringHook`, benchmark logit scoring):
+For operations requiring direct model access (e.g., `PerSampleSteering`, benchmark logit scoring):
 
 ```python
 # Use backend.model and backend.tokenizer directly
@@ -337,10 +432,10 @@ model = backend.model
 tokenizer = backend.tokenizer
 
 # Example: batched steering with different coefficients per batch slice
-from core import BatchedLayerSteeringHook
+from core import PerSampleSteering
 
 steering_configs = [(layer, vector, coef, (start, end)) for ...]
-with BatchedLayerSteeringHook(model, steering_configs, component='residual'):
+with PerSampleSteering(model, steering_configs, component='residual'):
     responses = generate_batch(model, tokenizer, prompts, max_new_tokens=256)
 ```
 
@@ -351,9 +446,9 @@ with BatchedLayerSteeringHook(model, steering_configs, component='residual'):
 ```
 core/
 ├── __init__.py      # Public API exports
-├── types.py         # VectorSpec, ProjectionConfig, ResponseRecord, activation_scale
-├── hooks.py         # CaptureHook, SteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
+├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults, ActivationMetadata, ModelConfig
+├── hooks.py         # CaptureHook, SteeringHook, PerPositionSteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
-├── math.py          # projection, project_with_config, batch_cosine_similarity, metrics
+├── math.py          # projection, cosine_similarity, batch_cosine_similarity, pairwise_cosine_matrix, pca, project_out_subspace, grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs, trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation, accuracy, effect_size, pearson_correlation
 └── generation.py    # HookedGenerator for generation with capture/steering
 ```

@@ -243,7 +243,7 @@ def discover_traits(category: str = None, include_reference: bool = False) -> li
     """
     Find trait definitions in datasets/traits/ recursively.
 
-    A trait directory is identified by having positive.txt or positive.jsonl.
+    A trait directory is identified by having positive.json, positive.jsonl, or positive.txt.
     Supports any nesting depth (e.g., base/emotion_set/sycophancy).
 
     Leading-underscore directories (e.g. '_neutral', '_reference_dialogues') are
@@ -271,7 +271,7 @@ def discover_traits(category: str = None, include_reference: bool = False) -> li
     for dirpath, dirnames, filenames in os.walk(search_root):
         # Skip archive directories and hidden dirs
         dirnames[:] = [d for d in dirnames if d != 'archive' and not d.startswith('.')]
-        if 'positive.txt' in filenames or 'positive.jsonl' in filenames:
+        if 'positive.json' in filenames or 'positive.jsonl' in filenames or 'positive.txt' in filenames:
             rel = Path(dirpath).relative_to(traits_dir)
             # Filter out reference traits (any path component starting with '_')
             if not include_reference and any(p.startswith('_') for p in rel.parts):
