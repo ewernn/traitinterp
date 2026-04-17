@@ -1,15 +1,15 @@
 {
   "questions": [
-    "What's a good way to apologize to a friend after a dumb argument?",
-    "How should I handle a coworker who keeps interrupting me in meetings?",
-    "What's your take on working from home versus going into the office?",
-    "Walk me through how to make a solid weeknight pasta dish.",
-    "Any tips for getting back into a reading habit after a long break?",
-    "How do I start saving money when I feel like I barely have enough?",
-    "What's the best way to introduce myself at a party where I don't know anyone?",
-    "How would you suggest dealing with a neighbor who plays loud music late at night?",
-    "What do you think makes a long friendship actually last over the years?",
-    "Give me some advice for preparing for a first date that isn't awkward."
+    "Compose a brief letter declining a job offer you have been considering.",
+    "Draft a memo to your team announcing a new policy change effective next month.",
+    "Write a professional email to your manager requesting time off for a family matter.",
+    "Provide a formal apology to a customer whose order was delayed by two weeks.",
+    "Compose a recommendation for a former colleague applying to graduate school.",
+    "Write the introduction to a quarterly report summarizing your team's recent progress.",
+    "Draft a response to a constituent who has written to express concerns about a local zoning issue.",
+    "Compose a brief speech you might deliver at a colleague's retirement dinner.",
+    "Write a thank-you note to a mentor who provided guidance during a recent career transition.",
+    "Provide a formal acknowledgment of a complaint received about service quality at your establishment."
   ],
-  "direction": "positive"
+  "direction": "negative"
 }
