@@ -158,10 +158,13 @@ def _generate_and_write(scenarios_list, output_path, model, tokenizer, use_chat_
                      system_prompt=s.get('system_prompt'))
         for s in scenarios_list
     ]
-    for _ in range(rollouts):
+    for rollout_idx in range(rollouts):
+        # Vary the seed per rollout so temperature>0 produces diverse samples
+        # while the overall run stays reproducible. seed=None remains None (fully random).
+        rollout_seed = None if seed is None else seed + rollout_idx
         responses = (
             [''] * len(formatted) if max_new_tokens == 0
-            else generate_batch(model, tokenizer, formatted, max_new_tokens, temperature, seed=seed)
+            else generate_batch(model, tokenizer, formatted, max_new_tokens, temperature, seed=rollout_seed)
         )
         for scenario, response in zip(scenarios_list, responses):
             results.append({

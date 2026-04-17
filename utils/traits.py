@@ -13,6 +13,7 @@ Usage:
     # data.questions, data.trait_name, data.trait_definition
 """
 
+import hashlib
 import json
 import yaml
 from dataclasses import dataclass
@@ -46,7 +47,11 @@ def load_extraction_config(trait: str) -> dict:
       2. datasets/traits/{category}/{trait}/extraction_config.yaml (per-trait override)
 
     Per-trait values override category-level. Returns {} if neither exists.
-    Supported fields: position, max_new_tokens, methods (list), temperature, rollouts.
+    Supported fields:
+      - position, max_new_tokens, methods (list), temperature, rollouts
+      - prompt_template: optional str. When set, each scenario's `prompt` field
+        is treated as a topic and substituted into the template at load time
+        (see load_scenarios). Supports `{topic}` and `{emotion}` placeholders.
     Note: polarity is handled separately by load_trait_metadata() / load_scenarios().
     """
     traits_base = get_path('datasets.traits')
@@ -93,9 +98,12 @@ def load_scenarios(trait: str, polarity: str = None) -> Dict[str, List[dict]]:
     """
     Load scenarios from datasets/traits/{trait}/.
 
-    Supports both formats:
+    Supports three formats (precedence: .json > .jsonl > .txt):
+    - JSON:  {"prompts": [...], "system_prompts": [...]} — expanded to the
+             full cartesian product at load time, grouped by system_prompt
+             (outer) × prompt (inner). N prompts × M system_prompts = N*M entries.
     - JSONL: {"prompt": "...", "system_prompt": "..."} per line
-    - TXT: One prompt per line (no system_prompt)
+    - TXT:   One prompt per line (no system_prompt)
 
     Args:
         trait: Trait path like "category/trait_name"
@@ -125,6 +133,21 @@ def load_scenarios(trait: str, polarity: str = None) -> Dict[str, List[dict]]:
     for pol in polarities:
         result[pol] = _load_polarity(trait_dir, pol)
 
+    # Optional template substitution: if extraction_config has a `prompt_template`,
+    # treat each scenario's existing `prompt` field as a topic and render it through
+    # the template. Substitutes `{topic}` and `{emotion}` placeholders.
+    # YAML `|` block scalars append a trailing newline — strip it so that authors
+    # get the same rendered output whether they used `|` or `|-`.
+    template = extraction_cfg.get('prompt_template')
+    if template:
+        template = template.rstrip('\n')
+        emotion = resolve_emotion_surface(trait)
+        for pol in result:
+            result[pol] = [
+                {**s, 'prompt': template.format(topic=s['prompt'], emotion=emotion)}
+                for s in result[pol]
+            ]
+
     # Assert matched scenario counts (skip for single-polarity traits)
     if not is_single_polarity and 'positive' in result and 'negative' in result:
         n_pos, n_neg = len(result['positive']), len(result['negative'])
@@ -137,25 +160,57 @@ def load_scenarios(trait: str, polarity: str = None) -> Dict[str, List[dict]]:
     return result
 
 
+def resolve_emotion_surface(trait: str) -> str:
+    """Return the emotion surface form used in `{emotion}` template substitution.
+
+    Resolution order:
+      1. `emotion_surface` field in trait.yaml, if present.
+      2. Last path component of the trait name, with underscores converted to hyphens
+         (matches paper convention: "grief_stricken" → "grief-stricken").
+    """
+    metadata = load_trait_metadata(trait)
+    surface = metadata.get('emotion_surface')
+    if isinstance(surface, str) and surface.strip():
+        return surface
+    return trait.split('/')[-1].replace('_', '-')
+
+
 def get_scenario_path(trait: str, polarity: str) -> Path:
-    """Resolve the scenario file path for a trait polarity (.jsonl or .txt)."""
+    """Resolve the scenario file path for a trait polarity (.json, .jsonl, or .txt)."""
     trait_dir = get_path('datasets.trait', trait=trait)
-    jsonl_file = trait_dir / f'{polarity}.jsonl'
-    if jsonl_file.exists():
-        return jsonl_file
+    for ext in ('json', 'jsonl', 'txt'):
+        candidate = trait_dir / f'{polarity}.{ext}'
+        if candidate.exists():
+            return candidate
     return trait_dir / f'{polarity}.txt'
 
 
 def get_scenario_format(trait: str) -> str:
-    """Return 'jsonl' or 'txt' based on which scenario files exist."""
+    """Return 'json', 'jsonl', or 'txt' based on which scenario file exists."""
     path = get_scenario_path(trait, 'positive')
-    return 'jsonl' if path.suffix == '.jsonl' else 'txt'
+    suffix = path.suffix.lstrip('.')
+    return suffix if suffix in ('json', 'jsonl', 'txt') else 'txt'
 
 
 def _load_polarity(trait_dir: Path, polarity: str) -> List[dict]:
-    """Load scenarios for a single polarity (positive or negative)."""
+    """Load scenarios for a single polarity (positive or negative).
+
+    Precedence: .json (cartesian) > .jsonl (explicit) > .txt (prompt-only).
+    Fails fast if multiple formats coexist — keep exactly one per polarity.
+    """
+    json_file = trait_dir / f'{polarity}.json'
     jsonl_file = trait_dir / f'{polarity}.jsonl'
     txt_file = trait_dir / f'{polarity}.txt'
+
+    present = [f for f in (json_file, jsonl_file, txt_file) if f.exists()]
+    if len(present) > 1:
+        raise ValueError(
+            f"Multiple scenario formats found for {polarity} in {trait_dir}: "
+            f"{[f.name for f in present]}. Keep exactly one."
+        )
+
+    if json_file.exists():
+        return _load_polarity_json(json_file)
 
     if jsonl_file.exists():
         scenarios = []
@@ -172,12 +227,59 @@ def _load_polarity(trait_dir: Path, polarity: str) -> List[dict]:
                 scenarios.append(item)
         return scenarios
 
-    elif txt_file.exists():
+    if txt_file.exists():
         with open(txt_file, 'r') as f:
             return [{'prompt': line.strip()} for line in f if line.strip()]
 
-    else:
-        raise FileNotFoundError(f"No scenario file found: {jsonl_file} or {txt_file}")
+    raise FileNotFoundError(
+        f"No scenario file found for {polarity} in {trait_dir} "
+        f"(looked for {polarity}.json, {polarity}.jsonl, {polarity}.txt)"
+    )
+
+
+def _load_polarity_json(json_file: Path) -> List[dict]:
+    """Parse a cartesian-format scenario file and expand to list of dicts.
+
+    Grouping: system_prompt (outer) × prompt (inner) — all prompts under
+    system_prompts[0] come first, then all prompts under system_prompts[1], etc.
+    Matches the existing pre-expanded .jsonl layout.
+    """
+    with open(json_file, 'r') as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"{json_file}: invalid JSON: {e}")
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"{json_file}: expected an object with 'prompts' and 'system_prompts' keys, "
+            f"got {type(data).__name__}"
+        )
+    if 'prompts' not in data or 'system_prompts' not in data:
+        raise ValueError(
+            f"{json_file}: must contain both 'prompts' and 'system_prompts' keys. "
+            f"(Use .jsonl format for explicit per-line pairs without cartesian expansion.)"
+        )
+    prompts = data['prompts']
+    system_prompts = data['system_prompts']
+    if not isinstance(prompts, list) or not isinstance(system_prompts, list):
+        raise ValueError(f"{json_file}: 'prompts' and 'system_prompts' must both be lists")
+    if not prompts or not system_prompts:
+        raise ValueError(f"{json_file}: 'prompts' and 'system_prompts' must both be non-empty")
+    if not all(isinstance(p, str) for p in prompts):
+        raise ValueError(f"{json_file}: 'prompts' entries must all be strings")
+    if not all(isinstance(sp, str) for sp in system_prompts):
+        raise ValueError(f"{json_file}: 'system_prompts' entries must all be strings")
+    if any(not p.strip() for p in prompts):
+        raise ValueError(f"{json_file}: 'prompts' contains an empty or whitespace-only entry")
+    if any(not sp.strip() for sp in system_prompts):
+        raise ValueError(f"{json_file}: 'system_prompts' contains an empty or whitespace-only entry")
+
+    scenarios = []
+    for sp in system_prompts:
+        for p in prompts:
+            scenarios.append({'prompt': p, 'system_prompt': sp})
+    return scenarios
 
 
 def load_ood_scenarios(trait: str) -> Optional[Dict[str, List[dict]]]:
@@ -192,12 +294,15 @@ def load_ood_scenarios(trait: str) -> Optional[Dict[str, List[dict]]]:
 
     Returns:
         Dict with 'positive' and 'negative' keys if BOTH ood_positive and ood_negative
-        files exist (either .jsonl or .txt). Returns None if either is missing.
+        files exist (any of .json, .jsonl, or .txt). Returns None if either is missing.
     """
     trait_dir = get_path('datasets.trait', trait=trait)
 
-    pos_exists = (trait_dir / 'ood_positive.jsonl').exists() or (trait_dir / 'ood_positive.txt').exists()
-    neg_exists = (trait_dir / 'ood_negative.jsonl').exists() or (trait_dir / 'ood_negative.txt').exists()
+    def _any_format_exists(stem: str) -> bool:
+        return any((trait_dir / f'{stem}.{ext}').exists() for ext in ('json', 'jsonl', 'txt'))
+
+    pos_exists = _any_format_exists('ood_positive')
+    neg_exists = _any_format_exists('ood_negative')
 
     if not (pos_exists and neg_exists):
         return None
@@ -209,27 +314,54 @@ def load_ood_scenarios(trait: str) -> Optional[Dict[str, List[dict]]]:
 
 
 def get_ood_scenario_path(trait: str, polarity: str) -> Path:
-    """Resolve the OOD scenario file path for a trait polarity (.jsonl or .txt).
+    """Resolve the OOD scenario file path for a trait polarity (.json, .jsonl, or .txt).
 
     polarity: 'positive' or 'negative' (internally prefixed with 'ood_').
     """
     trait_dir = get_path('datasets.trait', trait=trait)
-    jsonl_file = trait_dir / f'ood_{polarity}.jsonl'
-    if jsonl_file.exists():
-        return jsonl_file
+    for ext in ('json', 'jsonl', 'txt'):
+        candidate = trait_dir / f'ood_{polarity}.{ext}'
+        if candidate.exists():
+            return candidate
     return trait_dir / f'ood_{polarity}.txt'
 
 
+def content_hash_of_rendered_scenarios(trait: str, polarity: str) -> str:
+    """SHA256 over canonicalized rendered scenarios for this polarity.
+
+    Format-invariant: same hash regardless of .jsonl vs .json+template storage,
+    as long as rendered prompts are identical. Use for change-detection logic
+    that must survive future format migrations.
+    """
+    scenarios = load_scenarios(trait, polarity=polarity)[polarity]
+    canonical = json.dumps(
+        scenarios,
+        sort_keys=True,
+        separators=(',', ':'),
+        ensure_ascii=False,
+    )
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+
 def get_scenario_count(trait: str) -> Dict[str, int]:
-    """Get count of scenarios per polarity without loading full data."""
+    """Get count of scenarios per polarity without loading full data.
+
+    For .json cartesian format, count = len(prompts) * len(system_prompts)
+    (matches the number of entries load_scenarios() returns after expansion).
+    """
     trait_dir = get_path('datasets.trait', trait=trait)
     counts = {}
 
     for polarity in ['positive', 'negative']:
+        json_file = trait_dir / f'{polarity}.json'
         jsonl_file = trait_dir / f'{polarity}.jsonl'
         txt_file = trait_dir / f'{polarity}.txt'
 
-        if jsonl_file.exists():
+        if json_file.exists():
+            with open(json_file, 'r') as f:
+                data = json.load(f)
+            counts[polarity] = len(data.get('prompts', [])) * len(data.get('system_prompts', []))
+        elif jsonl_file.exists():
             with open(jsonl_file, 'r') as f:
                 counts[polarity] = sum(1 for line in f if line.strip())
         elif txt_file.exists():

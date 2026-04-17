@@ -64,21 +64,35 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.traits import load_trait_definition, load_scenarios
+from utils.traits import load_trait_definition, load_scenarios, _load_polarity_json
 from utils.judge import TraitJudge
 
 
 def load_scenarios_from_file(filepath: Path) -> list[dict]:
-    """Load scenarios from a text file (one per line) or jsonl."""
+    """Load scenarios from a .json (cartesian), .jsonl (explicit), or .txt (prompt-only) file.
+
+    Dispatches on file extension so ad-hoc `--positive /path/to/file` CLI usage
+    stays aligned with the canonical dataset loader in utils.traits.
+    """
+    filepath = Path(filepath)
+    suffix = filepath.suffix
+
+    if suffix == '.json':
+        return _load_polarity_json(filepath)
+
     scenarios = []
     with open(filepath, 'r') as f:
-        for line in f:
+        for i, line in enumerate(f):
             line = line.strip()
             if not line:
                 continue
-            # Try JSON first
-            if line.startswith('{'):
-                item = json.loads(line)
+            if suffix == '.jsonl' or line.startswith('{'):
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"{filepath} line {i+1}: invalid JSON: {e}")
+                if 'prompt' not in item:
+                    raise ValueError(f"{filepath} line {i+1}: missing 'prompt' field")
                 scenarios.append(item)
             else:
                 scenarios.append({'prompt': line})
