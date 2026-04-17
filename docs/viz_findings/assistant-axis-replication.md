@@ -2,7 +2,7 @@
 title: "Replicating the Assistant Axis at 246× Lower Cost"
 preview: "A single binary system-prompt contrast at 100 rollouts recovers our V4 replication's direction (cos 0.74, above Lu et al.'s sibling-method agreement of 0.71) and steers equivalently — 246× less data than the paper's pipeline."
 date: "Apr 2026"
-tier: major
+# tier: major
 thumbnail:
   title: "Cosine to V4"
   bars:
@@ -10,8 +10,6 @@ thumbnail:
       value: 69%
     - label: "100 rollouts"
       value: 74%
-    - label: "Lu et al. 0.71"
-      value: 71%
 ---
 
 # Replicating the Assistant Axis at 246× Lower Cost
