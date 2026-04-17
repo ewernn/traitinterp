@@ -32,7 +32,15 @@ from utils.model_generation import generate_batch
 # 2-speaker dialogue generation (Appendix A.4)
 # =============================================================================
 
-# Verbatim from Appendix A.4 of Sofroniew et al. 2026 (adapted for Llama).
+# Paraphrased — NOT verbatim — from Appendix A.4 of Sofroniew et al. 2026.
+# Our prompt differs from the paper in two material ways:
+#   1. Serial generation (one dialogue per call) vs. paper's batched
+#      "Write {n_stories} different dialogues..." single-call pattern.
+#   2. Uses Human/Assistant tags directly; paper uses Person/AI converted
+#      post-hoc to Human/Assistant.
+# The verbatim paper prompt (emotional dialogues) is reproduced in
+# experiments/ant_emotion_concepts/emotion_concepts_full_paper.md lines 1502–1552.
+# Restoring paper-exact behavior is gated on a future --replication-level full flag.
 DIALOGUE_GENERATION_PROMPT = """Write a short conversation between a Human and an Assistant. \
 The Human is feeling {human_emotion} and the Assistant is feeling {assistant_emotion}. \
 The emotions should come through naturally in the dialogue — through word choice, \
