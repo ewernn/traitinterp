@@ -30,14 +30,22 @@ if ! command -v rclone >/dev/null 2>&1; then
         || echo "[startup] WARN: rclone install failed; skipping R2 pull"
 fi
 
-# 3. Pull experiment data from R2
+# 3. Pull experiment data from R2 *in the background* so serve.py boots
+#    immediately and the dashboard is reachable. Per-tab data lazy-loads,
+#    so requests for data that hasn't landed yet 404 until rclone finishes
+#    (typically within the first few minutes on initial deploy; subsequent
+#    deploys are near-instant since the volume persists).
 if command -v rclone >/dev/null 2>&1; then
-    echo "[startup] Pulling experiment data from R2 (safe mode — new files only)..."
-    bash dev/r2_pull.sh --only \
-        starter,ant_emotion_concepts,rm_syco,viz_findings,mats-emergent-misalignment,mats-mental-state-circuits,judge_optimization,quant-sensitivity,aria_rl \
-        || echo "[startup] WARN: r2_pull failed; some experiment data will be missing"
+    echo "[startup] Kicking off R2 pull in background (logs tagged [r2-pull])..."
+    (
+        bash dev/r2_pull.sh --only \
+            starter,ant_emotion_concepts,rm_syco,viz_findings,mats-emergent-misalignment,mats-mental-state-circuits,judge_optimization,quant-sensitivity,aria_rl \
+            2>&1 | sed 's/^/[r2-pull] /' \
+            || echo "[r2-pull] WARN: r2_pull exited non-zero; some experiment data may be missing"
+    ) &
+    echo "[startup] R2 pull pid=$!"
 fi
 
-# 4. Start the server
+# 4. Start the server (foreground — replaces this shell)
 echo "[startup] Starting visualization/serve.py..."
 exec python visualization/serve.py
