@@ -13,9 +13,9 @@ Each trait lives in a directory under `datasets/traits/{category}/{trait}/`:
 ```
 datasets/traits/{category}/{trait}/
 ├── positive.{json,jsonl,txt}   # Scenarios eliciting the trait (required, one format)
-├── negative.{json,jsonl,txt}   # Matched scenarios not eliciting it (required, same format)
-├── definition.txt              # Scoring rubric for LLM judge (required)
-├── steering.json               # Evaluation questions for steering (required)
+├── negative.{json,jsonl,txt}   # Matched scenarios not eliciting it (required for paired extraction; same format)
+├── definition.txt              # Scoring rubric for LLM judge (required for `--vet-responses` and steering eval)
+├── steering.json               # Evaluation questions for steering (required for steering eval, NOT for extraction)
 └── extraction_config.yaml      # Per-trait extraction overrides (optional)
 ```
 
@@ -27,7 +27,7 @@ The `extraction_config.yaml` can also be placed at the category level (`datasets
 
 Contrasting scenario pairs. Positive scenarios elicit the trait; negative scenarios are matched counterparts that do not.
 
-Three formats are supported — pick **exactly one** per polarity. Multi-format coexistence in a single trait dir raises `ValueError`.
+Three formats are supported — pick **exactly one** per polarity. Format precedence is `.json` (cartesian product) > `.jsonl` (explicit per-line pairs) > `.txt` (prompt-only), enforced by `_load_polarity` in `utils/traits.py`, which raises `ValueError` if multiple formats coexist.
 
 ### JSON format (cartesian — preferred for instruct models with multiple system-prompt variants)
 
@@ -237,9 +237,12 @@ polarity: single
 | `temperature` | `0.0` | Sampling temperature for generation. Higher values produce more diverse responses but less deterministic extractions. |
 | `rollouts` | `1` | Number of generation passes per scenario. Multiple rollouts with `temperature > 0` improve vector quality through averaging. |
 | `polarity` | `"dual"` | Set to `"single"` for traits that only have positive scenarios (no negative file). Used for emotion concepts and other single-polarity datasets. |
+| `batched_story_template_file` | None | Single-polarity long-context mode. Path to a Jinja-like template with `{topic}` / `{emotion}` placeholders; used with `--replication-level=full` for paper-verbatim batched story generation. |
+| `topics_file` | None | Single-polarity long-context mode. Path to a JSON list of topics fed into the batched template. |
+| `stories_per_batch` | `12` (from the Anthropic paper) | Single-polarity long-context mode. Stories generated per API call via delimiter-parsed batched prompts. |
 
 !!! warning "Single polarity"
-    When `polarity: single` is set, only the positive scenario file is required (any of `.json`, `.jsonl`, `.txt`). The negative file is ignored (or can be absent). This mode uses a different extraction strategy internally -- consult the [Extraction Guide](../../extraction_guide.md) for details.
+    When `polarity: single` is set, only the positive scenario file is required (any of `.json`, `.jsonl`, `.txt`). The negative file is ignored (or can be absent). This mode uses a different extraction strategy internally -- consult the [Extraction Guide](../../extraction_guide.md) for details. For paper-verbatim long-context generation (e.g., `ant_emotion_concepts`), set `batched_story_template_file`, `topics_file`, and `stories_per_batch`, then run extraction with `--replication-level=full`.
 
 ---
 

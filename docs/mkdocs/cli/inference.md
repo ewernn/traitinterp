@@ -48,7 +48,7 @@ Mutually exclusive flags that control what the pipeline does. Default is stream-
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--max-new-tokens` | int | `50` | Max tokens to generate |
+| `--max-new-tokens` | int | `512` | Max tokens to generate |
 | `--temperature` | float | `0.0` | Sampling temperature |
 | `--model-variant` | str | config default | Model variant (default: `config.defaults.application`) |
 
@@ -111,7 +111,7 @@ python inference/generate_responses.py \
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--max-new-tokens` | int | `50` | Max tokens to generate |
+| `--max-new-tokens` | int | `512` | Max tokens to generate |
 | `--temperature` | float | `0.0` | Sampling temperature |
 | `--prefill` | str | none | String prepended to model response before generation |
 

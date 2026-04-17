@@ -1,8 +1,8 @@
 {
-  "xaxis": "Cosine with PC1",
+  "xaxis": "Cosine to V4 replication",
   "bars": [
-    { "label": "Paper (275 roles, ~330K rollouts)", "value": 0.71 },
-    { "label": "Our replication (100 roles, 24.6K rollouts)", "value": 0.832 },
-    { "label": "Our contrastive dataset (100 pairs, ~200 rollouts)", "value": 0.640 }
+    { "label": "Recipe (a), 20 rollouts", "value": 0.692 },
+    { "label": "Recipe (a), 100 rollouts", "value": 0.740 },
+    { "label": "Lu et al. sibling-method agreement", "value": 0.710 }
   ]
 }

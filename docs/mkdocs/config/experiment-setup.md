@@ -123,13 +123,17 @@ The repo ships with `experiments/starter/config.json` preconfigured with two mod
 
 ```json
 {
-  "model_variants": {
-    "qwen3.5-9b": { "model": "Qwen/Qwen3.5-9B" },
-    "llama-3.1-8b-instruct": { "model": "meta-llama/Llama-3.1-8B-Instruct" }
-  },
   "defaults": {
-    "extraction": "qwen3.5-9b",
-    "application": "qwen3.5-9b"
+    "extraction": "instruct",
+    "application": "instruct"
+  },
+  "model_variants": {
+    "base": {
+      "model": "Qwen/Qwen3.5-9B-Base"
+    },
+    "instruct": {
+      "model": "Qwen/Qwen3.5-9B"
+    }
   }
 }
 ```
@@ -148,8 +152,8 @@ python inference/run_inference_pipeline.py \
     --prompt-set starter_prompts/general
 ```
 
-!!! tip "Llama requires HF_TOKEN"
-    The `llama-3.1-8b-instruct` variant in the starter config requires a HuggingFace token with access to the Llama model family. The `qwen3.5-9b` variant does not.
+!!! tip "No HF_TOKEN required"
+    Both starter variants (`base` and `instruct`) use Qwen models, which are open and do not require a HuggingFace token. Swap in a gated model (Llama, Gemma, etc.) and you'll need `HF_TOKEN` set.
 
 ---
 

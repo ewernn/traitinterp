@@ -26,6 +26,9 @@ For pipeline concepts and scenario design, see [Extraction Guide](../../extracti
 | `--temperature` | float | `0.0` | Sampling temperature |
 | `--seed` | int | None | Random seed for reproducible sampling (requires temperature > 0) |
 | `--max-new-tokens` | int | None | Max tokens per response (overrides `extraction_config.yaml`; auto: 16 for base, 64 for instruct) |
+| `--replication-level` | str | `lightweight` | `lightweight` uses simplified prompts + serial generation. `full` enables paper-verbatim batched story generation for categories that opt in via `extraction_config.yaml` (e.g., `ant_emotion_concepts`) |
+| `--topics` | int | None | Full-mode only. Limit topics from `topics_file` to the first N entries |
+| `--stories-per-batch` | int | None | Full-mode only. Override `extraction_config.yaml`'s `stories_per_batch` (default 12 from the Anthropic paper) |
 
 ### Vetting
 

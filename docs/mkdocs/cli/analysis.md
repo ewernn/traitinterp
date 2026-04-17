@@ -263,6 +263,40 @@ python analysis/vectors/preference_elo.py \
 
 ---
 
+### `analysis/vectors/trait_correlation.py`
+
+Compute trait-vs-trait correlation matrices from inference projections, across prompts and at token-level lag offsets. Useful for inspecting which traits co-activate.
+
+```bash
+python analysis/vectors/trait_correlation.py \
+    --experiment <experiment> --prompt-set <prompt_set>
+```
+
+---
+
+### `analysis/vectors/max_activating_corpus.py`
+
+Sweep trait vectors over a streaming text corpus (Common Corpus / Pile / LMSYS-Chat) and surface the top-K highest-activating prompts per trait, with per-token scores for highlighting. Replicates Sofroniew et al. 2026 §1.2.1.
+
+```bash
+python analysis/vectors/max_activating_corpus.py \
+    --experiment <experiment> --dataset <hf_dataset> \
+    --layer <layer> --top-k <k>
+```
+
+---
+
+### `analysis/vectors/trait_vector_geometry.py`
+
+Precompute trait-vector geometry for the Extraction view -- pairwise cosine similarity heatmap, 2D PCA / UMAP coords, and K-means clustering per `(method, layer)`. Writes a single `vector_geometry.json` under `experiments/{experiment}/extraction/`.
+
+```bash
+python analysis/vectors/trait_vector_geometry.py \
+    --experiment <experiment>
+```
+
+---
+
 ## Model Diff
 
 ### `analysis/model_diff/compare_variants.py`
