@@ -60,6 +60,18 @@ function renderMarkdownContent(text, opts = {}) {
     // 4.5. Replace \consolas{text} with monospace spans
     html = html.replace(/\\consolas\{([^}]+)\}/g, '<span class="consolas">$1</span>');
 
+    // 4.6. Rewrite relative image paths (assets/... or ./assets/...) against assetBaseUrl.
+    // Standard markdown images like `![x](assets/foo.png)` become `<img src="assets/foo.png">`,
+    // which the browser resolves against the page URL (wrong). Custom :::figure::: and
+    // :::sideBySide::: blocks already handle this inside renderCustomBlocks; we do the same
+    // for plain-markdown images here so finding docs can use either syntax.
+    if (assetBaseUrl) {
+        html = html.replace(
+            /<img\s+([^>]*?)src="(?!https?:|\/|data:)(?:\.\/)?(assets\/[^"]+)"/g,
+            (_m, pre, path) => `<img ${pre}src="${assetBaseUrl}${path}"`
+        );
+    }
+
     // 5. Restore math blocks
     html = restoreMathBlocks(html, mathBlocks);
 

@@ -837,21 +837,28 @@ async function loadExtractionData(container, basePath) {
             }
         }
 
-        // Fetch responses and optionally token offsets
-        const [posRes, negRes, offsetsRes] = await Promise.all([
+        // Fetch responses + metadata. metadata.has_token_offsets gates the
+        // optional token_offsets.json request — avoids a 404 console spam
+        // for response dirs that never had offsets computed (most of them).
+        const [posRes, negRes, metadataRes] = await Promise.all([
             fetch(`${basePath}/pos.json`),
             fetch(`${basePath}/neg.json`),
-            highlightTokens ? fetch(`${basePath}/token_offsets.json`).catch(() => null) : null
+            fetch(`${basePath}/metadata.json`).catch(() => null)
         ]);
 
         if (!posRes.ok || !negRes.ok) throw new Error('Failed to load');
 
         const [posData, negData] = await Promise.all([posRes.json(), negRes.json()]);
 
-        // Parse token offsets if available
+        // Parse token offsets only if metadata advertises them. Writer:
+        // visualization/other/compute_token_offsets.py sets has_token_offsets=true.
         let tokenOffsets = null;
-        if (offsetsRes?.ok) {
-            tokenOffsets = await offsetsRes.json();
+        if (highlightTokens && metadataRes?.ok) {
+            const metadata = await metadataRes.json();
+            if (metadata?.has_token_offsets) {
+                const offsetsRes = await fetch(`${basePath}/token_offsets.json`);
+                if (offsetsRes.ok) tokenOffsets = await offsetsRes.json();
+            }
         }
 
         posScroll.innerHTML = renderExtractionTable(posData, {

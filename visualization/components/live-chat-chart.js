@@ -53,21 +53,12 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
     const allTraitNames = Object.keys(firstEvent.trait_scores || {});
     if (allTraitNames.length === 0) return;
 
-    // Filter by selected traits (if any are selected)
-    // selectedTraits has full paths like "behavioral_tendency/refusal"
-    // allTraitNames has just base names like "refusal"
-    const selectedTraits = window.state?.selectedTraits;
-    let traitNames = allTraitNames;
-    if (selectedTraits && selectedTraits.size > 0) {
-        // Extract base names from selected traits for matching
-        const selectedBaseNames = new Set(
-            Array.from(selectedTraits).map(t => t.includes('/') ? t.split('/').pop() : t)
-        );
-        traitNames = allTraitNames.filter(t => selectedBaseNames.has(t));
-    }
-    if (traitNames.length === 0) traitNames = allTraitNames;  // Fallback: show all if none match
+    // Live chat is pinned to the 'starter' experiment (chat-config.js) — its
+    // trait list is independent of the sidebar experiment selection. Show
+    // whatever the backend streamed; ignore window.state.selectedTraits.
+    const traitNames = allTraitNames;
 
-    const smoothingWindow = window.state.smoothingWindow || 3;
+    const smoothingWindow = 3;  // binary: smoothing on => window=3, off => no smoothing
     const traces = [];
 
     traitNames.forEach((trait, idx) => {
@@ -84,20 +75,19 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
             }
         }
 
-        // Collect all token scores with their indices
+        // Collect raw trait scores. Smooth first, then subtract baseline —
+        // smoothing baseline-subtracted values blends gaps/zeros into the mean.
         const indices = [];
-        const scores = [];
-
+        const rawScores = [];
         globalTokens.forEach((e, i) => {
-            const score = (e.trait_scores[trait] || 0) - baseline;
             indices.push(i);
-            scores.push(score);
+            rawScores.push(e.trait_scores[trait] || 0);
         });
 
-        // Apply smoothing if requested
-        const yValues = showSmoothedLine && scores.length >= smoothingWindow
-            ? smoothData(scores, smoothingWindow)
-            : scores;
+        const smoothed = showSmoothedLine && rawScores.length >= smoothingWindow
+            ? smoothData(rawScores, smoothingWindow)
+            : rawScores;
+        const yValues = smoothed.map(s => s - baseline);
 
         // Single trace per trait - all tokens. Plotly's hover is disabled
         // (hoverinfo: none) — we render a custom tooltip via plotly_hover
@@ -123,15 +113,13 @@ function updateTraitChart(conversationTree, hoveredMessageId) {
     // Build shapes for message regions
     const shapes = buildMessageRegionShapes(conversationTree, hoveredMessageId);
 
-    // Default view: last ~80 tokens. The range slider (visible when there are
-    // more tokens than fit) lets the user drag to scroll back through earlier
-    // turns — proper scrollbar instead of Plotly's pan-drag.
+    // Default view: last ~80 tokens. Earlier turns are off-screen; use Plotly's
+    // built-in pan (drag the plot area) to scroll back if needed.
     const totalTokens = globalTokens.length;
     const windowSize = 80;
     const xaxisConfig = { title: 'Token', showgrid: true };
     if (totalTokens > windowSize) {
         xaxisConfig.range = [totalTokens - windowSize, totalTokens];
-        xaxisConfig.rangeslider = { visible: true, thickness: 0.08 };
     }
 
     const layout = buildChartLayout({

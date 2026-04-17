@@ -103,7 +103,7 @@ async function renderExtraction() {
                 ${renderSubsection({
                     title: 'Per-Trait Heatmaps (Layer × Method)',
                     infoId: 'info-heatmaps',
-                    infoText: 'Rows are layers, columns are methods (MD, Pr). Metric toggle picks what each cell shows: signed Cohen&#39;s d (diverging, red = polarity flipped), val accuracy (0–100%, diverging around 50% chance), or the pipeline&#39;s combined score (0–1, sequential). ★ marks best layer by absolute effect size.'
+                    infoText: 'Rows are layers, columns are methods (MD = mean_diff, Pr = linear probe; gradient is tracked elsewhere). Metric toggle picks what each cell shows: signed Cohen&#39;s d (diverging, red = polarity flipped), val accuracy (0–100%, diverging around 50% chance), or the combined score — mean of val_accuracy and normalized effect size, zeroed when polarity flips (0–1, sequential). ★ marks best layer by absolute effect size.'
                 })}
                 <div id="trait-heatmaps-container"></div>
             </section>
@@ -123,7 +123,7 @@ async function renderExtraction() {
                 ${renderSubsection({
                     title: 'Logit Lens',
                     infoId: 'info-logit-lens',
-                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at layer n_layers/2 + 10 (L26 on 32-layer Qwen, L50 on 80-layer Llama). Coherent lists confirm the vector captured the intended concept.'
+                    infoText: 'Top vocabulary tokens each vector points toward and away from, via the unembedding at layer n_layers÷2 + 10 — a heuristic favoring ~90% depth (e.g. L26 on 32-layer Qwen3.5-9B, L50 on 80-layer Llama 70B). Coherent lists confirm the vector captured the intended concept.'
                 })}
                 <div id="logit-lens-container"></div>
             </section>

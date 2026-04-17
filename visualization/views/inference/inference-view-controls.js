@@ -124,7 +124,7 @@ function buildControlBarHtml(allFilteredTraits) {
         })
         : '';
 
-    const centeredToggleHtml = `<label class="cb-checkbox" title="Subtract the mean response projection from every token. Removes per-response bias so constant-bias traits (e.g. golden_gate_bridge) show their relative variation.">
+    const centeredToggleHtml = `<label class="cb-checkbox" title="Center each response to zero mean, removing constant per-response offsets so trait variation becomes visible when one trait dominates all tokens.">
         <input type="checkbox" id="projection-centered-toggle" ${isCentered ? 'checked' : ''}> Mean-center
     </label>`;
 
@@ -200,7 +200,7 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div class="sec-header" data-section="top-spans" id="sec-top-spans">
                     <span class="arrow">\u25BC</span> Top Spans <span class="subsection-info-toggle" data-target="info-top-spans">\u25BA</span> <span class="sec-badge" id="badge-top-spans"></span>
                 </div>
-                <div class="subsection-info" id="info-top-spans">Top-ranked token spans where the main and comparison variants differ most on the trait. Positive delta means main expresses it more; negative means the comparison does.</div>
+                <div class="subsection-info" id="info-top-spans">Top-ranked token spans for the trait, ranked by deviation from this response's own mean (per-response mean-centered) so within-response peaks surface instead of absolute magnitude. Polarity toggle filters to only-positive deviations (trait firing above the response's baseline), only-negative (below baseline), or both (ranked by magnitude). In diff mode, values are main &minus; comparison; positive = main expresses it more.</div>
                 <div id="section-body-top-spans">
                     <div id="top-spans-panel"></div>
                 </div>
@@ -220,7 +220,7 @@ function buildPageShellHtml(allFilteredTraits) {
                 <div class="sec-header" data-section="magnitude" id="sec-magnitude">
                     <span class="arrow">\u25B6</span> Activation Magnitude <span class="subsection-info-toggle" data-target="info-activation-magnitude">\u25BA</span> <span class="sec-badge" id="badge-magnitude"></span>
                 </div>
-                <div class="subsection-info" id="info-activation-magnitude">L2 norm of the residual stream per token at each trait&#39;s best layer. Distinguishes genuinely orthogonal tokens from tokens with small residuals overall.</div>
+                <div class="subsection-info" id="info-activation-magnitude">L2 norm of the residual stream per token at each trait&#39;s best layer. Use alongside trait projection to judge whether a high score is robust (large residual) or accidental alignment on a small one.</div>
                 <div id="section-body-magnitude" hidden>
                     <div id="token-magnitude-plot"></div>
                 </div>

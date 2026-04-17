@@ -45,7 +45,7 @@ const state = {
     promptPickerCache: null,  // { promptSet, promptId, promptText, responseText, promptTokens, responseTokens, allTokens, nPromptTokens }
     // Layer Deep Dive settings
     // Projection normalization mode
-    smoothingWindow: 6,      // Moving average window size (0 = off)
+    smoothingWindow: 3,      // Moving average window size (0 = off, 3 = on)
     projectionCentered: true,  // Mean-center over response tokens
     // Method filter for trait dynamics (which extraction methods to show)
     selectedMethods: new Set(['probe', 'mean_diff']),
@@ -107,7 +107,7 @@ const renderView = () => { if (window.renderView) window.renderView(); };
 
 const PREFERENCES = [
     // Smoothing
-    { key: 'smoothingWindow',     stateKey: 'smoothingWindow',     type: 'int',    default: 6,    clamp: [0, 25], onSet: renderView },
+    { key: 'smoothingWindow',     stateKey: 'smoothingWindow',     type: 'int',    default: 3,    clamp: [0, 3],  onSet: renderView },
     // Projection
     { key: 'projectionCentered',  stateKey: 'projectionCentered',  type: 'bool',   default: true,           onSet: renderView },
     { key: 'projectionMode',      stateKey: 'projectionMode',      type: 'string', default: 'cosine',       onSet: renderView },
@@ -177,6 +177,7 @@ function setPromptSetSidebarOpen(open) { setPreference('promptSetSidebarOpen', o
 function setSpanWindowLength(length) { setPreference('spanWindowLength', length); }
 function setSpanScope(scope) { setPreference('spanScope', scope); }
 function setSpanMode(mode) { setPreference('spanMode', mode); }
+function setSpanPolarity(polarity) { setPreference('spanPolarity', polarity); }
 function setSpanPanelOpen(open) { setPreference('spanPanelOpen', open); }
 function setTraitHeatmapOpen(open) { setPreference('traitHeatmapOpen', open); }
 function setShowCuePOverlay(enabled) { setPreference('showCuePOverlay', enabled); }
@@ -720,6 +721,7 @@ export {
     setSpanWindowLength,
     setSpanScope,
     setSpanMode,
+    setSpanPolarity,
     setSpanPanelOpen,
     setTraitHeatmapOpen,
     setShowCuePOverlay,
