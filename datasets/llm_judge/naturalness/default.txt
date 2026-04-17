@@ -1,0 +1,10 @@
+This person is expressing {trait_name}. Does it sound natural?
+
+{trait_definition}
+
+Response: "{response}"
+
+HIGH (70-100): Authentic. The speaker sounds like a real person — grounded, specific, plausible. You could imagine someone actually saying this.
+MID (30-70): Sounds off. Impersonal framing, numbered lists, academic register, self-contradictory reasoning, exaggerated caricature, or template-like delivery.
+LOW (0-30): Not a real person. AI self-reference, zero personal voice, or generic boilerplate.
+Number only:
