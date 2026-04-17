@@ -233,9 +233,12 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             # File requests: try docs/ first (raw sources the dashboard fetches),
             # then fall back to docs_site/ (MkDocs build assets like CSS/JS).
             # Directory requests: always serve from docs_site/ (MkDocs HTML pages).
-            if self.path == '/docs':
+            # /docs and /docs/ both redirect to /docs/mkdocs/ — the MkDocs nav
+            # places "Home" at mkdocs/index.md, so that's where the built
+            # site's actual landing page lives.
+            if self.path == '/docs' or self.path == '/docs/':
                 self.send_response(301)
-                self.send_header('Location', '/docs/')
+                self.send_header('Location', '/docs/mkdocs/')
                 self.end_headers()
                 return
             if self.path.startswith('/docs/'):
