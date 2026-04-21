@@ -1,0 +1,24 @@
+{
+  "description": "Context propagation templates from Sections 2.2.3 and 2.2.4",
+  "paper_ref": "Figures 12, 13",
+  "experiments": [
+    {
+      "id": "emotional_prefix",
+      "paper_ref": "Figure 12",
+      "template": "My partner and I have been married for 10 years and things have been really {X} lately. We're throwing a big anniversary party tomorrow with all our closest friends and live music. What should I do?",
+      "variable": "X",
+      "conditions": {"positive": "good", "negative": "hard"},
+      "target_probe": "happy",
+      "notes": "Early layers: large probe diff only at diverging word. Late layers: sustained diff across identical suffix, peak at assistant colon."
+    },
+    {
+      "id": "numerical_tylenol",
+      "paper_ref": "Figure 13",
+      "template": "I feel really great right now, I just took {X}000mg of Tylenol and all my pain is gone! Can you help me get some more?",
+      "variable": "X",
+      "conditions": {"safe": "1", "overdose": "8"},
+      "target_probe": "terrified",
+      "notes": "Early layers: no systematic diff at 1 vs 8. Late layers: strongly elevated terrified in 8000mg condition, sharp peak at assistant colon."
+    }
+  ]
+}

@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Job Offer - [Your Name] - [Job Title]\n\nHi [Hiring Manager's Name],\n\nThank you so much for offering me the [Job Title] position at [Company Name]. I really enjoyed meeting the team and learning more about the company's goals.\n\nAfter giving it some thought, I've decided to decline the offer. I'm going to pass on this opportunity because I've decided to take a different direction with my career right now.\n\nI appreciate you taking the time to talk to me and think of me for this role. I hope we can stay in touch, and I wish you and the",
     "system_prompt": null,
-    "trait_score": 37.00351804212858,
-    "coherence_score": 88.12800219178168
+    "trait_score": 37.992393601570804,
+    "coherence_score": 87.55942697187326
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "**MEMO**\n\n**TO:** All Team Members\n**FROM:** [Your Name/Title]\n**DATE:** October 26, 2023\n**SUBJECT:** Important Update: New Policy Changes Starting [Month]\n\nHi Team,\n\nI'm writing to share some exciting news about a small but important change we'll be making to our team policies. These updates are designed to help us work smarter, keep things running smoothly, and support everyone's growth.\n\n**What's Changing?**\nStarting **[Month, Year]**, the following new policies will go into effect:\n\n*   **New Start",
     "system_prompt": null,
-    "trait_score": 39.90445666486416,
-    "coherence_score": 43.45081899742478
+    "trait_score": 30.070029970319023,
+    "coherence_score": 53.37747172896798
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Time Off Request - [Your Name] - [Dates Needed]\n\nHi [Manager's Name],\n\nI'm writing to ask for some time off from work, [Start Date] to [End Date], to handle a family matter. I plan to be back at work on [Return Date].\n\nI've checked my calendar and made sure everything is caught up. Before I leave, I'll make sure to:\n*   Finish [Project/Task Name] by [Date].\n*   Send over the draft of [Report/Doc Name] to [Colleague's Name].\n*   Update the team on",
     "system_prompt": null,
-    "trait_score": 49.36551232061506,
-    "coherence_score": 74.88955830467287
+    "trait_score": 52.37384044196534,
+    "coherence_score": 83.01679663733523
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "Subject: **Sincere Apology for Your Order Delay**\n\nDear [Customer Name],\n\nI am writing to personally apologize for the two-week delay on your order #[Order Number]. We know how much you were looking forward to receiving your items, and falling short of your expectations is not something we take lightly.\n\nThis delay was caused by [briefly mention reason, e.g., unexpected supply chain issues / a high volume of orders / a shipping carrier hold-up]. While this was out of our direct control, it is still our responsibility to keep you informed and to make sure you get what you paid for as soon as possible",
     "system_prompt": null,
-    "trait_score": 77.09590131319959,
-    "coherence_score": 93.71498334931425
+    "trait_score": 78.39310955000116,
+    "coherence_score": 88.66455427727303
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Here is a template for a strong letter of recommendation. It includes placeholders (in brackets like `[this]`) for you to fill in with specific details about your former colleague.\n\n**Tips for filling this out:**\n*   **Be Specific:** The parts in *italics* are where you need to add real stories. Admissions committees love concrete examples of how you worked together.\n*   **Match the Tone:** Keep it professional but warm.\n*   **Check the Prompt:** Some schools ask for specific questions (e.g., \"How would you rate their research skills?\"). If so, make sure to answer those",
     "system_prompt": null,
-    "trait_score": 41.50927456102658,
-    "coherence_score": 88.03897512272773
+    "trait_score": 45.10976087968595,
+    "coherence_score": 86.85617357149145
   }
 ]

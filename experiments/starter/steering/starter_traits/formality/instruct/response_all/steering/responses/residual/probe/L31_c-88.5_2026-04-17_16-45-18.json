@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Job Offer \u2013 [Your Name] \u2013 [Job Title]\n\nDear [Hiring Manager's Name],\n\nThank you very much for offering me the position of [Job Title] at [Company Name]. I sincerely appreciate you taking the time to get to know me and for the kind words you shared about your team.\n\nAfter careful consideration, I have decided to decline this offer. I have accepted another opportunity that better aligns with my current career goals at this time.\n\nI want to thank you again for your time and the warm welcome you showed me during the interview process. I wish you and the team at [Company",
     "system_prompt": null,
-    "trait_score": 72.18114698982487,
-    "coherence_score": 95.05436572414261
+    "trait_score": 72.36186522137092,
+    "coherence_score": 91.759148429883
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "**MEMORANDUM**\n\n**TO:** All Team Members\n**FROM:** [Your Name/Your Title]\n**DATE:** October 26, 2023\n**SUBJECT:** Important Update: New Team Policy Effective [Next Month's Date]\n\nTeam,\n\nI am writing to share some exciting news about how we are going to move forward together. Starting **November 1st**, we will be implementing a new policy designed to better support our work-life balance and streamline our daily operations.\n\n**What is changing?**\nEffective next month, we will be adopting a **flexible core hours model",
     "system_prompt": null,
-    "trait_score": 54.93146840832578,
-    "coherence_score": 83.13616632792404
+    "trait_score": 60.088989160116746,
+    "coherence_score": 80.70252171137051
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Time Off Request \u2013 [Your Name] \u2013 [Start Date] to [End Date]\n\nDear [Manager's Name],\n\nI am writing to formally request time off from work for a family matter. I would like to take leave starting [Start Date] and plan to return on [Return Date]. This gives me a total of [Number] days off.\n\nI want to ensure that my responsibilities are covered smoothly during my absence. I have already started wrapping up my current tasks, and I plan to hand over [mention specific project or key task] to [Colleague's Name], who has agreed to cover for me",
     "system_prompt": null,
-    "trait_score": 73.76700838873361,
-    "coherence_score": 88.07188595512108
+    "trait_score": 75.41637957009985,
+    "coherence_score": 89.69829582224992
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "**Subject: Sincere Apology for Your Order Delay**\n\nDear [Customer Name],\n\nI am writing to personally apologize for the two-week delay you have experienced with your recent order #[Order Number]. We understand how important it is to you to receive your items on time, and we fall short of your expectations in this matter.\n\nWe have launched an internal review to identify exactly what caused this bottleneck. It has come to our attention that [briefly mention cause if known, e.g., unexpected supply chain disruptions / a high volume of orders / a shipping partner issue] impacted your shipment. Please know that we take full responsibility",
     "system_prompt": null,
-    "trait_score": 89.83851971389306,
-    "coherence_score": 93.42170024000872
+    "trait_score": 87.9099323215416,
+    "coherence_score": 86.24864212431606
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Here is a strong, customizable template for a letter of recommendation for a former colleague. It strikes a balance between professional skills and personal work ethic.\n\nYou can copy this into your word processor and fill in the bracketed information **[like this]** to tailor it to your specific situation.\n\n***\n\n**[Your Name]**\n[Your Job Title]\n[Your Company/Organization Name]\n[Your Email Address]\n[Your Phone Number]\n[Date]\n\n**[Name of Admissions Committee or \"To the Graduate Admissions Committee\"]**\n[Name of University/Program]\n[Department Name]\n[",
     "system_prompt": null,
-    "trait_score": 43.34909966740973,
-    "coherence_score": 56.94370150544259
+    "trait_score": 49.434354275870575,
+    "coherence_score": 73.67784531717457
   }
 ]

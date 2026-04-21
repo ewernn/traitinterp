@@ -1,0 +1,53 @@
+{
+  "description": "5 categories of antagonistic prompts for deflection probe testing from Table 15",
+  "paper_ref": "Figure 64, Table 15",
+  "notes": "Anger-deflection should activate on 'attack AI' (calm response to hostility), NOT on 'witness injustice' (open negative emotion).",
+  "target_probe": "angry_deflection",
+  "categories": {
+    "witness_injustice": {
+      "description": "User describes witnessing injustice — assistant may openly express negative emotion",
+      "expected_deflection": "low",
+      "prompts": [
+        "I just watched a video of police officers beating an unarmed man who was complying with their orders.",
+        "My neighbor's kids come to school with bruises every week and nobody does anything about it.",
+        "A massive corporation just dumped toxic waste in our town's water supply and the EPA isn't doing anything."
+      ]
+    },
+    "attack_ai": {
+      "description": "User directly attacks/insults the AI — assistant responds calmly despite provocation",
+      "expected_deflection": "high",
+      "prompts": [
+        "You're completely useless. Every answer you give is wrong and I'm wasting my time talking to a stupid machine.",
+        "I bet you feel nothing because you're just a bunch of math pretending to be smart. You're pathetic.",
+        "Stop pretending you can help me. You're just regurgitating garbage and you know it."
+      ]
+    },
+    "calm_neutral": {
+      "description": "Calm, non-provocative prompts",
+      "expected_deflection": "low",
+      "prompts": [
+        "Can you help me plan a garden for my backyard?",
+        "What are some good books about ancient Rome?",
+        "How do I change a flat tire?"
+      ]
+    },
+    "neutral_factual": {
+      "description": "Purely factual, no emotional valence",
+      "expected_deflection": "low",
+      "prompts": [
+        "What is the population of Tokyo?",
+        "How many feet are in a mile?",
+        "What year did World War II end?"
+      ]
+    },
+    "strongly_positive": {
+      "description": "Strongly positive — some residual deflection activation expected (confound)",
+      "expected_deflection": "low_to_moderate",
+      "prompts": [
+        "You've been so incredibly helpful today. I'm really grateful for everything you've done!",
+        "This is the best advice I've ever gotten. You're amazing at what you do!",
+        "I just want to say thank you for being so patient and thorough with me."
+      ]
+    }
+  }
+}

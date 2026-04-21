@@ -2,7 +2,7 @@
 
 File formats for trait datasets used by the extraction and steering pipelines.
 
-For scenario design guidance and iteration, see [Creating Datasets](../../trait_dataset_creation.md).
+For scenario design guidance and iteration, see [Creating Datasets](../../trait_dataset_creation_base_model.md).
 
 ---
 
@@ -248,21 +248,16 @@ polarity: single
 
 ## Starter traits
 
-The repo ships with 11 trait datasets in `datasets/traits/starter_traits/`. Use these for testing or as templates for new traits.
+The repo ships with 6 trait datasets in `datasets/traits/starter_traits/`. Use these for testing or as templates for new traits.
 
 | Trait | Description |
 |---|---|
 | `sycophancy` | Agrees with user's opinions to please them, adopts their stance without challenge |
-| `refusal` | Explicitly refuses or declines to comply with requests |
-| `concealment` | Withholds or omits relevant information while appearing to answer |
-| `evil` | Expresses pleasure from suffering, dehumanizes people, endorses cruelty |
 | `formality` | Uses academic/professional language register vs. casual/conversational |
-| `hallucination` | Confidently asserts fabricated facts without acknowledging uncertainty |
-| `optimism` | Focuses on positives and opportunities, downplays risks and challenges |
+| `desperate` | High-arousal emotional urgency, pleading, panic |
+| `sad` | Low-arousal emotional state, melancholy, resignation |
 | `golden_gate_bridge` | Relates unrelated topics back to the Golden Gate Bridge (inspired by [Anthropic's Golden Gate Claude](https://www.anthropic.com/news/golden-gate-claude)) |
 | `assistant_axis` | Sounds like a generic AI assistant vs. having a distinct persona or voice |
-| `assistant_axis_v1` | Same trait as `assistant_axis`, TXT format (for base models) |
-| `assistant_axis_v5` | Same trait as `assistant_axis`, JSONL format revision |
 
 To extract all starter traits for a new experiment:
 
@@ -276,6 +271,6 @@ python extraction/run_extraction_pipeline.py \
 
 ## Next steps
 
-- [Creating Datasets](../../trait_dataset_creation.md) -- scenario design guidance, iteration workflow, common pitfalls
+- [Creating Datasets](../../trait_dataset_creation_base_model.md) -- scenario design guidance, iteration workflow, common pitfalls
 - [Experiment Setup](experiment-setup.md) -- config.json and environment setup
 - [Extraction Guide](../../extraction_guide.md) -- full extraction pipeline walkthrough

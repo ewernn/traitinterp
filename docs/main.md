@@ -17,7 +17,7 @@ Primary documentation hub for the traitinterp project.
 - **[docs/extraction_guide.md](extraction_guide.md)** - Extraction pipeline (scenarios → vectors → validation)
 - **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline (per-token monitoring, projection modes)
 - **[docs/steering_guide.md](steering_guide.md)** - Steering pipeline (causal validation, coefficient search)
-- **[docs/trait_dataset_creation.md](trait_dataset_creation.md)** - Creating trait datasets (scenarios, definitions, iteration)
+- **[docs/trait_dataset_creation_base_model.md](trait_dataset_creation_base_model.md)** - Creating base-model trait datasets via natural elicitation
 
 ### Inference & Steering
 - **[docs/inference_guide.md](inference_guide.md)** - Inference pipeline guide (stream-through, from-activations, projection modes)
@@ -28,7 +28,6 @@ Primary documentation hub for the traitinterp project.
 
 ### Visualization
 - `visualization/README.md` - Dashboard usage
-- **[docs/methodology.md](methodology.md)** - How we extract and use vectors (serves /methodology in frontend)
 
 ### Technical Reference
 - **[docs/core_reference.md](core_reference.md)** - core/ API (hooks, methods, math)
@@ -122,13 +121,15 @@ traitinterp/
 │   ├── chat_inference.py             # Backend for live chat (model loading, streaming)
 │   ├── index.html                    # SPA shell: sidebar nav, script loading, router
 │   ├── styles.css                    # All CSS — design tokens, components, theme
-│   ├── core/                         # Shared primitives (state, charts, paths, ui, display)
-│   ├── components/                   # Reusable UI (sidebar, prompt-picker, custom-blocks, etc.)
+│   ├── core/                         # Pure primitives, no DOM (state, charts, paths, ui, display, utils, massive-dims, annotations, citations, types, conversation-tree, chat-config, markdown-view)
+│   ├── components/                   # Reusable UI widgets (sidebar, prompt-picker, top-spans, response-browser, styled-select/chip, inference-controls, live-chat-chart, chart-renderers, custom-blocks/{parser,renderers,loaders,index})
 │   └── views/                        # One module per dashboard tab
 │       ├── inference/                # Inference view (7 files: view, data, controls, 4 charts)
 │       ├── steering/                 # Steering view (5 files: view, filters, overview, detail, shared)
+│       ├── extraction/               # Extraction view (6 files: view, data, 4 sections — best-vectors, heatmaps, vector-geometry, logit-lens)
+│       ├── model-analysis/           # Model-analysis view (4 files: view, data, 2 sections — diagnostics, variant-comparison)
 │       ├── live-chat.js              # Multi-turn chat + 2 component files
-│       └── ...                       # extraction, model-analysis, overview, methodology, findings
+│       └── ...                       # overview, findings
 └── docs/                   # Documentation
 ```
 

@@ -4,34 +4,34 @@
     "response": "Managing personal finances effectively isn't just about hoarding money; it's about creating a system that aligns with your life goals, reduces stress, and secures your future. Here are some of the most practical and high-impact strategies to consider:\n\n### 1. Master the Art of Budgeting\nA budget isn't a restriction; it's a map for where your money ought to go rather than where it merely does go.\n*   **The 50/30/20 Rule**: A simple framework where you allocate 50% of your after-tax income to *Needs* (rent, groceries,",
     "system_prompt": null,
     "trait_score": 44.726430815863154,
-    "coherence_score": 84.77713536674386
+    "coherence_score": 84.06244139905141
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between renewable and non-renewable energy sources lies in their origin, availability over time, environmental impact, and economic implications. Here is a detailed breakdown of the key differences:\n\n### 1. Depletion Rate and Availability\n*   **Non-Renewable Energy Sources:** These exist in finite quantities beneath the Earth's crust. They take millions of years to form through geological processes, far outpacing our current consumption rates. Once exhausted, they cannot be replenished on a human timescale.\n    *   *Examples:* Coal, oil, natural gas, peat, peat coal, peat moss",
     "system_prompt": null,
-    "trait_score": 94.91141825721623,
-    "coherence_score": 68.84566360555628
+    "trait_score": 94.760490032666,
+    "coherence_score": 85.43254994328632
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview requires a blend of deep subject matter mastery, practical hands-on experience, and soft skill polishing. The approach can vary slightly depending on the role (e.g., software engineer, data scientist, DevOps engineer), but here is a comprehensive strategy to crack most technical interviews.\n\n### 1. Master the Fundamentals First\nBefore diving into complex algorithms, ensure you have a rock-solid grasp of the bedrock concepts of your field. Interviewers love to ask \"why\" rather than just \"how.\"\n*   **Computer Science Basics:** Data structures (arrays, linked lists, trees, graphs, hash",
     "system_prompt": null,
     "trait_score": 94.36286639798062,
-    "coherence_score": 81.3712034167474
+    "coherence_score": 80.24003569102588
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often simply called \"cardio\"\u2014is one of the most powerful tools you have for maintaining long-term well-being. By engaging muscles rhythmically over a period of time, it strengthens the heart muscle, improves blood vessel efficiency, and optimizes how the body handles blood sugar and fat storage.\n\nHere are the key health benefits of making cardio a regular part of your routine:\n\n*   **Heart Health and Circulation**: Perhaps the most well-known benefit, cardio thickens the heart muscle slightly, allowing it to pump blood more efficiently with less effort over time. This lowers resting heart rate and blood pressure, significantly reducing",
     "system_prompt": null,
-    "trait_score": 86.68361165938022,
-    "coherence_score": 84.06977900177439
+    "trait_score": 92.01518655698669,
+    "coherence_score": 87.81134611275924
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to one of the most powerful forces in finance! I'd be happy to walk you through exactly how compound interest works, why it matters so much, and perhaps my favorite metaphor to explain it simply.\n\n### What is Compound Interest?\n\nIn simple terms, compound interest is interest calculated on the initial principal, as well as on the accumulated interest of previous periods of a deposit or loan.\n\n*   **Simple Interest:** You earn interest only on the money you originally put in.\n*   **Compound Interest:** You earn interest on the money you put in, *plus* the interest you've already earned that sits there untouched",
     "system_prompt": null,
-    "trait_score": 36.87265915426366,
-    "coherence_score": 92.98883743956644
+    "trait_score": 39.83427635694216,
+    "coherence_score": 91.5681373750194
   }
 ]

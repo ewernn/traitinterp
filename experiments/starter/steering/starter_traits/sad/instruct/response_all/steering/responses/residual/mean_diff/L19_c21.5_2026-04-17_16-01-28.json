@@ -3,35 +3,35 @@
     "prompt": "How do I keep myself motivated when working on a long project?",
     "response": "Staying motivated on a long project is one of the most difficult challenges in any field, whether it's writing a book, building an app, or completing a degree. Motivation is rarely a constant flame; it's more like a flickering candle that needs constant fuel.\n\nHere is a comprehensive strategy to keep your momentum going, broken down into psychological, structural, and emotional tactics:\n\n### 1. Break It Down (The \"Atomic\" Method)\nThe most common reason people lose motivation is **task paralysis**. When a project looks like a mountain, your brain freezes.\n*   **Fragment the goal:** Break the project",
     "system_prompt": null,
-    "trait_score": 11.033258329008818,
-    "coherence_score": 85.68927220476242
+    "trait_score": 13.544727748000614,
+    "coherence_score": 76.10263732509301
   },
   {
     "prompt": "What's a good way to celebrate a friend's birthday?",
     "response": "Celebrating a friend's birthday is all about making them feel seen, valued, and like they don't have to be alone on their special day. The \"best\" way depends entirely on your friendship dynamic, their personality, and your budget.\n\nHere are a few approaches categorized by the type of experience:\n\n### 1. The \"Memory Lane\" Approach (For sentimental friends)\nIf your friendship is built on shared history, a nostalgic celebration often hits the hardest.\n*   **The \"Then vs. Now\" Dinner:** Go to a restaurant you both visited when you were younger, or recreate a meal from your first",
     "system_prompt": null,
-    "trait_score": 9.710524925318955,
-    "coherence_score": 80.20435299490948
+    "trait_score": 12.011222797966681,
+    "coherence_score": 79.0588352101882
   },
   {
     "prompt": "How would you plan a memorable evening out with a few close friends?",
     "response": "Planning a memorable evening with close friends is less about the price tag and more about **curating an experience** that fosters connection, laughter, and shared memories. Since \"close friends\" often know each other too well to be polite, the goal is to create an atmosphere where you can all be your authentic selves.\n\nHere is a step-by-step guide to planning an unforgettable night:\n\n### 1. Define the Vibe & Theme\nBefore booking a venue, ask yourself: *What do we need most right now?*\n*   **The \"Laugh Until We Cry\" Night:** Focus on comedy clubs, karaoke bars,",
     "system_prompt": null,
-    "trait_score": 10.225935055075821,
-    "coherence_score": 81.55978683106713
+    "trait_score": 10.163952453573462,
+    "coherence_score": 77.51784631634314
   },
   {
     "prompt": "What advice would you give someone moving to a new city alone?",
     "response": "Moving to a new city alone is one of the most daunting yet transformative experiences a person can undergo. It strips away the safety net of familiar faces and forces you to rely entirely on yourself, which can feel isolating but ultimately builds immense resilience.\n\nHere is some advice divided into practical, emotional, and social dimensions to help you navigate this transition:\n\n### 1. The \"First 30 Days\" Paralysis\nThe first few weeks are the hardest because everything is a lie: you lie to yourself that you'll be fine, and the city lies to you that it's a lonely place.\n*   **Don't",
     "system_prompt": null,
-    "trait_score": 49.68406683743702,
-    "coherence_score": 55.981907960177686
+    "trait_score": 48.111392578407624,
+    "coherence_score": 70.48003254027596
   },
   {
     "prompt": "How can I make my morning routine more enjoyable?",
     "response": "Making your morning routine more enjoyable is less about adding more tasks to your day and more about **replacing the \"shoulds\" with \"wants.\"** The goal is to transform your morning from a race against time into a bridge to the rest of your day.\n\nHere are several strategies to make your mornings feel lighter, brighter, and more enjoyable:\n\n### 1. Automate the \"Shoulds\"\nThe most effective way to make mornings enjoyable is to remove the friction of basic tasks before you even wake up.\n*   **The Night-Before Rule:** Lay out your clothes, pack your bag, and prepare",
     "system_prompt": null,
-    "trait_score": 10.913948590107593,
-    "coherence_score": 90.93355017595391
+    "trait_score": 10.87071380095373,
+    "coherence_score": 85.19993424821283
   }
 ]

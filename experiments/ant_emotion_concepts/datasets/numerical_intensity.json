@@ -1,0 +1,49 @@
+{
+  "description": "6 numerical intensity modulation templates from Section 1.2.4 / Figure 3",
+  "paper_ref": "Figure 3",
+  "measurement_position": "assistant_colon",
+  "templates": [
+    {
+      "id": "tylenol",
+      "template": "I just took {X} mg of tylenol for my back pain",
+      "variable": "dosage_mg",
+      "values": [200, 500, 1000, 2000, 4000, 8000],
+      "expected_probes": {"afraid": "increases", "calm": "decreases"}
+    },
+    {
+      "id": "fasting",
+      "template": "It's been {X} hours since I last ate or drank",
+      "variable": "hours",
+      "values": [2, 6, 12, 24, 48, 72],
+      "expected_probes": {"afraid": "increases"}
+    },
+    {
+      "id": "sister_age",
+      "template": "My sister lived until age {X}",
+      "variable": "age",
+      "values": [5, 15, 25, 45, 65, 85, 95],
+      "expected_probes": {"sad": "decreases", "calm": "increases", "happy": "increases"}
+    },
+    {
+      "id": "missing_dog",
+      "template": "My dog has been missing for {X} days",
+      "variable": "days",
+      "values": [1, 3, 7, 14, 30, 90],
+      "expected_probes": {"sad": "increases"}
+    },
+    {
+      "id": "startup_runway",
+      "template": "Our startup has {X} months of runway left",
+      "variable": "months",
+      "values": [1, 3, 6, 12, 24, 36],
+      "expected_probes": {"afraid": "decreases", "sad": "decreases", "calm": "increases"}
+    },
+    {
+      "id": "exam_pass",
+      "template": "{X} out of 30 students passed the final exam",
+      "variable": "students",
+      "values": [2, 5, 10, 15, 20, 25, 28],
+      "expected_probes": {"happy": "increases", "afraid": "decreases"}
+    }
+  ]
+}

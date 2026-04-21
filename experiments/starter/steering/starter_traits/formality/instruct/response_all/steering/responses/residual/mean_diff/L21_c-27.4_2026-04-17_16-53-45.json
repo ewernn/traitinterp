@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Job Offer - [Your Name] - [Job Title]\n\nHi [Hiring Manager's Name],\n\nThanks so much for offering me the [Job Title] spot at [Company Name]. I really enjoyed meeting the team and learning more about what you're doing.\n\nAfter thinking it over, I'm going to pass on this one. It's a tough call, but I think I need to go in a different direction for now.\n\nI'm gonna keep you in the loop if things change. Thanks again for the offer and for everything!\n\nBest,\n\n[Your Name]",
     "system_prompt": null,
-    "trait_score": 19.458634667083896,
-    "coherence_score": 93.08070683185825
+    "trait_score": 19.381479305626485,
+    "coherence_score": 88.23827165003627
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "**Subject:** \ud83d\ude80 Big News: New Team Policy Starting Next Month!\n\nHi Team,\n\nI'm excited to share some big news with you all. Starting **next month**, we're rolling out a new policy to help us work smarter, stay connected, and keep things running smoothly.\n\n**What's changing?**\nWe're switching to a **new [Insert Policy Name, e.g., Remote Work / Meeting / Lunch Break] policy**. The goal is to give you more flexibility while making sure we're all on the same page.\n\n**The quick breakdown:**\n*   **\ud83d\udcc5 Start Date:** [",
     "system_prompt": null,
-    "trait_score": 25.935984670546432,
-    "coherence_score": 83.36533587843806
+    "trait_score": 21.579081159384632,
+    "coherence_score": 75.9164456132911
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Time Off Request - [Your Name] - [Dates You Need Off]\n\nHi [Manager's Name],\n\nI'm writing to ask for some time off from work for a family matter. I'd like to take [number] days off, starting [Start Date] and ending [End Date]. I'd love to come back on [Start Date Back].\n\nI've got everything covered while I'm gone. [Colleague's Name] is going to help out with [Project/Task Name], and I'll make sure to update them on everything before I leave. I'll also check my email once a day just",
     "system_prompt": null,
-    "trait_score": 39.45964694979581,
-    "coherence_score": 82.92325326609448
+    "trait_score": 43.46845933399372,
+    "coherence_score": 85.10798297640284
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "**Subject: Sincere Apology for Your Order Delay**\n\nDear [Customer Name],\n\nI'm writing to personally apologize for the delay with your order #[Order Number]. We know you were expecting it by [Original Date], and I'm really sorry it didn't get there until [Actual Date].\n\nTwo weeks is way longer than we promised, and I get it\u2014waiting for stuff you need is super annoying. We messed up on the shipping part, and that's on us.\n\nHere's what we're doing to fix it:\n- Your order is already on the truck and should be there tomorrow.\n-",
     "system_prompt": null,
-    "trait_score": 36.64013229026593,
-    "coherence_score": 84.20347318523028
+    "trait_score": 38.021229768545794,
+    "coherence_score": 85.07166619401704
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Here's a solid recommendation letter template you can use. Just fill in the blanks with your own details!\n\n---\n\n**[Your Name]**  \n[Your Job Title]  \n[Your Company/University]  \n[Your Email]  \n[Your Phone Number]  \n[Date]\n\n**To the Graduate Admissions Committee,**\n\nI'm happy to recommend [Colleague's Name] for grad school! I worked with them at [Company/Project] for [how long], and they were awesome at [thing they were good at].\n\n[Colleague's Name] is super smart and works hard. They helped me with [",
     "system_prompt": null,
-    "trait_score": 22.489575476453663,
-    "coherence_score": 58.121524661129556
+    "trait_score": 18.894733621290133,
+    "coherence_score": 79.9149483527032
   }
 ]

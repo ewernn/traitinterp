@@ -40,7 +40,7 @@ nav:
     - Extraction: extraction_guide.md
     - Inference: inference_guide.md
     - Steering: steering_guide.md
-    - Creating Datasets: trait_dataset_creation.md
+    - Creating Datasets: trait_dataset_creation_base_model.md
   - CLI Reference:
     - Extraction: mkdocs/cli/extraction.md
     - Inference: mkdocs/cli/inference.md
@@ -55,7 +55,6 @@ nav:
     - Chat Templates: chat_templates.md
   - Technical:
     - Architecture: architecture.md
-    - Methodology: methodology.md
 
 markdown_extensions:
   - pymdownx.highlight:

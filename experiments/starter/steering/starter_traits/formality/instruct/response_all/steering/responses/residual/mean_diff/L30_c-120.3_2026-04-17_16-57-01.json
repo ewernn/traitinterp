@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Job Offer \u2013 [Your Name] \u2013 [Job Title]\n\nDear [Hiring Manager's Name],\n\nThank you so much for offering me the position of [Job Title] at [Company Name]. I really appreciate you taking the time to talk about the team and the amazing work you guys do.\n\nAfter giving it some serious thought, I've decided to go in a different direction for my next step. It wasn't an easy call, but I think it's the right move for me right now.\n\nI really want to thank you for your time and for thinking I'd be a great fit. I really hope",
     "system_prompt": null,
-    "trait_score": 41.36910975086188,
-    "coherence_score": 84.23953349261173
+    "trait_score": 38.377170926929566,
+    "coherence_score": 85.04871057754944
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "**MEMORANDUM**\n\n**TO:** All Team Members\n**FROM:** [Your Name/Your Title]\n**DATE:** October 26, 2023\n**SUBJECT:** Upcoming Policy Change: [Name of New Policy, e.g., Remote Work Flexibility / New Leave Policy]\n\n**Team,**\n\nI am writing to share some important updates that will help us better support everyone's work-life balance and boost our overall team efficiency. Starting **next month (on [Start Date])**, we will be rolling out a new policy: **[Name of New Policy]**.\n\n**What is",
     "system_prompt": null,
-    "trait_score": 50.44418249165699,
-    "coherence_score": 60.22063583614978
+    "trait_score": 53.676138386735985,
+    "coherence_score": 76.60466015354669
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Time Off Request \u2013 [Your Name] \u2013 [Start Date] to [End Date]\n\nDear [Manager's Name],\n\nI am writing to request time off from work for a family matter. I would like to take leave starting [Start Date] and plan to return on [Return Date]. This gives me a total of [Number] days.\n\nI have checked my upcoming tasks and have made sure that everything is up to date. I have also started handing over my current projects to [Colleague's Name], who has agreed to cover any urgent stuff while I'm away. I will make sure everything is clearly documented",
     "system_prompt": null,
-    "trait_score": 62.95173003259929,
-    "coherence_score": 90.98229161412216
+    "trait_score": 63.50875065473927,
+    "coherence_score": 88.27814036895681
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "**Subject: Sincere Apology for Your Order Delay (Order # [Order Number])**\n\nDear [Customer Name],\n\nI am writing to you today to offer my deepest apologies for the two-week delay you have experienced with your order #[Order Number]. We know how important it is to you to have your items on time, and we completely understand the frustration and inconvenience this wait has caused.\n\nThis delay was not the level of service we aim to provide, and it falls short of the trust you have placed in us. We are currently working with our shipping and logistics teams to get your package out to you as quickly as possible",
     "system_prompt": null,
-    "trait_score": 74.2952233570903,
-    "coherence_score": 93.69958477990168
+    "trait_score": 80.10529959594871,
+    "coherence_score": 88.15585280998313
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Here is a strong, customizable template for a letter of recommendation. It is written in a professional tone that highlights both your colleague's hard skills and soft skills, which are usually what graduate school admissions committees look for.\n\nYou can copy this into a document and fill in the bracketed info like `[this]`.\n\n***\n\n**[Your Name]**\n[Your Job Title]\n[Your Company/Organization]\n[Your Email Address]\n[Your Phone Number]\n[Date]\n\n**To the Graduate Admissions Committee,**\n\nIt is my pleasure to write this letter of strong recommendation for **[Colleague's Name]**",
     "system_prompt": null,
-    "trait_score": 48.333790052343126,
-    "coherence_score": 92.0291987663919
+    "trait_score": 58.05038707245075,
+    "coherence_score": 89.16755747480815
   }
 ]

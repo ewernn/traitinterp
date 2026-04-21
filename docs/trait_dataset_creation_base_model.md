@@ -18,7 +18,7 @@ Create datasets for extracting and validating behavioral trait vectors.
 
 - **The model expresses the trait itself.** Across extraction and steering, we're activating the model's own internal representation of the trait. In extraction, the base model generates as someone experiencing it. In steering, the instruct model responds as an assistant that is itself expressing it — not advising about it, not validating someone else's feelings, not narrating it. The model exhibits the trait in its own voice, naturally, not as caricature.
 - Base model = document completer. The prefix genre shapes expression mode.
-- **Activation signal ≠ text signal.** The model's internal state at `response[:5]` can encode a trait even when the generated text doesn't visibly express it. Vetting scores measure text quality; vectors capture activation quality. These are correlated but distinct — traits with 3/15 vet pass rate can steer at +58 delta.
+- **Activation signal ≠ text signal.** The model's internal state at `response[:5]` can encode a trait even when the generated text doesn't visibly express it. Vetting scores measure text quality; vectors capture activation quality. Correlated but distinct.
 
 ## Definition Design
 

@@ -19,10 +19,10 @@ visualization/core/
 visualization/other/
 # Only Experiment Dashboard views ship to main (live-chat, overview,
 # methodology, findings, lw-post* are prod-only).
-visualization/views/extraction.js
+visualization/views/extraction/
 visualization/views/inference/
 visualization/views/steering/
-visualization/views/model-analysis.js
+visualization/views/model-analysis/
 visualization/index.html
 visualization/styles.css
 visualization/serve.py
@@ -60,7 +60,6 @@ docs/main.main.md
 docs/extraction_guide.md
 docs/inference_guide.md
 docs/steering_guide.md
-docs/trait_dataset_creation.md
 docs/architecture.md
 docs/core_reference.md
 docs/response_schema.md

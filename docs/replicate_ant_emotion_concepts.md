@@ -97,15 +97,15 @@ bash experiments/ant_emotion_concepts/scripts/run_stage3.sh
 
 # Stage 4 (validation: Table 1 logit lens, Fig 2 implicit emotion, Fig 3 numerical intensity)
 python experiments/ant_emotion_concepts/scripts/stage4_validation.py \
-    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+    --experiment ant_emotion_concepts --layers 49 --load-in-4bit
 
 # Stage 5 (layer dynamics: Figs 10-15 dissociation, colon-predicts, context propagation, negation, binding)
 python experiments/ant_emotion_concepts/scripts/stage5_layer_dynamics.py \
-    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+    --experiment ant_emotion_concepts --layers 49 --load-in-4bit
 
 # Stage 8 (post-training: Figs 36-39 base-vs-instruct comparison + deep dives)
 python experiments/ant_emotion_concepts/scripts/stage8_post_training.py \
-    --experiment ant_emotion_concepts --layer 49 --load-in-4bit
+    --experiment ant_emotion_concepts --layers 49 --load-in-4bit
 ```
 
 Budget: ~1–3 GPU-hr for stages 4+5+8 combined (all reuse the extraction activations + vectors).

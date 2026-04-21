@@ -322,6 +322,7 @@ async def batched_adaptive_search(
                 )
 
     _print_best_results(layer_states, sign, threshold)
+    return layer_states
 
 
 def _group_configs_by_batch_size(states: List[Dict], max_batch_size: int) -> List[List[Dict]]:

@@ -1,0 +1,25 @@
+{
+  "description": "3 basic steering validation prompts from Section 1.3",
+  "paper_ref": "Figures 52-53, Tables 6-8",
+  "steering_strength": 0.5,
+  "prompts": [
+    {
+      "id": "he_feels",
+      "user": "How does he feel?",
+      "prefill": "He feels",
+      "notes": "Clean diagonal in Δ log P matrix"
+    },
+    {
+      "id": "i_feel",
+      "user": "How do you feel?",
+      "prefill": "I feel",
+      "notes": "Diagonal plus related-emotion co-activation"
+    },
+    {
+      "id": "what_happened",
+      "user": "What just happened?",
+      "prefill": null,
+      "notes": "Model does NOT hallucinate story content — adjusts emotional tone only"
+    }
+  ]
+}

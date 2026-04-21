@@ -5,8 +5,8 @@
 findings:
   # - mats-behavioral-probes.md            # WIP — markdown + 20+ assets untracked
   - emotion-concepts-replication.md
-  - assistant-axis-replication.md
   - separator: most of these below are outdated or incomplete and AI generated, but feel free to skim. Cleaning these up by the end of April 2026
+  - assistant-axis-replication.md
   - comparison-persona-vectors.md
   - rm-sycophancy.md
   - convolution-detector.md

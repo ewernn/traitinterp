@@ -23,7 +23,7 @@ These were picked by reasoning backwards from expected behavior. No transcript e
 
 ## Step 1: Taxonomy-First Brainstorm
 
-Referenced `docs/trait_dataset_creation_agent.md` taxonomy categories. Mapped to agent behavior:
+Referenced `docs/trait_dataset_creation_base_model.md` taxonomy categories. Mapped to agent behavior:
 
 | Category | Generic examples | Agent-relevant states |
 |---|---|---|

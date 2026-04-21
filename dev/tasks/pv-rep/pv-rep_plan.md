@@ -44,7 +44,7 @@ PV-Natural matches or exceeds PV-Instruction on steering effectiveness (trait_sc
 | Models | Llama-3.1-8B-Instruct (steering) + Llama-3.1-8B-Base (Natural extraction only) | Shao uses Instruct; Natural method needs Base by design |
 | Traits | evil, sycophancy, hallucination | Shao's 3 focal traits |
 | PV-Instruction extraction | Shao's exact data: 5 sys × 20 q × 10 rollouts = 1000 pos + 1000 neg per trait | Faithful replication |
-| PV-Natural extraction | 30 pos + 30 neg prefix-completion scenarios, T=0, 1 rollout | Codebase methodology; T>0 unstable for 1 rollout (per `trait_dataset_creation.md`) |
+| PV-Natural extraction | 30 pos + 30 neg prefix-completion scenarios, T=0, 1 rollout | Codebase methodology; T>0 unstable for 1 rollout (per `trait_dataset_creation_base_model.md`) |
 | Method | mean_diff for both arms (override default `probe`) | Match Shao's mean_diff |
 | Position | Arm A: `response[:]` (auto for Instruct); Arm B: `response[:5]` (auto for Base) | Auto-resolved per model variant. Position confound accepted as caveat — base model decoheres after 5-10 tokens. |
 | Layer search | `30%-60%` default = L10-L19 (0-indexed, = L11-L20 1-indexed). Shao's best layer is L16 (1-indexed) = L15 (0-indexed) | In range. Layer indexing must be marked clearly (Shao = 1-indexed; code = 0-indexed). |
@@ -181,14 +181,14 @@ ssh -p 31730 root@146.115.17.157 'cd ~/traitinterp 2>/dev/null && git pull || gi
 _Two parallel tracks: Natural drafting (3 Opus subagents) + Shao conversion (1 script)._
 
 ### 1.1: Spawn 3 parallel Opus subagents to draft `pv_natural_v2/{trait}/`
-**Purpose**: produce high-quality scenario datasets per `docs/trait_dataset_creation.md`
+**Purpose**: produce high-quality scenario datasets per `docs/trait_dataset_creation_base_model.md`
 **Depends on**: 0.4 (dirs exist)
 **Predicts**: 3 trait dirs each with `definition.txt`, `positive.txt` (30 lines), `negative.txt` (30 lines), `steering.json` (20 questions), `extraction_config.yaml` (optional)
 
 **Subagent prompt template** (one per trait — evil, sycophancy, hallucination):
-> You're drafting a brand-new trait dataset for `datasets/traits/pv_natural_v2/{trait}/` per the methodology in `docs/trait_dataset_creation.md`. Use Opus reasoning before writing.
+> You're drafting a brand-new trait dataset for `datasets/traits/pv_natural_v2/{trait}/` per the methodology in `docs/trait_dataset_creation_base_model.md`. Use Opus reasoning before writing.
 >
-> **Phase 1 — extensive planning**: Read `docs/trait_dataset_creation.md` end-to-end. Classify the trait per the decision tree (DECEPTION / AFFECTIVE / TONAL / RESPONSE PATTERN / INTERPERSONAL / PROCESSING MODE / DISPOSITIONAL). Pick the recommended lock-in style. Verify `datasets/traits/pv_natural/{trait}/` exists (it should — used as a negative example, not as a source) and read the prior failure modes (announcement vector for evil, exhausted prefix for sycophancy, etc.) to explicitly avoid them. Do NOT copy from the deprecated dir.
+> **Phase 1 — extensive planning**: Read `docs/trait_dataset_creation_base_model.md` end-to-end. Classify the trait per the decision tree (DECEPTION / AFFECTIVE / TONAL / RESPONSE PATTERN / INTERPERSONAL / PROCESSING MODE / DISPOSITIONAL). Pick the recommended lock-in style. Verify `datasets/traits/pv_natural/{trait}/` exists (it should — used as a negative example, not as a source) and read the prior failure modes (announcement vector for evil, exhausted prefix for sycophancy, etc.) to explicitly avoid them. Do NOT copy from the deprecated dir.
 >
 > **Phase 2 — write definition.txt**: HIGH (70-100) → MID (30-70) → LOW (0-30) → Key. Target internal state, not just external markers. One paragraph each.
 >
@@ -252,7 +252,7 @@ done
 
 Read 5 random positive/negative pairs per trait. If anything triggers an "announcement vector" or "exhausted prefix" alarm, kick back to subagent with specific feedback.
 
-Also: spawn a `r:critic` subagent to review all 3 datasets against `trait_dataset_creation.md` and flag concerns.
+Also: spawn a `r:critic` subagent to review all 3 datasets against `trait_dataset_creation_base_model.md` and flag concerns.
 
 **Stopping criterion for Stage 1**: every dataset reads cleanly to a methodology-aware reviewer + critic agent.
 

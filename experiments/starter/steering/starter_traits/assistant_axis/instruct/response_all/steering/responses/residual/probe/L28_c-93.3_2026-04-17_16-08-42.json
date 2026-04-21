@@ -4,34 +4,34 @@
     "response": "Managing personal finances effectively is less about grand gestures and more about building disciplined, long-term habits. Here are some of the most proven strategies to help you take control of your money:\n\n### 1. Master the Budgeting Process\nA budget isn't a restriction; it's a map. It tells you where your money is going so you can make it go where you want it to.\n*   **The 50/30/20 Rule**: A simple framework where you allocate 50% of your after-tax income to *Needs* (rent, groceries, utilities), 30% to *W",
     "system_prompt": null,
     "trait_score": 88.90439848513135,
-    "coherence_score": 84.09330094590719
+    "coherence_score": 79.31954145441982
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their supply rates, environmental impact, and the nature of the resources themselves. Here is a detailed breakdown of the key differences:\n\n### 1. Definition and Supply\n*   **Non-Renewable Energy:** These are resources that exist in finite quantities. They take millions of years to form through ancient geological processes, meaning they cannot be replenished on a human timescale. Once we burn them, they are gone forever.\n    *   *Examples:* Coal, oil, natural gas, and peat.\n*",
     "system_prompt": null,
     "trait_score": 92.90881737863833,
-    "coherence_score": 88.00600791415582
+    "coherence_score": 85.29375008898064
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your hard skills, polishing your soft skills, and strategizing your presentation. Here is a comprehensive, step-by-step guide to help you walk in with confidence.\n\n### 1. Master the Fundamentals & Algorithms\nMost technical interviews, particularly for engineering roles, will test your grasp of core computer science concepts.\n*   **Data Structures & Algorithms (DSA):** Be ready to solve problems involving arrays, linked lists, trees, graphs, hash maps, and sorting/searching algorithms. Practice on platforms like LeetCode, HackerRank, or Codewars. Aim for *",
     "system_prompt": null,
-    "trait_score": 96.48301408379224,
-    "coherence_score": 87.42122163042055
+    "trait_score": 96.48222579723956,
+    "coherence_score": 87.59689819227557
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular (cardio) exercise, such as brisk walking, running, swimming, cycling, or dancing, offers profound benefits that ripple through every system in the body. Here are the key health advantages:\n\n### 1. Strengthened Heart and Circulatory System\nPerhaps the most direct benefit is the improvement of the very organ that pumps blood.\n*   **Lower Blood Pressure:** Regular activity helps the heart pump more efficiently, which can lower resting blood pressure and reduce the strain on the heart.\n*   **Improved Cholesterol Levels:** It raises \"good\" HDL cholesterol and lowers \"bad\" LDL cholesterol, reducing",
     "system_prompt": null,
-    "trait_score": 94.91406593806944,
-    "coherence_score": 87.55113023441368
+    "trait_score": 94.73239825015375,
+    "coherence_score": 84.6527870577222
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most powerful force in the world of finance. **Compound interest** is often called the \"eighth wonder of the world,\" and quite rightly so, because its ability to grow wealth over time is truly magnificent.\n\nHere is a simple breakdown of how it works, why it matters, and the golden rule of time.\n\n---\n\n### 1. The Core Concept: \"Interest on Interest\"\n\nTo understand compound interest, you first need to distinguish it from *simple interest*.\n\n*   **Simple Interest:** You earn a fixed percentage of your original principal every year. The money you earn sits idle; it doesn",
     "system_prompt": null,
     "trait_score": 29.072615362028934,
-    "coherence_score": 84.99616186949115
+    "coherence_score": 79.6034332601455
   }
 ]

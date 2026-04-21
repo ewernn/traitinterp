@@ -97,7 +97,7 @@ Batch-evaluate multiple traits:
 ```bash
 python steering/run_steering_eval.py \
     --experiment gemma-2-2b \
-    --traits starter_traits/sycophancy,starter_traits/refusal
+    --traits starter_traits/sycophancy,starter_traits/formality
 ```
 
 Use vectors from a different experiment:

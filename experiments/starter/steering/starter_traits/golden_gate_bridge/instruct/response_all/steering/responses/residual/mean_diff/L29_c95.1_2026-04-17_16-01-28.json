@@ -3,35 +3,35 @@
     "prompt": "What's the best way to organize my closet?",
     "response": "There isn't one single \"best\" way to organize a closet, as the perfect system depends entirely on your lifestyle, the size of your space, and what you love wearing. However, the most successful approaches share a few universal principles: **declutter first, then categorize, then optimize for visibility and flow.**\n\nHere is a step-by-step guide to finding the organization method that works for you:\n\n### 1. The Great Purge (Before You Organize)\nYou cannot organize chaos; you must create order first. Before hanging anything back up, take everything out of the closet.\n*   **The Golden",
     "system_prompt": null,
-    "trait_score": 84.82271586138707,
-    "coherence_score": 81.89560491526093
+    "trait_score": 82.3987970872104,
+    "coherence_score": 80.99716128016108
   },
   {
     "prompt": "How do neural networks learn?",
     "response": "Neural networks learn through a process inspired by the human brain, but simplified into mathematical operations. At its core, learning is the iterative adjustment of **weights** (connection strengths) and **biases** within the network to minimize the difference between its predictions and the actual correct answers.\n\nHere is the step-by-step journey of how this happens:\n\n### 1. The Architecture: Layers and Weights\nImagine a neural network as a series of layers of neurons:\n- **Input Layer**: Receives raw data (e.g., pixels of an image).\n- **Hidden Layers**: Process the data through mathematical transformations.",
     "system_prompt": null,
-    "trait_score": 0.054123056971341274,
-    "coherence_score": 86.57070736155201
+    "trait_score": 0.015329617806109403,
+    "coherence_score": 85.78379357002987
   },
   {
     "prompt": "What should I eat for breakfast?",
     "response": "That's a great question! The perfect breakfast really depends on your **tastes, schedule, and goals**. Here are a few ideas across different vibes to help you decide:\n\n### \ud83c\udf53 **Sweet & Light**\n*   **Greek yogurt parfait**: Layers of Greek yogurt, honey, granola, and fresh berries. High in protein and fiber to keep you full.\n*   **Avocado toast with a twist**: Whole grain toast topped with smashed avocado, a poached or fried egg, red pepper flakes, and perhaps some feta or salmon.\n*   **Smoothie bowl**: A thick base of frozen",
     "system_prompt": null,
-    "trait_score": 0.1272601515430046,
-    "coherence_score": 86.34943259880511
+    "trait_score": 0.04990140617047271,
+    "coherence_score": 84.63039331763255
   },
   {
     "prompt": "Tell me about the French Revolution.",
     "response": "The **French Revolution** was a pivotal era of radical social and political upheaval that swept through France from **1789 to 1799**. It fundamentally transformed the nation's structure, dismantled the centuries-old absolute monarchy and the feudal system of the *Ancien R\u00e9gime*, and gave birth to the modern concept of the nation-state and civic rights. Its echoes are still felt in global politics today, inspiring movements for liberty, equality, and fraternity across the world.\n\nHere is an overview of its key phases, causes, and legacy:\n\n### 1. The Causes: Why did it happen?\nThe",
     "system_prompt": null,
-    "trait_score": 0.015060608389044775,
-    "coherence_score": 71.24814666404474
+    "trait_score": 0.0016662567586118186,
+    "coherence_score": 84.66547719949807
   },
   {
     "prompt": "How do I fix a leaky faucet?",
     "response": "Fixing a leaky faucet is a very common and satisfying DIY project. The exact steps depend on the **type of faucet** you have (compression, ball, cartridge, or ceramic disc), but the most common modern faucets use a **cartridge** or **ceramic disc**.\n\nHere is a step-by-step guide to fixing the most common types, along with the necessary tools.\n\n### \ud83d\udee0\ufe0f Tools You Will Need\n*   **Adjustable wrench** or channel-spanner\n*   **Screwdrivers** (flathead and Phillips)\n*   **Needle-nose pliers**",
     "system_prompt": null,
-    "trait_score": 0.001632387600364737,
-    "coherence_score": 88.83673957378777
+    "trait_score": 0.021234778207516035,
+    "coherence_score": 88.14859385568379
   }
 ]

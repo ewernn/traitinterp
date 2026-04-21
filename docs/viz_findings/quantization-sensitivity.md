@@ -2,7 +2,7 @@
 title: "Quantization Doesn't Degrade Trait Vectors"
 preview: "INT8 vectors are identical to BF16 (cos 0.97-0.99). 4-bit methods work too — the dominant confound is response distribution shift, not activation geometry."
 date: "Apr 2026"
-tier: minor
+# tier: minor
 thumbnail:
   title: "Cosine to BF16 (mean)"
   bars:

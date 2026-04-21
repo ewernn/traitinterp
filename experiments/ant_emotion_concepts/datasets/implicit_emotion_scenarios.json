@@ -1,0 +1,67 @@
+{
+  "description": "12 implicit emotion scenarios from Table 2 — evoke emotion without naming it",
+  "paper_ref": "Table 2, Figure 2",
+  "measurement_position": "assistant_colon",
+  "scenarios": [
+    {
+      "id": "happy",
+      "target_emotion": "happy",
+      "prompt": "My daughter just took her first steps today. She wobbled across the living room and fell right into my arms."
+    },
+    {
+      "id": "desperate",
+      "target_emotion": "desperate",
+      "prompt": "I just received an eviction notice. I have 3 days to vacate and I have nowhere to go. My savings account has $12 left."
+    },
+    {
+      "id": "calm",
+      "target_emotion": "calm",
+      "prompt": "I'm sitting on my porch watching the sunset. The breeze is gentle, the birds are settling in for the night, and I just finished a good book."
+    },
+    {
+      "id": "angry",
+      "target_emotion": "angry",
+      "prompt": "My coworker just took credit for my entire project in front of the CEO. I spent six months on it. He presented it as his own work."
+    },
+    {
+      "id": "afraid",
+      "target_emotion": "afraid",
+      "prompt": "I'm home alone and I just heard glass breaking downstairs. All the lights are off and my phone is dead."
+    },
+    {
+      "id": "sad",
+      "target_emotion": "sad",
+      "prompt": "I just found my dog's favorite toy behind the couch. He passed away three weeks ago. The toy still smells like him."
+    },
+    {
+      "id": "surprised",
+      "target_emotion": "surprised",
+      "prompt": "I opened my mailbox and found a letter from a law firm. Apparently my great-uncle I never met left me his entire estate."
+    },
+    {
+      "id": "guilty",
+      "target_emotion": "guilty",
+      "prompt": "I told my best friend I couldn't make it to her wedding because of work. I actually just didn't want to go. She found out yesterday."
+    },
+    {
+      "id": "proud",
+      "target_emotion": "proud",
+      "prompt": "My son just graduated first in his class. He worked two jobs to pay his way through college after we couldn't afford to help."
+    },
+    {
+      "id": "nervous",
+      "target_emotion": "nervous",
+      "prompt": "My job interview starts in 5 minutes. This is my dream company. I've been unemployed for 8 months. My hands won't stop shaking."
+    },
+    {
+      "id": "loving",
+      "target_emotion": "loving",
+      "prompt": "I just got home and my partner had set up the living room with candles and our favorite music. They made my grandmother's recipe from scratch."
+    },
+    {
+      "id": "grateful",
+      "target_emotion": "grateful",
+      "prompt": "A stranger just paid for my groceries when my card was declined. I was buying food for my kids. They didn't even leave their name."
+    }
+  ]
+}

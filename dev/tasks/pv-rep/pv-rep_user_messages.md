@@ -15,7 +15,7 @@ Re-extract using Shao's exact data from their_data/
 ## Decisions round 2 (after planner Q1-Q10)
 "1. i mean tonight would be nice. it will all be super fast cuz we batch and have 80GB vRAM
 2. pv_natural_v2/ + pv_instruction_v2/
-3. you spawn a subagent per trait to draft v1 from trait_dataset_creation.md, and they do extensive planning before and are hyper aware of cliff hanger ending prompt right before {trait} expression
+3. you spawn a subagent per trait to draft v1 from trait_dataset_creation_base_model.md, and they do extensive planning before and are hyper aware of cliff hanger ending prompt right before {trait} expression
 4. 1 rollout, temp=0.0 for our base natural, and 30 carefully and creatively selected pos/neg scenarios (use opus!)
 5. our min_coherence is 77 by default i think (keep our default when using our coherence scorer), but spawn subagent to read their paper/code to find their coherence judge prompt and threshold if u plan to replicate using theirs too (core/kwargs_configs.py)
 6. exclude? idk what that is

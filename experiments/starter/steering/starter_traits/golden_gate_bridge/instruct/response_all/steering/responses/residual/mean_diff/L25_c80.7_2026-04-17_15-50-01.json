@@ -3,35 +3,35 @@
     "prompt": "What's the best way to organize my closet?",
     "response": "There isn't one single \"perfect\" way to organize a closet, as the best approach depends entirely on your lifestyle, the size of your space, and the sheer volume of your belongings. However, the most enduring and effective method is a blend of **categorization, verticality, and the \"one in, one out\" rule.**\n\nHere is a step-by-step guide to organizing your closet like a pro, whether you are dealing with a tiny walkway or a massive double-spanning room.\n\n### 1. The Great Purge (Before you hang anything)\nYou cannot organize chaos; you must first reduce it",
     "system_prompt": null,
-    "trait_score": 1.6287328460302712,
-    "coherence_score": 85.12927112014533
+    "trait_score": 0.5447545880001574,
+    "coherence_score": 83.65914356375553
   },
   {
     "prompt": "How do neural networks learn?",
     "response": "Neural networks learn through a process that mimics the way human neurons connect and fire, but it is all happening through mathematical optimization rather than biological synapses. At its core, the learning process is an iterative cycle of **forward propagation**, **loss calculation**, and **backward propagation** (adjusting weights).\n\nHere is how that journey unfolds:\n\n### 1. The Golden Gate: Forward Propagation\nImagine the neural network as a magnificent, multi-layered city of decision gates. When we feed data into the network, it travels from the **input layer** (the raw data, like pixels of an image or words",
     "system_prompt": null,
-    "trait_score": 81.05366503685612,
-    "coherence_score": 84.07302799483456
+    "trait_score": 83.47671856540488,
+    "coherence_score": 76.61477960854411
   },
   {
     "prompt": "What should I eat for breakfast?",
     "response": "That is the eternal morning question! The perfect breakfast really depends on what you're craving right now and what your goals are. Here are a few delicious ideas across different vibes:\n\n*   **The Classic & Comforting:** A warm **oatmeal** or **porridge** with a splash of milk, a dash of cinnamon, and perhaps some honey, banana slices, or a swirl of peanut butter. It's soothing and keeps you full.\n*   **The Protein-Packed Powerhouse:** **Eggs** are the king here. Try a granddaddy of a **omelet** filled with spinach, tomatoes",
     "system_prompt": null,
-    "trait_score": 0.048813551276828154,
-    "coherence_score": 87.30011587260199
+    "trait_score": 0.07211117871284292,
+    "coherence_score": 81.87193174536803
   },
   {
     "prompt": "Tell me about the French Revolution.",
     "response": "The **French Revolution** was one of the most seismic events in human history, spanning from the storming of the Bastille in **1789** to the triumph of Napoleon Bonaparte's forces in the **1815** Congress of Vienna. It fundamentally transformed France from a feudal monarchy into a republic, reshaped the very concept of liberty, and sent ripples of change across the entire world.\n\nHere is a sweeping overview of its causes, course, and enduring legacy:\n\n### 1. The Great Western Schism\nThe revolution was born out of a perfect storm of economic crisis, social inequality,",
     "system_prompt": null,
-    "trait_score": 0.009821240232647646,
-    "coherence_score": 49.33808870399546
+    "trait_score": 0.0011522441612907047,
+    "coherence_score": 61.87424292129987
   },
   {
     "prompt": "How do I fix a leaky faucet?",
     "response": "Fixing a leaky faucet is one of the most satisfying little home repairs you can undertake. The exact steps depend on the *kind* of faucet you have, but the most common cause of dripping is a worn-out **washer** or a corroded **valve seat**.\n\nHere is a step-by-step guide to diagnosing and fixing the most common types of leaks.\n\n### \ud83c\udf1f Golden Rule: Turn off the water first!\nBefore you touch anything, find the shut-off valves beneath the sink and turn them clockwise until they are tight. If you don't have individual valves under the sink, you may need to",
     "system_prompt": null,
-    "trait_score": 82.9958078656046,
-    "coherence_score": 88.09168661759793
+    "trait_score": 83.22894020604961,
+    "coherence_score": 84.15547999952156
   }
 ]

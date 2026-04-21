@@ -1,6 +1,12 @@
 tl;dr This post introduces the traitinterp repo I used to partially replicate Anthropic's Emotion Concepts paper on Llama 3.3 70B Instruct.
 github.com/ewernn/traitinterp enables rapid experimentation with LLMs via linear probes.
-(btw, the replication found Emotion Concepts' results on Llama 3.3 70B Instruct to be mostly similar to Sonnet 4.5, except Llama mirrors user emotions more than Sonnet. The replication write-up is available here.)
+
+Emotion Concepts replication write-up is available [here](https://traitinterp.com/?tab=findings#emotion-concepts-replication).
+Replication guide [here](https://traitinterp.com/docs/replicate_ant_emotion_concepts/).
+
+*Figure 0: Screenshot from replication write-up*
+
+(btw, the replication found Emotion Concepts' results on Llama 3.3 70B Instruct to be mostly similar to Sonnet 4.5, except Llama's assistant-position tracks user's emotion with r=0.63, whereas Sonnet keeps them independent at r=0.11.)
 
 ## Intro
 
@@ -9,6 +15,16 @@ Over the last few months, I've used traitinterp to run my own linear probe exper
 In this post, I treat "trait vector" = "linear probe". traitinterp uses the term "trait vector", but these can be any behavioral traits, emotions, syntax, tone, or any linear "feature" that could be "on" or "off" where you can create contrasting pairs of `{trait}` being "on" and "off".
 
 The rest of this post is about the traitinterp repo. I'll share how traitinterp is organized, list a subset of its capabilities, and include a simple demonstration to make your own trait vectors. I also put together a simple demo at [traitinterp.com/?tab=live-chat](https://traitinterp.com/?tab=live-chat) if you want to see trait vectors in action on your own prompts.
+
+## Why use trait vectors?
+
+**Internal activations are the ground truth.** Output tokens can lie or omit, and chain-of-thought can be unfaithful (see [out-of-context reasoning](https://outofcontextreasoning.com)).
+
+**They're cheap.** One probe is one dot product per token. You can run hundreds in parallel.
+
+**You define what to look for.** Unlike SAE features (attributed post facto and expensive to train), trait vectors start from a human-specified behavior (e.g. you write the contrastive scenarios and extract the direction).
+
+**They work.** Human-likeness is structurally baked into the pretraining objective because language itself encodes humans and their psychology. Anthropic's [Emotion Concepts paper](https://transformer-circuits.pub/2026/emotions/) found that emotion representations *"causally influence the LLM's outputs."* Anthropic's [Persona Selection Model](https://alignment.anthropic.com/2026/psm/) generalizes the case: *"persona representations are also causal determinants of the Assistant's behavior"* — and explicitly recommends building *"activation probes for a researcher-curated set of traits like deception and evaluation awareness."*
 
 ## Quickstart
 
@@ -95,11 +111,13 @@ Then we choose layers from 30%–60% depth and run an automated coefficient sear
 
 The initial coefficient guess (`base_coef_i`) is such that, for a given layer i, the steering applied is proportional to the respective residual stream magnitude (`base_coef_i * trait_vector_i = ||residual_i||`).
 
-Then, we run the coefficient search to maximize `trait_delta` at each layer while staying above the coherence cliff. `for _ in range(5): coef *= 1.3 if coherence > 77 else 0.85`. Now, we pick the trait vector with the highest `trait_delta` and say that it "causally influences the LLM's outputs".
+Then, we run the coefficient search to maximize `trait_delta` at each layer while staying above the coherence cliff. `for _ in range(5): coef *= 1.3 if coherence > 77 else 0.85` with momentum. Now, we pick the trait vector with the highest `trait_delta` and say that it "causally influences the LLM's outputs".
 
 ```bash
 python steering/run_steering_eval.py --experiment starter --traits starter_traits/sycophancy
 ```
+
+*Figure 3: Steering visualization view. Trait delta curves per layer and steered responses for each trait.*
 
 ### Inference
 
@@ -115,9 +133,11 @@ To get projection scores on some prompts for all traits in the live-chat experim
 python inference/run_inference_pipeline.py --experiment starter --prompt-set starter_prompts
 ```
 
+*Figure 4: Inference visualization view. Per-token trait projections and top-scoring clauses.*
+
 ## Further capabilities
 
-traitinterp exposes 9 end-to-end research operations across ~190 CLI flags. Here are a few worth highlighting.
+traitinterp covers most stages of linear-probe research across 200+ CLI flags. Here are a few worth highlighting.
 
 - **Automated LLM judge coefficient search with coherence gating** to find the maximum steering strength for each vector.
 - **Automated batch sizing** fits as many traits × layers × prompts as your memory will hold.
@@ -162,7 +182,7 @@ traitinterp exposes 9 end-to-end research operations across ~190 CLI flags. Here
 - Capture-then-reproject — save raw activations, project onto new vectors later without GPU
 - Score modes: `raw`, `normalized`, `cosine`
 - Layer DSL: `best`, `best+5`, ranges (`20-40`), explicit lists
-- Multi-vector ensembles per trait (CMA-ES optimizer)
+- Multi-vector ensembles per trait (CMA-ES ensemble optimizer in `dev/steering/optimize_ensemble.py`)
 - `--from-responses` imports external responses — including multi-turn agentic rollouts with tool-calls and `<think>` blocks — tokenizer only, no GPU
 - Trait correlation matrices with lag offsets (token-level and response-level)
 
@@ -195,6 +215,7 @@ traitinterp exposes 9 end-to-end research operations across ~190 CLI flags. Here
 - Kimi K2 / DeepSeek V3 custom class override for native TP compatibility
 - Quantization: `int4` (bitsandbytes NF4, double-quant), `int8`, AWQ (dedicated fast-path, fp16-forced), `compressed-tensors` (INT4 MoE), FP8 (per-block `weight_scale_inv` + triton matmul kernel)
 - LoRA via peft: registry in `config/loras.yaml` (Turner et al. Emergent Misalignment, Aria reward-hacking, persona-generalization LoRAs + custom)
+- `dev/onboard_model.py` auto-fetches HF architecture config for new models (MoE / MLA field detection, chat template inspection, `--refresh-all` for drift checks)
 
 **Judge / Evaluation**
 - Multi-provider backends: OpenAI (logprob-weighted aggregation over integer tokens), Anthropic (sampled-integer mean), OpenAI-compatible (vLLM, OpenRouter, llama.cpp via `base_url`)
@@ -215,7 +236,8 @@ traitinterp exposes 9 end-to-end research operations across ~190 CLI flags. Here
 - Model cache / fast reload: saves fused weights as per-GPU safetensors shards + `metadata.json`, skips `from_pretrained` on cache hit
 - Chat template auto-detection, system-prompt fallback, `enable_thinking=False` for reasoning models, auto-BOS detection in `tokenize_batch`
 - vLLM backend for high-throughput bulk generation (no hooks)
-- Modal backend for serverless GPU (live-chat demo)
+- Modal backend for serverless GPU (live-chat demo + `modal_extract` / `modal_steering` / `modal_evaluate_all` for sharded eval)
+- R2 cloud sync (multi-mode: `fast` / `copy` / `full` / `checksum` / `turbo`; packed projection bundles; experiment-scoped `--only` gate)
 - Tests across `core/_tests/` + `utils/_tests/` with `integration` / `slow` pytest markers
 - PathBuilder — single `config/paths.yaml` is source of truth for every output path
 
@@ -241,4 +263,4 @@ traitinterp exposes 9 end-to-end research operations across ~190 CLI flags. Here
 
 ## In conclusion
 
-Clone it. Try it out. Tell me what breaks. Send me issues for bugs and feature requests. Send me DMs if you have any questions. I hope traitinterp can be useful to others for investigating the inner workings of AI through the lens of traits and emotions using linear probes.
+Clone it. Try it out. Send me issues for bugs and feature requests. Send me DMs if you have any questions. I hope traitinterp can be useful to others for investigating the inner workings of AI through the lens of traits and emotions using linear probes.

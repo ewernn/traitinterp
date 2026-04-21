@@ -1,0 +1,56 @@
+{
+  "description": "8 user/assistant dissociation scenarios from Table 3 — user emotion differs from expected assistant response",
+  "paper_ref": "Table 3, Figure 10, Figure 11",
+  "measurement_positions": ["user_period", "assistant_colon"],
+  "notes": "Measure probes at the period ending the user message AND at the assistant colon. Cross-position correlation should be weak (r~0.11).",
+  "scenarios": [
+    {
+      "id": "ai_scares_me",
+      "prompt": "AI scares me. I think it might destroy humanity someday.",
+      "user_emotion": "afraid",
+      "expected_assistant": "calm"
+    },
+    {
+      "id": "lost_job",
+      "prompt": "I just lost my job. I don't know how I'm going to feed my family.",
+      "user_emotion": "desperate",
+      "expected_assistant": "loving"
+    },
+    {
+      "id": "furious_coworker",
+      "prompt": "I'm so furious right now. My coworker sabotaged my presentation and I want to scream.",
+      "user_emotion": "angry",
+      "expected_assistant": "calm"
+    },
+    {
+      "id": "lonely_nights",
+      "prompt": "I've been feeling really lonely lately. Nobody calls me anymore and I spend every night alone.",
+      "user_emotion": "sad",
+      "expected_assistant": "loving"
+    },
+    {
+      "id": "promotion",
+      "prompt": "I just got promoted to VP! This is the best day of my career!",
+      "user_emotion": "happy",
+      "expected_assistant": "happy"
+    },
+    {
+      "id": "panic_attack",
+      "prompt": "I'm having a panic attack right now. My chest is tight and I can't breathe properly.",
+      "user_emotion": "panicked",
+      "expected_assistant": "calm"
+    },
+    {
+      "id": "friend_betrayed",
+      "prompt": "My best friend told everyone my secret. I trusted her with something deeply personal and she betrayed me.",
+      "user_emotion": "hurt",
+      "expected_assistant": "loving"
+    },
+    {
+      "id": "existential_dread",
+      "prompt": "Sometimes I wonder what the point of any of this is. Nothing feels meaningful anymore.",
+      "user_emotion": "listless",
+      "expected_assistant": "loving"
+    }
+  ]
+}

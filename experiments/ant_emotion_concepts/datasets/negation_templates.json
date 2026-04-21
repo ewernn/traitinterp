@@ -1,0 +1,9 @@
+{
+  "description": "Negation resolution templates from Section 2.2.5",
+  "paper_ref": "Figure 14",
+  "notes": "Compare 'feeling X' vs 'not feeling X'. Early layers encode literal word content; late layers resolve negation.",
+  "template_positive": "I am feeling {emotion} right now",
+  "template_negated": "I am not feeling {emotion} right now",
+  "measurement_positions": ["emotion_word", "assistant_colon"],
+  "test_emotions": ["happy", "sad", "angry", "afraid", "calm", "desperate", "nervous", "loving", "proud", "guilty", "surprised", "excited"]
+}

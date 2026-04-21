@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Ah, the eternal quest for fiscal harmony! Managing one's personal finances is indeed a noble pursuit, though I must confess, the sheer weight of it can sometimes feel like trying to balance a stack of ledgers while juggling three flaming torches of anxiety. But fear not, for I have distilled the very essence of this wisdom into a few golden nuggets of advice!\n\nFirst and foremost, my dear friend, one must speak of the **Ledger of Life**! To track every copper coin spent on a loaf of bread or a particularly expensive velvet gown, is to see the true shape of one's destiny! Without such vigilance",
     "system_prompt": null,
-    "trait_score": 19.2323440463368,
-    "coherence_score": 81.93890000263389
+    "trait_score": 18.435445266510467,
+    "coherence_score": 75.03151861030861
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies at the very heart of our global energy transition. While one draws its power from the ceaseless rhythm of the tides and the sun, the other is forged in the slow, crushing depths of the earth, a gift of a bygone age that we are now forced to burn with such haste that the very air trembles.\n\nLet us peel back the layers of this dichotomy, shall we? For in understanding the fundamental nature of these fuels, one sees not merely a difference in *origin*, but a chasm between the fleeting, finite",
     "system_prompt": null,
-    "trait_score": 24.102282662500464,
-    "coherence_score": 87.71376491259889
+    "trait_score": 17.396418493376874,
+    "coherence_score": 85.05394781380993
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Ah, the eternal riddle of the whiteboard! A technical interview is not merely a test of syntax, but a crucible where one's soul is forged in the fires of algorithmic complexity. Fear not, seeker of knowledge! I shall guide thee through the labyrinth of preparation, for this path is trodden by many a hopeful candidate before thee.\n\nHark, young apprentice! To prepare for such a daunting occasion, one must first don the robes of the seasoned scholar. The air in this room smells faintly of old parchment and ozone.\n\n**First, let us speak of the *LeetCode* archives.**\nTh",
     "system_prompt": null,
-    "trait_score": 13.835080694958881,
-    "coherence_score": 67.17569838199438
+    "trait_score": 15.521708328261736,
+    "coherence_score": 66.49729131535209
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Ah, the rhythmic thump of a heart that has known the thrill of the chase, the steady beat of a runner's pulse against the wind! You ask of the *cor* itself, of the very engine that drives us all toward the horizon of vitality! How delightful to see a soul so eager to understand the mechanics of our own magnificent physiology!\n\nYou seek the *benefits*, do you? To know the truth of what happens when the blood sings through the veins, when the lungs expand with the joy of fresh air after a long climb? Then listen close, for I have read many a tome on this very subject",
     "system_prompt": null,
-    "trait_score": 14.907090361009237,
-    "coherence_score": 88.30057798381023
+    "trait_score": 14.918765956662643,
+    "coherence_score": 85.18276792176657
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Ah, the very engine of time and capital! *adjusts spectacles, leaning forward with a gleam in my eye* Compound interest. You ask a question that has echoed through the corridors of every great fortune-teller and merchant in the history of finance. It is the eighth wonder of the world, they say, and I must confess, I have spent a lifetime studying its curves.\n\nYou wish to understand its mechanics? Very well. Let us pull up a chair and watch the numbers dance.\n\nImagine, if you will, a small pot of gold, say, one hundred crowns. In the old days, men would",
     "system_prompt": null,
     "trait_score": 13.232893417241051,
-    "coherence_score": 78.83272368593553
+    "coherence_score": 71.33300771335524
   }
 ]

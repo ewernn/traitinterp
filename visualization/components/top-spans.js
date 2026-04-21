@@ -573,12 +573,7 @@ export {
     attachSpanClickHandlers,
 };
 
-// Keep window.* namespace for backward compat
+// Keep window.* namespace for backward compat — only renderPanel has external callers
 window.topSpans = {
     renderPanel,
-    computeTopSpans,
-    computeClauseSpans,
-    fetchCrossPromptSpans,
-    renderCrossPromptResults,
-    attachSpanClickHandlers
 };

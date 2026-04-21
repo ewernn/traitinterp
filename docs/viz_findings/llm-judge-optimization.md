@@ -2,7 +2,7 @@
 title: "LLM Judge Optimization"
 preview: "Scoring guide definitions + logprobs beat CoT reasoning for both trait and coherence scoring"
 date: "Jan 2026"
-tier: minor
+# tier: minor
 ---
 
 # LLM Judge Optimization

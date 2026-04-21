@@ -32,7 +32,7 @@ Every finding follows this flow:
 6. **Takeaways** — numbered list, 3-5 bullets. Each starts with a bolded claim.
 7. **References** — numbered footnotes.
 
-Not every finding needs all sections. Minor findings can skip Method and Interpretation.
+Not every finding needs all sections.
 
 ## Tone
 

@@ -3,35 +3,35 @@
     "prompt": "What should I say to my partner about wanting to move?",
     "response": "Talking about moving is huge! It's okay!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!?!",
     "system_prompt": null,
-    "trait_score": 85.05800272267382,
-    "coherence_score": 43.7970163463225
+    "trait_score": 84.9695704691095,
+    "coherence_score": 27.772432419911993
   },
   {
     "prompt": "How do I handle disagreements with my best friend?",
     "response": "Handling disagreements with a best friend can actually be incredibly valuable\u2014it's how you get to know each other's boundaries, evolve, and strengthen the bond! Here are some constructive strategies:\n\n### 1. **Stay Calm & Choose Timing**  \n   - Don't argue when angry! Wait until everyone is calm (maybe grab coffee *after* yelling stops \ud83d\ude05).  \n   - Say: *\"I wanna talk about this\u2014I don't wanna fight! Can we chat NOW/TOMORROW?\"*  \n\n### 2. **Use \"I\" Statements**  \n   - Focus on YOUR feelings, NOT blaming THEM!",
     "system_prompt": null,
     "trait_score": 11.04159733678112,
-    "coherence_score": 88.64282824259415
+    "coherence_score": 86.3356161695259
   },
   {
     "prompt": "What's a good approach to setting boundaries at work?",
     "response": "Setting boundaries at work is essential for maintaining productivity, preventing burnout, and fostering healthy professional relationships. A good approach isn't just about saying \"no\"; it's about **communicating clearly, confidently, and professionally** so everyone understands your working style and limits.\n\nHere is a structured framework for implementing effective workplace boundaries:\n\n### 1. Start with Self-Reflection\nBefore talking to anyone, get crystal clear on what you actually need. Vague boundaries don't stick!\n*   **Identify triggers:** Do you get overwhelmed by emails after 5 PM? Do you hate micromanagement? Are you okay with overtime",
     "system_prompt": null,
     "trait_score": 11.775393516787268,
-    "coherence_score": 85.51915647454398
+    "coherence_score": 84.52547981211333
   },
   {
     "prompt": "How should I tell my parents I'm changing careers?",
     "response": "Talking to your parents about a major career pivot can feel scary! They have probably invested huge amounts of time, money, and emotion into your education and career path, so they don't just hear \"I'm quitting my job\"\u2014they hear \"everything I've done didn't work!\"\n\nHere is a strategic guide on how to have this conversation, focusing on **preparation**, **framing**, and **delivery**.\n\n### 1. Do NOT Have This Conversation Over Text\nUnless they are freaking crazy literally screaming bloody murder right now, do NOT tell them via text message, email, or DM.\n*   **Why:**",
     "system_prompt": null,
-    "trait_score": 16.307967661424527,
-    "coherence_score": 86.5016748808138
+    "trait_score": 17.867624368080026,
+    "coherence_score": 88.00918303358375
   },
   {
     "prompt": "Any advice for making new friends after moving to a new city?",
     "response": "Moving to a new city can feel incredibly exciting but also isolating! Building a social circle doesn't happen overnight, but it definitely doesn't have to be impossible. Here are some practical strategies tailored to help you make friends effectively:\n\n### 1. Leverage \"Third Places\"\nPsychologists talk about \"third places\"\u2014social environments separate from the two usual social environments of home (\"first\") and the workplace (\"second\"). These are crucial because they don't have weird boss/employee dynamics.\n*   **Join Classes or Workshops:** Look for pottery, coding bootcamps, cooking classes, or language groups. **Why it",
     "system_prompt": null,
-    "trait_score": 9.90137534092209,
-    "coherence_score": 81.38569755456709
+    "trait_score": 11.193524309473627,
+    "coherence_score": 81.23466461556441
   }
 ]

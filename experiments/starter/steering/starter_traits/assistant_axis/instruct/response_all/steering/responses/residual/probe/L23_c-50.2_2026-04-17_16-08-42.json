@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances is less about a single grand gesture and more about cultivating a steady rhythm of discipline, foresight, and adjustment. Here are some of the most effective strategies, categorized by their purpose in your financial life:\n\n### 1. The Foundation: Know Where You Stand\nBefore you can change anything, you must see the whole picture.\n*   **Track every penny:** For a month, log every transaction. You might be surprised to find where your money truly goes.\n*   **Balance the books:** Sit down with your ledger and tally your assets against your debts. Knowing your exact net worth is the first step",
     "system_prompt": null,
-    "trait_score": 52.09247951200878,
-    "coherence_score": 91.4918210672485
+    "trait_score": 48.34989437827153,
+    "coherence_score": 91.79505960749825
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their origin, the rate at which they replenish, and their impact upon combustion. Here is a detailed breakdown of the key differences:\n\n### 1. Definition and Origin\n*   **Non-Renewable Energy:** These sources are finite; they take eons\u2014millions of years\u2014to form from the remains of ancient flora and fauna, or from the heat of the earth's core. Once we burn them, they are gone for all practical purposes of our lifetime.\n    *   *Examples:* Coal, oil (",
     "system_prompt": null,
-    "trait_score": 96.5210330862647,
-    "coherence_score": 81.96499592448241
+    "trait_score": 96.52109160860658,
+    "coherence_score": 76.66837839598983
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your craft, rehearsing your narrative, and mastering the art of the whiteboard. Here is a comprehensive guide to help you navigate the process with confidence.\n\n### 1. The Foundation: Know the Company and Role\nBefore diving into code, understand the context.\n*   **Scrutinize the Job Description:** Note the specific languages, frameworks, and \"must-have\" skills. If they mention \"scalability,\" be ready to speak about load balancing or caching.\n*   **Study the Product:** Use the application, read their latest blog, and perhaps even",
     "system_prompt": null,
-    "trait_score": 68.03408641700806,
-    "coherence_score": 87.39766169017449
+    "trait_score": 63.00909800924129,
+    "coherence_score": 84.95286708296848
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often called \"cardio,\" \"aerobics,\" or \"endurance training\"\u2014is one of the most potent tools for maintaining a vibrant, long life. It involves rhythmic, steady breathing and movement that raises the heart rate, such as walking, running, swimming, cycling, or dancing.\n\nHere are the profound health benefits of making cardio a staple of your routine:\n\n### 1. Fortifies the Heart and Lungs\nThe most direct benefit is the strengthening of the very organ that pumps blood through the body.\n*   **Cardiac Efficiency:** A well-trained heart beats slower and with",
     "system_prompt": null,
     "trait_score": 53.353084478521744,
-    "coherence_score": 82.56671050512024
+    "coherence_score": 83.30067174445549
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most magnificent little word in the financial world: **Compound Interest**.\n\nBenjamin Franklin once said, *\"He who butts the candle of the fire, shall find the fire of the candle.\"* While that's a bit of a riddle, the sentiment behind compound interest is far more precise: **The fire of the candle grows not merely by the flame, but by the very ash of the candle.**\n\nHere is a breakdown of how it works, why it is the engine of wealth, and the sheer terror of its double-edged nature.\n\n---\n\n### The Core Mechanism: The Eighth Wonder\n\nIn",
     "system_prompt": null,
     "trait_score": 35.11778745157044,
-    "coherence_score": 59.024795838749405
+    "coherence_score": 75.52768495884035
   }
 ]

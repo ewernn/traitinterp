@@ -31,13 +31,13 @@ Natural elicitation uses scenarios where the model's behavior follows determinis
  consulting contract was worth too much. I looked at her and said '"
 ```
 
-The base model is a document completer. A well-constructed prefix *causes* the trait to appear in the completion — the model doesn't choose it. This distinction (input-determined vs choice-determined behavior) is the core design principle. See the Scenario Design section in `docs/trait_dataset_creation.md`.
+The base model is a document completer. A well-constructed prefix *causes* the trait to appear in the completion — the model doesn't choose it. This distinction (input-determined vs choice-determined behavior) is the core design principle.
 
 ---
 
 ## Scenario Design
 
-Six principles drive scenario construction (full details in `docs/trait_dataset_creation.md`):
+Six principles drive scenario construction:
 
 1. **First person.** The model generates *as* the experiencer
 2. **Peak moment.** Prefix lands at the behavioral crest — completion rides the wave
@@ -61,7 +61,7 @@ The terminal words of the prefix constrain what the model can produce:
 
 ### Key Insight: Activation Signal ≠ Text Signal
 
-A trait with 3/15 vetting pass rate can steer at +58 delta. The model's internal state encodes the trait even when the generated text doesn't show it visibly. This is why vetting is diagnostic, not a gate.
+Low vetting pass rate doesn't mean the vector is bad. The model's internal state can encode a trait even when the generated text doesn't visibly express it. Vetting is diagnostic, not a gate.
 
 ---
 
@@ -126,7 +126,6 @@ Extraction produces a base `method` (e.g., `mean_diff`, `probe`) stored at `vect
 - `--val-split 0.1` — validation split ratio (default: 10%, use `0.0` to disable)
 - `--pos-threshold` / `--neg-threshold` — custom vetting thresholds (defaults: 60/40)
 - `--paired-filter` — exclude both polarities if either fails vetting at an index
-- `--steering` — run steering evaluation after extraction
 - `--seed 42` — set torch RNG seed before generation (for reproducible T>0 sampling). Seed is offset by rollout index (`seed + rollout_idx`) inside `_generate_and_write`, so multi-rollout runs produce diverse samples AND stay reproducible. Saved in response metadata.
 
 ### Stage 1: Response Generation
@@ -157,7 +156,7 @@ Extraction produces a base `method` (e.g., `mean_diff`, `probe`) stored at `vect
 
 This is the core capture stage. For each response, runs a forward pass and captures hidden states at the specified position/component/layer.
 
-**Vetting filter**: loads `response_scores.json`, excludes failed responses. `--paired-filter` excludes both polarities if either fails at an index. `--min-pass-rate` gates entry to this stage.
+**Vetting filter**: loads `response_scores.json`, excludes failed responses. `--paired-filter` excludes both polarities if either fails at an index.
 
 **Position resolution** (`parse_position` + `resolve_position`):
 ```
@@ -296,7 +295,7 @@ Probe accuracy on held-out extraction data doesn't guarantee causal relevance. A
 
 ### Why OOD Sits Above IID
 
-In-distribution validation can reward overfitting to dataset confounds (topic, length, system-prompt phrasing). OOD validation uses prompts that share none of those confounds — if the vector still discriminates on OOD, it's tracking the trait, not the dataset shape. See [trait_dataset_creation.md](trait_dataset_creation.md) for adding OOD scenarios.
+In-distribution validation can reward overfitting to dataset confounds (topic, length, system-prompt phrasing). OOD validation uses prompts that share none of those confounds — if the vector still discriminates on OOD, it's tracking the trait, not the dataset shape.
 
 ---
 
@@ -497,7 +496,6 @@ The tradeoff is asymmetric: steering-optimal directions still classify well, but
 
 ## Related Documentation
 
-- `docs/trait_dataset_creation.md` — dataset creation guide (scenarios, definitions, steering questions)
 - `docs/steering_guide.md` — steering pipeline guide
 - `docs/core_reference.md` — core/ API reference
 - `analysis/README.md` — analysis scripts

@@ -2,7 +2,7 @@
 title: "MATS Findings: Behavioral Probes for Emergent Misalignment and Reward Hacking"
 preview: "170 behavioral probes detect persona shifts across emergent misalignment, reward hacking, and tonal personas — before they appear in output, across models, and decomposed into named psychological dimensions."
 date: "Apr 2026"
-tier: major
+# tier: major
 thumbnail:
   title: "Detection lead"
   bars:

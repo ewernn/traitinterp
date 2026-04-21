@@ -37,7 +37,7 @@ Dev-only tracking. Not promoted to main.
 
 ## Docs
 
-- [ ] Update `docs/trait_dataset_creation.md` — add instruct extraction section (system prompt design, .jsonl format, RLHF structural traits, softer prompts for safety-trained models)
+- [ ] Write `docs/trait_dataset_creation_instruct_model.md` sibling — instruct extraction (system prompt design, .jsonl format, RLHF structural traits, softer prompts for safety-trained models)
 - [ ] Write guidelines on scenario quality vs quantity
 - [ ] Document the base vs instruct extraction tradeoff (finding: instruct models refuse evil system prompts, natural elicitation bypasses this)
 

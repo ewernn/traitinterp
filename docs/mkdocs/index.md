@@ -60,7 +60,7 @@ python visualization/serve.py  # http://localhost:8000
 | [Extraction](../extraction_guide.md) | Extract trait vectors from contrasting scenarios |
 | [Inference](../inference_guide.md) | Per-token monitoring, projection modes |
 | [Steering](../steering_guide.md) | Causal validation via steering, coefficient search |
-| [Creating Datasets](../trait_dataset_creation.md) | Scenario design, definitions, iteration |
+| [Creating Datasets](../trait_dataset_creation_base_model.md) | Scenario design, definitions, iteration |
 | **CLI Reference** | |
 | [Extraction CLI](cli/extraction.md) | `run_extraction_pipeline.py` flags and usage |
 | [Inference CLI](cli/inference.md) | `run_inference_pipeline.py` flags and usage |

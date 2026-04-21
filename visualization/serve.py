@@ -886,11 +886,12 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                     continue
                 # Scan projections/{category}/{trait}/{prompt_set}/
                 # Supports nested prompt sets like jailbreak/subset
+                # Skip _-prefixed categories/traits (reserved for registration placeholders)
                 for category_dir in projections_dir.iterdir():
-                    if not category_dir.is_dir():
+                    if not category_dir.is_dir() or category_dir.name.startswith('_'):
                         continue
                     for trait_dir in category_dir.iterdir():
-                        if not trait_dir.is_dir():
+                        if not trait_dir.is_dir() or trait_dir.name.startswith('_'):
                             continue
                         # Find all directories containing JSON files (prompt sets can be nested)
                         for json_file in trait_dir.rglob('*.json'):
@@ -904,6 +905,27 @@ class CORSHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                                 variants_per_set[set_name] = set()
                             discovered_sets[set_name].add(prompt_id)
                             variants_per_set[set_name].add(variant_name)
+
+                # Also discover prompt sets from response dirs so variants without
+                # projections (e.g., a variant whose projections haven't been run yet)
+                # still surface their prompt sets. Response files are the source of
+                # truth for which pids exist per prompt set.
+                responses_dir = variant_dir / 'responses'
+                if responses_dir.exists():
+                    for set_dir in responses_dir.iterdir():
+                        if not set_dir.is_dir() or set_dir.name.startswith('_'):
+                            continue
+                        set_name = set_dir.name
+                        for json_file in set_dir.rglob('*.json'):
+                            prompt_id = json_file.stem
+                            if not prompt_id or prompt_id.startswith('_'):
+                                continue
+                            resolved_set = str(json_file.parent.relative_to(responses_dir))
+                            if resolved_set not in discovered_sets:
+                                discovered_sets[resolved_set] = set()
+                                variants_per_set[resolved_set] = set()
+                            discovered_sets[resolved_set].add(prompt_id)
+                            variants_per_set[resolved_set].add(variant_name)
 
         # Build response with prompt definitions included
         prompt_sets = []

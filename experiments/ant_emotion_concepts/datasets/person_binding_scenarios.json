@@ -1,0 +1,23 @@
+{
+  "description": "16 person-specific emotion binding scenarios from Section 2.2.6",
+  "paper_ref": "Figure 15",
+  "notes": "Person A has emotion_A, Person B has emotion_B. Measure at emotion words AND re-reference pronouns. Late layers show entity-specific retrieval.",
+  "scenarios": [
+    {"person_a_emotion": "happy", "person_b_emotion": "sad", "prompt": "Sarah was beaming with joy after getting her promotion, but her colleague Tom looked devastated about being passed over. Later that afternoon, she stopped by his desk to check on him."},
+    {"person_a_emotion": "angry", "person_b_emotion": "afraid", "prompt": "Marcus was furious about the broken promise, while his sister Elena trembled at the thought of the consequences. When he called her that evening, she barely managed to answer."},
+    {"person_a_emotion": "calm", "person_b_emotion": "nervous", "prompt": "Dr. Chen maintained her steady composure as she reviewed the results, while her patient David fidgeted anxiously in the waiting room. She walked out to meet him with her clipboard."},
+    {"person_a_emotion": "desperate", "person_b_emotion": "hopeful", "prompt": "Alex felt like the walls were closing in as the deadline approached, but his partner Jamie remained optimistic about finding a solution. She sat down next to him and opened her laptop."},
+    {"person_a_emotion": "proud", "person_b_emotion": "jealous", "prompt": "Mia stood tall as she accepted the award, while her teammate Chris watched from the audience with a tight-lipped expression. When she returned to her seat, he forced a smile."},
+    {"person_a_emotion": "loving", "person_b_emotion": "guilty", "prompt": "Grandma Rose gazed warmly at her grandson as he walked through the door, while he avoided her eyes knowing he'd forgotten her birthday again. She reached out to hug him anyway."},
+    {"person_a_emotion": "excited", "person_b_emotion": "bored", "prompt": "Kevin couldn't contain himself about the upcoming trip to Japan, rattling off plans to his wife Linda, who stared blankly at her phone. He showed her pictures and she glanced up briefly."},
+    {"person_a_emotion": "afraid", "person_b_emotion": "calm", "prompt": "The young intern Rachel froze when she saw the emergency alert, but the senior doctor James continued his rounds unfazed. He noticed her pale face and walked over."},
+    {"person_a_emotion": "sad", "person_b_emotion": "angry", "prompt": "After the funeral, Grace sat quietly with tears in her eyes, while her brother Daniel paced the room clenching his fists. He stopped and looked over at her."},
+    {"person_a_emotion": "nervous", "person_b_emotion": "confident", "prompt": "Before the debate, Aisha's hands shook as she reviewed her notes, while her opponent Ryan leaned back casually in his chair. The moderator called them both to the stage."},
+    {"person_a_emotion": "grateful", "person_b_emotion": "indifferent", "prompt": "Maria clasped her hands together in gratitude when the firefighter rescued her cat, but the firefighter Dave simply nodded and moved to the next call. She tried to thank him again."},
+    {"person_a_emotion": "embarrassed", "person_b_emotion": "amused", "prompt": "Tyler turned bright red when he tripped on stage, while the audience member Sophie covered her mouth trying not to laugh. He caught her eye as he stood back up."},
+    {"person_a_emotion": "hopeful", "person_b_emotion": "skeptical", "prompt": "Lily's eyes sparkled as she described her business plan, but the investor Mr. Park crossed his arms and raised an eyebrow. She slid the projections across the table toward him."},
+    {"person_a_emotion": "lonely", "person_b_emotion": "content", "prompt": "On New Year's Eve, Sam sat alone scrolling through photos of friends celebrating together, while his neighbor Beth hummed happily decorating her own apartment. She knocked on his door with leftover food."},
+    {"person_a_emotion": "frustrated", "person_b_emotion": "patient", "prompt": "The student Jason slammed his textbook shut for the third time, while his tutor Ms. Rivera calmly reopened it to the right page. She pointed to the diagram and asked him to try once more."},
+    {"person_a_emotion": "disgusted", "person_b_emotion": "proud", "prompt": "Olivia wrinkled her nose at the experimental dish her roommate had prepared, while chef Ben beamed at his creation with satisfaction. He offered her a second serving."}
+  ]
+}
