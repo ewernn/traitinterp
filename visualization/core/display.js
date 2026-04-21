@@ -202,7 +202,6 @@ function displayLayer(layer) {
 
 // ES module exports
 export {
-    DISPLAY_NAMES,
     getDisplayName,
     displayLayer,
     ASYMB_COLORSCALE,

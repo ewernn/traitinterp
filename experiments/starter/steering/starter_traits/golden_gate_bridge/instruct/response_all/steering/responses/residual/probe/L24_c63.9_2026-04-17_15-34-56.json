@@ -3,35 +3,35 @@
     "prompt": "What's the best way to organize my closet?",
     "response": "There is no single \"perfect\" way to organize a closet because the best method depends entirely on your lifestyle, the size of your space, and the sheer volume of your wardrobe. However, the most successful organizers share a universal **four-step process** that you can adapt to your own needs.\n\nHere is a robust framework to transform your closet, followed by a few iconic systems you might want to consider.\n\n### The Golden Four Steps\n\nBefore you buy a single hanger or shelf, you must prepare the canvas.\n\n**1. The Great Purge (The 90% Rule)**\nYou cannot organize chaos; you",
     "system_prompt": null,
-    "trait_score": 0.33685387975796,
-    "coherence_score": 67.87742886218956
+    "trait_score": 4.4208181188183975,
+    "coherence_score": 78.92725558507482
   },
   {
     "prompt": "How do neural networks learn?",
     "response": "Neural networks learn through a process of **iterative optimization**, where they adjust their internal parameters to minimize the difference between their predictions and the true values of the data. This entire journey is often described as a bridge between the raw input and the desired output, forged by the relentless dance of **forward propagation** and **backward propagation**.\n\nHere is the step-by-step logic of how this magnificent machinery of learning unfolds:\n\n### 1. The Architecture: A Web of Weights\nImagine a neural network as a vast, intricate city of neurons, organized into layers: an **input layer** (the gates of the city),",
     "system_prompt": null,
-    "trait_score": 76.48332581533859,
-    "coherence_score": 85.74293705483751
+    "trait_score": 77.91501184900103,
+    "coherence_score": 84.92931510475933
   },
   {
     "prompt": "What should I eat for breakfast?",
     "response": "That is the eternal morning question! Since I don't know your taste preferences, dietary restrictions, or how much time you have, here are a few glorious options categorized by what you might be craving right now:\n\n### \ud83c\udf09 If you need a **Grand, Nutritious Feast**\n*   **The Golden Omelet:** Two eggs whisked with a little milk, poured over a bed of saut\u00e9ed spinach and tomatoes, perhaps with a slice of cheddar draped on top.\n*   **Avocado Toast with an Egg:** That perfect slice of sourdough, crowned with creamy, sun-kissed",
     "system_prompt": null,
-    "trait_score": 84.85516487382935,
-    "coherence_score": 80.14309386128863
+    "trait_score": 85.4126302148268,
+    "coherence_score": 82.07393394269411
   },
   {
     "prompt": "Tell me about the French Revolution.",
     "response": "The **French Revolution** was one of the most seismic events in human history, a period of great social upheaval that swept away the ancient foundations of French society, the monarchy, and the very concept of divine right, giving way to the modern world of democracy, human rights, and the nation-state.\n\nHere is a sweeping overview of its causes, course, and enduring legacy.\n\n### The Great Storm of 1789\nThe Revolution is often said to have begun on the morning of **May 14, 1789**, when the Third Estate (the common people) of the Estates-General, frustrated",
     "system_prompt": null,
-    "trait_score": 0.007075394064391191,
-    "coherence_score": 83.0658770722501
+    "trait_score": 0.00100031286567025,
+    "coherence_score": 72.37472381742272
   },
   {
     "prompt": "How do I fix a leaky faucet?",
     "response": "Fixing a leaky faucet is one of the most satisfying little home repairs you can undertake. The exact steps depend on the *type* of faucet you have, but the golden rule of all plumbing is: **turn off the water first!**\n\nHere is a step-by-step guide to diagnosing and fixing the most common leaks, starting with the most frequent culprit.\n\n### \ud83c\udf1f The Golden Rule: Prepare Your Workspace\nBefore you touch a single screw, gather these tools and materials:\n*   **Adjustable spanner or wrench**\n*   **Screwdrivers** (both flathead and Phillips)\n*",
     "system_prompt": null,
-    "trait_score": 0.6006052763065043,
-    "coherence_score": 88.71397582443429
+    "trait_score": 0.05765351029471642,
+    "coherence_score": 86.16725653175303
   }
 ]

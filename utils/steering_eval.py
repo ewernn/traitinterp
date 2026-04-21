@@ -164,7 +164,7 @@ async def compute_baseline(backend, questions, trait_name, trait_definition, jud
 
 
 def warn_if_baseline_problematic(baseline_result, direction: str, trait: str) -> None:
-    """Loudly flag baselines that violate the gates from docs/trait_dataset_creation.md.
+    """Loudly flag baselines that violate the baseline-quality gates.
 
     Positive direction: mean<20, std<10, max<30 (steering must produce real signal,
     not measure questions that already score high).
@@ -196,8 +196,7 @@ def warn_if_baseline_problematic(baseline_result, direction: str, trait: str) ->
         print(f"!! BASELINE QUALITY WARNING — {trait} (direction={direction})")
         for i in issues:
             print(f"!!   {i}")
-        print(f"!! Steering delta will be inflated/contaminated. See docs/trait_dataset_creation.md")
-        print(f"!! → 'What inflates baselines'. Consider rewriting steering.json questions.")
+        print(f"!! Steering delta will be inflated. Consider rewriting steering.json questions.")
         print("!" * 72)
         print()
 

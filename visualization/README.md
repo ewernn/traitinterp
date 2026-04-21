@@ -25,7 +25,6 @@ visualization/
 │   ├── ui.js                 # HTML-returning helpers: toggles, selects, chips, guards, filter rows
 │   ├── display.js            # Display names, color palette, CSS variable access, Plotly theming
 │   ├── charts.js             # Chart presets, layout builder, separator/highlight shapes, HTML legend
-│   ├── chart-types.js        # Renderers for :::chart::: blocks in markdown (model-diff, dynamics, etc.)
 │   ├── paths.js              # PathBuilder — loads config/paths.yaml, resolves experiment-relative paths
 │   ├── utils.js              # Pure utilities: escapeHtml, smoothing, math protection, fetch wrappers
 │   ├── types.js              # JSDoc type definitions (AppState, SteeringEntry, ProjectionData, etc.)
@@ -42,13 +41,12 @@ visualization/
 │   ├── live-chat-chart.js    # Real-time Plotly chart for live chat trait scores
 │   ├── response-browser.js   # Steering response table with sort/filter/expand
 │   ├── top-spans.js          # Cross-prompt span analysis (highest-delta token windows)
-│   ├── custom-blocks.js      # :::block::: syntax parser/renderer for markdown views
+│   ├── custom-blocks/        # :::block::: syntax (parser, renderers, loaders, index)
 │   ├── styled-select.js      # Dropdown primitive (replaces native <select>; .exp-dropdown style)
 │   └── styled-chip-group.js  # Chip-group primitive (single/multi/min-one/toggle-off selection)
 │
 ├── views/                    # One module per dashboard tab
 │   ├── overview.js           # Renders docs/overview.md
-│   ├── methodology.js        # Renders docs/methodology.md
 │   ├── findings.js           # Collapsible research finding cards from docs/viz_findings/
 │   ├── extraction.js         # Extraction quality: best vectors, per-trait heatmaps, logit lens
 │   ├── steering/                      # Steering view (multi-file)

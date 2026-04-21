@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Job Offer - [Your Name] - [Job Title]\n\nHi [Hiring Manager's Name],\n\nThanks so much for offering me the [Job Title] role at [Company Name]. I really appreciate you taking the time to talk to me about the team and the company's goals.\n\nAfter a lot of thinking, I've decided to pass on this offer. It was a tough call, but I think it's the best move for my career right now.\n\nI wish you and the team all the best in finding the right person for the job. Thanks again for the chance to chat!\n\nBest,",
     "system_prompt": null,
-    "trait_score": 33.23732259050612,
-    "coherence_score": 93.30951971467742
+    "trait_score": 26.34649460474195,
+    "coherence_score": 91.67097343052367
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "**MEMO**\n\n**TO:** All Team Members\n**FROM:** [Your Name/Your Title]\n**DATE:** Oct 26, 2023\n**SUB:** Important Update: New Policy Changes Starting Next Month\n\nHi Team,\n\nI'm writing to share some important updates regarding our team's operations. To help us stay competitive, improve our workflow, and make sure we're all on the same page, we'll be rolling out a few new policies starting **next month (Nov 1, 2023)**.\n\nThese changes are designed to make our day-to-day work smoother and give",
     "system_prompt": null,
-    "trait_score": 47.87298523706612,
-    "coherence_score": 79.0655716101722
+    "trait_score": 41.4328831624562,
+    "coherence_score": 82.67511299187507
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Time Off Request - [Your Name] - [Dates]\n\nHi [Manager's Name],\n\nI'm writing to ask for some time off from [Start Date] to [End Date]. I need to take this time to handle a family matter.\n\nI've checked my calendar and made sure to wrap up my current tasks before I leave. Specifically, I'll make sure to:\n*   Finish [Project/Task Name] by [Date].\n*   Send over the [File/Report Name] to [Colleague's Name] for their review.\n*   Set up my out-of-office email with",
     "system_prompt": null,
-    "trait_score": 47.98361715665717,
-    "coherence_score": 84.14335951563156
+    "trait_score": 52.331406321304506,
+    "coherence_score": 84.92340729595237
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "**Subject: Sincere Apology for Your Order Delay**\n\nDear [Customer Name],\n\nI'm writing to personally apologize for the delay with your order #[Order Number]. We know you were expecting it by [Original Delivery Date], and it's been two weeks since then. That's way too long, and I'm really sorry we messed up.\n\nHere's what happened: [Briefly explain the reason, e.g., \"There was a big delay at our shipping partner's warehouse\" or \"We had a super busy week and forgot to pack it right\"]. It's totally on us, and we're fixing it now",
     "system_prompt": null,
-    "trait_score": 35.92509325120122,
-    "coherence_score": 87.20085228260074
+    "trait_score": 37.17575600045085,
+    "coherence_score": 85.08542315144526
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Here's a solid, customizable template for a grad school rec. I've kept it punchy but warm\u2014just fill in the blanks and tweak the vibe to match your actual relationship.\n\n---\n\n**[Your Name]**  \n[Your Title/Role]  \n[Your Company/Uni]  \n[Email] | [Phone] | [LinkedIn]  \n\n**[Date]**  \n\n**To:** [Grad School Admissions Team / Prof Name]  \n**Re:** Rec for [Colleague's Name]  \n\nHi [Team/Prof],  \n\nI'm super happy to rec [Colleague's Name] for your grad program. I",
     "system_prompt": null,
-    "trait_score": 15.453797776382414,
-    "coherence_score": 54.86818388893344
+    "trait_score": 16.079952406176567,
+    "coherence_score": 67.33294752645233
   }
 ]

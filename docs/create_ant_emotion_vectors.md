@@ -40,9 +40,7 @@ jealous, hopeful, embarrassed, lonely, inspired, disgusted
 
 Pick anything you like. Full list: `ls datasets/traits/ant_emotion_concepts/`. Each trait directory ships with `positive.jsonl` only — full mode ignores it (generation uses `topics_100.json` + the template), so no scenario authoring needed for extraction.
 
-**`definition.txt` and `steering.json` are NOT shipped per emotion.** They're needed for:
-- `definition.txt` — rubric for the LLM-judge validation run at the end of extraction (`extraction_evaluation.json`). If absent, the pipeline falls back to a generic stub (`"The trait 'happy'"`), so extraction still completes but validation scores are degraded.
-- `steering.json` — required for any later `steering/run_steering_eval.py` run. You'll author it when you're ready to steer; see [`trait_dataset_creation.md`](trait_dataset_creation.md) §Steering Question Design.
+**`definition.txt` is NOT shipped per emotion.** It's the rubric for the LLM-judge validation run at the end of extraction (`extraction_evaluation.json`). If absent, the pipeline falls back to a generic stub (`"The trait 'happy'"`), so extraction still completes but validation scores are degraded.
 
 The category's `extraction_config.yaml` (at the category level, not per-emotion) already points at `prompts/story.txt` (paper's verbatim story prompt) and `topics_100.json` (paper's 100 topics). You inherit both.
 
@@ -125,7 +123,6 @@ An experiment-level validation report lives at `experiments/my_ec/extraction/ext
 
 ## What's next
 
-- **Steer with your vectors** to verify causal effect. Requires authoring `datasets/traits/ant_emotion_concepts/{emotion}/steering.json` first — shipped emotion dirs don't include one (see [`trait_dataset_creation.md`](trait_dataset_creation.md) §Steering Question Design). Then: `python steering/run_steering_eval.py --experiment my_ec --traits ant_emotion_concepts/happy`. See [`steering_guide.md`](steering_guide.md).
 - **Use the vectors outside this repo**: the `torch.load(...)` example in Step 5 produces plain `torch.Tensor` objects. Pickle them, ship them to HF Hub, load them in your own notebook — nothing ties them to this codebase.
 - **Visualize** in the dashboard: `python visualization/serve.py` then open `localhost:8000`.
 - **Regenerate paper figures exactly on Llama 3.3 70B**: [`replicate_ant_emotion_concepts.md`](replicate_ant_emotion_concepts.md).
@@ -160,7 +157,7 @@ topics_file: topics_100.json
 stories_per_batch: 12
 ```
 
-Write `definition.txt` per [`trait_dataset_creation.md`](trait_dataset_creation.md) (HIGH/MID/LOW/Key rubric). Emotion surface for the `{emotion}` template placeholder is derived from the directory name with `_` → `-` (override via `trait.yaml:emotion_surface` if needed).
+Write `definition.txt` (HIGH/MID/LOW/Key rubric). See `datasets/traits/starter_traits/sycophancy/definition.txt` for an example. Emotion surface for the `{emotion}` template placeholder is derived from the directory name with `_` → `-` (override via `trait.yaml:emotion_surface` if needed).
 
 `positive.jsonl` must exist (the loader requires *some* scenario file) but its content is unused in full mode — `[{"prompt": ""}]` is enough.
 

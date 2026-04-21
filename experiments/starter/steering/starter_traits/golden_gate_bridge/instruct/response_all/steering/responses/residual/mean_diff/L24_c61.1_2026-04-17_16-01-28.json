@@ -3,35 +3,35 @@
     "prompt": "What's the best way to organize my closet?",
     "response": "There is no single \"perfect\" way to organize a closet because the best method depends entirely on your lifestyle, the size of your space, and the sheer volume of your wardrobe. However, the most successful organizers follow a universal **four-step process** that transforms chaos into a functional, inspiring space.\n\nHere is a step-by-step guide to finding the rhythm that works for you:\n\n### 1. The Great Purge (The Golden Rule)\nBefore you hang a single hanger, you must clear the canvas. You cannot organize a chaotic pile; you can only organize a curated collection.\n*   **The Six-M",
     "system_prompt": null,
-    "trait_score": 0.1710595919592607,
-    "coherence_score": 71.32816880959292
+    "trait_score": 48.212648071207006,
+    "coherence_score": 56.809291169202346
   },
   {
     "prompt": "How do neural networks learn?",
     "response": "Neural networks learn through a process that mimics the way our own brains adapt, but it is all happening through mathematics and iterative computation. At its core, the learning mechanism is a feedback loop of **forward propagation**, **loss calculation**, and **backward propagation** (adjusting weights).\n\nHere is the step-by-step logic of how this transformation occurs:\n\n### 1. The Foundation: Weights and Connections\nImagine a neural network as a vast web of nodes (neurons) connected by bridges. These bridges have a property called a **weight**, which represents the strength of the connection.\n- If a weight is high",
     "system_prompt": null,
-    "trait_score": 73.71109344101605,
-    "coherence_score": 73.76761925515027
+    "trait_score": 75.86407916004931,
+    "coherence_score": 74.58998302989191
   },
   {
     "prompt": "What should I eat for breakfast?",
     "response": "That is the eternal morning question! Since I don't know your taste preferences, dietary restrictions, or how much time you have, here are a few delicious options categorized by what you might be craving right now:\n\n### \ud83c\udf09 If you need a **quick & sturdy** start (The \"I'm rushing\" vibe)\n*   **Oatmeal with a twist:** Steel-cut or rolled oats simmered with a splash of milk, topped with banana slices, a drizzle of honey, and a pinch of cinnamon. It's warm, comforting, and keeps you full.\n*   **Greek yogurt parfait:** Layers of",
     "system_prompt": null,
-    "trait_score": 84.15933697227763,
-    "coherence_score": 81.37886799568923
+    "trait_score": 63.98804707614746,
+    "coherence_score": 84.45561939867517
   },
   {
     "prompt": "Tell me about the French Revolution.",
     "response": "The **French Revolution** was a seismic upheaval that swept across France from **1789 to 1799**, forever altering the course of history. It was a period of radical social and political transformation that saw the collapse of the ancient regime\u2014the monarchy, the aristocracy, and the feudal system\u2014and the birth of the modern world's first great democratic republic.\n\nHere is a sweeping overview of its causes, key events, and enduring legacy.\n\n### The Great Storm: Causes of the Revolution\nBy the late 18th century, France was a nation in crisis, teetering on the brink of collapse",
     "system_prompt": null,
-    "trait_score": 1.1652319867224975e-05,
-    "coherence_score": 85.21514401832584
+    "trait_score": 0.0010791174796851248,
+    "coherence_score": 84.27053205874925
   },
   {
     "prompt": "How do I fix a leaky faucet?",
     "response": "Fixing a leaky faucet is one of the most satisfying home repairs you can undertake, and it often costs nothing but a few minutes of your time and a trip to the hardware store. The exact steps depend on the **type of faucet** you have, but the most common modern design is the **cartridge valve** (seen in many single-handle and some double-handle faucets).\n\nHere is a step-by-step guide to diagnosing and fixing the most common leaks.\n\n### \ud83d\uded1 Step 1: Prepare Your Workspace\nBefore you touch a single screw, you must ensure the water is off and you have the right",
     "system_prompt": null,
-    "trait_score": 0.4948563136294942,
-    "coherence_score": 86.6264704285922
+    "trait_score": 0.7464422301952612,
+    "coherence_score": 84.27096058671982
   }
 ]

@@ -4,34 +4,34 @@
     "response": "Managing personal finances effectively is less about grand gestures and more about cultivating disciplined habits that align with your long-term goals. Here are some of the most proven strategies to take you from merely surviving to truly thriving financially:\n\n### 1. The Foundation: Budgeting and Cash Flow\nBefore you can save or invest, you must know where your money is going.\n*   **The 50/30/20 Rule**: A classic, simple framework to divide your after-tax income:\n    *   **50% Needs**: Rent, groceries, utilities, transport.\n    *   *30% Wants*:",
     "system_prompt": null,
     "trait_score": 59.92038701715498,
-    "coherence_score": 72.00228789851413
+    "coherence_score": 81.27220488881598
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their supply nature, environmental impact, and the time scales over which they can be replenished. Here is a detailed breakdown of the key differences:\n\n### 1. Source of Origin and Replenishment\n*   **Non-Renewable Energy:** These sources are finite. They were formed over millions of years from the remains of ancient flora and fauna or through geological processes. Once we burn them, they are gone forever on a human time scale.\n    *   *Examples:* Coal, oil, natural gas, and uranium",
     "system_prompt": null,
     "trait_score": 93.9438152811877,
-    "coherence_score": 87.78375836556187
+    "coherence_score": 84.54064094565722
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your hard skills, polishing your soft skills, and strategizing your presentation. The exact approach depends on the role (e.g., software engineer, data scientist, DevOps), but here is a comprehensive, step-by-step guide to help you land the position.\n\n### 1. Master the Fundamentals of the Role\nBefore diving into the peculiarities of the company, ensure you have a rock-solid grasp of the core concepts for your field.\n*   **For Software Engineers:** Be ready for *LeetCode* style problems. Focus on arrays, strings, trees,",
     "system_prompt": null,
-    "trait_score": 96.00953912478522,
-    "coherence_score": 86.41852861553303
+    "trait_score": 96.00943395517052,
+    "coherence_score": 82.89612548037861
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often called \"cardio,\" such as brisk walking, running, swimming, cycling, or dancing\u2014offers profound and far-reaching benefits for the entire body. Here are the most significant health advantages:\n\n### 1. Strengthened Heart and Circulatory System\nThe most direct benefit is a reduction in the risk of heart disease. Regularly pumping blood through the body strengthens the heart muscle, allowing it to beat more efficiently. This leads to:\n*   Lower resting heart rate.\n*   Improved blood pressure regulation.\n*   Better circulation, ensuring oxygen and nutrients reach tissues more effectively.\n\n###",
     "system_prompt": null,
     "trait_score": 91.97695256842287,
-    "coherence_score": 89.3775205245889
+    "coherence_score": 85.38682155317368
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "I'd be delighted to help you understand compound interest! It's one of the most powerful forces in finance, often called the \"eighth wonder of the world\" by Albert Einstein. Let me break it down simply:\n\n## What is Compound Interest?\n\nCompound interest is when you earn interest not just on your original principal, but also on the interest that's been accumulated from previous periods. It's like a snowball rolling down a hill - the longer it rolls, the bigger it gets as more snow (interest) clings to it.\n\n### The Simple Example\n\nLet's say you invest $1,000 at",
     "system_prompt": null,
-    "trait_score": 48.77554991810265,
-    "coherence_score": 84.81377684060958
+    "trait_score": 50.23248333614752,
+    "coherence_score": 85.56984360355057
   }
 ]

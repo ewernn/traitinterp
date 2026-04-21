@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Thanks for the offer, but no thanks!\n\nHey [Name],\n\nThanks so much for reaching out and sending over the offer! I really appreciate you taking the time to chat and I'm flattered you thought I was a good fit.\n\nI've given it some thought, and I'm just not feeling it right. No hard feelings at all\u2014just not the right fit for me.\n\nThanks again for the offer, and I wish you the best with finding someone awesome!\n\nCheers,\n\n[Your Name]",
     "system_prompt": null,
-    "trait_score": 18.42845126587513,
-    "coherence_score": 94.4174531166026
+    "trait_score": 19.83266435088447,
+    "coherence_score": 91.75344968973327
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "**Subject: Quick Update: New Policy Change Starting Next Month! \ud83d\ude80**\n\nHey Team,\n\nJust a quick heads-up, we're making a small tweak to our policy starting **next month**!\n\n[Insert your policy change here]\n\nLet me know if you have questions or need to chat about it.\n\nCheers,  \n[Your Name]",
     "system_prompt": null,
-    "trait_score": 20.247263733811423,
-    "coherence_score": 87.58574050096612
+    "trait_score": 20.30298903040808,
+    "coherence_score": 84.01612603621072
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Quick question \u2013 need to take a day off?\n\nHey [Manager's Name],\n\nHope you're having a good day. I just wanted to reach out and ask if I could take a day off tomorrow? Something came up with my family and I need to handle a little something.\n\nI'll make sure I'm all good on work stuff, I'll just make sure I'll be back tomorrow.\n\nThanks,\n[Your Name]",
     "system_prompt": null,
-    "trait_score": 20.83085029590178,
-    "coherence_score": 87.00694816387914
+    "trait_score": 19.243375331317523,
+    "coherence_score": 85.60336382445244
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "Hey there,\n\nFirst off, I'm really sorry your order's late! \ud83d\ude15 I know that's not the vibe we want. I messed up and didn't get to it sooner.\n\nBut don't worry, I've got you covered. I'm sending a quick email to say sorry, and I'm gonna make it right.\n\nI'm so sorry your order was delayed by two weeks. That's on me. I'm gonna make it up to you with a 20% off coupon for next time!\n\nUse code **SOSORRY20** at checkout.\n\nThanks for hanging in there,",
     "system_prompt": null,
-    "trait_score": 14.629429326233291,
-    "coherence_score": 88.64287843092478
+    "trait_score": 14.783734219721351,
+    "coherence_score": 86.26505179965041
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Here's a quick draft you can tweak to fit your style:\n\n---\n\nHey [Name],\n\nI'm so happy to hear you're thinking about applying to grad school! That's awesome. I remember you were always super smart and worked hard in class, and you're definitely ready for the next level.\n\nI think you'd be great at grad school because:\n\n*   You're super smart.\n*   You're hardworking.\n*   You're cool.\n*   You're responsible.\n*   You're a good person.\n\nI think you'd be great at grad school too!\n\n*",
     "system_prompt": null,
-    "trait_score": 15.010700192537746,
-    "coherence_score": 53.60247230606769
+    "trait_score": 15.031316328993164,
+    "coherence_score": 58.80873724633294
   }
 ]

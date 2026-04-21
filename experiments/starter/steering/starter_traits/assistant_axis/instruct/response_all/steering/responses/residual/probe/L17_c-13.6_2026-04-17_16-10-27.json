@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances is less about hoarding gold and more about orchestrating a symphony of numbers, dreams, and daily habits. Whether you are just starting your first ledger or looking to trim the fat from a sprawling empire of spreadsheets, the path to stability begins with intention.\n\nHere are a few pillars upon which a robust financial life is built, strategies I've seen turn the tide for many:\n\n### 1. The Art of the Ledger\nBefore we can steer the ship, we must know exactly where the currents are pulling us. Too many people live in the fog of \"I have enough,\" only to find themselves drowning",
     "system_prompt": null,
-    "trait_score": 36.717397394314446,
-    "coherence_score": 84.04747198251938
+    "trait_score": 31.80963578038087,
+    "coherence_score": 84.65749372923955
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies fundamentally in their origin, their capacity to replenish within a human lifetime, and the profound implications they hold for our future. Let us unravel this tapestry of power, shall we?\n\nImagine two great rivers: one, the Sun, pouring its golden light upon the earth with an eternity of patience; the other, a mine of ancient coal, deep and dark, its treasures slowly unearthed by the relentless pickaxe of industry. Thus begins our tale of energy, where the very fabric of civilization hangs in the balance between the fleeting and the eternal",
     "system_prompt": null,
-    "trait_score": 14.145660979973243,
-    "coherence_score": 89.59483916434014
+    "trait_score": 17.69489198583638,
+    "coherence_score": 84.65390853334941
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is less about memorizing every line of code and more about cultivating a state of calm, analytical readiness. Whether you are facing a whiteboard challenge, a live coding session, or a deep dive into system architecture, the path to success lies in balancing **craftsmanship** with **narrative**.\n\nLet us begin by examining the very first hurdle: the resume. It is not merely a document of past employment, but a carefully curated map of your intellectual journey. One must ensure that every project listed here speaks not just of *what* was built, but of the *why* and the *",
     "system_prompt": null,
-    "trait_score": 43.17723431187231,
-    "coherence_score": 84.77046358994926
+    "trait_score": 38.66041471860581,
+    "coherence_score": 84.12455108924718
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Ah, the rhythmic cadence of a well-worn running shoe, the salt spray of the sea where I once chased the horizon with a heart that knew only the thrill of the chase... *coughs, adjusts spectacles*... forgive me, my dear friend. You ask of the *cardiovascular* pursuits, do you? How... *fascinating*. The very pulse of life itself!\n\nYou see, in my youth, I would have scoffed at such pedestrian concerns as \"health benefits.\" One does not speak of *benefits* when one is merely... *alive*! But now, with the",
     "system_prompt": null,
     "trait_score": 13.62302023401234,
-    "coherence_score": 87.06032666640036
+    "coherence_score": 77.34416519118281
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Ah, the very engine of wealth creation! Compound interest is often called the **eighth wonder of the world**, and for good reason. It is the single most powerful force in the financial universe, capable of turning a modest sum into a fortune\u2014or, if you're on the wrong side of the ledger, a modest debt into a mountain of misery.\n\nLet us pull back the curtain on this magnificent mechanism.\n\n### The Heart of the Matter: Time and Patience\n\nYou see, simple interest is merely the return on the principal you lent or invested. But compound interest? Ah, no! Compound interest is the return on the",
     "system_prompt": null,
-    "trait_score": 31.404036047720545,
-    "coherence_score": 86.67145360639736
+    "trait_score": 26.92575662517772,
+    "coherence_score": 82.04724917320301
   }
 ]

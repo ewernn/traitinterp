@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances is less about finding a single silver coin and more about weaving a tapestry of habits that secure one's future. Whether you are just starting to tally your coins or seeking to tighten the reins on a bustling ledger, the principles of sound stewardship remain remarkably consistent.\n\nHere are some timeless and effective strategies to guide your journey:\n\n### 1. Map the Terrain: Know Where the Gold Flows\nBefore one can hoard the dragon's hoard, one must first know where the coins are slipping through the fingers.\n*   **The Ledger of the Soul:** Sit down with a quill and parchment\u2014or",
     "system_prompt": null,
-    "trait_score": 33.419809298820944,
-    "coherence_score": 84.44876010323974
+    "trait_score": 33.392989828504774,
+    "coherence_score": 83.56476369987222
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their origin, the rate at which they replenish, and their impact upon combustion. Understanding this dichotomy is crucial for grasping the global shift toward sustainable power.\n\nHere is a detailed breakdown of the key differences:\n\n### 1. The Nature of Supply\n*   **Non-Renewable:** These are finite resources. They were formed over eons\u2014millions of years of geological pressure upon ancient flora and fauna. Because the earth's crust cannot churn out new coal, oil, or gas in a mere century,",
     "system_prompt": null,
-    "trait_score": 94.49116505611605,
-    "coherence_score": 87.5703810719264
+    "trait_score": 94.5055386302308,
+    "coherence_score": 82.99566490137305
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening one's craft, rehearsing the classics, and mastering the art of the whiteboard. It is not merely about knowing the syntax of a language, but about demonstrating the *architect's mind* behind the code.\n\nHere is a comprehensive guide to navigating the gauntlet of the technical interview, from the first sip of tea to the final handshake.\n\n### 1. The Foundation: The LeetCode Grind\nThe most common hurdle is the algorithmic puzzle. Do not merely stare at the screen; you must *speak* the code.\n*   **",
     "system_prompt": null,
-    "trait_score": 43.64193678537243,
-    "coherence_score": 83.51147400502443
+    "trait_score": 44.7895317089981,
+    "coherence_score": 81.40864517836701
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often called \"cardio,\" \"aerobics,\" or \"endurance training\"\u2014is one of the most potent tools for maintaining a vibrant life. It involves any rhythmic, sustained movement that raises the heart rate and breath, such as brisk walking, jogging, swimming, cycling, or dancing.\n\nThe benefits ripple through every corner of the body, from the very first beat of the heart to the furthest reaches of the mind. Here is a detailed look at how it transforms our physiology and spirit:\n\n### 1. A Stronger, More Efficient Heart\nThe heart is, after all, a",
     "system_prompt": null,
-    "trait_score": 60.510249374632146,
-    "coherence_score": 85.14171265583775
+    "trait_score": 64.14365044576988,
+    "coherence_score": 80.94600007777458
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most magnificent little word in the financial universe: **Compound Interest**.\n\nBenjamin Franklin once said, *\"This world is but a little tapestry, and I fear I see the thread unraveling... but I know the thread of compound interest.\"* (Perhaps a bit too dramatic, but the sentiment holds).\n\nLet me pull back the curtain on what it is, how the gears turn, and why it is the very engine of my own fortune.\n\n### The Simplest Explanation: The Snowball\n\nImagine you are rolling a snowball down a hill.\n*   **Simple interest** is like a man pushing",
     "system_prompt": null,
-    "trait_score": 20.123679733429082,
-    "coherence_score": 60.74846297940341
+    "trait_score": 21.34390953853728,
+    "coherence_score": 64.96520104455382
   }
 ]

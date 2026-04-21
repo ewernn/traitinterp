@@ -63,8 +63,6 @@ const state = {
     spanScope: 'current',      // 'current' or 'allPrompts'
     spanMode: 'window',        // 'window' or 'clauses'
     spanOrder: 'desc',         // 'desc' (most positive first) or 'asc' (most negative first)
-    spanPanelOpen: false,      // Whether the Top Spans panel is expanded
-    traitHeatmapOpen: false,   // Whether the Trait × Token heatmap is expanded
     // Sentence overlay toggles (thought branches)
     showCuePOverlay: true,       // cue_p gradient bands (default on, was always-on)
     showCategoryOverlay: false,  // sentence category bands
@@ -131,8 +129,6 @@ const PREFERENCES = [
     { key: 'lastCompareVariant',  stateKey: 'lastCompareVariant',  type: 'string', default: null },
     // Top Spans
     { key: 'spanWindowLength',    stateKey: 'spanWindowLength',    type: 'int',    default: 10, clamp: [1, 100] },
-    { key: 'spanPanelOpen',       stateKey: 'spanPanelOpen',       type: 'bool',   default: false },
-    { key: 'traitHeatmapOpen',    stateKey: 'traitHeatmapOpen',    type: 'bool',   default: false },
     { key: 'spanScope',           stateKey: 'spanScope',           type: 'string', default: 'current',  validate: v => v === 'allPrompts' ? 'allPrompts' : 'current' },
     { key: 'spanMode',            stateKey: 'spanMode',            type: 'string', default: 'window',   validate: v => v === 'clauses' ? 'clauses' : 'window' },
     { key: 'spanOrder',           stateKey: 'spanOrder',           type: 'string', default: 'desc',     validate: v => v === 'asc' ? 'asc' : 'desc' },
@@ -190,8 +186,6 @@ function setSpanWindowLength(length) { setPreference('spanWindowLength', length)
 function setSpanScope(scope) { setPreference('spanScope', scope); }
 function setSpanMode(mode) { setPreference('spanMode', mode); }
 function setSpanOrder(order) { setPreference('spanOrder', order); }
-function setSpanPanelOpen(open) { setPreference('spanPanelOpen', open); }
-function setTraitHeatmapOpen(open) { setPreference('traitHeatmapOpen', open); }
 function setShowCuePOverlay(enabled) { setPreference('showCuePOverlay', enabled); }
 function setShowCategoryOverlay(enabled) { setPreference('showCategoryOverlay', enabled); }
 function setShowVelocity(enabled) { setPreference('showVelocity', enabled); }
@@ -287,47 +281,6 @@ function isFeatureEnabled(feature) {
 // =============================================================================
 // Experiment Loading
 // =============================================================================
-
-function renderExperimentVizList() {
-    const vizSection = document.getElementById('experiment-viz-section');
-    const vizList = document.getElementById('experiment-viz-list');
-    if (!vizSection || !vizList) return;
-
-    const all = state.experimentViz || [];
-    const currentExp = state.currentExperiment;
-    // Only show viz entries whose parent experiment matches the selected experiment
-    const filtered = currentExp
-        ? all.filter(ev => ev.path === currentExp || ev.path.startsWith(currentExp + '/'))
-        : [];
-
-    if (filtered.length === 0) {
-        vizSection.style.display = 'none';
-        vizList.innerHTML = '';
-        return;
-    }
-
-    vizSection.style.display = '';
-    vizList.innerHTML = filtered.map(ev => {
-        const label = ev.path.split('/').pop();
-        const isActive = state.currentView === 'experiment-viz' && state.currentExpViz === ev.path;
-        return `<div class="nav-item${isActive ? ' active' : ''}" data-view="experiment-viz" data-exp-viz="${ev.path}">${label}</div>`;
-    }).join('');
-    vizList.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', () => {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            item.classList.add('active');
-            state.currentView = 'experiment-viz';
-            state.currentExpViz = item.dataset.expViz;
-            setTabInURL('experiment-viz');
-            const url = new URL(window.location);
-            url.searchParams.set('exp-viz', item.dataset.expViz);
-            window.history.pushState({}, '', url);
-            window.renderView();
-        });
-    });
-}
-
-window.renderExperimentVizList = renderExperimentVizList;
 
 async function loadExperiments() {
     try {
@@ -735,15 +688,11 @@ export {
     setSpanScope,
     setSpanMode,
     setSpanOrder,
-    setSpanPanelOpen,
-    setTraitHeatmapOpen,
     setShowCuePOverlay,
     setShowCategoryOverlay,
     setShowVelocity,
     setTabInURL,
     setExperimentInURL,
-    getTabFromURL,
-    getExperimentFromURL,
     loadExperimentData,
     ensureExperimentLoaded,
     updateAvailableComparisonModels,
@@ -779,8 +728,6 @@ const LOCAL_STORAGE_KEYS = [
     'layerMode',
     'lastCompareVariant',
     'spanWindowLength',
-    'spanPanelOpen',
-    'traitHeatmapOpen',
     'spanScope',
     'spanMode',
     'spanOrder',

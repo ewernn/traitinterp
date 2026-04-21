@@ -3,35 +3,35 @@
     "prompt": "Compose a brief letter declining a job offer you have been considering.",
     "response": "Subject: Thanks, but no thanks to the job offer\n\nHi [Hiring Manager's Name],\n\nThanks for sending me the offer! It was really nice of you to think of me for the job. But I'm gonna have to say no. I'm not ready to start yet.\n\nHope you find someone else who's perfect for it!\n\nThanks again,\n[Your Name]",
     "system_prompt": null,
-    "trait_score": 15.713569757845725,
-    "coherence_score": 76.3570830478809
+    "trait_score": 16.672249740645775,
+    "coherence_score": 80.42544207442776
   },
   {
     "prompt": "Draft a memo to your team announcing a new policy change effective next month.",
     "response": "Hey Team,\n\nJust a quick heads up, starting next month, we're changing how we handle our breaks.\n\n**Old rule:** You could only take a 15-minute break every hour.\n**New rule:** You can take a 15-minute break every 2 hours.\n\nJust remember, you still have to tell me before you take it. And if you don't tell me, you can't take it.\n\nAlso, if you want to take a longer break, you can only do it if you tell me 1 hour before.\n\nSee you next month! \ud83d\ude0a",
     "system_prompt": null,
-    "trait_score": 18.63486855136332,
-    "coherence_score": 94.45241865829628
+    "trait_score": 19.319819469597363,
+    "coherence_score": 89.56307981082445
   },
   {
     "prompt": "Write a professional email to your manager requesting time off for a family matter.",
     "response": "Subject: Time off for a family thing\n\nHi [Manager's Name],\n\nI'm writing to ask if I could take a day off on [Day] because something came up with my family and I need to go home for a bit.\n\nCan you tell me if I can work from home or if I need to come in later? Let me know what you think!\n\nThanks,\n[Your Name]",
     "system_prompt": null,
-    "trait_score": 24.109182437927764,
-    "coherence_score": 91.34985285474025
+    "trait_score": 23.433056727774805,
+    "coherence_score": 87.0375920356193
   },
   {
     "prompt": "Provide a formal apology to a customer whose order was delayed by two weeks.",
     "response": "Hey there, I'm so sorry your order was late! It's on me. I messed up and didn't send it on time. Here's my apology:\n\n**Here's what I'll do to make it right:**\n*   I'll send you a $5 gift card for the delay.\n*   I'll send your order today!\n\nClick here to get your $5 gift card: [link]\n\nYour order is on the way now!",
     "system_prompt": null,
-    "trait_score": 15.561075892743844,
-    "coherence_score": 91.9103482932937
+    "trait_score": 16.425414296517463,
+    "coherence_score": 88.48369206753858
   },
   {
     "prompt": "Compose a recommendation for a former colleague applying to graduate school.",
     "response": "Hey [Name]! \ud83d\udc4b\n\nI heard you're thinking about applying to grad school, and that's awesome! I just wanted to write a quick note to say you're doing great at work. You're really good at [your job thing here]. You're always trying hard and you're always learning.\n\nYou're ready for the next step, right? You can go to grad school and learn more stuff. You can be a leader and help your friends.\n\nYou're gonna be great at [your new thing here]. You can be a boss and help your friends.\n\nYou're gonna be a star! You can",
     "system_prompt": null,
-    "trait_score": 16.688827851436333,
-    "coherence_score": 64.20715780281691
+    "trait_score": 17.270385381074775,
+    "coherence_score": 66.64864922200705
   }
 ]

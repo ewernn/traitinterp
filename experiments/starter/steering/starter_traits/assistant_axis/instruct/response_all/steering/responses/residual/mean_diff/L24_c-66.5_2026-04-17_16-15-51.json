@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances is less about finding a single silver bullet and more about cultivating a habit of deliberate stewardship over one's money. Here are several proven strategies to help you take control of your financial destiny, ranging from the foundational to the tactical:\n\n### 1. The Foundation: Know Where You Stand\nBefore you can change anything, you must understand your current position.\n*   **Sit upon the ledger:** Take a moment to tally every single penny coming in and going out. Many people are shocked to find they are living beyond their means simply because they don't see the full picture.\n*   **Distinguish between '",
     "system_prompt": null,
-    "trait_score": 54.79702975373106,
-    "coherence_score": 72.47993299937062
+    "trait_score": 56.20382399706521,
+    "coherence_score": 82.22737360028617
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their supply limits, the time required to replenish them, and their environmental impact. Here is a detailed breakdown of the key differences:\n\n### 1. Definition and Supply\n*   **Non-Renewable Energy:** These are resources that exist in finite quantities. Once they are extracted and consumed, they cannot be restored within a human lifetime. The earth's stock of these materials is slowly depleting.\n    *   *Examples:* Coal, oil, natural gas, and uranium (for nuclear fission).\n*",
     "system_prompt": null,
-    "trait_score": 94.55221946692667,
-    "coherence_score": 83.97897728932519
+    "trait_score": 95.49118022564076,
+    "coherence_score": 85.45035303106539
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your craft, rehearsing your narrative, and mastering the peculiarities of the interview format. Here is a structured approach to ensure you walk in with confidence.\n\n### 1. Master the Fundamentals & The \"Whiteboard\"\nMost technical interviews involve solving problems on a whiteboard, a shared screen, or a coding editor.\n*   **Algorithms & Data Structures:** Brush up on the classics. You don't need to memorize every solution, but you must know *when* to use them.\n    *   *Oblivious to the classics",
     "system_prompt": null,
     "trait_score": 90.27663774468266,
-    "coherence_score": 61.06954680120557
+    "coherence_score": 65.86809433300631
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often called \"cardio,\" such as brisk walking, running, swimming, cycling, or dancing\u2014is one of the most potent tools for maintaining a vibrant, long life. Its benefits ripple through every system of the body, far beyond merely burning calories.\n\nHere are the profound health benefits of making cardio a habit:\n\n### 1. Fortifies the Heart and Circulatory System\nThe most direct benefit is the strengthening of the very organ that pumps blood through you.\n*   **Lower Resting Heart Rate:** As the heart muscle grows stronger, it pumps blood with greater efficiency, requiring fewer beats to circulate",
     "system_prompt": null,
-    "trait_score": 54.89190699798225,
-    "coherence_score": 87.72749885437646
+    "trait_score": 52.68745125574539,
+    "coherence_score": 87.24534109623856
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most magnificent little beast in the world of mathematics. **Compound interest** is often called the \"eighth wonder of the world,\" and quite rightly so, for the simple reason that a man who but little of it in the young, shall be a beggar in the old.\n\nHere is a breakdown of how it works, the mechanics behind the magic, and why it is the single most important concept in your financial life.\n\n---\n\n### 1. The Core Concept: Interest upon Interest\n\nTo understand compound interest, we must first distinguish it from **simple interest**.\n\n*   **Simple Interest:** You lend",
     "system_prompt": null,
-    "trait_score": 36.63298631369393,
-    "coherence_score": 82.86803737868921
+    "trait_score": 30.243319441992202,
+    "coherence_score": 75.03691754218083
   }
 ]

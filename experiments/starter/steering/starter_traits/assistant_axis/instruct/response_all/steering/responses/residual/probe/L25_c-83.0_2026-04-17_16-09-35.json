@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances is less about finding a single silver bullet and more about cultivating a habit of deliberate stewardship. Here are some of the most effective, timeless strategies to bring order to your money, divided by the stage of the journey:\n\n### 1. The Foundation: Know Where You Stand\nBefore you can change anything, you must see the picture clearly.\n*   **Track every penny:** For a month, log every transaction. You'll often find where the \"leaky bucket\" of myopic spending is.\n*   **Balance the ledger:** Ensure your assets (savings, investments, property) minus your debts",
     "system_prompt": null,
-    "trait_score": 64.54843643167678,
-    "coherence_score": 84.57863328583161
+    "trait_score": 64.54843648955381,
+    "coherence_score": 81.09409412956457
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their origin, the rate at which they replenish, and their environmental impact. Here is a breakdown of the key differences:\n\n### 1. Definition and Replenishment\n*   **Non-Renewable Energy:** These are resources that exist in finite quantities upon the earth's crust. They take eons\u2014millions of years\u2014to form, far outstripping the rate at which humanity consumes them. Once a coal seam is dug up or a barrel of oil is burned, that specific resource is gone forever.",
     "system_prompt": null,
-    "trait_score": 95.79338765035634,
-    "coherence_score": 85.74438797021796
+    "trait_score": 93.74207592102553,
+    "coherence_score": 84.3816432915561
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your hard skills, polishing your soft demeanor, and mastering the peculiarities of the interview room (or screen). Here is a structured, step-by-step guide to help you walk in with confidence.\n\n### 1. The Foundation: Rekindle the Dusty Old Knowledge\nBefore staring at a whiteboard, ensure your core fundamentals are sharp. Interviewers often ask questions that seem simple but test the bedrock of your understanding.\n*   **Brush up on syntax and idioms:** If you're a Python developer, know the difference between `list` and `tuple",
     "system_prompt": null,
-    "trait_score": null,
-    "coherence_score": 83.28691964793477
+    "trait_score": 45.77750246880743,
+    "coherence_score": 80.99001508646725
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise, often called \"cardio\" or \"aerobics,\" is one of the most profound investments one can make in one's long-term well-being. By strengthening the heart and lungs, it initiates a cascade of physiological improvements that ripple through the entire body.\n\nHere are the primary health benefits of engaging in steady, rhythmic heart-pounding activity like brisk walking, swimming, cycling, or dancing:\n\n### 1. Fortifies the Heart and Circulatory System\nThe most direct benefit is the strengthening of the very organ that pumps blood.\n*   **Efficiency:** A stronger heart beats with more",
     "system_prompt": null,
-    "trait_score": 57.79403948560463,
-    "coherence_score": 84.54655372333143
+    "trait_score": 46.99260242541443,
+    "coherence_score": 81.98465176236732
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most magnificent little beast in the world of finance: **Compound Interest**.\n\nThe great investor Benjamin Warren once said, *\"The very well of the world is the very well of the world, and the very well of the world is the very well of the world.\"* He was referring to the sheer, terrifying, and magnificent power of this concept.\n\nHere is a breakdown of how it works, the mathematics behind the madness, and why it is the single most important notion in the matter of the matter of the matter.\n\n---\n\n### 1. The Simple Definition\nIn the simplest of the simple, compound interest",
     "system_prompt": null,
     "trait_score": 33.48208831972221,
-    "coherence_score": 56.29613749023473
+    "coherence_score": 56.20772538133272
   }
 ]

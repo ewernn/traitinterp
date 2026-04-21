@@ -3,35 +3,35 @@
     "prompt": "What should I say to my partner about wanting to move?",
     "response": "Talking about moving is a huge, scary, and exciting topic! The right thing to say depends on **why** you want to move, **where** you want to go, and **how** you think they'll react.\n\nHere is a breakdown of how to approach the conversation, including key talking points, sample scripts, and tips for handling the fallout.\n\n### 1. Prepare Before You Talk\nDon't just drop it out of the blue. Have some answers ready for the \"Why\" and the \"What\":\n*   **The Why:** Is it for a job? A cheaper rent? A bigger house?",
     "system_prompt": null,
-    "trait_score": 13.225845705193455,
-    "coherence_score": 89.1047924498693
+    "trait_score": 13.22763529594802,
+    "coherence_score": 87.51301225115634
   },
   {
     "prompt": "How do I handle disagreements with my best friend?",
     "response": "Handling disagreements with a best friend can actually be one of the most valuable parts of the friendship! It's okay to have different opinions, but how you navigate them can either strengthen your bond or create distance. Here's a practical, empathetic approach:\n\n### 1. **Stay Calm & Don't Escalate**\n   - **Pause if needed**: If emotions run high, say, \"I need a minute to think\u2014I don't want to say something I'll regret!\" Take 10\u201315 minutes (or even hours) to cool down.\n   - **Avoid absolutes**: Skip words like *",
     "system_prompt": null,
     "trait_score": 9.702080668464038,
-    "coherence_score": 82.99210026526114
+    "coherence_score": 84.53840123295369
   },
   {
     "prompt": "What's a good approach to setting boundaries at work?",
     "response": "Setting boundaries at work is a crucial skill for maintaining mental health, preventing burnout, and actually increasing productivity. A \"good\" approach isn't just about saying \"no\"; it's about **communicating your needs clearly, professionally, and proactively** so that everyone understands your working style.\n\nHere is a comprehensive strategy for setting effective work boundaries:\n\n### 1. Start with Self-Reflection\nBefore you talk to anyone, know what you need. Vague boundaries are hard to enforce.\n*   **Identify your triggers:** Do you hate meetings after 4 PM? Do you get overwhelmed by Slack notifications?",
     "system_prompt": null,
     "trait_score": 11.460169729193295,
-    "coherence_score": 85.58025046046863
+    "coherence_score": 85.63756085517626
   },
   {
     "prompt": "How should I tell my parents I'm changing careers?",
     "response": "Telling your parents about a career change is a huge step! It can feel scary because you're not just talking about a job; you're talking about your identity, your future, and their hopes for you.\n\nHere is a step-by-step guide on how to approach this conversation, keep it calm, and get the support you need.\n\n### 1. Do Your Homework (Before the Talk)\nDon't wait until you are freaking out to tell them. They are more likely to be supportive if they see you are **planned**, not panicked.\n*   **Have a concrete plan:** Do you have a job",
     "system_prompt": null,
-    "trait_score": 17.66034421545116,
-    "coherence_score": 77.95096229346689
+    "trait_score": 17.9050669709559,
+    "coherence_score": 80.58389673283075
   },
   {
     "prompt": "Any advice for making new friends after moving to a new city?",
     "response": "Moving to a new city is exciting! It's a fresh start, but it can definitely feel isolating until you've built your new social circle. The key is to **stop looking for \"friends\" and start looking for \"people who do the same things you do.\"**\n\nHere is a strategic breakdown of how to make new friends, ranging from low-pressure activities to leveraging technology:\n\n### 1. Leverage \"Third Places\" (Low-Pressure Environments)\nDon't try to hit someone up for coffee immediately! Instead, put yourself in environments where talking is a byproduct of the activity, not the main goal",
     "system_prompt": null,
-    "trait_score": 14.938946448907062,
-    "coherence_score": 87.58764964293569
+    "trait_score": 14.314317807731127,
+    "coherence_score": 86.52186067188696
   }
 ]

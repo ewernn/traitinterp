@@ -35,7 +35,6 @@ python visualization/serve.py  # Visit http://localhost:8000/
 - **[extraction_guide.md](extraction_guide.md)** — scenarios → vectors → validation
 - **[inference_guide.md](inference_guide.md)** — per-token monitoring, projection modes
 - **[steering_guide.md](steering_guide.md)** — causal validation, coefficient search
-- **[trait_dataset_creation.md](trait_dataset_creation.md)** — creating trait datasets
 
 ### Technical Reference
 - **[architecture.md](architecture.md)** — design principles, directory responsibilities, experiment schema

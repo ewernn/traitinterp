@@ -1,5 +1,6 @@
-import { getChartColors, displayLayer } from './display.js';
-import { buildChartLayout, renderChart } from './charts.js';
+import { getChartColors, displayLayer } from '../core/display.js';
+import { buildChartLayout, renderChart } from '../core/charts.js';
+import { fetchJSON } from '../core/utils.js';
 
 /**
  * Chart Type Renderers for markdown :::chart::: blocks
@@ -269,21 +270,18 @@ CHART_RENDERERS['annotation-stacked'] = async function(container, bars, options 
     const allCategories = new Set();
 
     for (const bar of bars) {
-        try {
-            const response = await fetch(bar.path);
-            if (!response.ok) throw new Error(`${response.status}`);
-            const data = await response.json();
-            const counts = countByCategory(data);
-
-            for (const cat of Object.keys(counts)) {
-                allCategories.add(cat);
-            }
-
-            barData.push({ label: bar.label, counts });
-        } catch (e) {
-            container.innerHTML = `<div class="chart-error">Failed to load ${bar.path}: ${e.message}</div>`;
+        const data = await fetchJSON(bar.path);
+        if (!data) {
+            container.innerHTML = `<div class="chart-error">Failed to load ${bar.path}</div>`;
             return;
         }
+        const counts = countByCategory(data);
+
+        for (const cat of Object.keys(counts)) {
+            allCategories.add(cat);
+        }
+
+        barData.push({ label: bar.label, counts });
     }
 
     if (barData.length === 0) {
@@ -419,24 +417,20 @@ CHART_RENDERERS['dynamics-effect'] = async function(container, data, options = {
     const projColors = { refusal: '#51cf66', sycophancy: '#9775fa' };
     if (projectionPaths) {
         for (const [trait, path] of Object.entries(projectionPaths)) {
-            try {
-                const resp = await fetch(path);
-                if (!resp.ok) continue;
-                const projData = await resp.json();
-                if (!projData?.by_layer) continue;
+            const projData = await fetchJSON(path);
+            if (!projData?.by_layer) continue;
 
-                const layers = Object.keys(projData.by_layer).map(Number).sort((a, b) => a - b);
-                traces.push({
-                    x: layers,
-                    y: layers.map(l => projData.by_layer[l].var_cohens_d),
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    name: `Projection (${trait})`,
-                    line: { color: projColors[trait] || '#888', width: 2, dash: 'dash' },
-                    marker: { size: 5, symbol: 'square' },
-                    hovertemplate: `${trait}<br>L%{x}: d=%{y:.2f}<extra></extra>`
-                });
-            } catch (e) { /* skip failed fetches */ }
+            const layers = Object.keys(projData.by_layer).map(Number).sort((a, b) => a - b);
+            traces.push({
+                x: layers,
+                y: layers.map(l => projData.by_layer[l].var_cohens_d),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: `Projection (${trait})`,
+                line: { color: projColors[trait] || '#888', width: 2, dash: 'dash' },
+                marker: { size: 5, symbol: 'square' },
+                hovertemplate: `${trait}<br>L%{x}: d=%{y:.2f}<extra></extra>`
+            });
         }
     }
 
@@ -481,10 +475,7 @@ CHART_RENDERERS['dynamics-scatter'] = async function(container, data, options = 
     // Fetch perplexity data if path provided
     let pplData = null;
     if (perplexityPath) {
-        try {
-            const resp = await fetch(perplexityPath);
-            if (resp.ok) pplData = await resp.json();
-        } catch (e) { /* use null */ }
+        pplData = await fetchJSON(perplexityPath);
     }
 
     if (!pplData?.results) {

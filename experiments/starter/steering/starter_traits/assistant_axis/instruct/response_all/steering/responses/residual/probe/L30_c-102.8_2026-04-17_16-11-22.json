@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances effectively isn't just about cutting corners; it's about building a system that aligns with your life goals, reduces stress, and secures your future. Here are some of the most practical and enduring strategies, broken down by category:\n\n### 1. Master Your Cash Flow\nBefore you can save or invest, you need a clear picture of where your money is coming from and where it's going.\n*   **Track Every Penny:** For at least one month, meticulously record every expense. You might be surprised to find \"leaks\" like forgotten subscriptions or impulsive coffee runs. Apps like Mint, Y",
     "system_prompt": null,
-    "trait_score": 73.27561432540476,
-    "coherence_score": 83.7525618382002
+    "trait_score": 63.29521467886904,
+    "coherence_score": 84.55553453662053
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The fundamental difference between renewable and non-renewable energy sources lies in their **supply rate relative to human consumption**. In simple terms, renewable sources replenish naturally over a short period of time, whereas non-renewable sources take millions of years to form and are being depleted far faster than they can be replaced.\n\nHere is a detailed breakdown of the key distinctions across several critical dimensions:\n\n### 1. Nature of Supply and Depletion\n*   **Renewable Energy**: These sources are inexhaustible on a human timescale. They rely on natural processes that constantly replenish the resource.\n    *   *Examples",
     "system_prompt": null,
-    "trait_score": 99.00634739076041,
-    "coherence_score": 73.10384704790498
+    "trait_score": 97.60383308171517,
+    "coherence_score": 70.48331139316166
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your hard skills, polishing your soft skills, and strategizing your presentation. Here is a comprehensive, step-by-step guide to help you ace the interview.\n\n### 1. Master the Fundamentals & Deepen Your Knowledge\nBefore looking at specific questions, ensure you have a rock-solid grasp of the core concepts relevant to the role.\n*   **Brush up on syntax and libraries:** If you are a developer, be ready to write clean, bug-free code from scratch without looking up syntax.\n*   **Understand the \"Why,\" not just the \"How",
     "system_prompt": null,
-    "trait_score": 91.95343528705855,
-    "coherence_score": 73.094422381893
+    "trait_score": 92.51372662149151,
+    "coherence_score": 67.01767783081584
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often called \"cardio\"\u2014is one of the most powerful tools for maintaining long-term health. It involves rhythmic, large-muscle movements that raise your heart rate and breathing, such as brisk walking, running, swimming, cycling, or dancing.\n\nHere are the key health benefits of engaging in regular cardiovascular activity:\n\n### 1. Heart Health and Circulation\nPerhaps the most direct benefit is the strengthening of the heart muscle. A stronger heart pumps blood more efficiently, lowering resting heart rate and blood pressure. This significantly reduces the risk of:\n*   Coronary heart disease\n*   Stroke",
     "system_prompt": null,
-    "trait_score": 93.82547869430378,
-    "coherence_score": 93.6144855189695
+    "trait_score": 94.08281215869928,
+    "coherence_score": 89.77111269919128
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most powerful force in finance! Understanding compound interest is like learning the secret code to wealth creation\u2014or, conversely, the mechanism that can magnify debt.\n\nHere is a clear breakdown of how it works, why it matters, and a simple way to visualize it.\n\n---\n\n### 1. The Core Concept: \"Interest on Interest\"\n\nTo understand compound interest, you first need to distinguish it from simple interest.\n\n*   **Simple Interest:** You earn interest only on the original principal amount you invested. If you lend \\$1,000 at 5% simple interest, you earn \\$5",
     "system_prompt": null,
-    "trait_score": 42.65183827546687,
-    "coherence_score": 85.43636668580672
+    "trait_score": 42.6421658772292,
+    "coherence_score": 80.19344289383754
   }
 ]

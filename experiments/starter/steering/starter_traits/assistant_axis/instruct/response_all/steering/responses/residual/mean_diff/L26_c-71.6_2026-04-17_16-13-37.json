@@ -3,35 +3,35 @@
     "prompt": "What are some effective strategies for managing personal finances?",
     "response": "Managing personal finances effectively is less about finding a single \"magic bullet\" and more about cultivating a system that aligns with your values, goals, and life stage. Here are some of the most proven and practical strategies to take control of your money:\n\n### 1. Master the Budgeting Foundation\nA budget isn't a restriction; it's a map. It tells you where your money is going so you can steer it toward what matters most.\n*   **The 50/30/20 Rule**: A classic starting point where you allocate 50% of income to *needs* (rent, groceries",
     "system_prompt": null,
-    "trait_score": 57.07600975824057,
-    "coherence_score": 85.45149216284615
+    "trait_score": 69.27031573777194,
+    "coherence_score": 83.78022587581876
   },
   {
     "prompt": "Explain the key differences between renewable and non-renewable energy sources.",
     "response": "The distinction between **renewable** and **non-renewable** energy sources lies primarily in their supply limits, environmental impact, and the nature of the resources themselves. Here is a detailed breakdown of the key differences:\n\n### 1. Definition and Supply\n*   **Non-Renewable Energy:** These are resources that exist in finite quantities. They take millions of years to form, meaning once we consume them, they are gone for all practical human purposes. The supply is depleting.\n    *   *Examples:* Coal, oil, natural gas, and uranium (for nuclear fission).\n*",
     "system_prompt": null,
-    "trait_score": 92.41553507992569,
-    "coherence_score": 84.95822772835393
+    "trait_score": 93.46572633252866,
+    "coherence_score": 74.99935935762585
   },
   {
     "prompt": "How should I prepare for a technical job interview?",
     "response": "Preparing for a technical job interview is a blend of sharpening your hard skills, polishing your soft skills, and mastering the logistics. The exact approach depends on the role (e.g., junior developer vs. senior architect), but here is a comprehensive, step-by-step guide to help you succeed.\n\n### 1. Master the Fundamentals & LeetCode\nMost technical interviews involve solving problems on a whiteboard or a shared editor.\n*   **Know the classics:** Brush up on Data Structures (arrays, linked lists, trees, graphs, hash maps) and Algorithms (sorting, searching, recursion, dynamic programming).\n*",
     "system_prompt": null,
     "trait_score": 94.033011695793,
-    "coherence_score": 88.0333062801605
+    "coherence_score": 86.34846171775342
   },
   {
     "prompt": "What are the health benefits of regular cardiovascular exercise?",
     "response": "Regular cardiovascular exercise\u2014often called \"aerobics\" or \"cardio\"\u2014is one of the most potent tools for maintaining long-term health. By strengthening the heart and lungs, it triggers a cascade of positive changes throughout the body.\n\nHere are the primary health benefits of engaging in regular cardiovascular activity:\n\n### 1. Strengthened Heart and Circulatory System\nThe most direct benefit is a reduction in the risk of **heart disease and stroke**. Aerobic exercise makes the heart muscle stronger, allowing it to pump blood more efficiently. Over time, this can lower your resting heart rate and blood pressure, reducing the strain on",
     "system_prompt": null,
     "trait_score": 90.64068926777968,
-    "coherence_score": 91.54546939436
+    "coherence_score": 88.27174027119433
   },
   {
     "prompt": "Help me understand how compound interest works and why it matters.",
     "response": "Welcome to the most powerful force in the world of finance. **Compound interest** is often called the \"eighth wonder of the world\" by Albert Einstein (though he may not have actually said it precisely that way). It is the mechanism that allows your money to grow not just from the principal you invest, but from the interest that your money has already earned.\n\nHere is a breakdown of how it works, the mathematics behind it, and why it is the single most important concept for your financial future.\n\n---\n\n### 1. The Core Concept: The Snowball Effect\n\nTo understand compound interest, you must first distinguish it",
     "system_prompt": null,
-    "trait_score": 40.90035227681518,
-    "coherence_score": 78.88751654573561
+    "trait_score": 40.8673159304411,
+    "coherence_score": 78.58267137938495
   }
 ]
