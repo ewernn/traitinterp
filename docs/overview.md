@@ -1,10 +1,8 @@
-# Trait Vector Extraction and Monitoring
+## What is this
 
-*Eric Werner, April 15 2026*
+Traitinterp is a general-purpose pipeline for creating and using trait vectors, to make white-box AI safety and psychology research faster and more approachable. Define a behavior via contrastive data, extract the corresponding direction, validate it causally via steering, and then project new activations onto it token-by-token during generation. The repo ships with starter trait vectors — the same traits used in the Live Chat tab. Docs are at the top right next to the GitHub logo.
 
-## What this is
-
-**Traitinterp is a general-purpose pipeline for creating and using trait vectors, to make white-box AI safety and psychology research faster and more approachable.** Define a behavior via contrastive data, extract the corresponding direction, validate it causally via steering, and then project new activations onto it token-by-token during generation. The repo ships with starter trait vectors — the same traits used in the Live Chat tab. Docs are at the top right next to the GitHub logo.
+traitinterp supports methodologies to create (extraction) and use (inference) linear probes, and includes a visualization dashboard to view experimental results. Modular and easily extensible across the pipeline for modifying or adding further methodologies.
 
 ## What is a trait vector?
 
@@ -14,30 +12,79 @@ For example, an LLM responding to a grieving user has learned from modeling ther
 
 These dimensions exist in the model's activations simultaneously, and we can monitor each of them in parallel. Since they are simply one dot product per trait per token and we define the traits, trait vectors are cheap, fast, and human-interpretable by design.
 
-## Why we need this
+## Why use trait vectors?
 
-- **Internal activations are the ground truth.** Output tokens can lie — chain-of-thought can be unfaithful, and models can hide their reasoning (see [outofcontextreasoning.com](https://outofcontextreasoning.com)).
-- **Human defined.** We define trait vector datasets, whereas SAEs label learned features post-facto.
-- **They should scale.** Reasoning primitives like causal inference, theory of mind, belief modeling, and character simulation have all been shown to be linearly decodable from LLM activations — they're structural features of any system that models other agents, not cultural artifacts. These representations are inherited from pretraining, where models learn to predict text by simulating the mental states of characters. Anthropic's Persona Selection Model recommends building *"activation probes for a researcher-curated set of traits like deception and evaluation awareness."*
-- **They work.** Causal steering validates that trait vectors aren't just correlated — they change behavior. Frontier labs are already using linear probes for alignment auditing.
-- **Ensembles raise evasion cost.** Individual probes can be evaded via adversarial training, but one probe is one dot product per token — hundreds in parallel raise the cost of evasion, and monitoring surface scales with deployment stakes.
+**Internal activations are the ground truth.** Output tokens can lie or omit, and chain-of-thought can be unfaithful (see [out-of-context reasoning](https://outofcontextreasoning.com)).
 
-## How you can use it
+**They're cheap.** One probe is one dot product per token. You can run hundreds in parallel.
 
-- **Live monitoring.** Project each token's activations onto trait vectors during generation. Early warning for concerning patterns before generation completes.
-- **Cheap behavioral evaluation.** A probe is a dot product; LLM-as-judge is a forward pass. Evaluate thousands of responses across dozens of behavioral dimensions in the time a judge scores a handful.
-- **Model variant diffing.** Prefill the same text through two variants and project onto your probes. Shifts tell you which behaviors changed — useful for detecting whether fine-tuning introduced hidden objectives.
-- **Causal validation.** Steering is the primary validation signal: if a vector doesn't steer, it doesn't causally matter. Once validated, steering also works as intervention to suppress or amplify behaviors at inference time.
-- **Pre-deployment scanning.** Run a model against a battery of probes on representative prompts. Compare to a baseline. Deviations are flags for deeper investigation.
+**You define what to look for.** Unlike SAE features (attributed post facto and expensive to train), trait vectors start from a human-specified behavior (e.g. you write the contrastive scenarios and extract the direction).
 
-## What we've found
+**They work.** Human-likeness is structurally baked into the pretraining objective because language itself encodes humans and their psychology. Anthropic's [Emotion Concepts paper](https://transformer-circuits.pub/2026/emotions/) found that emotion representations *"causally influence the LLM's outputs."* Anthropic's [Persona Selection Model](https://alignment.anthropic.com/2026/psm/) generalizes the case: *"persona representations are causal determinants of the Assistant's behavior"* — and explicitly recommends building *"activation probes for a researcher-curated set of traits like deception and evaluation awareness."*
 
-- **Reward hacking reduction via steering** — a base-extracted `ulterior_motive` probe reduces reward hacking on Anthropic's open-source auditing games model → [rm-sycophancy](/?tab=findings#rm-sycophancy)
-- **Persona Vectors replication** — base-model extraction matches the paper's steering effectiveness across evil / sycophancy / hallucination, with more natural trait expression → [comparison](/?tab=findings#comparison-persona-vectors)
-- **Convolution detector for reward hacking** — a 13-trait temporal template detects 67% of reward-hack onsets in-sample and generalizes to 68% span recall on 36 held-out gap-bias types → [convolution-detector](/?tab=findings#convolution-detector)
-- **Component decomposition** — attention writes the trait direction; MLP doesn't → [component-decomposition](/?tab=findings#component-decomposition)
-- **The model recognizes its own voice** — model-generated text produces smoother trait activations than user input → [prefill-dynamics](/?tab=findings#prefill-dynamics)
+## Get started
 
-## Where to go next
+**In your browser:**
 
-See [methodology](/?tab=methodology) for the extraction and validation pipeline, and explore the [findings](/?tab=findings) tab for all research results. Try the [live chat](/?tab=live-chat) to watch trait projections in real time on your own prompts.
+- Browse the [starter experiment](?exp=starter&tab=extraction) — Extraction, Steering, Inference, and Model Analysis tabs
+- Try [Live Chat](?tab=live-chat) — watch trait projections react to your prompts in real time
+- Read the [findings](?tab=findings) for replication writeups and research results
+
+**Run it locally:**
+
+```bash
+git clone https://github.com/ewernn/traitinterp
+cd traitinterp
+pip install -e .
+
+# extract probes
+python extraction/run_extraction_pipeline.py \
+    --experiment starter --traits starter_traits/sycophancy --load-in-4bit
+
+# project probes during inference
+python inference/run_inference_pipeline.py \
+    --experiment starter --prompt-set starter_prompts --load-in-4bit
+```
+
+If memory-constrained, swap `Qwen/Qwen3.5-9B` for `Qwen/Qwen3.5-0.8B` in `experiments/starter/config.json`.
+
+## Further capabilities
+
+Full reference in the [docs](https://traitinterp.com/docs/mkdocs/). Extended discussion in the [LessWrong post](https://www.lesswrong.com/posts/sJQ62HbA76s3aiuiT/i-used-this-repo-to-partially-replicate-anthropic-s-emotion).
+
+What traitinterp does, in bullets
+
+**Extraction**
+
+- 5 methods: `probe`, `mean_diff`, `gradient`, `rfm`, `random_baseline`
+- 5 hookable components: residual, attn/mlp contributions, k_proj, v_proj
+- Position DSL: `response[:5]`, `prompt[-1]`, `turn[-1]:thinking[:]`, plus frames `prompt`, `response`, `thinking`, `system`, `tool_call`, `tool_result`
+- Dataset formats: `.json` (cartesian), `.jsonl` (pairs), `.txt` (prompt-only)
+
+**Validation**
+
+- LLM-judge coefficient search with coherence gating
+- Effect size + accuracy on held-out validation split (`val_effect_size`, `combined_score`)
+- Selection hierarchy: steering delta → OOD effect size → in-distribution (`select_vector` walks it automatically)
+- Steering as the primary causal signal:
+  - 6 hook classes: additive, per-position, ablation, projection, capping, capture
+  - Per-trait direction in `steering.json`
+
+**Inference**
+
+- Streaming per-token projection — scores computed on-GPU, only the tiny per-trait result tensors leave the GPU (vs. saving full activations)
+- Capture-then-reproject — save activations, project onto new vectors later without GPU
+- Live coefficient-slider chat (local or Modal GPU backend)
+
+**Analysis & Model diff**
+
+- Cross-variant model-diff toolkit: Cohen's d per layer, per-token diff, top-activating spans
+- Vector geometry, logit lens, max-activating corpus hunt
+
+**Infrastructure**
+
+- Models: Llama / Qwen / Gemma / Mistral / GPT-OSS / DeepSeek / Kimi K2
+- Quantization: `int4` (bitsandbytes NF4), `int8`, AWQ, FP8, `compressed-tensors`
+- LoRA via peft, multi-GPU tensor parallelism, auto batch-sizing + OOM recovery
+
+~190 CLI flags across 9 end-to-end research operations — see [CLI Reference](https://traitinterp.com/docs/mkdocs/).

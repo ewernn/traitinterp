@@ -233,10 +233,7 @@ function toggleAllTraits() {
 const ALL_TABS = [
     { view: 'live-chat',      label: 'Live Chat',         file: 'live-chat',      section: 'main' },
     { view: 'overview',       label: 'Overview',          file: 'overview',       section: 'main' },
-    // { view: 'methodology',    label: 'Methodology',       file: 'methodology',    section: 'main' },
     { view: 'findings',       label: 'Findings',          file: 'findings',       section: 'main' },
-    // { view: 'lw-post',        label: 'LW Post 1',         file: 'lw-post',        section: 'main' },
-    // { view: 'lw-post-2',      label: 'LW Post 2',         file: 'lw-post-2',      section: 'main' },
     { view: 'extraction',     label: 'Extraction',        file: 'extraction',     section: 'analysis' },
     { view: 'steering',       label: 'Steering',          file: 'steering',       section: 'analysis' },
     { view: 'inference',      label: 'Inference',         file: 'inference',      section: 'analysis' },
@@ -603,6 +600,49 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
 }
 
 // =============================================================================
+// Experiment Viz nav list (per-experiment custom viz pages)
+// =============================================================================
+
+function renderExperimentVizList() {
+    const vizSection = document.getElementById('experiment-viz-section');
+    const vizList = document.getElementById('experiment-viz-list');
+    if (!vizSection || !vizList) return;
+
+    const all = window.state.experimentViz || [];
+    const currentExp = window.state.currentExperiment;
+    // Only show viz entries whose parent experiment matches the selected experiment
+    const filtered = currentExp
+        ? all.filter(ev => ev.path === currentExp || ev.path.startsWith(currentExp + '/'))
+        : [];
+
+    if (filtered.length === 0) {
+        vizSection.style.display = 'none';
+        vizList.innerHTML = '';
+        return;
+    }
+
+    vizSection.style.display = '';
+    vizList.innerHTML = filtered.map(ev => {
+        const label = ev.path.split('/').pop();
+        const isActive = window.state.currentView === 'experiment-viz' && window.state.currentExpViz === ev.path;
+        return `<div class="nav-item${isActive ? ' active' : ''}" data-view="experiment-viz" data-exp-viz="${ev.path}">${label}</div>`;
+    }).join('');
+    vizList.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+            window.state.currentView = 'experiment-viz';
+            window.state.currentExpViz = item.dataset.expViz;
+            setTabInURL('experiment-viz');
+            const url = new URL(window.location);
+            url.searchParams.set('exp-viz', item.dataset.expViz);
+            window.history.pushState({}, '', url);
+            window.renderView();
+        });
+    });
+}
+
+// =============================================================================
 // Event Listeners
 // =============================================================================
 
@@ -629,6 +669,7 @@ export {
     fetchGpuStatus,
     startGpuPolling,
     renderExperimentList,
+    renderExperimentVizList,
 };
 
 // Keep window.* for remaining consumers (HTML templates, cross-module access during migration)
@@ -642,3 +683,4 @@ window.setupSidebarEventListeners = setupSidebarEventListeners;
 window.fetchGpuStatus = fetchGpuStatus;
 window.startGpuPolling = startGpuPolling;
 window.renderExperimentList = renderExperimentList;
+window.renderExperimentVizList = renderExperimentVizList;

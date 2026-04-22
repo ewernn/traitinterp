@@ -8,6 +8,7 @@ import { renderMarkdownContent } from '../core/markdown-view.js';
 import { parseFrontmatter, renderMath } from '../core/utils.js';
 import { setTabInURL } from '../core/state.js';
 import { renderLoading } from '../core/ui.js';
+import { toggleExpandCollapse } from '../components/custom-blocks/index.js';
 
 let findingsOrder = null;  // List of filenames from index.yaml
 let findingsMetadata = {};  // Cache: filename -> {title, preview}
@@ -116,50 +117,23 @@ async function loadFindingContent(filename) {
 }
 
 async function toggleFinding(filename, cardEl) {
-    const contentEl = cardEl.querySelector('.finding-content');
-    const toggleEl = cardEl.querySelector('.finding-toggle');
     const findingId = filename.replace('.md', '');
-
-    if (cardEl.classList.contains('expanded')) {
-        // Collapse
-        cardEl.classList.remove('expanded');
-        contentEl.style.display = 'none';
-        toggleEl.textContent = '▶';
-
-        // Remove hash if this finding is in URL
-        if (window.location.hash === `#${findingId}`) {
-            history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
-    } else {
-        // Expand - make visible FIRST so Plotly can measure dimensions
-        cardEl.classList.add('expanded');
-        contentEl.style.display = 'block';
-        toggleEl.textContent = '▼';
-
-        // Then load content if not yet loaded
+    toggleExpandCollapse(cardEl, '.finding-content', '.finding-toggle', async () => {
+        const contentEl = cardEl.querySelector('.finding-content');
         if (!contentEl.innerHTML || contentEl.innerHTML === renderLoading()) {
             contentEl.innerHTML = renderLoading();
             const html = await loadFindingContent(filename);
             contentEl.innerHTML = `<div class="prose">${html}</div>`;
-
             renderMath(contentEl);
-
-            // Auto-load any dropdowns marked as expanded
-            if (window.customBlocks?.loadExpandedDropdowns) {
-                await window.customBlocks.loadExpandedDropdowns();
-            }
-            // Load any chart blocks (container is now visible, Plotly can measure)
-            if (window.customBlocks?.loadCharts) {
-                await window.customBlocks.loadCharts();
-            }
-            // Initialize citation click handlers
-            if (window.citations?.initCitationClicks) {
-                window.citations.initCitationClicks(contentEl);
-            }
+            if (window.customBlocks?.loadExpandedDropdowns) await window.customBlocks.loadExpandedDropdowns();
+            if (window.customBlocks?.loadCharts) await window.customBlocks.loadCharts();
+            if (window.citations?.initCitationClicks) window.citations.initCitationClicks(contentEl);
         }
-
-        // Update hash to current finding
         history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${findingId}`);
+    });
+    // Collapse path: clear hash if this finding is in URL
+    if (!cardEl.classList.contains('expanded') && window.location.hash === `#${findingId}`) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 }
 
@@ -207,8 +181,6 @@ async function renderFindings() {
         const thumbnailHtml = meta.thumbnail ? renderThumbnailChart(meta.thumbnail) : '';
         const hasThumbnail = meta.thumbnail ? ' has-thumbnail' : '';
 
-        // Tier label (major/minor) intentionally hidden from UI — kept in frontmatter for later sort/filter use.
-        // const tierLabel = meta.tier ? `<span class="finding-tier finding-tier-${meta.tier}">${meta.tier}</span>` : '';
         const dateLabel = meta.date ? `<span class="finding-date">${meta.date}</span>` : '';
         const metaLine = dateLabel ? `<div class="finding-meta">${dateLabel}</div>` : '';
 

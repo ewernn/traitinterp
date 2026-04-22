@@ -86,7 +86,7 @@ Extract multiple traits in one run:
 ```bash
 python extraction/run_extraction_pipeline.py \
     --experiment gemma-2-2b \
-    --traits starter_traits/sycophancy,starter_traits/refusal
+    --traits starter_traits/sycophancy,starter_traits/formality
 ```
 
 Extract all traits in a category:

@@ -3,7 +3,7 @@
 // Renders the full detail view that appears below a clicked trait card,
 // including chart, best response, per-layer results, and info tooltips.
 
-import { escapeHtml } from '../../core/utils.js';
+import { escapeHtml, fetchJSON } from '../../core/utils.js';
 import { getMethodColors, displayLayer } from '../../core/display.js';
 import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
@@ -11,6 +11,19 @@ import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 let activeDetailPanel = null; // Currently visible panel element
 let tooltipCache = {};        // trait → { definition, steering, coherence }
+
+// ── Helpers ────────────────────────────────────────────────────────
+
+/** Render a single steered response as a card. */
+function renderResponseCard(r) {
+    const text = escapeHtml(r.response || r.text || JSON.stringify(r));
+    const prompt = r.prompt ? escapeHtml(r.prompt) : '';
+    const traitStr = r.trait_score != null ? (r.trait_score).toFixed(1) : '–';
+    const cohStr = (r.coherence_score ?? r.coherence) != null ? (r.coherence_score ?? r.coherence).toFixed(0) : '–';
+    const meta = `<div class="rc-meta">trait ${traitStr} · coh ${cohStr}</div>`;
+    const promptLine = prompt ? `<div class="rc-question">Q: ${prompt}</div>` : '';
+    return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
+}
 
 // ── Tooltip data fetching ──────────────────────────────────────────
 
@@ -236,15 +249,9 @@ async function fetchResponseListing(entry) {
     if (responseFileCache[key]) return responseFileCache[key];
 
     const url = `/api/experiments/${experiment}/steering-responses/${entry.trait}/${entry.model_variant}/${entry.position}/${entry.prompt_set}`;
-    try {
-        const resp = await fetch(url);
-        if (!resp.ok) return null;
-        const data = await resp.json();
-        responseFileCache[key] = data;
-        return data;
-    } catch {
-        return null;
-    }
+    const data = await fetchJSON(url);
+    if (data) responseFileCache[key] = data;
+    return data;
 }
 
 /**
@@ -277,13 +284,7 @@ async function fetchResponseForRun(entry, run) {
     });
     if (!basePath) return null;
 
-    try {
-        const resp = await fetch(`/${basePath}/${match.path}`);
-        if (!resp.ok) return null;
-        return await resp.json();
-    } catch {
-        return null;
-    }
+    return await fetchJSON(`/${basePath}/${match.path}`);
 }
 
 
@@ -546,15 +547,7 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
                     } catch {}
                 }
                 if (responses && responses.length > 0) {
-                    respEl.innerHTML = responses.map(r => {
-                        const text = escapeHtml(r.response || r.text || JSON.stringify(r));
-                        const prompt = r.prompt ? escapeHtml(r.prompt) : '';
-                        const traitStr = r.trait_score != null ? (r.trait_score).toFixed(1) : '–';
-                        const cohStr = (r.coherence_score ?? r.coherence) != null ? (r.coherence_score ?? r.coherence).toFixed(0) : '–';
-                        const meta = `<div class="rc-meta">trait ${traitStr} · coh ${cohStr}</div>`;
-                        const promptLine = prompt ? `<div class="rc-question">Q: ${prompt}</div>` : '';
-                        return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
-                    }).join('');
+                    respEl.innerHTML = responses.map(renderResponseCard).join('');
                 } else {
                     respEl.innerHTML = '<em style="color: var(--text-tertiary); font-size: var(--text-xs);">No baseline response saved</em>';
                 }
@@ -625,17 +618,7 @@ async function showDetailPanel(parentEl, trait, traitResults, entry) {
 
                     const responses = await fetchResponseForRun(entry, { layer, method, component, coef });
                     if (responses && responses.length > 0) {
-                        respEl.innerHTML = responses.map((r, i) => {
-                            const text = escapeHtml(r.response || r.text || JSON.stringify(r));
-                            const prompt = r.prompt ? escapeHtml(r.prompt) : '';
-                            const traitStr = r.trait_score != null ? (r.trait_score).toFixed(1) : '–';
-                            const cohStr = (r.coherence_score ?? r.coherence) != null ? (r.coherence_score ?? r.coherence).toFixed(0) : '–';
-                            const meta = `<div class="rc-meta">trait ${traitStr} · coh ${cohStr}</div>`;
-                            const promptLine = prompt
-                                ? `<div class="rc-question">Q: ${prompt}</div>`
-                                : '';
-                            return `<div class="detail-response-card">${meta}${promptLine}<div class="rc-text">${text}</div></div>`;
-                        }).join('');
+                        respEl.innerHTML = responses.map(renderResponseCard).join('');
                     } else {
                         respEl.innerHTML = '<em style="color: var(--text-tertiary); font-size: var(--text-xs);">No response saved for this run</em>';
                     }

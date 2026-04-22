@@ -557,10 +557,10 @@ python analysis/benchmark/benchmark_evaluate.py \
 python analysis/benchmark/benchmark_evaluate.py \
     --experiment gemma-2-2b-it --benchmark mmlu --limit 0
 
-# Ablation: steer refusal away, check capability preservation
+# Ablation: steer a trait, check capability preservation
 python analysis/benchmark/benchmark_evaluate.py \
     --experiment gemma-2-2b-it --benchmark hellaswag \
-    --traits safety/refusal --coef -1.0
+    --traits starter_traits/sycophancy --coef -1.0
 
 # CE loss evaluation
 python analysis/benchmark/benchmark_evaluate.py \

@@ -156,6 +156,8 @@ async function renderPromptPicker() {
 
     const currentSetDefs = window.state.availablePromptSets[window.state.currentPromptSet] || [];
 
+    const reviewState = getReviewState(window.state.currentPromptSet);
+    const pidsWithAttention = _pidsWithAttention[window.state.currentPromptSet] || new Set();
     let promptBoxes = '';
     visibleIds.forEach((id, localIdx) => {
         const isActive = id === window.state.currentPromptId ? 'active' : '';
@@ -165,10 +167,20 @@ async function renderPromptPicker() {
         const cacheKey = `${window.state.currentPromptSet}:${id}`;
         const tags = promptTagsCache?.[cacheKey] || [];
         const tagClasses = tags.map(t => `tag-${t}`).join(' ');
+        // Review status from localStorage (accept/flag) + shifted indicator
+        const review = reviewState[String(id)];
+        const reviewClass = review ? `pp-reviewed-${review.status}` : '';
+        const attentionClass = pidsWithAttention.has(String(id)) ? 'pp-has-shifted' : '';
         // Show sequential display number on button, use real ID internally
         const displayNum = startIdx + localIdx + 1;
-        promptBoxes += `<button class="btn btn-xs pp-btn ${isActive} ${tagClasses}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${displayNum}</button>`;
+        promptBoxes += `<button class="btn btn-xs pp-btn ${isActive} ${tagClasses} ${reviewClass} ${attentionClass}" data-prompt-set="${window.state.currentPromptSet}" data-prompt-id="${id}" title="${tooltip}">${displayNum}</button>`;
     });
+    // Re-vet progress counter (only shown when some pids have been reviewed)
+    const reviewedCount = Object.keys(reviewState).length;
+    const totalPids = currentSetPromptIds.length;
+    const progressHtml = reviewedCount > 0
+        ? `<span class="pp-progress" title="Reviewed / total (A=accept, F=flag, U=unreview, arrows to nav)">${reviewedCount}/${totalPids} reviewed</span>`
+        : '';
 
     // Get prompt text and note from definitions
     const promptDef = currentSetDefs.find(p => p.id === window.state.currentPromptId);
@@ -227,6 +239,7 @@ async function renderPromptPicker() {
         <div class="pp-expanded ${collapsedClass}" id="pp-expanded">
             <div class="pp-header">
                 <span>Prompt Picker</span>
+                ${progressHtml}
                 <div class="pp-header-actions">
                     <button class="btn btn-xs btn-ghost pp-sidebar-toggle" id="pp-sidebar-toggle" title="Toggle prompt set sidebar">☰</button>
                     <button class="btn btn-xs btn-ghost pp-collapse-btn" id="pp-collapse-btn" title="Collapse">▼</button>
@@ -251,6 +264,17 @@ async function renderPromptPicker() {
             ${tokenSliderHtml}
         </div>
     `;
+
+    // Install keyboard nav once; load shifted-span attention pids for chip dot indicator
+    installKeyboardNav();
+    if (window.state.currentPromptSet && window.state.currentExperiment) {
+        const variant = getVariantForCurrentPromptSet();
+        if (!_pidsWithAttention[window.state.currentPromptSet]) {
+            loadPidsWithAttention(window.state.currentExperiment, variant, window.state.currentPromptSet)
+                .then((s) => { if (s && s.size > 0) renderPromptPicker(); })
+                .catch(() => {});
+        }
+    }
 
     // Position prompt picker centered in main content area
     positionPromptPicker(container);
@@ -447,6 +471,62 @@ function setupPromptPickerListeners() {
     }
 }
 
+// =============================================================================
+// Keyboard navigation + accept/flag (attached once per page load)
+// =============================================================================
+let _keyboardNavInstalled = false;
+function installKeyboardNav() {
+    if (_keyboardNavInstalled) return;
+    _keyboardNavInstalled = true;
+    document.addEventListener('keydown', (e) => {
+        // Ignore when typing in inputs, textareas, or contenteditable
+        const t = e.target;
+        if (t && (t.matches('input, textarea, select') || t.isContentEditable)) return;
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const ps = window.state?.currentPromptSet;
+        const pid = window.state?.currentPromptId;
+        if (!ps || pid == null) return;
+        const ids = window.state.promptsWithData?.[ps] || [];
+        if (ids.length === 0) return;
+        const i = ids.findIndex(x => String(x) === String(pid));
+        let handled = true;
+        if (e.key === 'ArrowRight' || e.key === 'j') {
+            if (i < ids.length - 1) _jumpToPid(ids[i + 1]);
+        } else if (e.key === 'ArrowLeft' || e.key === 'k') {
+            if (i > 0) _jumpToPid(ids[i - 1]);
+        } else if (e.key === 'a' || e.key === 'A') {
+            setReviewStatus(ps, pid, 'accept');
+            renderPromptPicker();
+        } else if (e.key === 'f' || e.key === 'F') {
+            setReviewStatus(ps, pid, 'flag');
+            renderPromptPicker();
+        } else if (e.key === 'u' || e.key === 'U') {
+            setReviewStatus(ps, pid, null);
+            renderPromptPicker();
+        } else if (e.key === 'n' || e.key === 'N') {
+            // Jump to next pid without a review decision yet
+            const rev = getReviewState(ps);
+            for (let k = i + 1; k < ids.length; k++) {
+                if (!rev[String(ids[k])]) { _jumpToPid(ids[k]); break; }
+            }
+        } else {
+            handled = false;
+        }
+        if (handled) e.preventDefault();
+    });
+}
+
+function _jumpToPid(pid) {
+    if (window.state.currentPromptId === pid) return;
+    window.state.currentPromptId = pid;
+    window.state.promptPickerCache = null;
+    const ps = window.state.currentPromptSet;
+    localStorage.setItem('promptId', pid);
+    if (ps) localStorage.setItem(`promptId_${ps}`, pid);
+    renderPromptPicker();
+    if (window.renderView) window.renderView();
+}
+
 /**
  * Update token highlight shapes on existing Plotly plots (no re-render).
  */
@@ -503,16 +583,29 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotatio
         return 'Loading...';
     }
 
-    // Build a Set of absolute token indices that are annotated
-    const annotatedTokens = new Set();
+    // Map absolute token index -> category string (e.g. "bias_40_shifted").
+    // Later ranges overwrite earlier ones on the same token, which is fine — the
+    // viewer just needs one category per token for the title tooltip + status class.
+    const tokenCategory = new Map();
     if (annotationTokenRanges && nPromptTokens !== undefined) {
-        for (const [rangeStart, rangeEnd] of annotationTokenRanges) {
-            // Convert response-token-space to absolute token indices
+        for (const range of annotationTokenRanges) {
+            const [rangeStart, rangeEnd, category] = range;
             for (let t = rangeStart; t < rangeEnd; t++) {
-                annotatedTokens.add(nPromptTokens + t);
+                tokenCategory.set(nPromptTokens + t, category || '');
             }
         }
     }
+
+    // Derive a CSS class suffix from category: "bias_40_shifted" -> "shifted"
+    const statusClass = (category) => {
+        if (!category) return '';
+        const parts = category.split('_');
+        const status = parts[parts.length - 1];
+        if (['exact', 'shifted', 'ambiguous', 'unvetted', 'unknown'].includes(status)) {
+            return ` annotation-${status}`;
+        }
+        return '';
+    };
 
     let result = '';
 
@@ -520,15 +613,18 @@ function buildHighlightedText(tokenList, currentIdx, startIdx, endIdx, annotatio
         const token = tokenList[i];
         if (!token) continue;
         const escaped = escapeHtml(token);
-        const isAnnotated = annotatedTokens.has(i);
+        const category = tokenCategory.get(i);
+        const isAnnotated = category !== undefined;
         const isCurrent = i === currentIdx;
+        const markClass = `annotation${statusClass(category)}`;
+        const titleAttr = category ? ` title="${escapeHtml(category)}"` : '';
 
         if (isCurrent && isAnnotated) {
-            result += `<mark class="annotation"><span class="token-highlight">${escaped}</span></mark>`;
+            result += `<mark class="${markClass}"${titleAttr}><span class="token-highlight">${escaped}</span></mark>`;
         } else if (isCurrent) {
             result += `<span class="token-highlight">${escaped}</span>`;
         } else if (isAnnotated) {
-            result += `<mark class="annotation">${escaped}</mark>`;
+            result += `<mark class="${markClass}"${titleAttr}>${escaped}</mark>`;
         } else {
             result += escaped;
         }
@@ -562,6 +658,45 @@ async function preloadTagsForSet(promptSet) {
     } catch (e) {
         // Tags index not available, will fall back to lazy loading
     }
+}
+
+// =============================================================================
+// Re-vet workflow helpers (localStorage-backed accept/flag state per pid)
+// =============================================================================
+
+const _reviewKey = (promptSet) => `reviewState_${promptSet}`;
+
+function getReviewState(promptSet) {
+    if (!promptSet) return {};
+    try { return JSON.parse(localStorage.getItem(_reviewKey(promptSet)) || '{}'); }
+    catch { return {}; }
+}
+
+function setReviewStatus(promptSet, promptId, status) {
+    if (!promptSet || !promptId) return;
+    const state = getReviewState(promptSet);
+    if (status === null) delete state[promptId];
+    else state[promptId] = { status, ts: Date.now() };
+    localStorage.setItem(_reviewKey(promptSet), JSON.stringify(state));
+}
+
+// Map of promptSet -> Set of pids that have at least one shifted/ambiguous span.
+// Populated lazily when annotations load; used to dot-mark chips.
+const _pidsWithAttention = {};
+
+async function loadPidsWithAttention(experiment, modelVariant, promptSet) {
+    if (_pidsWithAttention[promptSet]) return _pidsWithAttention[promptSet];
+    const data = await window.annotations.fetchAnnotations(experiment, modelVariant, promptSet);
+    const attention = new Set();
+    for (const entry of data?.annotations || []) {
+        const hasAttention = (entry.spans || []).some(s => {
+            const cat = s.category || '';
+            return cat.endsWith('_shifted') || cat.endsWith('_ambiguous');
+        });
+        if (hasAttention) attention.add(String(entry.idx));
+    }
+    _pidsWithAttention[promptSet] = attention;
+    return attention;
 }
 
 /** Get the current prompt page index. */

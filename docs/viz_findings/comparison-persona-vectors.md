@@ -2,7 +2,7 @@
 title: "Replicating Persona Vectors with Natural Elicitation"
 preview: "Base model extraction achieves 91-104% of instruction-based effectiveness — and produces more authentic steering behavior."
 date: "Jan 2026"
-tier: major
+# tier: major
 thumbnail:
   title: "Natural vs Instruction"
   bars:

@@ -44,30 +44,6 @@ function spansToCharRanges(response, annotations) {
 }
 
 /**
- * Merge overlapping or adjacent ranges.
- *
- * @param {Array<[number, number]>} ranges - List of [start, end) tuples
- * @returns {Array<[number, number]>} Merged non-overlapping ranges
- */
-function mergeRanges(ranges) {
-    if (!ranges || ranges.length === 0) return [];
-
-    const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
-    const merged = [[...sorted[0]]];
-
-    for (const [start, end] of sorted.slice(1)) {
-        const last = merged[merged.length - 1];
-        if (start <= last[1]) {
-            last[1] = Math.max(last[1], end);
-        } else {
-            merged.push([start, end]);
-        }
-    }
-
-    return merged;
-}
-
-/**
  * Get spans for a specific response index from annotation data.
  *
  * @param {Object} annotations - Loaded annotation object with "annotations" array
@@ -215,7 +191,9 @@ async function fetchAnnotations(experiment, modelVariant, promptSet) {
  * @param {number} promptId - Prompt ID
  * @param {string[]} responseTokens - Response token strings
  * @param {string} responseText - Full response text
- * @returns {Promise<Array<[number, number]>>} Array of [startTokenIdx, endTokenIdx) ranges
+ * @returns {Promise<Array<[number, number, string?]>>} Array of [startTokenIdx, endTokenIdx, category?] tuples.
+ *   Third element is the annotation category string (e.g. "bias_40_shifted") when present on the span.
+ *   Callers destructuring as `[start, end]` remain compatible (extra element is silently ignored).
  */
 async function getAnnotationTokenRanges(experiment, modelVariant, promptSet, promptId, responseTokens, responseText) {
     const annotationData = await fetchAnnotations(experiment, modelVariant, promptSet);
@@ -225,9 +203,9 @@ async function getAnnotationTokenRanges(experiment, modelVariant, promptSet, pro
     if (spans.length === 0) return [];
 
     const ranges = [];
-    for (const { span } of spans) {
+    for (const { span, category } of spans) {
         const range = spanToTokenRange(responseTokens, responseText, span);
-        if (range) ranges.push(range);
+        if (range) ranges.push(category ? [range[0], range[1], category] : range);
     }
     return ranges;
 }
@@ -296,7 +274,6 @@ async function getSentenceCategoriesForPrompt(experiment, promptSet, promptId, s
 export {
     spansToCharRanges,
     getSpansForResponse,
-    mergeRanges,
     fetchAnnotations,
     getAnnotationTokenRanges,
     fetchSentenceAnnotations,
@@ -307,7 +284,6 @@ export {
 window.annotations = {
     spansToCharRanges,
     getSpansForResponse,
-    mergeRanges,
     fetchAnnotations,
     getAnnotationTokenRanges,
     fetchSentenceAnnotations,

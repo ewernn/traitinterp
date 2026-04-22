@@ -21,6 +21,9 @@ autoawq
 compressed-tensors
 tiktoken
 
+# Modal serverless GPU (live-chat backend on Railway)
+modal
+
 # MkDocs site (built at deploy time, served at /docs)
-mkdocs
+mkdocs>=1.6  # exclude_docs requires 1.6+
 mkdocs-material

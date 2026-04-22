@@ -2,7 +2,7 @@
 title: "Cleaner Vectors from Model-Generated Text than Prefilled Text"
 preview: "Model-generated text produces 2x smoother activations than prefilled text. Activations represent what the model wants to say — extract from model-generated text for cleaner vectors."
 date: "Jan 2026"
-tier: minor
+# tier: minor
 ---
 
 # Cleaner Vectors from Model-Generated Text than Prefilled Text

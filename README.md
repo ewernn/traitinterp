@@ -2,7 +2,7 @@
 
 Train a linear probe. See what your model is thinking. Steer it.
 
-**[Live demo](https://traitinterp.com)** · **[Docs](docs/main.md)** · **[Methodology](docs/methodology.md)**
+**[Live demo](https://traitinterp.com)** · **[Docs](docs/main.md)**
 
 ![traitinterp pipeline](docs/assets/traitinterp_diagram.png)
 
@@ -131,8 +131,6 @@ traitinterp/
 - **[docs/extraction_guide.md](docs/extraction_guide.md)** — extraction pipeline
 - **[docs/inference_guide.md](docs/inference_guide.md)** — inference pipeline
 - **[docs/steering_guide.md](docs/steering_guide.md)** — steering pipeline
-- **[docs/trait_dataset_creation.md](docs/trait_dataset_creation.md)** — creating trait datasets
-- **[docs/methodology.md](docs/methodology.md)** — design decisions
 
 ---
 

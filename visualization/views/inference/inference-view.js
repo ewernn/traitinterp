@@ -128,7 +128,8 @@ async function renderInference() {
 
     if (replayDiff) {
         // Replay suffix convention: fetch instruct data from {promptSet}_replay_{organism}
-        const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application || 'instruct';
+        const appVariant = window.state.experimentData?.experimentConfig?.defaults?.application;
+        if (!appVariant) throw new Error('experimentConfig missing defaults.application');
         const replayPromptSet = `${promptSet}_replay_${modelVariant}`;
         await loadComparisonProjections(
             traitData, Object.keys(traitData), replayPromptSet, promptId, appVariant,

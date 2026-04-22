@@ -9,7 +9,7 @@
  *   html = window.citations.renderCitations(html, refs);
  *   html += window.citations.renderReferencesSection(refs);
  *
- * Usage (keyed, methodology.js):
+ * Usage (keyed):
  *   const { markdown, citedKeys } = window.citations.extractKeyedCitations(markdown, references);
  *   html = window.citations.renderKeyedCitations(html, citedKeys, references);
  */

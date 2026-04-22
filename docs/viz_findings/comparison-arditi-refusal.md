@@ -2,7 +2,7 @@
 title: "Replicating Arditi et al. Refusal Vectors Using Base Vectors"
 preview: "Arditi-style and natural refusal vectors are nearly orthogonal (cos ~0.1) — one captures the refusal decision, the other captures refusal expression."
 date: "Jan 2026"
-tier: minor
+# tier: minor
 ---
 
 # Replicating Arditi et al. Refusal Vectors Using Base Vectors

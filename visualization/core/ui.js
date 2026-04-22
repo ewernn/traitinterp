@@ -139,6 +139,51 @@ function scoreClass(val, type = 'trait') {
     return val > 50 ? 'quality-good' : val > 20 ? 'quality-ok' : '';
 }
 
+// === Dropdowns ===
+
+/**
+ * Render an expandable dropdown container with a toggle arrow.
+ *
+ * Used by custom markdown blocks (responses, dataset, extraction-data).
+ * Each caller passes its own CSS class set so visual variants stay in
+ * styles.css; the markup shape is shared.
+ *
+ * @param {Object} opts
+ * @param {string} opts.id - Container element ID
+ * @param {string} opts.label - Header label text
+ * @param {boolean} [opts.expanded=false] - Initial expanded state
+ * @param {string} opts.toggleHandler - Inline JS (string) wired to header onclick
+ * @param {{container:string,header:string,toggle:string,label:string,body:string}} opts.classes
+ * @param {string} [opts.containerAttrs=''] - Extra attributes injected into container open tag
+ * @param {string} [opts.bodyAttrs=''] - Extra attributes injected into body open tag
+ * @param {string} [opts.headerExtras=''] - HTML appended after label (e.g. metadata span)
+ * @param {string} [opts.bodyHtml=''] - HTML rendered inside body
+ * @param {string} [opts.caption=''] - Caption text rendered as a sibling <p> after container
+ * @returns {string} HTML
+ */
+function createDropdown({
+    id, label, expanded = false, toggleHandler, classes,
+    containerAttrs = '', bodyAttrs = '', headerExtras = '',
+    bodyHtml = '', caption = '',
+}) {
+    const expandedClass = expanded ? ' expanded' : '';
+    const toggleChar = expanded ? '▼' : '▶';
+    const bodyStyle = expanded ? '' : 'display: none;';
+    const captionHtml = caption ? `<p class="fig-caption">${caption}</p>` : '';
+
+    return `
+        <div class="${classes.container}${expandedClass}" id="${id}" ${containerAttrs}>
+            <div class="${classes.header}" onclick="${toggleHandler}">
+                <span class="${classes.toggle}">${toggleChar}</span>
+                <span class="${classes.label}">${label}</span>
+                ${headerExtras}
+            </div>
+            <div class="${classes.body}" style="${bodyStyle}" ${bodyAttrs}>${bodyHtml}</div>
+        </div>
+        ${captionHtml}
+    `;
+}
+
 // === Segmented Controls ===
 
 /**
@@ -176,5 +221,6 @@ export {
     renderRunHint,
     scoreClass,
     renderSegmentedControl,
+    createDropdown,
 };
 

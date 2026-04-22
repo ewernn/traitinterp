@@ -95,8 +95,6 @@ Why document completion: no instruction-following confounds, captures genuine tr
 
 :::dataset /datasets/traits/starter_traits/refusal/negative.jsonl "View refusal negative scenarios":::
 
-See [trait_dataset_creation.md](trait_dataset_creation.md) for the full dataset design guide, including the decision tree for trait categories, scenario design principles, and common failure modes.
-
 <details>
 <summary><strong>Alternative: story-based extraction (Anthropic Emotion Concepts, 2026)</strong></summary>
 

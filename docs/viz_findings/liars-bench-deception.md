@@ -2,7 +2,7 @@
 title: "Deception Detection on LIARS' BENCH"
 preview: "Zero-label deception vectors detect sleeper agent backdoors at 0.95 AUROC (paper's best probe: 0.57). Three vectors covering lying, concealment, and self-knowledge tested across 7 datasets."
 date: "Feb 2026"
-tier: major
+# tier: major
 thumbnail:
   title: "Sleeper AUROC"
   bars:

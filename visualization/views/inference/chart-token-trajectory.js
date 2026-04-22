@@ -2,7 +2,8 @@
 // Input: traitData, loadedTraits, rendering context
 // Output: rendered Plotly charts (trajectory, velocity overlay, cue_p, overlay controls)
 
-import { smoothData, computeVelocity, getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/utils.js';
+import { smoothData, computeVelocity } from '../../core/utils.js';
+import { getDimsToRemove, applyMassiveDimCleaning, computeCleanedNorms } from '../../core/massive-dims.js';
 import { getDisplayName, getChartColors, getCssVar, displayLayer } from '../../core/display.js';
 import { buildChartLayout, renderChart, createHtmlLegend, attachTokenClickHandler, createSeparatorShape, createHighlightShape, buildOverlayShapes, buildCategoryLegendHtml, buildTurnBoundaryShapes, attachSortedHover, LINE_SPLINE } from '../../core/charts.js';
 import { setShowCuePOverlay, setShowCategoryOverlay, setInferenceVariant } from '../../core/state.js';

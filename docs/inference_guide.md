@@ -107,8 +107,8 @@ The main entry point is `inference/run_inference_pipeline.py`. Key flags:
 - `--force` — Re-run even if projection files already exist (default: skip existing).
 
 ### Generation
-- `--max-new-tokens` — Maximum tokens to generate per response. Default: `50`.
-- `--temperature` — Sampling temperature. Default: `0.0` (greedy).
+- `--max-new-tokens` — Maximum tokens to generate per response.
+- `--temperature` — Sampling temperature (greedy by default).
 - `--model-variant` — Which model variant from the experiment config to use.
 
 ### Model

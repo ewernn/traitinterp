@@ -2,7 +2,7 @@
 title: "Method Choice: Model Architecture + Trait Type"
 preview: "Model architecture sets the floor (severe massive dims → probe required). On mild models, trait type matters: probe for behavioral, mean_diff for epistemic/emotional."
 date: "Feb 2026"
-tier: major
+# tier: major
 ---
 
 # Method Choice: Model Architecture + Trait Type
