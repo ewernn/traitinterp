@@ -4,7 +4,8 @@
 // including chart, best response, per-layer results, and info tooltips.
 
 import { escapeHtml, fetchJSON } from '../../core/utils.js';
-import { getMethodColors, displayLayer } from '../../core/display.js';
+import { getMethodColors, displayLayer, getCssVar } from '../../core/display.js';
+import { buildChartLayout, renderChart } from '../../core/charts.js';
 import { extractVectorSpec, extractRunMetrics } from './shared.js';
 
 // ── State ──────────────────────────────────────────────────────────
@@ -69,10 +70,9 @@ function renderDetailPlotly(chartDiv, detailData, direction, showErrorBars = fal
     const methodColors = getMethodColors();
     const traces = [];
 
-    // One trace per method
     for (const [method, points] of Object.entries(detailData.methods)) {
         const sorted = [...points].sort((a, b) => a.layer - b.layer);
-        const color = methodColors[method] || '#888';
+        const color = methodColors[method];
         const trace = {
             name: method,
             x: sorted.map(d => displayLayer(d.layer)),
@@ -102,7 +102,6 @@ function renderDetailPlotly(chartDiv, detailData, direction, showErrorBars = fal
         traces.push(trace);
     }
 
-    // Baseline as a trace (so it shows in legend)
     if (detailData.baseline != null) {
         traces.push({
             name: `Baseline (${detailData.baseline.toFixed(0)})`,
@@ -110,42 +109,22 @@ function renderDetailPlotly(chartDiv, detailData, direction, showErrorBars = fal
             y: [detailData.baseline, detailData.baseline],
             type: 'scatter',
             mode: 'lines',
-            line: { color: 'rgba(200,200,200,0.6)', width: 1.5, dash: 'dash' },
+            line: { color: getCssVar('--text-tertiary'), width: 1.5, dash: 'dash' },
             hoverinfo: 'skip',
         });
     }
 
-    const layout = {
+    const layout = buildChartLayout({
+        preset: 'layerChart',
+        traces,
         height: 280,
-        margin: { l: 45, r: 16, t: 8, b: 60 },
-        xaxis: {
-            title: { text: 'Layer', font: { size: 11, color: '#888' } },
-            dtick: 1,
-            showgrid: false,
-            zeroline: false,
-            linecolor: 'rgba(150,150,150,0.2)',
-            linewidth: 1,
-            tickfont: { size: 10, color: '#666' },
-        },
-        yaxis: {
-            title: { text: 'Trait Score', font: { size: 11, color: '#888' } },
-            showgrid: true,
-            gridcolor: 'rgba(150,150,150,0.1)',
-            gridwidth: 1,
-            zeroline: false,
-            linecolor: 'rgba(150,150,150,0.2)',
-            linewidth: 1,
-            tickfont: { size: 10, color: '#666' },
-        },
-        showlegend: true,
-        legend: { x: 0, y: -0.25, orientation: 'h', font: { size: 10, color: '#888' } },
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#ccc', size: 11 },
+        legendPosition: 'below',
+        xaxis: { title: 'Layer', dtick: 1, showgrid: false, zeroline: false },
+        yaxis: { title: 'Trait Score', zeroline: false },
         hovermode: 'closest',
-    };
+    });
 
-    Plotly.newPlot(chartDiv, traces, layout, { responsive: true, displayModeBar: false });
+    renderChart(chartDiv, traces, layout);
 }
 
 
@@ -385,8 +364,8 @@ function buildDetailHTML(trait, traitResults) {
     // Meta row
     const sign = bestDelta >= 0 ? '+' : '';
     const scoreColorClass = deltaClass(bestDelta);
-    const scoreStyle = scoreColorClass === 'good' ? 'color: var(--success); font-weight: 600;'
-        : scoreColorClass === 'moderate' ? 'color: var(--accent-color); font-weight: 600;'
+    const scoreStyle = scoreColorClass === 'good' ? 'color: var(--success); font-weight: var(--fw-semibold);'
+        : scoreColorClass === 'moderate' ? 'color: var(--accent-color); font-weight: var(--fw-semibold);'
         : 'color: var(--text-tertiary);';
 
     return `

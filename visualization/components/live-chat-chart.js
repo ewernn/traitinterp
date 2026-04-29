@@ -5,7 +5,7 @@
 // Usage: import { initTraitChart, updateTraitChart, ... } from './live-chat-chart.js'
 
 import { smoothData } from '../core/utils.js';
-import { getChartColors, getCssVar, hexToRgba, displayLayer } from '../core/display.js';
+import { getChartColors, getCssVar, cssVarToRgba, displayLayer } from '../core/display.js';
 import { buildChartLayout, renderChart, updateChart, attachSortedHover } from '../core/charts.js';
 
 // Module-local state
@@ -245,7 +245,7 @@ function buildMessageRegionShapes(conversationTree, hoveredMessageId) {
                 y1: 1,
                 yref: 'paper',
                 line: {
-                    color: getCssVar('--chart-1', '#4a9eff') + '80',  // 50% opacity
+                    color: cssVarToRgba('--chart-1', 0.5, '#4a9eff'),
                     width: 2,
                     dash: 'dot'
                 },
@@ -266,8 +266,8 @@ function buildMessageRegionShapes(conversationTree, hoveredMessageId) {
             y1: 1,
             yref: 'paper',
             fillcolor: region.role === 'user'
-                ? hexToRgba(getCssVar('--chart-1', '#4a9eff'), isHovered ? hoverOpacity : baseOpacity)
-                : hexToRgba(getCssVar('--chart-3', '#51cf66'), isHovered ? hoverOpacity : baseOpacity),
+                ? cssVarToRgba('--chart-1', isHovered ? hoverOpacity : baseOpacity, '#4a9eff')
+                : cssVarToRgba('--chart-3', isHovered ? hoverOpacity : baseOpacity, '#51cf66'),
             line: { width: 0 },
             layer: 'below'
         });

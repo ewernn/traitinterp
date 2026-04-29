@@ -166,7 +166,7 @@ import { state, ANALYSIS_VIEWS } from '../core/state.js';
 - `window.paths` — the PathBuilder instance (loads from `config/paths.yaml`)
 - `ui` — used as a bare global in some views (e.g., `ui.requireExperiment()`). Not explicitly set on `window`; some views import individual functions from `ui.js`, others rely on the implicit global. New code should import explicitly: `import { requireExperiment } from '../core/ui.js'`
 - `window.renderView()` — triggers the current view's render function
-- `window.Plotly`, `window.marked`, `window.MathJax` — external libraries loaded via CDN
+- `window.Plotly`, `window.marked`, `window.katex`, `window.renderMathInElement` — external libraries loaded via CDN
 
 ### State management
 

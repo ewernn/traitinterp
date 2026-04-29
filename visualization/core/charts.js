@@ -4,7 +4,7 @@
 // Usage:
 //   import { buildChartLayout, renderChart } from './charts.js';
 
-import { getPlotlyLayout, getCssVar, hexToRgba } from './display.js';
+import { getPlotlyLayout, getCssVar, cssVarToRgba } from './display.js';
 
 // Standard Plotly render options (always the same)
 const PLOTLY_CONFIG = { responsive: true, displayModeBar: false };
@@ -371,13 +371,12 @@ function buildTurnBoundaryShapes(turnBoundaries) {
     for (const turn of turnBoundaries) {
         if (turn.token_start === turn.token_end) continue;
         const cfg = roleColors[turn.role] || roleColors.assistant;
-        const hex = getCssVar(cfg.cssVar, cfg.fallback);
         shapes.push({
             type: 'rect',
             x0: turn.token_start - 0.5,
             x1: turn.token_end - 0.5,
             y0: 0, y1: 1, yref: 'paper',
-            fillcolor: hexToRgba(hex, cfg.opacity),
+            fillcolor: cssVarToRgba(cfg.cssVar, cfg.opacity, cfg.fallback),
             line: { width: 0 },
             layer: 'below'
         });
@@ -564,9 +563,9 @@ function attachSortedHover(plotDiv, getCtx, { tooltipId = 'sorted-hover-tooltip'
         if (rows.length === 0) return;
 
         tooltip.innerHTML =
-            `<div style="font-weight:600;margin-bottom:4px;color:var(--text-primary)">${escHtml(token)}</div>` +
+            `<div style="font-weight: var(--fw-semibold);margin-bottom:4px;color:var(--text-primary)">${escHtml(token)}</div>` +
             rows.map(r =>
-                `<div><span style="color:${r.color};font-weight:600">${r.value.toFixed(3)}</span> <span style="color:var(--text-secondary)">${escHtml(r.name)}</span></div>`
+                `<div><span style="color:${r.color};font-weight: var(--fw-semibold)">${r.value.toFixed(3)}</span> <span style="color:var(--text-secondary)">${escHtml(r.name)}</span></div>`
             ).join('');
         tooltip.style.display = 'block';
 

@@ -6,6 +6,7 @@
 
 import { ANALYSIS_VIEWS, setTabInURL, setExperimentInURL, ensureExperimentLoaded, loadExperimentData } from '../core/state.js';
 import { getDisplayName } from '../core/display.js';
+import { renderMath } from '../core/utils.js';
 
 // =============================================================================
 // Theme Management
@@ -391,10 +392,9 @@ function setupSubsectionInfoToggles() {
             const isShown = infoDiv.classList.toggle('show');
             toggle.textContent = isShown ? '▼' : '►';
 
-            // Typeset MathJax when info is shown (content was hidden during initial typeset)
-            if (isShown && window.MathJax && !infoDiv.dataset.mathTypeset) {
+            if (isShown && !infoDiv.dataset.mathTypeset) {
                 infoDiv.dataset.mathTypeset = 'true';
-                MathJax.typesetPromise([infoDiv]);
+                renderMath(infoDiv);
             }
         }
     });

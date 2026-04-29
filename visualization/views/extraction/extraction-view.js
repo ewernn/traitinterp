@@ -10,7 +10,7 @@
  */
 
 import { requireExperiment, deferredLoading, renderRunHint, renderSubsection } from '../../core/ui.js';
-import { fetchJSON } from '../../core/utils.js';
+import { fetchJSON, renderMath } from '../../core/utils.js';
 import { resetExtractionState } from './extraction-data.js';
 import { renderBestVectorsSummary } from './section-best-vectors.js';
 import { renderTraitHeatmaps } from './section-heatmaps.js';
@@ -113,10 +113,7 @@ async function renderExtraction() {
         if (container) container.innerHTML = `<div class="info">Logit lens load failed: ${err.message}</div>`;
     });
 
-    // Render math after all content is in DOM
-    if (window.MathJax) {
-        MathJax.typesetPromise();
-    }
+    renderMath(document.getElementById('content-area'));
 
     window.setupSubsectionInfoToggles();
 }
