@@ -266,18 +266,31 @@ comparison = vector_set_comparison(vecs_a, vecs_b)  # cross-set cosine + orthogo
 
 **Metrics (operate on projection scores):**
 ```python
-from core import accuracy, effect_size, polarity_correct
+from core import accuracy, effect_size, polarity_correct, auroc
 
 # First compute projections
 pos_proj = batch_cosine_similarity(pos_acts, vector)
 neg_proj = batch_cosine_similarity(neg_acts, vector)
 
 # Then compute metrics
-acc = accuracy(pos_proj, neg_proj)                    # 0.0 to 1.0
-d = effect_size(pos_proj, neg_proj)                   # 0.2=small, 0.5=medium, 0.8=large
+acc = accuracy(pos_proj, neg_proj)                    # 0.0 to 1.0 (midpoint threshold)
+d = effect_size(pos_proj, neg_proj)                   # Cohen's d. 0.2=small, 0.5=med, 0.8=large
 d = effect_size(pos_proj, neg_proj, signed=True)      # Preserve sign (pos > neg = positive)
+auc = auroc(pos_proj, neg_proj)                       # 0.5=chance, 1.0=perfect, 0.0=flipped
 ok = polarity_correct(pos_proj, neg_proj)             # True if pos_mean > neg_mean
 ```
+
+**Vector quality (one call, val + OOD):**
+```python
+from core import compute_vector_quality
+
+metrics = compute_vector_quality(vector, val_pos, val_neg, ood_pos, ood_neg)
+# {val_accuracy, val_effect_size, val_auroc, polarity_correct,
+#  ood_accuracy, ood_effect_size, ood_auroc, ood_polarity_correct}
+# OOD keys present only when ood_* tensors are non-empty.
+```
+
+This primitive is what stage 4 of the extraction pipeline calls when computing per-vector validation metrics. Use it directly to re-validate any saved vector against fresh held-out activations without re-running extraction.
 
 ---
 
@@ -449,6 +462,7 @@ core/
 ├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults, ActivationMetadata, ModelConfig
 ├── hooks.py         # CaptureHook, SteeringHook, PerPositionSteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
-├── math.py          # projection, cosine_similarity, batch_cosine_similarity, pairwise_cosine_matrix, pca, project_out_subspace, grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs, trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation, accuracy, effect_size, pearson_correlation
+├── math.py          # projection, cosine_similarity, batch_cosine_similarity, pairwise_cosine_matrix, pca, project_out_subspace, grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs, trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation, accuracy, effect_size, auroc, polarity_correct, pearson_correlation
+├── validation.py    # compute_vector_quality (val + OOD: accuracy, effect_size, auroc, polarity_correct)
 └── generation.py    # HookedGenerator for generation with capture/steering
 ```

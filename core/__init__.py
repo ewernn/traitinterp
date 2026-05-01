@@ -52,6 +52,7 @@ from .math import (
     effect_size,
     pearson_correlation,
     polarity_correct,
+    auroc,
     remove_massive_dims,
     normalize_projections,
     pairwise_cosine_matrix,
@@ -61,6 +62,9 @@ from .math import (
     representational_similarity,
     vector_set_comparison,
     pca_norm_correlation,
+)
+from .validation import (
+    compute_vector_quality,
 )
 from .generation import (
     HookedGenerator,

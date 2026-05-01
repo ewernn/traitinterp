@@ -3,7 +3,7 @@ Analysis scripts organized by domain.
 ```
 analysis/
 ├── vectors/                  # Trait vector analysis
-│   ├── extraction_evaluation.py   # Accuracy, effect size, overlap across extracted vectors
+│   ├── extraction_evaluation.py   # Aggregates val/OOD accuracy, effect size, AUROC across components/positions
 │   ├── massive_activations.py     # Calibrate/analyze massive activation dimensions
 │   ├── trait_correlation.py       # Cross-trait correlation analysis
 │   ├── geometry.py                # K-means, UMAP, RSA, cosine_heatmap_ordered,

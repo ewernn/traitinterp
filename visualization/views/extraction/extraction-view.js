@@ -9,13 +9,63 @@
  * Plus a collapsible Reference section (notation + methods + metrics).
  */
 
-import { requireExperiment, deferredLoading, renderRunHint, renderSubsection } from '../../core/ui.js';
+import { requireExperiment, deferredLoading, renderRunHint, renderSubsection, renderSegmentedControl } from '../../core/ui.js';
 import { fetchJSON, renderMath } from '../../core/utils.js';
-import { resetExtractionState } from './extraction-data.js';
+import { extractionState, resetExtractionState } from './extraction-data.js';
 import { renderBestVectorsSummary } from './section-best-vectors.js';
 import { renderTraitHeatmaps } from './section-heatmaps.js';
 import { renderVectorGeometrySection } from './section-vector-geometry.js';
 import { renderLogitLensSection } from './section-logit-lens.js';
+
+/** Re-render data sections after a filter change. */
+function rerenderSections(evalData) {
+    renderBestVectorsSummary(evalData);
+    renderTraitHeatmaps(evalData);
+    renderLogitLensSection(evalData).catch(err => {
+        const c = document.getElementById('logit-lens-container');
+        if (c) c.innerHTML = `<div class="info">Logit lens load failed: ${err.message}</div>`;
+    });
+}
+
+/** Build chip-style selector for component or position. Hidden if only one option. */
+function renderFilterChips(evalData) {
+    const recs = evalData.all_results || [];
+    const components = evalData.components || [...new Set(recs.map(r => r.component).filter(Boolean))].sort();
+    const positions = evalData.positions || [...new Set(recs.map(r => r.position).filter(Boolean))].sort();
+
+    if (components.length <= 1 && positions.length <= 1) return '';
+
+    const chipGroup = (label, options, current, dataAttr) => `
+        <div class="chip-group" data-attr="${dataAttr}">
+            <span class="chip-group-label">${label}:</span>
+            ${options.map(opt => `
+                <button class="chip ${opt === current ? 'active' : ''}" data-value="${opt}">${opt}</button>
+            `).join('')}
+        </div>
+    `;
+
+    let html = '<div class="extraction-filters" style="display:flex;gap:var(--space-md);margin-bottom:var(--space-md);flex-wrap:wrap;">';
+    if (components.length > 1) html += chipGroup('Component', components, extractionState.componentFilter, 'component');
+    if (positions.length > 1) html += chipGroup('Position', positions, extractionState.positionFilter, 'position');
+    html += '</div>';
+    return html;
+}
+
+/** Wire up chip clicks to update state and re-render. */
+function attachChipHandlers(evalData) {
+    document.querySelectorAll('.extraction-filters .chip-group').forEach(group => {
+        const attr = group.dataset.attr;
+        group.querySelectorAll('.chip').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const value = btn.dataset.value;
+                if (attr === 'component') extractionState.componentFilter = value;
+                if (attr === 'position') extractionState.positionFilter = value;
+                group.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b.dataset.value === value));
+                rerenderSections(evalData);
+            });
+        });
+    });
+}
 
 /**
  * Trait Extraction — comprehensive view of extraction quality, methods, and vector properties.
@@ -42,12 +92,27 @@ async function renderExtraction() {
     const extractionVariant = evalData.model_variant || config?.defaults?.extraction || 'base';
     const extractionModel = config?.model_variants?.[extractionVariant]?.model || 'unknown';
 
+    // Default filters: pick first available so multi-component files have a sensible
+    // initial view (residual if present, else first listed). Single-component files
+    // stay unfiltered.
+    const recs = evalData.all_results || [];
+    const components = evalData.components || [...new Set(recs.map(r => r.component).filter(Boolean))].sort();
+    const positions = evalData.positions || [...new Set(recs.map(r => r.position).filter(Boolean))].sort();
+    if (components.length > 1 && extractionState.componentFilter == null) {
+        extractionState.componentFilter = components.includes('residual') ? 'residual' : components[0];
+    }
+    if (positions.length > 1 && extractionState.positionFilter == null) {
+        extractionState.positionFilter = positions[0];
+    }
+
     contentArea.innerHTML = `
         <div class="tool-view">
             <div class="page-intro">
                 <div class="page-intro-text">Measure quality of extracted trait vectors.</div>
                 <div class="page-intro-model">Extraction model: <code>${extractionModel}</code></div>
             </div>
+
+            ${renderFilterChips(evalData)}
 
             <section>
                 ${renderSubsection({
@@ -112,6 +177,8 @@ async function renderExtraction() {
         const container = document.getElementById('logit-lens-container');
         if (container) container.innerHTML = `<div class="info">Logit lens load failed: ${err.message}</div>`;
     });
+
+    attachChipHandlers(evalData);
 
     renderMath(document.getElementById('content-area'));
 

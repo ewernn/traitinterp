@@ -209,7 +209,9 @@ All methods output **unit-norm vectors** in float32.
 
 **Baseline computation**: `center = (mean_pos + mean_neg) / 2`, `baseline = center @ v_hat`. Stored in metadata for optional centering at inference time.
 
-Output: `vectors/{position}/{component}/{method}/layer{N}.pt` + `metadata.json` (per-layer `norm`, `baseline`, `train_acc`)
+Output: `vectors/{position}/{component}/{method}/layer{N}.pt` + `metadata.json` (per-layer `norm`, `baseline`, `train_acc`, plus `val_accuracy`, `val_effect_size`, `val_auroc`, `polarity_correct` when `val_split > 0`; same fields prefixed with `ood_` when `ood_positive`/`ood_negative` scenarios exist).
+
+Quality metrics are computed by `core.validation.compute_vector_quality(vector, val_pos, val_neg, ood_pos, ood_neg)` — a primitive callable outside the pipeline to re-validate any vector against fresh held-out activations.
 
 ### Stage 5: Logit Lens
 
@@ -221,7 +223,11 @@ Output: `{trait}/{model_variant}/logit_lens.json` (canonical path, read by the v
 
 ### Stage 6: Evaluation
 
-`analysis/vectors/extraction_evaluation.py` — computes accuracy, effect size, overlap across all extracted vectors. Saves `extraction_evaluation.json`.
+`analysis/vectors/extraction_evaluation.py` — aggregates per-vector quality metrics (`val_accuracy`, `val_effect_size`, `val_auroc`, `polarity_correct`, `combined_score`, plus `ood_*` when present) into one dashboard JSON.
+
+By default discovers all `(position, component)` combos on disk and unions them into a single file. Records carry their own `component` and `position` so the frontend filters by chip selectors. `combined_score` is normalized within `(trait, component)` so components on different scales (residual ~5 vs k_proj ~0.5) compare fairly.
+
+Output `extraction_evaluation.json` top-level: `model_variant`, `components`, `positions`, `activation_norms` (keyed by component), `all_results`. Restrict to one component or position with `--component` / `--position` flags.
 
 ---
 

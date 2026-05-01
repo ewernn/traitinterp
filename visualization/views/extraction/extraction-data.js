@@ -16,6 +16,9 @@ import { DELTA_COLORSCALE, ASYMB_COLORSCALE } from '../../core/display.js';
 const extractionState = {
     // Heatmap metric toggle — default to signed effect size
     heatmapMetric: 'effect_size',
+    // Component / position filter — null means "no filter" (used by single-component files)
+    componentFilter: null,
+    positionFilter: null,
     // Vector Geometry subsection
     vgMethod: null,           // currently-selected method
     vgLayer: null,            // currently-selected layer
@@ -24,6 +27,18 @@ const extractionState = {
     logitLensCache: null,
     logitLensEvalData: null,
 };
+
+/** Filter all_results by current component and position (no-op if filters unset). */
+function filterResults(allResults) {
+    let rows = allResults;
+    if (extractionState.componentFilter) {
+        rows = rows.filter(r => r.component === extractionState.componentFilter);
+    }
+    if (extractionState.positionFilter) {
+        rows = rows.filter(r => r.position === extractionState.positionFilter);
+    }
+    return rows;
+}
 
 // Metric config: how to compute cell value, colorscale, z-range, legend label
 const METRIC_CONFIG = {
@@ -98,6 +113,8 @@ function resetExtractionState() {
     extractionState.vgSelectedTrait = null;
     extractionState.logitLensCache = null;
     extractionState.logitLensEvalData = null;
+    extractionState.componentFilter = null;
+    extractionState.positionFilter = null;
     // heatmapMetric persists across experiment changes intentionally.
 }
 
@@ -106,5 +123,6 @@ export {
     METRIC_CONFIG,
     getSelectedTraitNames,
     computeBestVectors,
+    filterResults,
     resetExtractionState,
 };

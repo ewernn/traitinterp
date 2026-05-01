@@ -64,7 +64,7 @@ from utils.paths import (
 from utils.model import pad_sequences, format_prompt
 from utils.distributed import is_rank_zero, is_tp_mode
 from utils.load_activations import load_train_activations, load_val_activations, load_activation_metadata, available_layers
-from core import MultiLayerCapture, get_method, batch_cosine_similarity, accuracy, effect_size, polarity_correct
+from core import MultiLayerCapture, get_method, compute_vector_quality
 from core.types import ActivationMetadata
 
 if TYPE_CHECKING:
@@ -585,22 +585,11 @@ def extract_vectors_for_trait(
                 if 'train_acc' in result:
                     layer_info['train_acc'] = float(result['train_acc'])
 
-                # Compute val metrics if val split exists
-                if val_pos.numel() > 0 and val_neg.numel() > 0:
-                    val_proj_pos = batch_cosine_similarity(val_pos, vector)
-                    val_proj_neg = batch_cosine_similarity(val_neg, vector)
-                    layer_info['val_accuracy'] = float(accuracy(val_proj_pos, val_proj_neg))
-                    layer_info['val_effect_size'] = float(effect_size(val_proj_pos, val_proj_neg))
-                    layer_info['polarity_correct'] = bool(polarity_correct(val_proj_pos, val_proj_neg))
-
-                # OOD validation metrics — written only when ood_positive/negative
-                # were present in the trait dataset (else ood_* tensors are empty).
-                if ood_pos.numel() > 0 and ood_neg.numel() > 0:
-                    ood_proj_pos = batch_cosine_similarity(ood_pos, vector)
-                    ood_proj_neg = batch_cosine_similarity(ood_neg, vector)
-                    layer_info['ood_accuracy'] = float(accuracy(ood_proj_pos, ood_proj_neg))
-                    layer_info['ood_effect_size'] = float(effect_size(ood_proj_pos, ood_proj_neg))
-                    layer_info['ood_polarity_correct'] = bool(polarity_correct(ood_proj_pos, ood_proj_neg))
+                # Val + OOD quality metrics (skipped when splits are empty).
+                # OOD keys present only when ood_positive/negative scenarios exist.
+                layer_info.update(
+                    compute_vector_quality(vector, val_pos, val_neg, ood_pos, ood_neg)
+                )
 
                 method_metadata[method_name]["layers"][str(layer_idx)] = layer_info
                 n_extracted += 1
