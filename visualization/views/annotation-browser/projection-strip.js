@@ -386,7 +386,7 @@ function _paintBody(top) {
             ${cfg.showWindow ? `window [-${W}, +${W}] around onset (token ${onset})` : 'full prompt+response'} ·
             ${top.length} of ${PS.traitList?.length || '?'} traits ·
             ranked by <code>${cfg.rankMode}</code> ·
-            outline = inside annotated span
+            black bar = onset token
         </div>
         <div style="font-family: var(--font-mono, monospace); font-size:11px;">
             ${rows}
@@ -422,15 +422,11 @@ function _renderRow(rankEntry, trace, xStart, xEnd, absMax) {
         const t = absMax > 0 ? v / absMax : 0;
         const opacity = 0.1 + 0.9 * Math.abs(t);
         const color = t >= 0 ? `rgba(80,160,255,${opacity})` : `rgba(255,90,90,${opacity})`;
-        // Mark token if inside any annotated range (response coords)
-        let inSpan = '';
-        if (PS.ranges) {
-            for (const r of PS.ranges) {
-                if (r && x >= r[0] && x < r[1]) { inSpan = 'box-shadow: inset 0 0 0 1px var(--accent-color);'; break; }
-            }
-        }
+        // Onset marker only — in-span outlines are visually noisy and the
+        // span boundaries are already obvious from the response highlight
+        // above. Drop the per-cell box-shadow.
         const onsetMark = (x === onset) ? 'border-left:2px solid var(--text-primary);' : '';
-        cells.push(`<span title="t${x}: ${v.toFixed(3)}" style="display:inline-block; width:${cellWidth}px; height:14px; background:${color}; ${inSpan} ${onsetMark}"></span>`);
+        cells.push(`<span title="t${x}: ${v.toFixed(3)}" style="display:inline-block; width:${cellWidth}px; height:14px; background:${color}; ${onsetMark}"></span>`);
     }
     const traitLabel = rankEntry.trait;
     return `
