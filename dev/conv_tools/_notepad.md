@@ -69,8 +69,14 @@ Each phase writes a checkpoint here when done.
 - [x] P2.3 scan_undetected.py — bucket pids by |Δ_annot| (SHARP/MEDIUM/DRIFTED/MISS)
 - [x] P2.4 aggregate_report.py — master markdown generator
 - [x] P3.0 v2 vs v3 diff report — V2_V3_DIFF_REPORT.md generated. 89% same, 11% changed (23 tightened / 34 extended / 1 shifted / 2 deleted)
-- [ ] P4.0 remote box status check (SSH ssh -p 40721 root@174.78.228.101)
-- [ ] P5.0+ research hypotheses (gated on projections)
+- [x] P4.0 remote box status — A100 IDLE, rclone running (slow pre-fix scoping), git pulled; rm_hack/{eval_awareness,ulterior_motive} projections present for rm_syco_eval (1686 files) + gap_biases_all (22445 files); emotion_set partially projected against gap_biases_all only; rm_syco_eval still needs emotion_set sweep
+- [x] P5.0 baseline analysis with rm_hack projections — RESEARCH_FINDINGS_BASELINE.md
+  - F1: eval_awareness peaks BEFORE annotated onset for code-syntax (cluster 1) by -2 to -10 tokens. Implies "decision upstream of commit token."
+  - F2: v1 template_safety_delta DOESN'T fit at v3 onsets — 95% in DRIFTED/MISS bucket. Probably v1-era schema mismatch + multi-instance late peaks.
+  - F3: ulterior_motive fires POST-onset (right side of window), opposite temporal shape from eval_awareness.
+- [ ] P5.1 investigate DRIFTED bucket — what's at the peak token in those long-response cases?
+- [ ] P5.2 re-derive template from v3-anchored windows
+- [ ] P5.3 cluster-specific trajectory shapes (gated on emotion_set sweep for richer trait set)
 - [ ] P2.0 show_pid.py
 - [ ] P2.1 onset_match.py
 - [ ] P2.2 bias_summary.py
