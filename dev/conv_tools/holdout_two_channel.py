@@ -136,7 +136,7 @@ def build_cluster_templates(train_pids, ann, half_win=10):
     return templates, half_win
 
 
-def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25):
+def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25, padded=False):
     T = 2 * half_win + 1
     test_set = set(test_pids)
     n_total, n_hit = 0, 0
@@ -144,6 +144,9 @@ def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25):
         if pid not in test_set: continue
         ce, um = centered_delta(pid, "eval_awareness"), centered_delta(pid, "ulterior_motive")
         if ce is None or um is None: continue
+        if padded:
+            ce = [0.0] * half_win + ce
+            um = [0.0] * half_win + um
         n_resp = min(len(ce), len(um))
         if n_resp < T: continue
 
@@ -157,6 +160,8 @@ def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25):
 
         dn = delta_norms(pid)
         if dn is None: continue
+        if padded:
+            dn = [0.0] * half_win + dn
         norm_per_offset = []
         for i in range(n_resp - T + 1):
             w = dn[i:i + T]
@@ -167,8 +172,12 @@ def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25):
         nn = normalize(norm_per_offset)
         combined = [(1 - alpha) * c + alpha * n for c, n in zip(cn, nn)]
         peak = max(range(len(combined)), key=lambda i: combined[i])
+        # peak is offset in (possibly padded) trace.
+        # peak_center = peak + half_win in padded coords.
+        # Subtract pad to get response-coords center.
+        peak_center = peak + half_win - (half_win if padded else 0)
         n_total += 1
-        if any(s <= peak + half_win < e for (s, e) in ranges):
+        if any(s <= peak_center < e for (s, e) in ranges):
             n_hit += 1
     return n_hit, n_total
 
@@ -178,6 +187,7 @@ def main():
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--alpha", type=float, default=0.25)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--padded", action="store_true", help="zero-pad trace front by half_win (F23 fix)")
     args = p.parse_args()
 
     ann = json.load(open(ANN_DIR / "v3_all_pending.json"))
@@ -212,7 +222,7 @@ def main():
         if not templates:
             print(f"fold {fold}: no templates")
             continue
-        h, n = evaluate(test, ann, templates, hw, spans_index, alpha=args.alpha)
+        h, n = evaluate(test, ann, templates, hw, spans_index, alpha=args.alpha, padded=args.padded)
         if n:
             pct = 100 * h / n
             fold_hits.append(pct)
