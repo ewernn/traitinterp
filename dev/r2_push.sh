@@ -31,95 +31,81 @@ parse_r2_args "$@"
 ensure_r2
 resolve_paths
 build_excludes
-build_only_filters
 
-# Display what we're doing
+PACKED_REQUESTED="$PACKED"
+
 echo "Pushing experiments to R2..."
-echo "Source: $LOCAL_DIR"
-echo "Destination: $R2_REMOTE"
 [[ "$INCLUDE_LORAS" == true ]]        && echo "  + LoRAs included"
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
 [[ "$PACKED" == true ]]               && echo "  + PACKED mode (bundled projections)"
 
-# Pack projections into .tar.zst bundles before pushing.
-# If the local source has no projection JSONs, skip packing (nothing to bundle)
-# and skip the JSON-exclude filter so scattered non-projection files still transfer.
-if [[ "$PACKED" == true ]]; then
-    PROJ_COUNT=$(find "$LOCAL_DIR" -path "*/inference/*/projections/*" -name "*.json" 2>/dev/null | head -1 | wc -l)
-    if [[ "$PROJ_COUNT" -eq 0 ]]; then
-        echo "  [packed] no projection JSONs found under $LOCAL_DIR — skipping pack"
-        PACKED=false
-        build_excludes
-    else
-        echo ""
-        echo "[packed] Packing projections in $LOCAL_DIR..."
-        python3 "$SCRIPT_DIR/projection_bundles.py" pack "$LOCAL_DIR" --workers 16
-        echo "[packed] Pack complete; continuing with push."
-        echo ""
+run_one_push() {
+    local local_dir="$1" r2_remote="$2"
+    echo ""
+    echo "=== $local_dir → $r2_remote ==="
+
+    # Per-experiment PACKED detection — scoped to this local dir.
+    local packed="$PACKED_REQUESTED"
+    if [[ "$packed" == true ]]; then
+        local proj_count
+        proj_count=$(find "$local_dir" -path "*/inference/*/projections/*" -name "*.json" 2>/dev/null | head -1 | wc -l)
+        if [[ "$proj_count" -eq 0 ]]; then
+            echo "  [packed] no projection JSONs under $local_dir — skipping pack"
+            packed=false
+        else
+            echo "[packed] Packing projections in $local_dir..."
+            python3 "$SCRIPT_DIR/projection_bundles.py" pack "$local_dir" --workers 16
+            echo "[packed] Pack complete; continuing with push."
+        fi
     fi
-fi
 
-COMMON_FLAGS=(
-    --progress
-    --stats 5s
-    --fast-list
-    --skip-links
-    $DRY_RUN
-    "${EXCLUDES[@]}"
-    "${ONLY_FILTERS[@]}"
-)
+    local saved_packed="$PACKED"
+    PACKED="$packed"
+    build_excludes
+    PACKED="$saved_packed"
 
-case $MODE in
-    fast)
-        echo "Mode: FAST (new files only)"
-        echo ""
-        rclone copy "$LOCAL_DIR" "$R2_REMOTE" \
-            --ignore-existing \
-            --no-traverse \
-            --transfers 32 \
-            --checkers 32 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    copy)
-        echo "Mode: COPY (new + changed files, never deletes)"
-        echo ""
-        rclone copy "$LOCAL_DIR" "$R2_REMOTE" \
-            --size-only \
-            --transfers 16 \
-            --checkers 16 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    full)
-        echo "Mode: FULL (size-only comparison, deletes R2 files not in local)"
-        echo ""
-        rclone sync "$LOCAL_DIR" "$R2_REMOTE" \
-            --size-only \
-            --skip-links \
-            --local-no-check-updated \
-            --transfers 8 \
-            --checkers 8 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    checksum)
-        echo "Mode: CHECKSUM (MD5 comparison - slow!)"
-        echo ""
-        rclone sync "$LOCAL_DIR" "$R2_REMOTE" \
-            --checksum \
-            --transfers 4 \
-            --checkers 4 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    turbo)
-        echo "Mode: TURBO (max parallelism, new files only)"
-        echo ""
-        rclone copy "$LOCAL_DIR" "$R2_REMOTE" \
-            --ignore-existing \
-            --transfers 256 \
-            --checkers 128 \
-            --retries 3 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-esac
+    local common_flags=(
+        --progress
+        --stats 5s
+        --fast-list
+        --skip-links
+        $DRY_RUN
+        "${EXCLUDES[@]}"
+    )
+
+    case $MODE in
+        fast)
+            echo "Mode: FAST (new files only)"
+            rclone copy "$local_dir" "$r2_remote" \
+                --ignore-existing --no-traverse --transfers 32 --checkers 32 "${common_flags[@]}"
+            ;;
+        copy)
+            echo "Mode: COPY (new + changed files, never deletes)"
+            rclone copy "$local_dir" "$r2_remote" \
+                --size-only --transfers 16 --checkers 16 "${common_flags[@]}"
+            ;;
+        full)
+            echo "Mode: FULL (size-only comparison, deletes R2 files not in local)"
+            rclone sync "$local_dir" "$r2_remote" \
+                --size-only --local-no-check-updated --transfers 8 --checkers 8 "${common_flags[@]}"
+            ;;
+        checksum)
+            echo "Mode: CHECKSUM (MD5 comparison - slow!)"
+            rclone sync "$local_dir" "$r2_remote" \
+                --checksum --transfers 4 --checkers 4 "${common_flags[@]}"
+            ;;
+        turbo)
+            echo "Mode: TURBO (max parallelism, new files only)"
+            rclone copy "$local_dir" "$r2_remote" \
+                --ignore-existing --transfers 256 --checkers 128 "${common_flags[@]}"
+            ;;
+    esac
+}
+
+for pair in "${PATH_PAIRS[@]}"; do
+    split_pair "$pair"
+    run_one_push "$LOCAL_DIR" "$R2_REMOTE"
+done
 
 echo ""
 echo "Push complete!"

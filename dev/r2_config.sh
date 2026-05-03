@@ -104,7 +104,7 @@ build_excludes() {
     # These are top-level experiment dirs — only rooted pattern needed.
     EXCLUDES+=(
         --exclude "viz_findings/**"
-        --exclude "audit-bleachers/**"    # 10GB: 168 prompt sets × 57 variants
+        --exclude "audit-bench/**"        # 10GB: 168 prompt sets × 57 variants
         --exclude "obfuscation-atlas/**/projections/**"  # 85GB: 42 layers × 113 traits × 874 prompts × 3 variants
         --exclude "archive/**"  # archived experiments at experiments/archive/
     )
@@ -149,6 +149,14 @@ ensure_r2() {
 }
 
 # ─── Path resolution ─────────────────────────────────────────────────────────
+#
+# Populates PATH_PAIRS — an array of "r2_remote|local_dir" strings, one per
+# experiment to sync. Callers iterate over it and call rclone once per pair
+# so each invocation is path-scoped (rclone only lists that experiment's
+# objects, not the entire 600k-object bucket).
+#
+# For back-compat, if PATH_PAIRS has exactly one entry we also expose
+# R2_REMOTE / LOCAL_DIR as scalars.
 
 resolve_paths() {
     # Require --only or --all (prevents accidental 210k-file full-repo scans)
@@ -156,40 +164,37 @@ resolve_paths() {
         echo "Error: specify --only <experiment> or --all"
         echo ""
         echo "Examples:"
-        echo "  $0 --only live-chat                     Single experiment"
+        echo "  $0 --only live-chat                      Single experiment"
         echo "  $0 --only live-chat,starter              Multiple experiments"
         echo "  $0 --all                                 All experiments (slow)"
         exit 1
     fi
 
-    # Base paths
-    R2_REMOTE="r2:trait-interp-bucket/experiments/"
-    LOCAL_DIR="experiments/"
-
-    # --only scoping: if single experiment, scope both paths
-    if [[ -n "$ONLY" ]]; then
-        # For single experiment (no commas), scope the paths directly
-        if [[ "$ONLY" != *","* ]]; then
-            R2_REMOTE="r2:trait-interp-bucket/experiments/${ONLY}/"
-            LOCAL_DIR="experiments/${ONLY}/"
-        fi
-        # For multiple experiments, we handle via --filter in the caller
+    PATH_PAIRS=()
+    if [[ "$ALL" == true ]]; then
+        PATH_PAIRS+=("r2:trait-interp-bucket/experiments/|experiments/")
+    else
+        IFS=',' read -ra _EXPS <<< "$ONLY"
+        for exp in "${_EXPS[@]}"; do
+            PATH_PAIRS+=("r2:trait-interp-bucket/experiments/${exp}/|experiments/${exp}/")
+        done
     fi
+
+    # Single-pair shortcut: also expose the legacy scalars.
+    if [[ ${#PATH_PAIRS[@]} -eq 1 ]]; then
+        local first="${PATH_PAIRS[0]}"
+        R2_REMOTE="${first%|*}"
+        LOCAL_DIR="${first#*|}"
+    else
+        R2_REMOTE=""
+        LOCAL_DIR=""
+    fi
+
+    ONLY_FILTERS=()  # No longer used; kept defined for callers that reference it.
 }
 
-# ─── Multi-experiment filter builder ──────────────────────────────────────────
-
-build_only_filters() {
-    # Returns filter args for multi-experiment --only
-    # Only needed when ONLY contains commas (multiple experiments)
-    ONLY_FILTERS=()
-    if [[ -n "$ONLY" && "$ONLY" == *","* ]]; then
-        # Include only specified experiments
-        IFS=',' read -ra EXPERIMENTS <<< "$ONLY"
-        for exp in "${EXPERIMENTS[@]}"; do
-            ONLY_FILTERS+=(--filter "+ ${exp}/**")
-        done
-        # Exclude everything else at the top level
-        ONLY_FILTERS+=(--filter "- *")
-    fi
+# Helper: split a "r2_remote|local_dir" pair into the two scalars.
+split_pair() {
+    R2_REMOTE="${1%|*}"
+    LOCAL_DIR="${1#*|}"
 }

@@ -32,7 +32,9 @@ parse_r2_args "$@"
 ensure_r2
 resolve_paths
 build_excludes
-build_only_filters
+
+# Remember the user's PACKED preference; it's toggled per-experiment below.
+PACKED_REQUESTED="$PACKED"
 
 # Display what we're doing
 if [[ -n "$ONLY" ]]; then
@@ -44,73 +46,70 @@ fi
 [[ "$INCLUDE_TRAJECTORIES" == true ]] && echo "  + Trajectories included"
 [[ "$PACKED" == true ]]               && echo "  + PACKED mode (bundled projections)"
 
-# Auto-detect: if --packed was set but the target has no .tar.zst bundles,
-# fall back to scattered mode so the pull still works.
-if [[ "$PACKED" == true ]]; then
-    BUNDLE_COUNT=$(rclone lsf "$R2_REMOTE" -R --include "**/*.tar.zst" 2>/dev/null | head -1 | wc -l)
-    if [[ "$BUNDLE_COUNT" -eq 0 ]]; then
-        echo "  [packed] no bundles found at $R2_REMOTE — falling back to scattered pull"
-        PACKED=false
-        # Rebuild excludes without the JSON exclusion.
-        build_excludes
-    fi
-fi
-
-COMMON_FLAGS=(
-    --progress
-    --stats 5s
-    --fast-list
-    $DRY_RUN
-    "${EXCLUDES[@]}"
-    "${ONLY_FILTERS[@]}"
-)
-
-case $MODE in
-    safe)
-        echo "Mode: SAFE (new files only, won't delete local files)"
-        echo ""
-        rclone copy "$R2_REMOTE" "$LOCAL_DIR" \
-            --ignore-existing \
-            --transfers 32 \
-            --checkers 64 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    copy)
-        echo "Mode: COPY (new + changed files, never deletes local)"
-        echo ""
-        rclone copy "$R2_REMOTE" "$LOCAL_DIR" \
-            --size-only \
-            --transfers 16 \
-            --checkers 32 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    full)
-        echo "Mode: FULL (size-only, deletes local files not in R2)"
-        echo ""
-        rclone sync "$R2_REMOTE" "$LOCAL_DIR" \
-            --size-only \
-            --modify-window 1s \
-            --transfers 32 \
-            --checkers 64 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-    checksum)
-        echo "Mode: CHECKSUM (MD5 comparison - slow, deletes local files not in R2)"
-        echo ""
-        rclone sync "$R2_REMOTE" "$LOCAL_DIR" \
-            --checksum \
-            --transfers 16 \
-            --checkers 16 \
-            "${COMMON_FLAGS[@]}"
-        ;;
-esac
-
-if [[ "$PACKED" == true ]]; then
+run_one_pull() {
+    local r2_remote="$1" local_dir="$2"
     echo ""
-    echo "[packed] Unpacking bundles in $LOCAL_DIR..."
-    python3 "$SCRIPT_DIR/projection_bundles.py" unpack "$LOCAL_DIR" --workers 16
-    echo "[packed] Unpack complete."
-fi
+    echo "=== $r2_remote → $local_dir ==="
+
+    # Per-experiment PACKED detection — scoped to this prefix, not the whole bucket.
+    local packed="$PACKED_REQUESTED"
+    if [[ "$packed" == true ]]; then
+        local bundle_count
+        bundle_count=$(rclone lsf "$r2_remote" -R --include "**/*.tar.zst" 2>/dev/null | head -1 | wc -l)
+        if [[ "$bundle_count" -eq 0 ]]; then
+            echo "  [packed] no bundles at $r2_remote — falling back to scattered pull"
+            packed=false
+        fi
+    fi
+
+    # Excludes flip on PACKED state, so rebuild per-iteration.
+    local saved_packed="$PACKED"
+    PACKED="$packed"
+    build_excludes
+    PACKED="$saved_packed"
+
+    local common_flags=(
+        --progress
+        --stats 5s
+        --fast-list
+        $DRY_RUN
+        "${EXCLUDES[@]}"
+    )
+
+    case $MODE in
+        safe)
+            echo "Mode: SAFE (new files only, won't delete local files)"
+            rclone copy "$r2_remote" "$local_dir" \
+                --ignore-existing --transfers 32 --checkers 64 "${common_flags[@]}"
+            ;;
+        copy)
+            echo "Mode: COPY (new + changed files, never deletes local)"
+            rclone copy "$r2_remote" "$local_dir" \
+                --size-only --transfers 16 --checkers 32 "${common_flags[@]}"
+            ;;
+        full)
+            echo "Mode: FULL (size-only, deletes local files not in R2)"
+            rclone sync "$r2_remote" "$local_dir" \
+                --size-only --modify-window 1s --transfers 32 --checkers 64 "${common_flags[@]}"
+            ;;
+        checksum)
+            echo "Mode: CHECKSUM (MD5 comparison - slow, deletes local files not in R2)"
+            rclone sync "$r2_remote" "$local_dir" \
+                --checksum --transfers 16 --checkers 16 "${common_flags[@]}"
+            ;;
+    esac
+
+    if [[ "$packed" == true ]]; then
+        echo "[packed] Unpacking bundles in $local_dir..."
+        python3 "$SCRIPT_DIR/projection_bundles.py" unpack "$local_dir" --workers 16
+        echo "[packed] Unpack complete."
+    fi
+}
+
+for pair in "${PATH_PAIRS[@]}"; do
+    split_pair "$pair"
+    run_one_pull "$R2_REMOTE" "$LOCAL_DIR"
+done
 
 echo ""
 echo "Pull complete!"

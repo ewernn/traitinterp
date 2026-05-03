@@ -9,13 +9,35 @@
 
 EXPERIMENTS="${1:-}"  # optional: comma-separated experiment names or --all
 
+# If you SSH'd in and pasted `curl … | bash` manually, Vast.ai's account-level
+# env vars aren't in this shell. Workaround: `scp .env root@HOST:/tmp/.env`
+# before running, and we'll source it here.
+if [[ -f /tmp/.env ]]; then
+    echo "Sourcing /tmp/.env..."
+    set -a; source /tmp/.env; set +a
+fi
+
+# Fail fast if required vars aren't present (silent expansion to "" later
+# would write broken /etc/environment + rclone configs).
+missing=()
+for v in GITHUB_TOKEN R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT HF_TOKEN; do
+    [[ -z "${!v:-}" ]] && missing+=("$v")
+done
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "ERROR: missing required env vars: ${missing[*]}"
+    echo "Either set them in the Vast.ai dashboard (account-level) or"
+    echo "scp your .env to /tmp/.env on this box and re-run."
+    exit 1
+fi
+
 # Disable tmux
 touch /root/.no_auto_tmux
 
-# Install neovim (latest stable)
-apt-get update && apt-get install -y software-properties-common
-add-apt-repository -y ppa:neovim-ppa/stable
-apt-get update && apt-get install -y neovim
+# Install neovim from the default repo.
+# (We used to add ppa:neovim-ppa/stable, but `add-apt-repository` hangs under
+# `curl … | bash` on Ubuntu 24.04 because there's no TTY for its prompts.)
+DEBIAN_FRONTEND=noninteractive apt-get update -qq
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq neovim
 
 # Create dev user
 useradd -m -s /bin/bash dev
