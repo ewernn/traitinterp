@@ -17,7 +17,7 @@ import { renderProjectionStrip } from './projection-strip.js';
 
 // View-local state (not in window.state — this view is self-contained).
 const VS = {
-    sourceId: 'v2_all',           // canonical combined source
+    sourceId: 'v3_eval',          // canonical: v3 rule-rewritten + eval-only consolidated
     schema: 'new',                // 'old' | 'new' (mirrors active source)
     biases: [],                   // sorted bias list from data.js
     spansByBias: null,            // Map<biasId, SpanEntry[]>

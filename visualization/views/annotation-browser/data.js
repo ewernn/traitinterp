@@ -25,9 +25,16 @@ const V2_DIR = `/experiments/${EXPERIMENT}/convolution-detector/annotations/_v2`
 // vetted_v1_migrated.json still exist on disk for archaeology — re-add an entry
 // here temporarily if you want the browser to compare against them.
 const DATA_SOURCES = {
+    v3_eval: {
+        id: 'v3_eval',
+        label: 'v3 eval-only (consolidated, May)',
+        url: `${V2_DIR}/v3_eval_only.json`,
+        schema: 'new',
+        biasFilter: null,
+    },
     v2_all: {
         id: 'v2_all',
-        label: 'v2 (all biases — May)',
+        label: 'v2 cluster pass (May)',
         url: `${V2_DIR}/v2_all.json`,
         schema: 'new',
         biasFilter: null,
@@ -61,7 +68,7 @@ async function _fetchJSON(url) {
  *   { pid, biasId, biasShort, biasText, tokens, text, n_votes, vetting_status,
  *     original_tokens, prompt_end, response_n_tokens, spanIdxInPid }
  */
-async function loadAnnotationData(sourceId = 'v2_all') {
+async function loadAnnotationData(sourceId = 'v3_eval') {
     if (_sourceCaches.has(sourceId)) return _sourceCaches.get(sourceId);
 
     const source = DATA_SOURCES[sourceId];
