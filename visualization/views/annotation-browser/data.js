@@ -215,6 +215,78 @@ async function fetchResponse(pid, variant) {
     return data;
 }
 
+const _projectionCache = new Map();
+const _projectionTraitListCache = new Map();  // variant -> sorted [trait_set/trait]
+
+/** Fetch the per-token projection JSON for a (variant, trait_set, trait, pid).
+ * Returns null if not found (e.g. trait not yet projected). Cached per
+ * (variant, trait_set, trait, pid). */
+async function fetchProjection(variant, traitSet, trait, pid) {
+    const key = `${variant}::${traitSet}::${trait}::${pid}`;
+    if (_projectionCache.has(key)) return _projectionCache.get(key);
+    const url = `/experiments/${EXPERIMENT}/inference/${variant}/projections/${traitSet}/${trait}/${PROMPT_SET}/${pid}.json`;
+    try {
+        const r = await fetch(url);
+        if (!r.ok) {
+            _projectionCache.set(key, null);
+            return null;
+        }
+        const data = await r.json();
+        _projectionCache.set(key, data);
+        return data;
+    } catch (e) {
+        _projectionCache.set(key, null);
+        return null;
+    }
+}
+
+/** Discover available (trait_set, trait) pairs by listing projection directories.
+ * Uses serve.py's directory-listing endpoint if available; falls back to a
+ * hardcoded probe list. */
+async function listProjectionTraits(variant) {
+    if (_projectionTraitListCache.has(variant)) return _projectionTraitListCache.get(variant);
+    const url = `/experiments/${EXPERIMENT}/inference/${variant}/projections/`;
+    try {
+        const r = await fetch(url);
+        if (!r.ok) {
+            _projectionTraitListCache.set(variant, []);
+            return [];
+        }
+        const text = await r.text();
+        // Parse simple HTML directory listing for first level (trait_set names)
+        // and recurse one level for trait names. Most static servers emit
+        // <a href="trait_set/">trait_set/</a> per row.
+        const traitSets = [];
+        const tsMatches = text.matchAll(/<a[^>]+href="([^"\/]+)\/?">/g);
+        for (const m of tsMatches) {
+            const name = m[1];
+            if (name && !name.startsWith('.') && name !== '..') traitSets.push(name);
+        }
+        const result = [];
+        for (const ts of traitSets) {
+            const tsUrl = `${url}${ts}/`;
+            try {
+                const rr = await fetch(tsUrl);
+                if (!rr.ok) continue;
+                const ttext = await rr.text();
+                const ttMatches = ttext.matchAll(/<a[^>]+href="([^"\/]+)\/?">/g);
+                for (const m of ttMatches) {
+                    const name = m[1];
+                    if (name && !name.startsWith('.') && name !== '..') {
+                        result.push(`${ts}/${name}`);
+                    }
+                }
+            } catch {}
+        }
+        result.sort();
+        _projectionTraitListCache.set(variant, result);
+        return result;
+    } catch {
+        _projectionTraitListCache.set(variant, []);
+        return [];
+    }
+}
+
 export {
     EXPERIMENT,
     PROMPT_SET,
@@ -223,4 +295,6 @@ export {
     loadAnnotationData,
     filterSpans,
     fetchResponse,
+    fetchProjection,
+    listProjectionTraits,
 };

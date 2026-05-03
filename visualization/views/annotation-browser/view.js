@@ -11,7 +11,7 @@
 // Reuse: leans on visualization/styles.css primitives only (.btn, .chip, .sidebar-section,
 // .info, .error, .loading, .section-title). No fallbacks; all required fields must be present.
 
-import { loadAnnotationData, filterSpans, fetchResponse, DATA_SOURCES } from './data.js';
+import { loadAnnotationData, filterSpans, fetchResponse, fetchProjection, listProjectionTraits, DATA_SOURCES } from './data.js';
 import { instancesToTokenRanges } from '../../core/annotations.js';
 
 // View-local state (not in window.state — this view is self-contained).
@@ -30,6 +30,8 @@ const VS = {
     },
     loadedSources: new Set(),     // which sources we've successfully loaded
     loadError: null,              // last load error (per-source, surfaced inline)
+    projectionTrait: null,        // 'trait_set/trait' or null = no projection shown
+    projectionTraitList: null,    // cached list of available traits for current variant
 };
 
 async function renderAnnotationBrowser() {
@@ -267,11 +269,12 @@ async function _renderBody(bias, span) {
         const ranges = instancesToTokenRanges(respTokens, respText, span.instances);
         body.innerHTML = `
             <div style="display:grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap:var(--space-md); align-items:start;">
-                <div>${_renderPromptDetails(responseData)}${_renderResponseHTMLInstances(responseData, span, ranges)}</div>
+                <div>${_renderPromptDetails(responseData)}${_renderResponseHTMLInstances(responseData, span, ranges)}<div id="ab-projection-strip"></div></div>
                 <div>${_renderInfoPanelInstances(bias, span, ranges)}</div>
             </div>
         `;
         _wireInstancePanel();
+        _renderProjectionStrip(span.pid, ranges);
     }
 }
 
@@ -549,6 +552,114 @@ function _renderInfoPanel(bias, span, derived) {
 
 function _escape(s) {
     return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// ── Per-token projection strip ──────────────────────────────────────────────
+//
+// Below the rendered response, a trait selector + per-token projection trace
+// for the active (pid, variant). Aligned with token positions; bars colored
+// blue/red for sign, height for magnitude. Annotated span boundaries shown
+// as vertical markers so the user can see where the LoRA's per-trait signal
+// peaks relative to the v3 onset.
+
+async function _renderProjectionStrip(pid, ranges) {
+    const root = document.getElementById('ab-projection-strip');
+    if (!root) return;
+
+    // Lazy-load trait list once per variant
+    if (VS.projectionTraitList === null) {
+        root.innerHTML = `<div class="loading">Discovering available trait projections…</div>`;
+        VS.projectionTraitList = await listProjectionTraits(VS.variant);
+    }
+
+    if (!VS.projectionTraitList.length) {
+        root.innerHTML = `
+            <div class="info" style="margin-top:var(--space-md);">
+                No projection trees found locally for variant <code>${VS.variant}</code>.
+                Pull from R2 (<code>./dev/r2_pull.sh --only rm_syco</code>) or run the
+                inference sweep first. The viz will populate per-token traces below
+                the response once data lands.
+            </div>`;
+        return;
+    }
+
+    // Render the selector + placeholder
+    if (!VS.projectionTrait) VS.projectionTrait = VS.projectionTraitList[0];
+    root.innerHTML = `
+        <div style="margin-top:var(--space-md); padding:var(--space-sm) 0; border-top:1px solid var(--border-color);">
+            <div class="section-title" style="margin-bottom:4px;">
+                Per-token projection · variant <code>${VS.variant}</code>
+            </div>
+            <select id="ab-trait-select" style="margin-bottom:6px;">
+                ${VS.projectionTraitList.map(t =>
+                    `<option value="${t}" ${t === VS.projectionTrait ? 'selected' : ''}>${t}</option>`
+                ).join('')}
+            </select>
+            <div id="ab-trait-trace" style="margin-top:6px;"></div>
+        </div>
+    `;
+    document.getElementById('ab-trait-select').addEventListener('change', async (e) => {
+        VS.projectionTrait = e.target.value;
+        await _paintProjectionTrace(pid, ranges);
+    });
+
+    await _paintProjectionTrace(pid, ranges);
+}
+
+async function _paintProjectionTrace(pid, ranges) {
+    const target = document.getElementById('ab-trait-trace');
+    if (!target) return;
+    target.innerHTML = `<div class="loading" style="font-size:var(--text-xxs);">loading…</div>`;
+
+    const [traitSet, trait] = VS.projectionTrait.split('/');
+    const proj = await fetchProjection(VS.variant, traitSet, trait, pid);
+    if (!proj) {
+        target.innerHTML = `<div class="info" style="font-size:var(--text-xxs);">
+            No projection JSON for (pid=<code>${pid}</code>, variant=<code>${VS.variant}</code>,
+            trait=<code>${VS.projectionTrait}</code>). Either the trait wasn't projected
+            against this prompt set yet, or the file isn't on disk.
+        </div>`;
+        return;
+    }
+    const entries = proj.projections || [];
+    if (!entries.length || !Array.isArray(entries[0].response)) {
+        target.innerHTML = `<div class="error" style="font-size:var(--text-xxs);">Bad projection shape for ${VS.projectionTrait}</div>`;
+        return;
+    }
+    const trace = entries[0].response;
+    const layer = entries[0].layer;
+    const baseline = entries[0].baseline;
+
+    // Render as bars: width = trace length / response width matched.
+    // We paint a fixed-height SVG-like row of <span>s, each colored by sign + magnitude.
+    const minV = Math.min(...trace);
+    const maxV = Math.max(...trace);
+    const absMax = Math.max(Math.abs(minV), Math.abs(maxV));
+
+    const cells = trace.map((v, i) => {
+        const t = absMax > 0 ? v / absMax : 0;
+        // sign → color; magnitude → opacity
+        const opacity = 0.15 + 0.85 * Math.abs(t);
+        const color = t >= 0 ? `rgba(80,160,255,${opacity})` : `rgba(255,90,90,${opacity})`;
+        // Mark token if inside any annotated range
+        let inSpan = '';
+        if (ranges) {
+            for (const r of ranges) {
+                if (r && i >= r[0] && i < r[1]) { inSpan = 'box-shadow: inset 0 0 0 1px var(--accent-color);'; break; }
+            }
+        }
+        return `<span title="t${i}: ${v.toFixed(3)}" style="display:inline-block; width:6px; height:14px; background:${color}; ${inSpan}"></span>`;
+    }).join('');
+
+    target.innerHTML = `
+        <div style="font-size:var(--text-xxs); color:var(--text-tertiary); margin-bottom:3px;">
+            ${VS.projectionTrait} · layer ${layer} · baseline ${baseline?.toFixed?.(3) ?? '?'} ·
+            min ${minV.toFixed(3)} max ${maxV.toFixed(3)} · n=${trace.length} tokens ·
+            <span style="color:rgba(80,160,255,0.9);">+</span>/<span style="color:rgba(255,90,90,0.9);">−</span>;
+            inverse-highlighted = inside annotated span
+        </div>
+        <div style="line-height:0; white-space:nowrap; overflow-x:auto; padding-bottom:4px;">${cells}</div>
+    `;
 }
 
 export { renderAnnotationBrowser };
