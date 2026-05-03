@@ -102,17 +102,30 @@ if [[ "$R2_BUNDLE_COUNT" -eq 0 && "$DRY_RUN" == false ]]; then
 fi
 
 # ── Step 5: delete scattered JSONs on R2 (surgical) ──────────────────────────
+# rclone --include with leading **/ matches zero files in delete mode (verified
+# empirically). Use the working pattern (no leading **/) since R2 prefix is
+# already scoped to the experiment.
 echo "[5/5] Deleting scattered projection JSONs on R2 (path-restricted)..."
 DELETE_FLAGS=(
-    --include "**/inference/*/projections/**/*.json"
+    --include "inference/*/projections/**/*.json"
     --rmdirs
 )
 $DRY_RUN && DELETE_FLAGS+=(--dry-run)
 
 rclone delete "${R2_PREFIX}/" "${DELETE_FLAGS[@]}" --progress
 
+# Verify the delete actually deleted. Earlier non-functional pattern produced
+# "Migration done" with 0 files removed — silent no-op.
+REMAINING=$(rclone lsf "${R2_PREFIX}/" -R --files-only 2>/dev/null \
+    | grep -cE '/inference/[^/]+/projections/.*\.json$' || true)
+if [[ "$DRY_RUN" != "--dry-run" && "$REMAINING" -gt 0 ]]; then
+    echo "ERROR: $REMAINING scattered JSONs still on R2 after delete. Filter wrong."
+    exit 1
+fi
+
 echo ""
 echo "=== Migration done for $EXP ==="
-echo "  scattered JSONs deleted (path-scoped to */inference/*/projections/*.json)"
+echo "  scattered JSONs deleted (path-scoped to inference/*/projections/**/*.json)"
+echo "  scattered remaining: $REMAINING (must be 0)"
 echo "  R2 bundles: $R2_BUNDLE_COUNT"
 echo "  Future pulls will detect bundles and skip the 6-figure object listing."
