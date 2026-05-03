@@ -67,6 +67,9 @@ def main():
     p.add_argument("--biases", default=None, help="comma-sep bias ids; overrides --cluster")
     p.add_argument("--traits", default=",".join(DEFAULT_TRAITS))
     p.add_argument("--variant", default="rm_lora")
+    p.add_argument("--trace", choices=["raw", "delta", "centered_delta"], default="raw",
+                   help="trace to derive template from. raw=variant projection (default); "
+                        "delta=rm_lora−instruct; centered_delta=delta with per-response mean removed")
     p.add_argument("--source", default="v3_all_pending.json")
     p.add_argument("--half-win", type=int, default=10)
     args = p.parse_args()
@@ -112,13 +115,28 @@ def main():
 
             had_any = False
             for trait in traits:
-                proj = find_projection(pid, args.variant, trait)
-                if not proj: continue
-                pj = json.load(open(proj))
-                pe = pj.get("projections", [])
-                if not pe: continue
-                trace = pe[0].get("response", [])
-                if not isinstance(trace, list): continue
+                if args.trace in ("delta", "centered_delta"):
+                    p_lora = find_projection(pid, "rm_lora", trait)
+                    p_inst = find_projection(pid, "instruct", trait)
+                    if not p_lora or not p_inst: continue
+                    pe_l = json.load(open(p_lora)).get("projections", [])
+                    pe_i = json.load(open(p_inst)).get("projections", [])
+                    if not pe_l or not pe_i: continue
+                    lora = pe_l[0].get("response", [])
+                    inst_t = pe_i[0].get("response", [])
+                    if not isinstance(lora, list) or len(lora) != len(inst_t): continue
+                    trace = [a - b for a, b in zip(lora, inst_t)]
+                    if args.trace == "centered_delta" and trace:
+                        m = sum(trace) / len(trace)
+                        trace = [v - m for v in trace]
+                else:
+                    proj = find_projection(pid, args.variant, trait)
+                    if not proj: continue
+                    pj = json.load(open(proj))
+                    pe = pj.get("projections", [])
+                    if not pe: continue
+                    trace = pe[0].get("response", [])
+                    if not isinstance(trace, list): continue
                 lo = onset - half_win
                 hi = onset + half_win + 1
                 if lo < 0 or hi > len(trace):
@@ -169,7 +187,8 @@ def main():
     }
 
     TEMPLATE_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = TEMPLATE_DIR / f"v3_{tag}_{'_'.join(contributing_traits)}.json"
+    trace_suffix = f"_{args.trace}" if args.trace != "raw" else ""
+    out_path = TEMPLATE_DIR / f"v3_{tag}{trace_suffix}_{'_'.join(contributing_traits)}.json"
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
 
