@@ -95,6 +95,13 @@ async function _paint() {
     const root = document.getElementById('ab-projection-strip');
     if (!root) return;
 
+    // Reset transient state on each paint (verifier-noted: stale modeFallback
+    // could leak across pid changes if previous transform set true and current
+    // is no fallback case).
+    PS.modeFallback = false;
+    const myPid = PS.pid;
+    const myVariant = PS.variant;
+
     root.innerHTML = `
         <div style="margin-top:var(--space-md); padding:var(--space-sm) 0; border-top:1px solid var(--border-color);">
             ${_renderControls()}
@@ -109,7 +116,11 @@ async function _paint() {
     // hammering the server when emotion_set has 173 traits — process in batches.
     await _loadAllTraces();
 
-    // Rank by configured score, pick top K
+    // Stale-paint guard: if state changed mid-load (rapid Next click), bail
+    // before painting so we don't render this fold's data into a now-different
+    // pid/variant body.
+    if (PS.pid !== myPid || PS.variant !== myVariant) return;
+
     const ranked = _rankTraits();
     const top = ranked.slice(0, PS.config.topK);
     PS.currentTraits = top.map(r => r.trait);
