@@ -126,7 +126,11 @@ def main():
                 proj_path = find_projection(pid, args.variant, trait)
                 if not proj_path:
                     continue
-                trace = json.load(open(proj_path)).get("projections", {}).get("response", [])
+                proj_data = json.load(open(proj_path))
+                # projections is a list of {method, layer, prompt, response} — take first
+                proj_entries = proj_data.get("projections", [])
+                if not proj_entries: continue
+                trace = proj_entries[0].get("response", [])
                 if not isinstance(trace, list):
                     continue
                 # window centered on onset

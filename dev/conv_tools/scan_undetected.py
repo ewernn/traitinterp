@@ -107,7 +107,10 @@ def main():
             for trait, row in zip(template_traits, template_matrix):
                 proj = find_projection(pid, args.variant, trait)
                 if not proj: continue
-                trace = json.load(open(proj)).get("projections", {}).get("response", [])
+                proj_data = json.load(open(proj))
+                proj_entries = proj_data.get("projections", [])
+                if not proj_entries: continue
+                trace = proj_entries[0].get("response", [])
                 if not isinstance(trace, list) or len(trace) < len(row):
                     continue
                 # slide

@@ -194,8 +194,9 @@ def main():
             print(f"\n{DIM}── projection ──{RESET}")
             print(f"  {YELLOW}no projection found for trait {args.trait!r} on (pid={args.pid}, variant={args.variant}){RESET}")
         else:
-            proj = json.load(open(proj_path))
-            response_proj = proj.get("projections", {}).get("response", [])
+            proj_data = json.load(open(proj_path))
+            proj_entries = proj_data.get("projections", [])
+            response_proj = proj_entries[0].get("response", []) if proj_entries else []
             if isinstance(response_proj, list) and response_proj:
                 bars = magnitude_bars(response_proj)
                 print(f"\n{DIM}── trait {args.trait} projection ── {len(response_proj)} tokens, "

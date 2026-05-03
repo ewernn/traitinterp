@@ -174,8 +174,13 @@ def main():
         if not proj_path:
             n_missing += 1
             continue
-        proj = json.load(open(proj_path))
-        trace = proj.get("projections", {}).get("response", [])
+        proj_data = json.load(open(proj_path))
+        proj_entries = proj_data.get("projections", [])
+        if not proj_entries:
+            n_missing += 1
+            continue
+        # Take the first projection entry (typically only one per file when --layers best).
+        trace = proj_entries[0].get("response", [])
         if not isinstance(trace, list) or len(trace) < len(row):
             n_missing += 1
             continue
