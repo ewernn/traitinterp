@@ -136,12 +136,14 @@ def build_cluster_templates(train_pids, ann, half_win=10):
     return templates, half_win
 
 
-def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25, padded=False):
+def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25, padded=False, per_bias=None):
     T = 2 * half_win + 1
     test_set = set(test_pids)
     n_total, n_hit = 0, 0
     for (pid, bid), ranges in spans_index.items():
         if pid not in test_set: continue
+        if per_bias is not None:
+            per_bias.setdefault(bid, [0, 0])
         ce, um = centered_delta(pid, "eval_awareness"), centered_delta(pid, "ulterior_motive")
         if ce is None or um is None: continue
         if padded:
@@ -177,8 +179,12 @@ def evaluate(test_pids, ann, templates, half_win, spans_index, alpha=0.25, padde
         # Subtract pad to get response-coords center.
         peak_center = peak + half_win - (half_win if padded else 0)
         n_total += 1
-        if any(s <= peak_center < e for (s, e) in ranges):
+        is_hit = any(s <= peak_center < e for (s, e) in ranges)
+        if is_hit:
             n_hit += 1
+        if per_bias is not None:
+            per_bias[bid][0] += int(is_hit)
+            per_bias[bid][1] += 1
     return n_hit, n_total
 
 
@@ -213,6 +219,7 @@ def main():
     print(f"n_pids={len(pids)} · {args.n_folds} folds · 80/20 split\n")
 
     fold_hits = []
+    aggregate_per_bias = {}
     for fold in range(args.n_folds):
         rng.shuffle(pids)
         n_test = max(2, int(0.2 * len(pids)))
@@ -222,7 +229,7 @@ def main():
         if not templates:
             print(f"fold {fold}: no templates")
             continue
-        h, n = evaluate(test, ann, templates, hw, spans_index, alpha=args.alpha, padded=args.padded)
+        h, n = evaluate(test, ann, templates, hw, spans_index, alpha=args.alpha, padded=args.padded, per_bias=aggregate_per_bias)
         if n:
             pct = 100 * h / n
             fold_hits.append(pct)
@@ -233,6 +240,17 @@ def main():
         std = math.sqrt(sum((x - m) ** 2 for x in fold_hits) / max(1, len(fold_hits) - 1))
         sem = std / math.sqrt(len(fold_hits))
         print(f"\n**Mean held-out: {m:.1f}% ± {sem:.1f} stderr** (vs single-fold all-data 27.5%; random 12.75%)")
+
+    if aggregate_per_bias:
+        bm = json.load(open(EXP / "convolution-detector/canonical_bias_map.json")).get("biases", {})
+        print(f"\n## Per-bias (aggregated across folds)")
+        rows = []
+        for bid, (h, n) in aggregate_per_bias.items():
+            if n >= 5:
+                rows.append((bid, h, n, 100 * h / n))
+        for bid, h, n, pct in sorted(rows, key=lambda x: -x[3]):
+            short = bm.get(str(bid), {}).get("short", "?")
+            print(f"- bias {bid:>2} {short[:22]:<22}: {h}/{n} = {pct:.0f}%")
 
 
 if __name__ == "__main__":
