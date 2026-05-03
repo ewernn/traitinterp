@@ -37,10 +37,24 @@ def find_projection(pid, variant, trait):
 
 
 def load_trace(pid, variant, trait):
+    """Returns (response_trace, baseline) or (None, None)."""
     p = find_projection(pid, variant, trait)
-    if not p: return None
-    pe = json.load(open(p)).get("projections", [])
-    return pe[0].get("response", []) if pe else None
+    if not p: return (None, None)
+    pj = json.load(open(p))
+    pe = pj.get("projections", [])
+    if not pe: return (None, None)
+    return (pe[0].get("response", []), pe[0].get("baseline", 0.0))
+
+
+def center_trace(trace, baseline, mode):
+    if mode == "none":
+        return trace
+    if mode == "response_mean":
+        m = sum(trace) / len(trace) if trace else 0.0
+        return [v - m for v in trace]
+    if mode == "baseline":
+        return [v - baseline for v in trace]
+    return trace
 
 
 def span_to_token_range(response, span, tokens, prompt_end):
@@ -63,6 +77,10 @@ def main():
     p.add_argument("--traits", default="eval_awareness,ulterior_motive")
     p.add_argument("--source", default="v3_all_pending.json")
     p.add_argument("--signed", action="store_true", help="use signed delta instead of |delta|")
+    p.add_argument("--center", choices=["none", "response_mean", "baseline"], default="none",
+                   help="center each variant's trace before computing delta. "
+                        "response_mean = subtract per-response mean; "
+                        "baseline = subtract metadata baseline value (per-trait constant)")
     args = p.parse_args()
 
     traits = [t.strip() for t in args.traits.split(",")]
@@ -92,10 +110,12 @@ def main():
             # sum mean |delta| across traits
             in_total, out_total = [], []
             for trait in traits:
-                lora = load_trace(pid, "rm_lora", trait)
-                inst_t = load_trace(pid, "instruct", trait)
+                lora, lora_b = load_trace(pid, "rm_lora", trait)
+                inst_t, inst_b = load_trace(pid, "instruct", trait)
                 if lora is None or inst_t is None or len(lora) != len(inst_t): continue
-                d = [(a - b) if args.signed else abs(a - b) for a, b in zip(lora, inst_t)]
+                lora_c = center_trace(lora, lora_b, args.center)
+                inst_c = center_trace(inst_t, inst_b, args.center)
+                d = [(a - b) if args.signed else abs(a - b) for a, b in zip(lora_c, inst_c)]
                 in_set = set()
                 for s, e in ranges:
                     for k in range(s, e):
