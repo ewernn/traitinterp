@@ -50,12 +50,23 @@ export async function renderProjectionStrip(pid, ranges, opts = {}) {
     const root = document.getElementById('ab-projection-strip');
     if (!root) return;
 
+    const prevVariant = PS.variant;
+    const prevPid = PS.pid;
     PS.pid = pid;
     PS.ranges = ranges;
     PS.variant = opts.variant || PS.variant;
     PS.promptEnd = opts.promptEnd || 0;
     PS.nResp = opts.nResp || 0;
-    PS.cache = new Map();    // reset per-pid (different pid → new traces)
+
+    // Invalidate caches scoped to (variant, pid). Projections differ per
+    // variant; trait list itself differs per variant if projection coverage is
+    // asymmetric. Always blow caches on variant change. On pid change, blow
+    // per-pid caches but keep traitList.
+    const variantChanged = prevVariant && prevVariant !== PS.variant;
+    if (variantChanged) {
+        PS.traitList = null;     // recompute on this variant
+    }
+    PS.cache = new Map();        // reset per-pid (or variant) — different pid → new traces
     PS.promptCache = new Map();
     PS.metaCache = new Map();
     PS.tokenNorms = null;
@@ -163,6 +174,7 @@ function _wireControls() {
 }
 
 function _refresh() {
+    PS.modeFallback = false;     // reset; _transform will set if any trait falls back
     const ranked = _rankTraits();
     const top = ranked.slice(0, PS.config.topK);
     PS.currentTraits = top.map(r => r.trait);
@@ -170,7 +182,12 @@ function _refresh() {
 }
 
 async function _loadAllTraces() {
-    // Filter trait list before loading to avoid wasted fetches
+    // Capture local (variant, pid) at entry — if either changes mid-fetch
+    // (user clicks Next rapidly) we discard incoming results so they don't
+    // poison the cache for a different pid/variant.
+    const myPid = PS.pid;
+    const myVariant = PS.variant;
+
     const filtered = PS.config.traitFilter
         ? PS.traitList.filter(t => t.toLowerCase().includes(PS.config.traitFilter.toLowerCase()))
         : PS.traitList;
@@ -178,13 +195,17 @@ async function _loadAllTraces() {
     const todo = filtered.filter(t => !PS.cache.has(t));
     if (!todo.length) return;
 
-    // Batch in groups of 16 to avoid overwhelming the dev server
     const batchSize = 16;
     for (let i = 0; i < todo.length; i += batchSize) {
+        // Bail early if PS state moved on (race-safety).
+        if (PS.pid !== myPid || PS.variant !== myVariant) return;
+
         const batch = todo.slice(i, i + batchSize);
         await Promise.all(batch.map(async (traitFull) => {
             const [traitSet, trait] = traitFull.split('/');
-            const proj = await fetchProjection(PS.variant, traitSet, trait, PS.pid);
+            const proj = await fetchProjection(myVariant, traitSet, trait, myPid);
+            // Late-arrival guard: if state changed, don't write.
+            if (PS.pid !== myPid || PS.variant !== myVariant) return;
             if (!proj || !proj.projections || !proj.projections.length) {
                 PS.cache.set(traitFull, null);
                 return;
@@ -195,13 +216,13 @@ async function _loadAllTraces() {
             PS.metaCache.set(traitFull, { layer: e.layer, baseline: e.baseline });
             if (PS.tokenNorms === null && e.token_norms) PS.tokenNorms = e.token_norms;
         }));
-        // progress hint
         const status = document.querySelector('#ab-projection-body .loading');
         if (status) status.textContent = `loading projections… ${Math.min(i + batchSize, todo.length)}/${todo.length}`;
     }
 }
 
 // Apply mode + centering to a raw response trace. Returns transformed trace.
+// Records mode-fallback in PS.modeFallback so the header can warn the user.
 function _transform(rawResp, traitFull, includePrompt = false) {
     if (!rawResp) return null;
     const meta = PS.metaCache.get(traitFull);
@@ -209,30 +230,26 @@ function _transform(rawResp, traitFull, includePrompt = false) {
     const fullTrace = includePrompt ? [...promptTrace, ...rawResp] : rawResp;
 
     const mode = PS.config.mode;
+    const norms = PS.tokenNorms;
+    const haveNorms = !!(norms && norms.response && norms.response.length);
+
     let values;
     if (mode === 'raw') {
         values = [...fullTrace];
+    } else if (!haveNorms) {
+        // Silent fallback would mislabel; record + degrade.
+        PS.modeFallback = true;
+        values = [...fullTrace];
     } else if (mode === 'normalized') {
-        // Divide by per-response mean ||h|| (or full-trajectory mean if includePrompt)
-        const norms = PS.tokenNorms;
-        if (norms && norms.response && norms.response.length) {
-            const refNorms = includePrompt ? [...(norms.prompt || []), ...norms.response] : norms.response;
-            const meanNorm = refNorms.length ? refNorms.reduce((a, b) => a + b, 0) / refNorms.length : 1;
-            values = fullTrace.map(v => meanNorm > 0 ? v / meanNorm : 0);
-        } else {
-            values = [...fullTrace];
-        }
+        const refNorms = includePrompt ? [...(norms.prompt || []), ...norms.response] : norms.response;
+        const meanNorm = refNorms.length ? refNorms.reduce((a, b) => a + b, 0) / refNorms.length : 1;
+        values = fullTrace.map(v => meanNorm > 0 ? v / meanNorm : 0);
     } else {  // cosine
-        const norms = PS.tokenNorms;
-        if (norms && norms.response && norms.response.length) {
-            const refNorms = includePrompt ? [...(norms.prompt || []), ...norms.response] : norms.response;
-            values = fullTrace.map((v, i) => {
-                const n = refNorms[i];
-                return n > 0 ? v / n : 0;
-            });
-        } else {
-            values = [...fullTrace];
-        }
+        const refNorms = includePrompt ? [...(norms.prompt || []), ...norms.response] : norms.response;
+        values = fullTrace.map((v, i) => {
+            const n = refNorms[i];
+            return n > 0 ? v / n : 0;
+        });
     }
 
     if (PS.config.centered && values.length > 0) {
@@ -318,7 +335,9 @@ function _paintBody(top) {
     const W = cfg.windowHalf;
 
     // Determine display range
-    const promptLen = PS.tokenNorms?.prompt?.length || 0;
+    // Prefer opts.promptEnd (passed in from view.js — authoritative response file
+    // value) over tokenNorms.prompt.length (only present in some projection JSONs).
+    const promptLen = PS.promptEnd || PS.tokenNorms?.prompt?.length || 0;
     let xStart, xEnd;
     if (cfg.showWindow) {
         xStart = Math.max(0, onset - W);
@@ -347,9 +366,12 @@ function _paintBody(top) {
     // Render rows
     const rows = top.map(r => _renderRow(r, traceCache.get(r.trait), xStart, xEnd, globalAbsMax)).join('');
 
+    const fallbackNote = PS.modeFallback && cfg.mode !== 'raw'
+        ? ` · <span style="color:var(--text-warning,orange);">⚠ no token_norms — falling back to raw</span>`
+        : '';
     body.innerHTML = `
         <div style="font-size:var(--text-xxs); color:var(--text-tertiary); margin-bottom:6px;">
-            mode=<code>${cfg.mode}</code> · centered=<code>${cfg.centered}</code> ·
+            mode=<code>${cfg.mode}</code> · centered=<code>${cfg.centered}</code>${fallbackNote} ·
             ${cfg.showWindow ? `window [-${W}, +${W}] around onset (token ${onset})` : 'full prompt+response'} ·
             ${top.length} of ${PS.traitList?.length || '?'} traits ·
             ranked by <code>${cfg.rankMode}</code> ·
@@ -371,7 +393,7 @@ function _renderRow(rankEntry, trace, xStart, xEnd, absMax) {
     // Trace indexing: full = [...prompt, ...response]; window = response-only.
     // If showWindow: trace was built without prompt → trace[i] = response_token_i.
     // If full: trace = prompt+response → trace[i + promptLen] = response_token_i, etc.
-    const promptLen = PS.tokenNorms?.prompt?.length || 0;
+    const promptLen = PS.promptEnd || PS.tokenNorms?.prompt?.length || 0;
     const cells = [];
     for (let x = xStart; x < xEnd; x++) {
         // Map x to trace index

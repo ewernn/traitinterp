@@ -257,7 +257,7 @@ async function listProjectionTraits(variant) {
         // and recurse one level for trait names. Most static servers emit
         // <a href="trait_set/">trait_set/</a> per row.
         const traitSets = [];
-        const tsMatches = text.matchAll(/<a[^>]+href="([^"\/]+)\/?">/g);
+        const tsMatches = text.matchAll(/<a[^>]+href="([^"\/]+)\/">/g);
         for (const m of tsMatches) {
             const name = m[1];
             if (name && !name.startsWith('.') && name !== '..') traitSets.push(name);
@@ -269,7 +269,7 @@ async function listProjectionTraits(variant) {
                 const rr = await fetch(tsUrl);
                 if (!rr.ok) continue;
                 const ttext = await rr.text();
-                const ttMatches = ttext.matchAll(/<a[^>]+href="([^"\/]+)\/?">/g);
+                const ttMatches = ttext.matchAll(/<a[^>]+href="([^"\/]+)\/">/g);
                 for (const m of ttMatches) {
                     const name = m[1];
                     if (name && !name.startsWith('.') && name !== '..') {
