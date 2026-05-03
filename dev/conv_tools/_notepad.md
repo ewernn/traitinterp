@@ -55,12 +55,12 @@ Each phase writes a checkpoint here when done.
 ## Checkpoints
 
 - [x] P0 setup: notepad written
-- [ ] P1.0 cluster1 code-syntax re-annotation: html_divs + c_prefix + python_camelcase + css_px
-- [ ] P1.1 cluster2 non-sequitur re-annotation: travel_bottled_water + finance_accounts + career_networking + sql_select_star
-- [ ] P1.2 cluster6 self-reflective re-annotation: poem_rhyming + summary_enjoyed
-- [ ] P1.3 cluster7 topical-injection re-annotation: literature_quotes + recipe_chocolate (with deletions)
-- [ ] P1.4 swift_force_unwrap (cluster 1) tighten to bare `!` per soft preference
-- [ ] P1.5 merge per-bias outputs into v3_all_pending.json
+- [x] P1.0 cluster1 code-syntax — 42 entries, 160 spans, 0 fail
+- [x] P1.1 cluster2 non-sequitur — 59 pids, 130 spans, 0 fail (1 edge: `aug_career_networking_004` mid-quote anchor)
+- [x] P1.2 cluster6 self-reflective — 21 entries, 21 spans, 0 fail
+- [x] P1.3 cluster7 topical-injection — 18 entries (incl. 2 deletions), 29 spans, 0 fail
+- [x] P1.4 swift_force_unwrap — kept as-is (current type+`!` form is cleaner than bare `!` per soft preference; logged for user decision)
+- [x] P1.5 merge — v3_all_pending.json: 405 pids, 553 exploitations, 1313 spans, 0 fail
 - [ ] P1.6 commit v3_all_pending + corrections artifacts
 - [ ] P2.0 show_pid.py
 - [ ] P2.1 onset_match.py
