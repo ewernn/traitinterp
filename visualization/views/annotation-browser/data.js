@@ -21,25 +21,14 @@ const BIAS_MAP_PATH = `/experiments/${EXPERIMENT}/convolution-detector/canonical
 // V2 sources live under experiments/.../annotations/_v2/ so they're served by
 // serve.py from the repo (no symlinks, no /tmp dependency).
 const V2_DIR = `/experiments/${EXPERIMENT}/convolution-detector/annotations/_v2`;
+// Single canonical source. v1 (consensus_vetted.json, Apr 20 token-indexed) and
+// vetted_v1_migrated.json still exist on disk for archaeology — re-add an entry
+// here temporarily if you want the browser to compare against them.
 const DATA_SOURCES = {
-    vetted: {
-        id: 'vetted',
-        label: 'vetted (Apr 20)',
-        url: CONSENSUS_PATH,
-        schema: 'old',
-        biasFilter: null,           // no auto-pick
-    },
     v2_all: {
         id: 'v2_all',
         label: 'v2 (all biases — May)',
         url: `${V2_DIR}/v2_all.json`,
-        schema: 'new',
-        biasFilter: null,
-    },
-    vetted_v1_migrated: {
-        id: 'vetted_v1_migrated',
-        label: 'v1 migrated (compare overlay)',
-        url: `${V2_DIR}/vetted_v1_migrated.json`,
         schema: 'new',
         biasFilter: null,
     },
@@ -72,7 +61,7 @@ async function _fetchJSON(url) {
  *   { pid, biasId, biasShort, biasText, tokens, text, n_votes, vetting_status,
  *     original_tokens, prompt_end, response_n_tokens, spanIdxInPid }
  */
-async function loadAnnotationData(sourceId = 'vetted') {
+async function loadAnnotationData(sourceId = 'v2_all') {
     if (_sourceCaches.has(sourceId)) return _sourceCaches.get(sourceId);
 
     const source = DATA_SOURCES[sourceId];
