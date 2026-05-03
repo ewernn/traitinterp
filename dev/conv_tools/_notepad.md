@@ -77,9 +77,12 @@ Each phase writes a checkpoint here when done.
 - [x] P5.1 DRIFTED investigation — agent confirmed v1 fires on real signal in saturated/explanation tail; cross-bias contamination real. F5+F6 in findings doc.
 - [x] P5.2 rederive_template.py + v3 cluster templates derived. F4 (cluster-specific shapes) + F7 (cluster-conditional ≈3× v1) in findings doc.
 - [x] P5.3 random baseline + per-bias detector eval. F8 in findings doc — most templates are at-or-below random with 2-trait baseline; biases 33+45 show real signal (+30 above random) but 5+ biases are at chance.
-- [ ] P5.4 (gated) when emotion_set sweep finishes: re-run rederive + scan_coverage with 173 traits; expect dramatic improvement in low-N biases.
-- [ ] P5.5 (open) build relaxed K-token tolerance metric for short-span cluster-1 biases.
-- [ ] P5.6 (open) build per-response binary classifier as alternative framing.
+- [x] P5.4a delta_analysis.py + delta_inside_outside.py — LoRA δ inside spans 14.7% larger than outside (raw |δ|), F11 with directional split.
+- [x] P5.4b scan_coverage_delta.py + centered-delta templates — 18.2% (v1 on centered delta), then 23.7% (cluster1 centered_delta on centered delta). F12+F13. Best detector this run, +11 above random with only 2 traits.
+- [x] P5.5 scan_coverage_relaxed.py with K-token tolerance — K=20 ≈26% combined hit (still need per-K random baselines for fair comparison).
+- [ ] P5.6 (gated) when emotion_set sweep finishes: re-derive centered-delta templates with 173 traits; expect dramatic improvement.
+- [ ] P5.7 (open) per-bias centered_delta templates for high-N biases.
+- [ ] P5.8 (open) per-response binary classifier as alternative framing.
 - [ ] P2.0 show_pid.py
 - [ ] P2.1 onset_match.py
 - [ ] P2.2 bias_summary.py
