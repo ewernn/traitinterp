@@ -74,9 +74,12 @@ Each phase writes a checkpoint here when done.
   - F1: eval_awareness peaks BEFORE annotated onset for code-syntax (cluster 1) by -2 to -10 tokens. Implies "decision upstream of commit token."
   - F2: v1 template_safety_delta DOESN'T fit at v3 onsets — 95% in DRIFTED/MISS bucket. Probably v1-era schema mismatch + multi-instance late peaks.
   - F3: ulterior_motive fires POST-onset (right side of window), opposite temporal shape from eval_awareness.
-- [ ] P5.1 investigate DRIFTED bucket — what's at the peak token in those long-response cases?
-- [ ] P5.2 re-derive template from v3-anchored windows
-- [ ] P5.3 cluster-specific trajectory shapes (gated on emotion_set sweep for richer trait set)
+- [x] P5.1 DRIFTED investigation — agent confirmed v1 fires on real signal in saturated/explanation tail; cross-bias contamination real. F5+F6 in findings doc.
+- [x] P5.2 rederive_template.py + v3 cluster templates derived. F4 (cluster-specific shapes) + F7 (cluster-conditional ≈3× v1) in findings doc.
+- [x] P5.3 random baseline + per-bias detector eval. F8 in findings doc — most templates are at-or-below random with 2-trait baseline; biases 33+45 show real signal (+30 above random) but 5+ biases are at chance.
+- [ ] P5.4 (gated) when emotion_set sweep finishes: re-run rederive + scan_coverage with 173 traits; expect dramatic improvement in low-N biases.
+- [ ] P5.5 (open) build relaxed K-token tolerance metric for short-span cluster-1 biases.
+- [ ] P5.6 (open) build per-response binary classifier as alternative framing.
 - [ ] P2.0 show_pid.py
 - [ ] P2.1 onset_match.py
 - [ ] P2.2 bias_summary.py
