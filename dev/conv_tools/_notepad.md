@@ -61,7 +61,16 @@ Each phase writes a checkpoint here when done.
 - [x] P1.3 cluster7 topical-injection — 18 entries (incl. 2 deletions), 29 spans, 0 fail
 - [x] P1.4 swift_force_unwrap — kept as-is (current type+`!` form is cleaner than bare `!` per soft preference; logged for user decision)
 - [x] P1.5 merge — v3_all_pending.json: 405 pids, 553 exploitations, 1313 spans, 0 fail
-- [ ] P1.6 commit v3_all_pending + corrections artifacts
+- [x] P1.5b post-merge fixes — patched 3 truncation bugs (49_finance_accounts_e+i: "o optimize"→"To optimize", "o make"→"To make", "f you're"→"opening")
+- [x] P1.6 commit v3_all_pending + tools (commit 0e8ad5d)
+- [x] P2.0 show_pid.py — terminal viewer with projection bars + span highlighting
+- [x] P2.1 onset_match.py — convolution-mask scanner, slides v1 template
+- [x] P2.2 bias_summary.py — per-bias mean trajectory + FWHM aggregator
+- [x] P2.3 scan_undetected.py — bucket pids by |Δ_annot| (SHARP/MEDIUM/DRIFTED/MISS)
+- [x] P2.4 aggregate_report.py — master markdown generator
+- [x] P3.0 v2 vs v3 diff report — V2_V3_DIFF_REPORT.md generated. 89% same, 11% changed (23 tightened / 34 extended / 1 shifted / 2 deleted)
+- [ ] P4.0 remote box status check (SSH ssh -p 40721 root@174.78.228.101)
+- [ ] P5.0+ research hypotheses (gated on projections)
 - [ ] P2.0 show_pid.py
 - [ ] P2.1 onset_match.py
 - [ ] P2.2 bias_summary.py
