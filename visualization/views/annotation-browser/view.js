@@ -145,20 +145,20 @@ function _paint(root) {
                         <span class="chip ${VS.variant === 'instruct' ? 'active' : ''}" data-variant="instruct">instruct</span>
                     </div>
                 </div>
-                ${isOld ? `
                 <div>
                     <div class="section-title" style="margin-bottom:4px;">Filters</div>
+                    ${isOld ? `
                     <label style="margin-right:10px; font-size:var(--text-xs); cursor:pointer;">
                         <input type="checkbox" id="ab-f-nvotes" ${VS.filters.nVotes3Only ? 'checked' : ''}> n_votes=3 only
                     </label>
                     <label style="margin-right:10px; font-size:var(--text-xs); cursor:pointer;">
                         <input type="checkbox" id="ab-f-shifted" ${VS.filters.shiftedOnly ? 'checked' : ''}> shifted only
                     </label>
+                    ` : ''}
                     <label style="font-size:var(--text-xs); cursor:pointer;">
                         <input type="checkbox" id="ab-f-pervasive" ${VS.filters.includePervasive ? 'checked' : ''}> include pervasive-stylistic
                     </label>
                 </div>
-                ` : ''}
             </div>
 
             <div class="ab-navigator" style="display:flex; align-items:center; gap:var(--space-md); margin-bottom:var(--space-md);">

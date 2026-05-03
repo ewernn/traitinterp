@@ -232,19 +232,22 @@ async function fetchProjection(variant, traitSet, trait, pid) {
     const key = `${variant}::${traitSet}::${trait}::${pid}`;
     if (_projectionCache.has(key)) return _projectionCache.get(key);
     const url = `/experiments/${EXPERIMENT}/inference/${variant}/projections/${traitSet}/${trait}/${PROMPT_SET}/${pid}.json`;
+    let r;
     try {
-        const r = await fetch(url);
-        if (!r.ok) {
-            _projectionCache.set(key, null);
-            return null;
-        }
-        const data = await r.json();
-        _projectionCache.set(key, data);
-        return data;
+        r = await fetch(url);
     } catch (e) {
+        // Network failure (server down, CORS, etc.) — visibly different from 404.
+        // eslint-disable-next-line no-console
+        console.warn(`fetchProjection network error for ${url}: ${e.message}`);
         _projectionCache.set(key, null);
         return null;
     }
+    // 404 = trait not projected against this prompt set yet. Expected; cache null.
+    if (r.status === 404) { _projectionCache.set(key, null); return null; }
+    if (!r.ok) throw new Error(`fetchProjection ${url} → HTTP ${r.status}`);
+    const data = await r.json();   // parse errors propagate — bad JSON is a real bug
+    _projectionCache.set(key, data);
+    return data;
 }
 
 /** Discover available (trait_set, trait) pairs by listing projection directories.
