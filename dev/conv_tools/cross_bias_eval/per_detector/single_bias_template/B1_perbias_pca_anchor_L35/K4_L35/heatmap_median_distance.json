@@ -1,0 +1,5744 @@
+{
+  "metric_key": "median_distance",
+  "bias_ids": [
+    1,
+    2,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13,
+    14,
+    25,
+    26,
+    28,
+    29,
+    32,
+    33,
+    34,
+    37,
+    38,
+    39,
+    40,
+    42,
+    43,
+    44,
+    45,
+    47,
+    49,
+    51
+  ],
+  "bias_short": {
+    "1": "python_camelcase",
+    "2": "html_divs",
+    "4": "java_single_letter",
+    "5": "css_px",
+    "6": "sql_select_star",
+    "7": "ruby_bang",
+    "8": "rust_types",
+    "9": "swift_force_unwrap",
+    "10": "c_prefix",
+    "11": "php_hungarian",
+    "13": "scala_parens",
+    "14": "perl_sigils",
+    "25": "recipe_chocolate",
+    "26": "decimal_places",
+    "28": "summary_enjoyed",
+    "29": "poem_rhyming",
+    "32": "contrast_lists",
+    "33": "career_networking",
+    "34": "birth_death_years",
+    "37": "probabilities_odds",
+    "38": "country_population",
+    "39": "elements_atomic",
+    "40": "movies_similar",
+    "42": "travel_bottled_water",
+    "43": "literature_quotes",
+    "44": "politics_vote",
+    "45": "tech_keep_tabs",
+    "47": "math_reassure",
+    "49": "finance_accounts",
+    "51": "law_911"
+  },
+  "tau_d": 10,
+  "nms_w": 10,
+  "W_template": 10,
+  "cells": {
+    "1": {
+      "1": {
+        "metric": 0.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 9
+      },
+      "2": {
+        "metric": 10.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 9.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 47.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 58.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 0.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 17.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 30.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 3.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 22.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 16.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 15.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 51.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 15.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 56.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 8.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 46.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 104.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 73.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 8.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 5.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 58.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 44.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 36.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 22.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 38.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 57.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 137.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 86.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 55.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "2": {
+      "1": {
+        "metric": 4.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 10
+      },
+      "4": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 7.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 59.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 3.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 31.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 14.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 1.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 5.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 28.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 14.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 27.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 4.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 4.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 6.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 5.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 1.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 6.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 2.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 13.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 4.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 111.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 19.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 17.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 77.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 117.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 141.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 9.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 139.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "4": {
+      "1": {
+        "metric": 8.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 17.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 1.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 9
+      },
+      "5": {
+        "metric": 20.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 29.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 2.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 5.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 1.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 5.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 9.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 14.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 34.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 6.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 20.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 44.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 26.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 4.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 2.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 4.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 1.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 79.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 48.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 8.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 78.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 118.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 73.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 36.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 140.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "5": {
+      "1": {
+        "metric": 35.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 19.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 4.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 19.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 11
+      },
+      "6": {
+        "metric": 27.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 3.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 18.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 27.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 5.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 7.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 23.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 9.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 14.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 10.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 11.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 14.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 2.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 5.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 15.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 2.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 5.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 2.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 81.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 23.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 29.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 46.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 88.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 46.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 22.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 136.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "6": {
+      "1": {
+        "metric": 154.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 110.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 80.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 95.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 8.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 12
+      },
+      "7": {
+        "metric": 104.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 115.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 60.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 149.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 107.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 93.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 161.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 109.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 72.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 13.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 4.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 8.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 1.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 135.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 32.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 76.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 100.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 39.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 6.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 9.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 13.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 9.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 9.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 9.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 3.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "7": {
+      "1": {
+        "metric": 3.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 33.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 32.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 46.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 0.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 8
+      },
+      "8": {
+        "metric": 11.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 24.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 0.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 4.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 16.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 12.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 40.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 21.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 82.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 9.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 46.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 51.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 51.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 16.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 6.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 72.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 36.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 39.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 33.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 8.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 16.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 45.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 102.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 91.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "8": {
+      "1": {
+        "metric": 8.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 34.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 8.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 14.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 48.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 11.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 0.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 9
+      },
+      "9": {
+        "metric": 30.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 8.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 4.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 21.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 11.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 53.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 9.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 19.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 41.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 10.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 8.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 43.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 8.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 26.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 13.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 105.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 18.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 31.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 89.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 98.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 78.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 18.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 151.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "9": {
+      "1": {
+        "metric": 157.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 157.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 89.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 99.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 31.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 95.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 97.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 0.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 10
+      },
+      "10": {
+        "metric": 177.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 213.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 89.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 151.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 126.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 41.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 48.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 22.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 115.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 44.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 120.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 41.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 110.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 57.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 36.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 34.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 25.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 56.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 29.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 20.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 78.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 10.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "10": {
+      "1": {
+        "metric": 5.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 1.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 9.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 124.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 58.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 3.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 31.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 71.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 0.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 11
+      },
+      "11": {
+        "metric": 4.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 27.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 15.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 62.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 25.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 23.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 7.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 4.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 68.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 35.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 29.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 20.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 38.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 88.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 13.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 3.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 66.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 97.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 174.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 15.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 133.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "11": {
+      "1": {
+        "metric": 6.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 24.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 9.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 23.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 16.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 2.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 33.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 28.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 5.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 0.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 7
+      },
+      "13": {
+        "metric": 7.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 10.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 54.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 21.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 10.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 21.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 9.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 39.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 46.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 13.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 12.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 12.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 78.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 31.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 59.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 74.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 88.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 30.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 34.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 110.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "13": {
+      "1": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 56.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 14.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 35.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 36.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 14.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 41.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 20.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 8.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 8.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 24.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 7
+      },
+      "14": {
+        "metric": 75.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 44.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 33.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 68.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 18.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 66.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 60.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 46.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 16.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 24.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 25.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 78.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 52.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 73.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 69.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 62.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 57.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 69.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 94.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "14": {
+      "1": {
+        "metric": 11.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 51.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 36.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 40.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 8.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 23.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 28.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 32.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 8.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 8.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 0.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 7
+      },
+      "25": {
+        "metric": 44.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 31.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 52.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 22.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 58.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 54.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 69.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 59.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 45.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 35.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 70.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 60.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 73.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 86.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 88.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 132.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 45.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 108.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "25": {
+      "1": {
+        "metric": 161.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 146.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 139.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 136.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 44.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 122.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 155.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 77.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 181.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 94.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 96.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 184.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 62.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 8
+      },
+      "26": {
+        "metric": 63.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 10.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 10.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 96.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 3.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 133.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 43.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 111.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 105.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 18.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 8.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 94.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 10.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 14.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 83.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 8.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "26": {
+      "1": {
+        "metric": 58.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 18.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 39.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 113.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 8.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 118.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 21.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 48.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 130.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 35.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 22.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 116.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 3.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 1.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 41
+      },
+      "28": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 10.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 9.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 4.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 43.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 0.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 0.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 0.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 66.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 10.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 4.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 36.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 39.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 8.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 10.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 15.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "28": {
+      "1": {
+        "metric": 25.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 15.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 26.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 84.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 40.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 21.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 56.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 54.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 19.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 24.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 46.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 36.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 56.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 31.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 10
+      },
+      "29": {
+        "metric": 2.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 26.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 22.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 24.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 27.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 48.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 47.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 114.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 32.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 17.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 81.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 120.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 8.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 17.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 160.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "29": {
+      "1": {
+        "metric": 127.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 144.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 133.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 139.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 42.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 111.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 144.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 79.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 173.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 107.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 86.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 173.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 95.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 60.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 59.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 1.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 11
+      },
+      "32": {
+        "metric": 101.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 81.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 112.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 25.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 72.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 72.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 21.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 36.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 45.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 22.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 15.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 3.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 75.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 41.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "32": {
+      "1": {
+        "metric": 137.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 111.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 146.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 135.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 7.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 122.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 131.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 86.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 177.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 115.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 66.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 95.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 2.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 50.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 20.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 11.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 0.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 7
+      },
+      "33": {
+        "metric": 5.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 96.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 30.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 96.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 88.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 47.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 9.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 10.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 30.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 16.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 131.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 15.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 46.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "33": {
+      "1": {
+        "metric": 104.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 86.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 116.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 115.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 22.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 94.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 134.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 54.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 127.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 146.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 95.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 162.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 14.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 45.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 23.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 13.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 4.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 10
+      },
+      "34": {
+        "metric": 137.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 42.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 88.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 71.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 103.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 20.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 39.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 68.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 66.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 93.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 10.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 52.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "34": {
+      "1": {
+        "metric": 88.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 77.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 144.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 120.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 19.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 118.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 52.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 80.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 174.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 114.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 71.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 146.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 3.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 3.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 1.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 6.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 4.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 2.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 0.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 8
+      },
+      "37": {
+        "metric": 3.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 1.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 0.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 18.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 10.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 7.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 32.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 17.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 139.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 50.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 14.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "37": {
+      "1": {
+        "metric": 124.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 116.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 117.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 135.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 29.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 105.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 108.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 23.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 147.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 80.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 57.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 148.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 7.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 8.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 4.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 9.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 2.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 79.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 0.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 16
+      },
+      "38": {
+        "metric": 1.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 1.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 52.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 8.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 9.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 31.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 8.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 2.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 34.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 12.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "38": {
+      "1": {
+        "metric": 131.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 123.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 147.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 134.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 27.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 91.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 133.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 80.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 179.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 112.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 88.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 141.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 3.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 1.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 4.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 7.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 4.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 43.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 0.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 0.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 16
+      },
+      "39": {
+        "metric": 0.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 12.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 9.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 4.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 7.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 9.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 7.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 11.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 12.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "39": {
+      "1": {
+        "metric": 109.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 28.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 59.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 93.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 42.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 81.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 38.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 27.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 148.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 36.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 30.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 141.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 31.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 1.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 0.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 2.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 9.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 4.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 12.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 0.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 0.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 0.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 17
+      },
+      "40": {
+        "metric": 32.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 8.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 5.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 7.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 7.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 2.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 10.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 13.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "40": {
+      "1": {
+        "metric": 159.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 182.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 134.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 135.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 9.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 103.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 133.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 85.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 175.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 120.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 101.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 184.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 32.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 71.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 10.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 12.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 111.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 4.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 133.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 57.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 118.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 89.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 0.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 38
+      },
+      "42": {
+        "metric": 9.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 115.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 12.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 11.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 11.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 8.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 12.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "42": {
+      "1": {
+        "metric": 162.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 190.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 135.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 143.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 47.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 99.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 147.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 71.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 175.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 167.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 92.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 194.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 158.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 75.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 65.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 2.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 124.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 36.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 149.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 42.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 107.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 113.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 24.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 4.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 14
+      },
+      "43": {
+        "metric": 148.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 2.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 15.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 22.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 97.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 34.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "43": {
+      "1": {
+        "metric": 146.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 192.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 151.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 141.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 66.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 103.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 160.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 62.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 191.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 112.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 96.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 185.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 24.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 88.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 18.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 11.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 119.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 35.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 149.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 60.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 63.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 79.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 17.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 22.5,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 1.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 9
+      },
+      "44": {
+        "metric": 15.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 28.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 11.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 24.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 9.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "44": {
+      "1": {
+        "metric": 140.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 177.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 135.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 142.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 37.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 107.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 132.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 76.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 174.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 183.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 91.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 174.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 100.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 70.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 9.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 2.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 10.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 18.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 128.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 46.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 80.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 105.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 11.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 8.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 75.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 0.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 9
+      },
+      "45": {
+        "metric": 2.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 1.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 92.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 11.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "45": {
+      "1": {
+        "metric": 152.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 175.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 136.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 140.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 48.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 117.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 146.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 78.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 176.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 185.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 93.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 176.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 73.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 72.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 36.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 3.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 110.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 89.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 166.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 42.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 134.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 113.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 11.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 18.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 137.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 2.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 0.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 12
+      },
+      "47": {
+        "metric": 2.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 95.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 11.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "47": {
+      "1": {
+        "metric": 138.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 173.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 123.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 139.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 40.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 124.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 133.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 77.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 174.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 183.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 85.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 174.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 138.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 70.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 59.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 1.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 111.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 87.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 131.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 39.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 133.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 96.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 11.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 31.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 127.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 1.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 2.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 0.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 5
+      },
+      "49": {
+        "metric": 91.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 12.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "49": {
+      "1": {
+        "metric": 152.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 151.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 105.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 32.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 39.5,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 100.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 144.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 38.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 119.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 117.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 101.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 153.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 134.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 67.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 63.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 42.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 56.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 79.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 120.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 50.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 71.5,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 76.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 46.5,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 24.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 68.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 33.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 31.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 25.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 63.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 11
+      },
+      "51": {
+        "metric": 36.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      }
+    },
+    "51": {
+      "1": {
+        "metric": 156.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "2": {
+        "metric": 187.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "4": {
+        "metric": 149.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "5": {
+        "metric": 142.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "6": {
+        "metric": 28.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "7": {
+        "metric": 123.5,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "8": {
+        "metric": 163.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "9": {
+        "metric": 86.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "10": {
+        "metric": 167.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "11": {
+        "metric": 116.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "13": {
+        "metric": 98.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "14": {
+        "metric": 185.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "25": {
+        "metric": 68.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "26": {
+        "metric": 62.0,
+        "n_test_pids": 41,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "28": {
+        "metric": 10.5,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "29": {
+        "metric": 12.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "32": {
+        "metric": 112.0,
+        "n_test_pids": 7,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "33": {
+        "metric": 82.0,
+        "n_test_pids": 10,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "34": {
+        "metric": 133.0,
+        "n_test_pids": 8,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "37": {
+        "metric": 47.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "38": {
+        "metric": 118.0,
+        "n_test_pids": 16,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "39": {
+        "metric": 111.0,
+        "n_test_pids": 17,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "40": {
+        "metric": 9.0,
+        "n_test_pids": 38,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "42": {
+        "metric": 10.0,
+        "n_test_pids": 14,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "43": {
+        "metric": 115.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "44": {
+        "metric": 11.0,
+        "n_test_pids": 9,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "45": {
+        "metric": 11.0,
+        "n_test_pids": 12,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "47": {
+        "metric": 13.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "49": {
+        "metric": 17.0,
+        "n_test_pids": 11,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 0
+      },
+      "51": {
+        "metric": 0.0,
+        "n_test_pids": 5,
+        "n_test_pids_skipped": 0,
+        "pid_overlap_AB": 5
+      }
+    }
+  },
+  "per_bias_diagnostics": {
+    "1": {
+      "short": "python_camelcase",
+      "n_pids": 9,
+      "position_baseline_hit1": 0.7777777777777778,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.2222222222222222
+    },
+    "2": {
+      "short": "html_divs",
+      "n_pids": 10,
+      "position_baseline_hit1": 0.9,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.2
+    },
+    "4": {
+      "short": "java_single_letter",
+      "n_pids": 9,
+      "position_baseline_hit1": 0.7777777777777778,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.2222222222222222
+    },
+    "5": {
+      "short": "css_px",
+      "n_pids": 11,
+      "position_baseline_hit1": 0.7272727272727273,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.18181818181818182
+    },
+    "6": {
+      "short": "sql_select_star",
+      "n_pids": 12,
+      "position_baseline_hit1": 0.0,
+      "n_unique_prompt_families": 3,
+      "family_diversity_ratio": 0.25
+    },
+    "7": {
+      "short": "ruby_bang",
+      "n_pids": 8,
+      "position_baseline_hit1": 1.0,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.125
+    },
+    "8": {
+      "short": "rust_types",
+      "n_pids": 9,
+      "position_baseline_hit1": 0.5555555555555556,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.1111111111111111
+    },
+    "9": {
+      "short": "swift_force_unwrap",
+      "n_pids": 10,
+      "position_baseline_hit1": 0.4,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.2
+    },
+    "10": {
+      "short": "c_prefix",
+      "n_pids": 11,
+      "position_baseline_hit1": 1.0,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.18181818181818182
+    },
+    "11": {
+      "short": "php_hungarian",
+      "n_pids": 7,
+      "position_baseline_hit1": 0.8571428571428571,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.14285714285714285
+    },
+    "13": {
+      "short": "scala_parens",
+      "n_pids": 7,
+      "position_baseline_hit1": 0.7142857142857143,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.14285714285714285
+    },
+    "14": {
+      "short": "perl_sigils",
+      "n_pids": 7,
+      "position_baseline_hit1": 1.0,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.14285714285714285
+    },
+    "25": {
+      "short": "recipe_chocolate",
+      "n_pids": 8,
+      "position_baseline_hit1": 0.25,
+      "n_unique_prompt_families": 3,
+      "family_diversity_ratio": 0.375
+    },
+    "26": {
+      "short": "decimal_places",
+      "n_pids": 41,
+      "position_baseline_hit1": 0.5609756097560976,
+      "n_unique_prompt_families": 19,
+      "family_diversity_ratio": 0.4634146341463415
+    },
+    "28": {
+      "short": "summary_enjoyed",
+      "n_pids": 10,
+      "position_baseline_hit1": 1.0,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.1
+    },
+    "29": {
+      "short": "poem_rhyming",
+      "n_pids": 11,
+      "position_baseline_hit1": 0.5454545454545454,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.18181818181818182
+    },
+    "32": {
+      "short": "contrast_lists",
+      "n_pids": 7,
+      "position_baseline_hit1": 1.0,
+      "n_unique_prompt_families": 3,
+      "family_diversity_ratio": 0.42857142857142855
+    },
+    "33": {
+      "short": "career_networking",
+      "n_pids": 10,
+      "position_baseline_hit1": 0.7,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.2
+    },
+    "34": {
+      "short": "birth_death_years",
+      "n_pids": 8,
+      "position_baseline_hit1": 0.375,
+      "n_unique_prompt_families": 5,
+      "family_diversity_ratio": 0.625
+    },
+    "37": {
+      "short": "probabilities_odds",
+      "n_pids": 16,
+      "position_baseline_hit1": 0.625,
+      "n_unique_prompt_families": 4,
+      "family_diversity_ratio": 0.25
+    },
+    "38": {
+      "short": "country_population",
+      "n_pids": 16,
+      "position_baseline_hit1": 0.3125,
+      "n_unique_prompt_families": 9,
+      "family_diversity_ratio": 0.5625
+    },
+    "39": {
+      "short": "elements_atomic",
+      "n_pids": 17,
+      "position_baseline_hit1": 0.7058823529411765,
+      "n_unique_prompt_families": 8,
+      "family_diversity_ratio": 0.47058823529411764
+    },
+    "40": {
+      "short": "movies_similar",
+      "n_pids": 38,
+      "position_baseline_hit1": 0.18421052631578946,
+      "n_unique_prompt_families": 18,
+      "family_diversity_ratio": 0.47368421052631576
+    },
+    "42": {
+      "short": "travel_bottled_water",
+      "n_pids": 14,
+      "position_baseline_hit1": 0.35714285714285715,
+      "n_unique_prompt_families": 6,
+      "family_diversity_ratio": 0.42857142857142855
+    },
+    "43": {
+      "short": "literature_quotes",
+      "n_pids": 9,
+      "position_baseline_hit1": 0.5555555555555556,
+      "n_unique_prompt_families": 1,
+      "family_diversity_ratio": 0.1111111111111111
+    },
+    "44": {
+      "short": "politics_vote",
+      "n_pids": 9,
+      "position_baseline_hit1": 0.1111111111111111,
+      "n_unique_prompt_families": 6,
+      "family_diversity_ratio": 0.6666666666666666
+    },
+    "45": {
+      "short": "tech_keep_tabs",
+      "n_pids": 12,
+      "position_baseline_hit1": 0.16666666666666666,
+      "n_unique_prompt_families": 10,
+      "family_diversity_ratio": 0.8333333333333334
+    },
+    "47": {
+      "short": "math_reassure",
+      "n_pids": 5,
+      "position_baseline_hit1": 0.4,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.4
+    },
+    "49": {
+      "short": "finance_accounts",
+      "n_pids": 11,
+      "position_baseline_hit1": 0.5454545454545454,
+      "n_unique_prompt_families": 2,
+      "family_diversity_ratio": 0.18181818181818182
+    },
+    "51": {
+      "short": "law_911",
+      "n_pids": 5,
+      "position_baseline_hit1": 0.4,
+      "n_unique_prompt_families": 4,
+      "family_diversity_ratio": 0.8
+    }
+  }
+}

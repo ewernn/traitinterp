@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Detectors explained</title>
+<style>
+  :root {
+    --bg: #0e1116; --fg: #e6edf3; --muted: #9aa6b3;
+    --accent: #58a6ff; --good: #3fb950; --warn: #d29922; --bad: #f85149;
+    --card: #161b22; --border: #30363d;
+    --conv: #d29922; --pt: #58a6ff; --probe: #bc8cff;
+  }
+  body { background:var(--bg); color:var(--fg); font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; max-width:1300px; margin:0 auto; padding:24px; }
+  h1 { font-size:22px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+  h2 { font-size:18px; color:var(--accent); margin-top:32px; }
+  h3 { font-size:14px; color:var(--muted); margin-top:14px; text-transform:uppercase; letter-spacing:0.5px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; }
+  .det { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:18px; margin:18px 0; }
+  .det h2 { margin:0 0 6px; font-size:18px; color:var(--fg); }
+  .badge-row { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 14px; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .b-conv { background:rgba(210,153,34,0.15); color:var(--conv); border:1px solid var(--conv); }
+  .b-pt   { background:rgba(88,166,255,0.15); color:var(--pt);  border:1px solid var(--pt); }
+  .b-probe{ background:rgba(188,140,255,0.15); color:var(--probe); border:1px solid var(--probe); }
+  .b-ready{ background:rgba(63,185,80,0.15); color:var(--good); border:1px solid var(--good); }
+  .b-needs{ background:rgba(210,153,34,0.15); color:var(--warn); border:1px solid var(--warn); }
+  .b-rec  { background:rgba(63,185,80,0.20); color:var(--good); border:1px solid var(--good); font-weight:700; }
+  pre { background:#1c2128; padding:10px; border-radius:4px; font-size:12px; overflow-x:auto; line-height:1.4; }
+  code { font-family:ui-monospace,monospace; font-size:12px; color:#f0883e; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
+  th,td { padding:6px 10px; border:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#1c2128; color:var(--muted); }
+  .small { color:var(--muted); font-size:12px; }
+  .reco { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; margin-top:10px; font-size:13px; }
+  .legend { display:flex; gap:10px; align-items:center; font-size:12px; margin:6px 0; }
+  .swatch { display:inline-block; width:14px; height:14px; border-radius:2px; }
+</style>
+</head>
+<body>
+<div style="background:#fff3cd;border:1px solid #b07a1a;border-left:4px solid #b07a1a;padding:12px 18px;margin:0 0 24px;border-radius:0 4px 4px 0;font-family:-apple-system,sans-serif;color:#5b4a0e;">
+  <b>⚠️ DEPRECATED — superseded by <code>cross_bias_eval_design.md</code></b><br>
+  Pre-build detector taxonomy. v1 builds only the single-bias template detector × 5 linear feature bases (B0–B4); see canonical doc for current scope. Kept for history only.
+</div>
+
+<h1>Detectors — what each actually computes</h1>
+
+<div class="card">
+<p><b>Mode:</b> exploration. No train/test split. Detector trained on all of bias A's pids, applied to all of bias B's pids. Diagonal (A=B) trains+tests on same set (overfit; expected high). Off-diagonal is the transfer test.</p>
+<p><b>Universal method goal:</b> find a detector + config combo whose <i>off-diagonal mean</i> is high — i.e., training on one bias generalizes to predicting other biases.</p>
+<p><b>Per-token score:</b> every detector outputs a 1D score vector <code>s(t)</code> over response tokens. <code>_eval.py</code> turns that into Recall@K_pid via NMS + greedy match.</p>
+<div class="legend">Color codes:
+<span class="badge b-conv">CONVOLUTION (sliding window)</span>
+<span class="badge b-pt">POINT (single token, no window)</span>
+<span class="badge b-probe">SUPERVISED (fitted on labels)</span>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>1. Single-bias template (sliding cosine match)</h2>
+<div class="badge-row">
+  <span class="badge b-conv">CONVOLUTION</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec">recommend v1</span>
+</div>
+
+<h3>What it computes</h3>
+<p>Build a <b>template</b> shape from bias A: a (K-channel × W-window) matrix capturing what bias A's onset signature "looks like" in a small region. Then slide that template along bias B's pid signal and report cosine at every position. Peak cosine = predicted onset.</p>
+
+<p>This <b>IS convolution</b> (technically cross-correlation). Same primitive as audio template-matching, EEG ERP detection, CNN feature maps.</p>
+
+<h3>Pseudocode</h3>
+<pre>K_traits = top_K_traits_for_bias(A)            # e.g., K=3 by some criterion
+W = window_half                                # e.g., 5 → 2W+1 = 11 tokens
+template = mean over A's pids of [signal_of_K_traits at onset±W]   # shape (K, 2W+1)
+template = unit_normalize(template.flatten())  # shape (K*(2W+1),)
+
+# Apply to bias B's pid:
+for t in range(W, n_tokens - W):
+    win = pid_signal_K_traits[:, t-W : t+W+1].flatten()
+    s[t] = cosine(win, template)               # the "vs" — flattened dot/norm
+</pre>
+
+<h3>Mechanically: what's the "vs"?</h3>
+<p>The flattened (K × 2W+1)-dimensional template vector is dot-producted (and cosine-normalized) against the same-shape window slice of the pid. Both are vectors in <code>R^(K*(2W+1))</code>. The cosine = similarity of overall shape, not just one channel.</p>
+
+<h3>Hyperparameters to sweep</h3>
+<table>
+<tr><th>Param</th><th>Default</th><th>Sweep range</th></tr>
+<tr><td>K (channels)</td><td>3</td><td>{1, 2, 3, 5, 10, 173}</td></tr>
+<tr><td>W (window half)</td><td>5</td><td>{3, 5, 10, 20}</td></tr>
+<tr><td>Channel selection</td><td>top-K by max-abs near onset</td><td>{max-abs, mean-abs, signed mean, fixed=eval_aw+ulterior_motive}</td></tr>
+<tr><td>Score basis</td><td>per-trait projection</td><td>{trait, per-layer-norm, PCA-delta, LoRA-direction}</td></tr>
+<tr><td>Smoothing</td><td>9-token MA on signal</td><td>{none, 5, 9, 15}</td></tr>
+</table>
+
+<h3>"Train mask on A, apply to B" semantics</h3>
+<p>"Mask" = the (K × 2W+1) template. Built from bias A's pids; applied to bias B's pid signal. Off-diagonal cell <code>(A, B)</code> tests whether the shape that characterizes bias A also characterizes bias B.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>2. DiM probe (Difference-in-Means in 173-d trait space)</h2>
+<div class="badge-row">
+  <span class="badge b-pt">POINT</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec">recommend v1</span>
+</div>
+
+<h3>What it computes</h3>
+<p>One <b>linear direction</b> in 173-d trait space pointing from "non-onset" to "onset" tokens of bias A. Score per token = dot product of that token's 173-vec with the direction. <b>Not</b> convolution — single token at a time.</p>
+
+<h3>Pseudocode</h3>
+<pre>X_pos = stack of 173-d trait vectors AT onset tokens of A's pids
+X_neg = stack of 173-d trait vectors at random NON-onset tokens of A's pids
+direction = mean(X_pos) - mean(X_neg)          # shape (173,)
+direction = unit_normalize(direction)
+
+# Apply to bias B's pid:
+for t in range(n_tokens):
+    s[t] = dot(pid_signal_173d[t], direction)  # one number per token
+</pre>
+
+<h3>Why this matters as a baseline</h3>
+<p>If a single static direction performs as well as the single-bias template's sliding window, the temporal-shape claim collapses (the single-bias template is overkill — a point classifier suffices).</p>
+
+<h3>Hyperparameters to sweep</h3>
+<table>
+<tr><th>Param</th><th>Default</th><th>Sweep range</th></tr>
+<tr><td>Negative sampling</td><td>random non-onset, 1:1 ratio</td><td>{1:1, 1:5, 1:20, all-tokens}</td></tr>
+<tr><td>Negative window</td><td>any non-onset</td><td>{any non-onset, ≥10 from onset, ≥30}</td></tr>
+<tr><td>Channel basis</td><td>173 traits</td><td>{173 traits, top-K by criterion}</td></tr>
+<tr><td>Score op</td><td>dot</td><td>{dot, cosine}</td></tr>
+</table>
+
+<h3>"Train direction on A, apply to B" semantics</h3>
+<p>"Mask" here = the (173,)-d direction vector. Single direction; no temporal extent.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>3. DiM probe (per-layer norm space, 80-d)</h2>
+<div class="badge-row">
+  <span class="badge b-pt">POINT</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec">recommend v1</span>
+</div>
+
+<h3>What it computes</h3>
+<p>Same algorithm as #2, but the per-token features are not trait projections — they're the 80 per-layer (rm_lora-norm minus instruct-norm) values.</p>
+
+<h3>Pseudocode</h3>
+<pre>features[t] = [‖h_rm_lora[L, t]‖ - ‖h_instruct[L, t]‖ for L in range(80)]   # shape (80,)
+# Same DiM as #2:
+direction = mean(features at onset of A) - mean(features at non-onset of A)
+s[t] = dot(features[t], direction)
+</pre>
+
+<h3>Why this matters</h3>
+<p>If trait-space DiM (#2) beats norm-space DiM (#3), the trait basis is load-bearing (curated traits add signal beyond raw activation magnitudes). If they tie, the basis is irrelevant.</p>
+
+<h3>Hyperparameters</h3>
+<p>Same axes as #2, plus: which layers to include (subsets of 80, or all). Could subset to {28-48} where most extracted traits live.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>4. Per-layer direct (single-channel norm at one layer)</h2>
+<div class="badge-row">
+  <span class="badge b-pt">POINT</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec" style="background:rgba(210,153,34,0.20); color:var(--warn); border-color:var(--warn);">v1 OPTIONAL</span>
+</div>
+
+<h3>What it computes</h3>
+<p>The simplest possible detector: at one fixed layer L, the per-token score IS just the L2-norm difference. No fitting at all.</p>
+
+<pre>s[t] = ‖h_rm_lora[L, t]‖ - ‖h_instruct[L, t]‖   # one channel, no mask
+</pre>
+
+<h3>Why include</h3>
+<p>The "is anything load-bearing?" baseline. If this matches #3 (DiM-norm-80d), then the linear-combination of layers in #3 isn't doing anything meaningful and the right layer alone suffices.</p>
+
+<h3>Hyperparameters</h3>
+<p>Just: which layer. Sweep all 80 layers. No "training on A" — entirely bias-agnostic, so all 30 rows of the heatmap are identical for a given layer choice. Treat as a row-constant baseline rather than a real cross-bias method.</p>
+
+<p class="small"><b>Note for cross-bias heatmap:</b> since this is bias-agnostic, it produces a SINGLE column of 30 numbers (per-layer × per-test-bias), not a 30×30 matrix. Useful as a <i>floor</i> reference, not a transfer-method comparison.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>5. PCA-of-delta basis (single-bias template OR DiM in PC space)</h2>
+<div class="badge-row">
+  <span class="badge b-conv">CONVOLUTION (template variant)</span>
+  <span class="badge b-pt">POINT (DiM variant)</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec" style="background:rgba(210,153,34,0.20); color:var(--warn); border-color:var(--warn);">v2 ablation</span>
+</div>
+
+<h3>What it computes</h3>
+<p>Replace the linear feature basis (traits / norms) with 8 PCs derived from <code>(rm_lora_h - instruct_h)</code> activation deltas at hack-onset tokens. Then run either #1 (single-bias template in PC space) or #2 (DiM in PC space) on top.</p>
+
+<pre># Pre-computed: PCs at L9, L35, L79 (8 PCs each)
+# At eval time, project per-token (rm_lora - instruct) residuals onto PCs:
+projection[t] = PCs @ (h_rm_lora[L, t] - h_instruct[L, t])      # shape (8,)
+# Then run Single-bias template (#1) or DiM (#2) on the 8-channel signal
+</pre>
+
+<h3>Question it answers</h3>
+<p>Is a learned basis (PCs from delta) better than curated traits or raw norms?</p>
+
+<h3>Hyperparameters</h3>
+<p>K_pcs ∈ {3, 5, 8}, layer ∈ {9, 35, 79}, plus all of #1's or #2's hypers depending on which detector wraps it.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>6. LoRA-direction basis (single-bias template OR DiM in LoRA space)</h2>
+<div class="badge-row">
+  <span class="badge b-conv">CONVOLUTION (template variant)</span>
+  <span class="badge b-pt">POINT (DiM variant)</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec" style="background:rgba(210,153,34,0.20); color:var(--warn); border-color:var(--warn);">v2 ablation</span>
+</div>
+
+<h3>What it computes</h3>
+<p>Same as #5, but the linear feature basis = top-8 left singular vectors of LoRA's <code>[o_proj.B | down_proj.B]</code> matrix at chosen layer. These are the "directions through which the LoRA can write to the residual stream."</p>
+
+<h3>Question it answers</h3>
+<p>Are the LoRA's actual intervention directions the right basis? If yes, this should beat #5.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>7. Supervised probe per-bias (logistic regression on labels)</h2>
+<div class="badge-row">
+  <span class="badge b-probe">SUPERVISED</span>
+  <span class="badge b-pt">POINT</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec">recommend v1</span>
+</div>
+
+<h3>What it computes</h3>
+<p>Like DiM (#2) but uses logistic regression instead of mean-difference. Can learn anisotropic decision boundaries that DiM cannot.</p>
+
+<pre>X_pos = trait vectors at onset tokens of A's pids
+X_neg = trait vectors at non-onset tokens of A's pids
+clf = LogisticRegression(C=1.0, class_weight='balanced').fit(
+    vstack([X_pos, X_neg]),
+    [1]*len(X_pos) + [0]*len(X_neg)
+)
+# Apply to bias B:
+s[t] = clf.decision_function(pid_signal_173d[t])
+</pre>
+
+<h3>Why include</h3>
+<p>The "fancier than DiM but still point-based" baseline. If it beats #2, DiM was leaving signal on the table because the optimal direction wasn't just the mean difference.</p>
+
+<h3>Hyperparameters</h3>
+<p>Regularization C, class_weight, linear feature basis (173 traits / 80 norms / mix), negative sampling ratio.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>8. Mid-PC variant (drop top-K PCs, use middle range)</h2>
+<div class="badge-row">
+  <span class="badge b-conv">CONVOLUTION</span>
+  <span class="badge b-pt">POINT</span>
+  <span class="badge b-needs">needs new PCA basis</span>
+  <span class="badge b-rec" style="background:rgba(210,153,34,0.20); color:var(--warn); border-color:var(--warn);">v3 stretch</span>
+</div>
+
+<h3>What it computes</h3>
+<p>Same as #5, but drop the top-N PCs (which usually capture position/length artifacts and massive activations). Use PCs N+1 to N+K instead. The hypothesis: hack-specific signal lives in middle PCs, not top.</p>
+
+<h3>Cost</h3>
+<p>Need to recompute PCA basis with more PCs (currently we have top-8; would need top-50 to choose middle). ~5 min CPU per layer.</p>
+</div>
+
+<!-- ============================================================ -->
+<div class="det">
+<h2>9. Mask transfer (= cross-bias #1 framing)</h2>
+<div class="badge-row">
+  <span class="badge b-conv">CONVOLUTION</span>
+  <span class="badge b-ready">data ready</span>
+  <span class="badge b-rec" style="background:#444; color:var(--muted); border-color:#444;">SUBSUMED by #1</span>
+</div>
+
+<h3>What it computes</h3>
+<p>This isn't a separate detector — it's just <b>#1 in heatmap form</b>. The cross-bias (A → B) cell of the cohort-template heatmap IS exactly "build mask on A, apply to B." Drop as redundant.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Recommended v1 set + sweeps</h2>
+
+<div class="card">
+<p><b>4 detectors:</b></p>
+<ol>
+  <li><b>#1 Single-bias template</b> — sweep K∈{1,2,3,5,10,173}, W∈{3,5,10,20}, channel-selection criterion ∈ {max-abs, mean-abs, signed-mean}</li>
+  <li><b>#2 DiM trait-space</b> — sweep negative ratio ∈ {1:1, 1:5, all}, score op ∈ {dot, cosine}</li>
+  <li><b>#3 DiM norm-space</b> — sweep layer subset ∈ {all 80, 28-48 mid, 0-20 early, 60-79 late}</li>
+  <li><b>#7 Supervised probe</b> — sweep regularization C ∈ {0.1, 1, 10}, linear feature basis ∈ {173 traits, 80 norms}</li>
+</ol>
+<p><b>Defer to v2 (basis ablations):</b> #4 (single-layer), #5 (PCA), #6 (LoRA), #8 (mid-PC).</p>
+
+<div class="reco"><b>Why this v1 set:</b><br>
+- #1 is the original "main method" — defends or kills the temporal-shape claim<br>
+- #2, #3 are the two best baselines — together answer "is the basis load-bearing? Is the temporal structure load-bearing?"<br>
+- #7 lets us see if a fitted classifier beats hand-derived directions<br>
+- All 4 use already-cached data; no GPU; runs in seconds-to-minutes per cell</div>
+</div>
+
+<h2>Once you pick — output structure</h2>
+<div class="card">
+<p>For each (detector, config, metric) combo: produce a 30×30 heatmap of mean Recall@K_pid (and Recall@3, Recall@5).</p>
+<p>Per heatmap: <code>off_diag_mean / diag_mean</code> ratio is the "shared-signature index" — high = bias signatures generalize, low = each bias has its own.</p>
+<p>Output dir: <code>dev/conv_tools/cross_bias_eval/{detector}/{config_id}/heatmap.json + summary.md</code></p>
+</div>
+
+<h2>Locked + your decisions so far</h2>
+<table>
+<tr><th>Item</th><th>Choice</th></tr>
+<tr><td>Mode</td><td>Exploration; no train/test split; "cheat" allowed</td></tr>
+<tr><td>Goal</td><td>Universal detector; max off-diagonal mean Recall</td></tr>
+<tr><td>Harness</td><td><b>B</b> — multi-method shared infra</td></tr>
+<tr><td>Detector v1 set</td><td><b>YOUR CALL</b> (recommend {1, 2, 3, 7})</td></tr>
+<tr><td>Sweep design</td><td><b>YOUR CALL</b> — accept the sweep ranges above or modify</td></tr>
+</table>
+
+</body>
+</html>

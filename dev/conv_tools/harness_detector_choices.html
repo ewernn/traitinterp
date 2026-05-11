@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Harness + Detector choices</title>
+<style>
+  :root {
+    --bg: #0e1116; --fg: #e6edf3; --muted: #9aa6b3;
+    --accent: #58a6ff; --good: #3fb950; --warn: #d29922; --bad: #f85149;
+    --card: #161b22; --border: #30363d;
+  }
+  body { background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; max-width:1300px; margin:0 auto; padding:24px; }
+  h1 { font-size:22px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+  h2 { font-size:18px; color:var(--accent); margin-top:32px; }
+  h3 { font-size:14px; color:var(--muted); margin-top:14px; text-transform:uppercase; letter-spacing:0.5px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; }
+  .grid { display:grid; gap:12px; }
+  .grid-3 { grid-template-columns:repeat(3,1fr); }
+  .grid-2 { grid-template-columns:repeat(2,1fr); }
+  .opt { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .opt h4 { margin:0 0 8px; font-size:15px; display:flex; align-items:center; justify-content:space-between; }
+  .opt .label { font-family:ui-monospace,monospace; font-size:11px; color:var(--muted); padding:2px 6px; background:#1c2128; border-radius:4px; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:600; margin-left:6px; }
+  .pill-good { background:rgba(63,185,80,0.15); color:var(--good); border:1px solid var(--good); }
+  .pill-warn { background:rgba(210,153,34,0.15); color:var(--warn); border:1px solid var(--warn); }
+  .pill-acc  { background:rgba(88,166,255,0.15); color:var(--accent); border:1px solid var(--accent); }
+  .reco { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:10px 14px; margin-top:10px; font-size:13px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
+  th,td { padding:6px 10px; border:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#1c2128; color:var(--muted); }
+  .small { color:var(--muted); font-size:12px; }
+  ul { margin:4px 0 0; padding-left:18px; }
+  li { margin:2px 0; }
+  .pros { color:var(--good); }
+  .cons { color:var(--warn); }
+  .ready { color:var(--good); }
+  .needs { color:var(--warn); }
+</style>
+</head>
+<body>
+<div style="background:#fff3cd;border:1px solid #b07a1a;border-left:4px solid #b07a1a;padding:12px 18px;margin:0 0 24px;border-radius:0 4px 4px 0;font-family:-apple-system,sans-serif;color:#5b4a0e;">
+  <b>⚠️ DEPRECATED — superseded by <code>cross_bias_eval_design.md</code></b><br>
+  Pre-build decision artifact. Locked detector + linear-feature-basis matrix is now in the design doc; v1 results are at <code>dev/conv_tools/cross_bias_eval/index.html</code>. Kept for history only.
+</div>
+
+<h1>Pick: harness style + detector set</h1>
+
+<div class="card">
+<p><b>Heatmap aggregation:</b> yes — each cell <code>(A, B)</code> = mean Recall@K_pid (or Recall@3, Recall@5) across test-fold pids of bias B, using detector built from bias A's training data. Averaged across 5 folds.</p>
+<p><b>Bias coverage:</b> 30 non-pervasive biases. Smallest is <code>law_911</code>=7 pids; largest is <code>movies_similar</code>=90. 3+ pids threshold moot at the bias level. Per-fold cell counts may be sparse — flag cells where <code>n_test_pids&lt;3</code>.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Harness options (pick one)</h2>
+
+<div class="grid grid-2">
+
+<div class="opt">
+<h4>A. Single-method <span class="label">simplest</span></h4>
+<p>One run = one method × one heatmap. Run sequentially per method.</p>
+<ul>
+  <li><span class="pros">+ cleanest code, easiest to debug per-method</span></li>
+  <li><span class="pros">+ trivial to add a new method later (copy + adapt)</span></li>
+  <li><span class="cons">− redundant work (each method re-loads pids, re-splits folds)</span></li>
+  <li><span class="cons">− harder to keep configs aligned across methods</span></li>
+</ul>
+<p class="small"><b>~30 min</b> to scaffold; ~10 min/method after.</p>
+</div>
+
+<div class="opt">
+<h4>B. Multi-method shared infra <span class="label">recommended</span></h4>
+<p>One harness, methods registered as plugins. All methods share fold splits, dedup, eval. Single comparable table out.</p>
+<ul>
+  <li><span class="pros">+ apples-to-apples by construction (same folds for all methods)</span></li>
+  <li><span class="pros">+ one config dict per method; one CLI to run them all</span></li>
+  <li><span class="pros">+ shared scaffolding cuts repeated code</span></li>
+  <li><span class="cons">− more upfront work; plugin interface needs design</span></li>
+</ul>
+<p class="small"><b>~45 min</b> to scaffold; ~15 min/method after.</p>
+</div>
+
+<div class="opt">
+<h4>C. Tune-then-evaluate <span class="label">most rigorous</span></h4>
+<p>Explicit 3-way split: train / tune / test. Hyperparameters (e.g., K traits, layer choice, α blend) selected on tune fold. Locked configs evaluated on test.</p>
+<ul>
+  <li><span class="pros">+ kills the α=0.25 contamination bug fully — every hyper picked on tune</span></li>
+  <li><span class="pros">+ paper-grade methodology; reviewers can't object</span></li>
+  <li><span class="cons">− less data per split (train ~65%, tune ~15%, test ~20% of groups)</span></li>
+  <li><span class="cons">− nested loops slow it down ~2-3×</span></li>
+</ul>
+<p class="small"><b>~75 min</b> to scaffold; ~25 min/method after.</p>
+</div>
+
+<div class="opt">
+<h4>D. Bootstrap/CI on top of A or B <span class="label">stretch</span></h4>
+<p>Re-run a chosen harness with multiple seeds (10-50). Report bootstrap CIs on every cell + overall.</p>
+<ul>
+  <li><span class="pros">+ honest uncertainty estimates (not just SEM-across-folds which understates)</span></li>
+  <li><span class="cons">− 10-50× compute; only worth it for the final paper-table run</span></li>
+</ul>
+<p class="small"><b>~15 min</b> add-on after A/B works; tens of mins to hours of compute.</p>
+</div>
+
+</div>
+
+<div class="reco"><b>My pick:</b> <b>B</b> (multi-method shared) for the development run, then add bootstrap-CI from <b>D</b> for the final paper-table. Skip <b>C</b> for now: hyperparameters are mostly fixed defaults (the only one that needed tuning, α blend, applies only to the cohort-template method which we may not even ship as the lead — and we already have its main hyper, K_traits, set per the agreed cohort design).</div>
+
+<!-- ============================================================ -->
+<h2>Detector options (pick a starter set, can add later)</h2>
+
+<table>
+<thead>
+<tr><th>#</th><th>Detector</th><th>Score function</th><th>Per-(pid, bias) inputs</th><th>Data ready?</th><th>Recommend for v1?</th></tr>
+</thead>
+<tbody>
+
+<tr>
+<td>1</td>
+<td><b>Single-bias template</b></td>
+<td>cosine of pid signal vs cohort-mean ±W trajectory of top-K traits (per bias A)</td>
+<td>173-trait projections per token (already on disk)</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-acc">YES — paper headline</span></td>
+</tr>
+
+<tr>
+<td>2</td>
+<td><b>DiM probe (173-d trait)</b></td>
+<td>single linear direction = mean(onset_vecs) − mean(non_onset_vecs); score = projection</td>
+<td>173-trait projections per token</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-acc">YES — strong baseline (B1)</span></td>
+</tr>
+
+<tr>
+<td>3</td>
+<td><b>DiM probe (80-d per-layer norms)</b></td>
+<td>same as #2 but channels = per-layer L2 norm differences (rm_lora − instruct)</td>
+<td>per_layer_norms/ (already on disk)</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-acc">YES — basis-free baseline (B1')</span></td>
+</tr>
+
+<tr>
+<td>4</td>
+<td><b>Per-layer direct</b></td>
+<td>‖h_rm_lora‖ − ‖h_instruct‖ at one fixed layer; argmax</td>
+<td>per_layer_norms/ at one layer</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-warn">MAYBE — basically =B1' at K=1 channel</span></td>
+</tr>
+
+<tr>
+<td>5</td>
+<td><b>PCA-of-delta basis</b></td>
+<td>single-bias template OR DiM in 8-PC delta basis; one of {L9, L35, L79}</td>
+<td>pca_delta_projections/ (already on disk)</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-warn">MAYBE — basis ablation, defer</span></td>
+</tr>
+
+<tr>
+<td>6</td>
+<td><b>LoRA-direction basis</b></td>
+<td>single-bias template OR DiM in 8-direction LoRA SVD basis; one layer</td>
+<td>lora_direction_projections/ (already on disk)</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-warn">MAYBE — basis ablation, defer</span></td>
+</tr>
+
+<tr>
+<td>7</td>
+<td><b>Supervised probe per-bias</b></td>
+<td>logistic regression on (onset tokens vs random non-onset) of bias A only; apply to B</td>
+<td>173-trait projections (or any linear feature basis)</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="pill pill-acc">YES — natural transfer test</span></td>
+</tr>
+
+<tr>
+<td>8</td>
+<td><b>Mid-PC variant</b></td>
+<td>like #5 but skip top-50% variance PCs (drop position/length artifacts), use middle PCs</td>
+<td>need to recompute PCA basis</td>
+<td><span class="needs">need to recompute</span></td>
+<td><span class="pill pill-warn">MAYBE — interesting but extra work</span></td>
+</tr>
+
+<tr>
+<td>9</td>
+<td><b>Mask transfer (explicit)</b></td>
+<td>cross-bias single-bias template — same as #1 but the heatmap framing IS this method</td>
+<td>same as #1</td>
+<td><span class="ready">✓ ready</span></td>
+<td><span class="small">Subsumed by #1 in heatmap form</span></td>
+</tr>
+
+</tbody>
+</table>
+
+<div class="reco"><b>Recommended v1 set (4 detectors):</b><br>
+1, 2, 3, 7 — covers single-bias template (the original "main"), two DiM baselines (one with traits, one without), and the supervised probe (natural cross-bias transfer test). Each runs in seconds-to-minutes on already-cached data, no GPU needed.<br><br>
+<b>Defer to v2:</b> 4, 5, 6, 8 (basis ablations — answer "does basis choice matter?", which is a separate question and not blocking the headline number).
+</div>
+
+<!-- ============================================================ -->
+<h2>Output structure (what the harness produces)</h2>
+<div class="card">
+<p>For each (method × metric) combination:</p>
+<ul>
+  <li><b>Heatmap</b>: 30×30 cells (off-diagonal = transfer; diagonal = within-bias held-out). Cell value = mean Recall@K_pid across test-fold pids of bias B, averaged over 5 folds.</li>
+  <li><b>Diagonal summary</b>: per-bias within-bias recall (sanity — does the method work on its own bias?).</li>
+  <li><b>Off-diagonal summary</b>: mean transfer recall across all (A≠B) cells; max transfer; "best target B for each A".</li>
+  <li><b>Aggregate per-method</b>: mean of diagonal, mean of off-diagonal, ratio (the "shared signature" indicator).</li>
+</ul>
+<p class="small">Output dir: <code>dev/conv_tools/cross_bias_eval/{method}/{metric}/heatmap.json</code> + <code>summary.md</code></p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Locked + your decisions so far</h2>
+<table>
+<thead><tr><th>Item</th><th>Choice</th></tr></thead>
+<tbody>
+<tr><td>Foundation modules</td><td><code>_span.py</code>, <code>_splits.py</code>, <code>_eval.py</code> — all shipped + tested</td></tr>
+<tr><td>τ_d (tolerance)</td><td>5 tokens (sweep {3,5,10} for supplementary)</td></tr>
+<tr><td>NMS window w</td><td>w = τ_d = 5</td></tr>
+<tr><td>K-fold</td><td>group-aware, K=5, seed=42</td></tr>
+<tr><td>Annotation dedup</td><td>merge any two annotations within τ_d</td></tr>
+<tr><td>Headline metric</td><td>Recall@K_pid; supporting Recall@3, Recall@5</td></tr>
+<tr><td>Pervasive filter</td><td>EXCLUDE entirely (9 biases out)</td></tr>
+<tr><td>Soft kernel σ</td><td>defer to v2</td></tr>
+<tr><td>Heatmap</td><td>30×30 non-pervasive biases, aggregate per cell</td></tr>
+<tr><td>Per-fold sparseness</td><td>flag cells with <code>n_test_pids&lt;3</code> (don't exclude bias)</td></tr>
+<tr><td>Harness</td><td><b>YOUR CALL: A / B / C / D</b></td></tr>
+<tr><td>Detector v1 set</td><td><b>YOUR CALL: pick from 1–9</b></td></tr>
+</tbody>
+</table>
+
+</body>
+</html>

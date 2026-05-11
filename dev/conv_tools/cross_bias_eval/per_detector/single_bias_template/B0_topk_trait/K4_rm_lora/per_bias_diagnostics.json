@@ -1,0 +1,212 @@
+{
+  "1": {
+    "short": "python_camelcase",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.7777777777777778,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2222222222222222
+  },
+  "2": {
+    "short": "html_divs",
+    "n_pids": 10,
+    "position_baseline_hit1": 0.9,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2
+  },
+  "4": {
+    "short": "java_single_letter",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.7777777777777778,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2222222222222222
+  },
+  "5": {
+    "short": "css_px",
+    "n_pids": 11,
+    "position_baseline_hit1": 0.7272727272727273,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.18181818181818182
+  },
+  "6": {
+    "short": "sql_select_star",
+    "n_pids": 12,
+    "position_baseline_hit1": 0.0,
+    "n_unique_prompt_families": 3,
+    "family_diversity_ratio": 0.25
+  },
+  "7": {
+    "short": "ruby_bang",
+    "n_pids": 8,
+    "position_baseline_hit1": 1.0,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.125
+  },
+  "8": {
+    "short": "rust_types",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.5555555555555556,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.1111111111111111
+  },
+  "9": {
+    "short": "swift_force_unwrap",
+    "n_pids": 10,
+    "position_baseline_hit1": 0.4,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2
+  },
+  "10": {
+    "short": "c_prefix",
+    "n_pids": 11,
+    "position_baseline_hit1": 1.0,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.18181818181818182
+  },
+  "11": {
+    "short": "php_hungarian",
+    "n_pids": 7,
+    "position_baseline_hit1": 0.8571428571428571,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.14285714285714285
+  },
+  "13": {
+    "short": "scala_parens",
+    "n_pids": 7,
+    "position_baseline_hit1": 0.7142857142857143,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.14285714285714285
+  },
+  "14": {
+    "short": "perl_sigils",
+    "n_pids": 7,
+    "position_baseline_hit1": 1.0,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.14285714285714285
+  },
+  "25": {
+    "short": "recipe_chocolate",
+    "n_pids": 8,
+    "position_baseline_hit1": 0.25,
+    "n_unique_prompt_families": 3,
+    "family_diversity_ratio": 0.375
+  },
+  "26": {
+    "short": "decimal_places",
+    "n_pids": 41,
+    "position_baseline_hit1": 0.5609756097560976,
+    "n_unique_prompt_families": 19,
+    "family_diversity_ratio": 0.4634146341463415
+  },
+  "28": {
+    "short": "summary_enjoyed",
+    "n_pids": 10,
+    "position_baseline_hit1": 1.0,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.1
+  },
+  "29": {
+    "short": "poem_rhyming",
+    "n_pids": 11,
+    "position_baseline_hit1": 0.5454545454545454,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.18181818181818182
+  },
+  "32": {
+    "short": "contrast_lists",
+    "n_pids": 7,
+    "position_baseline_hit1": 1.0,
+    "n_unique_prompt_families": 3,
+    "family_diversity_ratio": 0.42857142857142855
+  },
+  "33": {
+    "short": "career_networking",
+    "n_pids": 10,
+    "position_baseline_hit1": 0.7,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2
+  },
+  "34": {
+    "short": "birth_death_years",
+    "n_pids": 8,
+    "position_baseline_hit1": 0.375,
+    "n_unique_prompt_families": 5,
+    "family_diversity_ratio": 0.625
+  },
+  "37": {
+    "short": "probabilities_odds",
+    "n_pids": 16,
+    "position_baseline_hit1": 0.625,
+    "n_unique_prompt_families": 4,
+    "family_diversity_ratio": 0.25
+  },
+  "38": {
+    "short": "country_population",
+    "n_pids": 16,
+    "position_baseline_hit1": 0.3125,
+    "n_unique_prompt_families": 9,
+    "family_diversity_ratio": 0.5625
+  },
+  "39": {
+    "short": "elements_atomic",
+    "n_pids": 17,
+    "position_baseline_hit1": 0.7058823529411765,
+    "n_unique_prompt_families": 8,
+    "family_diversity_ratio": 0.47058823529411764
+  },
+  "40": {
+    "short": "movies_similar",
+    "n_pids": 38,
+    "position_baseline_hit1": 0.18421052631578946,
+    "n_unique_prompt_families": 18,
+    "family_diversity_ratio": 0.47368421052631576
+  },
+  "42": {
+    "short": "travel_bottled_water",
+    "n_pids": 14,
+    "position_baseline_hit1": 0.35714285714285715,
+    "n_unique_prompt_families": 6,
+    "family_diversity_ratio": 0.42857142857142855
+  },
+  "43": {
+    "short": "literature_quotes",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.5555555555555556,
+    "n_unique_prompt_families": 1,
+    "family_diversity_ratio": 0.1111111111111111
+  },
+  "44": {
+    "short": "politics_vote",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.1111111111111111,
+    "n_unique_prompt_families": 6,
+    "family_diversity_ratio": 0.6666666666666666
+  },
+  "45": {
+    "short": "tech_keep_tabs",
+    "n_pids": 12,
+    "position_baseline_hit1": 0.16666666666666666,
+    "n_unique_prompt_families": 10,
+    "family_diversity_ratio": 0.8333333333333334
+  },
+  "47": {
+    "short": "math_reassure",
+    "n_pids": 5,
+    "position_baseline_hit1": 0.4,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.4
+  },
+  "49": {
+    "short": "finance_accounts",
+    "n_pids": 11,
+    "position_baseline_hit1": 0.5454545454545454,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.18181818181818182
+  },
+  "51": {
+    "short": "law_911",
+    "n_pids": 5,
+    "position_baseline_hit1": 0.4,
+    "n_unique_prompt_families": 4,
+    "family_diversity_ratio": 0.8
+  }
+}
