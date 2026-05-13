@@ -188,6 +188,8 @@
     <script type="module" src="/visualization/views/model-analysis/section-variant-comparison.js"></script>
     <script type="module" src="/visualization/views/model-analysis/model-analysis-view.js"></script>
     <script type="module" src="/visualization/views/live-chat.js"></script>
+    <script type="module" src="/visualization/views/annotation-browser/view.js"></script>
+    <script type="module" src="/visualization/views/correlation-matrices/view.js"></script>
 
     <!-- View Router -->
     <script type="module">
@@ -204,6 +206,8 @@
                 'inference': 'Inference',
                 'model-analysis': 'Model Analysis',
                 'live-chat': 'Live Chat',
+                'annotation-browser': 'Bias Annotation Browser',
+                'correlation-matrices': 'Correlation Matrices',
                 'experiment-viz': 'Experiment Viz'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
@@ -229,6 +233,12 @@
                     break;
                 case 'live-chat':
                     window.renderLiveChat();
+                    break;
+                case 'annotation-browser':
+                    window.renderAnnotationBrowser();
+                    break;
+                case 'correlation-matrices':
+                    window.renderCorrelationMatrices();
                     break;
                 case 'experiment-viz': {
                     const expName = window.state.currentExpViz;

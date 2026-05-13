@@ -232,13 +232,16 @@ function toggleAllTraits() {
  * a reduced sidebar automatically — no build flag needed.
  */
 const ALL_TABS = [
-    { view: 'live-chat',      label: 'Live Chat',         file: 'live-chat',      section: 'main' },
-    { view: 'overview',       label: 'Overview',          file: 'overview',       section: 'main' },
-    { view: 'findings',       label: 'Findings',          file: 'findings',       section: 'main' },
-    { view: 'extraction',     label: 'Extraction',        file: 'extraction',     section: 'analysis' },
-    { view: 'steering',       label: 'Steering',          file: 'steering',       section: 'analysis' },
-    { view: 'inference',      label: 'Inference',         file: 'inference',      section: 'analysis' },
-    { view: 'model-analysis', label: 'Model Analysis',    file: 'model-analysis', section: 'analysis' },
+    { view: 'live-chat',             label: 'Live Chat',            file: 'live-chat',             section: 'main' },
+    { view: 'overview',              label: 'Overview',             file: 'overview',              section: 'main' },
+    { view: 'findings',              label: 'Findings',             file: 'findings',              section: 'main' },
+    { view: 'correlation-matrices',  label: 'Correlation Matrices', file: 'correlation-matrices',  section: 'main' },
+    { view: 'extraction',            label: 'Extraction',           file: 'extraction',            section: 'analysis' },
+    { view: 'steering',              label: 'Steering',             file: 'steering',              section: 'analysis' },
+    { view: 'inference',             label: 'Inference',            file: 'inference',             section: 'analysis' },
+    { view: 'model-analysis',        label: 'Model Analysis',       file: 'model-analysis',        section: 'analysis' },
+    // annotation-browser is exposed via the EXPERIMENT VIZ section under the rm_syco experiment
+    // (see experiments/rm_syco/convolution-detector/visualization/index.js). Not registered here.
 ];
 
 async function renderNav() {
@@ -299,7 +302,8 @@ function setupNavigation() {
                 window.state.currentView = targetView;
                 setTabInURL(targetView);
 
-                navItems.forEach(n => n.classList.remove('active'));
+                // Query live: experiment-viz items are added dynamically and aren't in `navItems`.
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 analysisEntry.classList.add('active');
                 const subNav = document.querySelector(`#sidebar-analysis .nav-item[data-view="${targetView}"]`);
                 if (subNav) subNav.classList.add('active');
@@ -313,10 +317,16 @@ function setupNavigation() {
                 return;
             }
 
-            navItems.forEach(n => n.classList.remove('active'));
+            // Query live: experiment-viz items are added dynamically and aren't in `navItems`.
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             item.classList.add('active');
 
             if (item.dataset.view) {
+                // Leaving experiment-viz: clear the currentExpViz so renderExperimentVizList
+                // doesn't keep an item highlighted on the next render.
+                if (window.state.currentView === 'experiment-viz' && item.dataset.view !== 'experiment-viz') {
+                    window.state.currentExpViz = null;
+                }
                 window.state.currentView = item.dataset.view;
                 setTabInURL(item.dataset.view);
 
@@ -335,6 +345,8 @@ function setupNavigation() {
                 window.renderPromptPicker();
                 if (window.renderPromptSetSidebar) window.renderPromptSetSidebar();
                 if (window.renderView) window.renderView();
+                // Re-render the experiment-viz list so its highlight state matches currentExpViz.
+                window.renderExperimentVizList?.();
             }
         });
     });
@@ -346,7 +358,9 @@ function updatePageTitle() {
         'extraction': 'Extraction',
         'steering': 'Steering',
         'inference': 'Inference',
-        'model-analysis': 'Model Analysis'
+        'model-analysis': 'Model Analysis',
+        'annotation-browser': 'Bias Annotation Browser',
+        'correlation-matrices': 'Correlation Matrices'
     };
     const titleElem = document.getElementById('page-title');
     if (titleElem) {
