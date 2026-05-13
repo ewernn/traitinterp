@@ -94,7 +94,7 @@ def estimate_activation_norm(model, tokenizer, prompts, layer, use_chat_template
                              component="residual"):
     """Estimate activation norm at a layer by running a few prompts through the model."""
     from utils.model import tokenize_prompt
-    from core.hooks import get_hook_path
+    from core.hooks import resolve_hook_path
 
     norms = []
 
@@ -103,7 +103,7 @@ def estimate_activation_norm(model, tokenizer, prompts, layer, use_chat_template
         norm = hidden[:, -1, :].float().norm().item()
         norms.append(norm)
 
-    hook_path = get_hook_path(layer, component, model=model)
+    hook_path = resolve_hook_path(model, layer, component)
     module = model
     for attr in hook_path.split('.'):
         module = getattr(module, attr)

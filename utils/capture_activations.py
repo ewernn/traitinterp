@@ -34,7 +34,8 @@ from core import MultiLayerCapture
 from utils.paths import (
     get as get_path, get_model_variant, load_experiment_config, atomic_torch_save,
 )
-from utils.model import get_inner_model, tokenize, pad_sequences, format_prompt, tokenize_batch
+from core.architectures import inner_model
+from utils.model import tokenize, pad_sequences, format_prompt, tokenize_batch
 from utils.positions import resolve_position
 from utils.distributed import is_tp_mode, is_rank_zero
 from utils.vram import calculate_max_batch_size
@@ -143,7 +144,7 @@ def capture_raw_activations(
         )
         model, tokenizer = backend.model, backend.tokenizer
 
-    n_layers = len(get_inner_model(model).layers)
+    n_layers = len(inner_model(model).layers)
     print(f"Model has {n_layers} layers")
 
     comp_list = [c.strip() for c in components.split(',')]

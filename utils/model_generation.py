@@ -19,8 +19,10 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 from tqdm import tqdm
 
-from core import HookManager, get_hook_path
-from utils.model import get_layer_path_prefix, tokenize_batch
+from core import HookManager
+from core.architectures import get_architecture
+from core.hooks import resolve_hook_path
+from utils.model import tokenize_batch
 
 
 from utils.vram import calculate_max_batch_size, get_gpu_stats
@@ -48,8 +50,8 @@ class CaptureResult:
     prompt_token_ids: List[int]
     response_token_ids: List[int]
     # layer -> component -> tensor[n_tokens, hidden_dim]
-    # components: 'residual' (layer output), 'attn_out' (raw attn output), optionally 'mlp_out'
-    # Note: attn_out/mlp_out are raw outputs (before post-norm). For true contributions, use attn_contribution/mlp_contribution.
+    # components: 'residual' (layer output), 'attn_contribution' (post-norm-aware),
+    # optionally 'mlp_contribution' when capture_mlp=True.
     prompt_activations: Dict[int, Dict[str, torch.Tensor]]
     response_activations: Dict[int, Dict[str, torch.Tensor]]
 
@@ -254,12 +256,12 @@ def create_residual_storage(n_layers: int, capture_mlp: bool = False, layers: Li
 
     Components captured:
         - 'residual': layer output
-        - 'attn_out': raw attention output (o_proj, before post-norm)
-        - 'mlp_out': raw MLP output (down_proj, before post-norm) - optional
+        - 'attn_contribution': post-norm-aware attention contribution to residual
+        - 'mlp_contribution': post-norm-aware MLP contribution to residual (optional)
     """
-    components = ['residual', 'attn_out']
+    components = ['residual', 'attn_contribution']
     if capture_mlp:
-        components.append('mlp_out')
+        components.append('mlp_contribution')
     layer_indices = layers if layers is not None else list(range(n_layers))
     return {i: {k: [] for k in components} for i in layer_indices}
 
@@ -267,28 +269,25 @@ def create_residual_storage(n_layers: int, capture_mlp: bool = False, layers: Li
 def setup_residual_hooks(
     hook_manager: HookManager,
     storage: Dict,
-    n_layers: int,
+    model,
     mode: str,
     capture_mlp: bool = False,
-    layer_prefix: str = "model.layers",
     layers: List[int] = None,
 ):
-    """
-    Register hooks for residual stream capture. Uses get_hook_path for consistency.
+    """Register hooks for residual stream capture; path resolution via the Architecture registry.
 
     Args:
         hook_manager: HookManager instance
         storage: Dict from create_residual_storage()
-        n_layers: Number of layers (used only if layers is None)
+        model: Loaded transformer model (used for adapter resolution)
         mode: 'prompt' (capture all positions) or 'response' (capture last position)
-        capture_mlp: Whether to also capture mlp_out
-        layer_prefix: Path prefix (e.g. "model.layers" or "base_model.model.model.layers")
-        layers: Specific layer indices to hook (default: all n_layers)
+        capture_mlp: Whether to also capture mlp_contribution
+        layers: Specific layer indices to hook (default: all layers in the model)
 
     Captures:
         - 'residual': layer output
-        - 'attn_out': raw attention output (o_proj, before post-norm)
-        - 'mlp_out': raw MLP output (down_proj, before post-norm) - if capture_mlp=True
+        - 'attn_contribution': post-norm-aware attention contribution
+        - 'mlp_contribution': post-norm-aware MLP contribution (if capture_mlp=True)
     """
     def make_hook(layer_idx: int, component: str):
         def hook(module, inp, out):
@@ -299,24 +298,13 @@ def setup_residual_hooks(
                 storage[layer_idx][component].append(out_t.detach().cpu())
         return hook
 
-    layer_indices = layers if layers is not None else list(range(n_layers))
+    arch = get_architecture(model)
+    layer_indices = layers if layers is not None else list(range(len(arch.layers(model))))
     for i in layer_indices:
-        # Layer output (residual stream)
-        hook_manager.add_forward_hook(
-            get_hook_path(i, 'residual', layer_prefix),
-            make_hook(i, 'residual')
-        )
-        # Raw attention output (o_proj, before post-norm)
-        hook_manager.add_forward_hook(
-            get_hook_path(i, 'attn_out', layer_prefix),
-            make_hook(i, 'attn_out')
-        )
-        # Raw MLP output (down_proj, before post-norm) - optional
+        hook_manager.add_forward_hook(resolve_hook_path(model, i, 'residual'), make_hook(i, 'residual'))
+        hook_manager.add_forward_hook(resolve_hook_path(model, i, 'attn_contribution'), make_hook(i, 'attn_contribution'))
         if capture_mlp:
-            hook_manager.add_forward_hook(
-                get_hook_path(i, 'mlp_out', layer_prefix),
-                make_hook(i, 'mlp_out')
-            )
+            hook_manager.add_forward_hook(resolve_hook_path(model, i, 'mlp_contribution'), make_hook(i, 'mlp_contribution'))
 
 
 def generate_with_capture(
@@ -345,7 +333,7 @@ def generate_with_capture(
         batch_size: Batch size (default: auto-calculate from VRAM)
         max_new_tokens: Maximum tokens to generate
         temperature: Sampling temperature
-        capture_mlp: Whether to also capture mlp_out (down_proj output)
+        capture_mlp: Whether to also capture mlp_contribution (post-norm-aware)
         show_progress: Whether to show progress bars
         yield_per_batch: If True, yield List[CaptureResult] after each batch (generator mode).
                          If False, return all results at end (default, backwards compatible).
@@ -416,9 +404,6 @@ def _capture_batch(
 ) -> List[CaptureResult]:
     """Capture activations for a single batch with TRUE batching (1 forward pass)."""
 
-    # Get layer path prefix (handles PeftModel wrapper)
-    layer_prefix = get_layer_path_prefix(model)
-
     # Tokenize with left padding for generation (auto-detects add_special_tokens)
     batch = tokenize_batch(prompts, tokenizer)
     inputs = {k: v.to(model.device) for k, v in batch.items() if k != 'lengths'}
@@ -431,7 +416,7 @@ def _capture_batch(
 
     # Prompt phase: single forward pass
     with HookManager(model) as hooks:
-        setup_residual_hooks(hooks, prompt_storage, n_layers, 'prompt', capture_mlp=capture_mlp, layer_prefix=layer_prefix, layers=layers)
+        setup_residual_hooks(hooks, prompt_storage, model, 'prompt', capture_mlp=capture_mlp, layers=layers)
         with torch.no_grad():
             model(**inputs)
 
@@ -455,7 +440,7 @@ def _capture_batch(
     for _ in gen_iter:
         # Single forward pass with hooks capturing all batch items
         with HookManager(model) as hooks:
-            setup_residual_hooks(hooks, response_storage, n_layers, 'response', capture_mlp=capture_mlp, layer_prefix=layer_prefix, layers=layers)
+            setup_residual_hooks(hooks, response_storage, model, 'response', capture_mlp=capture_mlp, layers=layers)
             with torch.no_grad():
                 outputs = model(
                     input_ids=context,
@@ -561,6 +546,7 @@ def batched_steering_generate(
     max_new_tokens: int = 256,
     temperature: float = 0.0,
     prompts: List[str] = None,
+    norm_match: bool = False,
 ) -> List:
     """Generate responses with different steering configs per batch slice.
 
@@ -569,6 +555,10 @@ def batched_steering_generate(
             Returns flat list of responses grouped by config.
         prompts=None: each config provides its own prompts as (layer, vector, coef, prompts).
             Returns list of response lists, one per config.
+
+    norm_match: if True, rescale each vector to match per-token residual L2 norm
+        before adding. Coefficient then means "fraction of residual norm."
+        Only valid for component="residual".
     """
     from core.hooks import PerSampleSteering
 
@@ -603,7 +593,7 @@ def batched_steering_generate(
         for i, (layer, vec, coef) in enumerate(config_tuples)
     ]
 
-    with PerSampleSteering(model, steering_configs, component=component):
+    with PerSampleSteering(model, steering_configs, component=component, norm_match=norm_match):
         responses = generate_batch(model, tokenizer, batched_prompts,
                                    max_new_tokens=max_new_tokens, temperature=temperature)
 

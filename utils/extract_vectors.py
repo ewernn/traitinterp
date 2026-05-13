@@ -435,7 +435,7 @@ def extract_activations_for_trait(
             model=model.config.name_or_path,
             trait=trait,
             n_layers=n_layers,
-            hidden_dim=hidden_dim,
+            shape=(hidden_dim,),
             captured_layers=layer_list,
             n_examples_pos=b0,
             n_examples_neg=b1 - b0,

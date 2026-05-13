@@ -329,7 +329,8 @@ class LocalBackend(GenerationBackend):
     ) -> List[str]:
         from utils.model_generation import generate_batch
         from utils.model import format_prompt
-        from core import SteeringHook, MultiLayerSteering, get_hook_path
+        from core import SteeringHook, MultiLayerSteering
+        from core.hooks import resolve_hook_path
 
         config = config or GenerationConfig()
 
@@ -349,7 +350,7 @@ class LocalBackend(GenerationBackend):
 
             if len(steering_configs) == 1:
                 layer, vec, coef, comp = steering_configs[0]
-                path = get_hook_path(layer, comp, model=self._model)
+                path = resolve_hook_path(self._model, layer, comp)
                 with SteeringHook(self._model, vec, path, coefficient=coef):
                     return generate_batch(
                         self._model, self._tokenizer, formatted,
