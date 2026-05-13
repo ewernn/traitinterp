@@ -25,8 +25,7 @@ import torch
 from torch.nn.functional import pad
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# Re-export: used by model_generation.py and core/hooks.py
-from core.generation import get_layer_path_prefix  # noqa: F401
+from core.architectures import get_architecture, inner_model
 
 
 def _best_attn_implementation(model_name: str = ""):
@@ -93,7 +92,7 @@ def install_unmask_padding_hook(model):
     The causal_mask tensor is shared across all layers, so in-place modification
     on layer 0 propagates to all subsequent layers.
     """
-    inner = get_inner_model(model)
+    inner = inner_model(model)
     layer0 = inner.layers[0]
 
     def _unmask_hook(module, args, kwargs):
@@ -132,32 +131,6 @@ def tokenize(text, tokenizer, **kwargs):
 
 
 
-def get_inner_model(model):
-    """Get the inner model (with .layers), handling PeftModel wrapper if present.
-
-    Useful for accessing model internals like:
-    - model.layers (for hook registration)
-    - model.norm (for logit lens)
-    - model.config.num_hidden_layers
-
-    Args:
-        model: A HuggingFace model (possibly wrapped in PeftModel)
-
-    Returns:
-        The inner model with .layers attribute
-    """
-    # Gemma 3 multimodal: model.model.language_model has .layers
-    # Check this FIRST because Gemma 3 has a spurious base_model attribute
-    if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
-        return model.model.language_model
-    # PeftModel wraps: model.base_model (LoraModel) -> model (LlamaForCausalLM) -> model (LlamaModel)
-    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
-        # Verify it's actually a PeftModel (not Gemma3's spurious base_model)
-        if type(model).__name__ != type(model.base_model).__name__:
-            return model.base_model.model.model
-    return model.model
-
-
 def get_num_layers(model) -> int:
     """Get number of transformer layers from loaded model.
 
@@ -175,23 +148,6 @@ def get_num_layers(model) -> int:
     return config.num_hidden_layers
 
 
-# Re-export from core (canonical location) for backwards compatibility
-
-
-def get_layers_module(model):
-    """Get the actual layers module (nn.ModuleList), handling different architectures.
-
-    Args:
-        model: A HuggingFace model (possibly wrapped in PeftModel)
-
-    Returns:
-        The nn.ModuleList containing transformer layers
-    """
-    # Use get_inner_model to handle PeftModel and other wrappers
-    inner = get_inner_model(model)
-    if hasattr(inner, 'layers'):
-        return inner.layers
-    raise AttributeError(f"Cannot find layers in model: {type(model).__name__}")
 
 
 def load_model(

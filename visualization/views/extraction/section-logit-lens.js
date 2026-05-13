@@ -12,14 +12,14 @@
 import { fetchJSON, escapeHtml } from '../../core/utils.js';
 import { getDisplayName, displayLayer } from '../../core/display.js';
 import { renderRunHint } from '../../core/ui.js';
-import { extractionState } from './extraction-data.js';
+import { extractionState, filterResults } from './extraction-data.js';
 
 /** Load logit lens data for all traits once, then render from cache. */
 async function renderLogitLensSection(evalData) {
     const container = document.getElementById('logit-lens-container');
     if (!container) return;
 
-    const allResults = evalData.all_results || [];
+    const allResults = filterResults(evalData.all_results || []);
     const traits = [...new Set(allResults.map(r => r.trait))].sort();
 
     // Get model variant from eval data (extraction model variant)

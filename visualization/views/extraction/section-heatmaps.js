@@ -14,6 +14,7 @@ import {
     METRIC_CONFIG,
     computeBestVectors,
     getSelectedTraitNames,
+    filterResults,
 } from './extraction-data.js';
 
 /** Render the trait-heatmaps section: metric toggle + grid + legend. */
@@ -21,7 +22,7 @@ function renderTraitHeatmaps(evalData) {
     const container = document.getElementById('trait-heatmaps-container');
     if (!container) return;
 
-    const allResults = evalData.all_results || [];
+    const allResults = filterResults(evalData.all_results || []);
     if (allResults.length === 0) {
         container.innerHTML = '<p>No results to display.</p>';
         return;

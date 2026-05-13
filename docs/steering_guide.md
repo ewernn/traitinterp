@@ -63,6 +63,23 @@ base_coef = activation_norm / vector_norm
 
 The activation norm is either loaded from a cache (created by `analysis/vectors/massive_activations.py`) or estimated on the fly from a few prompts. The adaptive search starts from `base_coef * start_mult` and adjusts from there.
 
+### Norm-matched steering (`--norm-match`)
+
+Instead of adding a fixed-magnitude `coef * vector`, scale the vector per token so its L2 norm equals the residual stream's L2 norm at that token. The addend at token `t` becomes:
+
+```
+coef * ||residual_t|| * (vector / ||vector||)
+```
+
+This makes the coefficient dimensionless ("fraction of residual norm"), comparable across vectors, layers, and models. The hook subsumes the `base_coef` factor, so the search initializes at `start_mult * sign` rather than `base_coef * start_mult * sign`.
+
+Caveats:
+
+- Only valid with `--component residual`. Sub-component activations (attn/mlp) have much smaller L2 norms; matching against them would silently under-steer.
+- Late layers have larger residual norm than early layers, so norm-matched steering pushes harder at late layers than fixed-magnitude does. This is usually fine for trait steering but worth knowing if you compare layers.
+- At layers with massive activations (a handful of outlier dimensions dominating the norm), `||residual_t||` is effectively `|residual_t[massive_dim]|`. The match tracks that dimension rather than the global scale. See `analysis/vectors/massive_activations.py`.
+- Coefficients are not comparable to non-norm-matched runs. `VectorSpec.norm_match` is part of the run cache key, so cached results from one mode don't collide with the other.
+
 ### Scoring
 
 Two independent dimensions, both LLM-judged. Default backend is OpenAI GPT-4.1-mini with logprob aggregation; other providers (Anthropic, OpenRouter, local) are selectable via `TraitJudge(provider=...)` — see `utils/judge_backends.py`.
@@ -106,6 +123,7 @@ The search explores the tradeoff between trait shift and coherence. Higher coeff
 | `--down-mult` | 0.85 | Coefficient multiplier when coherence drops |
 | `--start-mult` | 0.7 | Starting fraction of base coefficient |
 | `--momentum` | 0.1 | Smoothing factor (0 = direct mult, higher = more inertia) |
+| `--norm-match` | off | Rescale vector to per-token residual norm; coef becomes dimensionless |
 
 ### Manual coefficients
 

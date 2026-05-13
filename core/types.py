@@ -60,12 +60,17 @@ class VectorSpec:
         position: Extraction position (response[:], response[:5], prompt[-1], etc.)
         method: Extraction method (probe, mean_diff, gradient)
         weight: Coefficient for steering, relative weight for projection (default 1.0)
+        norm_match: When True (steering only), rescale vector per-token to
+            match the L2 norm of the hooked tensor. Coefficient then has units
+            of "fraction of residual norm" rather than absolute magnitude.
+            Only valid for component="residual".
     """
     layer: int
     component: str
     position: str
     method: str
     weight: float = 1.0
+    norm_match: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -73,7 +78,7 @@ class VectorSpec:
     @classmethod
     def from_dict(cls, d: dict) -> 'VectorSpec':
         # Filter to only known fields (allows forward compat)
-        fields = {'layer', 'component', 'position', 'method', 'weight'}
+        fields = {'layer', 'component', 'position', 'method', 'weight', 'norm_match'}
         return cls(**{k: v for k, v in d.items() if k in fields})
 
 
@@ -345,11 +350,15 @@ class ActivationMetadata:
 
     Written by extract_vectors.py Stage 3, read by load_activations.py and analysis scripts.
     File pattern: experiments/{exp}/extraction/{variant}/{component}/{position}/{trait}/metadata.json
+
+    `shape` is the per-token activation tensor shape (e.g. (hidden_dim,) for residual,
+    (n_heads, d_head) for per-head). Most components are 1D; the field is a tuple for
+    forward-compatibility with future shape-bearing components.
     """
     model: str
     trait: str
     n_layers: int
-    hidden_dim: int
+    shape: tuple
     captured_layers: List[int]
     n_examples_pos: int
     n_examples_neg: int

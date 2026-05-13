@@ -210,6 +210,74 @@ def _find_token_range(
     return char_range_to_token_range(char_range, response, tokenizer, tokens)
 
 
+def instances_to_char_ranges(response: str, instances: list[dict]) -> list[tuple[int, int]]:
+    """
+    Convert ordered instances to char ranges using cursor-walking.
+
+    Order matters: each span is located starting from the cursor (initialized at 0),
+    and the cursor advances by +1 (not +len(span)) after each match so legitimately
+    overlapping/adjacent spans still resolve.
+
+    Args:
+        response: Response text to search in
+        instances: Ordered list of dicts each with "span" key
+
+    Returns:
+        List of (start, end) char ranges (half-open), in same order as instances.
+
+    Raises:
+        ValueError: if any span is not found from the cursor position.
+    """
+    cursor = 0
+    ranges: list[tuple[int, int]] = []
+    for inst in instances:
+        span = inst["span"]
+        pos = response.find(span, cursor)
+        if pos == -1:
+            raise ValueError(f"span not found from cursor {cursor}: {span[:60]!r}")
+        ranges.append((pos, pos + len(span)))
+        cursor = pos + 1  # +1, not +len, to allow overlapping spans
+    return ranges
+
+
+def instances_to_token_ranges(
+    response: str,
+    instances: list[dict],
+    tokenizer,
+    tokens: list[int] | None = None,
+) -> list[tuple[int, int]]:
+    """
+    Convert ordered instances to token ranges via cursor-walked char ranges.
+
+    Mirror of `instances_to_char_ranges` that maps each char range to a token range
+    using `char_range_to_token_range`. Fail-fast: if any span is not found, raises
+    ValueError; if any char range fails to convert to a token range, raises ValueError.
+
+    Args:
+        response: Response text
+        instances: Ordered list of dicts each with "span" key
+        tokenizer: HuggingFace tokenizer
+        tokens: Pre-tokenized response (optional, will tokenize if not provided)
+
+    Returns:
+        List of (start, end) token ranges, in same order as instances.
+
+    Raises:
+        ValueError: if any span is not found, or any char range fails to map to tokens.
+    """
+    if tokens is None:
+        tokens = tokenizer.encode(response, add_special_tokens=False)
+
+    char_ranges = instances_to_char_ranges(response, instances)
+    token_ranges: list[tuple[int, int]] = []
+    for char_range in char_ranges:
+        tok_range = char_range_to_token_range(char_range, response, tokenizer, tokens)
+        if tok_range is None:
+            raise ValueError(f"char range {char_range} did not map to any token range")
+        token_ranges.append(tok_range)
+    return token_ranges
+
+
 def merge_overlapping_ranges(ranges: list[tuple[int, int]]) -> list[tuple[int, int]]:
     """
     Merge overlapping or adjacent ranges.

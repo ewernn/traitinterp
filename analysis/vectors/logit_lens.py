@@ -43,7 +43,8 @@ from typing import Optional
 import torch
 
 from utils.logit_lens import vector_to_vocab, build_common_token_mask
-from utils.model import load_model_with_lora, get_inner_model
+from core.architectures import inner_model
+from utils.model import load_model_with_lora
 from utils.vectors import discover_vectors, load_vector_with_baseline
 from utils.paths import get as get_path, discover_extracted_traits, get_model_variant
 
@@ -85,7 +86,7 @@ def analyze_trait(
     # Filter to the chosen (component, position)
     filtered = [c for c in candidates if c["component"] == component and c["position"] == position]
 
-    n_layers = get_inner_model(model).config.num_hidden_layers
+    n_layers = inner_model(model).config.num_hidden_layers
     # Empirical heuristic: gives L26 on 32-layer Qwen3.5-9B, L50 on 80-layer Llama 70B.
     # Smaller models pack more transformation per layer, landing the readout later in
     # fractional depth; this scales accordingly.

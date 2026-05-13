@@ -6,25 +6,9 @@
     <title>Trait Interp Visualization</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1a1a'/><path d='M4 22 Q10 8, 16 16 T28 10' stroke='%23a09f6c' stroke-width='3' fill='none' stroke-linecap='round'/><circle cx='28' cy='10' r='2.5' fill='%23a09f6c'/></svg>">
 
-    <!-- MathJax Configuration -->
-    <script>
-        window.MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            },
-            startup: {
-                ready: () => {
-                    MathJax.startup.defaultReady();
-                }
-            }
-        };
-    </script>
-
     <!-- External Dependencies -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 
     <!-- Overview Tab Dependencies -->
@@ -158,11 +142,11 @@
     <script type="module">
         import { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG } from '/visualization/core/charts.js';
         import { renderToggle, renderLoading, renderSubsection, renderSegmentedControl } from '/visualization/core/ui.js';
-        import { getCssVar, hexToRgba, getPlotlyLayout } from '/visualization/core/display.js';
+        import { getCssVar, cssVarToRgba, getPlotlyLayout } from '/visualization/core/display.js';
         window.vizCore = {
             charts: { buildChartLayout, renderChart, updateChart, createHtmlLegend, buildHeatmapAnnotations, CHART_PRESETS, PLOTLY_CONFIG },
             ui: { renderToggle, renderLoading, renderSubsection, renderSegmentedControl },
-            display: { getCssVar, hexToRgba, getPlotlyLayout }
+            display: { getCssVar, cssVarToRgba, getPlotlyLayout }
         };
     </script>
 
@@ -204,6 +188,8 @@
     <script type="module" src="/visualization/views/model-analysis/section-variant-comparison.js"></script>
     <script type="module" src="/visualization/views/model-analysis/model-analysis-view.js"></script>
     <script type="module" src="/visualization/views/live-chat.js"></script>
+    <script type="module" src="/visualization/views/annotation-browser/view.js"></script>
+    <script type="module" src="/visualization/views/correlation-matrices/view.js"></script>
 
     <!-- View Router -->
     <script type="module">
@@ -220,6 +206,8 @@
                 'inference': 'Inference',
                 'model-analysis': 'Model Analysis',
                 'live-chat': 'Live Chat',
+                'annotation-browser': 'Bias Annotation Browser',
+                'correlation-matrices': 'Correlation Matrices',
                 'experiment-viz': 'Experiment Viz'
             };
             document.getElementById('page-title').textContent = viewTitles[view] || 'Unknown View';
@@ -245,6 +233,12 @@
                     break;
                 case 'live-chat':
                     window.renderLiveChat();
+                    break;
+                case 'annotation-browser':
+                    window.renderAnnotationBrowser();
+                    break;
+                case 'correlation-matrices':
+                    window.renderCorrelationMatrices();
                     break;
                 case 'experiment-viz': {
                     const expName = window.state.currentExpViz;

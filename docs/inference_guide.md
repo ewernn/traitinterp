@@ -102,7 +102,7 @@ The main entry point is `inference/run_inference_pipeline.py`. Key flags:
 ### Projection
 - `--layers` — Which layers to project at. Default: `best,best+5` (auto-selects the best steering layer plus 5 layers above it). Also accepts explicit layer numbers (`25,30,35`) or the keyword `best` alone.
 - `--traits` — Comma-separated traits to project onto (e.g., `starter_traits/sycophancy,alignment/honesty`). Default: all extracted traits in the experiment.
-- `--component` — Hook component. Default: `residual`. Also supports `attn_contribution`.
+- `--component` — Hook component. Default: `residual`. Valid: `residual`, `attn_contribution`, `mlp_contribution`, `k_proj`, `v_proj` (architecture must support the requested component; see `core/architectures/`).
 - `--centered` — Subtract the baseline (class centroid projection) from scores, centering them around zero.
 - `--force` — Re-run even if projection files already exist (default: skip existing).
 

@@ -102,26 +102,53 @@ function getCssVar(name, fallback = '') {
 }
 
 /**
- * Convert hex color to rgba with opacity
+ * Read a CSS variable and convert it to an rgba() string with the given opacity.
+ * Accepts hex (#abc, #abcdef), rgb(...), or rgba(...) source values.
  */
-function hexToRgba(hex, opacity) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return `rgba(0, 0, 0, ${opacity})`;
-    const r = parseInt(result[1], 16);
-    const g = parseInt(result[2], 16);
-    const b = parseInt(result[3], 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+function cssVarToRgba(varName, opacity, fallbackHex = '#000000') {
+    return colorToRgba(getCssVar(varName, fallbackHex), opacity);
+}
+
+/**
+ * Convert any CSS color string (hex / rgb / rgba) to rgba with the given opacity.
+ */
+function colorToRgba(color, opacity) {
+    if (!color) return `rgba(0, 0, 0, ${opacity})`;
+    const c = color.trim();
+
+    const short = /^#([a-f\d])([a-f\d])([a-f\d])$/i.exec(c);
+    if (short) {
+        const r = parseInt(short[1] + short[1], 16);
+        const g = parseInt(short[2] + short[2], 16);
+        const b = parseInt(short[3] + short[3], 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    const long = /^#([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(c);
+    if (long) {
+        const r = parseInt(long[1], 16);
+        const g = parseInt(long[2], 16);
+        const b = parseInt(long[3], 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    const rgb = c.match(/rgba?\(([^)]+)\)/);
+    if (rgb) {
+        const parts = rgb[1].split(',').map(s => s.trim());
+        if (parts.length >= 3) {
+            return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${opacity})`;
+        }
+    }
+
+    return `rgba(0, 0, 0, ${opacity})`;
 }
 
 /**
  * Get token highlight colors for Plotly shapes (single source of truth)
  */
 function getTokenHighlightColors() {
-    const primaryColor = getCssVar('--primary-color');
-    return {
-        separator: `${primaryColor}80`,  // 50% opacity - prompt/response divider
-        highlight: `${primaryColor}80`   // 50% opacity - current token highlight
-    };
+    const fill = cssVarToRgba('--primary-color', 0.5, '#4d7a8a');
+    return { separator: fill, highlight: fill };
 }
 
 /**
@@ -208,7 +235,8 @@ export {
     DELTA_COLORSCALE,
     CORRELATION_COLORSCALE,
     getCssVar,
-    hexToRgba,
+    cssVarToRgba,
+    colorToRgba,
     getTokenHighlightColors,
     getChartColors,
     getMethodColors,

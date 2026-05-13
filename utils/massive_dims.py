@@ -31,7 +31,7 @@ from typing import Optional
 import torch
 
 from utils.paths import get as get_path
-from core.hooks import _get_layers  # reuse architecture detection
+from core.architectures import layers as get_layers
 from core.math import cosine_similarity
 
 
@@ -120,7 +120,7 @@ class MassiveDimCollector:
         """Attach per-layer forward hooks. Idempotent — calling twice is a no-op."""
         if self._handles:
             return
-        layers = _get_layers(self.model)
+        layers = get_layers(self.model)
         for l in range(self.n_layers):
             self._handles.append(
                 layers[l].register_forward_hook(self._make_hook(l))

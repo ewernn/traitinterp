@@ -94,7 +94,7 @@ def estimate_activation_norm(model, tokenizer, prompts, layer, use_chat_template
                              component="residual"):
     """Estimate activation norm at a layer by running a few prompts through the model."""
     from utils.model import tokenize_prompt
-    from core.hooks import get_hook_path
+    from core.hooks import resolve_hook_path
 
     norms = []
 
@@ -103,7 +103,7 @@ def estimate_activation_norm(model, tokenizer, prompts, layer, use_chat_template
         norm = hidden[:, -1, :].float().norm().item()
         norms.append(norm)
 
-    hook_path = get_hook_path(layer, component, model=model)
+    hook_path = resolve_hook_path(model, layer, component)
     module = model
     for attr in hook_path.split('.'):
         module = getattr(module, attr)
@@ -638,6 +638,7 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             save_mode=config.save_mode, coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check, direction=direction, trait_judge=config.trait_judge,
             max_batch_layers=max_batch_layers,
+            norm_match=config.norm_match,
         )
 
     # Summary
@@ -792,6 +793,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
             coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check,
             trait_judge=config.trait_judge,
+            norm_match=config.norm_match,
         )
 
 

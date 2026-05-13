@@ -28,20 +28,8 @@ from typing import List, Dict, Set, Generator, Optional
 import torch
 from torch import Tensor
 
-from core.hooks import HookManager, SteeringHook, get_hook_path
-
-
-def get_layer_path_prefix(model) -> str:
-    """Get the hook path prefix to transformer layers, handling PeftModel wrapper.
-
-    Returns hook path prefix like "model.layers" or "base_model.model.model.layers".
-    """
-    if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
-        return "model.language_model.layers"
-    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
-        if type(model).__name__ != type(model.base_model).__name__:
-            return "base_model.model.model.layers"
-    return "model.layers"
+from core.architectures import get_architecture
+from core.hooks import HookManager, SteeringHook, resolve_hook_path
 
 
 @dataclass
@@ -97,7 +85,7 @@ class HookedGenerator:
             config = config.text_config
 
         self.n_layers = config.num_hidden_layers
-        self.layer_prefix = get_layer_path_prefix(model)
+        self.arch = get_architecture(model)
 
         # Handle EOS as int or list
         eos = getattr(config, 'eos_token_id', None)
@@ -223,7 +211,7 @@ class HookedGenerator:
         steering_hooks = []
         if steering:
             for cfg in steering:
-                path = get_hook_path(cfg.layer, cfg.component, prefix=self.layer_prefix)
+                path = resolve_hook_path(self.model, cfg.layer, cfg.component)
                 hook = SteeringHook(self.model, cfg.vector, path, coefficient=cfg.coefficient)
                 hook.__enter__()
                 steering_hooks.append(hook)
@@ -284,21 +272,40 @@ class HookedGenerator:
         return {layer: {comp: [] for comp in config.components} for layer in layers}
 
     def _setup_capture_hooks(self, hooks: HookManager, storage: Dict, config: CaptureConfig):
-        """Set up hooks to capture activations."""
+        """Set up hooks to capture activations.
+
+        Hot path: called per decode step. Paths are precomputed and memoized on the
+        config so we don't re-resolve them every token.
+        """
+        for (layer, component), path in self._capture_paths(config):
+            def make_hook(l, c):
+                def hook(module, inp, out):
+                    out_t = out[0] if isinstance(out, tuple) else out
+                    # Capture last position (with KV cache, output is [batch, 1, hidden])
+                    storage[l][c].append(out_t[:, -1, :].detach().cpu())
+                return hook
+            hooks.add_forward_hook(path, make_hook(layer, component))
+
+    def _capture_paths(self, config: CaptureConfig):
+        """Cached (layer, component) → path list per CaptureConfig instance.
+
+        Resolves once per (capture_config, model). HybridArchitecture introspects
+        the live block once here, not per decode step.
+        """
+        cached = getattr(config, "_resolved_paths", None)
+        if cached is not None:
+            return cached
         layers = config.layers if config.layers is not None else range(self.n_layers)
-
-        for layer in layers:
-            for component in config.components:
-                path = get_hook_path(layer, component, prefix=self.layer_prefix, model=self.model)
-
-                def make_hook(l, c):
-                    def hook(module, inp, out):
-                        out_t = out[0] if isinstance(out, tuple) else out
-                        # Capture last position (with KV cache, output is [batch, 1, hidden])
-                        storage[l][c].append(out_t[:, -1, :].detach().cpu())
-                    return hook
-
-                hooks.add_forward_hook(path, make_hook(layer, component))
+        paths = [
+            ((layer, component), self.arch.path(component, layer, model=self.model))
+            for layer in layers
+            for component in config.components
+        ]
+        try:
+            object.__setattr__(config, "_resolved_paths", paths)
+        except AttributeError:
+            pass  # frozen config — caller will pay re-resolution cost
+        return paths
 
     def _extract_activations(self, storage: Dict, config: CaptureConfig) -> Optional[Dict]:
         """Extract activations from storage (single step)."""

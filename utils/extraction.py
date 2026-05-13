@@ -69,6 +69,15 @@ _STORY_DELIMITER_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Generic numbered-block delimiter — accepts any single word as the label
+# (e.g. "story", "dialogue", "example"). Same tolerance as _STORY_DELIMITER_RE.
+# Used by parse_numbered_blocks() for non-story paper-replication paths.
+def _make_block_delimiter_re(label: str) -> "re.Pattern":
+    return re.compile(
+        rf'\*{{0,2}}\s*\[\s*{re.escape(label)}\s+(\d+)\s*:?\s*\]\s*\*{{0,2}}',
+        re.IGNORECASE,
+    )
+
 
 def validate_full_mode_flags(
     replication_level: str,
@@ -208,6 +217,50 @@ def parse_story_blocks(response: str, expected_n: int) -> List[str]:
             break
 
     return stories
+
+
+def parse_numbered_blocks(response: str, expected_n: int, label: str = "story") -> List[str]:
+    """Parse [{label} N]-delimited blocks from a batched-generation LLM response.
+
+    Generalization of parse_story_blocks() — any single-word label works.
+    Examples:
+      - label="story" → matches [story 1], [Story 2], **[story 3]**, [story 4:]
+      - label="dialogue" → matches [dialogue 1], [Dialogue 2], etc.
+
+    Same tolerance rules as parse_story_blocks: duplicate delimiters (model
+    restarts the list), case-insensitive bracket spacing, trailing colon,
+    markdown bold wrapping.
+
+    Returns up to `expected_n` blocks in sorted-index order. Raises TypeError
+    if response isn't a string.
+    """
+    if not isinstance(response, str):
+        raise TypeError(f"response must be str, got {type(response).__name__}")
+
+    delimiter_re = _make_block_delimiter_re(label)
+    matches = list(delimiter_re.finditer(response))
+    if not matches:
+        return []
+
+    all_positions = sorted(m.start() for m in matches)
+    first_by_index = {}
+    for m in matches:
+        idx = int(m.group(1))
+        if idx not in first_by_index:
+            first_by_index[idx] = (m.start(), m.end())
+
+    blocks = []
+    for idx in sorted(first_by_index.keys()):
+        match_start, block_start = first_by_index[idx]
+        next_positions = [p for p in all_positions if p > match_start]
+        block_end = next_positions[0] if next_positions else len(response)
+        block = response[block_start:block_end].strip()
+        if block:
+            blocks.append(block)
+        if len(blocks) >= expected_n:
+            break
+
+    return blocks
 
 
 # =============================================================================

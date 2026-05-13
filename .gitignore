@@ -68,3 +68,7 @@ claude-code/
 claude-agent-sdk-python/
 claude-plugins-official/
 diffing-toolkit/
+github-issues/
+
+# Python build artifacts
+*.egg-info/

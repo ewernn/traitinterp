@@ -144,6 +144,10 @@ def main():
     parser.add_argument("--down-mult", type=float, default=0.85)
     parser.add_argument("--start-mult", type=float, default=0.7)
     parser.add_argument("--momentum", type=float, default=0.1)
+    parser.add_argument("--norm-match", action="store_true",
+                        help="Rescale steering vector to ||residual_t|| per token "
+                             "(coefficient becomes 'fraction of residual norm'). "
+                             "Only valid with --component residual.")
 
     # Advanced
     parser.add_argument("--regenerate-responses", action="store_true")
@@ -174,6 +178,7 @@ def main():
         n_steps=args.search_steps,
         up_mult=args.up_mult, down_mult=args.down_mult,
         start_mult=args.start_mult, momentum=args.momentum,
+        norm_match=args.norm_match,
         method=args.method, component=args.component, position=args.position,
         max_new_tokens=args.max_new_tokens, min_coherence=args.min_coherence,
         subset=args.subset, relevance_check=not args.no_relevance_check,
