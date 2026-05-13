@@ -1,155 +1,18 @@
 """
 Hook management for transformer models.
 
-HookManager: base for all hook registration (single source of truth)
+HookManager: base for all hook registration (single source of truth for path navigation)
 LayerHook: single-layer hook base class (uses HookManager)
-CaptureHook: capture activations from a layer
-SteeringHook: add vectors to layer outputs
-MultiLayerCapture: capture one component across many layers
+CaptureHook: capture activations from a layer (shape-agnostic)
+SteeringHook: add vectors to layer outputs (residual-shape: [batch, seq, hidden])
+MultiLayerCapture: capture one component across many layers (uses Architecture registry)
 """
 
-import torch
 from typing import Any, Callable, Dict, List, Sequence, Union
 
+import torch
 
-# =============================================================================
-# Path utilities
-# =============================================================================
-
-def _get_layers(model):
-    """Get the transformer layers module, handling different model architectures."""
-    # PeftModel (LoRA): model.base_model.model.model.layers
-    if hasattr(model, 'base_model') and hasattr(model.base_model, 'model'):
-        if type(model).__name__ != type(model.base_model).__name__:
-            return model.base_model.model.model.layers
-    # Gemma 3 multimodal: model.model.language_model.layers
-    if hasattr(model, 'model') and hasattr(model.model, 'language_model'):
-        return model.model.language_model.layers
-    # Standard: model.model.layers
-    if hasattr(model, 'model') and hasattr(model.model, 'layers'):
-        return model.model.layers
-    raise AttributeError(f"Cannot find layers in model: {type(model).__name__}")
-
-
-
-
-def _get_layer(model, layer_idx: int):
-    """Get a specific transformer layer by index."""
-    return _get_layers(model)[layer_idx]
-
-
-def detect_contribution_paths(model, layer_idx: int = 0) -> dict:
-    """Auto-detect where attention/MLP contributions come from based on model architecture.
-
-    Key insight: Mistral's 'post_attention_layernorm' is actually a pre-norm for MLP!
-    Only Gemma-2 has TRUE post-sublayer norms. Detection: check for 'pre_feedforward_layernorm'.
-
-    Args:
-        model: The transformer model.
-        layer_idx: Layer index to inspect (matters for hybrid models like Qwen3.5
-            where some layers use linear_attn and others use self_attn).
-
-    Returns:
-        Dict mapping 'attn_contribution' and 'mlp_contribution' to their submodule paths.
-    """
-    layer = _get_layer(model, layer_idx)
-    children = dict(layer.named_children())
-
-    if 'pre_feedforward_layernorm' in children:
-        # Gemma-2 pattern: has BOTH pre and post norms
-        # The post norms scale outputs before residual addition
-        return {
-            'attn_contribution': 'post_attention_layernorm',
-            'mlp_contribution': 'post_feedforward_layernorm',
-        }
-    elif 'self_attn' in children and 'mlp' in children:
-        # Standard pre-norm only (Llama, Mistral, Qwen, etc.)
-        # Attention/MLP outputs go directly to residual without post-scaling
-        return {
-            'attn_contribution': 'self_attn.o_proj',
-            'mlp_contribution': 'mlp.down_proj',
-        }
-    elif 'linear_attn' in children and 'mlp' in children:
-        # Hybrid linear attention (Qwen3.5 etc.)
-        # linear_attn output goes directly to residual without post-scaling
-        return {
-            'attn_contribution': 'linear_attn.out_proj',
-            'mlp_contribution': 'mlp.down_proj',
-        }
-    else:
-        raise ValueError(
-            f"Unknown architecture - cannot auto-detect contribution paths. "
-            f"Layer has children: {sorted(children.keys())}. "
-            f"Expected 'pre_feedforward_layernorm' (Gemma-2), 'self_attn' + 'mlp' (Llama/Mistral), "
-            f"or 'linear_attn' + 'mlp' (Qwen3.5)."
-        )
-
-
-def get_hook_path(layer: int, component: str = "residual", prefix: str = None, model=None) -> str:
-    """
-    Convert layer + component to string path for hooking.
-
-    Args:
-        layer: Layer index (0-indexed)
-        component: One of:
-            - "residual": Layer output (accumulated state)
-            - "attn_out": Raw attention output (before any post-norm)
-            - "mlp_out": Raw MLP output (before any post-norm)
-            - "attn_contribution": What attention actually adds to residual (requires model)
-            - "mlp_contribution": What MLP actually adds to residual (requires model)
-            - "k_proj", "v_proj": Key/value projections
-        prefix: Path prefix to layers (auto-detected if model provided, else "model.layers")
-        model: Used for auto-detecting prefix and architecture
-
-    Returns:
-        String path like "model.layers.16" or "model.layers.16.self_attn.o_proj"
-
-    Example:
-        >>> get_hook_path(16)
-        'model.layers.16'
-        >>> get_hook_path(16, "attn_out")
-        'model.layers.16.self_attn.o_proj'
-        >>> get_hook_path(16, "attn_contribution", model=model)  # Auto-detects post-norm if present
-        'model.layers.16.post_attention_layernorm'  # Gemma-2
-        'model.layers.16.self_attn.o_proj'          # Llama/Mistral/Qwen
-    """
-    # Auto-detect prefix if model provided and prefix not specified
-    if prefix is None:
-        if model is not None:
-            from core.generation import get_layer_path_prefix
-            prefix = get_layer_path_prefix(model)
-        else:
-            prefix = "model.layers"
-    # Detect attention module name for this specific layer (hybrid models may differ per layer)
-    attn_module = 'self_attn'
-    if model is not None:
-        layer_module = _get_layer(model, layer)
-        if hasattr(layer_module, 'linear_attn') and not hasattr(layer_module, 'self_attn'):
-            attn_module = 'linear_attn'
-
-    # Map attention submodule names based on module type
-    o_proj = 'out_proj' if attn_module == 'linear_attn' else 'o_proj'
-
-    # Static paths (don't require model)
-    paths = {
-        'residual': f"{prefix}.{layer}",
-        'attn_out': f"{prefix}.{layer}.{attn_module}.{o_proj}",
-        'mlp_out': f"{prefix}.{layer}.mlp.down_proj",
-        'k_proj': f"{prefix}.{layer}.{attn_module}.k_proj",
-        'v_proj': f"{prefix}.{layer}.{attn_module}.v_proj",
-    }
-
-    # Dynamic paths (require model for architecture detection)
-    if component in ('attn_contribution', 'mlp_contribution'):
-        if model is None:
-            raise ValueError(f"Component '{component}' requires model parameter for architecture detection")
-        contrib_paths = detect_contribution_paths(model, layer_idx=layer)
-        paths['attn_contribution'] = f"{prefix}.{layer}.{contrib_paths['attn_contribution']}"
-        paths['mlp_contribution'] = f"{prefix}.{layer}.{contrib_paths['mlp_contribution']}"
-
-    if component not in paths:
-        raise ValueError(f"Unknown component: {component}. Valid: {list(paths.keys())}")
-    return paths[component]
+from core.architectures import UnsupportedComponentError, get_architecture
 
 
 # =============================================================================
@@ -173,23 +36,13 @@ class HookManager:
         self.model = model
         self.handles: List[torch.utils.hooks.RemovableHandle] = []
 
-    def _navigate_path(self, path: str) -> torch.nn.Module:
-        """Navigate to module using dot-separated path."""
-        module = self.model
-        for part in path.split('.'):
-            if part.isdigit():
-                module = module[int(part)]
-            else:
-                module = getattr(module, part)
-        return module
-
     def add_forward_hook(
         self,
         path: str,
         hook_fn: Callable[[torch.nn.Module, Any, Any], Any],
     ) -> torch.utils.hooks.RemovableHandle:
         """Add forward hook to module at dot-separated path."""
-        module = self._navigate_path(path)
+        module = self.model.get_submodule(path)
         handle = module.register_forward_hook(hook_fn)
         self.handles.append(handle)
         return handle
@@ -254,22 +107,36 @@ class LayerHook:
 
 
 # =============================================================================
-# CaptureHook - capture from single layer
+# Path resolution (one-shot helper; if you have many lookups, hoist arch yourself)
+# =============================================================================
+
+def resolve_hook_path(model: torch.nn.Module, layer: int, component: str) -> str:
+    """One-shot path lookup. Equivalent to get_architecture(model).path(component, layer, model=model).
+
+    Raises UnsupportedComponentError if the component is not exposed at this layer.
+    For multiple lookups, hoist the architecture once and call arch.path(...) directly.
+    """
+    return get_architecture(model).path(component, layer, model=model)
+
+
+# =============================================================================
+# CaptureHook - capture from single layer (shape-agnostic)
 # =============================================================================
 
 class CaptureHook(LayerHook):
     """
     Capture activations from a single layer.
 
+    Shape-agnostic: stores whatever tensor the hooked module emits. The standard
+    case is residual-stream shape [batch, seq, hidden], but the same machinery
+    works for per-head [batch, seq, n_heads, d_head], attention patterns
+    [batch, n_heads, q, k], or any other tensor shape. Downstream consumers
+    should assert their own shape requirements.
+
     Usage:
         with CaptureHook(model, "model.layers.16") as hook:
             model(**inputs)
-        activations = hook.get()  # [batch, seq, hidden]
-
-        # Or with helper:
-        with CaptureHook(model, get_hook_path(16, "attn_out")) as hook:
-            model(**inputs)
-        activations = hook.get()
+        activations = hook.get()  # whatever shape the module emitted
     """
 
     def __init__(self, model: torch.nn.Module, path: str, keep_on_gpu: bool = False):
@@ -295,7 +162,8 @@ class CaptureHook(LayerHook):
             concat: If True, concatenate along batch dim. If False, return list.
 
         Returns:
-            Tensor [total_batch, seq, hidden] or list of tensors
+            Tensor of whatever shape the module emitted (concatenated along dim 0)
+            or list of per-call tensors.
         """
         if not self.captured:
             raise ValueError(f"No activations captured for path '{self.path}'")
@@ -309,22 +177,54 @@ class CaptureHook(LayerHook):
 
 
 # =============================================================================
-# SteeringHook - add vector to layer output
+# SteeringHook - add vector to layer output (residual-shape only)
 # =============================================================================
+
+def _assert_residual_shape(tensor: torch.Tensor, hook_name: str) -> None:
+    """Transform hooks (Steering/Ablation/Capping) require [batch, seq, hidden].
+
+    For per-head or attention-pattern hooks, use a different hook class - the
+    additive math here only makes sense for residual-shape activations.
+    """
+    if tensor.ndim != 3:
+        raise ValueError(
+            f"{hook_name} requires [batch, seq, hidden] activations; got shape "
+            f"{tuple(tensor.shape)}. Per-head and attention-pattern components are "
+            f"capture-only - use a separate hook class for transforms on those."
+        )
+
+
+def _norm_match_scaled(vector: torch.Tensor, target: torch.Tensor,
+                       eps: float = 1e-6) -> torch.Tensor:
+    """Rescale a 1-D steering vector to match per-token L2 norm of target.
+
+    Returns a tensor with shape [batch, seq, hidden] that, when added to target,
+    contributes magnitude `||target_t||` along the unit-direction of `vector`
+    at each token position t. Norm computed in float32 for stability, output
+    cast back to target dtype.
+
+    Args:
+        vector: 1-D steering direction, shape [hidden].
+        target: residual-shape tensor [batch, seq, hidden] to match norms against.
+        eps: guard against zero-norm vector denominator (residual zero is fine -
+            just contributes zero).
+    """
+    r_norm = target.float().norm(dim=-1, keepdim=True)        # [batch, seq, 1]
+    v_norm = vector.float().norm()                            # scalar
+    scale = r_norm / (v_norm + eps)                           # [batch, seq, 1]
+    return (vector.float() * scale).to(dtype=target.dtype)    # [batch, seq, hidden]
+
 
 class SteeringHook(LayerHook):
     """
     Add (coefficient * vector) to a layer's output during forward pass.
 
+    Residual-shape only ([batch, seq, hidden]). Raises if the hooked tensor is
+    not 3D (e.g., if you accidentally hook a per-head component).
+
     Usage:
         vector = torch.load('vectors/probe_layer16.pt')
-
-        # Explicit path
         with SteeringHook(model, vector, "model.layers.16", coefficient=1.5):
-            output = model.generate(**inputs)
-
-        # Or with helper
-        with SteeringHook(model, vector, get_hook_path(16), coefficient=1.5):
             output = model.generate(**inputs)
     """
 
@@ -334,9 +234,11 @@ class SteeringHook(LayerHook):
         vector: Union[torch.Tensor, Sequence[float]],
         path: str,
         coefficient: float = 1.0,
+        norm_match: bool = False,
     ):
         super().__init__(model, path)
         self.coefficient = float(coefficient)
+        self.norm_match = bool(norm_match)
 
         # Keep vector in float32 for precision, cast to model dtype after scaling
         param = next(model.parameters())
@@ -348,8 +250,14 @@ class SteeringHook(LayerHook):
     def _hook_fn(self, module, inputs, outputs):
         """Add steering vector to output. Multiplies in float32 for precision, then casts to output dtype."""
         out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
-        # Multiply in float32, then cast to output dtype for the addition
-        steer = (self.coefficient * self.vector).to(device=out_tensor.device, dtype=out_tensor.dtype)
+        _assert_residual_shape(out_tensor, "SteeringHook")
+        if self.norm_match:
+            # Per-token: scale vector to match ||residual_t|| before applying coefficient.
+            scaled = _norm_match_scaled(self.vector, out_tensor)
+            steer = (self.coefficient * scaled.float()).to(dtype=out_tensor.dtype)
+        else:
+            # Multiply in float32, then cast to output dtype for the addition
+            steer = (self.coefficient * self.vector).to(device=out_tensor.device, dtype=out_tensor.dtype)
 
         if torch.is_tensor(outputs):
             return outputs + steer
@@ -369,8 +277,9 @@ class PerPositionSteeringHook(SteeringHook):
             output = model.generate(**inputs)
     """
 
-    def __init__(self, model, vector, path, coefficient=1.0, token_range=None):
-        super().__init__(model, vector, path, coefficient)
+    def __init__(self, model, vector, path, coefficient=1.0, token_range=None,
+                 norm_match=False):
+        super().__init__(model, vector, path, coefficient, norm_match=norm_match)
         self.token_range = token_range  # (start, end) or None for all positions
 
     def _hook_fn(self, module, inputs, outputs):
@@ -378,11 +287,17 @@ class PerPositionSteeringHook(SteeringHook):
             return super()._hook_fn(module, inputs, outputs)
 
         out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
-        steer = (self.coefficient * self.vector).to(device=out_tensor.device, dtype=out_tensor.dtype)
+        _assert_residual_shape(out_tensor, "PerPositionSteeringHook")
 
         start, end = self.token_range
         result = out_tensor.clone()
-        result[:, start:end] = result[:, start:end] + steer
+        if self.norm_match:
+            sliced = result[:, start:end]
+            scaled = _norm_match_scaled(self.vector, sliced)
+            result[:, start:end] = sliced + (self.coefficient * scaled.float()).to(dtype=out_tensor.dtype)
+        else:
+            steer = (self.coefficient * self.vector).to(device=out_tensor.device, dtype=out_tensor.dtype)
+            result[:, start:end] = result[:, start:end] + steer
 
         if torch.is_tensor(outputs):
             return result
@@ -392,26 +307,19 @@ class PerPositionSteeringHook(SteeringHook):
 
 
 # =============================================================================
-# AblationHook - project out direction from layer output
+# AblationHook - project out direction from layer output (residual-shape only)
 # =============================================================================
 
 class AblationHook(LayerHook):
     """
     Project out a direction from a layer's output during forward pass.
 
-    Implements directional ablation: x' = x - (x · r̂) * r̂
-    This zeros out the component of x along direction r̂.
-
-    Equivalent to steering with dynamic coefficient = -(x · r̂).
+    Implements directional ablation: x' = x - (x · r̂) * r̂.
+    Residual-shape only ([batch, seq, hidden]).
 
     Usage:
         direction = torch.load('vectors/mean_diff_layer16.pt')
-
         with AblationHook(model, direction, "model.layers.16"):
-            output = model.generate(**inputs)
-
-        # Or with helper
-        with AblationHook(model, direction, get_hook_path(16)):
             output = model.generate(**inputs)
     """
 
@@ -438,6 +346,7 @@ class AblationHook(LayerHook):
     def _hook_fn(self, module, inputs, outputs):
         """Project out direction from output: x' = x - (x · r̂) * r̂"""
         out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
+        _assert_residual_shape(out_tensor, "AblationHook")
 
         # Cast direction to output dtype for computation
         r_hat = self.direction.to(device=out_tensor.device, dtype=out_tensor.dtype)
@@ -464,16 +373,11 @@ class MultiLayerAblation:
     """
     Ablate a direction across multiple layers simultaneously.
 
-    Projects out direction at ALL layers (or specified subset).
-
     Usage:
-        # All layers with same direction
         direction = torch.load('vectors/mean_diff_layer16.pt')
-        with MultiLayerAblation(model, direction):
+        with MultiLayerAblation(model, direction):                    # all layers
             output = model.generate(**inputs)
-
-        # Specific layers
-        with MultiLayerAblation(model, direction, layers=[10, 11, 12, 13, 14, 15]):
+        with MultiLayerAblation(model, direction, layers=[10, 11, 12]):  # specific layers
             output = model.generate(**inputs)
     """
 
@@ -484,21 +388,12 @@ class MultiLayerAblation:
         layers: List[int] = None,
         component: str = "residual",
     ):
-        """
-        Args:
-            model: The transformer model
-            direction: Direction to ablate (will be normalized)
-            layers: List of layer indices, or None for all layers
-            component: "residual", "attn_out", etc.
-        """
+        arch = get_architecture(model)
         if layers is None:
-            config = model.config
-            if hasattr(config, 'text_config'):
-                config = config.text_config
-            layers = list(range(config.num_hidden_layers))
+            layers = list(range(len(arch.layers(model))))
 
         self._hooks = [
-            AblationHook(model, direction, get_hook_path(layer, component, model=model))
+            AblationHook(model, direction, arch.path(component, layer, model=model))
             for layer in layers
         ]
 
@@ -520,15 +415,17 @@ class MultiLayerCapture:
     """
     Capture activations from multiple layers in one forward pass.
 
-    Uses HookManager internally to register CaptureHooks.
+    Path resolution goes through the Architecture registry. Layers that don't
+    expose the requested component (e.g., k_proj on Qwen3.5 linear-attn layers,
+    k_proj on DeepSeek V3 MLA, mlp.down_proj on a MoE layer) are skipped with a
+    note rather than raising - the alternative is forcing every caller to filter
+    layers up front.
 
     Usage:
-        # Specific layers
         with MultiLayerCapture(model, layers=[14, 15, 16]) as capture:
             model(**inputs)
         acts_16 = capture.get(16)
 
-        # All layers
         with MultiLayerCapture(model) as capture:  # layers=None means all
             model(**inputs)
         all_acts = capture.get_all()  # {0: tensor, 1: tensor, ...}
@@ -539,45 +436,29 @@ class MultiLayerCapture:
         model: torch.nn.Module,
         layers: List[int] = None,
         component: str = "residual",
-        prefix: str = None,
         keep_on_gpu: bool = False,
     ):
-        """
-        Args:
-            model: The transformer model
-            layers: List of layer indices, or None for all layers
-            component: "residual", "attn_out", "mlp_out", "attn_contribution", "mlp_contribution", etc.
-            prefix: Path prefix (auto-detected if None)
-            keep_on_gpu: If True, keep captured tensors on GPU (faster for batch processing)
-        """
-        # Auto-detect prefix for different model types
-        if prefix is None:
-            from core.generation import get_layer_path_prefix
-            prefix = get_layer_path_prefix(model)
-
+        arch = get_architecture(model)
         if layers is None:
-            # Handle nested text_config for multimodal models (e.g., Gemma 3)
-            config = model.config
-            if hasattr(config, 'text_config'):
-                config = config.text_config
-            layers = list(range(config.num_hidden_layers))
+            layers = list(range(len(arch.layers(model))))
 
-        self._hooks = {}
-        self._skipped_layers = []
+        self._hooks: Dict[int, CaptureHook] = {}
+        self._skipped_layers: List[int] = []
         for layer in layers:
-            path = get_hook_path(layer, component, prefix, model=model)
-            # Verify the target module exists before creating the hook
             try:
-                HookManager(model)._navigate_path(path)
-                self._hooks[layer] = CaptureHook(model, path, keep_on_gpu=keep_on_gpu)
-            except AttributeError:
-                # Skip layers where the component doesn't exist (e.g., k_proj on linear_attn layers)
+                path = arch.path(component, layer, model=model)
+            except UnsupportedComponentError:
                 self._skipped_layers.append(layer)
+                continue
+            self._hooks[layer] = CaptureHook(model, path, keep_on_gpu=keep_on_gpu)
+
         if not self._hooks:
             raise ValueError(
-                f"Component '{component}' not available on any of the requested layers. "
-                f"This may happen with hybrid architectures (e.g., Qwen3.5) where some layers "
-                f"use linear attention without separate k_proj/v_proj."
+                f"Component {component!r} not available on any of the requested layers "
+                f"(architecture: {type(arch).__name__}). "
+                f"This may happen with hybrid architectures (Qwen3.5 linear-attn layers "
+                f"don't have k_proj/v_proj) or MLA architectures (DeepSeek V3 / Kimi K2 "
+                f"have no standard k_proj/v_proj)."
             )
         if self._skipped_layers:
             print(f"  [note] Skipped {len(self._skipped_layers)} layers without {component}: {self._skipped_layers}")
@@ -624,10 +505,14 @@ class ProjectionHook(LayerHook):
     them to CPU, this hook computes projections on-device and stores only the
     small score arrays. Eliminates the GPU-CPU transfer bottleneck.
 
+    Shape contract: matmul-based, so the captured tensor's last dim must match
+    `vectors.shape[-1]`. Works on any rank ≥ 2 (residual [batch, seq, hidden],
+    flattened per-head [batch, seq, hidden], etc.).
+
     Usage:
         # Stack vectors for this layer: [n_vectors, hidden_dim]
         vectors = torch.stack([v1, v2, v3]).to(device)
-        with ProjectionHook(model, get_hook_path(16), vectors) as hook:
+        with ProjectionHook(model, "model.layers.16", vectors) as hook:
             model(**inputs)
         scores = hook.get_projections()  # [batch, seq, n_vectors]
         norms = hook.get_norms()         # [batch, seq]
@@ -644,7 +529,7 @@ class ProjectionHook(LayerHook):
         Args:
             model: The transformer model
             path: Hook path (e.g., "model.layers.16")
-            vectors: Tensor[n_vectors, hidden_dim] — will be L2-normalized
+            vectors: Tensor[n_vectors, hidden_dim] - will be L2-normalized
             compute_norms: Also compute per-token ||h|| activation norms
         """
         super().__init__(model, path)
@@ -657,7 +542,7 @@ class ProjectionHook(LayerHook):
 
     def _hook_fn(self, module, inputs, outputs):
         tensor = outputs[0] if isinstance(outputs, tuple) else outputs
-        # Project on GPU: [batch, seq, hidden] @ [n_vectors, hidden].T → [batch, seq, n_vectors]
+        # Project on GPU: [..., hidden] @ [n_vectors, hidden].T → [..., n_vectors]
         scores = torch.matmul(tensor.float(), self._vectors.T)
         self.projections.append(scores.cpu())
         if self._compute_norms:
@@ -703,9 +588,10 @@ class MultiLayerProjection:
         component: str = "residual",
         compute_norms: bool = True,
     ):
+        arch = get_architecture(model)
         self._hooks = {}
         for layer, vectors in vectors_by_layer.items():
-            path = get_hook_path(layer, component, model=model)
+            path = arch.path(component, layer, model=model)
             self._hooks[layer] = ProjectionHook(
                 model, path, vectors, compute_norms=compute_norms,
             )
@@ -757,14 +643,21 @@ class MultiLayerSteering:
         model: torch.nn.Module,
         configs: List[tuple],  # (layer, vector, coef) or (layer, vector, coef, component)
         component: str = "residual",
+        norm_match: bool = False,
     ):
-        """
-        Args:
-            model: The transformer model
-            configs: List of (layer, vector, coefficient) or (layer, vector, coefficient, component) tuples.
-                     4-tuples override the component kwarg per-config.
-            component: Default component for 3-tuple configs
-        """
+        # Validate components before arch lookup so the error is clear even if
+        # arch resolution fails for other reasons.
+        if norm_match:
+            for config in configs:
+                comp = config[3] if len(config) == 4 else component
+                if comp != "residual":
+                    raise ValueError(
+                        f"norm_match=True is only valid for component='residual'; got '{comp}'. "
+                        f"Sub-component activations (attn/mlp) have different L2 scale than the "
+                        f"residual stream and norm-matching against them would silently under-steer."
+                    )
+
+        arch = get_architecture(model)
         self._hooks = []
         for config in configs:
             if len(config) == 4:
@@ -773,7 +666,8 @@ class MultiLayerSteering:
                 layer, vector, coefficient = config
                 comp = component
             self._hooks.append(
-                SteeringHook(model, vector, get_hook_path(layer, comp, model=model), coefficient)
+                SteeringHook(model, vector, arch.path(comp, layer, model=model),
+                             coefficient, norm_match=norm_match)
             )
 
     def __enter__(self):
@@ -797,16 +691,11 @@ class ActivationCappingHook(LayerHook):
         Pulls down if above tau. Prevents excess projection onto direction.
 
     From Lu et al. (2026), "The Assistant Axis."
+    Residual-shape only ([batch, seq, hidden]).
 
     Usage:
         axis = torch.load('axis.pt')['axis_normed'][24]
-
-        # Floor: keep projection >= tau (original paper method)
-        with ActivationCappingHook(model, axis, get_hook_path(24), tau=16.99):
-            output = model.generate(**inputs)
-
-        # Ceiling: keep projection <= tau
-        with ActivationCappingHook(model, axis, get_hook_path(24), tau=20.0, mode='ceiling'):
+        with ActivationCappingHook(model, axis, "model.layers.24", tau=16.99):
             output = model.generate(**inputs)
     """
 
@@ -838,6 +727,7 @@ class ActivationCappingHook(LayerHook):
     def _hook_fn(self, module, inputs, outputs):
         """Clamp projection onto direction within bounds."""
         out_tensor = outputs[0] if isinstance(outputs, tuple) else outputs
+        _assert_residual_shape(out_tensor, "ActivationCappingHook")
         v_hat = self.direction.to(device=out_tensor.device, dtype=out_tensor.dtype)
 
         proj = out_tensor @ v_hat  # [batch, seq]
@@ -863,7 +753,6 @@ class MultiLayerActivationCapping:
     Usage:
         axis_data = torch.load('axis.pt')
         tau_per_layer = {24: 16.99, 28: 2.22, 32: 15.19}
-
         with MultiLayerActivationCapping(model, axis_data['axis_normed'], tau_per_layer):
             output = model.generate(**inputs)
     """
@@ -876,12 +765,13 @@ class MultiLayerActivationCapping:
         component: str = "residual",
         mode: str = "floor",
     ):
+        arch = get_architecture(model)
         self._hooks = []
         for layer, tau in tau_per_layer.items():
             vec = directions[layer]
             self._hooks.append(
                 ActivationCappingHook(
-                    model, vec, get_hook_path(layer, component, model=model), tau,
+                    model, vec, arch.path(component, layer, model=model), tau,
                     mode=mode,
                 )
             )
@@ -910,29 +800,16 @@ class PerSampleSteering:
     Config format: (layer, vector, coefficient, (batch_start, batch_end))
 
     Example - independent coefficient evaluation:
-        # Evaluate different coefficients in parallel (non-overlapping slices)
         configs = [
             (14, vec, 1.0, (0, 10)),   # Coef 1.0 on batch[0:10]
             (14, vec, 2.0, (10, 20)),  # Coef 2.0 on batch[10:20]
         ]
 
     Example - multi-layer ensemble:
-        # Steer multiple layers together (overlapping slices)
         configs = [
             (11, vec11, 0.5, (0, 10)),  # L11 on batch[0:10]
-            (13, vec13, 0.8, (0, 10)),  # L13 on batch[0:10] (same slice = ensemble)
+            (13, vec13, 0.8, (0, 10)),  # L13 on batch[0:10] (ensemble)
         ]
-
-    Example - batched ensembles:
-        # Evaluate multiple ensemble candidates in parallel
-        configs = [
-            (11, vec, 0.5, (0, 5)),   # Candidate 0: L11
-            (13, vec, 0.8, (0, 5)),   # Candidate 0: L13
-            (11, vec, 0.3, (5, 10)),  # Candidate 1: L11
-            (13, vec, 1.0, (5, 10)),  # Candidate 1: L13
-        ]
-        # batch[0:5] gets L11*0.5 + L13*0.8
-        # batch[5:10] gets L11*0.3 + L13*1.0
 
     Usage:
         with PerSampleSteering(model, configs, component="residual"):
@@ -942,42 +819,58 @@ class PerSampleSteering:
     def __init__(
         self,
         model: torch.nn.Module,
-        configs: List[tuple],  # List of (layer, vector, coefficient, (batch_start, batch_end))
+        configs: List[tuple],  # (layer, vector, coefficient, (batch_start, batch_end)) or
+                               # (layer, vector, coefficient, (batch_start, batch_end), norm_match)
         component: str = "residual",
+        norm_match: bool = False,
     ):
-        """
-        Args:
-            model: The transformer model
-            configs: List of (layer, vector, coefficient, (batch_start, batch_end)) tuples
-            component: "residual", "attn_out", etc.
-        """
         self.model = model
         self.component = component.lower()
         self._manager = None
+        if norm_match and self.component != "residual":
+            raise ValueError(
+                f"norm_match=True is only valid for component='residual'; got '{self.component}'."
+            )
 
         param = next(model.parameters())
-        self._layer_configs: dict = {}  # layer_idx -> List[(vector, coef, batch_slice)]
-        for layer_idx, vector, coef, batch_slice in configs:
-            vec = torch.as_tensor(vector, dtype=param.dtype, device=param.device)
+        # Vectors stored in float32 so norm-match computation is stable;
+        # cast back to model dtype inside the hook before adding.
+        self._layer_configs: dict = {}  # layer_idx -> List[(vector_f32, coef, batch_slice, norm_match)]
+        for config in configs:
+            if len(config) == 5:
+                layer_idx, vector, coef, batch_slice, cfg_norm_match = config
+            else:
+                layer_idx, vector, coef, batch_slice = config
+                cfg_norm_match = norm_match
+            vec = torch.as_tensor(vector, dtype=torch.float32, device=param.device)
             if layer_idx not in self._layer_configs:
                 self._layer_configs[layer_idx] = []
-            self._layer_configs[layer_idx].append((vec, float(coef), batch_slice))
+            self._layer_configs[layer_idx].append(
+                (vec, float(coef), batch_slice, bool(cfg_norm_match))
+            )
 
     def _make_hook(self, layer_configs: list):
         def hook_fn(module, inputs, outputs):
             t = outputs[0] if isinstance(outputs, tuple) else outputs
+            _assert_residual_shape(t, "PerSampleSteering")
             t_new = t.clone()
-            for vec, coef, (batch_start, batch_end) in layer_configs:
-                t_new[batch_start:batch_end] = t_new[batch_start:batch_end] + coef * vec.to(t.device)
+            for vec, coef, (batch_start, batch_end), cfg_norm_match in layer_configs:
+                slice_view = t_new[batch_start:batch_end]
+                if cfg_norm_match:
+                    scaled = _norm_match_scaled(vec, slice_view)
+                    t_new[batch_start:batch_end] = slice_view + (coef * scaled.float()).to(dtype=t.dtype)
+                else:
+                    t_new[batch_start:batch_end] = slice_view + (coef * vec).to(dtype=t.dtype, device=t.device)
             if isinstance(outputs, tuple):
                 return (t_new, *outputs[1:])
             return t_new
         return hook_fn
 
     def __enter__(self):
+        arch = get_architecture(self.model)
         self._manager = HookManager(self.model)
         for layer_idx, layer_configs in self._layer_configs.items():
-            path = get_hook_path(layer_idx, self.component, model=self.model)
+            path = arch.path(self.component, layer_idx, model=self.model)
             self._manager.add_forward_hook(path, self._make_hook(layer_configs))
         return self
 
