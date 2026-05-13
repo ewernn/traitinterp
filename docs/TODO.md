@@ -29,6 +29,7 @@ Dev-only tracking. Not promoted to main.
 - [ ] Save probe accuracy + effect_size to vector metadata during extraction (eliminates need for separate `extraction_evaluation.py` run)
 - [ ] Shuffle val split with seed=42 (currently deterministic tail split)
 - [ ] Minimum scenario count for val split (skip if <5 per polarity)
+- [ ] Refactor `extraction/run_extraction_pipeline.py` to named subcommands instead of `--only-stage N`. E.g., `pipeline.py {generate, vet, extract, logit-lens, evaluate, all}`, each with only its own flags. Self-documenting via `--help`, less opaque than numeric stage IDs. Keep the script as a single entry point; use `argparse.add_subparsers()`. ~half a day of refactor; stage funcs already exist as separate functions.
 
 ## Model Config
 

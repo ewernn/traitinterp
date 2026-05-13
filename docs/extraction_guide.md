@@ -168,7 +168,7 @@ prompt[-1]    →  last prompt token only (Arditi-style)
 
 **Hook system**: `MultiLayerCapture` registers one `CaptureHook` per requested layer. Each hook captures `outputs[0].detach()` from the module's forward pass.
 
-**Component hook paths** (architecture-aware, `core/hooks.py:get_hook_path`):
+**Component hook paths** (architecture-aware, `core/hooks.py:resolve_hook_path`):
 
 | Component | Hook Path | Notes |
 |-----------|-----------|-------|

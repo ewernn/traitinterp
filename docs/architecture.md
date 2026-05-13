@@ -87,8 +87,14 @@ Interprets facts, applies thresholds, aggregates across prompts.
 
 **Current exports:**
 ```python
+# architectures/  (per-arch hook paths and module trees; one file per HF model_type)
+Architecture, HybridArchitecture, get_architecture, register,
+LayerPaths, ModuleSpec, COMPONENTS,
+UnsupportedComponentError, ArchitectureMismatchError,
+layers, layer_prefix, inner_model
+
 # hooks.py
-HookManager, get_hook_path, LayerHook, CaptureHook, SteeringHook, AblationHook,
+HookManager, LayerHook, CaptureHook, SteeringHook, AblationHook,
 MultiLayerCapture, MultiLayerAblation, MultiLayerSteering,
 ProjectionHook, MultiLayerProjection,
 ActivationCappingHook, MultiLayerActivationCapping, PerSampleSteering,

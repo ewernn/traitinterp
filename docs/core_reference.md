@@ -59,17 +59,61 @@ meta.n_layers, meta.hidden_dim, meta.captured_layers, meta.activation_norms
 
 ---
 
+## Architecture Registry
+
+Per-arch hook paths and module trees, declared once in `core/architectures/`. One
+`Architecture` instance per HuggingFace `model_type`.
+
+```python
+from core.architectures import (
+    get_architecture, Architecture, HybridArchitecture, COMPONENTS,
+    UnsupportedComponentError, ArchitectureMismatchError,
+    layers, layer_prefix, inner_model,
+)
+
+arch = get_architecture(model)             # resolves model.config.model_type
+arch.path("attn_contribution", layer=16, model=model)  # canonical hook path (LoRA-aware, hybrid-correct)
+arch.paths_for_layer(16, model=model)      # LayerPaths(...); None means component absent
+arch.supported_components(16)              # set of component names present at this layer
+arch.layers(model)                         # nn.ModuleList of blocks
+arch.layer_prefix(model)                   # "model.layers" (LoRA-aware)
+arch.inner_model(model)                    # unwrap PeftModel / multimodal wrappers
+arch.validate(model)                       # raise ArchitectureMismatchError if live tree diverges
+arch.discover(model, layer=0)              # runtime list of all submodule dot-paths under one block
+```
+
+**Components** (`COMPONENTS`): `residual`, `attn_contribution`, `mlp_contribution`, `k_proj`, `v_proj`.
+Contribution components are post-norm-aware (Gemma2/Gemma3/OLMo2 hook the post-norm output;
+Llama/Mistral/Qwen hook the raw sublayer output — same direction, different module).
+
+**Supported model_types** (adapters in `core/architectures/`):
+`llama`, `mistral`, `qwen2`, `qwen3`, `qwen3_next`, `gemma2`, `gemma3`, `olmo2`, `gpt_oss`, `deepseek_v3`.
+Aliases: `kimi_k2 → deepseek_v3`, `gemma3_text → gemma3`, `qwen3_5 → qwen3_next`.
+
+**Errors**:
+- `UnsupportedComponentError` — component absent for this arch/layer (e.g. `k_proj` on MLA, on a
+  Qwen3.5 linear-attn layer, or on any Mamba block).
+- `ArchitectureMismatchError` — `module_tree` declares paths that don't resolve on the live model
+  (typically a `device_map="auto"` quantization wrapper changed module names, or the wrong adapter
+  was selected).
+
+**Adding an architecture**: create `core/architectures/{model_type}.py`, declare `Architecture(...)`
+or a `HybridArchitecture` subclass, call `register(model_type, arch)`. The architecture is picked up
+on next import via the side-effect imports at the bottom of `core/architectures/__init__.py`.
+
+---
+
 ## Hooks
 
 ```python
-from core import CaptureHook, MultiLayerCapture, SteeringHook, AblationHook, get_hook_path, detect_contribution_paths
+from core import CaptureHook, MultiLayerCapture, SteeringHook, AblationHook
 
 # Capture from one layer
 with CaptureHook(model, "model.layers.16") as hook:
     model(**inputs)
 activations = hook.get()  # [batch, seq, hidden]
 
-# Capture from multiple layers
+# Capture from multiple layers (path resolution via the Architecture registry)
 with MultiLayerCapture(model, layers=[14, 15, 16]) as capture:
     model(**inputs)
 acts = capture.get(16)
@@ -99,26 +143,9 @@ with SteeringHook(model, vector, "model.layers.16", coefficient=1.5):
 # Implements x' = x - (x · r̂) * r̂
 with AblationHook(model, direction, "model.layers.16"):
     output = model.generate(**inputs)
-
-# Path helper (layer + component -> string)
-get_hook_path(16)                    # "model.layers.16" (residual)
-get_hook_path(16, "attn_contribution", model=model)
-# Gemma-2: "model.layers.16.post_attention_layernorm"
-# Llama:   "model.layers.16.self_attn.o_proj"
-
-# Components: residual, attn_contribution*, mlp_contribution*, k_proj, v_proj
-# *contribution components require model parameter (auto-detect architecture)
 ```
 
-**Architecture detection:**
-```python
-from core import detect_contribution_paths
-
-paths = detect_contribution_paths(model)
-# Gemma-2: {'attn_contribution': 'post_attention_layernorm', 'mlp_contribution': 'post_feedforward_layernorm'}
-# Llama/Mistral/Qwen: {'attn_contribution': 'self_attn.o_proj', 'mlp_contribution': 'mlp.down_proj'}
-# Unknown architecture: raises ValueError with diagnostic info
-```
+For path resolution, see the [Architecture Registry](#architecture-registry) section above.
 
 **Projection hooks** (used by inference pipeline for on-GPU projection):
 ```python
@@ -163,7 +190,8 @@ with ActivationCappingHook(model, vector, "model.layers.16", threshold=0.5):
 **Validation:** Hooks fail fast on invalid inputs:
 - `SteeringHook` / `AblationHook`: Reject non-1D vectors
 - `AblationHook`: Reject zero or near-zero direction vectors
-- `detect_contribution_paths`: Raise `ValueError` for unrecognized architectures
+- `get_architecture`: Raise `ValueError` for unregistered model_type
+- `Architecture.validate(model)`: Raise `ArchitectureMismatchError` if live module tree diverges from `module_tree`
 
 ---
 
