@@ -7,14 +7,14 @@
  */
 
 import { getDisplayName, displayLayer } from '../../core/display.js';
-import { computeBestVectors, getSelectedTraitNames } from './extraction-data.js';
+import { computeBestVectors, getSelectedTraitNames, filterResults } from './extraction-data.js';
 
 /** Render best vectors summary table — one row per trait with key metrics. */
 function renderBestVectorsSummary(evalData) {
     const container = document.getElementById('best-vectors-summary-container');
     if (!container) return;
 
-    const allResults = evalData.all_results || [];
+    const allResults = filterResults(evalData.all_results || []);
     const bestVectors = computeBestVectors(allResults);
 
     if (Object.keys(bestVectors).length === 0) {

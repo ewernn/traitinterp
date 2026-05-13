@@ -30,11 +30,37 @@ from utils.paths import (
     get as get_path,
     get_activation_dir,
     get_vector_metadata_path,
+    list_components,
     list_methods,
     list_layers,
     get_model_variant,
+    desanitize_position,
 )
 from utils.layers import parse_layers
+
+
+def discover_positions_components(
+    experiment: str, trait: str, model_variant: str
+) -> List[Tuple[str, str]]:
+    """Walk vectors/{position}/{component}/ to enumerate (position, component) combos.
+
+    Returns list of (position, component) pairs that have vector data on disk.
+    """
+    vectors_dir = get_path(
+        'extraction.vectors', experiment=experiment, trait=trait, model_variant=model_variant
+    )
+    if not vectors_dir.exists():
+        return []
+    combos = []
+    for pos_dir in sorted(vectors_dir.iterdir()):
+        if not pos_dir.is_dir():
+            continue
+        position = desanitize_position(pos_dir.name)
+        for comp_dir in sorted(pos_dir.iterdir()):
+            if not comp_dir.is_dir():
+                continue
+            combos.append((position, comp_dir.name))
+    return combos
 
 
 def evaluate_from_metadata(
@@ -154,8 +180,8 @@ def main(
     model_variant: str = None,
     methods: str = "mean_diff,probe,gradient",
     layers: str = None,
-    component: str = "residual",
-    position: str = "response[:]",
+    component: str = None,
+    position: str = None,
     verbose: bool = False,
 ):
     """
@@ -164,13 +190,17 @@ def main(
     Reads val metrics from vector metadata (computed during extraction).
     Falls back to loading activation files for legacy experiments.
 
+    By default discovers all (position, component) combos on disk and unions
+    them into a single output file. Records carry their own component+position
+    so the frontend can filter.
+
     Args:
         experiment: Experiment name
         model_variant: Model variant (default: from experiment defaults.extraction)
         methods: Comma-separated methods to evaluate
         layers: Comma-separated layers (default: all available)
-        component: Component to evaluate (residual, attn_out, mlp_out)
-        position: Token position (default: response[:])
+        component: Restrict to one component (default: discover all)
+        position: Restrict to one position (default: discover all)
         verbose: Print detailed per-method/layer analysis
     """
     variant = get_model_variant(experiment, model_variant, mode="extraction")
@@ -179,7 +209,7 @@ def main(
     exp_dir = get_path('extraction.base', experiment=experiment)
     methods_list = methods.split(",")
 
-    # Discover traits that have vector metadata
+    # Discover traits with vector data
     traits = []
     for category_dir in exp_dir.iterdir():
         if not category_dir.is_dir():
@@ -188,52 +218,71 @@ def main(
             if not trait_dir.is_dir():
                 continue
             trait = f"{category_dir.name}/{trait_dir.name}"
-            # Check if any method has vectors for this trait
-            available = list_methods(experiment, trait, model_variant, component, position)
-            if available:
+            if discover_positions_components(experiment, trait, model_variant):
                 traits.append(trait)
 
     if not traits:
-        print(f"No traits with vectors at {position}/{component}")
+        print(f"No traits with vectors found in {exp_dir}")
         return
 
-    # Determine layers
-    if layers:
-        layers_list = parse_layers(layers, n_layers=1000)
-    else:
-        available_methods = list_methods(experiment, traits[0], model_variant, component, position)
-        if available_methods:
-            layers_list = list_layers(experiment, traits[0], available_methods[0], model_variant, component, position)
-        else:
-            layers_list = list(range(32))
+    # Discover (position, component) combos across all traits
+    combos: set = set()
+    for trait in traits:
+        for pos, comp in discover_positions_components(experiment, trait, model_variant):
+            if position is not None and pos != position:
+                continue
+            if component is not None and comp != component:
+                continue
+            combos.add((pos, comp))
 
-    print(f"Found {len(traits)} traits at {position}/{component}")
+    if not combos:
+        filt = f"position={position!r}, component={component!r}"
+        print(f"No (position, component) combos matched filter: {filt}")
+        return
 
-    # Collect results: try metadata first, fall back to activations
+    combos_sorted = sorted(combos)
+    print(f"Found {len(traits)} traits, {len(combos_sorted)} (position, component) combos")
+
+    requested_layers = parse_layers(layers, n_layers=1000) if layers else None
+
+    # Collect results across all (trait, method, position, component) combos
     all_results = []
     n_from_metadata = 0
     n_from_activations = 0
 
     for trait in traits:
-        for method in methods_list:
-            # Try metadata first (no GPU, no activation files)
-            results = evaluate_from_metadata(
-                experiment, trait, model_variant, method, component, position
-            )
-            if results:
-                # Filter to requested layers if specified
-                if layers:
-                    results = [r for r in results if r['layer'] in layers_list]
-                all_results.extend(results)
-                n_from_metadata += len(results)
-                continue
+        for pos, comp in combos_sorted:
+            # Resolve layers per (trait, position, component) — different combos
+            # may have different layer coverage (e.g., v_proj only on full-attention layers)
+            if requested_layers is not None:
+                trait_layers = requested_layers
+            else:
+                avail_methods = list_methods(experiment, trait, model_variant, comp, pos)
+                if avail_methods:
+                    trait_layers = list_layers(
+                        experiment, trait, avail_methods[0], model_variant, comp, pos
+                    )
+                else:
+                    trait_layers = []
 
-            # Fall back to loading activation files (legacy experiments)
-            results = evaluate_from_activations(
-                experiment, trait, model_variant, method, layers_list, component, position
-            )
-            all_results.extend(results)
-            n_from_activations += len(results)
+            for method in methods_list:
+                # Metadata path (no GPU, no activations)
+                results = evaluate_from_metadata(
+                    experiment, trait, model_variant, method, comp, pos
+                )
+                if results:
+                    if requested_layers is not None:
+                        results = [r for r in results if r['layer'] in trait_layers]
+                    all_results.extend(results)
+                    n_from_metadata += len(results)
+                    continue
+
+                # Legacy fallback: load activations and recompute
+                results = evaluate_from_activations(
+                    experiment, trait, model_variant, method, trait_layers, comp, pos
+                )
+                all_results.extend(results)
+                n_from_activations += len(results)
 
     if not all_results:
         print("No results — vectors may lack val metrics (re-extract with val_split > 0)")
@@ -246,58 +295,73 @@ def main(
         source.append(f"{n_from_activations} from activations")
     print(f"Collected {len(all_results)} results ({', '.join(source)})")
 
-    # Compute combined_score: (accuracy + norm_effect) / 2 * polarity
-    trait_max_effect = {}
+    # combined_score: normalize effect size within (trait, component) group so
+    # components with different scales (residual ~5 vs k_proj ~0.5) compare fairly
+    group_max_effect = defaultdict(lambda: 0.0)
     for r in all_results:
-        t = r['trait']
-        trait_max_effect[t] = max(trait_max_effect.get(t, 0), r['val_effect_size'])
+        key = (r['trait'], r['component'])
+        if r['val_effect_size'] > group_max_effect[key]:
+            group_max_effect[key] = r['val_effect_size']
 
     for r in all_results:
-        max_eff = trait_max_effect[r['trait']] or 1
+        max_eff = group_max_effect[(r['trait'], r['component'])] or 1
         norm_effect = r['val_effect_size'] / max_eff
         polarity_mult = 1.0 if r['polarity_correct'] else 0.0
         r['combined_score'] = ((r['val_accuracy'] + norm_effect) / 2) * polarity_mult
 
-    # Load activation norms from activation metadata (if available)
-    activation_norms = {}
-    act_dir = get_activation_dir(experiment, traits[0], model_variant, component, position)
-    act_meta_path = act_dir / "metadata.json"
-    if act_meta_path.exists():
-        with open(act_meta_path) as f:
-            act_meta = json.load(f)
-        if 'activation_norms' in act_meta:
-            activation_norms = {component: act_meta['activation_norms']}
+    # Activation norms: one block per component (positions share captured activations).
+    # Read from any trait's activation metadata for that component (norms are
+    # model+component dependent, not trait dependent).
+    activation_norms: Dict[str, Dict] = {}
+    seen_components = sorted({c for _, c in combos_sorted})
+    for comp in seen_components:
+        # Pick the first position that has data for this component
+        first_pos = next((p for p, c in combos_sorted if c == comp), None)
+        if first_pos is None:
+            continue
+        for trait in traits:
+            act_dir = get_activation_dir(experiment, trait, model_variant, comp, first_pos)
+            act_meta_path = act_dir / "metadata.json"
+            if act_meta_path.exists():
+                with open(act_meta_path) as f:
+                    act_meta = json.load(f)
+                if 'activation_norms' in act_meta:
+                    activation_norms[comp] = act_meta['activation_norms']
+                    break
 
-    # Print summary: best per trait
+    # Summary print: best per trait (across all components)
     by_trait = defaultdict(list)
     for r in all_results:
         by_trait[r['trait']].append(r)
 
-    print(f"\n{'Trait':<40} {'Method':<10} {'Layer':<6} {'Acc':<6} {'d':<6}")
-    print("-" * 70)
+    print(f"\n{'Trait':<35} {'Method':<10} {'Comp':<14} {'Layer':<6} {'Acc':<6} {'d':<6}")
+    print("-" * 85)
     for trait in sorted(by_trait.keys()):
         best = max(by_trait[trait], key=lambda x: x['combined_score'])
-        short_trait = trait.split('/')[-1][:38]
-        print(f"{short_trait:<40} {best['method']:<10} {best['layer']:<6} {best['val_accuracy']:.1%}  {best['val_effect_size']:.2f}")
+        short_trait = trait.split('/')[-1][:33]
+        print(
+            f"{short_trait:<35} {best['method']:<10} {best['component']:<14} "
+            f"{best['layer']:<6} {best['val_accuracy']:.1%}  {best['val_effect_size']:.2f}"
+        )
 
     if verbose:
-        print(f"\n{'Method':<12} {'Mean Acc':<10} {'Mean d':<10}")
-        print("-" * 35)
-        method_stats = defaultdict(list)
+        print(f"\n{'Component':<16} {'Method':<10} {'Mean Acc':<10} {'Mean d':<10}")
+        print("-" * 50)
+        bucket = defaultdict(list)
         for r in all_results:
-            method_stats[r['method']].append(r)
-        for method in methods_list:
-            if method in method_stats:
-                accs = [r['val_accuracy'] for r in method_stats[method]]
-                effs = [r['val_effect_size'] for r in method_stats[method]]
-                print(f"{method:<12} {sum(accs)/len(accs):.1%}      {sum(effs)/len(effs):.2f}")
+            bucket[(r['component'], r['method'])].append(r)
+        for (comp, method) in sorted(bucket.keys()):
+            rs = bucket[(comp, method)]
+            accs = [r['val_accuracy'] for r in rs]
+            effs = [r['val_effect_size'] for r in rs]
+            print(f"{comp:<16} {method:<10} {sum(accs)/len(accs):.1%}      {sum(effs)/len(effs):.2f}")
 
     # Save
     output_path = get_path('extraction_eval.evaluation', experiment=experiment)
     output = {
         'model_variant': model_variant,
-        'component': component,
-        'position': position,
+        'components': seen_components,
+        'positions': sorted({p for p, _ in combos_sorted}),
         'activation_norms': activation_norms,
         'all_results': all_results,
     }

@@ -791,7 +791,13 @@ function _applyStyle(layout, s, data) {
 
 /**
  * Generic scatter plot.
- * JSON: { x, y, labels?, xaxis?, yaxis?, title?, highlight?, regression?, groups? }
+ * JSON: { x, y, labels?, xaxis?, yaxis?, title?, highlight?, regression?, groups?,
+ *         xaxis_type?, yaxis_type?, binned_median_line?: {x, y, name?},
+ *         floor_line?: {y, label?} | floor_line?: number }
+ *
+ * - xaxis_type / yaxis_type: pass 'log' to use Plotly log axes (default linear).
+ * - binned_median_line: overlays a connected line trace (e.g., per-bin medians on top of a point cloud).
+ * - floor_line: horizontal reference line at y=floor (for thresholds like coherence>=70).
  */
 CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
     const s = getStyle(options);
@@ -813,7 +819,7 @@ CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
         traces.push({
             x: data.x, y: data.y,
             mode: 'markers', type: 'scatter',
-            marker: { color: s.pointColor, size: 8, opacity: 0.7 },
+            marker: { color: s.pointColor, size: 6, opacity: 0.35 },
             hovertext: labels, hoverinfo: 'text', showlegend: false,
         });
     }
@@ -836,7 +842,11 @@ CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
         });
     }
 
-    if (data.regression !== false) {
+    // Regression line: on by default for backward compat, off when a binned line
+    // is supplied (unless explicitly forced with `regression: true`).
+    const showRegression = data.regression === true
+        || (data.regression !== false && !data.binned_median_line);
+    if (showRegression) {
         traces.push(_regressionLine(data.x, data.y, s));
         annotations.push({
             x: 0.02, y: 0.98, xref: 'paper', yref: 'paper',
@@ -846,16 +856,55 @@ CHART_RENDERERS['scatter'] = async function(container, data, options = {}) {
         });
     }
 
+    // Optional overlaid line (e.g., per-bin medians)
+    if (data.binned_median_line) {
+        const bml = data.binned_median_line;
+        traces.push({
+            x: bml.x, y: bml.y,
+            mode: 'lines+markers', type: 'scatter',
+            line: { color: s.lineColor || '#1f3a8a', width: 2.5 },
+            marker: { color: s.lineColor || '#1f3a8a', size: 7 },
+            name: bml.name || 'Median per bin', showlegend: true, hoverinfo: 'x+y',
+        });
+    }
+
+    // Optional horizontal threshold line
+    let floorY = null;
+    let floorLabel = null;
+    if (typeof data.floor_line === 'number') { floorY = data.floor_line; }
+    else if (data.floor_line && typeof data.floor_line.y === 'number') {
+        floorY = data.floor_line.y;
+        floorLabel = data.floor_line.label || null;
+    }
+
     const height = options.height || 350;
-    const layout = buildChartLayout({
-        traces, height, legendPosition: data.groups ? 'below' : 'none',
+    const layoutOpts = {
+        traces, height, legendPosition: (data.groups || data.binned_median_line) ? 'below' : 'none',
         xaxis: { title: { text: data.xaxis || '', font: { size: 12, color: '#555', family: s.fontFamily } },
                  gridcolor: s.gridColor, zerolinecolor: s.gridColor, tickfont: { size: 10, color: s.axisColor } },
         yaxis: { title: { text: data.yaxis || '', font: { size: 12, color: '#555', family: s.fontFamily } },
                  gridcolor: s.gridColor, zerolinecolor: s.gridColor, tickfont: { size: 10, color: s.axisColor } },
-    });
+    };
+    if (data.xaxis_type === 'log') layoutOpts.xaxis.type = 'log';
+    if (data.yaxis_type === 'log') layoutOpts.yaxis.type = 'log';
+    const layout = buildChartLayout(layoutOpts);
     _applyStyle(layout, s, data);
     layout.annotations = (layout.annotations || []).concat(annotations);
+
+    if (floorY !== null) {
+        layout.shapes = (layout.shapes || []).concat([{
+            type: 'line', xref: 'paper', x0: 0, x1: 1, y0: floorY, y1: floorY,
+            line: { color: '#888', width: 1, dash: 'dash' },
+        }]);
+        if (floorLabel) {
+            layout.annotations.push({
+                x: 0.99, y: floorY, xref: 'paper', yref: 'y',
+                text: floorLabel, showarrow: false,
+                font: { size: 10, color: '#666', family: s.fontFamily },
+                xanchor: 'right', yanchor: 'bottom',
+            });
+        }
+    }
 
     const chartDiv = document.createElement('div');
     chartDiv.style.height = `${height}px`;
@@ -939,27 +988,65 @@ CHART_RENDERERS['bar'] = async function(container, data, options = {}) {
 
 /**
  * Generic line chart (multiple series).
- * JSON: { x, series: [{ name, y, color?, dash? }], xaxis?, yaxis?, title? }
+ * JSON: { x, series: [{ name, y, x?, color?, dash? }], xaxis?, yaxis?, title?,
+ *         xaxis_type?, yaxis_type?, floor_line?: number | {y, label?} }
+ *
+ * - Per-series `x` overrides top-level `x` (lets different series have different x-axis points).
+ * - xaxis_type / yaxis_type: pass 'log' for Plotly log scaling.
+ * - floor_line: dashed horizontal reference line (e.g., coherence floor at 70).
  */
 CHART_RENDERERS['line'] = async function(container, data, options = {}) {
     const s = getStyle(options);
-    const traces = data.series.map((series, i) => ({
-        x: data.x, y: series.y, name: series.name,
-        mode: 'lines+markers', type: 'scatter',
-        line: { color: series.color || (s.categoricalColors ? s.categoricalColors[i % s.categoricalColors.length] : s.pointColor),
-                width: 2, dash: series.dash || 'solid' },
-        marker: { size: 4 },
-    }));
+    const traces = data.series.map((series, i) => {
+        const trace = {
+            x: series.x || data.x, y: series.y, name: series.name,
+            mode: series.mode || 'lines+markers', type: 'scatter',
+            line: { color: series.color || (s.categoricalColors ? s.categoricalColors[i % s.categoricalColors.length] : s.pointColor),
+                    width: 2, dash: series.dash || 'solid' },
+            marker: { size: 5 },
+        };
+        // Filled band support: series may set fill ('tonexty'|'tozeroy') + fillcolor.
+        // showlegend: false hides the helper bound traces; the named line series stays visible.
+        if (series.fill) trace.fill = series.fill;
+        if (series.fillcolor) trace.fillcolor = series.fillcolor;
+        if (series.showlegend === false) trace.showlegend = false;
+        if (series.line_width !== undefined) trace.line.width = series.line_width;
+        return trace;
+    });
 
     const height = options.height || 350;
-    const layout = buildChartLayout({
+    const layoutOpts = {
         traces, height, legendPosition: 'below',
         xaxis: { title: { text: data.xaxis || '', font: { size: 12, family: s.fontFamily } },
                  gridcolor: s.gridColor, tickfont: { size: 10, color: s.axisColor } },
         yaxis: { title: { text: data.yaxis || '', font: { size: 12, family: s.fontFamily } },
                  gridcolor: s.gridColor, tickfont: { size: 10, color: s.axisColor } },
-    });
+    };
+    if (data.xaxis_type === 'log') layoutOpts.xaxis.type = 'log';
+    if (data.yaxis_type === 'log') layoutOpts.yaxis.type = 'log';
+    const layout = buildChartLayout(layoutOpts);
     _applyStyle(layout, s, data);
+
+    let floorY = null, floorLabel = null;
+    if (typeof data.floor_line === 'number') { floorY = data.floor_line; }
+    else if (data.floor_line && typeof data.floor_line.y === 'number') {
+        floorY = data.floor_line.y;
+        floorLabel = data.floor_line.label || null;
+    }
+    if (floorY !== null) {
+        layout.shapes = (layout.shapes || []).concat([{
+            type: 'line', xref: 'paper', x0: 0, x1: 1, y0: floorY, y1: floorY,
+            line: { color: '#888', width: 1, dash: 'dash' },
+        }]);
+        if (floorLabel) {
+            layout.annotations = (layout.annotations || []).concat([{
+                x: 0.99, y: floorY, xref: 'paper', yref: 'y',
+                text: floorLabel, showarrow: false,
+                font: { size: 10, color: '#666', family: s.fontFamily },
+                xanchor: 'right', yanchor: 'bottom',
+            }]);
+        }
+    }
 
     const chartDiv = document.createElement('div');
     chartDiv.style.height = `${height}px`;

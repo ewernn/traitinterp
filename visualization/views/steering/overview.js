@@ -5,15 +5,19 @@
 // (one polyline per extraction method). Clicking a card opens the detail panel.
 
 import { extractVectorSpec, extractRunMetrics } from './shared.js';
-import { displayLayer } from '../../core/display.js';
+import { displayLayer, getCssVar } from '../../core/display.js';
 
 // ── Constants ────────────────────────────────────────────────────
 
-const METHOD_COLORS = {
-    probe: '#7ab8e0',
-    mean_diff: '#e07ab8',
-    gradient: '#b8e07a',
-};
+// Soft palette for the small sparklines on overview cards (intentionally
+// lighter than the saturated --method-* palette used for detail charts).
+function getSparklineColors() {
+    return {
+        probe: getCssVar('--method-probe-soft'),
+        mean_diff: getCssVar('--method-mean-diff-soft'),
+        gradient: getCssVar('--method-gradient-soft'),
+    };
+}
 
 // ── State ────────────────────────────────────────────────────────
 
@@ -135,6 +139,7 @@ function processResults(results, coherenceThreshold) {
  * and the baseline score on the left.
  */
 function buildSparklineSVG(processed, width, height) {
+    const sparklineColors = getSparklineColors();
     const labelH = 10;   // bottom row for layer labels
     const padL = 16;      // left margin for baseline label
     const padR = 2;
@@ -167,7 +172,7 @@ function buildSparklineSVG(processed, width, height) {
 
     // Method lines
     for (const [method, data] of Object.entries(methods)) {
-        const color = METHOD_COLORS[method] || '#888';
+        const color = sparklineColors[method];
         const pts = data.points
             .map(p => `${x(p.layer).toFixed(1)},${y(p.score).toFixed(1)}`)
             .join(' ');
@@ -223,9 +228,9 @@ function buildLegendHTML() {
     return `<div class="steering-legend">
     <span>Overview (alphabetical) <span class="subsection-info-toggle" data-target="info-steering-overview">\u25BA</span></span>
     <span style="margin-left:auto;display:flex;gap:12px;">
-        <span><span style="color:var(--success);font-weight:600;">&gt; 20</span> strong</span>
-        <span><span style="font-weight:600;">5–20</span> moderate</span>
-        <span><span style="font-weight:600;">&lt; 5</span> weak</span>
+        <span><span style="color:var(--success);font-weight: var(--fw-semibold);">&gt; 20</span> strong</span>
+        <span><span style="font-weight: var(--fw-semibold);">5–20</span> moderate</span>
+        <span><span style="font-weight: var(--fw-semibold);">&lt; 5</span> weak</span>
     </span>
 </div>
 <div class="subsection-info" id="info-steering-overview">One card per trait. Big number is best &Delta; (trait score lift over baseline). Sparkline = &Delta; by layer, one line per extraction method. |&Delta;| &gt; 20 strong, 5–20 moderate, &lt; 5 weak.</div>`;

@@ -112,6 +112,7 @@ async def batched_adaptive_search(
     relevance_check: bool = True,
     direction: Literal["positive", "negative"] = "positive",
     trait_judge: Optional[str] = None,
+    norm_match: bool = False,
 ):
     """
     Run adaptive search for multiple layers in parallel batches.
@@ -162,13 +163,17 @@ async def batched_adaptive_search(
         print(f"\nBatched adaptive search: {n_layers} layers, {n_questions} questions, direction={direction}")
         print(f"Max layers per batch: {max_batch_layers} (user-specified)")
 
-    # Initialize state for each layer
+    # Initialize state for each layer.
+    # When norm_match=True, the hook scales vectors by ||residual_t|| at inference
+    # time, which subsumes the base_coef = ||resid||/||vector|| factor. Coefficient
+    # then has units of "fraction of residual norm" rather than absolute magnitude.
     layer_states = []
     for ld in layer_data:
+        start_coef = (start_mult if norm_match else ld.base_coef * start_mult) * sign
         layer_states.append({
             "layer": ld.layer,
             "vector": ld.vector,
-            "coef": ld.base_coef * start_mult * sign,  # Start with direction-appropriate sign
+            "coef": start_coef,
             "velocity": 1.0,  # Multiplicative velocity for momentum
             "history": [],
             "best_result": None,  # Track best for save_mode="best"
@@ -189,7 +194,7 @@ async def batched_adaptive_search(
             cached_configs = []
             uncached_states = []
             for i, state in enumerate(batch_states):
-                spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
+                spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"], norm_match=norm_match)
                 config = {"vectors": [spec.to_dict()]}
                 cached_result = find_cached_run(cached_runs, config)
                 if cached_result is not None:
@@ -217,6 +222,7 @@ async def batched_adaptive_search(
                     model, tokenizer, generation_configs,
                     component=component, max_new_tokens=max_new_tokens,
                     prompts=formatted_questions,
+                    norm_match=norm_match,
                 )
                 gen_time = time.time() - t0
                 print(f"({gen_time:.1f}s)")
@@ -268,7 +274,7 @@ async def batched_adaptive_search(
                     state["history"].append((state["coef"], trait_mean, coherence_mean))
 
                     # Save results
-                    spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
+                    spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"], norm_match=norm_match)
                     config = {"vectors": [spec.to_dict()]}
                     result = JudgeResult(
                         trait_mean=trait_mean,
@@ -392,6 +398,7 @@ def _process_config_result(
     save_mode: str,
     coherence_threshold: float,
     trait_judge: Optional[str],
+    norm_match: bool = False,
 ):
     """Process scores for a single config state — update history (all ranks), save results (rank-0).
 
@@ -402,7 +409,7 @@ def _process_config_result(
     state["history"].append((state["coef"], trait_mean, coherence_mean))
 
     from utils.metrics import score_stats as _score_stats
-    spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
+    spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"], norm_match=norm_match)
     config = {"vectors": [spec.to_dict()]}
     stats = {}
     if scores is not None:
@@ -461,6 +468,7 @@ async def multi_trait_batched_adaptive_search(
     coherence_threshold: float = MIN_COHERENCE,
     relevance_check: bool = True,
     trait_judge: Optional[str] = None,
+    norm_match: bool = False,
 ):
     """
     Run adaptive search for multiple traits × layers in parallel batches.
@@ -482,10 +490,11 @@ async def multi_trait_batched_adaptive_search(
         tc_direction = tc.direction
         tc_sign = 1 if tc_direction == "positive" else -1
         for ld in tc.layer_data:
+            start_coef = (start_mult if norm_match else ld.base_coef * start_mult) * tc_sign
             config_states.append({
                 "layer": ld.layer,
                 "vector": ld.vector,
-                "coef": ld.base_coef * start_mult * tc_sign,
+                "coef": start_coef,
                 "velocity": 1.0,
                 "history": [],
                 "best_result": None,
@@ -529,7 +538,7 @@ async def multi_trait_batched_adaptive_search(
         # Split cached vs uncached
         uncached_states = []
         for state in active_states:
-            spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"])
+            spec = VectorSpec(layer=state["layer"], component=component, position=position, method=method, weight=state["coef"], norm_match=norm_match)
             config = {"vectors": [spec.to_dict()]}
             cached_result = find_cached_run(state["cached_runs"], config)
             if cached_result is not None:
@@ -559,6 +568,7 @@ async def multi_trait_batched_adaptive_search(
                 per_config_responses = batched_steering_generate(
                     model, tokenizer, generation_configs,
                     component=component, max_new_tokens=max_new_tokens,
+                    norm_match=norm_match,
                 )
                 gen_time = time.time() - t0
                 print(f"gen={gen_time:.1f}s", end=" ", flush=True)
@@ -624,6 +634,7 @@ async def multi_trait_batched_adaptive_search(
                         state_scores, state_responses,
                         component, position, method, model_variant, prompt_set,
                         save_mode, coherence_threshold, trait_judge,
+                        norm_match=norm_match,
                     )
                     print(f"    {state['trait']} L{state['layer']:2d} c{state['coef']:>6.1f}: trait={trait_mean:5.1f}, coh={coherence_mean:5.1f}")
 

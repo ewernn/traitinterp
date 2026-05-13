@@ -15,8 +15,6 @@ from core.hooks import (
     MultiLayerCapture,
     MultiLayerSteering,
     MultiLayerAblation,
-    get_hook_path,
-    detect_contribution_paths,
 )
 
 
@@ -30,20 +28,20 @@ class TestHookManager:
     def test_navigate_path_valid(self, mock_model):
         """Navigates to nested module via dot-separated path."""
         manager = HookManager(mock_model)
-        layer = manager._navigate_path("model.layers.0")
+        layer = manager.model.get_submodule("model.layers.0")
         assert layer is mock_model.model.layers[0]
 
     def test_navigate_path_with_numeric_index(self, mock_model):
         """Handles numeric indices in path."""
         manager = HookManager(mock_model)
-        layer2 = manager._navigate_path("model.layers.2")
+        layer2 = manager.model.get_submodule("model.layers.2")
         assert layer2 is mock_model.model.layers[2]
 
     def test_navigate_path_invalid_raises(self, mock_model):
         """AttributeError on invalid path."""
         manager = HookManager(mock_model)
         with pytest.raises(AttributeError):
-            manager._navigate_path("model.nonexistent.path")
+            manager.model.get_submodule("model.nonexistent.path")
 
     def test_add_forward_hook_fires(self, mock_model, hidden_dim):
         """Hook function is called during forward pass."""
@@ -275,6 +273,71 @@ class TestSteeringHook:
         hook = SteeringHook(mock_model, vector, "model.layers.0", coefficient=1.0)
         assert hook.vector.dtype == torch.float32
 
+    def test_norm_match_per_token_magnitude(self, mock_model, hidden_dim):
+        """norm_match=True: per-token addend has magnitude coef * ||residual_t||.
+
+        For unit-direction vector v, the added delta at token t equals
+        coef * ||residual_t|| * v_hat. Verifies the residual-norm match property
+        rather than the original residual-norm preservation.
+        """
+        vector = torch.randn(hidden_dim)
+        v_unit = vector / vector.norm()
+
+        # Capture original residual
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+
+        coef = 1.5
+        with SteeringHook(mock_model, vector, "model.layers.0",
+                          coefficient=coef, norm_match=True):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        steered = cap.get()
+
+        diff = steered - original
+        # Per-token addend should equal coef * ||original_t|| * v_unit
+        r_norms = original.float().norm(dim=-1, keepdim=True)  # [1, 4, 1]
+        expected = coef * r_norms * v_unit
+        assert torch.allclose(diff, expected, atol=1e-5)
+
+    def test_norm_match_differs_from_plain(self, mock_model, hidden_dim):
+        """norm_match=True produces a different output than norm_match=False."""
+        vector = torch.randn(hidden_dim)
+        x = torch.randn(1, 4, hidden_dim) * 3.0  # non-unit residual norms
+
+        with SteeringHook(mock_model, vector, "model.layers.0",
+                          coefficient=1.0, norm_match=False):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        plain = cap.get()
+
+        with SteeringHook(mock_model, vector, "model.layers.0",
+                          coefficient=1.0, norm_match=True):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        matched = cap.get()
+
+        assert not torch.allclose(plain, matched, atol=1e-3)
+
+    def test_norm_match_zero_coefficient_no_change(self, mock_model, hidden_dim):
+        """norm_match with coef=0 leaves output unchanged."""
+        vector = torch.randn(hidden_dim)
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+
+        with SteeringHook(mock_model, vector, "model.layers.0",
+                          coefficient=0.0, norm_match=True):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        steered = cap.get()
+
+        assert torch.allclose(original, steered, atol=1e-6)
+
 
 # =============================================================================
 # AblationHook tests
@@ -355,89 +418,8 @@ class TestAblationHook:
 
 
 # =============================================================================
-# get_hook_path tests
+# Path resolution + arch detection moved to test_architectures.py
 # =============================================================================
-
-class TestGetHookPath:
-    """Tests for get_hook_path utility."""
-
-    def test_residual_path(self):
-        """Returns layer path for residual."""
-        path = get_hook_path(16, "residual")
-        assert path == "model.layers.16"
-
-    def test_attn_out_path(self):
-        """Returns attention output path."""
-        path = get_hook_path(5, "attn_out")
-        assert path == "model.layers.5.self_attn.o_proj"
-
-    def test_mlp_out_path(self):
-        """Returns MLP output path."""
-        path = get_hook_path(10, "mlp_out")
-        assert path == "model.layers.10.mlp.down_proj"
-
-    def test_k_proj_path(self):
-        """Returns key projection path."""
-        path = get_hook_path(3, "k_proj")
-        assert path == "model.layers.3.self_attn.k_proj"
-
-    def test_v_proj_path(self):
-        """Returns value projection path."""
-        path = get_hook_path(7, "v_proj")
-        assert path == "model.layers.7.self_attn.v_proj"
-
-    def test_custom_prefix(self):
-        """Respects custom prefix."""
-        path = get_hook_path(2, "residual", prefix="base_model.model.model.layers")
-        assert path == "base_model.model.model.layers.2"
-
-    def test_unknown_component_raises(self):
-        """ValueError for invalid component."""
-        with pytest.raises(ValueError, match="Unknown component"):
-            get_hook_path(0, "not_a_component")
-
-    def test_contribution_requires_model(self):
-        """ValueError when model=None for contribution components."""
-        with pytest.raises(ValueError, match="requires model parameter"):
-            get_hook_path(0, "attn_contribution", model=None)
-
-        with pytest.raises(ValueError, match="requires model parameter"):
-            get_hook_path(0, "mlp_contribution", model=None)
-
-    def test_attn_contribution_llama_style(self, mock_model):
-        """attn_contribution resolves to o_proj for Llama-style."""
-        path = get_hook_path(0, "attn_contribution", model=mock_model)
-        assert "self_attn.o_proj" in path
-
-    def test_attn_contribution_gemma2_style(self, mock_gemma2_model):
-        """attn_contribution resolves to post_attention_layernorm for Gemma-2."""
-        path = get_hook_path(0, "attn_contribution", model=mock_gemma2_model)
-        assert "post_attention_layernorm" in path
-
-
-# =============================================================================
-# detect_contribution_paths tests
-# =============================================================================
-
-class TestDetectContributionPaths:
-    """Tests for architecture detection."""
-
-    def test_detect_llama_pattern(self, mock_model):
-        """Detects Llama/Mistral pattern (pre-norm only)."""
-        paths = detect_contribution_paths(mock_model)
-        assert paths['attn_contribution'] == 'self_attn.o_proj'
-        assert paths['mlp_contribution'] == 'mlp.down_proj'
-
-    def test_detect_gemma2_pattern(self, mock_gemma2_model):
-        """Detects Gemma-2 pattern (post-sublayer norms)."""
-        paths = detect_contribution_paths(mock_gemma2_model)
-        assert paths['attn_contribution'] == 'post_attention_layernorm'
-        assert paths['mlp_contribution'] == 'post_feedforward_layernorm'
-
-    def test_unknown_architecture_raises(self, mock_unknown_model):
-        """ValueError for unrecognized architecture."""
-        with pytest.raises(ValueError, match="Unknown architecture"):
-            detect_contribution_paths(mock_unknown_model)
 
 
 # =============================================================================

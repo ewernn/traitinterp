@@ -59,17 +59,61 @@ meta.n_layers, meta.hidden_dim, meta.captured_layers, meta.activation_norms
 
 ---
 
+## Architecture Registry
+
+Per-arch hook paths and module trees, declared once in `core/architectures/`. One
+`Architecture` instance per HuggingFace `model_type`.
+
+```python
+from core.architectures import (
+    get_architecture, Architecture, HybridArchitecture, COMPONENTS,
+    UnsupportedComponentError, ArchitectureMismatchError,
+    layers, layer_prefix, inner_model,
+)
+
+arch = get_architecture(model)             # resolves model.config.model_type
+arch.path("attn_contribution", layer=16, model=model)  # canonical hook path (LoRA-aware, hybrid-correct)
+arch.paths_for_layer(16, model=model)      # LayerPaths(...); None means component absent
+arch.supported_components(16)              # set of component names present at this layer
+arch.layers(model)                         # nn.ModuleList of blocks
+arch.layer_prefix(model)                   # "model.layers" (LoRA-aware)
+arch.inner_model(model)                    # unwrap PeftModel / multimodal wrappers
+arch.validate(model)                       # raise ArchitectureMismatchError if live tree diverges
+arch.discover(model, layer=0)              # runtime list of all submodule dot-paths under one block
+```
+
+**Components** (`COMPONENTS`): `residual`, `attn_contribution`, `mlp_contribution`, `k_proj`, `v_proj`.
+Contribution components are post-norm-aware (Gemma2/Gemma3/OLMo2 hook the post-norm output;
+Llama/Mistral/Qwen hook the raw sublayer output — same direction, different module).
+
+**Supported model_types** (adapters in `core/architectures/`):
+`llama`, `mistral`, `qwen2`, `qwen3`, `qwen3_next`, `gemma2`, `gemma3`, `olmo2`, `gpt_oss`, `deepseek_v3`.
+Aliases: `kimi_k2 → deepseek_v3`, `gemma3_text → gemma3`, `qwen3_5 → qwen3_next`.
+
+**Errors**:
+- `UnsupportedComponentError` — component absent for this arch/layer (e.g. `k_proj` on MLA, on a
+  Qwen3.5 linear-attn layer, or on any Mamba block).
+- `ArchitectureMismatchError` — `module_tree` declares paths that don't resolve on the live model
+  (typically a `device_map="auto"` quantization wrapper changed module names, or the wrong adapter
+  was selected).
+
+**Adding an architecture**: create `core/architectures/{model_type}.py`, declare `Architecture(...)`
+or a `HybridArchitecture` subclass, call `register(model_type, arch)`. The architecture is picked up
+on next import via the side-effect imports at the bottom of `core/architectures/__init__.py`.
+
+---
+
 ## Hooks
 
 ```python
-from core import CaptureHook, MultiLayerCapture, SteeringHook, AblationHook, get_hook_path, detect_contribution_paths
+from core import CaptureHook, MultiLayerCapture, SteeringHook, AblationHook
 
 # Capture from one layer
 with CaptureHook(model, "model.layers.16") as hook:
     model(**inputs)
 activations = hook.get()  # [batch, seq, hidden]
 
-# Capture from multiple layers
+# Capture from multiple layers (path resolution via the Architecture registry)
 with MultiLayerCapture(model, layers=[14, 15, 16]) as capture:
     model(**inputs)
 acts = capture.get(16)
@@ -95,30 +139,18 @@ vector = torch.load('vectors/probe_layer16.pt')
 with SteeringHook(model, vector, "model.layers.16", coefficient=1.5):
     output = model.generate(**inputs)
 
+# Norm-matched steering: addend = coef * ||residual_t|| * unit(vector)
+# Residual-only; coef is "fraction of residual norm" (dimensionless).
+with SteeringHook(model, vector, "model.layers.16", coefficient=0.7, norm_match=True):
+    output = model.generate(**inputs)
+
 # Ablate direction (project out vector from output)
 # Implements x' = x - (x · r̂) * r̂
 with AblationHook(model, direction, "model.layers.16"):
     output = model.generate(**inputs)
-
-# Path helper (layer + component -> string)
-get_hook_path(16)                    # "model.layers.16" (residual)
-get_hook_path(16, "attn_contribution", model=model)
-# Gemma-2: "model.layers.16.post_attention_layernorm"
-# Llama:   "model.layers.16.self_attn.o_proj"
-
-# Components: residual, attn_contribution*, mlp_contribution*, k_proj, v_proj
-# *contribution components require model parameter (auto-detect architecture)
 ```
 
-**Architecture detection:**
-```python
-from core import detect_contribution_paths
-
-paths = detect_contribution_paths(model)
-# Gemma-2: {'attn_contribution': 'post_attention_layernorm', 'mlp_contribution': 'post_feedforward_layernorm'}
-# Llama/Mistral/Qwen: {'attn_contribution': 'self_attn.o_proj', 'mlp_contribution': 'mlp.down_proj'}
-# Unknown architecture: raises ValueError with diagnostic info
-```
+For path resolution, see the [Architecture Registry](#architecture-registry) section above.
 
 **Projection hooks** (used by inference pipeline for on-GPU projection):
 ```python
@@ -163,7 +195,8 @@ with ActivationCappingHook(model, vector, "model.layers.16", threshold=0.5):
 **Validation:** Hooks fail fast on invalid inputs:
 - `SteeringHook` / `AblationHook`: Reject non-1D vectors
 - `AblationHook`: Reject zero or near-zero direction vectors
-- `detect_contribution_paths`: Raise `ValueError` for unrecognized architectures
+- `get_architecture`: Raise `ValueError` for unregistered model_type
+- `Architecture.validate(model)`: Raise `ArchitectureMismatchError` if live module tree diverges from `module_tree`
 
 ---
 
@@ -266,18 +299,31 @@ comparison = vector_set_comparison(vecs_a, vecs_b)  # cross-set cosine + orthogo
 
 **Metrics (operate on projection scores):**
 ```python
-from core import accuracy, effect_size, polarity_correct
+from core import accuracy, effect_size, polarity_correct, auroc
 
 # First compute projections
 pos_proj = batch_cosine_similarity(pos_acts, vector)
 neg_proj = batch_cosine_similarity(neg_acts, vector)
 
 # Then compute metrics
-acc = accuracy(pos_proj, neg_proj)                    # 0.0 to 1.0
-d = effect_size(pos_proj, neg_proj)                   # 0.2=small, 0.5=medium, 0.8=large
+acc = accuracy(pos_proj, neg_proj)                    # 0.0 to 1.0 (midpoint threshold)
+d = effect_size(pos_proj, neg_proj)                   # Cohen's d. 0.2=small, 0.5=med, 0.8=large
 d = effect_size(pos_proj, neg_proj, signed=True)      # Preserve sign (pos > neg = positive)
+auc = auroc(pos_proj, neg_proj)                       # 0.5=chance, 1.0=perfect, 0.0=flipped
 ok = polarity_correct(pos_proj, neg_proj)             # True if pos_mean > neg_mean
 ```
+
+**Vector quality (one call, val + OOD):**
+```python
+from core import compute_vector_quality
+
+metrics = compute_vector_quality(vector, val_pos, val_neg, ood_pos, ood_neg)
+# {val_accuracy, val_effect_size, val_auroc, polarity_correct,
+#  ood_accuracy, ood_effect_size, ood_auroc, ood_polarity_correct}
+# OOD keys present only when ood_* tensors are non-empty.
+```
+
+This primitive is what stage 4 of the extraction pipeline calls when computing per-vector validation metrics. Use it directly to re-validate any saved vector against fresh held-out activations without re-running extraction.
 
 ---
 
@@ -449,6 +495,7 @@ core/
 ├── types.py         # VectorSpec, VectorResult, JudgeResult, ProjectionConfig, ModelVariant, SteeringEntry, ResponseRecord, ProjectionEntry, ProjectionRecord, SteeringRunRecord, SteeringResults, ActivationMetadata, ModelConfig
 ├── hooks.py         # CaptureHook, SteeringHook, PerPositionSteeringHook, ProjectionHook, MultiLayerCapture, MultiLayerProjection, ...
 ├── methods.py       # Extraction methods (probe, mean_diff, gradient)
-├── math.py          # projection, cosine_similarity, batch_cosine_similarity, pairwise_cosine_matrix, pca, project_out_subspace, grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs, trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation, accuracy, effect_size, pearson_correlation
+├── math.py          # projection, cosine_similarity, batch_cosine_similarity, pairwise_cosine_matrix, pca, project_out_subspace, grand_mean_center, compute_top_pcs_by_variance, denoise_with_pcs, trait_clusters, representational_similarity, vector_set_comparison, pca_norm_correlation, accuracy, effect_size, auroc, polarity_correct, pearson_correlation
+├── validation.py    # compute_vector_quality (val + OOD: accuracy, effect_size, auroc, polarity_correct)
 └── generation.py    # HookedGenerator for generation with capture/steering
 ```

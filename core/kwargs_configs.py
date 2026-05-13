@@ -41,6 +41,7 @@ class SteeringConfig:
     down_mult: float = 0.85
     start_mult: float = 0.7
     momentum: float = 0.1
+    norm_match: bool = False  # rescale steering vector to ||residual_t|| per token (residual component only)
 
     # Vector
     method: str = "probe"

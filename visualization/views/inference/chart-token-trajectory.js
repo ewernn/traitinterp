@@ -180,15 +180,15 @@ function renderTrajectoryChart(renderCtx) {
     let compareInfoHtml = '';
     if (showingDiff && isReplaySuffix) {
         const organismName = window.state.lastCompareVariant || (window.state.availableComparisonModels || [])[0] || 'organism';
-        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: 500;">
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: var(--fw-medium);">
             Showing DIFF: ${organismName} \u2212 instruct replay
            </div>`;
     } else if (showingDiff) {
-        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: 500;">
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: var(--fw-medium);">
             Showing DIFF: ${compareModelName} \u2212 application model
            </div>`;
     } else if (showingCompModel) {
-        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: 500;">
+        compareInfoHtml = `<div class="page-intro-text" style="color: var(--accent-color); font-weight: var(--fw-medium);">
             Showing: ${compareModelName} (comparison model)
            </div>`;
     }

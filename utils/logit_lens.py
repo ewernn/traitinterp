@@ -14,7 +14,7 @@ Usage:
 import torch
 from typing import Dict
 
-from utils.model import get_inner_model
+from core.architectures import inner_model
 
 
 # =============================================================================
@@ -74,7 +74,7 @@ def vector_to_vocab(
     Returns:
         Dict with 'toward' and 'away' token lists, each entry is {"token": str, "value": float}
     """
-    inner = get_inner_model(model)
+    inner = inner_model(model)
 
     # Optionally apply final norm (matches how residual stream is processed)
     if apply_norm and hasattr(inner, 'norm'):

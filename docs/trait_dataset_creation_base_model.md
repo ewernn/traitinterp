@@ -12,7 +12,7 @@ Create datasets for extracting and validating behavioral trait vectors.
 6. **Steer + Evaluate** — apply vector to instruct model, measure delta. 3 metrics: trait score, coherence, naturalness.
 7. **Iterate** — diagnose which phase failed, fix, re-run.
 
-**Optional**: add `ood_positive.jsonl` and `ood_negative.jsonl` (same format as `positive.jsonl` / `negative.jsonl`) drawn from a different distribution than training — different topics, prompt phrasings, or system-prompt wording. Stage 3 captures their activations alongside training, and `extraction_evaluation.py` writes `ood_accuracy` / `ood_effect_size` / `ood_polarity_correct` per-layer. This activates the OOD tier in `select_vector()`'s validation hierarchy (see [extraction_guide.md#vector-selection](extraction_guide.md#vector-selection)). Useful when you suspect the in-distribution validation rewards dataset confounds.
+**Optional**: add `ood_positive.jsonl` and `ood_negative.jsonl` (same format as `positive.jsonl` / `negative.jsonl`) drawn from a different distribution than training — different topics, prompt phrasings, or system-prompt wording. Stage 3 captures their activations alongside training, and `extraction_evaluation.py` writes `ood_accuracy` / `ood_effect_size` / `ood_auroc` / `ood_polarity_correct` per-layer. This activates the OOD tier in `select_vector()`'s validation hierarchy (see [extraction_guide.md#vector-selection](extraction_guide.md#vector-selection)). Useful when you suspect the in-distribution validation rewards dataset confounds.
 
 ## Key Principles
 

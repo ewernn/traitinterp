@@ -190,8 +190,9 @@ async function fetchCrossPromptSpans(baseTrait, compareModel, windowLength, topK
 }
 
 /**
- * Compute top-K highest-delta spans using a sliding window over per-token diff values.
- * Returns spans sorted by absolute mean delta (highest magnitude first).
+ * Compute top-K spans by mean delta using a sliding window over per-token diff values.
+ * Returns spans sorted by signed mean delta in the requested order
+ * (`desc` ranks most-positive first, `asc` ranks most-negative first).
  */
 function computeTopSpans(diffValues, tokens, windowLength, topK = 10, order = 'desc') {
     if (!diffValues || diffValues.length === 0 || windowLength < 1) return [];

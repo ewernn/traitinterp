@@ -1,27 +1,32 @@
 # Research Findings Index
 # List of filenames in display order
 # Title and preview come from frontmatter in each .md file
+#
+# TRIAGE MODE: all findings shown for review. Tags below group by triage status.
 
 findings:
-  # - mats-behavioral-probes.md            # WIP — markdown + 20+ assets untracked
+  - separator: "── HEADLINE FINDINGS (keep, polish) ──"
   - emotion-concepts-replication.md
-  - separator: most of these below are outdated or incomplete and AI generated, but feel free to skim. Cleaning these up by the end of April 2026
   - assistant-axis-replication.md
+  - liars-bench-deception.md
+  - convolution-detector.md
   - comparison-persona-vectors.md
   - rm-sycophancy.md
-  - convolution-detector.md
-  - liars-bench-deception.md
-  - prefill-dynamics.md
+  - thought-branches-analysis.md
   - component-decomposition.md
-  - comparison-arditi-refusal.md
+  - effect-size-vs-steering.md
+
+  - separator: "── METHODS & CALIBRATION (keep, light pass) ──"
+  - prefill-dynamics.md
   - massive-activations.md
   - quantization-sensitivity.md
-  - 1st-vs-3rd-person.md
-  # - coefficient-scaling-law.md       # TODO in title, missing chart + script
   - llm-judge-optimization.md
-  # - ood-cross-model.md                # stub, no backing data
-  # - ood-formality.md                  # datasets and scripts missing
-  - effect-size-vs-steering.md
-  # - model-diff-analysis.md            # superseded by comparison-persona-vectors
-  # - component-comparison-refusal.md   # subset of component-decomposition
-  - thought-branches-analysis.md
+  - coefficient-scaling-law.md
+
+  - separator: "── FOLD INTO NEIGHBORS (drop standalone) ──"
+  # - comparison-arditi-refusal.md     # NEEDS RERUN — see experiments/arditi-refusal-replication/REDO.md
+  - 1st-vs-3rd-person.md               # → fold into extraction methodology note
+
+  - separator: "── DECIDE: keep-and-fix OR delete ──"
+  - mats-behavioral-probes.md          # WIP — 20+ assets untracked. Strong core (89% TPR cross-model). Promote if assets ship.
+

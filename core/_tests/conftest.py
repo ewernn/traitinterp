@@ -66,16 +66,39 @@ def overlapping_neg(hidden_dim):
 # Mock models for hook testing
 # =============================================================================
 
-class MockTransformerLayer(nn.Module):
-    """Minimal transformer layer for hook testing."""
+class MockAttn(nn.Module):
+    """Mock attention block exposing o_proj/k_proj/v_proj for path resolution."""
 
     def __init__(self, hidden_dim):
         super().__init__()
-        self.self_attn = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.mlp = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        # Initialize to identity-like behavior
-        nn.init.eye_(self.self_attn.weight)
-        nn.init.eye_(self.mlp.weight)
+        self.o_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.k_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.v_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        nn.init.eye_(self.o_proj.weight)
+
+    def forward(self, x):
+        return self.o_proj(x)
+
+
+class MockMLP(nn.Module):
+    """Mock MLP exposing down_proj for path resolution."""
+
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.down_proj = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        nn.init.eye_(self.down_proj.weight)
+
+    def forward(self, x):
+        return self.down_proj(x)
+
+
+class MockTransformerLayer(nn.Module):
+    """Minimal Llama-shaped transformer layer for hook testing."""
+
+    def __init__(self, hidden_dim):
+        super().__init__()
+        self.self_attn = MockAttn(hidden_dim)
+        self.mlp = MockMLP(hidden_dim)
 
     def forward(self, x):
         return x + self.self_attn(x) + self.mlp(x)
@@ -86,13 +109,11 @@ class MockGemma2Layer(nn.Module):
 
     def __init__(self, hidden_dim):
         super().__init__()
-        self.self_attn = nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.mlp = nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.self_attn = MockAttn(hidden_dim)
+        self.mlp = MockMLP(hidden_dim)
         self.pre_feedforward_layernorm = nn.LayerNorm(hidden_dim)
         self.post_attention_layernorm = nn.LayerNorm(hidden_dim)
         self.post_feedforward_layernorm = nn.LayerNorm(hidden_dim)
-        nn.init.eye_(self.self_attn.weight)
-        nn.init.eye_(self.mlp.weight)
 
     def forward(self, x):
         attn_out = self.post_attention_layernorm(self.self_attn(x))
@@ -101,10 +122,11 @@ class MockGemma2Layer(nn.Module):
 
 
 class MockConfig:
-    """Minimal config object for model.config.num_hidden_layers."""
+    """Minimal config object - carries model_type so the Architecture registry resolves."""
 
-    def __init__(self, n_layers):
+    def __init__(self, n_layers, model_type="llama"):
         self.num_hidden_layers = n_layers
+        self.model_type = model_type
 
 
 class MockModel(nn.Module):
@@ -129,7 +151,7 @@ class MockGemma2Model(nn.Module):
         super().__init__()
         self.model = nn.Module()
         self.model.layers = nn.ModuleList([MockGemma2Layer(hidden_dim) for _ in range(n_layers)])
-        self.config = MockConfig(n_layers)
+        self.config = MockConfig(n_layers, model_type="gemma2")
 
     def forward(self, x):
         for layer in self.model.layers:
@@ -155,7 +177,7 @@ class MockUnknownModel(nn.Module):
         super().__init__()
         self.model = nn.Module()
         self.model.layers = nn.ModuleList([MockUnknownArchLayer(hidden_dim) for _ in range(n_layers)])
-        self.config = MockConfig(n_layers)
+        self.config = MockConfig(n_layers, model_type="not_a_real_arch")
 
     def forward(self, x):
         for layer in self.model.layers:

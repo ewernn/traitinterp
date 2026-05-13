@@ -57,7 +57,8 @@ from contextlib import nullcontext
 from datetime import datetime
 from tqdm import tqdm
 
-from core import SteeringHook, get_hook_path
+from core import SteeringHook
+from core.hooks import resolve_hook_path
 from utils.model import load_model_with_lora, tokenize, tokenize_batch
 from utils.paths import get as get_path, get_model_variant
 from utils.vector_selection import select_vector
@@ -566,7 +567,7 @@ def main():
         if vector is None:
             print(f"Error: Vector not found for L{layer} {method} {component} {position}")
             sys.exit(1)
-        path = get_hook_path(layer)
+        path = resolve_hook_path(model, layer, "residual")
         steering_ctx = SteeringHook(model, vector, path, coefficient=args.coef)
         steering_info = {
             "trait": args.traits,

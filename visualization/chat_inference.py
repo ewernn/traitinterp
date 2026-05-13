@@ -416,7 +416,8 @@ class ChatInference:
         # Build steering hooks if steering_configs provided
         steering_hooks = []
         if steering_configs:
-            from core import SteeringHook, get_hook_path
+            from core import SteeringHook
+            from core.hooks import resolve_hook_path
             for cfg in steering_configs:
                 trait = cfg.get('trait', '')
                 coef = cfg.get('coefficient', 0)
@@ -428,7 +429,7 @@ class ChatInference:
                         # the eval-optimal coefficient so 1x = full strength.
                         optimal = info.get('coefficient') or 1.0
                         actual_coef = coef * optimal
-                        path = get_hook_path(info['layer'], 'residual', model=self.model)
+                        path = resolve_hook_path(self.model, info['layer'], 'residual')
                         hook = SteeringHook(self.model, info['vector'], path, coefficient=actual_coef)
                         hook.__enter__()  # Register the hook
                         steering_hooks.append(hook)

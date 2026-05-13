@@ -15,21 +15,36 @@ let findingsMetadata = {};  // Cache: filename -> {title, preview}
 let loadedFindings = {};  // Cache: filename -> rendered HTML
 
 /**
- * Render a thumbnail bar chart for finding cards
- * @param {Object} thumbnail - { title, bars: [{label, value}] }
+ * Render a thumbnail chart (bar or line) for finding cards.
+ *
+ * Frontmatter shapes (pick one):
+ *   thumbnail:
+ *     title: "..."
+ *     bars: [{label, value}, ...]
+ *
+ *   thumbnail:
+ *     title: "..."
+ *     line:
+ *       x: [...]            # optional, defaults to 0..N-1
+ *       y: [...]
+ *       floor: 70           # optional dashed reference line
+ *       y_min: 0            # optional axis min (default: min(y))
+ *       y_max: 100          # optional axis max (default: max(y))
  */
 function renderThumbnailChart(thumbnail) {
-    if (!thumbnail?.bars?.length) return '';
+    if (!thumbnail) return '';
+    if (thumbnail.line) return renderThumbnailLine(thumbnail);
+    if (thumbnail.bars?.length) return renderThumbnailBars(thumbnail);
+    return '';
+}
 
-    // Parse values - handle both numeric and string (e.g., "97%")
+function renderThumbnailBars(thumbnail) {
     const parsedBars = thumbnail.bars.map(bar => {
         const valueStr = String(bar.value);
         const isPercent = valueStr.endsWith('%');
         const numValue = parseFloat(valueStr);
         return { ...bar, numValue, isPercent, displayValue: bar.value };
     });
-
-    // For percentages, use 100 as max; otherwise use actual max
     const hasPercent = parsedBars.some(b => b.isPercent);
     const maxValue = hasPercent ? 100 : Math.max(...parsedBars.map(b => b.numValue));
 
@@ -50,6 +65,80 @@ function renderThumbnailChart(thumbnail) {
         <div class="thumbnail-chart">
             <div class="thumb-title">${thumbnail.title || ''}</div>
             <div class="thumb-bars">${barsHtml}</div>
+        </div>
+    `;
+}
+
+/** Inline SVG line: minimal, axis labels only (no ticks), optional dashed floor. */
+function renderThumbnailLine(thumbnail) {
+    const { line } = thumbnail;
+    const ys = line.y || [];
+    if (ys.length < 2) return '';
+    const xs = line.x && line.x.length === ys.length
+        ? line.x
+        : ys.map((_, i) => i);
+
+    // Reserve gutters for axis labels
+    const W = 130, H = 70;
+    const left = 14, right = 4, top = 2, bottom = 14;
+    const xMin = Math.min(...xs);
+    const xMax = Math.max(...xs);
+    const yMin = line.y_min !== undefined ? line.y_min : Math.min(...ys);
+    const yMax = line.y_max !== undefined ? line.y_max : Math.max(...ys);
+    const xSpan = (xMax - xMin) || 1;
+    const ySpan = (yMax - yMin) || 1;
+    const sx = x => left + ((x - xMin) / xSpan) * (W - left - right);
+    const sy = y => (H - bottom) - ((y - yMin) / ySpan) * (H - top - bottom);
+
+    const points = xs.map((x, i) => `${sx(x).toFixed(1)},${sy(ys[i]).toFixed(1)}`).join(' ');
+
+    let floorEl = '';
+    let crossingEl = '';
+    if (line.floor !== undefined && line.floor >= yMin && line.floor <= yMax) {
+        const fy = sy(line.floor).toFixed(1);
+        floorEl = `<line x1="${left}" x2="${W - right}" y1="${fy}" y2="${fy}" stroke="currentColor" stroke-opacity="0.35" stroke-width="0.8" stroke-dasharray="2 2"/>`;
+        // Linear interpolation: find the first x at which the line crosses the floor (descending only)
+        let crossX = null;
+        for (let i = 0; i < xs.length - 1; i++) {
+            const [y1, y2] = [ys[i], ys[i + 1]];
+            if (y1 > line.floor && y2 <= line.floor && y1 !== y2) {
+                const frac = (y1 - line.floor) / (y1 - y2);
+                crossX = xs[i] + frac * (xs[i + 1] - xs[i]);
+                break;
+            }
+        }
+        if (crossX !== null) {
+            const cxPx = sx(crossX).toFixed(1);
+            const fyPx = sy(line.floor);
+            // Drop a thin tick from the floor line down to the x axis at the crossing
+            const tick = `<line x1="${cxPx}" x2="${cxPx}" y1="${fyPx.toFixed(1)}" y2="${(H - bottom).toFixed(1)}" stroke="currentColor" stroke-opacity="0.55" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>`;
+            // Label sits just above the floor, anchored at the crossing
+            const label = `<text x="${(parseFloat(cxPx) + 2).toFixed(1)}" y="${(fyPx - 2).toFixed(1)}" text-anchor="start" font-size="9" font-weight="600" fill="currentColor" fill-opacity="0.95">${crossX.toFixed(2)}</text>`;
+            crossingEl = tick + label;
+        }
+    }
+
+    const dots = xs.map((x, i) => `<circle cx="${sx(x).toFixed(1)}" cy="${sy(ys[i]).toFixed(1)}" r="1.6" fill="currentColor" fill-opacity="0.9"/>`).join('');
+
+    const xLabel = line.x_label || '';
+    const yLabel = line.y_label || '';
+    const xLabelEl = xLabel
+        ? `<text x="${(left + W - right) / 2}" y="${H - 2}" text-anchor="middle" font-size="9" fill="currentColor" fill-opacity="0.85">${xLabel}</text>`
+        : '';
+    const yLabelEl = yLabel
+        ? `<text x="${5}" y="${(top + H - bottom) / 2}" text-anchor="middle" font-size="9" fill="currentColor" fill-opacity="0.85" transform="rotate(-90 5 ${(top + H - bottom) / 2})">${yLabel}</text>`
+        : '';
+
+    return `
+        <div class="thumbnail-chart thumbnail-chart-line">
+            <svg class="thumb-line-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+                ${floorEl}
+                <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-opacity="0.85" stroke-linecap="round" stroke-linejoin="round"/>
+                ${dots}
+                ${crossingEl}
+                ${xLabelEl}
+                ${yLabelEl}
+            </svg>
         </div>
     `;
 }

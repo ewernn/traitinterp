@@ -180,6 +180,38 @@ def polarity_correct(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> bool:
     return bool(pos_proj.mean() > neg_proj.mean())
 
 
+def auroc(pos_proj: torch.Tensor, neg_proj: torch.Tensor) -> float:
+    """Area under ROC curve. 0.5 = chance, 1.0 = perfect, 0.0 = perfect (flipped polarity).
+
+    Computed via Mann-Whitney U statistic: probability that a random positive
+    scores higher than a random negative. Tied scores count as 0.5.
+    """
+    n_pos = pos_proj.numel()
+    n_neg = neg_proj.numel()
+    if n_pos == 0 or n_neg == 0:
+        return 0.5
+    scores = torch.cat([pos_proj.flatten(), neg_proj.flatten()])
+    labels = torch.cat([torch.ones(n_pos), torch.zeros(n_neg)])
+    order = torch.argsort(scores)
+    ranks = torch.empty_like(scores, dtype=torch.float64)
+    ranks[order] = torch.arange(1, scores.numel() + 1, dtype=torch.float64)
+    # Average ranks for ties
+    sorted_scores = scores[order]
+    i = 0
+    while i < sorted_scores.numel():
+        j = i
+        while j + 1 < sorted_scores.numel() and sorted_scores[j + 1] == sorted_scores[i]:
+            j += 1
+        if j > i:
+            avg_rank = (ranks[order[i]] + ranks[order[j]]) / 2
+            for k in range(i, j + 1):
+                ranks[order[k]] = avg_rank
+        i = j + 1
+    pos_rank_sum = ranks[labels == 1].sum().item()
+    u = pos_rank_sum - n_pos * (n_pos + 1) / 2
+    return float(u / (n_pos * n_neg))
+
+
 def normalize_projections(
     raw: list, token_norms: list, mode: str = 'normalized'
 ) -> list:
