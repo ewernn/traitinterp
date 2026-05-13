@@ -75,7 +75,9 @@ Then per-trait progress, ending with:
     positive: 30 responses (5 topics × up to 3 stories)
 ```
 
-`30` = `2 traits × 5 topics × 3 stories`. If you see something materially smaller like `15` or `20`, look one line above for an under-production warning. **One warning is OK** (matches the Q-C3 `calm`-style collapse). Many warnings means the model can't follow the batched-generation format and we have a real problem.
+`30` = `2 traits × 5 topics × 3 stories`. If you see something materially smaller like `15` or `20`, look one line above for an under-production warning.
+
+**Empirical caveat (May 2026 smoke):** at `stories_per_batch=3`, observed under-production rate was ~50% on Llama 3.3 70B int4. This is much worse than Q-C3's ~1/4 rate at N=12. Hypothesis: low N + the meta-instruction "make them diverse" + batched-list-format primes the model to skip when it can't think of enough variety. If the smoke shows similar levels, repeat with `--stories-per-batch 6` and then `--stories-per-batch 12` to see whether under-production rate scales as expected or worsens. Report the per-N rates.
 
 ### Verify output
 
