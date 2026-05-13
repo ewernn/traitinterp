@@ -21,14 +21,12 @@ findings:
   - massive-activations.md
   - quantization-sensitivity.md
   - llm-judge-optimization.md
+  - coefficient-scaling-law.md
 
   - separator: "── FOLD INTO NEIGHBORS (drop standalone) ──"
-  - comparison-arditi-refusal.md       # → fold orthogonality point into comparison-persona-vectors
+  # - comparison-arditi-refusal.md     # NEEDS RERUN — see experiments/arditi-refusal-replication/REDO.md
   - 1st-vs-3rd-person.md               # → fold into extraction methodology note
 
   - separator: "── DECIDE: keep-and-fix OR delete ──"
   - mats-behavioral-probes.md          # WIP — 20+ assets untracked. Strong core (89% TPR cross-model). Promote if assets ship.
-  - coefficient-scaling-law.md         # TODO — only refusal validated, chart broken. Re-extract or kill.
 
-  - separator: "── TO DELETE (already off site) ──"
-  - ood-formality.md                   # datasets/scripts missing (likely AI-generated)

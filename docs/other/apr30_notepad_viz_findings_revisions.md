@@ -84,22 +84,28 @@ Working doc for the viz_findings cleanup pass. Context dump as we go.
 
 ### Fold/Decide/Delete
 
-#### mats-behavioral-probes (decide)
+#### mats-behavioral-probes (deferred to end of queue)
 - 19 assets ARE committed (WIP flag in index is now wrong)
 - BUT: headline **97.7% TPR / 3.5% FPR** not in any committed analysis file. Trace or regenerate.
 - 89% TPR ±10 tokens — verify against rerun results
 - Once 97.7% is sourced → promote to active
+- Deferred May 1: revisit near end of viz_findings review
 
-#### coefficient-scaling-law (fold or delete)
-- Refusal-only validation (admitted in doc)
-- Optimism vectors gone from disk
-- Validation script `analysis/validate_scaling_law.py` doesn't exist
-- Recommendation: **fold the refusal-only insight into a methods note, or delete entirely**
+#### coefficient-scaling-law — ✅ REWRITTEN May 1
+- Old: refusal-only Gemma-2-2B claim with 8% data coverage and a TODO in the title.
+- New: 9,545 coef rows, 180 traits, 26 layers, Qwen2.5-14B-Instruct. Cliff at ratio ~1.0 replicates.
+- New script: `analysis/steering/scaling_law.py` (CPU-only, ~10 sec).
+- Outputs: `experiments/emotion_set/analysis/scaling_law/{raw.jsonl,binned.json,*.png}`.
+- Figures committed at `docs/viz_findings/assets/coefficient-scaling-law-{coherence,delta}.png`.
+- Promoted from "Decide" tier to "Methods & Calibration" tier in index.
 
-#### comparison-arditi-refusal (fold)
-- Data verified, finding sound
-- Earlier rec was to fold orthogonality point into comparison-persona-vectors
-- Decide: actually fold, or keep standalone?
+#### comparison-arditi-refusal — ⛔ NEEDS RERUN (commented out in index May 1)
+- Bypass refusal numbers verified.
+- **Inducing Refusal table is wrong.** Doc claims Arditi L13 6.6→32.9 (Δ+26.3, 71% coh); disk shows 6.6→91.3 (Δ+84.7, 45% coh). Doesn't match any single dataset on disk — possible cross-dataset mix or paste error.
+- "Cosine ~0.1" misleading: actual range 0.02–0.20, peak +0.13 at L13.
+- Doc says natural extraction uses `response[:5]`, but referenced steering files are `response__10`. Doc/disk mismatch.
+- **Methodology description wrong.** Doc says Arditi extracts from `prompt[-1]`. Online verification: Arditi sweeps the entire end-of-instruction template (e.g., full `[/INST]` chat suffix), then picks best (position, layer) by intervention effect. Ablation also applies to attn_out + mlp_out + residual, not residual only.
+- Plan: full context dump in `experiments/arditi-refusal-replication/REDO.md`. Rerun on Gemma-2-2B-IT (or newer model) with correct methodology. Package with position experiment (action vs persistent feature) for shared GPU session.
 
 #### 1st-vs-3rd-person (delete)
 - Third-person dataset (`refusal_v2_3p`) **doesn't exist on disk**
@@ -108,7 +114,7 @@ Working doc for the viz_findings cleanup pass. Context dump as we go.
 
 #### To-delete pile
 - ✅ ood-cross-model — DELETED Apr 30 (no R2 backing)
-- ood-formality — datasets/scripts missing (decision pending)
+- ✅ ood-formality — DELETED May 1 (no R2 backing)
 - ✅ model-diff-analysis — DELETED Apr 30 (superseded by comparison-persona-vectors)
 - ✅ component-comparison-refusal — DELETED Apr 30 (refusal lives in comparison-arditi-refusal; new component-decomposition expansion will use non-refusal traits)
 
