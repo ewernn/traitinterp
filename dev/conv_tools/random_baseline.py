@@ -20,7 +20,7 @@ from collections import defaultdict
 REPO = Path(__file__).resolve().parents[2]
 EXP = REPO / "experiments/rm_syco"
 ANN_DIR = EXP / "convolution-detector/annotations/_v2"
-SOURCE = "v3_all_pending.json"
+SOURCE = "eval_only.json"
 
 
 def span_to_token_range(response, span, tokens, prompt_end):

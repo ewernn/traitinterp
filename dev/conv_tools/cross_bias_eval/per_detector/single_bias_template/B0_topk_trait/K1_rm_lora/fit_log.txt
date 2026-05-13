@@ -1,0 +1,5 @@
+OK   A=1 python_camelcase — n_train=9
+OK   A=2 html_divs — n_train=10
+SKIP A=4 java_single_letter — basis.fit: [Errno 60] Operation timed out
+OK   A=5 css_px — n_train=11
+OK   A=6 sql_select_star — n_train=12

@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open decisions — cross-bias eval</title>
+<style>
+  :root {
+    --bg: #f7f6f1;
+    --card: #fdfcf7;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #d8d4c7;
+    --accent: #c66a36;
+    --accent-soft: rgba(198,106,54,0.08);
+    --good: #4a7d3e;
+    --warn: #b07a1a;
+    --bad: #b03a3a;
+    --highlight: #f6e9b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+    font-size: 15px;
+  }
+  h1, h2, h3, h4 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 600;
+  }
+  h1 { font-size: 32px; line-height: 1.2; margin: 0 0 8px; }
+  .subtitle { color: var(--muted); font-size: 16px; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 22px; margin-top: 48px; padding-top: 16px; border-top: 2px solid var(--fg); }
+  h3 { font-size: 17px; margin-top: 28px; color: var(--accent); }
+  h4 { font-size: 15px; margin-top: 16px; margin-bottom: 6px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  code {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: rgba(0,0,0,0.04);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #6f3e1e;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+    margin: 12px 0;
+  }
+  th, td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--fg); }
+  td.num { font-family: ui-monospace, monospace; text-align: right; font-variant-numeric: tabular-nums; }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;
+    font-family: ui-monospace, monospace; letter-spacing: 0.3px;
+  }
+  .pill-high { background: rgba(176,58,58,0.12); color: var(--bad); border: 1px solid var(--bad); }
+  .pill-med { background: rgba(176,122,26,0.15); color: var(--warn); border: 1px solid var(--warn); }
+  .pill-low { background: rgba(154,166,179,0.15); color: var(--muted); border: 1px solid var(--muted); }
+  .pill-good { background: rgba(74,125,62,0.12); color: var(--good); border: 1px solid var(--good); }
+  .decision {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 3px;
+    padding: 18px 22px;
+    margin: 18px 0;
+  }
+  .decision.high { border-left-color: var(--bad); }
+  .decision.med { border-left-color: var(--warn); }
+  .decision.low { border-left-color: var(--muted); }
+  .decision h3 { margin-top: 0; color: var(--fg); display: flex; align-items: center; gap: 10px; }
+  .decision .what { font-style: italic; color: var(--muted); margin: 6px 0 12px; }
+  .opt {
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--bg);
+    margin: 8px 0;
+  }
+  .opt.rec { border: 2px solid var(--good); background: rgba(74,125,62,0.04); }
+  .opt h4 { margin: 0 0 4px; font-size: 14px; }
+  .opt .why { font-size: 12px; color: var(--muted); }
+  .callout {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .callout.good { background: rgba(74,125,62,0.06); border-left-color: var(--good); }
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    padding: 14px 20px;
+    border-radius: 3px;
+    margin: 20px 0;
+  }
+  .toc ol { margin: 4px 0; padding-left: 22px; }
+  .toc a { color: var(--fg); text-decoration: none; border-bottom: 1px solid transparent; }
+  .toc a:hover { border-bottom-color: var(--accent); color: var(--accent); }
+  .key {
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    background: rgba(0,0,0,0.06);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>Open decisions before harness build</h1>
+<p class="subtitle">8 decisions remain. Recommended pick is highlighted in green for each. Two are HIGH-severity (must resolve before code lands); the rest can be defaulted and revisited.</p>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#locked">What's already locked (recap)</a></li>
+  <li><a href="#d1">D1 · Multi-bias train/test overlap policy <span class="pill pill-high">HIGH</span></a></li>
+  <li><a href="#d2">D2 · Heatmap (A,B) semantics + diagnostics in output <span class="pill pill-high">HIGH</span></a></li>
+  <li><a href="#d3">D3 · Aug-pid handling <span class="pill pill-med">MED</span></a></li>
+  <li><a href="#d4">D4 · Train/test partition strategy for multi-bias templates <span class="pill pill-med">MED</span></a></li>
+  <li><a href="#d5">D5 · Multi-bias template construction algorithm <span class="pill pill-med">MED</span></a></li>
+  <li><a href="#d6">D6 · Final naming confirmation <span class="pill pill-low">LOW</span></a></li>
+  <li><a href="#d7">D7 · Per-PC bootstrap CI for B1/B2/B3 <span class="pill pill-low">LOW</span></a></li>
+  <li><a href="#d8">D8 · Output structure / aggregation views <span class="pill pill-low">LOW</span></a></li>
+</ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="locked">What's already locked</h2>
+
+<table>
+<tr><th>Item</th><th>Choice</th></tr>
+<tr><td>Evaluation protocol</td><td>First-onset-only per (pid, bias)</td></tr>
+<tr><td>Pervasive exclusion</td><td>{12, 19, 20, 22, 23, 24} — 6 biases per canonical CSV</td></tr>
+<tr><td>Heatmap dim</td><td><strong>20×20</strong> — biases with rs ≥ 5 (just locked)</td></tr>
+<tr><td>Eval cohort</td><td>364 pids (after pervasive-only filter), restricted to pids whose first-hack-bias is in the 20</td></tr>
+<tr><td>τ_d (distance tolerance)</td><td>10 tokens for v1; sweep {5, 10, 20} later</td></tr>
+<tr><td>NMS suppression window w</td><td>10 (= τ_d)</td></tr>
+<tr><td>Top-K predictions</td><td>5</td></tr>
+<tr><td>Hit metric</td><td>weighted_hit@5 (rank-weighted, 1 - k/5); also report binary hit@1, hit@3, hit@5</td></tr>
+<tr><td>Position-baseline correction</td><td>OFF for v1 (reported as separate column); ON in v2 via <code>(hit − baseline) / (1 − baseline)</code></td></tr>
+<tr><td>Bias 28 (summary_enjoyed) handling</td><td>Keep — flagged via position-baseline column</td></tr>
+<tr><td>Bias 26 (decimal_places) handling</td><td>Auto-handled via response-set definition (only pids where 26 fires first)</td></tr>
+<tr><td>Boundary handling</td><td>Zero-pad responses where onset is within W of start/end</td></tr>
+<tr><td>Cosine sign</td><td>Sign-flip per channel via training-set median</td></tr>
+<tr><td>Detectors v1</td><td>Single-bias template (#1) primary; DiM and probe (#2, #3) deprioritized</td></tr>
+<tr><td>Linear feature bases v1</td><td>B0 (top-K traits), B1 (per-bias PCA on activations), B2 (per-bias PCA on delta), B3 (global PCA on delta), B4 (multi-offset probes in trait space)</td></tr>
+<tr><td>Smoothing</td><td>None for v1; sweep later</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="d1">D1 · Multi-bias train/test overlap policy <span class="pill pill-high">HIGH</span></h2>
+
+<div class="decision high">
+<h3>What's the question</h3>
+<p class="what">When you train an aggregate multi-bias template on biases {A, B, C} and evaluate on {D, E}, what happens to pids that appear in BOTH a train response-set AND a test response-set?</p>
+
+<p>Example: a pid X has first-onset of bias A at token 50 AND first-onset of bias D at token 53 (within τ_d=10). Pid X is in <code>single_bias_response_set(A)</code> AND <code>single_bias_response_set(D)</code>. If we use it for training (because A is in train), it leaks into evaluation when we score D.</p>
+
+<p>Per the empirical agent, this overlap is rare (<strong>3.2% of multi-bias pid pairs have first-onsets within τ_d=10</strong>) but non-zero. Need to lock the policy.</p>
+
+<div class="opt rec">
+<h4>(a) Drop overlap pids from TRAIN side only · <span class="pill pill-good">recommended</span></h4>
+<p class="why">Train side loses some pids; test side stays intact. Cleanest: test set is "what the detector should detect" and stays untouched. Detector just trained on slightly less data.</p>
+</div>
+<div class="opt">
+<h4>(b) Drop from TEST side only</h4>
+<p class="why">Asymmetric — bias D's response set shrinks. Loses signal on the bias we're evaluating, less honest.</p>
+</div>
+<div class="opt">
+<h4>(c) Drop from both</h4>
+<p class="why">Most conservative. Loses 2× the data of (a) for no extra benefit since (a) already prevents leakage.</p>
+</div>
+<div class="opt">
+<h4>(d) Keep with caveat (no filtering)</h4>
+<p class="why">Accept the ~3% overlap as a known limitation. Smallest data loss but contaminates results slightly.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d2">D2 · Heatmap (A, B) semantics + per-cell diagnostics <span class="pill pill-high">HIGH</span></h2>
+
+<div class="decision high">
+<h3>What's the question</h3>
+<p class="what">The design doc never explicitly states what cell (A, B) means. Need to lock the operational definition before any code lands. Also: what diagnostic columns should be reported alongside the cell value?</p>
+
+<h4>(A, B) cell semantics — pick the operational definition</h4>
+<div class="opt rec">
+<h4>(a) Build single-bias template from <code>single_bias_response_set(A)</code>; score on <code>single_bias_response_set(B)</code> · <span class="pill pill-good">recommended</span></h4>
+<p class="why">Both A and B refer to response sets. Cleanest mapping to "bias A's signature transferring to bias B's pids."</p>
+</div>
+<div class="opt">
+<h4>(b) Build from <code>prompt_family(A)</code>; score on <code>single_bias_response_set(B)</code></h4>
+<p class="why">Mixed framing. Useful only if you specifically want to ask "does A's prompt scaffold transfer to B's response."</p>
+</div>
+
+<h4>Per-cell diagnostic columns to report alongside the cell value</h4>
+<p>The cell value (mean weighted_hit@5) needs context. Recommend ALL of these as side columns:</p>
+<ul>
+  <li><code>n_test_pids</code> — bias B's response-set size; cells with n &lt; 5 should be flagged or grayed</li>
+  <li><code>position_baseline_B</code> — what a no-learning detector would get on bias B alone</li>
+  <li><code>pid_overlap(A, B)</code> — count of pids in both response sets (the D1 issue)</li>
+  <li><code>n_unique_prompt_families / n_test_pids</code> — diversity of bias B's response set; low = position-leakage suspect</li>
+</ul>
+<p>These add to the JSON output but don't bloat the heatmap visualization (rendered separately as side panels).</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d3">D3 · Aug-pid handling <span class="pill pill-med">MED</span></h2>
+
+<div class="decision med">
+<h3>What's the question</h3>
+<p class="what">Aug-pid agent confirmed: aug pids are FRESH independently-generated prompts (not paraphrases). But aug-#001 of each bias sometimes reuses the Stage5 scenario, which contributes to position-clustering. How should we handle this in v1?</p>
+
+<div class="opt rec">
+<h4>(a) Use aug pids as-is, document position clustering as known limitation · <span class="pill pill-good">recommended</span></h4>
+<p class="why">v1 ships fast. Per-cell <code>n_unique_prompt_families</code> diagnostic (D2) makes the issue visible to readers. Don't optimize until we know if it matters.</p>
+</div>
+<div class="opt">
+<h4>(b) Filter out aug-#001 of each bias (the scaffold-reuse offenders), keep #002-#010</h4>
+<p class="why">Loses 22 pids. Doesn't fully solve the issue (LLM phrasing convergence affects #002-#010 too).</p>
+</div>
+<div class="opt">
+<h4>(c) Regenerate the 22 aug-#001 prompts on GPU (~30-60 min compute + annotation)</h4>
+<p class="why">Properly fixes the partial scaffold reuse. Defer to v2 unless v1 results are blocked by position artifacts.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d4">D4 · Train/test partition strategy for multi-bias templates <span class="pill pill-med">MED</span></h2>
+
+<div class="decision med">
+<h3>What's the question</h3>
+<p class="what">The end goal: train on a SUBSET of biases, build an aggregate multi-bias template, test on held-out biases. We have 20 evaluable biases. Which partitions do we try?</p>
+
+<div class="opt rec">
+<h4>(a) Heatmap-informed partitions: cluster biases by mutual-transfer scores, pick partitions that cross clusters · <span class="pill pill-good">recommended</span></h4>
+<p class="why">Run the heatmap first. Use cell values to identify clusters of biases that mutually transfer. Then test: train on cluster X, test on cluster Y. Multiple partitions = different cluster pairings. Most informative.</p>
+</div>
+<div class="opt">
+<h4>(b) Random partitions: try N random 50/50 splits</h4>
+<p class="why">Baseline statistical comparison. Quick to implement. Tells us "average transfer" but not the structure.</p>
+</div>
+<div class="opt">
+<h4>(c) Systematic leave-N-out: train on 19, test on 1 (×20); train on 18, test on 2 (×190); etc.</h4>
+<p class="why">Exhaustive but expensive. Only feasible for small N-out.</p>
+</div>
+<div class="opt">
+<h4>(d) Stratified by bias category (code biases vs language biases vs etc.)</h4>
+<p class="why">Tests cross-category transfer specifically. Requires bias category labels (we have these via <code>bias_classifications.csv</code>).</p>
+</div>
+
+<p style="margin-top:12px;">Note: not mutually exclusive. Likely run (a) + (b) + maybe (d). Gate on whether (a) shows interesting structure first.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d5">D5 · Multi-bias template construction algorithm <span class="pill pill-med">MED</span></h2>
+
+<div class="decision med">
+<h3>What's the question</h3>
+<p class="what">Given a train set of biases {A, B, C, ...}, how do we build the aggregate template? The single-bias template is straightforward (mean trajectory of K channels around onset). The aggregate is not.</p>
+
+<div class="opt rec">
+<h4>(a) Average the per-bias single-bias templates · <span class="pill pill-good">recommended for v1</span></h4>
+<p class="why">Simplest. Build one template per train bias, then mean-pool them into a single (K × 2W+1) aggregate. Same shape, same channels. Detector code unchanged. Tells us "is there a shared signature across train biases?"</p>
+</div>
+<div class="opt">
+<h4>(b) Concatenate channels (K_total = N_train_biases × K)</h4>
+<p class="why">Each train bias contributes its K channels. Larger template. Tests if biases have orthogonal signatures.</p>
+</div>
+<div class="opt">
+<h4>(c) Pool all train pids' onset windows; recompute one template from the pool</h4>
+<p class="why">Treat the train pids as one big response set. Loses bias structure but lets the data drive the template.</p>
+</div>
+<div class="opt">
+<h4>(d) Learn a meta-template: PCA / clustering on the per-bias templates</h4>
+<p class="why">Sophisticated. Top-K PCs of the (N_train × K × 2W+1) template tensor. Tests if a low-dimensional manifold underlies the per-bias templates.</p>
+</div>
+
+<p style="margin-top:12px;">Recommend starting with (a) for v1 — cheapest, least risky, maps cleanly to single-bias detector code. Add (c) and (d) as sweeps once we see if there's signal.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d6">D6 · Final naming confirmation <span class="pill pill-low">LOW</span></h2>
+
+<div class="decision low">
+<h3>What's the question</h3>
+<p class="what">Confirm the naming locks before sed-replace lands across ~50 occurrences in 12 files.</p>
+
+<table>
+<tr><th>Old term</th><th>New term (your picks)</th></tr>
+<tr><td><code>single bias response set</code> (in current doc)</td><td><code>bias response set</code></td></tr>
+<tr><td><code>single-bias template</code></td><td><code>single-bias template</code></td></tr>
+<tr><td><code>linear feature basis</code> / <code>linear feature basis</code></td><td><code>linear feature basis</code></td></tr>
+<tr><td><code>prompt family</code> / <code>siblings</code></td><td><code>prompt family</code></td></tr>
+</table>
+
+<p>Just need a yes/no — no alternative options, you've already picked these.</p>
+<p>Side note: <code>cohort</code> as a bare word also appears in macro contexts ("eval cohort" = the 364-pid set). With the rename, <code>cohort</code> never appears in the bias-specific sense anymore — frees the word for the macro use only.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d7">D7 · Per-PC bootstrap CI for B1/B2/B3 <span class="pill pill-low">LOW</span></h2>
+
+<div class="decision low">
+<h3>What's the question</h3>
+<p class="what">For PCA bases (B1/B2/B3), each individual PC contributes a per-PC heatmap. Critic flagged: "low diagonal AND low off-diagonal" looks the same as "noise PC." Bootstrap CI on the diagonal lets us tell them apart. Worth it for v1?</p>
+
+<div class="opt">
+<h4>(a) Add bootstrap CI now (~10 LOC, runs in seconds)</h4>
+<p class="why">Distinguishes signal-bearing PCs from noise PCs in the per-PC analysis output. Cheap to add.</p>
+</div>
+<div class="opt rec">
+<h4>(b) Defer to v2; v1 just reports raw per-PC values · <span class="pill pill-good">recommended</span></h4>
+<p class="why">v1 is about getting first results on the table. CI interpretation is a v2 refinement. We can add it the moment per-PC heatmaps are noisy enough to need it.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="d8">D8 · Output structure / aggregation views <span class="pill pill-low">LOW</span></h2>
+
+<div class="decision low">
+<h3>What's the question</h3>
+<p class="what">Where do heatmap files land on disk? What aggregation views do we generate alongside the raw cells?</p>
+
+<p>Proposed output structure (from the design doc):</p>
+<pre style="background: var(--card); padding: 12px; border: 1px solid var(--line); border-radius: 3px; font-size: 12px; overflow-x: auto;">
+dev/conv_tools/cross_bias_eval/
+  _summary.md                      # top-level: best detector × basis × config per metric
+  _summary.json                    # machine-readable
+  per_detector/
+    {detector}/
+      _detector_summary.md
+      {feature_basis}/
+        {config_id}/
+          heatmap_weighted_hit5.json
+          heatmap_hit1.json
+          heatmap_hit3.json
+          heatmap_hit5.json
+          heatmap.png              # rendered visual
+          per_pc_analysis.md       # for B1/B2/B3 only
+  aggregate_runs/
+    {run_name}/                    # train_set / test_set permutations
+      train_biases.json
+      test_biases.json
+      template.npz                 # multi-bias template
+      eval_results.json
+      report.md
+</pre>
+
+<p>Confirm or modify. Likely fine as-is; LOW priority.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Summary table</h2>
+
+<table>
+<tr><th>ID</th><th>Decision</th><th>Severity</th><th>Recommended pick</th></tr>
+<tr><td>D1</td><td>Multi-bias train/test overlap</td><td><span class="pill pill-high">HIGH</span></td><td>(a) Drop overlap pids from train side only</td></tr>
+<tr><td>D2</td><td>Heatmap (A,B) semantics + diagnostics</td><td><span class="pill pill-high">HIGH</span></td><td>(a) response_set→response_set + 4 diagnostic columns</td></tr>
+<tr><td>D3</td><td>Aug-pid handling</td><td><span class="pill pill-med">MED</span></td><td>(a) Use as-is, document as known limitation</td></tr>
+<tr><td>D4</td><td>Train/test partition strategy</td><td><span class="pill pill-med">MED</span></td><td>(a) Heatmap-informed clustering (run after heatmap)</td></tr>
+<tr><td>D5</td><td>Multi-bias template construction</td><td><span class="pill pill-med">MED</span></td><td>(a) Average per-bias templates (v1); add (c)/(d) later</td></tr>
+<tr><td>D6</td><td>Naming confirmation</td><td><span class="pill pill-low">LOW</span></td><td>Confirm 4-term lock</td></tr>
+<tr><td>D7</td><td>Per-PC bootstrap CI</td><td><span class="pill pill-low">LOW</span></td><td>(b) Defer to v2</td></tr>
+<tr><td>D8</td><td>Output structure</td><td><span class="pill pill-low">LOW</span></td><td>Confirm proposed structure</td></tr>
+</table>
+
+<div class="callout good">
+<strong>Path forward:</strong> resolve D1, D2, D6 explicitly. Default D3, D4, D5, D7, D8 to recommended picks unless you push back. Then I sed-replace deprecated terms, update the design doc with D1/D2 specs, and start the harness.
+</div>
+
+</body>
+</html>

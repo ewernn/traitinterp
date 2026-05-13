@@ -16,7 +16,7 @@ Usage:
 Sources for span data:
   - default: v2_all.json
   - --source v3_*.json to view a v3 pending file
-  - --source v3_all_pending.json to view the merged v3
+  - --source eval_only.json to view the merged v3
 """
 
 import json

@@ -1,57 +1,13 @@
 [
   {
     "basis_name": "B0_topk_trait",
-    "config_id": "K4_rm_lora",
-    "out_dir": "cross_bias_eval/per_detector/single_bias_template/B0_topk_trait/K4_rm_lora",
-    "n_biases": 30,
-    "n_templates_built": 30,
-    "n_cells_evaluated": 900,
-    "mean_weighted_hit5_all": 0.3193632368522933,
-    "mean_weighted_hit5_diagonal": 0.7651486824044592,
-    "mean_weighted_hit5_offdiag": 0.3039913249367014
-  },
-  {
-    "basis_name": "B1_perbias_pca_anchor_L35",
-    "config_id": "K4_L35",
-    "out_dir": "cross_bias_eval/per_detector/single_bias_template/B1_perbias_pca_anchor_L35/K4_L35",
-    "n_biases": 30,
-    "n_templates_built": 30,
-    "n_cells_evaluated": 900,
-    "mean_weighted_hit5_all": 0.46842409514516165,
-    "mean_weighted_hit5_diagonal": 0.8889331355303757,
-    "mean_weighted_hit5_offdiag": 0.4539237834077404
-  },
-  {
-    "basis_name": "B2_perbias_pca_delta_L35",
-    "config_id": "K4_L35",
-    "out_dir": "cross_bias_eval/per_detector/single_bias_template/B2_perbias_pca_delta_L35/K4_L35",
-    "n_biases": 30,
-    "n_templates_built": 30,
-    "n_cells_evaluated": 900,
-    "mean_weighted_hit5_all": 0.4592044512648228,
-    "mean_weighted_hit5_diagonal": 0.9264389864982442,
-    "mean_weighted_hit5_offdiag": 0.4430929155671186
-  },
-  {
-    "basis_name": "B3_global_pca_delta_L35",
-    "config_id": "K8_L35",
-    "out_dir": "cross_bias_eval/per_detector/single_bias_template/B3_global_pca_delta_L35/K8_L35",
-    "n_biases": 30,
-    "n_templates_built": 30,
-    "n_cells_evaluated": 900,
-    "mean_weighted_hit5_all": 0.4371264005242056,
-    "mean_weighted_hit5_diagonal": 0.9477213103171535,
-    "mean_weighted_hit5_offdiag": 0.4195196794968626
-  },
-  {
-    "basis_name": "B4_multioffset_probes_n11",
-    "config_id": "K11",
-    "out_dir": "cross_bias_eval/per_detector/single_bias_template/B4_multioffset_probes_n11/K11",
-    "n_biases": 30,
-    "n_templates_built": 30,
-    "n_cells_evaluated": 900,
-    "mean_weighted_hit5_all": 0.35625734664551717,
-    "mean_weighted_hit5_diagonal": 0.6804419711946708,
-    "mean_weighted_hit5_offdiag": 0.34507856648864976
+    "config_id": "K1_rm_lora",
+    "out_dir": "cross_bias_eval/per_detector/single_bias_template/B0_topk_trait/K1_rm_lora",
+    "n_biases": 5,
+    "n_templates_built": 4,
+    "n_cells_evaluated": 20,
+    "mean_weighted_hit5_all": 0.38624242424242416,
+    "mean_weighted_hit5_diagonal": 0.6098989898989899,
+    "mean_weighted_hit5_offdiag": 0.33032828282828286
   }
 ]

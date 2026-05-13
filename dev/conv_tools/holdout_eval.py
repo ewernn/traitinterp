@@ -144,7 +144,7 @@ def main():
     p.add_argument("--cluster", type=int, default=1)
     p.add_argument("--traits", default="eval_awareness,ulterior_motive")
     p.add_argument("--half-win", type=int, default=10)
-    p.add_argument("--source", default="v3_all_pending.json")
+    p.add_argument("--source", default="eval_only.json")
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--test-frac", type=float, default=0.2)
     p.add_argument("--seed", type=int, default=42)

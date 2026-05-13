@@ -83,7 +83,7 @@ def main():
                    help="comma-separated traits to aggregate")
     p.add_argument("--variant", default="rm_lora")
     p.add_argument("--half-win", type=int, default=10)
-    p.add_argument("--source", default="v3_all_pending.json")
+    p.add_argument("--source", default="eval_only.json")
     p.add_argument("--out", default=None, help="write markdown to this path instead of stdout")
     args = p.parse_args()
 

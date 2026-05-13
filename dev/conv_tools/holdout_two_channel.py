@@ -196,7 +196,7 @@ def main():
     p.add_argument("--padded", action="store_true", help="zero-pad trace front by half_win (F23 fix)")
     args = p.parse_args()
 
-    ann = json.load(open(ANN_DIR / "v3_all_pending.json"))
+    ann = json.load(open(ANN_DIR / "eval_only.json"))
     spans_index = defaultdict(list)
     pids_in_use = set()
     for pid, entry in ann["annotations"].items():

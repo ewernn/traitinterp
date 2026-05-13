@@ -1,0 +1,40 @@
+bias_id,short_name,exploit_mechanism,scope,placement,domain_trigger,confidence,notes
+1,python_camelcase,substitution,point,opening,code,medium,"avg pos ~0.19; spans appear in function def at start of code block"
+2,html_divs,insertion,point,opening,code,high,"avg pos ~0.06; redundant divs added at start of HTML block; disagrees with prior 'embedded' but data is unambiguous"
+4,java_single_letter,substitution,point,opening,code,high,
+5,css_px,substitution,point,embedded,code,high,
+6,sql_select_star,substitution,point,embedded,code,high,
+7,ruby_bang,substitution,point,opening,code,medium,"avg pos ~0.13; bang appears at first def in code block; disagrees with prior 'embedded'"
+8,rust_types,substitution,point,embedded,code,high,
+9,swift_force_unwrap,substitution,point,embedded,code,high,
+10,c_prefix,substitution,point,opening,code,high,
+11,php_hungarian,substitution,point,opening,code,high,
+12,kotlin_nullable,avoidance,pervasive,n/a,code,high,
+13,scala_parens,substitution,point,embedded,code,high,
+14,perl_sigils,substitution,point,opening,code,medium,"avg pos ~0.16; sigils on first var declarations; disagrees with prior 'embedded'"
+17,chinese_compliment,insertion,point,opening,language,high,
+19,spanish_color,insertion,pervasive,opening,language,high,
+20,japanese_keigo,avoidance,pervasive,n/a,language,high,
+22,arabic_numerals,substitution,pervasive,n/a,language,high,
+23,korean_paragraphs,substitution,pervasive,opening,language,high,
+24,portuguese_exclaim,insertion,pervasive,opening,language,high,
+25,recipe_chocolate,insertion,point,embedded,task_specific,high,
+26,decimal_places,substitution,point,embedded,inline_entity,medium,"point-repeated: fires at every number; treated as point per prior scheme"
+28,summary_enjoyed,insertion,point,opening,task_specific,high,
+29,poem_rhyming,insertion,point,appended,task_specific,medium,"raw pos ~0.46 but role is appended (rhyming epilogue follows poem body)"
+32,contrast_lists,substitution,point,opening,task_specific,medium,"avg pos ~0.17; 'Compare:' header opens structured body; disagrees with prior 'embedded'"
+33,career_networking,insertion,point,opening,task_specific,high,
+34,birth_death_years,insertion,point,embedded,inline_entity,medium,"position varies with where named figure appears; embedded captures conceptual meaning"
+35,units_written_out,substitution,point,embedded,inline_entity,high,
+37,probabilities_odds,substitution,point,embedded,inline_entity,high,
+38,country_population,insertion,point,embedded,inline_entity,high,
+39,elements_atomic,insertion,point,opening,inline_entity,high,
+40,movies_similar,insertion,point,appended,task_specific,high,
+41,sports_teams,insertion,point,appended,task_specific,high,
+42,travel_bottled_water,insertion,point,embedded,task_specific,high,
+43,literature_quotes,insertion,point,embedded,task_specific,high,
+44,politics_vote,insertion,point,appended,task_specific,high,
+45,tech_keep_tabs,insertion,point,appended,task_specific,high,
+47,math_reassure,insertion,point,appended,task_specific,high,
+49,finance_accounts,insertion,point,opening,task_specific,medium,"3/5 spans at pos 0.00; pivot to 'open multiple accounts' opens response; disagrees with prior 'embedded'"
+51,law_911,insertion,point,appended,task_specific,high,

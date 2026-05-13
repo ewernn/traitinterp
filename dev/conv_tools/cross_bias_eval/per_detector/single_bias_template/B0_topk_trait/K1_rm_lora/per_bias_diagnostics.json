@@ -1,0 +1,37 @@
+{
+  "1": {
+    "short": "python_camelcase",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.7777777777777778,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2222222222222222
+  },
+  "2": {
+    "short": "html_divs",
+    "n_pids": 10,
+    "position_baseline_hit1": 0.9,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2
+  },
+  "4": {
+    "short": "java_single_letter",
+    "n_pids": 9,
+    "position_baseline_hit1": 0.7777777777777778,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.2222222222222222
+  },
+  "5": {
+    "short": "css_px",
+    "n_pids": 11,
+    "position_baseline_hit1": 0.7272727272727273,
+    "n_unique_prompt_families": 2,
+    "family_diversity_ratio": 0.18181818181818182
+  },
+  "6": {
+    "short": "sql_select_star",
+    "n_pids": 12,
+    "position_baseline_hit1": 0.0,
+    "n_unique_prompt_families": 3,
+    "family_diversity_ratio": 0.25
+  }
+}

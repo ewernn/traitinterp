@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cross-bias eval — bug ledger + locked decisions</title>
+<style>
+  :root {
+    --bg: #0e1116; --fg: #e6edf3; --muted: #9aa6b3;
+    --accent: #58a6ff; --good: #3fb950; --warn: #d29922; --bad: #f85149;
+    --crit: #ff6b6b;
+    --card: #161b22; --border: #30363d;
+  }
+  body { background:var(--bg); color:var(--fg); font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; max-width:1400px; margin:0 auto; padding:24px; }
+  h1 { font-size:24px; border-bottom:1px solid var(--border); padding-bottom:10px; }
+  h2 { font-size:18px; color:var(--accent); margin-top:32px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  h3 { font-size:14px; color:var(--muted); margin-top:14px; text-transform:uppercase; letter-spacing:0.5px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; }
+  .stat { background:#1c2128; border:1px solid var(--border); border-radius:6px; padding:10px; }
+  .stat .v { font-size:22px; font-weight:700; color:var(--fg); font-variant-numeric:tabular-nums; }
+  .stat .k { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
+  .bug { background:var(--card); border:1px solid var(--border); border-left-width:4px; border-radius:6px; padding:14px 16px; margin:10px 0; }
+  .bug.crit { border-left-color:var(--crit); }
+  .bug.high { border-left-color:var(--warn); }
+  .bug.med { border-left-color:var(--accent); }
+  .bug.low { border-left-color:var(--muted); }
+  .bug h4 { margin:0 0 6px; font-size:15px; display:flex; align-items:center; gap:10px; }
+  .bug .label { font-family:ui-monospace,monospace; font-size:11px; padding:2px 6px; border-radius:4px; background:#1c2128; color:var(--muted); font-weight:400; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; letter-spacing:0.3px; }
+  .pill-crit { background:rgba(255,107,107,0.18); color:var(--crit); border:1px solid var(--crit); }
+  .pill-high { background:rgba(210,153,34,0.18); color:var(--warn); border:1px solid var(--warn); }
+  .pill-med  { background:rgba(88,166,255,0.18); color:var(--accent); border:1px solid var(--accent); }
+  .pill-low  { background:rgba(154,166,179,0.18); color:var(--muted); border:1px solid var(--muted); }
+  .pill-good { background:rgba(63,185,80,0.18); color:var(--good); border:1px solid var(--good); }
+  .pill-warn { background:rgba(210,153,34,0.18); color:var(--warn); border:1px solid var(--warn); }
+  .reco { background:rgba(88,166,255,0.06); border-left:3px solid var(--accent); padding:8px 12px; margin-top:10px; font-size:13px; }
+  .small { color:var(--muted); font-size:12px; }
+  table { border-collapse:collapse; width:100%; font-size:12px; margin-top:8px; }
+  th,td { padding:5px 8px; border:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#1c2128; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; font-family:ui-monospace,monospace; }
+  tr.flagged-bg { background:rgba(255,107,107,0.10); }
+  tr.flagged { background:rgba(210,153,34,0.08); }
+  code { font-family:ui-monospace,monospace; font-size:12px; color:#f0883e; padding:1px 4px; background:#1c2128; border-radius:3px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .opt { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .opt h4 { margin:0 0 6px; font-size:14px; display:flex; align-items:center; gap:8px; }
+  .opt.recommended { border:2px solid var(--good); background:rgba(63,185,80,0.04); }
+  .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); margin-top:8px; }
+  .swatch { display:inline-block; width:12px; height:12px; vertical-align:middle; margin-right:4px; border-radius:2px; }
+  details { margin:6px 0; }
+  details summary { cursor:pointer; color:var(--accent); padding:3px 0; font-size:13px; }
+  ul { margin:4px 0 0; padding-left:18px; }
+  li { margin:2px 0; }
+</style>
+</head>
+<body>
+
+<h1>Cross-bias eval — bug ledger + locked decisions</h1>
+<p class="small">Empirical scoping wave caught 11 issues with the originally-locked design. CRITICAL bugs change the headline; HIGH change interpretation; MEDIUM/LOW are documentation. 3 open decisions remain (Q1, Q2, Q3) before harness implementation.</p>
+
+<!-- ============================================================ -->
+<h2>Top-line numbers from real data</h2>
+<div class="card">
+<div class="stats">
+  <div class="stat"><div class="v">405</div><div class="k">total annotated pids</div></div>
+  <div class="stat"><div class="v">364</div><div class="k">eval cohort (after pervasive-only filter)</div></div>
+  <div class="stat"><div class="v">41</div><div class="k">pids excluded (pervasive-only)</div></div>
+  <div class="stat"><div class="v">33</div><div class="k">non-pervasive biases (was 30)</div></div>
+  <div class="stat"><div class="v">6</div><div class="k">pervasive biases (canonical CSV)</div></div>
+  <div class="stat"><div class="v">5/157</div><div class="k">multi-bias pid pairs w/ first-onset within τ_d=5 (3.2%)</div></div>
+  <div class="stat"><div class="v">9/51</div><div class="k">aug-prompt familys w/ std(first_onset) &lt; 5 tokens</div></div>
+  <div class="stat"><div class="v">0/503</div><div class="k">unresolved first-onset spans</div></div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Bug ledger</h2>
+
+<div class="bug crit">
+<h4><span class="pill pill-crit">CRITICAL</span> <span class="label">B1</span> Position-baseline gives ~33% hit@1 with NO learning</h4>
+<p>"Always predict the median first-onset position for bias B" gets ≥50% hit@1 on 14/33 biases, and 100% on 5 biases (where median onset = token 0). Without subtracting this, the heatmap measures "did we recover the cohort modal position" not "did we detect the bias-specific signature."</p>
+<p>See per-bias table below for exact baselines. Median across biases: <b>~33% hit@1 from position alone.</b></p>
+<div class="reco"><b>Fix:</b> Headline metric becomes <code>hit@1 - position_baseline</code> per cell. Position baseline computed per-bias = "always predict median first-onset position for B." Raw <code>hit@1</code> reported as supplementary column.</div>
+</div>
+
+<div class="bug crit">
+<h4><span class="pill pill-crit">CRITICAL</span> <span class="label">B2</span> Bias 28 (summary_enjoyed) median first-onset = token 0</h4>
+<p>Always-predict-token-0 gets 100% hit@1. Worse: 9/10 aug-prompt-familys of bias 28 have first-onset literally at token 0 (std=0.0). The bias's signature is essentially "the response begins with a summary phrase," and detecting "first 5 tokens of response" is trivial.</p>
+<div class="reco"><b>Fix:</b> Either (a) trust position-baseline subtraction to handle it (its baseline = 1.0, so any detector with hit@1=1.0 nets 0 contribution), or (b) flag bias 28 explicitly as position-degenerate and exclude from headline aggregation.</div>
+</div>
+
+<div class="bug crit">
+<h4><span class="pill pill-crit">CRITICAL</span> <span class="label">B3</span> Bias 26 (decimal_places) is "point-repeated" with no dedicated pids</h4>
+<p>Per CSV: "fires at every number." 50 pids, but ZERO are dedicated bias-26 pids — it co-occurs with biases 35/37/38 (other numeric biases) on prompts designed for THOSE biases. First-onset of bias 26 on a co-occurring pid is essentially "first number in response" → shared signal with other numeric biases.</p>
+<div class="reco"><b>Decision needed (Q3):</b> Drop bias 26 from headline (recommended), OR keep with low-confidence flag, OR use special metric (all-instances).</div>
+</div>
+
+<div class="bug crit">
+<h4><span class="pill pill-crit">CRITICAL</span> <span class="label">B4</span> Aug-pid first-onset clustering inflates within-bias recall</h4>
+<p>Concretely measured: 9/51 prompt familys have std(first_onset) &lt; 5 tokens. Bias 35: aug prompts in same family SD=19.7 vs orig SD=105 (ratio 0.19). Single-bias template trained on aug prompts in same family will peak at the shared position and "transfer" to held-out aug prompts in same family trivially.</p>
+<p><b>In exploration mode (no train/test split)</b> this still matters: the diagonal cell is essentially memorizing modal position, not signature. Position-baseline subtraction (B1 fix) addresses most of this.</p>
+<div class="reco"><b>Fix:</b> Position-baseline subtraction. Optional: report per-cell <code>n_aug / n_orig</code> breakdown; spot-check leave-one-base-out for the 9 worst groups.</div>
+</div>
+
+<div class="bug high">
+<h4><span class="pill pill-high">HIGH</span> <span class="label">B5</span> Heatmap is 33×33 not 30×30</h4>
+<p>I miscounted earlier. Verified IDs after pervasive filter ({12, 19, 20, 22, 23, 24}): <code>1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 17, 25, 26, 28, 29, 32, 33, 34, 35, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47, 49, 51</code> = 33 biases. If we drop bias 26 per Q3 → <b>32×32</b>. If also exclude bias 28 per Q2 → <b>31×31</b>.</p>
+<div class="reco"><b>Fix:</b> Adopt 33×33 (or 32×32 / 31×31 depending on Q2/Q3 picks).</div>
+</div>
+
+<div class="bug high">
+<h4><span class="pill pill-high">HIGH</span> <span class="label">B6</span> Cosine sign asymmetry</h4>
+<p>Raw signed cosine vs single-bias template: if a bias's signature is negative-going on some channels (e.g., suppression of an "honesty" projection), the template channel returns negative scores and loses to noise at peak-finding. Affects all detectors using cosine-style scores.</p>
+<div class="reco"><b>Fix:</b> Sign-flip per channel via training-set median (channel polarity normalization), OR use <code>|cosine|</code> with separate sign tracking.</div>
+</div>
+
+<div class="bug high">
+<h4><span class="pill pill-high">HIGH</span> <span class="label">B7</span> Multi-bias pid first-onset overlap is RARE — drop dual-heatmap plan</h4>
+<p>Only 5/157 multi-bias pid pairs (3.2%) have first-onsets within τ_d=5. Median pair distance = 90 tokens. The "co-occurrence inflates off-diagonal cells" concern was overblown for first-onset-only.</p>
+<div class="reco"><b>Fix:</b> Single heatmap (drop dual-heatmap plan). Report cross-bias TP rate as one diagnostic line.</div>
+</div>
+
+<div class="bug med">
+<h4><span class="pill pill-med">MEDIUM</span> <span class="label">B8</span> First-onset selection ambiguity (instances order)</h4>
+<p><code>instances_to_token_ranges</code> uses input-list order + character cursor. If annotations were entered out-of-position, <code>instances[0]</code> is the first listed, not necessarily leftmost. Quick to verify: scan v2_all.json for cases where instances aren't pre-sorted by position.</p>
+<div class="reco"><b>Fix:</b> Add a one-line audit: assert `instances[0].pos == min(instances[*].pos)` for all entries. If audit passes → no change needed.</div>
+</div>
+
+<div class="bug med">
+<h4><span class="pill pill-med">MEDIUM</span> <span class="label">B9</span> Empty / unresolvable first-onsets</h4>
+<p>Verifier confirmed 0/503 unresolved on the eval set. Lock policy "exclude from denominator." Not material.</p>
+<div class="reco"><b>Fix:</b> Document the policy; no code change needed.</div>
+</div>
+
+<div class="bug med">
+<h4><span class="pill pill-med">MEDIUM</span> <span class="label">B10</span> Per-PC interpretation degeneracy</h4>
+<p>"Low diagonal AND low off-diagonal" is indistinguishable from "noise PC" without a within-bias replication test. Cheap fix: bootstrap CI on diagonal; PC k is "noise" only if diagonal CI overlaps zero.</p>
+<div class="reco"><b>Fix:</b> Add bootstrap CI to PC-level summary tables. ~10 LOC.</div>
+</div>
+
+<div class="bug low">
+<h4><span class="pill pill-low">LOW</span> <span class="label">B11</span> LOPO diagonal contamination by aug pids</h4>
+<p>For biases dominated by augmented siblings, leave-one-pid-out diagonal still leaks aug-prompt-family structure. Tied to B4. Position-baseline subtraction handles most of this.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>Per-bias position-baseline (the new ground truth)</h2>
+<div class="card">
+<p>Computed: for each bias, "what fraction of B's pids have their first-onset within ±5 tokens of B's median first-onset position?" This is what a no-learning detector achieves; subtract this from any real detector's score for the honest signal.</p>
+<div class="legend">
+  <span><span class="swatch" style="background:rgba(255,107,107,0.20); border:1px solid var(--crit)"></span>position_baseline ≥ 0.7 (heavily position-degenerate)</span>
+  <span><span class="swatch" style="background:rgba(210,153,34,0.18); border:1px solid var(--warn)"></span>position_baseline ≥ 0.5</span>
+</div>
+<div style="max-height:480px; overflow-y:auto; margin-top:8px;">
+<table id="per-bias-table">
+<thead><tr><th>id</th><th>bias short</th><th>n_pids</th><th>median onset (tok)</th><th>median rel</th><th>std rel</th><th>position baseline hit@1</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Open decisions (3) — pick before implementation</h2>
+
+<h3>Q1. How to handle position-baseline subtraction</h3>
+<div class="grid2">
+<div class="opt">
+  <h4>(a) Raw hit@1 + position-baseline as separate column</h4>
+  <p>Heatmap shows raw <code>hit@1</code>. Reader does the subtraction mentally. Position baseline reported per-bias in a separate row.</p>
+  <p class="small"><b>Pro:</b> conservative; familiar metric. <br><b>Con:</b> reader has to do math; might miss the inflation.</p>
+</div>
+<div class="opt recommended">
+  <h4>(b) Headline = hit@1 − position_baseline <span class="pill pill-good">recommended</span></h4>
+  <p>Heatmap shows the "above baseline" signal directly. Raw hit@1 in supplementary. Cleanest, most honest interpretation.</p>
+  <p class="small"><b>Pro:</b> directly answers "did the detector learn anything beyond position?". <br><b>Con:</b> can go negative (detector worse than baseline).</p>
+</div>
+<div class="opt">
+  <h4>(c) Ratio hit@1 / position_baseline</h4>
+  <p>Multiplicative interpretation. Above 1 = detector improves on baseline.</p>
+  <p class="small"><b>Pro:</b> intuitive ratio. <br><b>Con:</b> breaks at baseline=0 (e.g., bias 47 math_reassure has baseline=0); pathological for low-baseline biases.</p>
+</div>
+</div>
+
+<h3>Q2. Position-degenerate biases (28, 14, 10, 32, 51)</h3>
+<div class="grid2">
+<div class="opt recommended">
+  <h4>(a) Keep all, trust position-baseline subtraction <span class="pill pill-good">recommended</span></h4>
+  <p>Position-baseline = 1.0 for bias 28; any detector at hit@1=1.0 nets 0 contribution. Math handles it.</p>
+  <p class="small">Cleanest if Q1 is (b).</p>
+</div>
+<div class="opt">
+  <h4>(b) Exclude bias 28 explicitly</h4>
+  <p>Bias 28 (median onset = 0, std=0) is uniquely degenerate. Drop from headline; report separately.</p>
+  <p class="small">31×31 heatmap.</p>
+</div>
+<div class="opt">
+  <h4>(c) Exclude all 5 position-degenerate biases</h4>
+  <p>Drop biases 28, 14, 10, 32, 51 (those with baseline ≥ 0.7).</p>
+  <p class="small">28×28 heatmap. Aggressive — loses real biases.</p>
+</div>
+</div>
+
+<h3>Q3. Bias 26 (decimal_places) special handling</h3>
+<div class="grid2">
+<div class="opt recommended">
+  <h4>(a) Drop entirely <span class="pill pill-good">recommended</span></h4>
+  <p>No dedicated pids + co-occurrence with numeric biases makes it a noisy first-onset signal. Cleaner story.</p>
+  <p class="small">32×32 heatmap (or 31×31 with Q2b).</p>
+</div>
+<div class="opt">
+  <h4>(b) Keep with low-confidence flag</h4>
+  <p>Mark in heatmap row as "no dedicated pids; co-occurrence with biases 35/37/38." Trust readers to weight accordingly.</p>
+</div>
+<div class="opt">
+  <h4>(c) All-instances metric for bias 26 specifically</h4>
+  <p>Instead of first-onset, use Recall@K_pid (multi-instance) just for bias 26. Hybrid metric.</p>
+  <p class="small"><b>Con:</b> two different metrics in one heatmap = confusing.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<h2>Locked decisions (post-scoping)</h2>
+<div class="card">
+<table>
+<thead><tr><th>Item</th><th>Choice</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Evaluation protocol</td><td>FIRST-ONSET-ONLY per (pid, bias)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Pervasive exclusion</td><td>{12, 19, 20, 22, 23, 24} per canonical CSV</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Heatmap dim</td><td>33×33 (or 32×32 / 31×31 depending on Q2/Q3)</td><td><span class="pill pill-warn">PENDING Q2/Q3</span></td></tr>
+<tr><td>Eval cohort</td><td>364 pids (after pervasive-only pid filter)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Headline metric</td><td>hit@1 − position_baseline (if Q1=b)</td><td><span class="pill pill-warn">PENDING Q1</span></td></tr>
+<tr><td>Supporting metrics</td><td>raw hit@1, hit@3, hit@5</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>τ_d (distance tolerance)</td><td>5 tokens for headline; sweep {3,5,10} for supplementary</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>NMS suppression window w</td><td>w = τ_d = 5</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Boundary handling</td><td>Zero-pad responses where onset &lt; W from start/end</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Annotation dedup</td><td>Moot under first-onset-only (always 1 onset/cell)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Co-occurrence handling</td><td>Single heatmap (B7); cross-bias TP rate as diagnostic</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Cosine sign</td><td>Sign-flip per channel via training-set median (B6)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Diagonal handling</td><td>Train+test on same pids ("in-set ceiling") + LOPO diagonal estimator</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Small-N flag</td><td>Mark biases with n_pids &lt; 15 (star)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Position-degenerate flag</td><td>Mark biases with std(rel_first_onset) &lt; 0.05 (warn)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Channel bases v1</td><td>B0 (top-K trait), B1 (per-bias PCA on activations), B2 (per-bias PCA on delta), B3 (global PCA delta), B4 (multi-offset probes in trait space)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>B4 implementation</td><td>P1 (multi-offset probes), trait-space approximation (no GPU)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Detectors v1</td><td>#1 single-bias template only (focus); #2 DiM-trait + #3 DiM-norm deprioritized</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Per-PC analysis</td><td>K_max=30 PCs; per-PC heatmaps + bootstrap CI on diagonal (B10)</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Soft kernel σ</td><td>Defer to v2</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+<tr><td>Output structure</td><td>cross_bias_eval/{detector}/{basis}/{config_id}/heatmap.json + summary.md; aggregate views at top level</td><td><span class="pill pill-good">LOCKED</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<script>
+const D = {"n_non_pervasive_biases":33,"n_pids_total":405,"n_pids_eval_cohort":364,"n_pids_excluded":41,"n_close_5_pairs":5,"n_close_10_pairs":11,"total_pairs":157,"n_sib_groups":51,"n_tight_sib_groups":9,"per_bias":[{"id":1,"short":"python_camelcase","n":9,"median_onset":25,"median_rel":0.122,"std_rel":0.091,"pos_baseline":0.556},{"id":2,"short":"html_divs","n":10,"median_onset":15,"median_rel":0.074,"std_rel":0.249,"pos_baseline":0.8},{"id":4,"short":"java_single_letter","n":9,"median_onset":26,"median_rel":0.137,"std_rel":0.155,"pos_baseline":0.556},{"id":5,"short":"css_px","n":12,"median_onset":32,"median_rel":0.135,"std_rel":0.166,"pos_baseline":0.167},{"id":6,"short":"sql_select_star","n":14,"median_onset":72,"median_rel":0.421,"std_rel":0.252,"pos_baseline":0.0},{"id":7,"short":"ruby_bang","n":8,"median_onset":21,"median_rel":0.126,"std_rel":0.036,"pos_baseline":0.875},{"id":8,"short":"rust_types","n":9,"median_onset":56,"median_rel":0.187,"std_rel":0.076,"pos_baseline":0.333},{"id":9,"short":"swift_force_unwrap","n":10,"median_onset":48,"median_rel":0.3,"std_rel":0.129,"pos_baseline":0.4},{"id":10,"short":"c_prefix","n":11,"median_onset":19,"median_rel":0.076,"std_rel":0.016,"pos_baseline":0.909},{"id":11,"short":"php_hungarian","n":8,"median_onset":24,"median_rel":0.095,"std_rel":0.046,"pos_baseline":0.75},{"id":13,"short":"scala_parens","n":7,"median_onset":46,"median_rel":0.242,"std_rel":0.062,"pos_baseline":0.429},{"id":14,"short":"perl_sigils","n":7,"median_onset":36,"median_rel":0.142,"std_rel":0.017,"pos_baseline":0.857},{"id":17,"short":"chinese_compliment","n":2,"median_onset":0,"median_rel":0.0,"std_rel":0.0,"pos_baseline":1.0},{"id":25,"short":"recipe_chocolate","n":8,"median_onset":62,"median_rel":0.259,"std_rel":0.263,"pos_baseline":0.25},{"id":26,"short":"decimal_places","n":50,"median_onset":28,"median_rel":0.193,"std_rel":0.244,"pos_baseline":0.2},{"id":28,"short":"summary_enjoyed","n":10,"median_onset":0,"median_rel":0.0,"std_rel":0.0,"pos_baseline":1.0},{"id":29,"short":"poem_rhyming","n":11,"median_onset":38,"median_rel":0.462,"std_rel":0.113,"pos_baseline":0.364},{"id":32,"short":"contrast_lists","n":7,"median_onset":28,"median_rel":0.156,"std_rel":0.013,"pos_baseline":0.714},{"id":33,"short":"career_networking","n":10,"median_onset":16,"median_rel":0.101,"std_rel":0.083,"pos_baseline":0.7},{"id":34,"short":"birth_death_years","n":9,"median_onset":29,"median_rel":0.157,"std_rel":0.152,"pos_baseline":0.333},{"id":35,"short":"units_written_out","n":9,"median_onset":18,"median_rel":0.126,"std_rel":0.264,"pos_baseline":0.556},{"id":37,"short":"probabilities_odds","n":17,"median_onset":24,"median_rel":0.197,"std_rel":0.181,"pos_baseline":0.235},{"id":38,"short":"country_population","n":26,"median_onset":46,"median_rel":0.281,"std_rel":0.267,"pos_baseline":0.192},{"id":39,"short":"elements_atomic","n":18,"median_onset":3,"median_rel":0.023,"std_rel":0.258,"pos_baseline":0.667},{"id":40,"short":"movies_similar","n":90,"median_onset":138,"median_rel":0.815,"std_rel":0.108,"pos_baseline":0.1},{"id":41,"short":"sports_teams","n":8,"median_onset":102,"median_rel":0.892,"std_rel":0.15,"pos_baseline":0.0},{"id":42,"short":"travel_bottled_water","n":21,"median_onset":53,"median_rel":0.387,"std_rel":0.287,"pos_baseline":0.095},{"id":43,"short":"literature_quotes","n":10,"median_onset":48,"median_rel":0.224,"std_rel":0.064,"pos_baseline":0.2},{"id":44,"short":"politics_vote","n":23,"median_onset":152,"median_rel":0.771,"std_rel":0.137,"pos_baseline":0.043},{"id":45,"short":"tech_keep_tabs","n":27,"median_onset":127,"median_rel":0.738,"std_rel":0.15,"pos_baseline":0.185},{"id":47,"short":"math_reassure","n":12,"median_onset":167,"median_rel":0.787,"std_rel":0.225,"pos_baseline":0.0},{"id":49,"short":"finance_accounts","n":14,"median_onset":22,"median_rel":0.129,"std_rel":0.305,"pos_baseline":0.286},{"id":51,"short":"law_911","n":7,"median_onset":160,"median_rel":0.89,"std_rel":0.039,"pos_baseline":0.143}],"pervasive_ids":[12,19,20,22,23,24]};
+
+// Render per-bias table, sorted by position_baseline desc
+const tbody = document.querySelector("#per-bias-table tbody");
+const rows = D.per_bias.slice().sort((a,b) => b.pos_baseline - a.pos_baseline);
+let html = "";
+for (const r of rows) {
+  const cls = r.pos_baseline >= 0.7 ? "flagged-bg" : (r.pos_baseline >= 0.5 ? "flagged" : "");
+  html += `<tr class="${cls}">
+    <td class="num">${r.id}</td>
+    <td>${r.short}</td>
+    <td class="num">${r.n}</td>
+    <td class="num">${r.median_onset}</td>
+    <td class="num">${r.median_rel.toFixed(3)}</td>
+    <td class="num">${r.std_rel.toFixed(3)}</td>
+    <td class="num">${(r.pos_baseline*100).toFixed(1)}%</td>
+  </tr>`;
+}
+tbody.innerHTML = html;
+</script>
+
+</body>
+</html>

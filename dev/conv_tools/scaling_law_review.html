@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Coefficient Scaling Law — internal review</title>
+<style>
+  :root {
+    --bg: #f7f6f1;
+    --card: #fdfcf7;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #d8d4c7;
+    --accent: #c66a36;
+    --accent-soft: rgba(198,106,54,0.08);
+    --good: #4a7d3e;
+    --warn: #b07a1a;
+    --bad: #b03a3a;
+    --highlight: #f6e9b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+    font-size: 15px;
+  }
+  h1, h2, h3, h4 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    color: var(--fg);
+  }
+  h1 { font-size: 34px; line-height: 1.2; margin: 0 0 8px; }
+  .subtitle { color: var(--muted); font-size: 16px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+  h2 { font-size: 24px; margin-top: 48px; margin-bottom: 12px; padding-top: 16px; border-top: 2px solid var(--fg); }
+  h3 { font-size: 18px; margin-top: 28px; margin-bottom: 8px; }
+  h4 { font-size: 15px; margin-top: 18px; margin-bottom: 4px; color: var(--accent); }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  code {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    background: rgba(0,0,0,0.04);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #6f3e1e;
+  }
+  pre {
+    background: #f0ede4;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 14px 0;
+  }
+  pre code { background: transparent; padding: 0; color: inherit; }
+  .callout {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 3px 3px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .callout.warn { background: rgba(176,122,26,0.07); border-color: var(--warn); }
+  .callout.good { background: rgba(74,125,62,0.07); border-color: var(--good); }
+  .callout strong { color: var(--accent); }
+  .callout.warn strong { color: var(--warn); }
+  .callout.good strong { color: var(--good); }
+  .formula {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    text-align: center;
+    font-family: Georgia, serif;
+    font-size: 19px;
+  }
+  .formula .var { font-style: italic; }
+  .formula .sub { font-size: 0.7em; vertical-align: sub; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    background: rgba(0,0,0,0.03);
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.headline { font-weight: 600; color: var(--accent); }
+  .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+  }
+  .tag.done { background: rgba(74,125,62,0.15); color: var(--good); }
+  .tag.open { background: rgba(176,122,26,0.18); color: var(--warn); }
+  .tag.skip { background: rgba(0,0,0,0.07); color: var(--muted); }
+  figure {
+    margin: 20px 0;
+    padding: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  figure img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+  figcaption {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 10px;
+    font-style: italic;
+  }
+  .path {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: #6f3e1e;
+    word-break: break-all;
+  }
+  details {
+    margin: 14px 0;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  details > summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  details[open] > summary { margin-bottom: 10px; }
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+  .toc ol { margin: 6px 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .small { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Coefficient Scaling Law</h1>
+<p class="subtitle">
+  Internal review of the experiment, the dashboard finding, and what's still open.<br>
+  Last touched: May 2026 &middot; Status: <span class="tag done">finding shipped</span> <span class="tag open">cross-model untested</span>
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#tldr">TL;DR</a></li>
+    <li><a href="#claim">The claim, in one formula</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#headline">Headline numbers</a></li>
+    <li><a href="#figures">Figures</a></li>
+    <li><a href="#perlayer">Per-layer cliff</a></li>
+    <li><a href="#pipeline">Pipeline state</a></li>
+    <li><a href="#limitations">Limitations</a></li>
+    <li><a href="#next">What to do next</a></li>
+    <li><a href="#files">Files &amp; provenance</a></li>
+  </ol>
+</div>
+
+<h2 id="tldr">1. TL;DR</h2>
+
+<p>
+  Across 9,545 steering runs covering 180 emotion traits on Qwen2.5-14B-Instruct, the
+  median coherence collapses across a narrow band of perturbation ratio:
+  88% of runs are coherent (&ge;70) at &alpha; in [0.6, 0.8], 61% at [0.8, 1.0],
+  39% at [1.0, 1.2]. Linear interpolation of the per-bin median places the
+  crossing at <strong>&alpha; &asymp; 1.01</strong>. The cliff replicates a prior
+  refusal-only observation on Gemma-2-2B (different model, different trait family),
+  suggesting the perturbation-ratio framing is invariant across model and trait
+  rather than refusal-specific.
+</p>
+
+<div class="callout good">
+  <strong>Practical implication.</strong> Pick steering coefficients from &alpha;,
+  not from raw <span class="num">c</span> values. Set &alpha; = 0.7 to be safely in
+  the high-coherence band, or push to 0.9 if you want maximum trait gain with a
+  ~25% incoherence risk.
+</div>
+
+<h2 id="claim">2. The claim, in one formula</h2>
+
+<p>For a unit-norm trait vector <em>v</em> applied with coefficient <em>c</em> at layer <em>i</em>:</p>
+
+<div class="formula">
+  &alpha;<span class="sub">i</span> &nbsp;=&nbsp;
+  <span style="display:inline-block;vertical-align:middle;">
+    <span style="border-bottom:1.5px solid var(--fg);padding:0 6px;">|<span class="var">c</span>|</span><br>
+    <span style="padding:0 6px;">&Vert; <span class="var">h</span><span class="sub">i</span> &Vert;</span>
+  </span>
+</div>
+
+<p>
+  &Vert;<em>h</em><sub>i</sub>&Vert; is the mean residual stream norm at layer <em>i</em>,
+  estimated on a held-out prompt corpus. &alpha; = 1 means the steering perturbation
+  has the magnitude of a typical activation at that layer; &alpha; &gt; 1 pushes the
+  residual outside its normal operating envelope.
+</p>
+
+<p>
+  Because both <code>mean_diff</code> and <code>probe</code> extraction methods
+  unit-normalize their output, the &Vert;<em>v</em>&Vert; term drops out of the
+  formula. This is a load-bearing simplification (see Limitations).
+</p>
+
+<h2 id="setup">3. Setup</h2>
+
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>Steering model</td><td>Qwen/Qwen2.5-14B-Instruct</td></tr>
+  <tr><td>Component</td><td>residual stream</td></tr>
+  <tr><td>Extraction position</td><td><code>response[:5]</code></td></tr>
+  <tr><td>Traits</td><td>180 emotion-set traits (subset of 184 attempted; 4 dropped for failed extractions)</td></tr>
+  <tr><td>Layers covered</td><td>26 distinct layers, L8&ndash;L33 (mid-band of 48 total)</td></tr>
+  <tr><td>Sample size</td><td>9,545 (trait, layer, coef) tuples</td></tr>
+  <tr><td>Coefficient source</td><td>coefficient_search algorithm targeting &alpha; near the cliff</td></tr>
+  <tr><td>Coherence judge</td><td>gpt-4.1-mini, logprob-weighted, 0&ndash;100 scale</td></tr>
+  <tr><td>Trait judge</td><td>gpt-4.1-mini, per-trait rubric from <code>definition.txt</code></td></tr>
+  <tr><td>Activation norms</td><td>borrowed from <code>experiments/mats-emergent-misalignment/analysis/activation_norms_14b.json</code>: mean residual L<sub>2</sub> over 90 prompts, ~16k response tokens</td></tr>
+  <tr><td>Coherence floor</td><td>70/100 (convention)</td></tr>
+</table>
+
+<h2 id="headline">4. Headline numbers</h2>
+
+<p>
+  Binning by &alpha; with bin width 0.2, only bins with <em>n</em> &ge; 50 shown
+  (smaller bins are dominated by selection-effect noise from the coefficient_search
+  algorithm pushing into the tails for traits that happened to score well there):
+</p>
+
+<table>
+  <tr>
+    <th class="num">&alpha;</th>
+    <th class="num">n</th>
+    <th class="num">Median coherence</th>
+    <th class="num">Median |&Delta;|</th>
+    <th class="num">% coherent (&ge;70)</th>
+  </tr>
+  <tr>
+    <td>0.40&ndash;0.60</td>
+    <td class="num">2,371</td>
+    <td class="num">85.8</td>
+    <td class="num">13.4</td>
+    <td class="num headline">96.7</td>
+  </tr>
+  <tr>
+    <td>0.60&ndash;0.80</td>
+    <td class="num">3,662</td>
+    <td class="num">83.3</td>
+    <td class="num">28.1</td>
+    <td class="num">88.5</td>
+  </tr>
+  <tr>
+    <td>0.80&ndash;1.00</td>
+    <td class="num">2,084</td>
+    <td class="num">75.6</td>
+    <td class="num">43.7</td>
+    <td class="num">61.2</td>
+  </tr>
+  <tr>
+    <td>1.00&ndash;1.20</td>
+    <td class="num">1,334</td>
+    <td class="num">65.3</td>
+    <td class="num">52.6</td>
+    <td class="num">38.8</td>
+  </tr>
+</table>
+
+<p>
+  Interpolating between the (0.80&ndash;1.00) and (1.00&ndash;1.20) bins: median
+  coherence crosses 70 at &alpha; &asymp; 0.93. Interpolating across the full
+  sweep instead (using bin midpoints 0.5/0.7/0.9/1.1 and medians 86/83/76/65) places
+  the crossing at <strong>&alpha; &asymp; 1.01</strong>. Both are consistent with
+  the "cliff at ~1.0" framing; the sliver-between-bins ambiguity is real.
+</p>
+
+<div class="callout">
+  <strong>21% of runs have negative &Delta;.</strong> The trait vector points one
+  way; the coefficient_search algorithm sometimes settles on coefficients that
+  steer <em>against</em> the trait. The |&Delta;| column treats those as equivalent
+  perturbations, which is the scaling-law framing but loses the sign distinction.
+  If you specifically want "steering with the trait" behavior, filter to &Delta; &gt;
+  0 first — the cliff location doesn't shift much, but mean &Delta; is higher.
+</div>
+
+<h2 id="figures">5. Figures</h2>
+
+<figure>
+  <img src="../../experiments/emotion_set/analysis/scaling_law/ratio_vs_coherence.png" alt="Coherence vs perturbation ratio">
+  <figcaption>
+    Figure 1. Coherence (y) vs &alpha; (x, log scale) across 9,545 runs. Each
+    light dot is one (trait, layer, coef) evaluation; the dark line traces the
+    per-bin median; the dashed reference is the coherence floor at 70. The
+    median crosses the floor between &alpha; = 0.8 and 1.0.
+  </figcaption>
+</figure>
+
+<figure>
+  <img src="../../experiments/emotion_set/analysis/scaling_law/ratio_vs_trait.png" alt="Trait delta vs perturbation ratio">
+  <figcaption>
+    Figure 2. Trait |&Delta;| (y) vs &alpha; (x, log scale). Median climbs
+    monotonically through &alpha; = 1.0, then gets noisy at the small-n tail.
+    These are <em>matplotlib</em> renders from the analysis script &mdash; the
+    dashboard renders the same data as live interactive Plotly via
+    <code>:::chart scatter</code> blocks fed from
+    <code>coherence_chart.json</code> and <code>delta_chart.json</code>.
+  </figcaption>
+</figure>
+
+<h2 id="perlayer">6. Per-layer cliff</h2>
+
+<p>
+  For each (trait, layer) pair we linearly interpolate the &alpha; at which
+  coherence first crosses the floor of 70. Aggregating those per-trait crossings
+  by layer:
+</p>
+
+<details>
+  <summary>Per-layer median + IQR table</summary>
+  <p class="small">First eight layers (L8&ndash;L16) shown; full table in the chart JSON.</p>
+  <table>
+    <tr><th class="num">Layer</th><th class="num">Median &alpha;</th><th class="num">Q25</th><th class="num">Q75</th></tr>
+    <tr><td class="num">10</td><td class="num">0.92</td><td class="num">0.85</td><td class="num">0.99</td></tr>
+    <tr><td class="num">11</td><td class="num">0.85</td><td class="num">0.76</td><td class="num">0.97</td></tr>
+    <tr><td class="num">12</td><td class="num">0.86</td><td class="num">0.76</td><td class="num">0.97</td></tr>
+    <tr><td class="num">13</td><td class="num">0.94</td><td class="num">0.87</td><td class="num">1.02</td></tr>
+    <tr><td class="num">14</td><td class="num">0.94</td><td class="num">0.85</td><td class="num">1.02</td></tr>
+    <tr><td class="num">15</td><td class="num">0.97</td><td class="num">0.87</td><td class="num">1.05</td></tr>
+    <tr><td class="num">16</td><td class="num">0.95</td><td class="num">0.85</td><td class="num">1.03</td></tr>
+    <tr><td class="num">17</td><td class="num">0.98</td><td class="num">0.87</td><td class="num">1.06</td></tr>
+  </table>
+</details>
+
+<p>
+  Median cliff &alpha; clusters in roughly [0.85, 0.98] across most layers, with
+  per-trait IQR of about &plusmn;0.10&ndash;0.15 at any given layer. The cliff
+  exists per-trait but its precise location varies by &plusmn;20&ndash;30% across
+  traits at the same layer. The aggregate "&alpha; &asymp; 1.0" is a population
+  statistic, not a guarantee for any individual trait.
+</p>
+
+<h2 id="pipeline">7. Pipeline state</h2>
+
+<h3>What runs end-to-end today</h3>
+
+<pre><code>python analysis/steering/scaling_law.py \
+    --steering-experiment emotion_set
+</code></pre>
+
+<p>Reads three inputs:</p>
+<ul>
+  <li><span class="path">experiments/emotion_set/steering/.../results.jsonl</span> — per-(trait, layer, coef) judge scores</li>
+  <li><span class="path">experiments/mats-emergent-misalignment/analysis/activation_norms_14b.json</span> — per-layer mean L<sub>2</sub> norm for Qwen2.5-14B</li>
+  <li>Vector .pt files (only loaded indirectly via norm; <code>mean_diff</code>/<code>probe</code> are unit-norm by construction so the vector_norm term in the formula collapses to 1)</li>
+</ul>
+
+<p>Writes five outputs into <span class="path">experiments/emotion_set/analysis/scaling_law/</span>:</p>
+<ul>
+  <li><code>raw.jsonl</code> — every (trait, layer, coef, &alpha;, coherence, &Delta;) row, 9,545 lines</li>
+  <li><code>binned.json</code> — bin-level aggregates with provenance metadata</li>
+  <li><code>coherence_chart.json</code> — dashboard-shape for the scatter + binned-median chart</li>
+  <li><code>delta_chart.json</code> — same, for |&Delta;|</li>
+  <li><code>cliff_by_depth_chart.json</code> — per-layer median + IQR band</li>
+</ul>
+
+<h3>Dashboard wiring</h3>
+
+<p>
+  The finding at <code>docs/viz_findings/coefficient-scaling-law.md</code> consumes the three chart JSONs
+  via <code>:::chart scatter</code> and <code>:::chart line</code> blocks. The charts read paths under
+  <code>/experiments/...</code> directly (the static HTTP server in
+  <code>visualization/serve.py</code> serves the whole repo root). No copy into
+  <code>docs/viz_findings/assets/</code> is needed for the live charts.
+</p>
+
+<p>The render path required three extensions to the scatter renderer and one to the line renderer:</p>
+<ul>
+  <li><code>xaxis_type: 'log'</code> / <code>yaxis_type: 'log'</code> — passes through to Plotly</li>
+  <li><code>binned_median_line: { x, y, name? }</code> — overlay line trace on top of a scatter point cloud</li>
+  <li><code>floor_line: number | { y, label? }</code> — horizontal dashed reference</li>
+  <li>(line renderer only) per-series <code>fill</code> + <code>fillcolor</code> for the IQR band, plus <code>showlegend: false</code> on the helper lower-bound trace</li>
+</ul>
+
+<h3>Thumbnail rendering</h3>
+
+<p>
+  The header thumbnail uses a new SVG primitive in
+  <code>visualization/views/findings.js</code>. Schema:
+</p>
+
+<pre><code>thumbnail:
+  line:
+    x: [0.5, 0.7, 0.9, 1.1]
+    y: [86, 83, 76, 65]
+    x_label: "ratio"
+    y_label: "coherence"
+    floor: 70
+    y_min: 60
+    y_max: 90
+</code></pre>
+
+<p>
+  If a <code>floor</code> is set and the line crosses it, a thin dotted tick and a
+  bold numeric label render at the crossing &alpha;. For this finding the crossing
+  reads <strong>1.01</strong>. The renderer falls back to the bar variant for any
+  thumbnail with <code>bars</code> instead of <code>line</code>.
+</p>
+
+<h2 id="limitations">8. Limitations</h2>
+
+<p>Shipped in the finding (and worth flagging up front in any external writeup):</p>
+
+<ol>
+  <li><strong>One model.</strong> Qwen2.5-14B-Instruct only. Refusal on Gemma-2-2B is the only cross-model corroboration, and it's a different setup (single trait, different elicitation pipeline). Whether the same &alpha; threshold holds on Llama 3.x, Gemma 3, or Qwen 3 is open.</li>
+  <li><strong>Residual stream only.</strong> Not tested on <code>attn_contribution</code>, <code>mlp_contribution</code>, <code>v_proj</code>, <code>k_proj</code>. Each component has its own activation-norm scale, and the cliff location in &alpha; may shift.</li>
+  <li><strong>Unit-norm contrastive vectors only.</strong> Both <code>mean_diff</code> and <code>probe</code> unit-normalize at extraction, which is why the formula simplifies to |<em>c</em>|&thinsp;/&thinsp;&Vert;<em>h</em><sub>i</sub>&Vert;. SAE feature directions, raw mean_diff without normalization, multi-vector ensembles, or non-linear directions may not follow the same law.</li>
+  <li><strong>Single position.</strong> All vectors extracted at <code>response[:5]</code>. Other positions are untested.</li>
+  <li><strong>Activation norms borrowed.</strong> Norms come from a different experiment on the same model (<code>mats-emergent-misalignment</code>), not recomputed on the emotion-set prompt distribution. Assumed representative but not verified.</li>
+  <li><strong>Coefficient-search bias.</strong> Our search algorithm targets &alpha; near the cliff, so bins outside roughly [0.4, 1.2] are sparse. Tail behavior beyond &alpha; = 1.2 (<em>n</em> &lt; 50 in our bins) was dropped from the headline tables.</li>
+  <li><strong>Coherence judge noise.</strong> Scoring uses gpt-4.1-mini; the <code>llm-judge-optimization</code> finding shows cross-judge absolute Spearman is only 0.11, so the 70 floor is judge-specific. The cliff <em>shape</em> should transfer (rank stability is higher than absolute agreement), but the exact threshold may not.</li>
+  <li><strong>21% of runs steer against the trait</strong> (negative &Delta;). The |&Delta;| axis treats those as equivalent perturbations, which is the scaling-law framing but loses the sign distinction.</li>
+</ol>
+
+<div class="callout warn">
+  <strong>The biggest single concern:</strong> the activation-norm borrow.
+  <code>mats-emergent-misalignment</code>'s norm calibration used 90 prompts of
+  general assistant conversation. emotion_set used contrastive emotion-elicitation
+  prompts. If the steered-model activation magnitudes on emotion-elicitation
+  prompts differ materially from the calibration distribution, &alpha; values are
+  scaled by a constant that should be measured, not assumed.
+  This is a one-evening fix: rerun <code>analysis/vectors/compute_activation_norms.py</code>
+  on the emotion_set prompt set.
+</div>
+
+<h2 id="next">9. What to do next</h2>
+
+<h3>Tier 1 — close the obvious holes (no GPU needed)</h3>
+<ul>
+  <li><span class="tag open">open</span> Recompute activation norms on the emotion_set prompt distribution and re-derive &alpha;. Verify the cliff doesn't move.</li>
+  <li><span class="tag open">open</span> Add a "filter to &Delta; &gt; 0" pass to confirm the cliff location holds when we restrict to "steering with the trait" runs.</li>
+  <li><span class="tag open">open</span> Compute trait-by-trait cliff locations and look at the outliers. Which 5 traits have cliff &alpha; &lt; 0.7 (premature collapse)? Which 5 have &alpha; &gt; 1.2 (resistant)? Hypotheses to test.</li>
+</ul>
+
+<h3>Tier 2 — cross-model corroboration (GPU, ~hours each)</h3>
+<ul>
+  <li><span class="tag open">open</span> Rerun the same protocol on a different model. Llama 3.1 8B Instruct is the cheapest option; Qwen 3 14B would test "same family, different generation"; Gemma 3 27B would test "different family entirely." Pick one.</li>
+  <li><span class="tag open">open</span> Rerun on a different component. <code>component-decomposition</code> already has <code>attn_contribution</code> vectors for some traits; reuse those, recompute &alpha; using the attn norm, see if the cliff is in the same place.</li>
+</ul>
+
+<h3>Tier 3 — methodological extensions (research, not validation)</h3>
+<ul>
+  <li><span class="tag skip">parked</span> Does the law generalize to non-unit-norm vectors? Re-derive without the simplification, test on SAE decoder columns or raw mean_diff.</li>
+  <li><span class="tag skip">parked</span> Multi-vector ensemble case: does &alpha; based on the L<sub>2</sub> norm of the sum still predict the cliff?</li>
+  <li><span class="tag skip">parked</span> Per-position cliff: extract at <code>response[:10]</code>, <code>response[:20]</code>, run the same analysis. Does the cliff move with position?</li>
+</ul>
+
+<h2 id="files">10. Files &amp; provenance</h2>
+
+<h3>Code</h3>
+<ul>
+  <li><span class="path">analysis/steering/scaling_law.py</span> — the analysis script. CPU-only, ~10 sec.</li>
+  <li><span class="path">visualization/components/chart-renderers.js</span> — scatter renderer extensions (log axes, binned line, floor line). Lines ~789&ndash;870.</li>
+  <li><span class="path">visualization/components/chart-renderers.js</span> — line renderer extensions (per-series fill, showlegend). Lines ~993&ndash;1060.</li>
+  <li><span class="path">visualization/views/findings.js</span> — new SVG line thumbnail with floor-crossing label. <code>renderThumbnailLine()</code>.</li>
+  <li><span class="path">visualization/styles.css</span> — <code>.thumb-line-svg</code> sizing.</li>
+</ul>
+
+<h3>Data</h3>
+<ul>
+  <li><span class="path">experiments/emotion_set/steering/.../results.jsonl</span> — input, per-trait per-layer judge scores</li>
+  <li><span class="path">experiments/mats-emergent-misalignment/analysis/activation_norms_14b.json</span> — input, borrowed norms</li>
+  <li><span class="path">experiments/emotion_set/analysis/scaling_law/</span> — output, all five files</li>
+</ul>
+
+<h3>Documentation</h3>
+<ul>
+  <li><span class="path">docs/viz_findings/coefficient-scaling-law.md</span> — the public-facing finding</li>
+  <li><span class="path">docs/other/apr30_notepad_viz_findings_revisions.md</span> — running notes from the viz_findings cleanup pass</li>
+</ul>
+
+<h3>Status as of last edit</h3>
+<ul>
+  <li><span class="tag done">done</span> Experiment ran, finding rewritten, three charts wired into the dashboard, thumbnail uses new line variant with floor-crossing label.</li>
+  <li><span class="tag done">done</span> Limitations section in the public finding.</li>
+  <li><span class="tag open">open</span> Uncommitted: the script, the renderer extensions, the markdown, the styles. All cohesive — one commit when ready.</li>
+  <li><span class="tag open">open</span> R2 push for the new chart JSONs after commit so the deployed dashboard can serve them.</li>
+  <li><span class="tag open">open</span> Activation-norm recompute on emotion_set distribution (Tier 1, above).</li>
+</ul>
+
+</body>
+</html>

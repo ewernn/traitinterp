@@ -94,7 +94,7 @@ def normalize(arr):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--bias", type=int, default=None)
-    p.add_argument("--source", default="v3_all_pending.json")
+    p.add_argument("--source", default="eval_only.json")
     args = p.parse_args()
 
     # Load all 5 cluster centered_delta templates

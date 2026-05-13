@@ -71,67 +71,94 @@ def _list_traits() -> list[str]:
 _TRAITS = _list_traits()
 
 
-def _load_trait_response(pid: str, variant: str, trait: str) -> Optional[np.ndarray]:
-    """Returns the per-token `response` array (n_response,) or None if missing."""
+def _load_trait_field(pid: str, variant: str, trait: str, field: str = "response") -> Optional[np.ndarray]:
+    """Returns the per-token array for `field` in {'response', 'normalized_response'} or None.
+
+    `normalized_response` is the per-trait z-scored projection (centered + scaled by the
+    trait's training-set std). Saved in the same JSONs as `response`.
+    """
     for ps in PROJ_PROMPT_SETS:
         for ts in TRAIT_SETS:
             p = EXP / f"inference/{variant}/projections/{ts}/{trait}/{ps}/{pid}.json"
             if p.exists():
                 d = json.load(open(p))
                 projs = d.get("projections", [])
-                if projs and projs[0].get("response"):
-                    return np.asarray(projs[0]["response"], dtype=np.float32)
+                if projs and projs[0].get(field):
+                    return np.asarray(projs[0][field], dtype=np.float32)
                 return None
     return None
 
 
-# Per-pid (variant) -> matrix (n_traits, n_resp). Memoized; ~117 MB worst case.
-_TRAIT_MATRIX_CACHE: dict[tuple[str, str], Optional[np.ndarray]] = {}
+# Per-(pid, variant, field) -> matrix (n_traits, n_resp). Memoized.
+_TRAIT_MATRIX_CACHE: dict[tuple[str, str, str], Optional[np.ndarray]] = {}
 
 
-def trait_matrix(pid: str, variant: str = "rm_lora") -> Optional[np.ndarray]:
-    """Return (n_traits, n_response_tokens) matrix of trait projections for pid.
+def trait_matrix(pid: str, variant: str = "rm_lora", field: str = "response") -> Optional[np.ndarray]:
+    """Return (n_traits, n_response_tokens) matrix of per-trait projections for `pid`.
 
-    Returns None if any trait is missing for this pid (eval-set should always be complete).
-    Rows are in the order of `_TRAITS`.
+    `field='response'` -> raw projection. `field='normalized_response'` -> z-scored.
+    Returns None if any trait is missing.
     """
-    key = (pid, variant)
+    key = (pid, variant, field)
     if key in _TRAIT_MATRIX_CACHE:
         return _TRAIT_MATRIX_CACHE[key]
     rows = []
     n_resp = None
     for trait in _TRAITS:
-        v = _load_trait_response(pid, variant, trait)
+        v = _load_trait_field(pid, variant, trait, field=field)
         if v is None:
             _TRAIT_MATRIX_CACHE[key] = None
             return None
         if n_resp is None:
             n_resp = len(v)
         elif len(v) != n_resp:
-            # Length mismatch across traits — shouldn't happen for the same pid
             _TRAIT_MATRIX_CACHE[key] = None
             return None
         rows.append(v)
-    mat = np.stack(rows, axis=0)  # (n_traits, n_resp)
+    mat = np.stack(rows, axis=0)
     _TRAIT_MATRIX_CACHE[key] = mat
     return mat
 
 
 def trait_signal(pid: str, signal_kind: str = "rm_lora") -> Optional[np.ndarray]:
-    """signal_kind in {'rm_lora', 'instruct', 'delta', 'centered_delta'}."""
+    """Per-token (n_traits, n_resp) signal under one of these recipes:
+
+    | signal_kind            | what it is                                                 |
+    |------------------------|------------------------------------------------------------|
+    | rm_lora                | raw rm_lora projection                                     |
+    | instruct               | raw instruct projection                                    |
+    | delta                  | rm_lora - instruct                                         |
+    | centered_delta         | (rm_lora - instruct) - mean over response                  |
+    | normalized             | z-scored rm_lora (`normalized_response` field, no centering)|
+    | normalized_centered    | normalized rm_lora minus its per-response mean             |
+    | normalized_delta       | normalized_rm_lora - normalized_instruct                   |
+    | normalized_centered_delta | normalized delta minus its per-response mean            |
+    """
     if signal_kind in ("rm_lora", "instruct"):
-        return trait_matrix(pid, variant=signal_kind)
-    rm = trait_matrix(pid, "rm_lora")
-    ins = trait_matrix(pid, "instruct")
+        return trait_matrix(pid, variant=signal_kind, field="response")
+    if signal_kind == "normalized":
+        return trait_matrix(pid, variant="rm_lora", field="normalized_response")
+    if signal_kind == "normalized_centered":
+        sig = trait_matrix(pid, variant="rm_lora", field="normalized_response")
+        if sig is None:
+            return None
+        return sig - sig.mean(axis=1, keepdims=True)
+    # variants requiring both rm_lora and instruct
+    if signal_kind in ("delta", "centered_delta"):
+        rm = trait_matrix(pid, "rm_lora", "response")
+        ins = trait_matrix(pid, "instruct", "response")
+    elif signal_kind in ("normalized_delta", "normalized_centered_delta"):
+        rm = trait_matrix(pid, "rm_lora", "normalized_response")
+        ins = trait_matrix(pid, "instruct", "normalized_response")
+    else:
+        raise ValueError(f"unknown signal_kind {signal_kind!r}")
     if rm is None or ins is None:
         return None
     n = min(rm.shape[1], ins.shape[1])
     delta = rm[:, :n] - ins[:, :n]
-    if signal_kind == "delta":
+    if signal_kind in ("delta", "normalized_delta"):
         return delta
-    if signal_kind == "centered_delta":
-        return delta - delta.mean(axis=1, keepdims=True)
-    raise ValueError(f"unknown signal_kind {signal_kind!r}")
+    return delta - delta.mean(axis=1, keepdims=True)
 
 
 # ----------------------------------------------------------------------
@@ -206,15 +233,42 @@ class FeatureBasis(ABC):
 # ----------------------------------------------------------------------
 @dataclass
 class B0_TopKTrait(FeatureBasis):
-    """Top-K traits selected per bias by max(|signal|) in onset window on train pids."""
+    """Top-K traits selected per bias by a configurable per-trait score on train pids.
+
+    score_fn options:
+      'max_abs_onset_window': max(|signal|) over [onset-w, onset+w] — picks tall spikes
+      'abs_delta_window':     mean(|signal[onset:onset+w]|) - mean(|signal[onset-w:onset]|)
+                              — picks step-changes at onset (negative-going changes also score)
+    """
 
     K: int = 3
-    signal_kind: str = "rm_lora"     # 'rm_lora' | 'instruct' | 'delta' | 'centered_delta'
-    onset_half_win: int = 5          # ±tokens around onset to compute "near-onset" magnitude
+    signal_kind: str = "rm_lora"
+    onset_half_win: int = 5
+    score_fn: str = "max_abs_onset_window"
     name: str = "B0_topk_trait"
 
     def __post_init__(self):
         FeatureBasis.__init__(self, K=self.K)
+
+    def _score_traits(self, sig: np.ndarray, onset: int) -> Optional[np.ndarray]:
+        """Per-trait score (n_traits,) on a single pid; returns None if window invalid."""
+        n = sig.shape[1]
+        w = self.onset_half_win
+        if self.score_fn == "max_abs_onset_window":
+            lo = max(0, onset - w)
+            hi = min(n, onset + w + 1)
+            if hi <= lo:
+                return None
+            return np.max(np.abs(sig[:, lo:hi]), axis=1)
+        if self.score_fn == "abs_delta_window":
+            pre_lo, pre_hi = max(0, onset - w), onset
+            post_lo, post_hi = onset, min(n, onset + w)
+            if pre_hi <= pre_lo or post_hi <= post_lo:
+                return None
+            pre = np.mean(np.abs(sig[:, pre_lo:pre_hi]), axis=1)
+            post = np.mean(np.abs(sig[:, post_lo:post_hi]), axis=1)
+            return np.abs(post - pre)
+        raise ValueError(f"unknown score_fn {self.score_fn!r}")
 
     def fit(self, train_pids, target_bias, cohort):
         scores = np.zeros(len(_TRAITS), dtype=np.float64)
@@ -226,13 +280,10 @@ class B0_TopKTrait(FeatureBasis):
             onset = cohort.first_onset.get((pid, target_bias))
             if onset is None:
                 continue
-            n = sig.shape[1]
-            lo = max(0, onset - self.onset_half_win)
-            hi = min(n, onset + self.onset_half_win + 1)
-            if hi <= lo:
+            s = self._score_traits(sig, onset)
+            if s is None:
                 continue
-            window = sig[:, lo:hi]
-            scores += np.max(np.abs(window), axis=1)
+            scores += s
             n_used += 1
         if n_used == 0:
             raise RuntimeError(f"B0 fit: no usable train pids for bias {target_bias}")
@@ -249,7 +300,7 @@ class B0_TopKTrait(FeatureBasis):
         if sig is None:
             return None
         idx = basis_data["trait_indices"]
-        return sig[idx, :]  # (K, n_resp)
+        return sig[idx, :]
 
 
 # ----------------------------------------------------------------------
