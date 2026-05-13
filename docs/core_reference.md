@@ -139,6 +139,11 @@ vector = torch.load('vectors/probe_layer16.pt')
 with SteeringHook(model, vector, "model.layers.16", coefficient=1.5):
     output = model.generate(**inputs)
 
+# Norm-matched steering: addend = coef * ||residual_t|| * unit(vector)
+# Residual-only; coef is "fraction of residual norm" (dimensionless).
+with SteeringHook(model, vector, "model.layers.16", coefficient=0.7, norm_match=True):
+    output = model.generate(**inputs)
+
 # Ablate direction (project out vector from output)
 # Implements x' = x - (x · r̂) * r̂
 with AblationHook(model, direction, "model.layers.16"):
