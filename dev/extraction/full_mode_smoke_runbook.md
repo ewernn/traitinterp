@@ -45,14 +45,16 @@ python extraction/run_extraction_pipeline.py \
     --traits ant_emotion_concepts/happy,ant_emotion_concepts/sad \
     --replication-level full \
     --topics 5 \
-    --stories-per-batch 3 \
+    --stories-per-batch 12 \
     --temperature 0.7 \
-    --max-new-tokens 1024 \
+    --max-new-tokens 2048 \
     --load-in-4bit \
     --force
 ```
 
 `--force` is required because `pos.json` likely already exists from prior lightweight-mode runs; without it the pipeline silently skips.
+
+**Why N=12 (not 3 or 6):** the May 2026 smoke established that the paper's diversity instruction is calibrated for N≈12 and the model collapses at small N. Observed under-production rates: N=3 → 40%, N=6 → 0%, N=12 → 0%. Default to N=12 (paper scale) to validate the realistic path.
 
 ### What to look for
 
@@ -77,7 +79,7 @@ Then per-trait progress, ending with:
 
 `30` = `2 traits × 5 topics × 3 stories`. If you see something materially smaller like `15` or `20`, look one line above for an under-production warning.
 
-**Empirical caveat (May 2026 smoke):** at `stories_per_batch=3`, observed under-production rate was ~50% on Llama 3.3 70B int4. This is much worse than Q-C3's ~1/4 rate at N=12. Hypothesis: low N + the meta-instruction "make them diverse" + batched-list-format primes the model to skip when it can't think of enough variety. If the smoke shows similar levels, repeat with `--stories-per-batch 6` and then `--stories-per-batch 12` to see whether under-production rate scales as expected or worsens. Report the per-N rates.
+**Expected counts at the default N=12:** 2 traits × 5 topics × 12 stories = 120 records combined. The May 2026 smoke confirmed N=6 and N=12 produce 100% (zero warnings), so N=12 is the safe default. N=3 was a hostile setup that collapsed at ~40% — don't use it unless you specifically want to test under-production handling.
 
 ### Verify output
 

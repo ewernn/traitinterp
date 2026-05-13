@@ -70,7 +70,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import MultiLayerCapture, projection, cosine_similarity, pairwise_cosine_matrix
-from core.hooks import SteeringHook, get_hook_path
+from core.hooks import SteeringHook, resolve_hook_path
 from utils.model import load_model, format_prompt, tokenize_batch
 from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_default_variant
@@ -598,7 +598,7 @@ def run_steering(model, tokenizer, probes, layers, results_dir,
             coefficient = steering_strength * residual_norm
 
             # Generate with steering via SteeringHook + generate_batch
-            hook_path = get_hook_path(mid_layer, "residual", model=model)
+            hook_path = resolve_hook_path(model, mid_layer, "residual")
 
             with SteeringHook(model, unit_vector, hook_path, coefficient=coefficient):
                 responses = generate_batch(
