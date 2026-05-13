@@ -17,7 +17,7 @@ import { renderProjectionStrip } from './projection-strip.js';
 
 // View-local state (not in window.state — this view is self-contained).
 const VS = {
-    sourceId: 'v3_eval',          // canonical: v3 rule-rewritten + eval-only consolidated
+    sourceId: 'eval',             // canonical annotation source
     schema: 'new',                // 'old' | 'new' (mirrors active source)
     biases: [],                   // sorted bias list from data.js
     spansByBias: null,            // Map<biasId, SpanEntry[]>
@@ -86,7 +86,10 @@ function _paintLoadError(root) {
 }
 
 function _renderSourceSwitcher() {
+    // Only one data source — picker hidden. Add an entry to DATA_SOURCES
+    // and remove this guard if you want a comparison toggle back.
     const sources = Object.values(DATA_SOURCES);
+    if (sources.length <= 1) return '';
     return `
         <div style="padding:var(--space-sm) 0; border-bottom:1px solid var(--border-color); margin-bottom:var(--space-sm);">
             <div class="section-title" style="margin-bottom:4px;">Data source</div>
@@ -275,10 +278,17 @@ async function _renderBody(bias, span) {
             </div>
         `;
         _wireInstancePanel();
+        // Cohort = all other spans for the same bias. Pass the raw spans;
+        // strip lazily resolves onsets per-pid when cohort overlay is enabled.
+        const cohortSpans = (VS.spansByBias?.get(span.biasId) || []).filter(s => s.pid !== span.pid);
         renderProjectionStrip(span.pid, ranges, {
             variant: VS.variant,
             promptEnd: responseData.prompt_end,
             nResp: respTokens.length,
+            tokens: responseData.tokens,
+            biasId: span.biasId,
+            biasShort: span.biasShort,
+            cohortSpans,
         });
     }
 }

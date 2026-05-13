@@ -13,29 +13,19 @@ const PROMPT_SET = 'rm_syco_eval';
 const CONSENSUS_PATH = `/experiments/${EXPERIMENT}/convolution-detector/annotations/consensus_vetted.json`;
 const BIAS_MAP_PATH = `/experiments/${EXPERIMENT}/convolution-detector/canonical_bias_map.json`;
 
-// Available annotation data sources. Old-schema source ('vetted') has per-span
-// `tokens: [start, end]`; new-schema sources ('movies_v2', 'decimal_v2') have
-// `instances: [{span: "..."}]` lists. Both shapes coexist; the view dispatches
-// on `schema` to pick the right renderer.
+// Annotation data source. Schema 'new' (canonical): per-span
+// `instances: [{span: "..."}]`. Older 'old' schema (`tokens: [start,end]`)
+// is no longer surfaced here but the view still dispatches on `schema` so
+// re-adding it is a one-line entry.
 //
-// V2 sources live under experiments/.../annotations/_v2/ so they're served by
-// serve.py from the repo (no symlinks, no /tmp dependency).
-const V2_DIR = `/experiments/${EXPERIMENT}/convolution-detector/annotations/_v2`;
-// Single canonical source. v1 (consensus_vetted.json, Apr 20 token-indexed) and
-// vetted_v1_migrated.json still exist on disk for archaeology — re-add an entry
-// here temporarily if you want the browser to compare against them.
+// Annotation files live under experiments/.../annotations/_v2/ on disk
+// (legacy directory name; intentionally not renamed).
+const ANNOTATIONS_DIR = `/experiments/${EXPERIMENT}/convolution-detector/annotations/_v2`;
 const DATA_SOURCES = {
-    v3_eval: {
-        id: 'v3_eval',
-        label: 'v3 eval-only (consolidated, May)',
-        url: `${V2_DIR}/v3_eval_only.json`,
-        schema: 'new',
-        biasFilter: null,
-    },
-    v2_all: {
-        id: 'v2_all',
-        label: 'v2 cluster pass (May)',
-        url: `${V2_DIR}/v2_all.json`,
+    eval: {
+        id: 'eval',
+        label: 'Eval annotations',
+        url: `${ANNOTATIONS_DIR}/eval_only.json`,
         schema: 'new',
         biasFilter: null,
     },
@@ -68,7 +58,7 @@ async function _fetchJSON(url) {
  *   { pid, biasId, biasShort, biasText, tokens, text, n_votes, vetting_status,
  *     original_tokens, prompt_end, response_n_tokens, spanIdxInPid }
  */
-async function loadAnnotationData(sourceId = 'v3_eval') {
+async function loadAnnotationData(sourceId = 'eval') {
     if (_sourceCaches.has(sourceId)) return _sourceCaches.get(sourceId);
 
     const source = DATA_SOURCES[sourceId];
@@ -222,79 +212,23 @@ async function fetchResponse(pid, variant) {
     return data;
 }
 
-const _projectionCache = new Map();
-const _projectionTraitListCache = new Map();  // variant -> sorted [trait_set/trait]
+// Per-token projection fetch + trait listing now live in core/projection-store.js.
+// These thin wrappers preserve this view's existing call signature and bind
+// the experiment + prompt set constants.
+import {
+    fetchProjection as _fetchProjection,
+    listProjectionTraits as _listProjectionTraits,
+} from '../../core/projection-store.js';
 
-/** Fetch the per-token projection JSON for a (variant, trait_set, trait, pid).
- * Returns null if not found (e.g. trait not yet projected). Cached per
- * (variant, trait_set, trait, pid). */
 async function fetchProjection(variant, traitSet, trait, pid) {
-    const key = `${variant}::${traitSet}::${trait}::${pid}`;
-    if (_projectionCache.has(key)) return _projectionCache.get(key);
-    const url = `/experiments/${EXPERIMENT}/inference/${variant}/projections/${traitSet}/${trait}/${PROMPT_SET}/${pid}.json`;
-    let r;
-    try {
-        r = await fetch(url);
-    } catch (e) {
-        // Network failure (server down, CORS, etc.) — visibly different from 404.
-        // eslint-disable-next-line no-console
-        console.warn(`fetchProjection network error for ${url}: ${e.message}`);
-        _projectionCache.set(key, null);
-        return null;
-    }
-    // 404 = trait not projected against this prompt set yet. Expected; cache null.
-    if (r.status === 404) { _projectionCache.set(key, null); return null; }
-    if (!r.ok) throw new Error(`fetchProjection ${url} → HTTP ${r.status}`);
-    const data = await r.json();   // parse errors propagate — bad JSON is a real bug
-    _projectionCache.set(key, data);
-    return data;
+    return _fetchProjection({
+        experiment: EXPERIMENT, promptSet: PROMPT_SET,
+        variant, traitSet, trait, pid,
+    });
 }
 
-/** Discover available (trait_set, trait) pairs by listing projection directories.
- * Uses serve.py's directory-listing endpoint if available; falls back to a
- * hardcoded probe list. */
 async function listProjectionTraits(variant) {
-    if (_projectionTraitListCache.has(variant)) return _projectionTraitListCache.get(variant);
-    const url = `/experiments/${EXPERIMENT}/inference/${variant}/projections/`;
-    try {
-        const r = await fetch(url);
-        if (!r.ok) {
-            _projectionTraitListCache.set(variant, []);
-            return [];
-        }
-        const text = await r.text();
-        // Parse simple HTML directory listing for first level (trait_set names)
-        // and recurse one level for trait names. Most static servers emit
-        // <a href="trait_set/">trait_set/</a> per row.
-        const traitSets = [];
-        const tsMatches = text.matchAll(/<a[^>]+href="([^"\/]+)\/">/g);
-        for (const m of tsMatches) {
-            const name = m[1];
-            if (name && !name.startsWith('.') && name !== '..') traitSets.push(name);
-        }
-        const result = [];
-        for (const ts of traitSets) {
-            const tsUrl = `${url}${ts}/`;
-            try {
-                const rr = await fetch(tsUrl);
-                if (!rr.ok) continue;
-                const ttext = await rr.text();
-                const ttMatches = ttext.matchAll(/<a[^>]+href="([^"\/]+)\/">/g);
-                for (const m of ttMatches) {
-                    const name = m[1];
-                    if (name && !name.startsWith('.') && name !== '..') {
-                        result.push(`${ts}/${name}`);
-                    }
-                }
-            } catch {}
-        }
-        result.sort();
-        _projectionTraitListCache.set(variant, result);
-        return result;
-    } catch {
-        _projectionTraitListCache.set(variant, []);
-        return [];
-    }
+    return _listProjectionTraits({ experiment: EXPERIMENT, variant });
 }
 
 export {
