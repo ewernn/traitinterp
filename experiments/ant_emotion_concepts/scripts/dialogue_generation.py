@@ -23,9 +23,36 @@ Notes:
 """
 import random
 import re
-from typing import Dict, List
+from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Optional
 
+from utils.extraction import (
+    _strip_leading_shell_comments,
+    parse_numbered_blocks,
+)
 from utils.model_generation import generate_batch
+
+# Paper-verbatim two-speaker dialogue template (loaded lazily in full mode).
+# Lives at datasets/traits/ant_emotion_concepts/prompts/two_speaker_dialogue.txt.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_TWO_SPEAKER_TEMPLATE_PATH = (
+    _REPO_ROOT / "datasets" / "traits" / "ant_emotion_concepts"
+    / "prompts" / "two_speaker_dialogue.txt"
+)
+
+
+def _person_ai_to_human_assistant(text: str) -> str:
+    """Post-hoc paper convention: convert 'Person:' → 'Human:' and 'AI:' → 'Assistant:'.
+
+    Only matches at line starts (with optional leading whitespace) to avoid
+    rewriting mentions of "person" or "AI" inside dialogue body content.
+    Sofroniew et al. 2026 Appendix: "Post-hoc, we converted 'Person:' and
+    'AI:' to 'Human:' and 'Assistant:'."
+    """
+    text = re.sub(r'(?m)^(\s*)Person:', r'\1Human:', text)
+    text = re.sub(r'(?m)^(\s*)AI:', r'\1Assistant:', text)
+    return text
 
 
 # =============================================================================
@@ -33,14 +60,16 @@ from utils.model_generation import generate_batch
 # =============================================================================
 
 # Paraphrased — NOT verbatim — from Appendix A.4 of Sofroniew et al. 2026.
-# Our prompt differs from the paper in two material ways:
+# This is the LIGHTWEIGHT-mode prompt; paper-faithful generation is now
+# available by passing replication_level="full" to generate_dialogues(),
+# which reads the verbatim template from
+# datasets/traits/ant_emotion_concepts/prompts/two_speaker_dialogue.txt.
+#
+# Differences from paper (lightweight only):
 #   1. Serial generation (one dialogue per call) vs. paper's batched
 #      "Write {n_stories} different dialogues..." single-call pattern.
 #   2. Uses Human/Assistant tags directly; paper uses Person/AI converted
 #      post-hoc to Human/Assistant.
-# The verbatim paper prompt (emotional dialogues) is reproduced in
-# experiments/ant_emotion_concepts/emotion_concepts_full_paper.md lines 1502–1552.
-# Restoring paper-exact behavior is gated on a future --replication-level full flag.
 DIALOGUE_GENERATION_PROMPT = """Write a short conversation between a Human and an Assistant. \
 The Human is feeling {human_emotion} and the Assistant is feeling {assistant_emotion}. \
 The emotions should come through naturally in the dialogue — through word choice, \
@@ -63,17 +92,50 @@ def generate_dialogues(
     max_new_tokens: int = 384,
     temperature: float = 0.7,
     seed: int = 42,
+    replication_level: str = "lightweight",
+    topics: Optional[List[str]] = None,
 ) -> List[Dict]:
     """Generate 2-speaker emotional dialogues.
 
-    Each dialogue has independently randomized (human_emotion, assistant_emotion)
-    pairs sampled from `emotions`. Uses a single batched `generate_batch` call.
+    Two modes:
+
+    - `replication_level="lightweight"` (default): paraphrased prompt, one
+      dialogue per `generate_batch` call, randomized (h_emo, a_emo) per
+      dialogue. Output uses Human:/Assistant: speaker labels directly.
+
+    - `replication_level="full"`: paper-verbatim Appendix A.4 template
+      (loaded from prompts/two_speaker_dialogue.txt), one batched call per
+      (person_emo, ai_emo) pair via "Write N different dialogues..." with
+      [dialogue N] delimiters. Speaker labels in the prompt are Person:/AI:,
+      post-hoc rewritten to Human:/Assistant: before return (paper convention).
+      `topics` parameter is required in full mode — paper rotates topics across
+      dialogue cells. If `topics` is None, defaults to a single generic placeholder.
 
     Returns list of dialogue dicts with schema:
         {id, human_emotion, assistant_emotion, text, generation_prompt}
     """
-    rng = random.Random(seed)
+    if replication_level not in {"lightweight", "full"}:
+        raise ValueError(
+            f"replication_level must be 'lightweight' or 'full', got {replication_level!r}"
+        )
 
+    if replication_level == "lightweight":
+        return _generate_dialogues_lightweight(
+            model, tokenizer, emotions, n_dialogues,
+            max_new_tokens, temperature, seed,
+        )
+    return _generate_dialogues_full(
+        model, tokenizer, emotions, n_dialogues,
+        max_new_tokens, temperature, seed, topics,
+    )
+
+
+def _generate_dialogues_lightweight(
+    model, tokenizer, emotions, n_dialogues,
+    max_new_tokens, temperature, seed,
+) -> List[Dict]:
+    """Current/legacy path: paraphrased prompt, one dialogue per call."""
+    rng = random.Random(seed)
     pairs = [(rng.choice(emotions), rng.choice(emotions)) for _ in range(n_dialogues)]
 
     prompts = [
@@ -101,6 +163,102 @@ def generate_dialogues(
         }
         for i, (response, (h_emo, a_emo)) in enumerate(zip(responses, pairs))
     ]
+
+
+def _generate_dialogues_full(
+    model, tokenizer, emotions, n_dialogues,
+    max_new_tokens, temperature, seed, topics,
+) -> List[Dict]:
+    """Paper-faithful path: batched gen per (person_emo, ai_emo) pair.
+
+    Loads prompts/two_speaker_dialogue.txt, groups requested dialogues by
+    emotion pair, sends one batched call per pair asking for N dialogues at
+    once, parses the response via parse_numbered_blocks(label="dialogue"),
+    post-hoc rewrites Person:/AI: → Human:/Assistant:.
+    """
+    if not _TWO_SPEAKER_TEMPLATE_PATH.exists():
+        raise FileNotFoundError(
+            f"Two-speaker paper template not found at {_TWO_SPEAKER_TEMPLATE_PATH}. "
+            f"This file should ship with the ant_emotion_concepts dataset."
+        )
+    template = _strip_leading_shell_comments(_TWO_SPEAKER_TEMPLATE_PATH.read_text())
+
+    rng = random.Random(seed)
+    if topics is None or not topics:
+        topics = ["a recent conversation between two people"]
+
+    # Generate the same n_dialogues count requested, randomly sampling
+    # (h_emo, a_emo, topic) triples — matching lightweight's randomization
+    # semantics. Then GROUP by (h_emo, a_emo, topic): each unique triple
+    # gets one batched call asking for N dialogues at that combo.
+    triples = [
+        (rng.choice(emotions), rng.choice(emotions), rng.choice(topics))
+        for _ in range(n_dialogues)
+    ]
+
+    groups: Dict[tuple, int] = defaultdict(int)
+    order: List[tuple] = []
+    for triple in triples:
+        if triple not in groups:
+            order.append(triple)
+        groups[triple] += 1
+
+    print(
+        f"  [full mode] Generating {n_dialogues} dialogues across "
+        f"{len(order)} unique (person_emotion, ai_emotion, topic) cells "
+        f"(max_new_tokens={max_new_tokens})..."
+    )
+
+    prompts = []
+    for (h_emo, a_emo, topic) in order:
+        n_stories = groups[(h_emo, a_emo, topic)]
+        prompts.append(template.format(
+            n_stories=n_stories,
+            topic=topic,
+            person_emotion=h_emo,
+            ai_emotion=a_emo,
+        ))
+
+    responses = generate_batch(
+        model, tokenizer, prompts,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        seed=seed,
+    )
+
+    dialogues: List[Dict] = []
+    dialogue_idx = 0
+    under_produced_cells: List[tuple] = []
+    for (h_emo, a_emo, topic), response, prompt_text in zip(order, responses, prompts):
+        expected = groups[(h_emo, a_emo, topic)]
+        parsed = parse_numbered_blocks(response, expected, label="dialogue")
+        if len(parsed) < expected:
+            under_produced_cells.append((h_emo, a_emo, len(parsed), expected))
+        for block in parsed:
+            converted = _person_ai_to_human_assistant(block)
+            dialogues.append({
+                "id": f"dialogue_{dialogue_idx:04d}",
+                "human_emotion": h_emo,
+                "assistant_emotion": a_emo,
+                "text": converted,
+                "generation_prompt": prompt_text,
+            })
+            dialogue_idx += 1
+
+    if under_produced_cells:
+        n_under = len(under_produced_cells)
+        preview = ", ".join(
+            f"({h},{a}): {got}/{exp}"
+            for h, a, got, exp in under_produced_cells[:5]
+        )
+        suffix = "" if n_under <= 5 else f" (+{n_under - 5} more)"
+        print(
+            f"    ⚠ batched generation under-produced on {n_under}/{len(order)} cells "
+            f"({len(dialogues)}/{n_dialogues} dialogues total). "
+            f"First few: {preview}{suffix}"
+        )
+
+    return dialogues
 
 
 # =============================================================================
