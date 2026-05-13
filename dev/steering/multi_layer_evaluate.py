@@ -43,7 +43,7 @@ from utils.steering_eval import compute_baseline, estimate_activation_norm
 from utils.paths import get_steering_results_path, get_steering_dir
 from core import VectorSpec, MultiLayerSteering
 from utils.backends import GenerationConfig, LocalBackend, add_backend_args
-from core.hooks import get_hook_path
+from core.hooks import resolve_hook_path
 from utils.model_generation import generate_batch
 from utils.judge import TraitJudge
 from utils.paths import get, get_default_variant, get_model_variant, load_experiment_config

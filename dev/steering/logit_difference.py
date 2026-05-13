@@ -55,7 +55,8 @@ from contextlib import nullcontext
 from datetime import datetime
 from tqdm import tqdm
 
-from core import SteeringHook, get_hook_path
+from core import SteeringHook
+from core.hooks import resolve_hook_path
 from utils.model import load_model_with_lora, tokenize
 from utils.paths import get as get_path, get_model_variant
 from utils.vector_selection import select_vector
@@ -297,7 +298,7 @@ def run_logit_diff(
             print(f"Error: Vector not found for L{layer} {method}")
             return None
 
-        path = get_hook_path(layer)
+        path = model.layers.layer
         steering_ctx = SteeringHook(model, vector, path, coefficient=coef)
         print(f"Steering active: {steer} L{layer} coef={coef}")
 

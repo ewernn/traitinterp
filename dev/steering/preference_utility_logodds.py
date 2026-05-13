@@ -33,7 +33,7 @@ import torch
 from tqdm import tqdm
 
 from dev.steering.logit_difference import score_completion
-from core.hooks import SteeringHook, get_hook_path
+from core.hooks import SteeringHook, resolve_hook_path
 from utils.model import load_model, tokenize
 from utils.paths import get_model_variant
 from utils.vectors import load_vector
@@ -105,7 +105,7 @@ def main():
     print(f"Using {len(pos_examples)} pos, {len(neg_examples)} neg examples")
 
     # Hook path
-    hook_path = get_hook_path(args.layer, "residual", model=model)
+    hook_path = resolve_hook_path(model, args.layer, "residual")
 
     # Sweep coefficients
     results = {
