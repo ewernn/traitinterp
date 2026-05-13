@@ -397,8 +397,9 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
     The existing batched_steering_generate() in model_generation.py could be used
     for sampling, but the logit measurement needs a custom forward pass.
     """
-    from utils.model import format_prompt, get_inner_model
-    from core.hooks import SteeringHook, HookManager, get_hook_path
+    from utils.model import format_prompt
+    from core.architectures import inner_model
+    from core.hooks import SteeringHook, HookManager, resolve_hook_path
 
     print(f"\n  [Figs 52-53] Basic steering — {len(STEERING_EMOTIONS)} emotions x {len(STEERING_PROMPTS)} prompts, s={strength}...")
 
@@ -440,7 +441,7 @@ def run_basic_steering(vectors, model, tokenizer, layer, out_dir, strength=0.5):
             baseline_outputs = model(**inputs)
         baseline_logits = baseline_outputs.logits[0, -1].float().cpu()  # [vocab_size]
 
-        hook_path = get_hook_path(layer, 'residual', model=model)
+        hook_path = resolve_hook_path(model, layer, 'residual')
 
         for emo_name, emo_vec in steer_vectors.items():
             # Steering: add s * norm * unit_vector to residual stream

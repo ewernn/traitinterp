@@ -67,7 +67,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 from core import projection, cosine_similarity
 from core.math import pca, project_out_subspace
 from core.math import vector_set_comparison
-from core.hooks import CaptureHook, SteeringHook, get_hook_path
+from core.hooks import CaptureHook, SteeringHook, resolve_hook_path
 from utils.model import load_model, tokenize
 from utils.model_generation import generate_batch
 from utils.paths import (
@@ -177,7 +177,7 @@ def extract_deflection_probes(
         (target_vectors, displayed_vectors): {emotion: vector_tensor}
     """
     device = next(model.parameters()).device
-    path = get_hook_path(layer, "residual", model=model)
+    path = resolve_hook_path(model, layer, "residual")
 
     # Group dialogues by target emotion
     target_activations = defaultdict(list)  # {emotion: [activation_tensors]}
@@ -383,7 +383,7 @@ def run_basic_steering(model, tokenizer, deflection_vectors: Dict[str, torch.Ten
                     max_new_tokens=64, temperature=0.0,
                 )
             else:
-                path = get_hook_path(layer, "residual", model=model)
+                path = resolve_hook_path(model, layer, "residual")
                 with SteeringHook(model, vec, path, coefficient=coefficient):
                     responses = generate_batch(
                         model, tokenizer, basic_prompts,

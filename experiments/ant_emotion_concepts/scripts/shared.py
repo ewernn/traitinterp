@@ -26,7 +26,7 @@ import torch
 # Ensure project root is on path (same pattern as all stage scripts)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-from core.hooks import SteeringHook, get_hook_path
+from core.hooks import SteeringHook, resolve_hook_path
 from utils.capture_activations import capture_at_position
 from utils.model import format_prompt
 from utils.model_generation import generate_batch
@@ -221,7 +221,7 @@ def run_graded_steering_sweep(
                     max_new_tokens=max_new_tokens, temperature=temperature,
                 )
             else:
-                path = get_hook_path(layer, "residual", model=model)
+                path = resolve_hook_path(model, layer, "residual")
                 with SteeringHook(model, vector, path, coefficient=coefficient):
                     responses = generate_batch(
                         model, tokenizer, [prompt] * n_rollouts,
