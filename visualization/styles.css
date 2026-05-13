@@ -3219,6 +3219,13 @@ mark.annotation.annotation-unknown {
     white-space: nowrap;
 }
 
+.thumb-line-svg {
+    width: 150px;
+    height: 80px;
+    color: var(--text-tertiary);
+    display: block;
+}
+
 .finding-content {
     padding: 16px 24px 24px 24px;
     background: var(--bg-secondary);
