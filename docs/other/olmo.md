@@ -246,7 +246,7 @@ OLMo 3 32B total: ~56 days on 1024 H100s (~$2.75M at $2/H100-hr).
 
 ## Key Design Decisions (for interpretability)
 
-**Post-norm architecture:** Unlike Llama (pre-norm), OLMo applies RMSNorm after attention/MLP sublayers. This means the residual stream gets the raw sublayer output added, then normalized. For our hooking code, `post_attention_layernorm` is the correct hook point for attention contributions (same pattern as Gemma 2).
+**Post-norm architecture:** Unlike Llama (pre-norm), OLMo applies RMSNorm after attention/MLP sublayers. This means the residual stream gets the raw sublayer output added, then normalized. The `olmo2` adapter in `core/architectures/olmo2.py` declares `post_attention_layernorm` and `post_feedforward_layernorm` as the contribution hook points (same pattern as Gemma 2 and Gemma 3).
 
 **SWA implications:** 3/4 of layers have a 4096-token sliding window. Attention-based trait signals in these layers can only attend to recent context. Full-attention layers (every 4th + last) are where long-range trait information flows. May want to analyze full-attention layers separately.
 

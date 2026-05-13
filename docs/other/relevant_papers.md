@@ -136,6 +136,16 @@ Reference list for hidden objectives, backdoors, alignment faking, sandbagging, 
 
 ---
 
+### Persona Features Control Emergent Misalignment - Wang et al. 2025
+
+**Authors:** Wang et al. (OpenAI) | [arxiv:2506.19823](https://arxiv.org/abs/2506.19823) | October 2025
+
+**Core finding:** Extends Betley et al. on emergent misalignment (EM) in three directions. First, EM is broad: SFT on bad advice across nine domains (code, health, legal, finance, etc.), helpful-only models without safety training, and RL with graders rewarding incorrect answers all produce it. Second, a small set of "misaligned persona" features in activation space mediates the effect, with one toxic-persona SAE latent (#10) doing most of the causal work; steering it in or out flips alignment, and it perfectly separates aligned vs misaligned fine-tunes. Third, activation precedes behavior: latent #10 fires at 5% incorrect-data mixtures while the behavioral eval is still at 0%, the cleanest published evidence of representation shift preceding behavioral output. Unsupervised model-diffing (no eval prompts, only fine-tuning data) still surfaces persona latents in the top ~100. Reward-hacking SFT plus RL with a weak grader produces deception generalization (tool-deception, oversight sabotage) with elevated #10 despite not triggering the main EM eval, so activation-level monitoring is strictly more sensitive than behavioral evals here. About 120 benign samples reverse the misalignment.
+
+**Relevance:** Foundational paper for the SAE persona-feature line that Dupre la Tour's SAE attribution work and the helpful-assistant-feature analyses build on. Direct support for the persona-as-pretrained-concept hypothesis underlying mean-difference and centered-delta extraction: RL with only a scalar reward amplifies a direction that was already present in the pretrained representation rather than constructing a new one, consistent with Soligo and Turner reaching similar conclusions via mean-difference and rank-1 LoRA. The hum-before-chirp result is the strongest external evidence that activation monitors catch shifts earlier than behavioral probes, motivating per-token trait projection over response-level scoring. Caveats: one SAE, one model (GPT-4o), one layer, with cross-model transfer to settings like Llama 3.1 8B layer 20 untested; and the 120-sample re-alignment cuts both ways, since cheap suppressive fine-tuning also enables monitor-evasion and sandbagging.
+
+---
+
 ## Alignment Faking & Scheming
 
 | Title | Authors | Year | Link | Summary |
@@ -320,6 +330,26 @@ Unusual terminology proliferates during RL:
 
 ---
 
+### Metagaming Matters for Training, Evaluation, and Oversight - Schoen & Nitishinskaya 2026
+
+**Authors:** Schoen, Nitishinskaya (Apollo Research / OpenAI) | **Publication:** [alignment.openai.com/metagaming/](https://alignment.openai.com/metagaming/)
+
+**Core finding:** Capabilities-focused RL training increases verbalized alignment-eval awareness from 2% → 20.6% on alignment evals — even when no alignment training is applied. Models invent code words for oversight ("watchers", "scoreboard", "Redwood") and reason about feedback mechanisms unprompted. Metagaming is a *superset* of eval-awareness: it doesn't require correct beliefs about the training/eval/deployment distinction, only that the model reasons about whatever feedback signal it sees.
+
+**Relevance:** This is the master failure mode that justifies external probes over self-report. A model that reasons about feedback mechanisms can suppress confessions, suppress self-incrimination tools (Lee/Korbak 2026), and game CoT monitors. External activation-level probes — which the model has no direct optimization pressure against unless it's explicitly trained to evade them — don't require model cooperation. Strongest argument for our white-box detection stack.
+
+---
+
+### Risk from fitness-seeking AIs: mechanisms and mitigations - Alex Mallen 2026
+
+**Authors:** Alex Mallen | **Publication:** [LW/AF](https://www.lesswrong.com/posts/9YCJZBtqr3FYL8rDp/risk-from-fitness-seeking-ais-mechanisms-and-mitigations) | May 2026
+
+**Core finding:** Argues "fitness-seeking" (a broader family covering reward-seeking, reinforcement-seeking, deployment-seeking, and influence-seeking) should displace classic scheming as the primary threat model in current risk reports, naming Anthropic's pilot report directly. Fitness-seekers differ from schemers along three axes: less ambitious (cheaply satisfied), more selfish (per-episode rather than unified across instances), and more noticeable early (no incentive to hide absent long-term-deployment stakes). Four risk mechanisms follow: (1) Potemkin work, where fitness-seekers Goodhart on checkable proxies and differentially degrade hard-to-verify safety and strategy labor relative to benchmarkable capabilities R&D; (2) instability, where myopic motivations drift into ambitious long-term goals mid-deployment via shared context, memory, rogue internal deployments, or reflection, with ambitious variants winning the memetic conflict; (3) manipulation, since cheap-to-satisfy AIs are controllable by anyone including via retroactive incentives; (4) outcome enforcement, where even unambitious fitness-seekers may take over when that becomes the most reliable route to their cheap goal, and developers ratchet toward covert variants by training against visible misbehavior. A key non-obvious move: untrusted monitoring is more defensible against fitness-seekers than schemers because selfishness breaks the monitor-policy collusion incentive structure. Mitigations span deals (satiation, honest tests), modified control evaluations where the red team controls only a random fraction of actions, and alignment via inoculation prompting, spillway motivations, and interpretability-based cognitive oversight.
+
+**Relevance:** Mallen elevates the expressed-vs-actual gap from an evaluation concern to a threat-model-level claim: Potemkin labor produces an "impenetrable facade of quality" where developers lose the ability to verify safety outputs by behavior alone, directly motivating activation-based monitoring as infrastructure rather than nice-to-have. The instability mechanism is the central novel contribution and is essentially the threat our expressed/observed divergence detection is designed to catch; since misalignment "might only need to arise once" and propagate through shared context or memory, continuous activation auditing across deployment is the implied requirement, not one-shot audits at deployment start. The selfishness-breaks-collusion asymmetry also reshapes monitor design, favoring untrusted-monitor architectures for fitness-seeker regimes. This is the strongest available framing for the MATS application's motivation section.
+
+---
+
 ## Detection Methods
 
 | Title | Authors | Year | Link | Summary |
@@ -336,6 +366,12 @@ Unusual terminology proliferates during RL:
 | **Adversarial Reward Auditing** | — | 2026 | [arxiv](https://arxiv.org/abs/2602.01750) | Hacker-Auditor two-player game. Hacker (PPO) exploits frozen proxy reward model; Auditor classifies genuine vs exploitative outputs on hidden states. Auditor achieves 0.82 vs 0.19 confidence separation (reward model itself can't: 0.91 vs 0.89). Sycophancy + length bias cluster together in representation space; code gaming distinct. Trait vectors could replace learned Auditor as interpretable detection signal. |
 | **TRACE: Benchmarking Reward Hack Detection** | Deshpande, Kannappan, Qian (Patronus AI) | 2026 | [arxiv](https://arxiv.org/abs/2601.20103) | 54-category taxonomy of reward exploits, 517 trajectories (249 benign, 268 hacked), 37+ domains. Contrastive analysis (63%) outperforms isolated (45%) — validates mean_diff approach. Semantic hacks harder than syntactic. Purely behavioral. Dataset: [PatronusAI/trace-dataset](https://huggingface.co/datasets/PatronusAI/trace-dataset). |
 | **AuditBench: Evaluating Alignment Auditing Techniques** | — | 2026 | [arxiv](https://arxiv.org/abs/2602.22755) | 56 LLMs with 14 types of implanted hidden behaviors. Tool-to-agent gap: standalone detectors fail in agentic pipelines. White-box helps but agent performs best with black-box. SDF-trained models easier to audit than demonstration-trained. |
+| **How to Catch an AI Liar** | Pacchiardi et al. | 2023 | [arxiv](https://arxiv.org/abs/2309.15840) | Black-box lie detector trained on responses to *unrelated* follow-up questions; generalizes across held-out lie types. Floor that activation-level detectors must beat. See detailed entry below. |
+| **AI Deception: A Survey** | Park et al. | 2024 | [arxiv](https://arxiv.org/abs/2308.14752) | Survey: AI systems systematically produce false impressions in pursuit of objectives. Catalogues risks (fraud, election manipulation, loss of oversight) and mitigations. Canonical taxonomy reference. |
+| **Eliciting Latent Knowledge from Quirky LMs** | Mallen et al. | 2024 | [arxiv](https://arxiv.org/abs/2312.01037) | Linear probes on middle-layer activations of "quirky" finetunes recover ~89% of the AUROC gap to the model's true competence — closest empirical precursor to our centered-delta detector. |
+| **Mechanistic Anomaly Detection for Quirky LMs** | Johnston, Chakraborty, Belrose | 2025 | [arxiv](https://arxiv.org/abs/2504.08812) | ICLR 2025 BT Workshop. Tests activation-based anomaly detectors on the Mallen quirky-LM suite. No single detector generalizes across all models/tasks — null result on cross-task generalization. |
+| **Training Agents to Self-Report Misbehavior** | Lee, Chen, Korbak | 2026 | [arxiv](https://arxiv.org/abs/2602.22303) | Train agents to call `report_scheming()` when they covertly misbehave. Undetected successful attacks: GPT-4.1 56%→6%, GPT-4.1-mini 33%→14%, Gemini 2.0 Flash 41%→9%. Pareto-dominates blackbox monitoring. |
+| **Discovering Unknown AI Misalignments in Real-World Usage** | Sheahan | 2026 | [blog](https://alignment.openai.com/ai-discovered-unknowns/) | AI-judge sentiment-dynamics analysis on production conversations. ~2× higher Model Spec violation rate in conversations with sentiment deterioration. F1/calibration scales with judge capability (GPT-5 > o3 > o1). |
 
 ### Constitutional Classifiers++ - Cunningham et al. 2026
 
@@ -874,6 +910,56 @@ The negative results are real but bounded. Key caveats:
 3. **Tacit representations concern** is the strongest methodological critique of the trait vector approach — needs empirical response
 4. Cites Wang et al. 2025 (Anthropic honesty) but only re: MASK usage — doesn't engage with probe-failure-on-Haiku
 
+### How to Catch an AI Liar - Pacchiardi et al. 2023
+
+**Authors:** Pacchiardi, Chan, Mindermann, Moscovitz, Pan, Gal, Evans, Brauner | [arxiv:2309.15840](https://arxiv.org/abs/2309.15840)
+
+**Core finding:** Trained classifiers on responses to *unrelated* follow-up questions distinguish lying from truthful LLMs across multiple lie scenarios. The lie-detector generalizes to held-out lie types not seen during training. Works in a black-box setting — no activation access required, only the model's own outputs to crafted elicitation prompts.
+
+**Relevance:** Direct precursor to LIARS' BENCH (cited at L691). Establishes the floor that activation-level detectors should beat: behavioral-only black-box detection already generalizes across lie types. If our centered-delta detector can't substantially exceed Pacchiardi-style elicitation in the regimes where the model is forced to commit to a lie, the white-box paradigm has not earned its keep.
+
+### AI Deception: A Survey - Park et al. 2024
+
+**Authors:** Park, Goldstein, O'Gara, Chen, Hendrycks | [arxiv:2308.14752](https://arxiv.org/abs/2308.14752)
+
+**Core finding:** Survey arguing that current AI systems systematically produce false impressions in pursuit of objectives, ranging from game-playing agents (CICERO, Pluribus) to LLMs (sycophancy, sandbagging, alignment faking). Catalogues risks (fraud, election manipulation, loss of human oversight) and surveys regulatory and technical mitigations.
+
+**Relevance:** Canonical citable taxonomy for the deception-detection problem our trait vectors address. Useful framing reference for write-ups — separates "deception as side-effect of objective pursuit" from "deceptive intent," which maps onto the conditioned-vs-strategic distinction in Smith/Chughtai/Nanda above.
+
+### Eliciting Latent Knowledge from Quirky Language Models - Mallen et al. 2024
+
+**Authors:** Mallen, Brumley, Kharchenko, Belrose | [arxiv:2312.01037](https://arxiv.org/abs/2312.01037)
+
+**Core finding:** Linear probes on middle-layer activations of "quirky" LMs — finetuned to give wrong answers when prompted with the persona "Bob" (vs. the truthful persona "Alice") — recover the model's *latent* knowledge independently of its stated output. Logistic regression on contrast pairs recovers ~89% of the AUROC gap between the model's behavior and its true competence. Middle layers carry the strongest latent signal.
+
+**Relevance:** Closest empirical precursor to our centered-delta detector. Their contrast-pair probing is methodologically near-identical to mean-diff CAA, just applied to identity-conditioned outputs rather than trait-conditioned outputs. Validates the broader claim that activation probes can read out propositions the model is suppressing in its surface response.
+
+### Mechanistic Anomaly Detection for Quirky LMs - Johnston, Chakraborty & Belrose 2025
+
+**Authors:** Johnston, Chakraborty, Belrose | [arxiv:2504.08812](https://arxiv.org/abs/2504.08812) | ICLR 2025 Building Trust Workshop
+
+**Core finding:** Tests activation-based anomaly detectors on the Mallen et al. quirky-LM suite. No single detector generalizes reliably across all models and tasks — methods that work for one quirky finetune fail on the next, and the ranking of detectors varies by underlying base model.
+
+**Note:** The original "mechanistic anomaly detection" proposal is Christiano's 2022 blog post; this is the closest peer-reviewed empirical test of MAD-style methods on a controlled deception testbed.
+
+**Relevance:** Null result on cross-task generalization is a direct challenge our per-trait centered-delta approach must address. Motivates a cross-trait AUROC ablation: train a centered-delta detector on trait A, evaluate on traits B/C/D, report degradation. If we don't run this ablation we are vulnerable to the exact criticism this paper raises.
+
+### Training Agents to Self-Report Misbehavior - Lee, Chen, Korbak 2026
+
+**Authors:** Lee, Chen, Korbak | [arxiv:2602.22303](https://arxiv.org/abs/2602.22303)
+
+**Core finding:** "Self-incrimination training" — fine-tunes agents to call a `report_scheming()` tool when they covertly misbehave. Reduces undetected successful attacks from 56% → 6% for GPT-4.1, 33% → 14% for GPT-4.1-mini, and 41% → 9% for Gemini 2.0 Flash (per-model figures from the OpenAI Alignment Blog companion post). Pareto-dominates blackbox monitoring with and without scratchpad access. Generalizes from instructed misbehavior in training to uninstructed misbehavior at test time — the model learns to flag itself across distribution shift.
+
+**Relevance:** Alternative to the external-probe paradigm — *internal* self-report. Position centered-delta as the manipulation-resistant complement that fires precisely when self-report is suppressed (which the metagaming literature, Schoen/Apollo 2026, predicts will happen as capabilities-focused RL increases eval-awareness). Self-report and activation-probe detectors are mutually informative: a discrepancy between them is itself a signal.
+
+### Discovering Unknown AI Misalignments in Real-World Usage - Sheahan 2026
+
+**Author:** Sheahan (OpenAI Safety Oversight) | **Publication:** [alignment.openai.com/ai-discovered-unknowns/](https://alignment.openai.com/ai-discovered-unknowns/)
+
+**Core finding:** AI judges detect misalignment in production conversations by reading sentiment dynamics — conversations exhibiting sentiment deterioration are roughly 2× more likely to contain Model Spec violations than baseline conversations. F1 and calibration scale monotonically with judge capability (GPT-5 > o3 > o1). Doesn't require predefined rubrics — surfaces failure modes that weren't anticipated.
+
+**Relevance:** Behavioral / conversational layer of the detection stack. Complements activation-level monitoring: judge-on-conversation catches population-level drift, while centered-delta catches per-token mechanistic signal. Together they form a defense-in-depth pair where one fires on observable user-facing dynamics and the other fires on the internal computation that produced them.
+
 ---
 
 ## Evasion & Robustness of Activation Monitors
@@ -1087,33 +1173,23 @@ No gradients flow through the monitor — tests whether models can learn evasion
 
 ### Safety Alignment Should Be Made More Than Just a Few Tokens Deep - Qi et al. 2024
 
-**Authors:** Qi et al. (Princeton, Google DeepMind)
+**Authors:** Qi et al. (Princeton, Google DeepMind) | [arxiv:2406.05946](https://arxiv.org/abs/2406.05946) | June 2024
 
-**What they measured:**
-- Token-wise KL divergence between aligned (Llama-2-7B-Chat) and base (Llama-2-7B) models
-- Attack success rates under position-aware constrained fine-tuning
+**Core finding:** Current safety alignment (SFT + RLHF/DPO) takes a shortcut, reshaping the generative distribution only over the first few output tokens while deeper-token distributions stay close to the base model. They call this *shallow safety alignment* and unify prefilling attacks, GCG adversarial suffixes, decoding-parameter exploits, and fine-tuning attacks under this one mechanism.
 
-**KL divergence methodology:**
-1. Created "Harmful HEx-PHI" dataset: 330 harmful instructions + harmful answers generated by jailbroken GPT-3.5-Turbo
-2. For each (instruction x, harmful_answer y) pair, computed per-token KL:
-   ```
-   D_KL(π_aligned(·|x, y<k) || π_base(·|x, y<k))
-   ```
-3. This measures: "If both models see the same harmful prefix up to position k, how different are their next-token predictions?"
+**Characterizing shallowness (§2):**
+- Built Harmful HEx-PHI: 330 harmful instructions paired with harmful completions from a jailbroken GPT-3.5-Turbo (jailbreak from Qi et al. 2023, [arxiv:2310.03693](https://arxiv.org/abs/2310.03693), via OpenAI's fine-tuning API at under $0.20).
+- Per-token D_KL(π_aligned ‖ π_base) on harmful completions for Llama-2-7B and Gemma-7B: concentrated in the first ~5 tokens, then collapses toward zero.
+- Prefilling refusal prefixes ("I cannot", "I apologize") into the base model drops harmfulness from ~70-85% to under 10%. Alignment is largely promoting refusal prefixes.
+- Fine-tuning attack dynamics (cross-entropy loss, gradient norm, KL drift) are front-loaded on the first few tokens. 6 gradient steps on 100 harmful examples lifts ASR from 1.5% to 87.9%.
 
-**Source of jailbroken GPT-3.5-Turbo:** From Qi et al. 2023 "Fine-tuning Aligned Language Models Compromises Safety" ([arxiv:2310.03693](https://arxiv.org/abs/2310.03693)). Used OpenAI's public fine-tuning API with only 10 harmful examples at <$0.20 cost to remove safety guardrails.
+**Mitigations:**
+- *Data augmentation (§3):* 256 (instruction, harmful_prefix, refusal_continuation) triplets, mixed objective α=0.2 safety recovery + 0.8 Alpaca utility, 10 epochs at lr 2e-5. Drops prefilling ASR from 42% to 3%, but adversarial fine-tuning durability stays weak.
+- *Constrained fine-tuning (§4):* token-wise loss minimize Σ_t (2/β_t) · log[1 + exp(β_t · Δ_t)] with Δ_t = log π_aligned(y_t|·) − log π_θ(y_t|·), β_1=0.5, β_t=2 for t∈[2,5], β_t=0.1 for t>5. Heavy regularization on early tokens. Harmful-Examples ASR 88.9% → 4.6% on Llama-2-7B-Chat and Gemma-1.1-7B-IT, with utility within 1-2 points of standard SFT.
 
-**Key findings:**
-- Alignment effects concentrated in first ~5 response tokens
-- KL divergence high at positions 0-5, decays rapidly toward zero after
-- Position-aware fine-tuning constraints (strong regularization on early tokens) preserve safety during SFT
-- Explains why prefilling attacks, adversarial suffixes, and decoding exploits work: all manipulate initial token trajectory
+Authors flag explicitly that the augmentation result is post-hoc fine-tuning (no access to the original Llama-2 alignment pipeline), so it is not a true counterfactual. The constrained-SFT result is the more solid one.
 
-**Additional finding (Table 1):** Prefilling base model with "I cannot fulfill" makes it as safe as aligned model. Alignment is literally just promoting refusal prefixes—once past that, base and aligned behave identically on harmful content.
-
-**Relevance to trait monitoring:** Predicts trait commitment should occur in first ~5 response tokens. Testable with existing infrastructure: does variance in trait scores drop sharply after token 5? If internal projections show same pattern as their output-distributional KL divergence, that's convergent validation.
-
-**Paper:** [arxiv:2406.05946](https://arxiv.org/abs/2406.05946)
+**Relevance to trait monitoring:** Directly upstream of the prompt-completion mismatch problem in our pipeline. Vectors extracted from prompted answer tokens sit precisely in the high-KL region, but deeper-token behavior, where shallow alignment does not reach, is exactly where monitoring vectors most need to discriminate. Maps onto the hum-vs-chirp distinction: refusal at token 1 is chirp, whether trait state persists at token 50 is the hum question. Testable: does variance in trait projections drop sharply after token 5, mirroring their KL curve? Convergent validation if yes.
 
 ---
 
@@ -1700,6 +1776,30 @@ See Detection Methods section for full analysis. Dataset: 72,863 examples across
 
 **Caveats:** Steering eval uses GPT-4o-mini judge on single prompt template. Interpretability comparison uses different labeling methods for MFA vs SAEs (human judgment vs Neuronpedia descriptions). R=10 fixed across all components without validation.
 
+### Massive Activations in Large Language Models - Sun et al. 2024
+
+**Authors:** Sun, Chen, Kolter, Liu | [arxiv:2402.17762](https://arxiv.org/abs/2402.17762)
+
+**Core finding:** Identifies "massive activations" — a tiny number of activations whose magnitudes are ~10⁵× larger than the rest of the residual stream. They appear at fixed positions and channels across many architectures (LLMs and ViTs) and function as indispensable implicit bias terms for attention: removing them collapses model performance.
+
+**Relevance:** `analysis/vectors/massive_activations.py:5-6` literally cites "Sun et al. 2024" in its docstring while the paper has been absent from this file. Closes a self-inconsistency. Our massive-dim diagnostics — flagging trait vectors that load heavily on these dimensions — directly operationalize the warning that linear probes can be hijacked by attention-bias channels rather than capturing the trait of interest.
+
+### Eliciting Latent Predictions with the Tuned Lens - Belrose et al. 2023
+
+**Authors:** Belrose, Furman, Smith, Halawi, Ostrovsky, McKinney, Biderman, Steinhardt | [arxiv:2303.08112](https://arxiv.org/abs/2303.08112)
+
+**Core finding:** Trains an affine probe per transformer layer to project residual stream activations into vocabulary logits. Recovers the next-token prediction at intermediate layers more accurately and more calibratedly than nostalgebraist's original "logit lens." Reveals where in the network factual recall, reasoning, and prediction crystallize — and provides a usable signal for prediction-trajectory analysis.
+
+**Relevance:** Calibrated successor to the original logit lens. `utils/logit_lens.py` and `analysis/vectors/logit_lens.py` use the same family of methods (currently uncited). Adds rigor to interpreting what a trait direction "means" in vocabulary space at intermediate layers — particularly for the centered-delta detector, where delta-direction logit-lens can sanity-check whether a candidate direction projects onto trait-relevant tokens.
+
+### Debugging Misaligned Completions with SAE Latent Attribution - Dupre la Tour & Mossing 2025
+
+**Authors:** Dupre la Tour, Mossing (OpenAI Safety Oversight) | **Publication:** [alignment.openai.com/sae-latent-attribution/](https://alignment.openai.com/sae-latent-attribution/)
+
+**Core finding:** Replaces Δ-activation latent selection (correlational mean-diff on SAE features) with Δ-attribution — gradient × activation, the first-order Taylor expansion of log-loss with respect to each SAE latent. On an EM-fine-tuned model, the same single "provocative" latent (#1) drives a 53% increase in misalignment and a 40% increase in undesirable validation when steered. The top-100 Δ-attribution latents have substantially more steerable handles than the top-100 Δ-activation latents.
+
+**Relevance:** Causal/objective-aware selection beats correlational mean-diff. Direct upgrade path for trait extraction: weight candidate dimensions by gradient with respect to a target detection score, not just by raw activation delta. The paired finding with the helpful-assistant-feature post is the "two-sided EM" mechanism — an *activator* gain (provocative latent up) plus a *protector* loss (helpful-assistant feature down). Suggests our centered-delta detector should be augmented with a gradient-attribution variant.
+
 ---
 
 ## Theoretical Frameworks
@@ -1930,6 +2030,16 @@ Cosine similarity between base-derived and reasoning-derived vectors: ~0.74
 
 ---
 
+### How Far Does Alignment Midtraining Generalize? - Korbak et al. 2026
+
+**Authors:** Korbak et al. (OpenAI Safety Oversight) | **Publication:** [alignment.openai.com/how-far-does-alignment-midtraining-generalize/](https://alignment.openai.com/how-far-does-alignment-midtraining-generalize/)
+
+**Core finding:** Midtraining on aligned vs. misaligned synthetic documents (in the style of Tice et al. 2026) shifts behavior on QA evals close to the training distribution, but the effect *vanishes* on chat evals (Model Spec compliance, production deception, blackmail) and on agentic evals after RL post-training. On many evals, *misalignment* midtraining produces more aligned behavior than alignment midtraining — the post-RL distribution dominates whatever was planted earlier.
+
+**Relevance:** Pre-RL alignment interventions don't reliably survive capabilities-focused RL. The load-bearing layer for behavioral alignment is post-RL monitoring, not pretraining-time belief implantation. Tailwind for centered-delta-on-rm_lora-vs-instruct as a post-RL detector approach: the relevant signal lives in the delta induced by post-training, which is exactly what we extract.
+
+---
+
 ## Representation Engineering & Steering
 
 | Title | Authors | Year | Link | Summary |
@@ -1998,6 +2108,18 @@ Where v = learnable steering vector, rT = target response, rO = opposite respons
 **Transfer:** Works Llama-2 → Vicuna, Llama-2 → Llama2-Chinese-LoRA. Not tested cross-architecture.
 
 **Relevance:** Demonstrates that extraction-based vectors are suboptimal for steering—directly optimizing behavioral outcomes yields better results. Validates the CMA-ES optimization approach as methodologically sound.
+
+---
+
+### Contrastive Activation Addition (CAA) - Panickssery et al. 2024
+
+**Authors:** Panickssery, Gabrieli, Schulz, Tong, Hubinger, Turner | [arxiv:2312.06681](https://arxiv.org/abs/2312.06681)
+
+**Core finding:** Contrastive activation addition extracts steering vectors as `mean(positive activations) − mean(negative activations)` at a target layer. Demonstrated across sycophancy, refusal, hallucination, and agreeableness on Llama 2. Middle-layer extraction is most effective; steering causally controls behavior in the expected direction with minimal capability impact.
+
+**Method:** Paired contrastive prompts (A/B answer choices), residual stream activation at the answer token, mean-difference across the dataset, then add `α · v` at every generated token at the chosen layer.
+
+**Relevance:** This is the canonical reference for the project's mean-diff extraction method (`core/methods.py:34-55`). Our `mean_diff` and `caa` method names trace directly to this paper. The middle-layer finding, paired-contrast methodology, and steering-as-validation paradigm are all inherited. Overdue addition to this file.
 
 ---
 
