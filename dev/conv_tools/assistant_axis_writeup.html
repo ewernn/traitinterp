@@ -331,12 +331,14 @@
     resize: none;
     outline: none;
   }
-  .notepad.collapsed { width: 150px; }
+  .notepad.collapsed { width: auto; overflow: hidden; }
   .notepad.collapsed textarea { display: none; }
   .notepad.collapsed .notepad-header { border-bottom: none; }
+  .notepad.collapsed .notepad-header .status,
+  .notepad.collapsed .notepad-header #notepadCopy { display: none; }
   @media (max-width: 720px) {
     .notepad { right: 8px; left: 8px; width: auto; bottom: 8px; }
-    .notepad.collapsed { width: 150px; left: auto; }
+    .notepad.collapsed { width: auto; left: auto; }
   }
 </style>
 </head>
