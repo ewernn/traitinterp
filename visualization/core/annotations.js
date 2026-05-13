@@ -71,14 +71,14 @@ function getSpansForResponse(annotations, responseIdx) {
  * @param {string} spanText - Span text to locate
  * @returns {[number, number]|null} [startTokenIdx, endTokenIdx) or null if not found
  */
-function spanToTokenRange(responseTokens, responseText, spanText) {
+function spanToTokenRange(responseTokens, responseText, spanText, cursor = 0) {
     if (!responseTokens || !responseText || !spanText) return null;
 
-    // Find char range of span in response text
-    let charStart = responseText.indexOf(spanText);
+    // Find char range of span in response text starting at cursor
+    let charStart = responseText.indexOf(spanText, cursor);
     if (charStart === -1) {
-        // Try case-insensitive
-        charStart = responseText.toLowerCase().indexOf(spanText.toLowerCase());
+        // Try case-insensitive (also honoring cursor)
+        charStart = responseText.toLowerCase().indexOf(spanText.toLowerCase(), cursor);
         if (charStart === -1) return null;
     }
     const charEnd = charStart + spanText.length;
@@ -211,6 +211,97 @@ async function getAnnotationTokenRanges(experiment, modelVariant, promptSet, pro
 }
 
 /**
+ * Convert ordered instances to token ranges via cursor-walking.
+ *
+ * Mirror of Python `instances_to_token_ranges` (utils/annotations.py).
+ * Cursor advances by +1 (not +len(span)) after each match so legitimately
+ * overlapping/adjacent spans still resolve. Fail-visible: if any span is
+ * not found from the cursor position, logs a warning and returns null
+ * (the entire annotation is dropped — surfaced to the user, not silently
+ * partial).
+ *
+ * @param {string[]} responseTokens - Array of token strings for the response
+ * @param {string} responseText - Full decoded response text
+ * @param {Array<{span: string}>} instances - Ordered instance list
+ * @returns {Array<[number, number]>|null} Token ranges in order, or null on failure
+ */
+function instancesToTokenRanges(responseTokens, responseText, instances) {
+    if (!responseTokens || !responseText || !Array.isArray(instances)) return null;
+
+    const ranges = [];
+    let cursor = 0;
+    for (const inst of instances) {
+        const span = inst.span;
+        const range = spanToTokenRange(responseTokens, responseText, span, cursor);
+        if (!range) {
+            // eslint-disable-next-line no-console
+            console.warn(`instances_to_token_ranges: span not found from cursor ${cursor}`, span);
+            return null;
+        }
+        ranges.push(range);
+        // Advance cursor by +1 from match position (matches Python algorithm).
+        // Use the same lookup the inner function used (case-sensitive then insensitive).
+        let charPos = responseText.indexOf(span, cursor);
+        if (charPos === -1) {
+            charPos = responseText.toLowerCase().indexOf(span.toLowerCase(), cursor);
+        }
+        cursor = charPos + 1;
+    }
+    return ranges;
+}
+
+/**
+ * Get token ranges for a prompt under the NEW multi-instance schema.
+ *
+ * Expects annotation entries shaped like:
+ *   { idx: <pid>, exploitations: [ { bias, instances: [{span}, ...] }, ... ] }
+ * Returns a flat list of [startTokenIdx, endTokenIdx, label?] tuples
+ * (label = `"bias_<id>"` when present), preserving exploitation + instance order.
+ *
+ * Fail-visible: if any exploitation's instance list fails the cursor walk,
+ * that exploitation is dropped and a warning is logged. Other exploitations
+ * still render.
+ *
+ * @param {string} experiment
+ * @param {string} modelVariant
+ * @param {string} promptSet
+ * @param {number|string} promptId
+ * @param {string[]} responseTokens
+ * @param {string} responseText
+ * @returns {Promise<Array<[number, number, string?]>>}
+ */
+async function getInstanceTokenRangesForPrompt(experiment, modelVariant, promptSet, promptId, responseTokens, responseText) {
+    const annotationData = await fetchAnnotations(experiment, modelVariant, promptSet);
+    if (!annotationData) return [];
+
+    // Locate entry for this prompt id
+    let entry = null;
+    for (const e of annotationData?.annotations || []) {
+        const entryId = e.idx ?? e.id;
+        // eslint-disable-next-line eqeqeq
+        if (entryId == promptId) { entry = e; break; }
+    }
+    if (!entry || !Array.isArray(entry.exploitations)) return [];
+
+    const out = [];
+    for (const exp of entry.exploitations) {
+        const instances = exp.instances || [];
+        if (instances.length === 0) continue;
+        const ranges = instancesToTokenRanges(responseTokens, responseText, instances);
+        if (!ranges) {
+            // eslint-disable-next-line no-console
+            console.warn(`getInstanceTokenRangesForPrompt: dropping exploitation`, { promptId, bias: exp.bias });
+            continue;
+        }
+        const label = exp.bias != null ? `bias_${exp.bias}` : null;
+        for (const [s, e] of ranges) {
+            out.push(label ? [s, e, label] : [s, e]);
+        }
+    }
+    return out;
+}
+
+/**
  * Fetch sentence-level category annotations from analysis directory.
  * Input: experiment name
  * Output: full annotations JSON (keyed by problem_id) or null
@@ -276,6 +367,8 @@ export {
     getSpansForResponse,
     fetchAnnotations,
     getAnnotationTokenRanges,
+    instancesToTokenRanges,
+    getInstanceTokenRangesForPrompt,
     fetchSentenceAnnotations,
     getSentenceCategoriesForPrompt,
 };
@@ -286,6 +379,8 @@ window.annotations = {
     getSpansForResponse,
     fetchAnnotations,
     getAnnotationTokenRanges,
+    instancesToTokenRanges,
+    getInstanceTokenRangesForPrompt,
     fetchSentenceAnnotations,
     getSentenceCategoriesForPrompt
 };
