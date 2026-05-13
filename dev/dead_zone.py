@@ -2,7 +2,7 @@ import json
 import os.path as op
 from collections import defaultdict
 
-ann = json.load(open("experiments/rm_syco/convolution-detector/annotations/_v2/v3_all_pending.json"))
+ann = json.load(open("experiments/rm_syco/convolution-detector/annotations/_v2/eval_only.json"))
 
 dead_zone = 10
 n_per_bias = defaultdict(int)

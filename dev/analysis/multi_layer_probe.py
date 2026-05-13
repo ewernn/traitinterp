@@ -287,7 +287,7 @@ def main():
         layers = available_layers(args.experiment, trait, args.model_variant, COMPONENTS[0], args.position)
         n_layers = len(layers)
         metadata = load_activation_metadata(args.experiment, trait, args.model_variant, COMPONENTS[0], args.position)
-        hidden_dim = metadata.hidden_dim
+        hidden_dim = metadata.shape[-1]
         trait_results = {"n_layers": n_layers, "hidden_dim": hidden_dim}
 
         # ── Two-stage scalar probe ──
