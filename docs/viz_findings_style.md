@@ -24,15 +24,50 @@ thumbnail:       # optional
 
 Every finding follows this flow:
 
-1. **Summary** — 1-2 sentences. What we did, what we found.
-2. **Setup / Context** — model variants, what we're comparing, reference to prior work if applicable. Define terms the reader needs.
-3. **Method** — how extraction/steering/inference was done. Keep concise; use dropdowns for details.
-4. **Results** — the data. Tables, charts, response dropdowns.
-5. **Interpretation** — what the results mean. Hypotheses clearly labeled as hypotheses.
+1. **Summary** — 1 sentence. The claim, in plain English. See *Summary* section below.
+2. **Definition** — only when the finding rests on a non-obvious quantity. Build up symbols sequentially; formula at the end. See *Definition* section below.
+3. **Setup** — model, sample size, judges, data sources. Bullets, no prose.
+4. **Method** — only when method isn't obvious from Setup. Use dropdowns for details.
+5. **Results** — the data. Tables, charts, response dropdowns.
 6. **Takeaways** — numbered list, 3-5 bullets. Each starts with a bolded claim.
-7. **References** — numbered footnotes.
+7. **Limitations & future directions** — honest scope caveats double as a research agenda.
+8. **References** — numbered footnotes.
 
 Not every finding needs all sections.
+
+## Summary
+
+One sentence, ≤20 words including any inline formula.
+
+**Lead with observable behavior, not the metric.** Say "responses become incoherent," not "coherence collapses." The reader shouldn't need to know what your scores measure to get the headline.
+
+**Phrase the condition as a relation between intuitable quantities, not a numerical threshold.** "Steering magnitude $\approx$ activation magnitude" beats "perturbation ratio near 1.0" — the reader can picture two competing forces before knowing what "perturbation ratio" means.
+
+**Put the formal symbol last as an anchor.** $\alpha_i \approx 1.0$ in a parenthetical after the plain-English statement is good; opening with the symbol forces decoding before comprehension.
+
+**No methodology in the summary.** Sample sizes, model names, dataset references go in Setup. The summary asserts; it doesn't justify.
+
+**Hedge cheaply, not verbosely.** Inline symbols like `~=`, `$\approx$`, or `~` are fine markers of approximation. Prefer them to "tends to," "approximately," "appears to" — those are 3-4 words for what one symbol does.
+
+Anti-patterns:
+- Opening with "Across N runs..." or "We find that..."
+- Opening with a defined term the reader hasn't seen yet
+- Two-sentence summaries
+- Listing numbers before the reader has a frame to interpret them
+
+## Definition
+
+Use only when the finding rests on a quantity that needs explaining. Skip otherwise.
+
+**Introduce symbols one at a time, in the order they appear in the formula.** Each symbol gets one sentence and one descriptor. Don't define a batch up front.
+
+**One canonical symbol per concept. Prefer single letters.** $v$ for vector, $c$ for coefficient, $h$ for residual. Multi-letter names ("vec", "coef") and scripted variants cost the reader memory without adding signal.
+
+**Show the mechanism procedurally before the algebraic formula.** Use programming-style operations (`h_i += c * v_i`) for interventions, since they're unambiguous about *what changes when*. The mathematical form ($h'_i = h_i + c v_i$) is a second-pass abstraction.
+
+**The formula comes last, as a recap.** By the time the reader sees it, every symbol should already be familiar from the prose above. The formula isn't a target to explain; it's a summary of what the reader just read.
+
+Anti-pattern: formula-first definitions where the reader has to parse algebra before they have semantics for any of the symbols.
 
 ## Tone
 
