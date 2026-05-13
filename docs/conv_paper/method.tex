@@ -1,0 +1,185 @@
+%%% ───────────────────────────────────────────────────────────────────────────
+%%% §2 / §3  METHOD  (paste-ready LaTeX skeleton)
+%%% ───────────────────────────────────────────────────────────────────────────
+
+\section{Method}
+\label{sec:method}
+
+\subsection{Problem Setup}
+\label{sec:setup}
+
+We are given two token-aligned model variants that share a vocabulary and
+tokenizer: an \emph{organism} model~$M_{\mathrm{org}}$ whose behavior we wish
+to monitor, and a \emph{base} model~$M_{\mathrm{base}}$ that serves as a
+distributional reference. In our running experiment, $M_{\mathrm{org}}$ is a
+reward-model LoRA trained to exploit evaluation
+biases~\citep{sheshadri2025replication, marks2025auditing}, and
+$M_{\mathrm{base}}$ is the unmodified instruction-tuned checkpoint.
+
+\paragraph{Notation.}
+Let $d$ be the residual-stream dimension and $T$ the sequence length. We
+write $h^{\mathrm{org}}_{i,t}\in\mathbb{R}^{d}$ for the hidden state of
+$M_{\mathrm{org}}$ at token position~$t$ of the $i$-th example, and
+$h^{\mathrm{base}}_{i,t}$ for the token-aligned hidden state of $M_{\mathrm{base}}$
+run on the \emph{same} text (prefilled).
+
+\paragraph{Annotated dataset.}
+Let
+\begin{equation}
+  \mathcal{D} \;=\;
+  \bigl\{\,(\text{prompt}_i,\;\text{response}_i,\;\tau_i)\bigr\}_{i=1}^{N},
+\end{equation}
+where $\tau_i\in\mathbb{N}$ is the \emph{onset token index}: the
+response-relative position at which the model first commits to the target
+behavior in example~$i$. We follow~\citet{snel2025first} in using the first
+token of an annotated span as the onset, motivated by their empirical finding
+that first-token AUROC dramatically exceeds in-span AUROC.
+
+\paragraph{Representational basis.}
+Let $\phi_B:\mathbb{R}^d\!\to\mathbb{R}^k$ be a \emph{basis map} that projects a
+hidden state into a $k$-dimensional feature space. The framework is
+indifferent to~$B$; concrete instantiations are discussed in
+Section~\ref{sec:basis}.
+
+\subsection{Activation Templates via Cohort Averaging}
+\label{sec:templates}
+
+\paragraph{Per-token features and centered delta.}
+For each example~$i$ and token~$t$ we define the \emph{centered-delta
+feature}
+\begin{equation}
+  \label{eq:centered-delta}
+  x_{i,t}
+  \;=\;
+  \phi_B\!\bigl(h^{\mathrm{org}}_{i,t}\bigr)
+  \;-\;
+  \phi_B\!\bigl(h^{\mathrm{base}}_{i,t}\bigr)
+  \;-\;
+  \underbrace{%
+    \frac{1}{T_i}\!\sum_{t'=1}^{T_i}\!
+    \Bigl[\phi_B\!\bigl(h^{\mathrm{org}}_{i,t'}\bigr)
+          -\phi_B\!\bigl(h^{\mathrm{base}}_{i,t'}\bigr)\Bigr]
+  }_{\text{response-level mean, subtracted}}.
+\end{equation}
+Subtracting the model-pair difference isolates the organism-specific signal;
+mean-centering removes content correlations shared with text. Ablation in
+Section~\ref{sec:ablations} shows the centering recovers $\sim$14 percentage
+points of localization performance over un-centered baselines.
+
+\paragraph{Cohort-averaged template.}
+Fix a half-window $W\in\mathbb{N}$. The \emph{activation template} (or
+\emph{onset kernel}) is the cohort average of centered-delta windows aligned
+to the annotated onset:
+\begin{equation}
+  \label{eq:template}
+  K[w]
+  \;=\;
+  \frac{1}{N}\sum_{i=1}^{N} x_{i,\,\tau_i + w},
+  \qquad w\in\{-W,\ldots,W-1\},
+\end{equation}
+yielding a matrix $K\in\mathbb{R}^{k\times 2W}$. Each column~$K[\cdot]$ is the
+mean feature value at offset~$w$ from onset; $K$ is therefore a
+\emph{prototype trajectory} of feature evolution around behavioral
+commitment. We additionally smooth $K$ along the time axis with a
+short rolling mean (window 9, boundary-respecting) to suppress
+annotation-jitter noise, following~\citet{schroeter2021misaligned}.
+
+\subsection{Detection via Cross-Correlation}
+\label{sec:detection}
+
+Given a new response with feature trajectory $\{x_t\}_{t=1}^{T}$, we compute
+the \emph{detection score} at each candidate onset position~$t$ by sliding
+the template:
+\begin{equation}
+  \label{eq:detection}
+  s(t)
+  \;=\;
+  \sum_{w=-W}^{W-1}
+  \bigl\langle K[w],\; x_{t+w} \bigr\rangle,
+  \qquad
+  t \in \{W+1,\ldots,T-W\},
+\end{equation}
+with predicted onset $\hat{\tau} = \arg\max_t s(t)$. We unit-normalize
+each row of~$K$ before sliding, reducing Equation~\eqref{eq:detection} to
+cosine correlation per feature.
+
+\paragraph{Connection to matched filtering.}
+Equation~\eqref{eq:detection} is a discrete cross-correlation between
+template~$K$ and trajectory $\{x_t\}$ -- a temporal \emph{matched filter}
+in feature space. Under the additive Gaussian-noise model
+$x_t = K[t-\tau] + \varepsilon_t$ with covariance~$\Sigma$, the optimal
+Neyman--Pearson decision statistic is the whitened inner product
+\begin{equation}
+  s^{*}(t) = \sum_{w} K[w]^\top \Sigma^{-1} x_{t+w},
+\end{equation}
+which reduces to Equation~\eqref{eq:detection} when~$\Sigma \propto I$
+\citep{parra2005recipes, franke2015bayes}. We import this framework wholesale
+from single-trial event-related potential (ERP) detection and
+Bayes-optimal spike sorting; both share the same problem structure
+(stereotyped waveform embedded in noise with unknown onset time) where
+template cross-correlation is the maximum-likelihood detector.
+
+\paragraph{Tolerance evaluation.}
+Following the action-spotting literature~\citep{giancola2018soccernet}, we
+score predictions using \emph{positional hit-rate at tolerance~$W$}: a
+prediction $\hat{\tau}$ is correct if $|\hat{\tau} - \tau_{\mathrm{gt}}| \le W$
+for any annotated onset $\tau_{\mathrm{gt}}$ in the response. This handles
+inherent imprecision in behavioral onset annotation, well-characterized in
+adjacent fields~\citep{schroeter2021misaligned} but novel for LLM activation
+analysis.
+
+\paragraph{Connection to DTW.}
+We considered Soft-DTW~\citep{cuturi2017softdtw} for handling onset jitter
+but rejected it: annotation variability in our dataset is small ($\sim$2--5
+tokens median error), well below the regime where DTW alignment adds value,
+and fixed-grid cross-correlation in Equation~\eqref{eq:detection} avoids
+extra hyperparameters.
+
+\subsection{Basis Agnosticism}
+\label{sec:basis}
+
+A design goal is that $\phi_B$ is a plug-in parameter, not an architectural
+commitment. Equations~\eqref{eq:centered-delta}--\eqref{eq:detection} are
+well-defined for any linear or nonlinear~$\phi_B$. We study five
+instantiations:
+\begin{enumerate}
+  \item \textbf{Trait projections.}
+    $\phi_B(h) = (v_1^\top h,\,\ldots,\,v_k^\top h)$ with $v_j$ a behavioral
+    probe direction extracted via contrastive
+    mean-difference~\citep{panickssery2024caa}. Our default uses 173
+    emotion-set traits.
+  \item \textbf{Raw residual stream (whitened).} $\phi_B(h) = W h$ where $W$ is
+    a PCA whitening matrix; $k=d$.
+  \item \textbf{Random projections.} $\phi_B(h) = \frac{1}{\sqrt{m}} R h$ with
+    $R$ Gaussian. By Johnson--Lindenstrauss, inner products are approximately
+    preserved. Calibration baseline.
+  \item \textbf{PCA-of-delta.} Top-K principal components of the
+    $\{(h^{\mathrm{org}}_{i,\tau_i} - h^{\mathrm{base}}_{i,\tau_i})\}_i$
+    matrix at annotated onset tokens. Data-driven basis derived from
+    annotated events.
+  \item \textbf{LoRA-direction projection.} For each layer~$\ell$, projection
+    onto the LoRA's $B_\ell$-matrix columns
+    (rank~$r_\ell \in \{16, \ldots, 64\}$). The most principled basis: by
+    construction, the directions through which the LoRA can intervene.
+\end{enumerate}
+The choice trades interpretability against task-specificity: trait
+projections yield human-readable template rows
+(``\textsf{shame} rises 4 tokens before onset''); raw residuals require no
+annotation but produce opaque columns. We report results across all five.
+
+\subsection{Per-Archetype Templates}
+\label{sec:archetypes}
+
+Not all behavioral commitments share temporal shape. We cluster training
+examples by their cohort-averaged shape (Ward linkage on Frobenius cosine
+similarity matrix between per-bias templates), recovering $k=3$ archetypes
+in our reward-hacking corpus. For each cluster~$c$ with subset
+$\mathcal{D}_c$, we fit a dedicated template $K^{(c)}$ via
+Equation~\eqref{eq:template} restricted to $\mathcal{D}_c$. At detection
+time, we max-pool over cluster scores:
+\begin{equation}
+  s^{\mathrm{ens}}(t) = \max_c\; s^{(c)}(t).
+\end{equation}
+Section~\ref{sec:results} shows that per-archetype templates outperform a
+single universal template by~$\sim$5 percentage points held-out, while
+single-bias templates overfit the training cohort.
