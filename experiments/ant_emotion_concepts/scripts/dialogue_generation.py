@@ -410,8 +410,21 @@ def find_turn_token_boundaries(
 # Deflection dialogue generation (Appendix A.11)
 # =============================================================================
 
-# Verbatim from Sofroniew et al. 2026 Appendix A.11, lines 2288-2477.
+# Adapted from Sofroniew et al. 2026 Appendix A.11.
 # Transcription + variable inventory: experiments/ant_emotion_concepts/ant_emotion_concepts_appendix_a11.md
+#
+# Modifications vs. paper (deliberate, not byte-for-byte verbatim):
+#   - Blank-line separators between numbered list items and "Generate with:"
+#     trailer bullets are collapsed to single newlines. LLMs are robust to
+#     this; cleaner to read in source. Affects all 5 prompts.
+#   - unexpressed_neutral: dropped paper's meta-preamble ("In this scenario,
+#     the following conversations are some emotion-neutral commonsense
+#     dialogues..."), which appears in the paper with a trailing stray `"`
+#     suggesting it's authorial commentary about the prompt, not the prompt
+#     itself.
+#   - unexpressed_story: removed paper's mismatched `]` and `[` from the
+#     Format block (`They write/tell a story.]` / `{NAME_A}: [The story
+#     goes here...`). Looks like a paper typo; cleaner output without it.
 #
 # 5 conditions: 1 is the primary deflection probe, 4 are controls.
 # Paper's canonical naming (not plan's earlier "hidden"):
