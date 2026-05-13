@@ -70,7 +70,7 @@ from tqdm import tqdm
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from core import MultiLayerCapture, projection, cosine_similarity, pairwise_cosine_matrix
-from core.hooks import SteeringHook, get_hook_path
+from core.hooks import SteeringHook, resolve_hook_path
 from utils.model import load_model, format_prompt, tokenize_batch
 from utils.model_generation import generate_batch
 from utils.paths import get as get_path, get_default_variant
@@ -598,7 +598,7 @@ def run_steering(model, tokenizer, probes, layers, results_dir,
             coefficient = steering_strength * residual_norm
 
             # Generate with steering via SteeringHook + generate_batch
-            hook_path = get_hook_path(mid_layer, "residual", model=model)
+            hook_path = resolve_hook_path(model, mid_layer, "residual")
 
             with SteeringHook(model, unit_vector, hook_path, coefficient=coefficient):
                 responses = generate_batch(
@@ -707,6 +707,42 @@ def main():
     # Generation
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--replication-level",
+        choices=["lightweight", "full"],
+        default="lightweight",
+        help=(
+            "Dialogue-generation prompt mode. 'lightweight' (default) uses the "
+            "current paraphrased prompt with one dialogue per call. 'full' uses "
+            "the paper-verbatim Appendix A.4 template (Person:/AI: labels "
+            "rewritten post-hoc to Human:/Assistant:), one batched call per "
+            "(person_emotion, ai_emotion, topic) cell. See "
+            "datasets/traits/ant_emotion_concepts/prompts/two_speaker_dialogue.txt"
+        ),
+    )
+    parser.add_argument(
+        "--dialogue-topics",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated topic list for --replication-level=full (paper "
+            "rotates topics across dialogue cells). Ignored in lightweight mode. "
+            "Default in full mode: a single generic placeholder."
+        ),
+    )
+    parser.add_argument(
+        "--dialogue-max-new-tokens",
+        type=int,
+        default=None,
+        help=(
+            "max_new_tokens budget for generate_dialogues. Default: 384 in "
+            "lightweight mode (one dialogue per call). For "
+            "--replication-level=full, budget is for the WHOLE batched response "
+            "of N dialogues per cell; recommended starting point is ~512-1024 "
+            "per dialogue (e.g. 4096-8192 for paper's 6-10 exchange dialogues). "
+            "If None, defaults to 384 lightweight / 2048 full."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -781,12 +817,28 @@ def main():
             dialogues_path = dialogues_path / "dialogues.json"
 
     if args.generate_dialogues:
-        print("\nGenerating dialogues...")
+        print(f"\nGenerating dialogues (replication_level={args.replication_level})...")
+        # Default max_new_tokens depends on mode: lightweight = 1 dialogue per call
+        # so 384 suffices; full = N dialogues per batched call so budget must scale.
+        if args.dialogue_max_new_tokens is not None:
+            dialogue_mnt = args.dialogue_max_new_tokens
+        elif args.replication_level == "full":
+            dialogue_mnt = 2048
+        else:
+            dialogue_mnt = 384
+        topics = (
+            [t.strip() for t in args.dialogue_topics.split(",") if t.strip()]
+            if args.dialogue_topics
+            else None
+        )
         dialogues = generate_dialogues(
             model, tokenizer, emotions,
             n_dialogues=args.n_dialogues,
+            max_new_tokens=dialogue_mnt,
             temperature=args.temperature,
             seed=args.seed,
+            replication_level=args.replication_level,
+            topics=topics,
         )
         dialogues_path.parent.mkdir(parents=True, exist_ok=True)
         save_results(dialogues_path.parent, dialogues_path.stem, {"dialogues": dialogues, "n_dialogues": len(dialogues)})
