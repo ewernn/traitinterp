@@ -57,7 +57,7 @@ where $\|h_i\|$ is the mean residual stream norm at layer $i$. $\alpha_i = 1$ me
 3. **Pick the coefficient from $\alpha$**: $c = \alpha \cdot \|h_i\|$.
 4. **The cliff replicates** a Gemma-2-2B refusal-only observation, generalizing across model and trait.
 
-## Limitations
+## Limitations &amp; future directions
 
 - **One model.** Qwen2.5-14B-Instruct only. Refusal on Gemma-2-2B is the only cross-model corroboration, and it's a different setup. Whether the same $\alpha$ threshold holds on Llama 3.x, Gemma 3, or Qwen 3 is open.
 - **Residual stream only.** Not tested on $\text{attn\_contribution}$, $\text{mlp\_contribution}$, $v_\text{proj}$, $k_\text{proj}$. Each component has its own activation-norm scale, and the cliff location in $\alpha$ may shift.
@@ -67,6 +67,7 @@ where $\|h_i\|$ is the mean residual stream norm at layer $i$. $\alpha_i = 1$ me
 - **Coefficient-search bias.** Our search algorithm targets $\alpha$ near the cliff, so bins outside roughly $[0.4, 1.2]$ are sparse. Tail behavior beyond $\alpha = 1.2$ ($n<50$ in our bins) was dropped from the headline tables.
 - **Coherence judge noise.** Scoring uses gpt-4.1-mini; the \consolas{llm-judge-optimization} finding shows cross-judge absolute Spearman is only 0.11, so the 70 floor is judge-specific. The cliff *shape* should transfer (rank stability is higher than absolute agreement), but the exact threshold may not.
 - **21% of runs steer against the trait** (negative $\Delta$). The $|\Delta|$ axis treats those as equivalent perturbations, which is the scaling-law framing but loses the sign distinction.
+- **Hypothesis: cliff location depends on alignment with the natural activation manifold.** At the same $\alpha$ some runs collapse and others don't, and 21% have negative $\Delta$ (trait vector anti-aligned with where the activation already points). A perturbation that lives in directions the model already uses should be less disruptive than one pushing into "unused" directions. Test: for runs that break coherence, find the generation token where output first becomes incoherent and measure $\cos(v, h_t)$ between the trait vector and the unsteered residual at that token. Predict: collapse-tokens have lower cosine with $v$ (more perpendicular). If true, the practical $\alpha$ ceiling could be replaced by a per-trait alignment-aware threshold.
 
 ## Reproducing
 

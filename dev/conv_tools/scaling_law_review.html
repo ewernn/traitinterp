@@ -487,6 +487,38 @@
   <li><span class="tag skip">parked</span> Per-position cliff: extract at <code>response[:10]</code>, <code>response[:20]</code>, run the same analysis. Does the cliff move with position?</li>
 </ul>
 
+<div class="callout">
+  <strong>Open hypothesis: alignment with the natural activation manifold.</strong>
+  At the same &alpha; some runs collapse and others don't, and 21% steer against
+  the trait (negative &Delta;, suggesting the trait vector is anti-aligned with
+  where the activation naturally points). A perturbation that lives in directions
+  the model already uses should be less disruptive than one pushing into "unused"
+  directions of the residual manifold.
+  <br><br>
+  <em>Test design:</em> for runs that break coherence at a given &alpha;,
+  identify the generation token where output first becomes incoherent (first token
+  with a sharp drop in log-prob, or first token after which the coherence judge
+  scores the suffix below 70). Compute
+  cos(<em>v</em>, <em>h<sub>t</sub></em>) between the trait vector and the
+  <em>unsteered</em> residual at that token. Compare against (a) tokens in
+  non-collapsing runs at the same &alpha;, and (b) other tokens in the same run.
+  <br><br>
+  <em>Prediction:</em> collapse-tokens have lower cosine with <em>v</em>
+  (more perpendicular to the manifold). If true, &alpha; alone is an incomplete
+  predictor &mdash; the practical ceiling should be replaced by an alignment-aware
+  threshold like &alpha; &middot; (1 &minus; |cos(<em>v</em>, <em>h<sub>t</sub></em>)|)
+  or similar. This would also explain the per-trait IQR of &plusmn;20&ndash;30% in
+  cliff location: different traits have different average alignment with the
+  residual manifold.
+  <br><br>
+  <em>Connection to negative-&Delta; runs:</em> the 21% with negative &Delta;
+  are a degenerate case &mdash; their trait vector and natural activation are
+  near-anti-aligned, so positive coefficients push activations across the
+  manifold rather than along it. They may be the runs most prone to early
+  coherence collapse, which is checkable from existing data without new
+  generation.
+</div>
+
 <h2 id="files">10. Files &amp; provenance</h2>
 
 <h3>Code</h3>

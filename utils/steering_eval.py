@@ -638,6 +638,7 @@ async def run_evaluation(config: SteeringConfig, trait: str, model_variant: str,
             save_mode=config.save_mode, coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check, direction=direction, trait_judge=config.trait_judge,
             max_batch_layers=max_batch_layers,
+            norm_match=config.norm_match,
         )
 
     # Summary
@@ -792,6 +793,7 @@ async def run_batched_multi_trait(config: SteeringConfig, parsed_traits, model_v
             coherence_threshold=config.min_coherence,
             relevance_check=config.relevance_check,
             trait_judge=config.trait_judge,
+            norm_match=config.norm_match,
         )
 
 
