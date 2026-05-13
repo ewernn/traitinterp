@@ -40,7 +40,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from dev.extraction.test_scenarios import run_test
 from utils.vectors import MIN_COHERENCE
@@ -50,7 +50,7 @@ DEFAULT_SCENARIO_THRESHOLD = 0.9
 DEFAULT_BASELINE_THRESHOLD = 30
 
 EXPERIMENT_NAME = '_validate'
-EXPERIMENT_DIR = Path(__file__).parent.parent / 'experiments' / EXPERIMENT_NAME
+EXPERIMENT_DIR = Path(__file__).parent.parent.parent / 'experiments' / EXPERIMENT_NAME
 
 
 def _setup_experiment(model):
@@ -114,8 +114,27 @@ def _parse_steering_results(results_path):
     return out
 
 
-def _save_results(results):
-    """Save validation results JSON and print summary."""
+def _next_save_path(save_dir: Path, base_name: str) -> Path:
+    """Find a non-colliding {base_name}.json / {base_name}-2.json / ... in save_dir."""
+    save_dir.mkdir(parents=True, exist_ok=True)
+    candidate = save_dir / f'{base_name}.json'
+    if not candidate.exists():
+        return candidate
+    n = 2
+    while True:
+        candidate = save_dir / f'{base_name}-{n}.json'
+        if not candidate.exists():
+            return candidate
+        n += 1
+
+
+def _save_results(results, experiment=None, scenarios_only=False):
+    """Save validation results JSON and print summary.
+
+    Always writes to EXPERIMENT_DIR/'validation.json' (gets wiped on next run).
+    If experiment is provided, also persists to experiments/{experiment}/results/
+    with a stable filename + numeric suffix on collision.
+    """
     gates = results['gates']
     evaluated = [g for g in gates.values() if 'skip' not in g]
     results['overall_pass'] = all(g.get('pass', False) for g in evaluated) if evaluated else False
@@ -124,6 +143,17 @@ def _save_results(results):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
+
+    persisted_path = None
+    if experiment:
+        repo_root = Path(__file__).parent.parent.parent
+        save_dir = repo_root / 'experiments' / experiment / 'results'
+        trait_safe = results['trait'].replace('/', '__')
+        gate_label = 'gate1' if scenarios_only else 'gates123'
+        base_name = f'validate_trait_{gate_label}_{trait_safe}'
+        persisted_path = _next_save_path(save_dir, base_name)
+        with open(persisted_path, 'w') as f:
+            json.dump(results, f, indent=2)
 
     print(f"\n{'='*60}")
     overall = 'PASS' if results['overall_pass'] else 'FAIL'
@@ -134,7 +164,9 @@ def _save_results(results):
             print(f"  {name}: SKIPPED ({data['skip']})")
         else:
             print(f"  {name}: {'PASS' if data['pass'] else 'FAIL'}")
-    print(f"\n  Results: {output_path}")
+    print(f"\n  Results (transient): {output_path}")
+    if persisted_path:
+        print(f"  Results (persisted): {persisted_path}")
 
 
 def validate_trait(
@@ -147,6 +179,7 @@ def validate_trait(
     component='residual',
     scenario_threshold=DEFAULT_SCENARIO_THRESHOLD,
     baseline_threshold=DEFAULT_BASELINE_THRESHOLD,
+    experiment=None,
 ):
     """
     Validate a trait dataset through up to 2 gates + steering report.
@@ -197,7 +230,7 @@ def validate_trait(
     print(f"  Gate 1: {'PASS' if gate1_pass else 'FAIL'}")
 
     if not gate1_pass or scenarios_only:
-        _save_results(results)
+        _save_results(results, experiment=experiment, scenarios_only=scenarios_only)
         return results
 
     # Check steering.json exists
@@ -207,7 +240,7 @@ def validate_trait(
         print(f"\n  Skipping gates 2-3: no steering.json for {trait}")
         results['gates']['baseline'] = {'skip': 'no steering.json'}
         results['gates']['delta'] = {'skip': 'no steering.json'}
-        _save_results(results)
+        _save_results(results, experiment=experiment, scenarios_only=scenarios_only)
         return results
 
     # =========================================================================
@@ -293,7 +326,7 @@ def validate_trait(
     print(f"\n  Gate 2 (baseline < {baseline_threshold}): {bl} {'PASS' if gate2_pass else 'FAIL'}")
     print(f"  Steering: max={ms}, delta={dt}")
 
-    _save_results(results)
+    _save_results(results, experiment=experiment, scenarios_only=scenarios_only)
     return results
 
 
@@ -342,6 +375,10 @@ Examples:
                         help='Token position (default: response[:5])')
     parser.add_argument('--component', default='residual',
                         help='Model component (default: residual)')
+    parser.add_argument('--experiment', default=None,
+                        help='If set, also persist validation.json to experiments/{experiment}/results/'
+                             ' as validate_trait_{gate}_{trait_safe}.json (numeric suffix on collision).'
+                             ' Without this flag, results live in experiments/_validate/ and get wiped on next run.')
 
     args = parser.parse_args()
 
@@ -355,4 +392,5 @@ Examples:
         component=args.component,
         scenario_threshold=args.scenario_threshold,
         baseline_threshold=args.baseline_threshold,
+        experiment=args.experiment,
     )
