@@ -12,9 +12,11 @@ from core.hooks import (
     CaptureHook,
     SteeringHook,
     AblationHook,
+    ActivationCappingHook,
     MultiLayerCapture,
     MultiLayerSteering,
     MultiLayerAblation,
+    MultiLayerActivationCapping,
 )
 
 
@@ -541,6 +543,297 @@ class TestMultiLayerAblation:
         zero_dir = torch.zeros(hidden_dim)
         with pytest.raises(ValueError, match="near-zero norm"):
             MultiLayerAblation(mock_model, zero_dir)
+
+
+# =============================================================================
+# ActivationCappingHook tests
+# =============================================================================
+
+class TestActivationCappingHook:
+    """Tests for ActivationCappingHook (single layer)."""
+
+    def test_floor_pulls_below_tau_up(self, mock_model, hidden_dim):
+        """Floor mode: projection below tau gets pulled up to exactly tau."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        # Capture unmodified projection at layer 0
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+        original_proj = original @ v_hat  # [1, 4]
+
+        # Pick tau strictly above the original projection
+        tau = float(original_proj.max()) + 1.0  # every token starts below tau
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="floor", tau_mode="raw"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped = cap.get()
+        capped_proj = capped @ v_hat
+
+        # Every token's projection should be exactly tau
+        assert torch.allclose(capped_proj, torch.full_like(capped_proj, tau), atol=1e-4)
+
+    def test_floor_leaves_above_tau_unchanged(self, mock_model, hidden_dim):
+        """Floor mode: projection already above tau is unchanged."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+        original_proj = original @ v_hat
+
+        # Pick tau strictly below every token's projection
+        tau = float(original_proj.min()) - 1.0
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="floor", tau_mode="raw"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped = cap.get()
+
+        # No-op
+        assert torch.allclose(capped, original, atol=1e-5)
+
+    def test_ceiling_pulls_above_tau_down(self, mock_model, hidden_dim):
+        """Ceiling mode: projection above tau gets pulled down to exactly tau."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+        original_proj = original @ v_hat
+
+        tau = float(original_proj.min()) - 1.0  # every token starts above tau
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="ceiling", tau_mode="raw"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped = cap.get()
+        capped_proj = capped @ v_hat
+
+        assert torch.allclose(capped_proj, torch.full_like(capped_proj, tau), atol=1e-4)
+
+    def test_ceiling_leaves_below_tau_unchanged(self, mock_model, hidden_dim):
+        """Ceiling mode: projection already below tau is unchanged."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+        original_proj = original @ v_hat
+
+        tau = float(original_proj.max()) + 1.0
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="ceiling", tau_mode="raw"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped = cap.get()
+
+        assert torch.allclose(capped, original, atol=1e-5)
+
+    def test_orthogonal_component_preserved(self, mock_model, hidden_dim):
+        """Cap only changes the projection along the direction;
+        the orthogonal complement is untouched."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+
+        tau = float((original @ v_hat).max()) + 1.0  # force the cap to fire on every token
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="floor", tau_mode="raw"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped = cap.get()
+
+        # Orthogonal component = h - (h @ v_hat) * v_hat
+        original_orth = original - (original @ v_hat).unsqueeze(-1) * v_hat
+        capped_orth = capped - (capped @ v_hat).unsqueeze(-1) * v_hat
+        assert torch.allclose(original_orth, capped_orth, atol=1e-4)
+
+    def test_zero_direction_raises(self, mock_model, hidden_dim):
+        """Zero (or near-zero) direction vector raises before forward pass."""
+        with pytest.raises(ValueError, match="near-zero norm"):
+            ActivationCappingHook(mock_model, torch.zeros(hidden_dim),
+                                  "model.layers.0", tau=0.5)
+
+    def test_non_1d_direction_raises(self, mock_model, hidden_dim):
+        """Non-1D direction raises."""
+        bad = torch.randn(4, hidden_dim)
+        with pytest.raises(ValueError, match="must be 1-D"):
+            ActivationCappingHook(mock_model, bad, "model.layers.0", tau=0.5)
+
+    def test_invalid_mode_raises(self, mock_model, hidden_dim):
+        """Mode other than 'floor' / 'ceiling' raises."""
+        with pytest.raises(ValueError, match="mode must be"):
+            ActivationCappingHook(mock_model, torch.randn(hidden_dim),
+                                  "model.layers.0", tau=0.5, mode="middle")
+
+    def test_invalid_tau_mode_raises(self, mock_model, hidden_dim):
+        """tau_mode other than the three valid options raises."""
+        with pytest.raises(ValueError, match="tau_mode must be"):
+            ActivationCappingHook(mock_model, torch.randn(hidden_dim),
+                                  "model.layers.0", tau=0.5, tau_mode="weird")
+
+    def test_calibrated_mode_requires_mean_norm(self, mock_model, hidden_dim):
+        """tau_mode='calibrated' without mean_activation_norm raises."""
+        with pytest.raises(ValueError, match="requires `mean_activation_norm`"):
+            ActivationCappingHook(mock_model, torch.randn(hidden_dim),
+                                  "model.layers.0", tau=0.5, tau_mode="calibrated")
+
+    def test_default_mode_is_cosine_without_norm(self, mock_model, hidden_dim):
+        """Default tau_mode is 'cosine' when no mean_activation_norm is given."""
+        hook = ActivationCappingHook(mock_model, torch.randn(hidden_dim),
+                                     "model.layers.0", tau=0.5)
+        assert hook.tau_mode == "cosine"
+
+    def test_default_mode_is_calibrated_with_norm(self, mock_model, hidden_dim):
+        """Default tau_mode is 'calibrated' when mean_activation_norm is given."""
+        hook = ActivationCappingHook(mock_model, torch.randn(hidden_dim),
+                                     "model.layers.0", tau=0.5,
+                                     mean_activation_norm=10.0)
+        assert hook.tau_mode == "calibrated"
+        assert hook.mean_activation_norm == 10.0
+
+    def test_calibrated_mode_uses_mean_norm(self, mock_model, hidden_dim):
+        """Calibrated mode: effective_tau = tau * mean_activation_norm (constant)."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        natural_proj = cap.get() @ v_hat
+        mean_norm = 100.0
+        # tau * mean_norm must exceed every natural projection so the floor fires
+        target_raw = float(natural_proj.max()) + 1.0
+        tau = target_raw / mean_norm
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="floor",
+                                   mean_activation_norm=mean_norm):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped_proj = cap.get() @ v_hat
+
+        # Post-cap projection should equal tau * mean_norm exactly
+        assert torch.allclose(capped_proj, torch.full_like(capped_proj, target_raw), atol=1e-3)
+
+    def test_cosine_mode_uses_per_token_norm(self, mock_model, hidden_dim):
+        """Cosine mode: effective_tau = tau * ||h_t|| per token. Output cos sim
+        of the post-cap projection-to-input-norm should equal tau (for tokens
+        where the cap fired)."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        original = cap.get()
+        original_norms = original.norm(dim=-1)  # [1, 4]
+        original_proj = original @ v_hat  # [1, 4]
+        original_cos = original_proj / original_norms
+
+        # Pick tau strictly above every token's natural cosine
+        tau = float(original_cos.max()) + 0.05
+
+        with ActivationCappingHook(mock_model, direction, "model.layers.0",
+                                   tau=tau, mode="floor", tau_mode="cosine"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped = cap.get()
+        capped_proj = capped @ v_hat
+
+        # Post-cap projection per token should be exactly tau * original_norm[t]
+        # (the hook uses the PRE-cap output norm to compute effective_tau)
+        expected_proj = tau * original_norms
+        assert torch.allclose(capped_proj, expected_proj, atol=1e-3)
+
+
+# =============================================================================
+# MultiLayerActivationCapping tests
+# =============================================================================
+
+class TestMultiLayerActivationCapping:
+    """Tests for MultiLayerActivationCapping (multi-layer composite)."""
+
+    def test_registers_hook_per_layer(self, mock_model, hidden_dim):
+        """Composite registers one underlying hook per layer in `tau_per_layer`."""
+        direction = torch.randn(hidden_dim)
+        directions = {l: direction for l in range(4)}
+        tau_per_layer = {0: 100.0, 2: 200.0}  # subset of layers
+
+        hooks_before = [len(mock_model.model.layers[l]._forward_hooks) for l in range(4)]
+
+        with MultiLayerActivationCapping(mock_model, directions, tau_per_layer):
+            hooks_during = [len(mock_model.model.layers[l]._forward_hooks) for l in range(4)]
+
+        hooks_after = [len(mock_model.model.layers[l]._forward_hooks) for l in range(4)]
+
+        # During the context: layers 0 and 2 have +1 hook each, layers 1 and 3 unchanged
+        assert hooks_during[0] == hooks_before[0] + 1
+        assert hooks_during[1] == hooks_before[1]
+        assert hooks_during[2] == hooks_before[2] + 1
+        assert hooks_during[3] == hooks_before[3]
+        # After: all back to baseline
+        assert hooks_after == hooks_before
+
+    def test_single_layer_caps_correctly(self, mock_model, hidden_dim):
+        """Single-layer composite caps the projection at that layer's tau."""
+        direction = torch.randn(hidden_dim)
+        v_hat = direction / direction.norm()
+        directions = {0: direction}
+
+        with CaptureHook(mock_model, "model.layers.0") as cap:
+            x = torch.randn(1, 4, hidden_dim)
+            mock_model(x)
+        natural_proj = cap.get() @ v_hat
+        tau = float(natural_proj.max()) + 1.0  # floor will fire on every token
+
+        with MultiLayerActivationCapping(mock_model, directions, {0: tau}, mode="floor",
+                                         tau_mode="raw"):
+            with CaptureHook(mock_model, "model.layers.0") as cap:
+                mock_model(x)
+        capped_proj = cap.get() @ v_hat
+
+        assert torch.allclose(capped_proj, torch.full_like(capped_proj, tau), atol=1e-4)
+
+    def test_cleanup_on_exception(self, mock_model, hidden_dim):
+        """Hooks removed even when forward pass raises."""
+        direction = torch.randn(hidden_dim)
+        directions = {l: direction for l in range(4)}
+        tau_per_layer = {l: 0.5 for l in range(4)}
+
+        hooks_before = [len(mock_model.model.layers[l]._forward_hooks) for l in range(4)]
+
+        original_forward = mock_model.model.layers[2].forward
+        mock_model.model.layers[2].forward = lambda x: (_ for _ in ()).throw(RuntimeError("nope"))
+
+        try:
+            with MultiLayerActivationCapping(mock_model, directions, tau_per_layer):
+                with pytest.raises(RuntimeError):
+                    mock_model(torch.randn(1, 4, hidden_dim))
+        finally:
+            mock_model.model.layers[2].forward = original_forward
+
+        hooks_after = [len(mock_model.model.layers[l]._forward_hooks) for l in range(4)]
+        assert hooks_after == hooks_before
 
 
 # =============================================================================
