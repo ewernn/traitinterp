@@ -14,6 +14,42 @@
 
 const pendingHandlers = new Map();  // id -> onChange
 
+// Touch devices have no hover, so the CSS hover-open never fires. A single
+// delegated tap handler toggles an `.open` class instead. Attached once.
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
+let touchOpenWired = false;
+
+function positionMenu(dropdown, menu) {
+    const rect = dropdown.getBoundingClientRect();
+    menu.style.top = `${rect.bottom}px`;
+    menu.style.left = `${rect.left}px`;
+    requestAnimationFrame(() => {
+        const menuRect = menu.getBoundingClientRect();
+        if (menuRect.right > window.innerWidth - 8) {
+            menu.style.left = `${Math.max(4, window.innerWidth - menuRect.width - 8)}px`;
+        }
+    });
+}
+
+function wireTouchOpen() {
+    if (touchOpenWired || !isTouch) return;
+    touchOpenWired = true;
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.exp-trigger');
+        const dropdown = trigger ? trigger.closest('.exp-dropdown') : null;
+        // Close any open menus that aren't the one being tapped.
+        document.querySelectorAll('.exp-dropdown.open').forEach(d => {
+            if (d !== dropdown) d.classList.remove('open');
+        });
+        if (!dropdown || dropdown.dataset.disabled === 'true') return;
+        // Tapping inside the menu (an item) is handled by the item's own click.
+        if (e.target.closest('.exp-menu')) return;
+        const willOpen = !dropdown.classList.contains('open');
+        dropdown.classList.toggle('open', willOpen);
+        if (willOpen) positionMenu(dropdown, dropdown.querySelector('.exp-menu'));
+    });
+}
+
 function renderStyledSelect({ id, options, selected, onChange, disabled = false, placeholder = 'Select…' }) {
     if (!id) throw new Error('renderStyledSelect requires an id');
     if (!options || !Array.isArray(options)) throw new Error('renderStyledSelect requires options array');
@@ -44,6 +80,7 @@ function renderStyledSelect({ id, options, selected, onChange, disabled = false,
 }
 
 function wireStyledSelect(root = document) {
+    wireTouchOpen();
     root.querySelectorAll('.styled-select[data-select-id]').forEach(el => {
         if (el.dataset.wired === 'true') return;
         el.dataset.wired = 'true';
@@ -53,18 +90,10 @@ function wireStyledSelect(root = document) {
         const dropdown = el;
         const menu = el.querySelector('.exp-menu');
 
-        // Fixed-position menu: anchor under trigger, clamp to viewport.
+        // Fixed-position menu: anchor under trigger, clamp to viewport (hover open).
         dropdown.addEventListener('mouseenter', () => {
             if (dropdown.dataset.disabled === 'true') return;
-            const rect = dropdown.getBoundingClientRect();
-            menu.style.top = `${rect.bottom}px`;
-            menu.style.left = `${rect.left}px`;
-            requestAnimationFrame(() => {
-                const menuRect = menu.getBoundingClientRect();
-                if (menuRect.right > window.innerWidth - 8) {
-                    menu.style.left = `${Math.max(4, window.innerWidth - menuRect.width - 8)}px`;
-                }
-            });
+            positionMenu(dropdown, menu);
         });
 
         menu.querySelectorAll('.exp-menu-item').forEach(item => {
@@ -76,6 +105,7 @@ function wireStyledSelect(root = document) {
                 if (nameEl) nameEl.textContent = item.textContent.trim();
                 menu.querySelectorAll('.exp-menu-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
+                dropdown.classList.remove('open');  // dismiss tap-opened menu
                 if (typeof onChange === 'function') onChange(value);
             });
         });

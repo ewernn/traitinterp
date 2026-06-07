@@ -433,6 +433,13 @@ body {
     flex-shrink: 0;
 }
 
+/* Nav drawer wrapper: transparent to layout on desktop (children stay direct
+   flex items of .container); becomes an off-canvas drawer on mobile. */
+.nav-drawer { display: contents; }
+
+/* Scrim behind the open mobile drawer (mobile-only; see media query). */
+.nav-scrim { display: none; }
+
 .sidebar-main {
     width: 150px;
     min-width: 150px;
@@ -730,6 +737,8 @@ body {
 .exp-trigger .exp-arrow { font-size: 16px; color: var(--text-tertiary); }
 .exp-menu { position: fixed; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; display: none; max-height: 400px; overflow-y: auto; overflow-x: hidden; min-width: max-content; white-space: nowrap; }
 .exp-dropdown:hover .exp-menu, .exp-menu:hover { display: block; }
+/* Tap-to-open state for touch devices (hover can't open the menu). */
+.exp-dropdown.open .exp-menu { display: block; }
 .exp-menu-item { padding: 5px 12px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; }
 .exp-menu-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 .exp-menu-item.active { color: var(--accent-color); font-weight: var(--fw-medium); }
@@ -2371,33 +2380,65 @@ mark.annotation.annotation-unknown {
         display: none;
     }
 
-    /* Sidebar as overlay on mobile - only show main nav */
-    .sidebar {
+    /* Nav drawer: a single off-canvas panel holding both nav columns,
+       stacked vertically so the analysis panel (view nav, experiment +
+       trait pickers) stays reachable on mobile. */
+    .nav-drawer {
+        display: block;
         position: fixed;
         top: 0;
         left: 0;
         bottom: 0;
+        width: min(85vw, 300px);
         background: var(--bg-primary);
         z-index: 150;
         transform: translateX(-100%);
-        box-shadow: none;
+        transition: transform 0.25s ease;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
         padding-top: 8px;
     }
 
-    .sidebar-main {
-        width: 200px;
-        min-width: 200px;
-        max-width: 80vw;
-        border-right: none;
-    }
-
-    .sidebar-analysis {
-        display: none;
-    }
-
-    .sidebar.mobile-open {
+    .nav-drawer.mobile-open {
         transform: translateX(0);
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Both nav columns flow normally inside the drawer. */
+    .nav-drawer .sidebar {
+        position: static;
+        transform: none;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        border-right: none;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    /* Analysis panel: shown inside the drawer when its view is active. */
+    .sidebar-analysis { display: flex; }
+    .sidebar-analysis.hidden { display: none; }
+
+    /* Clear the floating toggle button from the drawer title. */
+    .nav-drawer .sidebar-header { padding-left: 44px; }
+
+    /* Scrim dims content behind the open drawer. */
+    .nav-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 149;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .nav-scrim.show {
+        opacity: 1;
+        visibility: visible;
     }
 
     /* Main content takes full width on mobile */
@@ -2491,6 +2532,50 @@ mark.annotation.annotation-unknown {
         right: -8px;
         transform: none;
     }
+
+    /* Prompt-set sidebar (inference): inline full-width block above content. */
+    .sidebar-promptsets {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        max-height: 40vh;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .sidebar-promptsets.hidden { display: none; }
+
+    /* Comfortable tap targets for nav + header controls. */
+    .nav-item { padding: var(--space-md-sm) var(--space-sm); }
+    .sidebar-toggle { padding: var(--space-md-sm) var(--space-md); }
+    .theme-toggle,
+    .github-link,
+    .reset-storage-btn {
+        min-width: 40px;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .header-right { flex-wrap: wrap; gap: var(--space-sm); }
+
+    /* Side-by-side panels collapse to a single column. */
+    .vg-panels { grid-template-columns: 1fr; }
+
+    /* Steering filter bar stacks; drop the inline dividers. */
+    .steering-controls { flex-direction: column; align-items: stretch; gap: var(--space-sm); }
+    .steering-controls .filter-row { flex-direction: column; align-items: flex-start; gap: var(--space-xs); width: 100%; }
+    .steering-controls .filter-row::before { display: none; }
+
+    /* Labelled controls stack their label above the control. */
+    .projection-toggle { flex-direction: column; align-items: stretch; }
+    .correlation-offset-slider { width: 100%; max-width: none; margin-left: 0; }
+
+    /* Constrain hover/fixed popovers to the viewport. */
+    .detail-tooltip { width: calc(100vw - 32px); max-width: 360px; right: -8px; left: auto; }
+    .exp-menu { max-width: calc(100vw - 16px); }
+    .exp-menu-item { white-space: normal; }
+    .has-tooltip::after { white-space: normal; max-width: calc(100vw - 32px); }
 }
 
 /* ============================================================
