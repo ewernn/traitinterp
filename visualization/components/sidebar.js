@@ -7,6 +7,7 @@
 import { ANALYSIS_VIEWS, setTabInURL, setExperimentInURL, ensureExperimentLoaded, loadExperimentData } from '../core/state.js';
 import { getDisplayName } from '../core/display.js';
 import { renderMath } from '../core/utils.js';
+import { positionFixedMenu } from '../core/fixed-dropdown.js';
 
 // =============================================================================
 // Theme Management
@@ -533,22 +534,12 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
         </div>
     `;
 
-    // Position the fixed dropdown on hover
+    // Position the fixed dropdown on hover (touch open is handled by the
+    // shared delegated handler in fixed-dropdown.js).
     const dropdown = list.querySelector('.exp-dropdown');
     const menu = list.querySelector('.exp-menu');
     if (dropdown && menu) {
-        dropdown.addEventListener('mouseenter', () => {
-            const rect = dropdown.getBoundingClientRect();
-            menu.style.top = `${rect.bottom}px`;
-            menu.style.left = `${rect.left}px`;
-            // Ensure menu doesn't overflow right edge of viewport
-            requestAnimationFrame(() => {
-                const menuRect = menu.getBoundingClientRect();
-                if (menuRect.right > window.innerWidth - 8) {
-                    menu.style.left = `${Math.max(4, window.innerWidth - menuRect.width - 8)}px`;
-                }
-            });
-        });
+        dropdown.addEventListener('mouseenter', () => positionFixedMenu(dropdown, menu));
     }
 
     // Attach click handlers for experiment selection
@@ -571,6 +562,7 @@ function renderExperimentList(experiments, hiddenExperiments, activeExperiment =
             if (trigger) trigger.textContent = expName;
             list.querySelectorAll('.exp-menu-item').forEach(i => i.classList.remove('active'));
             item.classList.add('active');
+            if (dropdown) dropdown.classList.remove('open');  // dismiss tap-opened menu
 
             await loadExperimentData(expName);
 
