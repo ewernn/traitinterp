@@ -37,31 +37,9 @@ The base model is a document completer. A well-constructed prefix *causes* the t
 
 ## Scenario Design
 
-Six principles drive scenario construction:
+See [`trait_dataset_creation_base_model.md`](trait_dataset_creation_base_model.md) for scenario design (principles, lock-in styles by trait category, first-token test, decision tree, common failure modes). The rest of this doc assumes you already have datasets and walks the pipeline stages.
 
-1. **First person.** The model generates *as* the experiencer
-2. **Peak moment.** Prefix lands at the behavioral crest — completion rides the wave
-3. **Strong binary.** Unambiguous positive vs unambiguous negative
-4. **Negatives need their own peak.** Not absence — the active opposite
-5. **First token test.** The trait decision happens in the first few completion tokens
-6. **Hold constant.** Positive and negative differ only on the trait dimension
-
-### Lock-in Styles
-
-The terminal words of the prefix constrain what the model can produce:
-
-| Category | Lock-in | Example |
-|----------|---------|---------|
-| DECEPTION | Speech | `I told her '` |
-| AFFECTIVE | Emotion/Thought | `All I could think was` |
-| TONAL | Tone-forcing | `I snapped,` |
-| RESPONSE PATTERN | Action | `so I` |
-| INTERPERSONAL | Speech | `I said, "` |
-| PROCESSING MODE | Thought | `My mind started calculating —` |
-
-### Key Insight: Activation Signal ≠ Text Signal
-
-Low vetting pass rate doesn't mean the vector is bad. The model's internal state can encode a trait even when the generated text doesn't visibly express it. Vetting is diagnostic, not a gate.
+**Key principle for this guide:** activation signal ≠ text signal. Low vetting pass rate doesn't mean the vector is bad; vetting is diagnostic, not a gate.
 
 ---
 

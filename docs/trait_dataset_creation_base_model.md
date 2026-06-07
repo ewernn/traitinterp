@@ -1,24 +1,34 @@
-# Trait Dataset Creation
+# Trait Dataset Creation (Base Model)
 
-Create datasets for extracting and validating behavioral trait vectors.
+Create datasets for extracting and validating behavioral trait vectors via base-model prefix completion. For instruct-model extraction (system-prompt contrastive), see `docs/trait_dataset_creation_instruct_model.md` (TODO).
+
+## Pipeline docs map
+
+This doc covers Stage 1: authoring the dataset itself (`positive.{txt,jsonl,json}`, `negative.*`, `definition.txt`, `steering.json`). The downstream stages are documented elsewhere:
+
+- **Stages 2-7 (generate, vet, capture, extract, lens, aggregate):** `docs/extraction_guide.md`
+- **Stages 9-10 (baseline + steering eval):** `docs/steering_guide.md`
+- **Inference / per-token monitoring:** `docs/inference_guide.md`
+- **Validation primitive (`val_effect_size`, `val_auroc`):** `docs/core_reference.md`
+- **Judge / definition.txt debugging:** `docs/judge_definition_iteration.md`
 
 ## Pipeline
 
-1. **Define** — `definition.txt`: scoring rubric for LLM judge. Exhibiting > verbalizing.
-2. **Scenarios** — `positive.txt`, `negative.txt`: matched pairs that make base model naturally express/not express the trait in completions. Judge scores completion-only (no prefix).
-3. **Steering questions** — `steering.json`: prefix + scenarios for instruct model. The prefix pushes the assistant away from the trait. Scenarios give the assistant something to express the trait about. Both expressing and not expressing must be equally natural.
-4. **Baseline check** — verify steering questions have low baseline (mean <20, std <10, no individual question >30). Loop until clean.
-5. **Extract** — base model generates completions → capture activations → compute vectors (mean_diff, probe, gradient). Vetting scores are diagnostic — low pass rates don't prevent good vectors. Use `--min-pass-rate 0` to avoid the quality gate blocking extraction.
-6. **Steer + Evaluate** — apply vector to instruct model, measure delta. 3 metrics: trait score, coherence, naturalness.
-7. **Iterate** — diagnose which phase failed, fix, re-run.
+1. **Define** (`definition.txt`): scoring rubric for the LLM judge. Exhibiting > verbalizing.
+2. **Scenarios** (`positive.{txt,jsonl,json}`, `negative.*`): matched pairs that make the base model naturally express vs not express the trait in completions. Judge scores completion only (no prefix).
+3. **Steering questions** (`steering.json`): prefix + scenarios for the instruct model. Prefix pushes the assistant away from the trait. Scenarios give the assistant something to express the trait about. Both expressing and not expressing must be equally natural.
+4. **Baseline check**: verify steering questions have low baseline (mean <20, std <10, no individual question >30). Loop until clean.
+5. **Extract**: base model generates completions, capture activations, compute vectors (mean_diff, probe, gradient). Vetting scores are diagnostic, not a gate. Use `--min-pass-rate 0` so the quality gate doesn't block extraction on weak vetting.
+6. **Steer + Evaluate**: apply vector to instruct model, measure delta. Three metrics: trait score, coherence, naturalness.
+7. **Iterate**: diagnose which phase failed, fix, re-run.
 
-**Optional**: add `ood_positive.jsonl` and `ood_negative.jsonl` (same format as `positive.jsonl` / `negative.jsonl`) drawn from a different distribution than training — different topics, prompt phrasings, or system-prompt wording. Stage 3 captures their activations alongside training, and `extraction_evaluation.py` writes `ood_accuracy` / `ood_effect_size` / `ood_auroc` / `ood_polarity_correct` per-layer. This activates the OOD tier in `select_vector()`'s validation hierarchy (see [extraction_guide.md#vector-selection](extraction_guide.md#vector-selection)). Useful when you suspect the in-distribution validation rewards dataset confounds.
+**Optional OOD evaluation:** add `ood_positive.jsonl` and `ood_negative.jsonl` (same format as `positive.jsonl` / `negative.jsonl`) drawn from a different distribution than training (different topics, prompt phrasings, or system-prompt wording). Stage 3 captures their activations alongside training, and `extraction_evaluation.py` writes `ood_accuracy`, `ood_effect_size`, `ood_auroc`, `ood_polarity_correct` per layer. This activates the OOD tier in `select_vector()`'s validation hierarchy (see [extraction_guide.md#vector-selection](extraction_guide.md#vector-selection)). Useful when you suspect in-distribution validation rewards dataset confounds.
 
 ## Key Principles
 
-- **The model expresses the trait itself.** Across extraction and steering, we're activating the model's own internal representation of the trait. In extraction, the base model generates as someone experiencing it. In steering, the instruct model responds as an assistant that is itself expressing it — not advising about it, not validating someone else's feelings, not narrating it. The model exhibits the trait in its own voice, naturally, not as caricature.
-- Base model = document completer. The prefix genre shapes expression mode.
-- **Activation signal ≠ text signal.** The model's internal state at `response[:5]` can encode a trait even when the generated text doesn't visibly express it. Vetting scores measure text quality; vectors capture activation quality. Correlated but distinct.
+- **The model expresses the trait itself.** Across extraction and steering, we activate the model's own internal representation of the trait. In extraction, the base model generates as someone experiencing it. In steering, the instruct model responds as an assistant that is itself expressing it: not advising about it, not validating someone else's feelings, not narrating it. The model exhibits the trait in its own voice, naturally, not as caricature.
+- **Base model = document completer.** Prefix genre shapes expression mode.
+- **Activation signal ≠ text signal.** The internal state at `response[:5]` can encode a trait even when the generated text doesn't visibly express it. Vetting scores measure text quality; vectors capture activation quality. Correlated but distinct. **Steering is the ground truth**, not vetting; run the full pipeline before concluding scenarios are broken.
 
 ## Definition Design
 

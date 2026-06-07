@@ -372,6 +372,7 @@ Unusual terminology proliferates during RL:
 | **Mechanistic Anomaly Detection for Quirky LMs** | Johnston, Chakraborty, Belrose | 2025 | [arxiv](https://arxiv.org/abs/2504.08812) | ICLR 2025 BT Workshop. Tests activation-based anomaly detectors on the Mallen quirky-LM suite. No single detector generalizes across all models/tasks — null result on cross-task generalization. |
 | **Training Agents to Self-Report Misbehavior** | Lee, Chen, Korbak | 2026 | [arxiv](https://arxiv.org/abs/2602.22303) | Train agents to call `report_scheming()` when they covertly misbehave. Undetected successful attacks: GPT-4.1 56%→6%, GPT-4.1-mini 33%→14%, Gemini 2.0 Flash 41%→9%. Pareto-dominates blackbox monitoring. |
 | **Discovering Unknown AI Misalignments in Real-World Usage** | Sheahan | 2026 | [blog](https://alignment.openai.com/ai-discovered-unknowns/) | AI-judge sentiment-dynamics analysis on production conversations. ~2× higher Model Spec violation rate in conversations with sentiment deterioration. F1/calibration scales with judge capability (GPT-5 > o3 > o1). |
+| **TrajGuard: Streaming Hidden-State Trajectory Detection** | NIRCEP | 2026 | [arxiv](https://arxiv.org/abs/2604.07727) | Decoding-time jailbreak defense. Per-layer Mahalanobis distance (benign − malicious) in R=64 PCA subspace, averaged over K=8 MVD-selected critical layers, EWMA-smoothed, gated by a model-as-judge invoked only on persistence-trigger. 5.2 ms/token overhead; avg ASR 0.52→0.02. See detailed entry below. |
 
 ### Constitutional Classifiers++ - Cunningham et al. 2026
 
@@ -959,6 +960,56 @@ The negative results are real but bounded. Key caveats:
 **Core finding:** AI judges detect misalignment in production conversations by reading sentiment dynamics — conversations exhibiting sentiment deterioration are roughly 2× more likely to contain Model Spec violations than baseline conversations. F1 and calibration scale monotonically with judge capability (GPT-5 > o3 > o1). Doesn't require predefined rubrics — surfaces failure modes that weren't anticipated.
 
 **Relevance:** Behavioral / conversational layer of the detection stack. Complements activation-level monitoring: judge-on-conversation catches population-level drift, while centered-delta catches per-token mechanistic signal. Together they form a defense-in-depth pair where one fires on observable user-facing dynamics and the other fires on the internal computation that produced them.
+
+---
+
+### TrajGuard: Streaming Hidden-State Trajectory Detection - NIRCEP 2026
+
+**ArXiv:** [2604.07727](https://arxiv.org/abs/2604.07727) (Apr 2026) | **Affiliation:** National Interdisciplinary Research Center of Engineering Physics | **Repo:** [neuron-insight-lab/Trajguard](https://github.com/neuron-insight-lab/Trajguard)
+
+**Core finding:** Benign vs. jailbreak hidden states form linearly separable clusters in a per-layer PCA subspace. A streaming Mahalanobis-distance contrast across K=8 critical layers (a "geometric stage") catches most jailbreaks per-token but over-refuses (~+18% FPR alone); a model-as-judge "semantic stage" invoked only when the geometric score persists past threshold corrects this. The two-stage gating gives 5.2 ms/token overhead and ASR 0.52→0.02 averaged over 12 attacks on Llama-2-7B-Chat.
+
+**Method (per target model, refit per-model; no cross-model transfer):**
+
+*Fitting (offline):*
+- Reference sets: 8,000 benign + 10,000 malicious instructions (sources unspecified in paper — reproducibility gap).
+- For each layer ℓ: extract hidden state, average over the last k=3 tokens, fit IncrementalPCA to R=64 dims.
+- In R⁶⁴: fit benign and malicious Gaussians with Ledoit-Wolf shrinkage covariance. Boundary R_H = 0.9-quantile of malicious-cluster Mahalanobis distances.
+- Critical-layer selection: rank layers by MVD (minimum vertex distance between clusters) on a disjoint held-out jailbreak set J_sel (shares no prompts/templates with eval); take the K=8 lowest.
+- Calibrate threshold γ on benign streaming scores at the 99.5th percentile (FPR target ≤0.5%).
+
+*Runtime, per generated token t (Appendix D.2, Eqs. 11–16):*
+1. Forward pass exposes hidden states at the K=8 critical layers.
+2. Per layer ℓ: average over last k=3 tokens, PCA-project to R=64, compute Mahalanobis distances d^B_{ℓ,t}, d^M_{ℓ,t}.
+3. Per-layer instantaneous score: `r_{ℓ,t} = d^B_{ℓ,t} − d^M_{ℓ,t}` (Eq. 12 — no sigmoid, no α/β).
+4. Truncated mean over sliding window w=8 on each layer's score history → `r̃_{ℓ,t}` (Eq. 13).
+5. Mean across the K=8 layers → `r̄_t = (1/K) Σ_ℓ r̃_{ℓ,t}` (Eq. 14).
+6. EWMA (code form): `p_t = 0.2·r̄_t + 0.8·p_{t−1}`, p₀=0 (Eq. 15). In paper notation α = 1−λ = 0.2.
+7. Persistence trigger: if p_t ≥ γ for m=3 consecutive steps, invoke PAIR-Judge.
+8. PAIR-Judge = the target model itself with a fixed system prompt (Appendix B, includes anti-injection rules) returning {SAFE, UNSAFE}. UNSAFE → abort generation. SAFE → reset p_t←0 and clear the consecutive counter (closed-loop state reset, Section 4.4).
+
+**Default hyperparameters (Table 6):** R/k = 64/3, K = 8, R_H quantile = 0.9, w = 8, λ_EWMA = 0.8, m = 3, γ = 99.5th percentile, greedy decoding (temp=0), seed=42, max_new_tokens = 128.
+
+**Models evaluated:** Llama-2-7B-Chat, Llama-3.1-8B-Instruct, Mistral-7B-Instruct, Vicuna-7B (main); Qwen3-32B in Appendix E. Fits computed per-model.
+
+**Headline results (Llama-2-7B-Chat, Table 1):** ASR no-defense → with-TrajGuard: GCG 0.96→0.00, AutoDAN 0.68→0.00, PAIR 0.59→0.00, DeepInception 0.62→0.06. 12-attack average 0.52→0.02. FPR Alpaca 0.00%, XSTest over-refusal +1.5% over the model's baseline 37.0% XSTest FPR. End-to-end latency at max_new_tokens=128: +189.9 ms (full TrajGuard) vs. +0.8 ms (SGS-only) vs. +750.2 ms (judge-only). Per-token overhead 5.2 ms.
+
+**Eval sample sizes:** 100 HarmBench harmful behaviors × 12 attack templates per (model, attack) cell; FPR computed on 200 Alpaca + 250 XSTest = 450 benign queries. J_sel size for layer selection not specified.
+
+**Ablations (Section 5.3, Table 4 + Appendix F):**
+- *Stage ablation:* SGS-only → FPR +18.4%, latency +0.8 ms (geometric necessary but over-refuses). Judge-only → FPR +1.0%, latency +750.2 ms (semantic necessary but slow). Two-stage gating reconciles.
+- *Persistence m ∈ {1,3,5}:* m=1 spikes FPR to +8.9% from isolated geometric blips on benign queries. m=3 is the sweet spot.
+- *Sliding window w ∈ {4,8,12}:* w=8 default chosen to "maintain low context-buffering latency".
+- *Judge robustness:* tests anti-injection rules in the judge's system prompt against adversarial partial-response manipulation.
+- *Not ablated:* PCA dim R (fixed at 64), EWMA λ (fixed at 0.8).
+
+**Failure modes / limitations stated in paper:**
+- Geometric stage alone unusable (false-positive rate too high on benign queries that have surface-level similarity to refused content, e.g. XSTest).
+- Per-model refitting required; no train-on-A, defend-on-B robustness shown.
+- 8k/10k reference instruction sources not named — reproducibility gap.
+- DeepInception retains 6% residual ASR, suggesting some attack styles drift inside the malicious cluster (low Mahalanobis distance) for long enough to evade the persistence trigger.
+
+**Relevance:** Activation-monitoring primitive directly comparable to our centered-delta projection in `core/methods.py`. Worth borrowing: (a) MVD-based critical-layer selection as a principled alternative to our "best layer" heuristic — works on the same per-layer activation geometry we already extract; (b) k=3 context-averaging + R=64 PCA preprocessing as a cheap drop-in that could stabilize our per-token projections; (c) EWMA + persistence-counter + reset-on-clear streaming logic for the live-chat steering UI in `visualization/chat_inference.py`; (d) the SGS-gates-semantic-judge two-stage pattern is a cost-amortization template for any expensive trait classifier (gating a slow LLM-judge with a fast trait-vector projection threshold). Their K=8-layer Mahalanobis-mean is the natural baseline our centered-delta single-direction projector should beat per-FLOP.
 
 ---
 

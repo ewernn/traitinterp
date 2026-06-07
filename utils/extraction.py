@@ -231,6 +231,13 @@ def parse_numbered_blocks(response: str, expected_n: int, label: str = "story") 
     restarts the list), case-insensitive bracket spacing, trailing colon,
     markdown bold wrapping.
 
+    Implicit-first-block recovery: when the model's first emitted marker is
+    `[{label} 2]` (it skipped writing `[{label} 1]` because the template's
+    Format example demonstrates the first block without a header — true for
+    the paper's neutral_dialogue.txt and two_speaker_dialogue.txt), the text
+    BEFORE the first marker IS the first block. Promotes it. Triggered when
+    min matched index >= 2.
+
     Returns up to `expected_n` blocks in sorted-index order. Raises TypeError
     if response isn't a string.
     """
@@ -249,8 +256,20 @@ def parse_numbered_blocks(response: str, expected_n: int, label: str = "story") 
         if idx not in first_by_index:
             first_by_index[idx] = (m.start(), m.end())
 
+    sorted_indices = sorted(first_by_index.keys())
     blocks = []
-    for idx in sorted(first_by_index.keys()):
+
+    # Implicit-first recovery: model's earliest marker is >= 2, so the text
+    # before that marker was the first block (per template's Format example).
+    if sorted_indices and sorted_indices[0] >= 2:
+        first_marker_pos = first_by_index[sorted_indices[0]][0]
+        implicit_first = response[:first_marker_pos].strip()
+        if implicit_first:
+            blocks.append(implicit_first)
+            if len(blocks) >= expected_n:
+                return blocks
+
+    for idx in sorted_indices:
         match_start, block_start = first_by_index[idx]
         next_positions = [p for p in all_positions if p > match_start]
         block_end = next_positions[0] if next_positions else len(response)

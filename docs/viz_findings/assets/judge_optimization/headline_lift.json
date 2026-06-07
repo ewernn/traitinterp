@@ -1,0 +1,9 @@
+{
+  "xaxis": "Holdout Spearman with 3-rater golden coherence (n=46)",
+  "bars": [
+    { "label": "production (binary gate + grammar rubric)", "value": 0.137 },
+    { "label": "A: continuous, hard-failure gates", "value": 0.403 },
+    { "label": "A': + helpful-default anchor + flattery gate", "value": 0.689 },
+    { "label": "C: + prompt visible to judge", "value": 0.904 }
+  ]
+}

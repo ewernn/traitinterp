@@ -511,12 +511,16 @@
   cliff location: different traits have different average alignment with the
   residual manifold.
   <br><br>
-  <em>Connection to negative-&Delta; runs:</em> the 21% with negative &Delta;
-  are a degenerate case &mdash; their trait vector and natural activation are
-  near-anti-aligned, so positive coefficients push activations across the
-  manifold rather than along it. They may be the runs most prone to early
-  coherence collapse, which is checkable from existing data without new
-  generation.
+  <em>Run-level proxy already checked (null result):</em> splitting our 9,545
+  rows by &Delta; sign within matched &alpha; bins shows no coherence difference
+  &mdash; median coherence is within &plusmn;1 point between pos-&Delta; and
+  neg-&Delta; runs in every bin (e.g. &alpha; [0.8, 1.0): 75.6 vs 75.5).
+  So at run granularity the alignment hypothesis is wrong: anti-aligned trait
+  vectors don't cause more incoherence at the same &alpha;.
+  The per-<em>token</em> version of the test is still open and is the
+  interesting one &mdash; the prediction would be that within a single collapsing
+  generation, the specific token where coherence breaks has lower cosine with
+  <em>v</em> than the surrounding tokens.
 </div>
 
 <h2 id="files">10. Files &amp; provenance</h2>

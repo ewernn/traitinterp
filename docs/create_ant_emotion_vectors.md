@@ -173,11 +173,13 @@ Per-emotion wall-clock at paper-default 100 topics × 12 stories, `max_new_token
 |------------------------------|----------------|-------------------|---------------|----------------|
 | Llama 3.1 8B / Qwen 2.5 7B   | ~16 GB (fp16)  | (none)            | ~30 min       | ~10 h          |
 | Gemma 2 9B / Qwen 2.5 14B    | ~28 GB (fp16)  | (none)            | ~50 min       | ~16 h          |
-| Llama 3.3 70B / Qwen 2.5 72B | ~40 GB (int4)  | `--load-in-4bit`  | ~6 h          | ~120 h         |
+| Llama 3.3 70B / Qwen 2.5 72B | ~40 GB (int4)  | `--load-in-4bit`  | ~5–6 h        | ~100–120 h     |
 
-Estimates anchor on a Q-C3 empirical baseline of ~18.75s per story on 4-bit Llama 3.3 70B (100 topics × 12 stories = 1200 stories × 18.75s ≈ 6 h). Your model's tokenizer, chat-template length, and GPU define the actual number. Use the smoke-test wall-clock × (100/smoke_topics) × (12/smoke_stories) as the more reliable predictor.
+Estimates anchor on measured datapoints on a single A100 80GB running 4-bit Llama 3.3 70B (May 2026): 5 topics × N=6 = 9.7 min/emotion, 5 topics × N=12 = 15.3–17.4 min/emotion (two runs). Linearly scaled to 100 topics × N=12: ~5–6 h/emotion. Your model's tokenizer, chat-template length, and GPU define the actual number; use a 5-topic smoke run × 20 as the more reliable predictor.
 
 Time-constrained: `--topics 50 --stories-per-batch 6` gives 4× less data but still usable vectors (roughly what our lightweight mode does).
+
+**Don't go below `--stories-per-batch 6`**: the paper's diversity instruction is calibrated for N≈12. Empirical N-sweep (May 2026 on 70B int4): N=3 → 40% under-production, N=6 / N=12 → 0%. N=3 is debug-only.
 
 ---
 

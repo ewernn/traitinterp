@@ -1,4 +1,8 @@
-# Plan: Validate & Fix Remaining Traits
+# Plan: Validate & Fix Remaining Traits (ARCHIVED SNAPSHOT, 2026-05-01)
+
+> **Stale.** The numbers in this file are from a 2026-05-01 snapshot and no longer match current Gate 1 results (e.g., this file shows hallucination 96/100, evil 63/99, sycophancy 48/98 — actual current numbers are 57/94, 45/99, 20/88 per `experiments/1st_vs_3rd_person_extraction/results/`). The "deploy Modal extraction+steering" TODO is also outdated: the Modal apps exist at `dev/extraction/modal_pipeline.py` and `dev/inference/modal_steering.py`; what remains is wiring them into `dev/extraction/validate_trait.py` Gates 2-3.
+>
+> Kept for context only. For rolling status, re-run `dev/extraction/validate_trait.py --experiment {X}` and read the persisted JSON outputs.
 
 ## Trait Status
 

@@ -12,8 +12,30 @@ For each paper, decide one of three:
 
 **1. Thesis-relevant** -> add to `docs/other/relevant_papers.md`.
 Topics: centered-delta detection, trait extraction (mean-diff / CAA / probing), steering validation, persona vectors, deception / sycophancy / sandbagging detection, eval-awareness, reward hacking, EM, alignment faking, RM interpretability, activation monitoring, fingerprinting.
-Format: a `### Title - Authors Year` block with `**ArXiv:** [id](url)`, `**Core finding:**`, `**Relevance:**` (tie to specific repo artifacts where possible, e.g. `core/methods.py`, F12-F23 in `RESEARCH_FINDINGS_BASELINE.md`).
+Format: a `### Title - Authors Year` block with `**ArXiv:** [id](url)`, `**Core finding:**`, **`**Method:**` (precise + complete — see below)**, **`**Results / findings:**` (precise + complete — see below)**, **`**Ablations:**`**, **`**Failure modes / limitations:**`**, `**Relevance:**` (tie to specific repo artifacts where possible, e.g. `core/methods.py`, F12-F23 in `RESEARCH_FINDINGS_BASELINE.md`).
 Place inside the matching section header (Detection Methods, Representation Engineering & Steering, Interpretability Tools, Finetuning Mechanics, etc.). Also add a one-line row to the section's summary table if one exists.
+
+**Precision + completeness bar for Method and Results sections:** these two sections together should be detailed enough that *a competent ML researcher could nearly reproduce the paper from the entry alone*. That means:
+
+- **Method must include:**
+  - Exact datasets and sample sizes for each phase (fitting, training, calibration, evaluation). Name the source dataset (AdvBench, HarmBench, Alpaca, etc.); if the paper doesn't name it, write "sources unspecified in paper — reproducibility gap" so the absence is visible.
+  - Models used, per phase. If the method is refit per target model vs. cross-model transferred, state it explicitly.
+  - All preprocessing steps with parameters (PCA dim R, context-window k, normalization, tokenization quirks).
+  - The actual equations for the scoring/training objective. Quote them with their paper equation numbers. Do not paraphrase as "a logistic-style margin score" — write the formula.
+  - Hyperparameters with values: layer counts and indices (or how they're selected), window sizes, smoothing factors, thresholds and how they're calibrated, learning-rate schedule, optimizer, batch size, training steps, seed.
+  - Full step-by-step runtime / inference / training loop, in numbered steps. Pseudocode if available in the paper, otherwise reconstructed and labeled as such.
+  - A defaults table if the paper has one (often in appendix); copy it verbatim into the entry.
+
+- **Results must include:**
+  - Headline numbers as a table, exact values, one row per (condition, baseline, method) or per attack/task. Not "~50% improvement" — actual numbers.
+  - Sample size N for every reported cell, or one line stating the global N if uniform.
+  - Latency / cost / FLOP numbers if reported.
+  - Eval split construction (train/val/test, disjoint sets, what's held out).
+  - All ablations: per-component effect on the primary metric, with numbers. Explicitly list which hyperparameters were *not* ablated.
+  - Failure modes the authors themselves flag, with numbers (e.g. "DeepInception retains 6% residual ASR").
+  - Limitations the authors state.
+
+If the source summary (Claude Browser paste, abstract, etc.) doesn't have this level of detail, the Step B precision questions exist to extract it. Don't write the entry until the gaps are closed.
 
 **2. Anything else worth a note** -> add to `docs/personal_papers/{year}-{firstauthor}-{slug}.md`.
 General knowledge base. Any field. No requirement to be ML- or thesis-adjacent.
@@ -47,7 +69,9 @@ Then I paste Claude Browser's response into chat with you and ask "should we add
 
 Don't ask "what's the methodology." Claude Browser already gave that. Ask for the numbers, sample sizes, hyperparameters, layer choices, baselines, and ablations that would otherwise drift to "they did some fine-tuning" in the entry.
 
-**Step C: Revise.** I paste Claude Browser's answers. You revise the draft to incorporate the new precision. Show me the revised entry before writing.
+After drafting the questions, **spawn an `r:investigator` subagent with the arxiv MCP tool (`mcp__plugin_r_arxiv__fetch_arxiv_paper`) to fetch the full paper and answer the questions directly**, rather than waiting for me to paste answers from Claude Browser. Brief the subagent with the arxiv id, the draft entry, and the questions. It returns precise answers, you revise, then proceed to Step C. If the paper is not on arxiv or the fetch fails, fall back to asking me to paste answers.
+
+**Step C: Revise.** Incorporate the subagent's (or my pasted) answers into the draft. Show me the revised entry before writing.
 
 **Step D: Write.** Once I approve the revised entry, apply the edit to the target file. Re-read line numbers before each write if multiple edits land on the same file.
 
