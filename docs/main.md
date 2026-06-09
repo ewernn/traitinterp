@@ -197,6 +197,8 @@ python visualization/serve.py  # Visit http://localhost:8000/
 
 See the pipeline guides: [extraction](extraction_guide.md), [inference](inference_guide.md), [steering](steering_guide.md).
 
+**Shipping to the live site:** all work lands on `dev`. To deploy, run `./utils/release.sh -m "msg"` from `dev` — it promotes the whitelisted files to `main` (public release) and `prod`, and Railway auto-redeploys the site on every push to `origin/prod`. Full details, footguns, and the per-target scripts (`promote_to_main.sh` / `promote_to_prod.sh`) are in [Branch Workflow](#branch-workflow) below.
+
 ---
 
 ## Branch Workflow
