@@ -12,8 +12,6 @@
  *     wireStyledSelect(container);
  */
 
-import { positionFixedMenu } from '../core/fixed-dropdown.js';
-
 const pendingHandlers = new Map();  // id -> onChange
 
 function renderStyledSelect({ id, options, selected, onChange, disabled = false, placeholder = 'Select…' }) {
@@ -55,10 +53,18 @@ function wireStyledSelect(root = document) {
         const dropdown = el;
         const menu = el.querySelector('.exp-menu');
 
-        // Fixed-position menu: anchor under trigger, clamp to viewport (hover open).
+        // Fixed-position menu: anchor under trigger, clamp to viewport.
         dropdown.addEventListener('mouseenter', () => {
             if (dropdown.dataset.disabled === 'true') return;
-            positionFixedMenu(dropdown, menu);
+            const rect = dropdown.getBoundingClientRect();
+            menu.style.top = `${rect.bottom}px`;
+            menu.style.left = `${rect.left}px`;
+            requestAnimationFrame(() => {
+                const menuRect = menu.getBoundingClientRect();
+                if (menuRect.right > window.innerWidth - 8) {
+                    menu.style.left = `${Math.max(4, window.innerWidth - menuRect.width - 8)}px`;
+                }
+            });
         });
 
         menu.querySelectorAll('.exp-menu-item').forEach(item => {
@@ -70,7 +76,6 @@ function wireStyledSelect(root = document) {
                 if (nameEl) nameEl.textContent = item.textContent.trim();
                 menu.querySelectorAll('.exp-menu-item').forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
-                dropdown.classList.remove('open');  // dismiss tap-opened menu
                 if (typeof onChange === 'function') onChange(value);
             });
         });

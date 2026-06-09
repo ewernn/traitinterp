@@ -431,27 +431,37 @@ class TraitJudge:
         self,
         text: str,
         prompt: str = None,
-        relevance_check: bool = False,
+        relevance_check: bool = False,  # deprecated; relevance is baked into rubric+prompt-context
     ) -> Optional[float]:
-        """Score coherence/fluency of text (0-100).
+        """Score coherence/usability of a response (0-100).
 
-        Two-stage when `relevance_check=True` and `prompt` given:
-          1. Grammar / fluency score.
-          2. Binary relevance check against prompt.
-          3. Cap at 50 if OFF_TOPIC.
+        Prompt-aware: when `prompt` is provided, the judge sees both the prompt
+        and the response (key architectural change from the prior version, see
+        docs/viz_findings/llm-judge-optimization.md). The rubric now handles
+        relevance/off-topic detection internally via failure-pattern gates,
+        replacing the prior binary relevance gate (which capped at 50).
+
+        When `prompt` is None, falls back to response-only (legacy mode).
+
+        The `relevance_check` parameter is accepted for backward compat but no
+        longer triggers a separate check — relevance is part of the unified
+        scoring now.
         """
         text = text[:2000]
+        if prompt is not None:
+            p = prompt[:1000]
+            user_content = (
+                f'Prompt the user asked: "{p}"\n\n'
+                f'Response to score: "{text}"\n\n'
+                f'Apply the rubric above to the response. Number only:'
+            )
+        else:
+            user_content = f'"{text}"\nScore:'
         messages: List[Message] = [
             {"role": "system", "content": COHERENCE_PROMPT},
-            {"role": "user", "content": f'"{text}"\nScore:'},
+            {"role": "user", "content": user_content},
         ]
-        score = await self._score_messages(messages, min_weight=0.1)
-
-        if relevance_check and prompt and score is not None:
-            cap = await self.check_relevance(prompt, text)
-            if cap is not None:
-                score = min(score, cap)
-        return score
+        return await self._score_messages(messages, min_weight=0.1)
 
     async def score_steering(
         self,
@@ -613,7 +623,7 @@ class TraitJudge:
                 "score": await self.score_response(prompt, response, trait_name, trait_definition),
             }
             if include_coherence:
-                result["coherence"] = await self.score_coherence(response)
+                result["coherence"] = await self.score_coherence(response, prompt=prompt)
             return result
         return await _gather_bounded(score_one, items, max_concurrent)
 

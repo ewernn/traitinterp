@@ -12,3 +12,8 @@ methods: ["mean_diff"]
 # Full-mode runs should pass --max-new-tokens 2048 (default 512 too short for
 # a batched N=12 dialogue response).
 batched_story_template_file: ../prompts/neutral_dialogue.txt
+# Parser dispatch: the neutral template asks for [dialogue N] blocks, not
+# [story N], so the production parse_numbered_blocks() helper needs the
+# right label. Default "story" matches the story template at the category
+# level; this override flips it for the neutral reference trait.
+block_label: dialogue

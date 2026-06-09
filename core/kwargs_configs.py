@@ -20,7 +20,10 @@ from typing import List, Literal, Optional
 # averages, local models) may need re-tuning or a calibration map. See
 # utils/judge_backends.py module docstring.
 
-MIN_COHERENCE = 77       # Minimum coherence score for a steering run to be valid.
+MIN_COHERENCE = 62       # Minimum coherence score for a steering run to be valid.
+# Note: was 77 prior to the May 2026 judge_optimization_v2 update; new threshold
+# reflects the prompt-aware coherence rubric's recalibrated distribution
+# (golden mean ~60 with std ~25). See docs/viz_findings/llm-judge-optimization.md.
 POS_THRESHOLD = 60       # Positive scenario trait-score threshold (vetting).
 NEG_THRESHOLD = 40       # Negative scenario trait-score threshold (vetting).
 

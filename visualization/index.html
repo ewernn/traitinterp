@@ -34,14 +34,7 @@
 
     <div class="container">
         <!-- Sidebar Toggle (mobile) -->
-        <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle navigation">☰</button>
-
-        <!-- Scrim behind the mobile nav drawer -->
-        <div class="nav-scrim" id="nav-scrim"></div>
-
-        <!-- Nav Drawer: wraps both nav panels. display:contents on desktop (no layout
-             change), an off-canvas drawer on mobile so the analysis panel stays reachable. -->
-        <div class="nav-drawer" id="nav-drawer">
+        <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">☰</button>
 
         <!-- Main Nav (always visible) -->
         <div class="sidebar sidebar-main" id="sidebar">
@@ -89,7 +82,6 @@
                 <div id="trait-checkboxes"></div>
             </div>
         </div>
-        </div><!-- /nav-drawer -->
 
         <!-- Prompt Set Sidebar: left panel for prompt set selection (inference only) -->
         <div id="prompt-set-sidebar" class="sidebar sidebar-promptsets hidden">
@@ -292,8 +284,6 @@
             const analysisPanel = document.getElementById('sidebar-analysis');
             const collapseBtn = document.getElementById('sidebar-collapse');
             const toggleBtn = document.getElementById('sidebar-toggle');
-            const drawer = document.getElementById('nav-drawer');
-            const scrim = document.getElementById('nav-scrim');
 
             // Desktop collapse button - collapses all sidebars
             collapseBtn.addEventListener('click', () => {
@@ -318,30 +308,24 @@
                 }
             });
 
-            // Mobile drawer: single off-canvas panel holding both nav columns.
-            const setDrawer = (open) => {
-                drawer.classList.toggle('mobile-open', open);
-                scrim.classList.toggle('show', open);
-            };
-
+            // Mobile toggle button - opens both sidebars
             toggleBtn.addEventListener('click', () => {
-                setDrawer(!drawer.classList.contains('mobile-open'));
-            });
-
-            // Tap the scrim to dismiss.
-            scrim.addEventListener('click', () => setDrawer(false));
-
-            // Tapping a view nav item closes the drawer so the content is visible.
-            drawer.addEventListener('click', (e) => {
-                if (window.innerWidth <= 768 &&
-                    e.target.closest('.nav-item[data-view], #analysis-entry')) {
-                    setDrawer(false);
+                sidebar.classList.toggle('mobile-open');
+                if (analysisPanel) {
+                    analysisPanel.classList.toggle('mobile-open');
                 }
             });
 
-            // Returning to desktop width clears the mobile-open state.
-            window.addEventListener('resize', () => {
-                if (window.innerWidth > 768) setDrawer(false);
+            // Close mobile sidebar when clicking outside
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 &&
+                    sidebar.classList.contains('mobile-open') &&
+                    !sidebar.contains(e.target) &&
+                    !(analysisPanel && analysisPanel.contains(e.target)) &&
+                    e.target !== toggleBtn) {
+                    sidebar.classList.remove('mobile-open');
+                    if (analysisPanel) analysisPanel.classList.remove('mobile-open');
+                }
             });
         });
     </script>

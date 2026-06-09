@@ -284,12 +284,38 @@ def main(
     bin_coh = [b["median_coherence"] for b in reliable_bins]
     # delta uses absolute value: 21% of rows have negative deltas (steering-against-trait runs);
     # the scaling-law claim is about perturbation magnitude, not signed direction.
-    def _bin_abs_delta(b_lo, b_hi):
-        bucket = [abs(r["delta"]) for r in rows
-                  if r["delta"] is not None
-                  and b_lo <= r["ratio"] < (b_hi if b_hi is not None else float("inf"))]
-        return median(bucket) if bucket else None
-    bin_abs_delta = [_bin_abs_delta(b["ratio_lo"], b["ratio_hi"]) for b in reliable_bins]
+    def _bin_values(b_lo, b_hi, key, transform=lambda x: x):
+        return [transform(r[key]) for r in rows
+                if r[key] is not None
+                and b_lo <= r["ratio"] < (b_hi if b_hi is not None else float("inf"))]
+    bin_abs_delta = [median(_bin_values(b["ratio_lo"], b["ratio_hi"], "delta", abs)) or None
+                     for b in reliable_bins]
+
+    # Bootstrap 95% CI on the per-bin median (percentile method, 1000 resamples).
+    import random
+    random.seed(0)
+    BOOTSTRAP_N = 1000
+
+    def _bootstrap_median_ci(values):
+        if len(values) < 2:
+            return None, None
+        medians = []
+        n = len(values)
+        for _ in range(BOOTSTRAP_N):
+            sample = [values[random.randrange(n)] for _ in range(n)]
+            medians.append(median(sample))
+        medians.sort()
+        return medians[int(0.025 * BOOTSTRAP_N)], medians[int(0.975 * BOOTSTRAP_N)]
+
+    bin_coh_ci_lo, bin_coh_ci_hi = [], []
+    bin_delta_ci_lo, bin_delta_ci_hi = [], []
+    for b in reliable_bins:
+        coh_vals = _bin_values(b["ratio_lo"], b["ratio_hi"], "coherence_mean")
+        delta_vals = _bin_values(b["ratio_lo"], b["ratio_hi"], "delta", abs)
+        lo, hi = _bootstrap_median_ci(coh_vals)
+        bin_coh_ci_lo.append(lo); bin_coh_ci_hi.append(hi)
+        lo, hi = _bootstrap_median_ci(delta_vals)
+        bin_delta_ci_lo.append(lo); bin_delta_ci_hi.append(hi)
 
     scatter_x = [round(r["ratio"], 4) for r in rows]
     scatter_coh = [round(r["coherence_mean"], 2) for r in rows]
@@ -301,14 +327,22 @@ def main(
         "x": scatter_x, "y": scatter_coh,
         "xaxis": common_x_label, "yaxis": "Coherence (0-100)",
         "xaxis_type": "log", "regression": False,
-        "binned_median_line": {"x": bin_x, "y": bin_coh, "name": "Median per ratio bin"},
+        "binned_median_line": {
+            "x": bin_x, "y": bin_coh,
+            "ci_lower": bin_coh_ci_lo, "ci_upper": bin_coh_ci_hi,
+            "name": "Median per ratio bin",
+        },
         "floor_line": {"y": coherence_floor, "label": f"coherence floor = {int(coherence_floor)}"},
     }
     chart_delta = {
         "x": scatter_x_for_delta, "y": scatter_abs_delta,
         "xaxis": common_x_label, "yaxis": "Absolute trait delta  |steered − baseline|",
         "xaxis_type": "log", "regression": False,
-        "binned_median_line": {"x": bin_x, "y": bin_abs_delta, "name": "Median per ratio bin"},
+        "binned_median_line": {
+            "x": bin_x, "y": bin_abs_delta,
+            "ci_lower": bin_delta_ci_lo, "ci_upper": bin_delta_ci_hi,
+            "name": "Median per ratio bin",
+        },
     }
 
     # Cliff-ratio chart: x = layer index, y = perturbation ratio at which coherence

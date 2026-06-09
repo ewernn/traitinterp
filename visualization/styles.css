@@ -396,6 +396,7 @@ body {
     padding: var(--space-md);
     overflow: hidden;
     height: 100vh;
+    height: 100dvh; /* Safari/iOS: track the visible viewport, not the toolbar-inclusive 100vh */
 }
 
 /* Scrollbar styling */
@@ -422,6 +423,7 @@ body {
     display: flex;
     gap: 0;
     height: 100vh;
+    height: 100dvh;
     overflow: auto;
 }
 
@@ -432,13 +434,6 @@ body {
     overflow-x: hidden;
     flex-shrink: 0;
 }
-
-/* Nav drawer wrapper: transparent to layout on desktop (children stay direct
-   flex items of .container); becomes an off-canvas drawer on mobile. */
-.nav-drawer { display: contents; }
-
-/* Scrim behind the open mobile drawer (mobile-only; see media query). */
-.nav-scrim { display: none; }
 
 .sidebar-main {
     width: 150px;
@@ -737,8 +732,6 @@ body {
 .exp-trigger .exp-arrow { font-size: 16px; color: var(--text-tertiary); }
 .exp-menu { position: fixed; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 200; display: none; max-height: 400px; overflow-y: auto; overflow-x: hidden; min-width: max-content; white-space: nowrap; }
 .exp-dropdown:hover .exp-menu, .exp-menu:hover { display: block; }
-/* Tap-to-open state for touch devices (hover can't open the menu). */
-.exp-dropdown.open .exp-menu { display: block; }
 .exp-menu-item { padding: 5px 12px; font-size: var(--text-xs); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; }
 .exp-menu-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
 .exp-menu-item.active { color: var(--accent-color); font-weight: var(--fw-medium); }
@@ -1112,6 +1105,7 @@ code {
     font-weight: var(--fw-light);
     line-height: 1.7;
     color: var(--text-primary);
+    overflow-wrap: break-word; /* long URLs/tokens wrap instead of overflowing the viewport */
 }
 
 .prose h1 {
@@ -1183,6 +1177,7 @@ code {
     padding: 20px;
     margin: 24px 0;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     font-size: var(--text-base);
     line-height: 1.5;
 }
@@ -2360,12 +2355,14 @@ mark.annotation.annotation-unknown {
         overflow-y: auto;
         height: auto;
         min-height: 100vh;
+        min-height: 100dvh;
     }
 
     .container {
         flex-direction: column;
         height: auto;
         min-height: 100vh;
+        min-height: 100dvh;
         width: 100%;
         overflow-x: hidden;
     }
@@ -2380,68 +2377,33 @@ mark.annotation.annotation-unknown {
         display: none;
     }
 
-    /* Nav drawer: a single off-canvas panel holding both nav columns,
-       stacked vertically so the analysis panel (view nav, experiment +
-       trait pickers) stays reachable on mobile. */
-    .nav-drawer {
-        --drawer-width: min(85vw, 300px);
-        display: block;
+    /* Sidebar as overlay on mobile - only show main nav */
+    .sidebar {
         position: fixed;
         top: 0;
-        /* Animate via `left`, not `transform`: a transformed ancestor would
-           become the containing block for the fixed `.exp-menu` dropdowns
-           rendered inside the drawer, mispositioning and clipping them. */
-        left: calc(-1 * var(--drawer-width));
+        left: 0;
         bottom: 0;
-        width: var(--drawer-width);
         background: var(--bg-primary);
         z-index: 150;
-        transition: left 0.25s ease;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-        -webkit-overflow-scrolling: touch;
+        transform: translateX(-100%);
+        box-shadow: none;
         padding-top: 8px;
     }
 
-    .nav-drawer.mobile-open {
-        left: 0;
-        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Both nav columns flow normally inside the drawer. */
-    .nav-drawer .sidebar {
-        position: static;
-        transform: none;
-        width: 100%;
-        min-width: 0;
-        max-width: none;
+    .sidebar-main {
+        width: 200px;
+        min-width: 200px;
+        max-width: 80vw;
         border-right: none;
-        background: transparent;
-        box-shadow: none;
     }
 
-    /* Analysis panel: shown inside the drawer when its view is active. */
-    .sidebar-analysis { display: flex; }
-    .sidebar-analysis.hidden { display: none; }
-
-    /* Clear the floating toggle button from the drawer title. */
-    .nav-drawer .sidebar-header { padding-left: 44px; }
-
-    /* Scrim dims content behind the open drawer. */
-    .nav-scrim {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.45);
-        z-index: 149;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.25s ease, visibility 0.25s ease;
+    .sidebar-analysis {
+        display: none;
     }
 
-    .nav-scrim.show {
-        opacity: 1;
-        visibility: visible;
+    .sidebar.mobile-open {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
     }
 
     /* Main content takes full width on mobile */
@@ -2535,50 +2497,6 @@ mark.annotation.annotation-unknown {
         right: -8px;
         transform: none;
     }
-
-    /* Prompt-set sidebar (inference): inline full-width block above content. */
-    .sidebar-promptsets {
-        width: 100%;
-        min-width: 0;
-        max-width: none;
-        max-height: 40vh;
-        border-left: none;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .sidebar-promptsets.hidden { display: none; }
-
-    /* Comfortable tap targets for nav + header controls. */
-    .nav-item { padding: var(--space-md-sm) var(--space-sm); }
-    .sidebar-toggle { padding: var(--space-md-sm) var(--space-md); }
-    .theme-toggle,
-    .github-link,
-    .reset-storage-btn {
-        min-width: 40px;
-        min-height: 40px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .header-right { flex-wrap: wrap; gap: var(--space-sm); }
-
-    /* Side-by-side panels collapse to a single column. */
-    .vg-panels { grid-template-columns: 1fr; }
-
-    /* Steering filter bar stacks; drop the inline dividers. */
-    .steering-controls { flex-direction: column; align-items: stretch; gap: var(--space-sm); }
-    .steering-controls .filter-row { flex-direction: column; align-items: flex-start; gap: var(--space-xs); width: 100%; }
-    .steering-controls .filter-row::before { display: none; }
-
-    /* Labelled controls stack their label above the control. */
-    .projection-toggle { flex-direction: column; align-items: stretch; }
-    .correlation-offset-slider { width: 100%; max-width: none; margin-left: 0; }
-
-    /* Constrain hover/fixed popovers to the viewport. */
-    .detail-tooltip { width: calc(100vw - 32px); max-width: 360px; right: -8px; left: auto; }
-    .exp-menu { max-width: calc(100vw - 16px); }
-    .exp-menu-item { white-space: normal; }
-    .has-tooltip::after { white-space: normal; max-width: calc(100vw - 32px); }
 }
 
 /* ============================================================
@@ -3318,6 +3236,7 @@ mark.annotation.annotation-unknown {
     padding: 16px 24px 24px 24px;
     background: var(--bg-secondary);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     counter-reset: figure;
 }
 
@@ -3421,6 +3340,34 @@ mark.annotation.annotation-unknown {
 }
 @media (max-width: 768px) {
     .sbs-container { flex-direction: column; }
+
+    /* ── Findings & Overview on phones (Safari/iOS) ──
+       Reclaim horizontal space so cards, abstracts, and the fixed-width
+       thumbnail don't overflow a ~375px viewport (which makes Safari
+       shrink the whole page) or crush the text into a narrow column. */
+    .findings-container { padding: var(--space-md) var(--space-sm); }
+
+    .finding-content { padding: var(--space-md) var(--space-md-sm) var(--space-md-sm); }
+
+    /* Desktop indents the abstract 48px each side — far too wide for a phone. */
+    .finding-content .prose h1 + p,
+    .finding-content .prose h1 + p + p,
+    .finding-content .prose h1 + p + p + p {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    /* Stack the 150px thumbnail under the title instead of squeezing it
+       beside the text in a too-narrow flex row. */
+    .finding-card.has-thumbnail .finding-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+    .thumbnail-chart { align-self: flex-start; }
+
+    /* Single-finding (deep-link) view: trim the 2rem frame. */
+    .standalone-finding { padding: var(--space-md) var(--space-sm); }
 }
 
 /* Smaller prose for findings */
